@@ -40,8 +40,19 @@ const sendToBackend = (type: string, data: any) => {
   } as any)
 }
 
+/** Derive parent directory path from a file/folder path */
+function getParentDir(filePath: string): string {
+  const parts = filePath.split('/')
+  parts.pop()
+  return parts.join('/') || '/'
+}
+
 export interface Context {
-  files: FileInfo[]
+  rootFiles: FileInfo[]
+  expandedDirs: Set<string>
+  dirContents: Record<string, FileInfo[]>
+  loadingDirs: Set<string>
+  selectedPaths: string[]
 }
 
 // Quick open types
@@ -65,14 +76,18 @@ export type Event =
   | { type: 'explorer.OPEN_FILES'; paths: string[] }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
-  | { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
   | { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
   | { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
   | { type: 'explorer.FILE_DELETED'; path: string }
   | { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
   | { type: 'explorer.DIRECTORY_CREATED'; path: string }
   | { type: 'explorer.ERROR'; message: string }
-  // Backend events that affect file state (now with explorer. prefix)
+  // Tree view events
+  | { type: 'explorer.EXPAND_DIRECTORY'; path: string }
+  | { type: 'explorer.COLLAPSE_DIRECTORY'; path: string }
+  | { type: 'explorer.SELECT_ITEMS'; paths: string[] }
+  | { type: 'explorer.MOVE_ITEMS'; sourcePaths: string[]; targetDir: string }
+  // Backend events that affect file state
   | { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
   | { type: 'explorer.FILE_SAVED'; data: { path: string } }
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: { path: string; modifiedAt: Date; changeType: 'add' | 'change' | 'unlink' } }
@@ -80,10 +95,10 @@ export type Event =
   // Quick open events
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
-  // Directory events
-  | { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; baseDirectory: string } }
+  // Move result from backend
+  | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
   // Broadcast events from parent
-  | { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null } };
+  | { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } };
 
 export const explorerState = setup({
   types: {
@@ -112,7 +127,7 @@ export const explorerState = setup({
             ? {
                 ...f,
                 content: ev.data.content,
-                originalContent: ev.data.content,  // Update originalContent baseline
+                originalContent: ev.data.content,
                 modified: false,
                 externallyModified: false,
                 externalModificationTime: undefined,
@@ -131,13 +146,13 @@ export const explorerState = setup({
         const newTab = {
           path: ev.data.path,
           content: ev.data.content,
-          originalContent: ev.data.content,  // Set originalContent baseline
+          originalContent: ev.data.content,
           modified: false
         }
         const result = mergeTabs(
           openFiles,
           [newTab],
-          ev.data.path // Set as active
+          ev.data.path
         )
         updateParentState(self, {
           ...result,
@@ -155,7 +170,7 @@ export const explorerState = setup({
         f.path === ev.data.path
           ? {
               ...f,
-              originalContent: f.content,  // Update originalContent to match saved content
+              originalContent: f.content,
               modified: false,
               pendingSaveConflict: false,
               externallyModified: false,
@@ -200,21 +215,35 @@ export const explorerState = setup({
       updateParentState(self, { error: ev.data.message, isLoading: false })
     },
 
-    handleactiveDirectory: ({ event, self }) => {
-      const ev = event as { type: 'explorer.CURRENT_DIRECTORY'; data: { path: string; baseDirectory: string } }
-      updateParentState(self, { activeDirectory: ev.data.path })
-    },
-
     listFiles: ({ event }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
       sendToBackend('explorer.LIST_FILES', { path: ev.path })
     },
 
-    assignFiles: assign(({ event, self }) => {
+    assignFiles: assign(({ event, context, self }) => {
       const ev = event as { type: 'explorer.FILES_LISTED'; data: { path: string; files: FileInfo[] } }
+      const parentContext = getParentContext(self)
+      const baseDirectory = parentContext?.baseDirectory || ''
+
       updateParentState(self, { isLoading: false, error: null })
+
+      // Remove from loading dirs
+      const newLoadingDirs = new Set(context.loadingDirs)
+      newLoadingDirs.delete(ev.data.path)
+
+      // If this is the base directory, update rootFiles
+      if (ev.data.path === baseDirectory) {
+        return {
+          rootFiles: ev.data.files,
+          dirContents: { ...context.dirContents, [ev.data.path]: ev.data.files },
+          loadingDirs: newLoadingDirs,
+        }
+      }
+
+      // Otherwise, update dirContents cache
       return {
-        files: ev.data.files
+        dirContents: { ...context.dirContents, [ev.data.path]: ev.data.files },
+        loadingDirs: newLoadingDirs,
       }
     }),
 
@@ -240,16 +269,13 @@ export const explorerState = setup({
 
     initialize: ({ event, self }) => {
       const ev = event as { type: 'explorer.INITIALIZE'; baseDirectory: string }
-      // Only set base directory if we have one
       if (ev.baseDirectory) {
         self.send({ type: 'explorer.SET_BASE_DIRECTORY', path: ev.baseDirectory })
       }
-      // Otherwise, explorer just waits for a directory to be selected
     },
 
     handleCodeConnected: ({ event, self }) => {
-      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null } }
-      // Initialize explorer with base directory from backend if available
+      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } }
       if (ev.data.baseDirectory) {
         self.send({ type: 'explorer.SET_BASE_DIRECTORY', path: ev.data.baseDirectory })
       }
@@ -269,16 +295,7 @@ export const explorerState = setup({
       })
     }),
 
-    navigateToDirectory: ({ event, self }) => {
-      const ev = event as { type: 'explorer.NAVIGATE_TO_DIRECTORY'; path: string }
-      sendToBackend('explorer.LIST_FILES', { path: ev.path })
-      sendToBackend('explorer.UPDATE_ACTIVE_DIRECTORY', { path: ev.path })
-
-      // Update parent state
-      updateParentState(self, { activeDirectory: ev.path })
-    },
-
-    setBaseDirectory: ({ event, self }) => {
+    setBaseDirectory: assign(({ event, self }) => {
       const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
 
       // Send SET_BASE_DIRECTORY to the parent code system to update everything
@@ -289,17 +306,80 @@ export const explorerState = setup({
 
       // Update parent state
       updateParentState(self, {
-        baseDirectory: ev.path,
-        activeDirectory: ev.path
+        baseDirectory: ev.path
       })
+
+      // Reset tree state
+      return {
+        rootFiles: [] as FileInfo[],
+        expandedDirs: new Set<string>(),
+        dirContents: {} as Record<string, FileInfo[]>,
+        loadingDirs: new Set<string>(),
+        selectedPaths: [] as string[],
+      }
+    }),
+
+    expandDirectory: assign(({ event, context }) => {
+      const ev = event as { type: 'explorer.EXPAND_DIRECTORY'; path: string }
+      const newExpanded = new Set(context.expandedDirs)
+      newExpanded.add(ev.path)
+
+      // If we already have cached contents, just expand
+      if (context.dirContents[ev.path]) {
+        return { expandedDirs: newExpanded }
+      }
+
+      // Otherwise, fetch contents
+      const newLoading = new Set(context.loadingDirs)
+      newLoading.add(ev.path)
+      sendToBackend('explorer.LIST_FILES', { path: ev.path })
+
+      return {
+        expandedDirs: newExpanded,
+        loadingDirs: newLoading,
+      }
+    }),
+
+    collapseDirectory: assign(({ event, context }) => {
+      const ev = event as { type: 'explorer.COLLAPSE_DIRECTORY'; path: string }
+      const newExpanded = new Set(context.expandedDirs)
+      newExpanded.delete(ev.path)
+      return { expandedDirs: newExpanded }
+    }),
+
+    selectItems: assign(({ event }) => {
+      const ev = event as { type: 'explorer.SELECT_ITEMS'; paths: string[] }
+      return { selectedPaths: ev.paths }
+    }),
+
+    moveItems: ({ event }) => {
+      const ev = event as { type: 'explorer.MOVE_ITEMS'; sourcePaths: string[]; targetDir: string }
+      sendToBackend('explorer.MOVE_FILES', { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir })
     },
 
-    handleFileDeleted: ({ event, self }) => {
+    handleFilesMoved: assign(({ event, context }) => {
+      const ev = event as { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
+
+      // Refresh the target directory
+      sendToBackend('explorer.LIST_FILES', { path: ev.data.targetDir })
+
+      // Refresh all unique source parent directories
+      const sourceParentDirs = new Set(ev.data.sourcePaths.map(getParentDir))
+      sourceParentDirs.forEach(dir => {
+        sendToBackend('explorer.LIST_FILES', { path: dir })
+      })
+
+      // Clear selection
+      return { selectedPaths: [] as string[] }
+    }),
+
+    handleFileDeleted: ({ event, self, context }) => {
       const ev = event as { type: 'explorer.FILE_DELETED'; path: string }
       const parentContext = getParentContext(self)
 
-      // Refresh file list
-      sendToBackend('explorer.LIST_FILES', { path: parentContext?.activeDirectory || '' })
+      // Refresh the parent directory of the deleted file
+      const parentDir = getParentDir(ev.path)
+      sendToBackend('explorer.LIST_FILES', { path: parentDir })
 
       // Remove from open files if it's open
       if (parentContext?.openFiles?.find((f: any) => f.path === ev.path)) {
@@ -317,8 +397,15 @@ export const explorerState = setup({
       const ev = event as { type: 'explorer.FILE_RENAMED'; oldPath: string; newPath: string }
       const parentContext = getParentContext(self)
 
-      // Refresh file list
-      sendToBackend('explorer.LIST_FILES', { path: parentContext?.activeDirectory || '' })
+      // Refresh the parent directory of the renamed file
+      const parentDir = getParentDir(ev.oldPath)
+      sendToBackend('explorer.LIST_FILES', { path: parentDir })
+
+      // If renamed to a different directory, also refresh that
+      const newParentDir = getParentDir(ev.newPath)
+      if (newParentDir !== parentDir) {
+        sendToBackend('explorer.LIST_FILES', { path: newParentDir })
+      }
 
       // Update open files if renamed file is open
       const openFiles = parentContext?.openFiles || []
@@ -339,12 +426,12 @@ export const explorerState = setup({
       }
     },
 
-    handleDirectoryCreated: ({ event, self }) => {
+    handleDirectoryCreated: ({ event }) => {
       const ev = event as { type: 'explorer.DIRECTORY_CREATED'; path: string }
-      const parentContext = getParentContext(self)
 
-      // Refresh file list to show new directory
-      sendToBackend('explorer.LIST_FILES', { path: parentContext?.activeDirectory || '' })
+      // Refresh the parent directory to show the new directory
+      const parentDir = getParentDir(ev.path)
+      sendToBackend('explorer.LIST_FILES', { path: parentDir })
     },
 
     writeFile: ({ event }) => {
@@ -374,7 +461,11 @@ export const explorerState = setup({
   id: 'explorer',
   initial: 'idle',
   context: {
-    files: []
+    rootFiles: [],
+    expandedDirs: new Set<string>(),
+    dirContents: {},
+    loadingDirs: new Set<string>(),
+    selectedPaths: [],
   },
   states: {
     idle: {
@@ -406,11 +497,23 @@ export const explorerState = setup({
         'explorer.OPEN_FILES': {
           actions: 'openFiles'
         },
-        'explorer.NAVIGATE_TO_DIRECTORY': {
-          actions: 'navigateToDirectory'
-        },
         'explorer.SET_BASE_DIRECTORY': {
           actions: 'setBaseDirectory'
+        },
+        'explorer.EXPAND_DIRECTORY': {
+          actions: 'expandDirectory'
+        },
+        'explorer.COLLAPSE_DIRECTORY': {
+          actions: 'collapseDirectory'
+        },
+        'explorer.SELECT_ITEMS': {
+          actions: 'selectItems'
+        },
+        'explorer.MOVE_ITEMS': {
+          actions: 'moveItems'
+        },
+        'explorer.FILES_MOVED': {
+          actions: 'handleFilesMoved'
         },
         'explorer.FILE_DELETED': {
           actions: 'handleFileDeleted'
@@ -436,9 +539,6 @@ export const explorerState = setup({
         },
         'explorer.CODE_ERROR': {
           actions: 'handleCodeError'
-        },
-        'explorer.CURRENT_DIRECTORY': {
-          actions: 'handleactiveDirectory'
         },
         'explorer.WRITE_FILE': {
           actions: 'writeFile'

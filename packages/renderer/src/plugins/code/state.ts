@@ -64,7 +64,6 @@ export interface TerminalTab extends OpenFile {
 
 export type Context = {
   baseDirectory: string
-  activeDirectory: string
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
   isLoading: boolean
@@ -474,7 +473,7 @@ const codeState = setup({
     },
 
     handleCodeConnected: assign(({ event, context }) => {
-      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; activeDirectory: string | null; settings?: CodeSettings } }
+      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null; settings?: CodeSettings } }
 
       // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
@@ -491,9 +490,8 @@ const codeState = setup({
       return {
         ...context,
         baseDirectory: ev.data.baseDirectory || '',
-        activeDirectory: ev.data.activeDirectory || '',
         settings: ev.data.settings,
-        hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys // Use settings hotkeys if available, otherwise keep defaults
+        hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
     }),
 
@@ -537,11 +535,11 @@ const codeState = setup({
       //     updates: { activeFilePath: existingTerminal.path }
       //   });
       // } else {
-        // Create a new terminal at the active directory
+        // Create a new terminal at the base directory
         // Title will be auto-generated from cwd by backend
         system.get('terminal')?.send({
             type: 'terminal.CREATE',
-            cwd: context.activeDirectory
+            cwd: context.baseDirectory
           });
       // }
     },
@@ -813,7 +811,6 @@ const codeState = setup({
   entry: ['spawnFeatureActors', 'restorePersistedTabs'],
   context: {
     baseDirectory: '', // Will be loaded from backend EARS store
-    activeDirectory: '', // Will be loaded from backend EARS store
     openFiles: [], // Don't load tabs here - wait for PLUGIN_ACTIVATED
     activeFilePath: null,
     isLoading: false,

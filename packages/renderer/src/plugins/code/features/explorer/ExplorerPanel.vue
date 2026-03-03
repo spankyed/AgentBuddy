@@ -32,12 +32,9 @@
       </template>
 
       <template #toolbar>
-        <DirectoryBreadcrumb
+        <BaseDirectoryMenu
           v-if="viewMode === 'files' && baseDirectory"
           :base-directory="baseDirectory"
-          :active-directory="activeDirectory"
-          @navigate="navigateToDirectory"
-          @set-base="setBaseDirectory"
           @view-projects="viewMode = 'projects'"
           @open-directory="handleDirectorySelect"
         />
@@ -76,7 +73,7 @@
 
     <!-- Files view -->
     <template v-if="viewMode === 'files' && baseDirectory">
-      <div v-if="isLoading" class="flex items-center justify-center flex-1">
+      <div v-if="isLoading && rootFiles.length === 0" class="flex items-center justify-center flex-1">
         <div class="text-sm text-neutral-400">Loading...</div>
       </div>
 
@@ -84,21 +81,25 @@
         <div class="text-sm text-red-400">{{ error }}</div>
       </div>
 
-      <div v-else-if="files.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
+      <div v-else-if="rootFiles.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
         <FolderOpen :size="48" class="text-neutral-600 mb-3" />
         <p class="text-neutral-400 text-center">This directory is empty</p>
       </div>
 
-      <div v-else class="flex-1 overflow-auto">
-        <FileItem
-          v-for="file in files"
+      <div
+        v-else
+        class="flex-1 overflow-auto"
+        @click="handleEmptySpaceClick"
+        @dragover.prevent="onEmptySpaceDragOver"
+        @drop="onEmptySpaceDrop"
+        @keydown="handleKeydown"
+        tabindex="0"
+      >
+        <ExplorerTreeItem
+          v-for="file in rootFiles"
           :key="file.path"
           :file="file"
-          :base-directory="baseDirectory"
-          @click="handleFileClick(file)"
-          @rename="handleRename"
-          @delete="confirmDelete"
-          @open-terminal="handleOpenTerminal"
+          :depth="0"
         />
       </div>
     </template>
@@ -126,24 +127,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/components/design/dialog.vue'
-import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
+import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.vue'
 import ProjectsView from '@/plugins/code/features/explorer/ProjectsView.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
-import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
+import BaseDirectoryMenu from './components/BaseDirectoryMenu.vue'
 import { FolderOpen, FolderPlus, Settings } from 'lucide-vue-next'
-
-interface FileItem {
-  path: string
-  name: string
-  type: 'file' | 'directory'
-  extension?: string
-  size?: number
-}
+import { useExplorerSelection } from './composables/useExplorerSelection'
+import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
+import type { FileInfo } from './state'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -153,25 +149,113 @@ const settingsActor = applicationState.system.get('settings')
 
 // State selectors
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
-const activeDirectory = useSelector(codeActor, (state) => state.context.activeDirectory)
-const files = useSelector(explorerActor, (state: any) => state.context.files)
+const rootFiles = useSelector(explorerActor, (state: any) => state.context.rootFiles as FileInfo[])
+const expandedDirs = useSelector(explorerActor, (state: any) => state.context.expandedDirs as Set<string>)
+const dirContents = useSelector(explorerActor, (state: any) => state.context.dirContents as Record<string, FileInfo[]>)
+const loadingDirs = useSelector(explorerActor, (state: any) => state.context.loadingDirs as Set<string>)
+const selectedPaths = useSelector(explorerActor, (state: any) => state.context.selectedPaths as string[])
 const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
 const error = useSelector(codeActor, (state: any) => state.context.error)
 const projects = useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects || [])
 
-// View mode state - local to this component
+// View mode state
 const viewMode = ref<'files' | 'projects'>('files')
 
 // Delete functionality
 const showDeleteDialog = ref(false)
-const fileToDelete = ref<FileItem | null>(null)
+const fileToDelete = ref<FileInfo | null>(null)
 
 // Create folder functionality
 const showCreateFolderDialog = ref(false)
 const newFolderName = ref('')
 const folderNameInput = ref<HTMLInputElement | null>(null)
 
-const confirmDelete = (file: FileItem) => {
+// Build flattened visible paths for shift-range selection
+function getFlattenedVisiblePaths(): string[] {
+  const paths: string[] = []
+  function walk(files: FileInfo[]) {
+    for (const file of files) {
+      paths.push(file.path)
+      if (file.type === 'directory' && expandedDirs.value.has(file.path)) {
+        const children = dirContents.value[file.path] || []
+        walk(children)
+      }
+    }
+  }
+  walk(rootFiles.value)
+  return paths
+}
+
+// Selection composable
+const { selectItem, clearSelection, toggleSelectAll } = useExplorerSelection({
+  selectedPaths,
+  onSelect: (paths: string[]) => {
+    explorerActor?.send({ type: 'explorer.SELECT_ITEMS', paths })
+  }
+})
+
+// Drag-drop composable
+const {
+  isDragging,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDropOnEmptySpace,
+  handleDragEnd,
+  getItemDragClass,
+  getDropIndicatorStyle
+} = useExplorerDragDrop({
+  selectedPaths,
+  onMove: (sourcePaths, targetDir) => {
+    explorerActor?.send({ type: 'explorer.MOVE_ITEMS', sourcePaths, targetDir })
+  }
+})
+
+// Provide callbacks to tree items via inject
+provide('explorer-select-item', (path: string, event: MouseEvent) => {
+  const flatPaths = getFlattenedVisiblePaths()
+  selectItem(path, flatPaths, event)
+})
+provide('explorer-expand-dir', (path: string) => {
+  explorerActor?.send({ type: 'explorer.EXPAND_DIRECTORY', path })
+})
+provide('explorer-collapse-dir', (path: string) => {
+  explorerActor?.send({ type: 'explorer.COLLAPSE_DIRECTORY', path })
+})
+provide('explorer-open-file', (path: string) => {
+  explorerActor?.send({ type: 'explorer.OPEN_FILE', path })
+})
+provide('explorer-rename', (oldPath: string, newName: string) => {
+  const pathParts = oldPath.split('/')
+  pathParts[pathParts.length - 1] = newName
+  const newPath = pathParts.join('/')
+  explorerActor?.send({ type: 'explorer.RENAME_FILE', oldPath, newPath })
+})
+provide('explorer-delete', (file: FileInfo) => {
+  fileToDelete.value = file
+  showDeleteDialog.value = true
+})
+provide('explorer-open-terminal', (path: string) => {
+  terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
+})
+provide('explorer-selected-paths', () => selectedPaths.value)
+provide('explorer-expanded-dirs', () => expandedDirs.value)
+provide('explorer-dir-contents', () => dirContents.value)
+provide('explorer-loading-dirs', () => loadingDirs.value)
+provide('explorer-base-directory', () => baseDirectory.value || '')
+
+// Drag-drop provides
+provide('explorer-drag-start', (e: DragEvent, path: string) => handleDragStart(e, path))
+provide('explorer-drag-over', (e: DragEvent, path: string, isDirectory: boolean) => handleDragOver(e, path, isDirectory))
+provide('explorer-drag-leave', (e: DragEvent) => handleDragLeave(e))
+provide('explorer-drop', (e: DragEvent, path: string, isDirectory: boolean) => handleDrop(e, path, isDirectory))
+provide('explorer-drag-end', () => handleDragEnd())
+provide('explorer-get-drag-class', (path: string) => getItemDragClass(path))
+provide('explorer-get-drop-indicator', (path: string) => getDropIndicatorStyle(path))
+
+// Event handlers
+const confirmDelete = (file: FileInfo) => {
   fileToDelete.value = file
   showDeleteDialog.value = true
 }
@@ -187,31 +271,6 @@ const handleDelete = () => {
 const cancelDelete = () => {
   showDeleteDialog.value = false
   fileToDelete.value = null
-}
-
-const handleRename = (oldPath: string, newName: string) => {
-  const pathParts = oldPath.split('/')
-  pathParts[pathParts.length - 1] = newName
-  const newPath = pathParts.join('/')
-
-  explorerActor?.send({ type: 'explorer.RENAME_FILE', oldPath, newPath })
-}
-
-// Navigation handlers
-const navigateToDirectory = (path: string) => {
-  explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path })
-}
-
-const setBaseDirectory = (path: string) => {
-  explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path })
-}
-
-const handleFileClick = (file: FileItem) => {
-  if (file.type === 'directory') {
-    explorerActor?.send({ type: 'explorer.NAVIGATE_TO_DIRECTORY', path: file.path })
-  } else {
-    explorerActor?.send({ type: 'explorer.OPEN_FILE', path: file.path })
-  }
 }
 
 const handleDirectorySelect = async () => {
@@ -246,9 +305,26 @@ const openCreateFolderDialog = () => {
 const handleCreateFolder = () => {
   const trimmedName = newFolderName.value.trim()
   if (trimmedName) {
-    const activeDir = activeDirectory.value || baseDirectory.value
-    if (activeDir) {
-      const newFolderPath = `${activeDir}/${trimmedName}`
+    // Create in the first selected folder, or baseDirectory if nothing selected
+    let targetDir = baseDirectory.value
+    if (selectedPaths.value.length > 0) {
+      // Find first selected item that is a directory
+      const flatPaths = getFlattenedVisiblePaths()
+      for (const path of selectedPaths.value) {
+        // Check in rootFiles and dirContents if this is a directory
+        const allFiles = [...rootFiles.value]
+        for (const contents of Object.values(dirContents.value)) {
+          allFiles.push(...contents)
+        }
+        const file = allFiles.find(f => f.path === path)
+        if (file?.type === 'directory') {
+          targetDir = file.path
+          break
+        }
+      }
+    }
+    if (targetDir) {
+      const newFolderPath = `${targetDir}/${trimmedName}`
       explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newFolderPath })
     }
   }
@@ -282,5 +358,56 @@ const handleManageProjects = () => {
     type: 'GENERAL_NAV.SELECT',
     item: 'projects'
   })
+}
+
+const handleEmptySpaceClick = (e: MouseEvent) => {
+  // Only clear if clicking on the empty space, not on a tree item
+  const target = e.target as HTMLElement
+  if (!target.closest('[data-explorer-item]')) {
+    clearSelection()
+  }
+}
+
+const onEmptySpaceDragOver = (e: DragEvent) => {
+  if (isDragging.value) {
+    e.dataTransfer!.dropEffect = 'move'
+  }
+}
+
+const onEmptySpaceDrop = (e: DragEvent) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('[data-explorer-item]') && baseDirectory.value) {
+    handleDropOnEmptySpace(e, baseDirectory.value)
+  }
+}
+
+const handleKeydown = (e: KeyboardEvent) => {
+  // Ctrl+A select all
+  if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+    e.preventDefault()
+    const allPaths = getFlattenedVisiblePaths()
+    toggleSelectAll(allPaths)
+    return
+  }
+
+  // Delete/Backspace to delete selected
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPaths.value.length > 0) {
+    e.preventDefault()
+    // Delete first selected item (show confirmation)
+    const allFiles = [...rootFiles.value]
+    for (const contents of Object.values(dirContents.value)) {
+      allFiles.push(...contents)
+    }
+    const file = allFiles.find(f => f.path === selectedPaths.value[0])
+    if (file) {
+      confirmDelete(file)
+    }
+    return
+  }
+
+  // Escape to clear selection
+  if (e.key === 'Escape') {
+    clearSelection()
+  }
 }
 </script>

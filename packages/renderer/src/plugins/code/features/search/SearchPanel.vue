@@ -33,19 +33,6 @@
         />
         <div class="flex items-stretch border-l border-neutral-700">
           <button
-            @click="toggleOption('searchInActiveDir')"
-            :class="[
-              'flex items-center gap-1 px-2 py-1.5 text-xs transition-colors',
-              searchOptions.searchInActiveDir
-                ? 'bg-blue-600 text-white'
-                : 'text-neutral-400 hover:bg-neutral-700'
-            ]"
-            :title="searchOptions.searchInActiveDir ? 'Searching in active directory' : 'Searching in base directory'"
-          >
-            <FolderOpen class="w-3 h-3" />
-            <span>{{ searchOptions.searchInActiveDir ? 'Active' : 'Base' }}</span>
-          </button>
-          <button
             @click="toggleOption('caseSensitive')"
             :class="[
               'px-2 py-1.5 text-xs transition-colors border-r border-l border-neutral-700',
@@ -188,7 +175,7 @@ import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { ChevronRight, FolderOpen, Search } from 'lucide-vue-next'
+import { ChevronRight, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 
 // Get actors
@@ -203,7 +190,6 @@ const searchError = useSelector(searchActor, (state: any) => state.context.searc
 const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
 const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
-const activeDirectory = useSelector(codeActor, (state) => state.context.activeDirectory)
 
 // Local state
 const includePattern = ref(searchOptions.value.includePattern)
@@ -220,72 +206,9 @@ const isNoDirectoryError = computed(() => {
 })
 
 const searchPlaceholder = computed(() => {
-  if (searchOptions.value.searchInActiveDir) {
-    const path = activeDirectory.value
-    if (!path) return 'Search in active directory'
-
-    // Get relative path from base
-    const relativePath = baseDirectory.value && path.startsWith(baseDirectory.value)
-      ? path.slice(baseDirectory.value.length + 1) || `~/${baseDirectory.value?.split('/').pop() || 'base'}`
-      : path
-
-    // Truncate long paths in the middle
-    const maxLength = 35
-    if (relativePath.length > maxLength) {
-      const parts = relativePath.split('/')
-      if (parts.length > 2) {
-        // Build path from both ends until we exceed maxLength
-        const leftParts: string[] = []
-        const rightParts: string[] = []
-        let leftIndex = 0
-        let rightIndex = parts.length - 1
-        let currentLength = 3 // for "..."
-
-        // Always include first and last
-        leftParts.push(parts[leftIndex++])
-        rightParts.unshift(parts[rightIndex--])
-        currentLength += leftParts[0].length + rightParts[0].length + 2 // +2 for slashes
-
-        // Add parts from both sides while we have space
-        while (leftIndex <= rightIndex && currentLength < maxLength) {
-          // Try adding from left
-          if (leftIndex <= rightIndex) {
-            const nextLeft = parts[leftIndex]
-            if (currentLength + nextLeft.length + 1 <= maxLength) {
-              leftParts.push(nextLeft)
-              currentLength += nextLeft.length + 1
-              leftIndex++
-            } else {
-              break
-            }
-          }
-
-          // Try adding from right
-          if (leftIndex <= rightIndex) {
-            const nextRight = parts[rightIndex]
-            if (currentLength + nextRight.length + 1 <= maxLength) {
-              rightParts.unshift(nextRight)
-              currentLength += nextRight.length + 1
-              rightIndex--
-            } else {
-              break
-            }
-          }
-        }
-
-        // Only show ellipsis if we actually skipped parts
-        if (leftIndex <= rightIndex) {
-          return `Search in ${leftParts.join('/')}/.../${rightParts.join('/')}`
-        }
-      }
-    }
-
-    return `Search in ${relativePath}`
-  } else {
-    return baseDirectory.value
-      ? `Search in ~/${baseDirectory.value.split('/').pop()}`
-      : 'Search in project'
-  }
+  return baseDirectory.value
+    ? `Search in ~/${baseDirectory.value.split('/').pop()}`
+    : 'Search in project'
 })
 
 // Methods
@@ -314,7 +237,7 @@ const cancelSearch = () => {
   searchActor?.send({ type: 'search.CANCEL' })
 }
 
-const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex' | 'searchInActiveDir') => {
+const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex') => {
   searchActor?.send({
     type: 'search.UPDATE_OPTIONS',
     options: {
@@ -353,11 +276,6 @@ const openMatch = (result: typeof searchResults.value[0]) => {
 }
 
 const getRelativePath = (path: string) => {
-  // If searching in active directory, show paths relative to active directory
-  if (searchOptions.value.searchInActiveDir && activeDirectory.value && path.startsWith(activeDirectory.value)) {
-    return path.slice(activeDirectory.value.length + 1)
-  }
-  // Otherwise show paths relative to base directory
   if (baseDirectory.value && path.startsWith(baseDirectory.value)) {
     return path.slice(baseDirectory.value.length + 1)
   }

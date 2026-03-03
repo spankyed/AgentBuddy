@@ -38,8 +38,8 @@ export const IncomingExplorerEvents = [
   busEvent('explorer.CREATE_DIRECTORY', { path: z.string() }),
   busEvent('explorer.GET_FILE_INFO', { path: z.string() }),
   busEvent('explorer.CLOSE_FILE', { path: z.string() }),
-  busEvent('explorer.UPDATE_ACTIVE_DIRECTORY', { path: z.string() }),
   busEvent('explorer.QUICK_OPEN_SEARCH', { baseDirectory: z.string() }),
+  busEvent('explorer.MOVE_FILES', { sourcePaths: z.array(z.string()), targetDir: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -53,12 +53,11 @@ export type OutgoingExplorerEvents =
   | { type: 'explorer.FILE_CONTENT'; data: FileContent }
   | { type: 'explorer.FILE_SAVED'; data: { path: string } }
   | { type: 'explorer.CODE_ERROR'; data: CodeSystemError }
-  | { type: 'explorer.ACTIVE_DIRECTORY'; data: { path: string; baseDirectory: string } }
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
+  | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
 
 export interface Context {
-  activeDirectory: string | null
   baseDirectory: string | null
   repository: FileSystemRepository | null
   gitWatcher: GitWatcherService | null
@@ -75,8 +74,8 @@ export type Event =
   | { type: 'explorer.GET_FILE_INFO'; path: string }
   | { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
   | { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
-  | { type: 'explorer.UPDATE_ACTIVE_DIRECTORY'; path: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
+  | { type: 'explorer.MOVE_FILES'; sourcePaths: string[]; targetDir: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'CODE_CONNECTED' };
@@ -85,7 +84,7 @@ export const explorerSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { baseDirectory: string | null; activeDirectory: string | null; gitWatcher?: GitWatcherService | null }
+    input: {} as { baseDirectory: string | null; gitWatcher?: GitWatcherService | null }
   },
   actions: {
     setupFileWatcher: ({ context, self }) => {
@@ -107,24 +106,28 @@ export const explorerSystem = setup({
       rootEvents.emitOutgoing(wrapped.event)
     },
 
-    sendActiveDirectory: ({ context }) => {
-      const wrapped = emit(pluginId, {
-        type: 'explorer.ACTIVE_DIRECTORY',
-        data: {
-          path: context.activeDirectory || '',
-          baseDirectory: context.baseDirectory || ''
-        },
-      })
-      rootEvents.emitOutgoing(wrapped.event)
+    sendBaseDirectoryInfo: ({ context }) => {
+      // Send base directory listing on connect
+      if (context.baseDirectory && context.repository) {
+        context.repository.listDirectory(context.baseDirectory).then(content => {
+          const wrapped = emit(pluginId, {
+            type: 'explorer.FILES_LISTED',
+            data: content,
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+        }).catch(() => {
+          // Ignore errors on connect
+        })
+      }
     },
 
     listFiles: async ({ event, context }) => {
       const ev = event as { type: 'explorer.LIST_FILES'; path: string }
-      
+
       if (!requireRepository(context, ev.path)) return
-      
+
       try {
-        const path = ev.path || context.activeDirectory || ''
+        const path = ev.path || context.baseDirectory || ''
         const content = await context.repository.listDirectory(path)
         const wrapped = emit(pluginId, {
           type: 'explorer.FILES_LISTED',
@@ -325,15 +328,8 @@ export const explorerSystem = setup({
     },
 
 
-    setBaseDirectory: ({ event }) => {
-      const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
-
-      // Send active directory info to frontend
-      const wrapped = emit(pluginId, {
-        type: 'explorer.ACTIVE_DIRECTORY',
-        data: { path: ev.path, baseDirectory: ev.path },
-      })
-      rootEvents.emitOutgoing(wrapped.event)
+    setBaseDirectory: ({ event, context }) => {
+      // No longer need to send active directory info
     },
 
     assignBaseDirectory: assign({
@@ -341,21 +337,10 @@ export const explorerSystem = setup({
         const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
         return ev.path
       },
-      activeDirectory: ({ event }) => {
-        const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
-        return ev.path
-      },
       repository: ({ event }) => {
         const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
         return new FileSystemRepository(ev.path)
       },
-    }),
-
-    updateActiveDirectory: assign({
-      activeDirectory: ({ event }) => {
-        const ev = event as { type: 'explorer.UPDATE_ACTIVE_DIRECTORY'; path: string }
-        return ev.path
-      }
     }),
 
     updateBaseDirectory: assign({
@@ -403,6 +388,36 @@ export const explorerSystem = setup({
       }
     },
 
+    moveFiles: async ({ event, context }) => {
+      const ev = event as { type: 'explorer.MOVE_FILES'; sourcePaths: string[]; targetDir: string }
+
+      if (!requireRepository(context, ev.targetDir)) return
+
+      try {
+        const movedPaths: string[] = []
+        for (const sourcePath of ev.sourcePaths) {
+          const destPath = await context.repository.moveFile(sourcePath, ev.targetDir)
+          movedPaths.push(destPath)
+        }
+
+        const wrapped = emit(pluginId, {
+          type: 'explorer.FILES_MOVED',
+          data: { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir, movedPaths },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'explorer.CODE_ERROR',
+          data: {
+            code: error.code || 'IO_ERROR',
+            message: error.message,
+            path: error.path,
+          },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
     listBaseFiles: async ({ context }) => {
       if (!requireRepository(context, context.baseDirectory || '')) return
 
@@ -430,10 +445,9 @@ export const explorerSystem = setup({
 }).createMachine({
   id: 'explorer',
   initial: 'idle',
-  context: ({ input }: { input?: { baseDirectory: string | null; activeDirectory: string | null; gitWatcher?: GitWatcherService | null } }) => {
+  context: ({ input }: { input?: { baseDirectory: string | null; gitWatcher?: GitWatcherService | null } }) => {
     const baseDir = input?.baseDirectory || null
     return {
-      activeDirectory: input?.activeDirectory || baseDir,
       baseDirectory: baseDir,
       repository: baseDir ? new FileSystemRepository(baseDir) : null,
       gitWatcher: input?.gitWatcher || null,
@@ -444,7 +458,7 @@ export const explorerSystem = setup({
     idle: {
       on: {
         'CODE_CONNECTED': {
-          actions: 'sendActiveDirectory'
+          actions: 'sendBaseDirectoryInfo'
         },
         'explorer.LIST_FILES': {
           actions: 'listFiles'
@@ -473,8 +487,8 @@ export const explorerSystem = setup({
         'explorer.SET_BASE_DIRECTORY': {
           actions: ['assignBaseDirectory', 'setBaseDirectory']
         },
-        'explorer.UPDATE_ACTIVE_DIRECTORY': {
-          actions: 'updateActiveDirectory'
+        'explorer.MOVE_FILES': {
+          actions: 'moveFiles'
         },
         'explorer.UPDATE_BASE_DIRECTORY': {
           actions: ['updateBaseDirectory', 'setupFileWatcher']

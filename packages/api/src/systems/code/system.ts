@@ -72,7 +72,6 @@ type CodeInternalEvents = SystemEvents | { type: 'CODE_SETTINGS_UPDATED'; settin
 type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
 
 export interface Context {
-  activeDirectory: string | null
   baseDirectory: string | null
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
@@ -129,7 +128,6 @@ export const systemMachine = setup({
         systemId: 'explorer',
         input: {
           baseDirectory: context.baseDirectory,
-          activeDirectory: context.activeDirectory,
           gitWatcher: context.gitWatcher
         }
       });
@@ -183,10 +181,6 @@ export const systemMachine = setup({
         if (ev.fromUserNavigation !== false) {
           repository.settingsCommands.updateSettings('plugin', 'code', ['lastDirectoryOpened'], ev.path)
         }
-        return ev.path
-      },
-      activeDirectory: ({ event }) => {
-        const ev = typeOf('SET_BASE_DIRECTORY', event)
         return ev.path
       },
       gitRepository: ({ event, context }) => {
@@ -271,7 +265,6 @@ export const systemMachine = setup({
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
         baseDirectory: context.baseDirectory,
-        activeDirectory: context.activeDirectory,
         settings: codeSettings
       };
 
@@ -336,7 +329,6 @@ export const systemMachine = setup({
     const baseDir = resolveInitialDirectory(codeSettings, projects)
 
     return {
-      activeDirectory: baseDir,
       baseDirectory: baseDir,
       gitRepository: baseDir ? new GitRepository(baseDir) : null,
       gitWatcher: baseDir ? new GitWatcherService(baseDir) : null

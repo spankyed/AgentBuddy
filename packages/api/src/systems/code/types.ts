@@ -170,6 +170,5 @@ export interface CodeSettings {
 
 export type CodeConnectedData = {
   baseDirectory: string | null;
-  activeDirectory: string | null;
   settings?: CodeSettings;
 };

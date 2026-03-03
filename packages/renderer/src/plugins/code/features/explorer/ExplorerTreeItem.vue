@@ -1,0 +1,349 @@
+<template>
+  <ContextMenuRoot>
+    <ContextMenuTrigger as-child>
+      <div
+        data-explorer-item
+        class="flex items-center gap-1 py-0.5 transition-colors cursor-pointer select-none relative"
+        :class="[
+          isSelected ? 'bg-blue-500/30' : 'hover:bg-neutral-800',
+          dragClass
+        ]"
+        :draggable="!isEditing"
+        @click="handleClick"
+        @dblclick="handleDoubleClick"
+        @dragstart="onDragStart"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+        @dragend="onDragEnd"
+      >
+        <!-- Drop indicator -->
+        <div
+          v-if="showDropIndicator"
+          :style="dropIndicatorStyle"
+        />
+
+        <div class="flex items-center gap-1 min-w-0 flex-1" :style="{ paddingLeft: `${depth * 16 + 8}px`, paddingRight: '8px' }">
+          <!-- Expand/collapse arrow for directories -->
+          <button
+            v-if="file.type === 'directory'"
+            @click.stop="toggleExpand"
+            class="w-4 h-4 flex items-center justify-center text-neutral-400 hover:text-neutral-200 transition-transform duration-150 flex-shrink-0"
+            :class="{ 'rotate-90': isExpanded }"
+          >
+            <ChevronRight class="w-3 h-3" />
+          </button>
+          <div v-else class="w-4 flex-shrink-0" />
+
+          <!-- File/folder icon -->
+          <component
+            :is="icon"
+            class="flex-shrink-0 w-4 h-4"
+            :class="file.type === 'directory' ? 'text-blue-400' : 'text-neutral-400'"
+          />
+
+          <!-- Name or rename input -->
+          <input
+            v-if="isEditing"
+            v-model="editingName"
+            @keydown.enter.stop="confirmRename"
+            @keydown.esc.stop="cancelRename"
+            @blur="confirmRename"
+            @click.stop
+            class="flex-1 px-1 py-0 -mx-1 text-sm border rounded bg-neutral-900 border-neutral-600 text-neutral-200 focus:outline-none focus:border-blue-500 focus:bg-neutral-800 min-w-0"
+            ref="renameInput"
+          />
+          <span v-else class="text-sm truncate text-neutral-200">{{ file.name }}</span>
+        </div>
+      </div>
+    </ContextMenuTrigger>
+
+    <ContextMenuPortal>
+      <ContextMenuContent
+        class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+      >
+        <ContextMenuItem
+          @select="startRename"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Edit2 class="w-4 h-4" />
+          Rename
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          @select="copyAbsolutePath"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Copy class="w-4 h-4" />
+          Copy path
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          @select="copyRelativePath"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Copy class="w-4 h-4" />
+          Copy relative path
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          v-if="file.type === 'directory'"
+          @select="openTerminalHere"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Terminal class="w-4 h-4" />
+          Open Terminal Here
+        </ContextMenuItem>
+
+        <!-- Project menu items - only for directories -->
+        <ProjectMenuItems
+          v-if="file.type === 'directory'"
+          :directory-path="file.path"
+          :ItemComponent="ContextMenuItem"
+          :SeparatorComponent="ContextMenuSeparator"
+          :SubComponent="ContextMenuSub"
+          :SubTriggerComponent="ContextMenuSubTrigger"
+          :SubContentComponent="ContextMenuSubContent"
+          :PortalComponent="ContextMenuPortal"
+          :CheckboxItemComponent="ContextMenuCheckboxItem"
+          :ItemIndicatorComponent="ContextMenuItemIndicator"
+        />
+
+        <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+
+        <ContextMenuItem
+          @select="deleteItem"
+          :class="MENU_ITEM_DANGER_CLASS"
+        >
+          <Trash2 class="w-4 h-4" />
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenuPortal>
+  </ContextMenuRoot>
+
+  <!-- Loading indicator for expanding directory -->
+  <div v-if="file.type === 'directory' && isExpanded && isLoading">
+    <div class="flex items-center gap-2 py-1" :style="{ paddingLeft: `${(depth + 1) * 16 + 12}px` }">
+      <div class="w-3.5 h-3.5 border-2 border-neutral-600 border-t-neutral-300 rounded-full animate-spin" />
+      <span class="text-xs text-neutral-500">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Recursively render children -->
+  <template v-if="file.type === 'directory' && isExpanded && !isLoading">
+    <ExplorerTreeItem
+      v-for="child in children"
+      :key="child.path"
+      :file="child"
+      :depth="depth + 1"
+    />
+  </template>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch, nextTick, inject } from 'vue'
+import {
+  Folder,
+  File,
+  FileCode,
+  FileJson,
+  FileText,
+  Image,
+  ChevronRight,
+  Edit2,
+  Trash2,
+  Copy,
+  Terminal,
+} from 'lucide-vue-next'
+import {
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuCheckboxItem,
+  ContextMenuItemIndicator,
+} from 'reka-ui'
+import ProjectMenuItems from './components/ProjectMenuItems.vue'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
+import type { FileInfo } from './state'
+
+const props = defineProps<{
+  file: FileInfo
+  depth: number
+}>()
+
+// Injected callbacks from ExplorerPanel
+const selectItem = inject<(path: string, event: MouseEvent) => void>('explorer-select-item')!
+const expandDir = inject<(path: string) => void>('explorer-expand-dir')!
+const collapseDir = inject<(path: string) => void>('explorer-collapse-dir')!
+const openFile = inject<(path: string) => void>('explorer-open-file')!
+const onRename = inject<(oldPath: string, newName: string) => void>('explorer-rename')!
+const onDelete = inject<(file: FileInfo) => void>('explorer-delete')!
+const onOpenTerminal = inject<(path: string) => void>('explorer-open-terminal')!
+const getSelectedPaths = inject<() => string[]>('explorer-selected-paths')!
+const getExpandedDirs = inject<() => Set<string>>('explorer-expanded-dirs')!
+const getDirContents = inject<() => Record<string, FileInfo[]>>('explorer-dir-contents')!
+const getLoadingDirs = inject<() => Set<string>>('explorer-loading-dirs')!
+const getBaseDirectory = inject<() => string>('explorer-base-directory')!
+
+// Drag-drop injections
+const dragStart = inject<(e: DragEvent, path: string) => void>('explorer-drag-start')!
+const dragOver = inject<(e: DragEvent, path: string, isDirectory: boolean) => void>('explorer-drag-over')!
+const dragLeave = inject<(e: DragEvent) => void>('explorer-drag-leave')!
+const drop = inject<(e: DragEvent, path: string, isDirectory: boolean) => void>('explorer-drop')!
+const dragEnd = inject<() => void>('explorer-drag-end')!
+const getItemDragClass = inject<(path: string) => string>('explorer-get-drag-class')!
+const getDropIndicatorStyle = inject<(path: string) => Record<string, string>>('explorer-get-drop-indicator')!
+
+// Editing state
+const isEditing = ref(false)
+const editingName = ref('')
+const renameInput = ref<HTMLInputElement | null>(null)
+
+const isSelected = computed(() => getSelectedPaths().includes(props.file.path))
+const isExpanded = computed(() => getExpandedDirs().has(props.file.path))
+const isLoading = computed(() => getLoadingDirs().has(props.file.path))
+const dragClass = computed(() => getItemDragClass(props.file.path))
+const dropIndicatorStyle = computed(() => getDropIndicatorStyle(props.file.path))
+const showDropIndicator = computed(() => {
+  const style = dropIndicatorStyle.value
+  return style.display !== 'none'
+})
+
+const children = computed(() => {
+  if (props.file.type !== 'directory') return []
+  return getDirContents()[props.file.path] || []
+})
+
+// Icon based on file type/extension
+const icon = computed(() => {
+  if (props.file.type === 'directory') return Folder
+
+  const ext = props.file.extension
+  if (!ext) return File
+
+  const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
+  const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
+  const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
+
+  if (codeExtensions.includes(ext)) return FileCode
+  if (ext === 'json') return FileJson
+  if (textExtensions.includes(ext)) return FileText
+  if (imageExtensions.includes(ext)) return Image
+
+  return File
+})
+
+// Focus input when editing starts
+watch(isEditing, async (editing) => {
+  if (editing) {
+    await nextTick()
+    renameInput.value?.focus()
+    renameInput.value?.select()
+  }
+})
+
+function toggleExpand() {
+  if (isExpanded.value) {
+    collapseDir(props.file.path)
+  } else {
+    expandDir(props.file.path)
+  }
+}
+
+function handleClick(event: MouseEvent) {
+  if (isEditing.value) return
+  selectItem(props.file.path, event)
+}
+
+function handleDoubleClick(e: MouseEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  if (props.file.type === 'directory') {
+    // Toggle expand on double-click for directories
+    toggleExpand()
+  } else {
+    // Open file on double-click
+    openFile(props.file.path)
+  }
+}
+
+function startRename() {
+  setTimeout(() => {
+    editingName.value = props.file.name
+    isEditing.value = true
+  }, 50)
+}
+
+function confirmRename() {
+  const trimmedName = editingName.value.trim()
+  if (trimmedName && trimmedName !== props.file.name) {
+    onRename(props.file.path, trimmedName)
+  }
+  cancelRename()
+}
+
+function cancelRename() {
+  isEditing.value = false
+  editingName.value = ''
+}
+
+function deleteItem() {
+  onDelete(props.file)
+}
+
+function openTerminalHere() {
+  onOpenTerminal(props.file.path)
+}
+
+async function copyAbsolutePath() {
+  try {
+    await navigator.clipboard.writeText(props.file.path)
+  } catch (err) {
+    console.error('Failed to copy path:', err)
+  }
+}
+
+async function copyRelativePath() {
+  try {
+    const base = getBaseDirectory()
+    let relativePath = props.file.path
+    if (base && relativePath.startsWith(base)) {
+      relativePath = relativePath.slice(base.length)
+      if (relativePath.startsWith('/')) {
+        relativePath = relativePath.slice(1)
+      }
+    }
+    await navigator.clipboard.writeText(relativePath)
+  } catch (err) {
+    console.error('Failed to copy relative path:', err)
+  }
+}
+
+// Drag-drop handlers
+function onDragStart(e: DragEvent) {
+  dragStart(e, props.file.path)
+}
+
+function onDragOver(e: DragEvent) {
+  dragOver(e, props.file.path, props.file.type === 'directory')
+}
+
+function onDragLeave(e: DragEvent) {
+  dragLeave(e)
+}
+
+function onDrop(e: DragEvent) {
+  drop(e, props.file.path, props.file.type === 'directory')
+}
+
+function onDragEnd() {
+  dragEnd()
+}
+</script>

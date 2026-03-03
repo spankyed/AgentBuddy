@@ -43,7 +43,6 @@ export interface Context {
     caseSensitive: boolean
     wholeWord: boolean
     useRegex: boolean
-    searchInActiveDir: boolean
   }
 }
 
@@ -72,9 +71,7 @@ export const searchState = setup({
 
       sendToBackend('search.SEARCH_FILES', {
         query: ev.query,
-        path: context.searchOptions.searchInActiveDir
-          ? parentContext?.activeDirectory
-          : parentContext?.baseDirectory,
+        path: parentContext?.baseDirectory,
         includePattern: context.searchOptions.includePattern || undefined,
         excludePattern: context.searchOptions.excludePattern || undefined,
         caseSensitive: context.searchOptions.caseSensitive,
@@ -171,8 +168,7 @@ export const searchState = setup({
       excludePattern: '',
       caseSensitive: false,
       wholeWord: false,
-      useRegex: false,
-      searchInActiveDir: false
+      useRegex: false
     }
   },
   states: {

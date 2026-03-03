@@ -199,6 +199,37 @@ export class FileSystemRepository {
     }
   }
 
+  async moveFile(sourcePath: string, targetDir: string): Promise<string> {
+    try {
+      const validSource = this.validatePath(sourcePath)
+      const validTarget = this.validatePath(targetDir)
+      const fileName = path.basename(validSource)
+      const destPath = path.join(validTarget, fileName)
+
+      // Prevent moving a directory into itself or its descendants
+      const normalizedSource = path.normalize(validSource) + path.sep
+      const normalizedDest = path.normalize(destPath) + path.sep
+      if (normalizedDest.startsWith(normalizedSource)) {
+        throw this.createError('IO_ERROR', 'Cannot move a directory into itself or its descendants', sourcePath)
+      }
+
+      await fs.mkdir(validTarget, { recursive: true })
+      await fs.rename(validSource, destPath)
+      return destPath
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        throw this.createError('NOT_FOUND', 'File not found', sourcePath)
+      }
+      if (error.code === 'EACCES') {
+        throw this.createError('PERMISSION_DENIED', 'Permission denied', sourcePath)
+      }
+      if (error.code === 'INVALID_PATH' || error.code === 'IO_ERROR') {
+        throw error
+      }
+      throw this.createError('IO_ERROR', error.message, sourcePath)
+    }
+  }
+
   async getFileInfo(filePath: string): Promise<FileInfo> {
     try {
       const validPath = this.validatePath(filePath)
