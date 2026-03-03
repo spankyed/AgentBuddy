@@ -50,7 +50,7 @@ import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
 import Secrets from '../components/GeneralSettings/Secrets.vue'
 import Hotkeys from '../components/GeneralSettings/Hotkeys.vue'
 import Misc from '../components/GeneralSettings/Misc.vue'
-import Workspaces from '../components/GeneralSettings/Workspaces.vue'
+import Projects from '../components/GeneralSettings/Projects.vue'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 
 const actor = applicationState.system.get('settings')
@@ -69,7 +69,7 @@ const currentSettings = computed(() => {
     personal: settings.value.general.personal,
     secrets: settings.value.general.secrets,
     hotkeys: settings.value.general.hotkeys,
-    workspaces: settings.value.general.workspaces,
+    projects: settings.value.general.projects,
     misc: settings.value.general.misc
   }
 
@@ -81,7 +81,7 @@ const componentMap: Record<string, any> = {
   personal: PersonalInfo,
   secrets: Secrets,
   hotkeys: Hotkeys,
-  workspaces: Workspaces,
+  projects: Projects,
   misc: Misc
 }
 
@@ -89,12 +89,12 @@ const navItems = [
   { id: 'personal', label: 'Personal', icon: User },
   { id: 'secrets', label: 'Secrets', icon: Key },
   { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
-  { id: 'workspaces', label: 'Workspaces', icon: Briefcase },
+  { id: 'projects', label: 'Projects', icon: Briefcase },
   { id: 'misc', label: 'Misc', icon: Settings },
 ]
 
 const selectNavItem = (itemId: string) => {
-  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'hotkeys' | 'workspaces' | 'misc' })
+  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc' })
 }
 
 // Handle update events from child components
@@ -104,7 +104,7 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
     personal: 'personal',
     secrets: 'secrets',
     hotkeys: 'hotkeys',
-    workspaces: 'workspaces',
+    projects: 'projects',
     misc: 'misc'
   } as const
   

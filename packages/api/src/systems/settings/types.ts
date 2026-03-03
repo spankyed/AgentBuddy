@@ -22,7 +22,7 @@ export interface GeneralSettings {
   secrets: Secrets;
   hotkeys: ApplicationHotkeys;
   misc: MiscSettings;
-  workspaces: WorkspacesSettings;
+  projects: Project[];
 }
 
 export interface Address {
@@ -74,24 +74,11 @@ export interface MiscSettings {
   // Empty for now, to be extended later
 }
 
-// Workspace project definition
-export interface WorkspaceProject {
+// Project definition
+export interface Project {
   name: string
   directories: string[]  // First directory is the primary/root directory
   color: string
-}
-
-// Workspace definition - can contain multiple projects
-export interface Workspace {
-  name: string
-  description?: string
-  directory?: string
-  color: string
-  projects: WorkspaceProject[]
-}
-
-export interface WorkspacesSettings {
-  workspaces: Workspace[]
 }
 
 // Plugin visibility settings

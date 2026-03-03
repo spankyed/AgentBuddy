@@ -60,8 +60,8 @@
                 Set as Base Directory
               </ContextMenuItem>
 
-              <!-- Workspace menu items -->
-              <WorkspaceMenuItems
+              <!-- Project menu items -->
+              <ProjectMenuItems
                 :directory-path="segment.path"
                 :ItemComponent="ContextMenuItem"
                 :SeparatorComponent="ContextMenuSeparator"
@@ -102,7 +102,7 @@ import {
   ContextMenuItemIndicator,
   ContextMenuSeparator,
 } from 'reka-ui'
-import WorkspaceMenuItems from './components/WorkspaceMenuItems.vue'
+import ProjectMenuItems from './components/ProjectMenuItems.vue'
 
 interface BreadcrumbSegment {
   name: string

@@ -53,10 +53,10 @@ export async function createBirthThread(params: any, services: typeof Services) 
     threadId
   });
 
-  // Create workspace artifact (service handles FE notification)
+  // Create project artifact (service handles FE notification)
   const { artifactId: workspaceArtifactId } = services.artifact.createAndNotify({
-    artifactType: 'workspace',
-    title: 'My Workspaces',
+    artifactType: 'project',
+    title: 'My Projects',
     content: {},
     threadId
   });

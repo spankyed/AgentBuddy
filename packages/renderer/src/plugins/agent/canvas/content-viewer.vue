@@ -33,7 +33,7 @@ import ReviewArtifact from './artifacts/types/review-artifact.vue';
 import ImageArtifact from './artifacts/types/image-artifact.vue';
 import SlackArtifact from './artifacts/types/slack-artifact.vue';
 import TodoArtifact from './artifacts/types/todo-artifact.vue';
-import WorkspaceArtifact from './artifacts/types/workspace-artifact.vue';
+import ProjectArtifact from './artifacts/types/project-artifact.vue';
 
 const props = defineProps<{
   artifacts: ArtifactItem[];
@@ -56,7 +56,7 @@ function getArtifactComponent(type: string) {
     image: ImageArtifact,
     slack: SlackArtifact,
     todo: TodoArtifact,
-    workspace: WorkspaceArtifact,
+    project: ProjectArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
 }

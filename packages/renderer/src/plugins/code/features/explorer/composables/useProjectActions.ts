@@ -2,25 +2,17 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 
-export interface WorkspaceProject {
+export interface Project {
   name: string
   directories: string[]
   color: string
 }
 
-export interface Workspace {
-  name: string
-  description?: string
-  directory?: string
-  color: string
-  projects: WorkspaceProject[]
-}
-
-export function useWorkspaceActions() {
-  // Access settings for workspaces
+export function useProjectActions() {
+  // Access settings for projects
   const settingsActor = applicationState.system.get('settings')
-  const workspaces = useSelector(settingsActor, (state: any) =>
-    state.context.settings?.general?.workspaces?.workspaces || []
+  const projects = useSelector(settingsActor, (state: any) =>
+    state.context.settings?.general?.projects || []
   )
 
   // Helper to check if a directory is in a project
@@ -28,29 +20,24 @@ export function useWorkspaceActions() {
     return projectDirectories.includes(directoryPath)
   }
 
-  // Check if directory already exists across all workspaces
+  // Check if directory already exists across all projects
   const checkDuplicateDirectory = (directoryPath: string): boolean => {
-    const allDirectories = workspaces.value.flatMap((ws: Workspace) =>
-      ws.projects.flatMap(p => p.directories || [])
-    )
+    const allDirectories = projects.value.flatMap((p: Project) => p.directories || [])
     return allDirectories.includes(directoryPath)
   }
 
-  // Helper to get all projects across all workspaces
+  // Helper to get all projects
   const allProjects = computed(() => {
-    const projects: Array<{ workspace: Workspace; project: WorkspaceProject; wsIndex: number; pIndex: number }> = []
-    workspaces.value.forEach((ws: Workspace, wsIndex: number) => {
-      ws.projects.forEach((project: WorkspaceProject, pIndex: number) => {
-        projects.push({ workspace: ws, project, wsIndex, pIndex })
-      })
-    })
-    return projects
+    return projects.value.map((project: Project, pIndex: number) => ({
+      project,
+      pIndex
+    }))
   })
 
   // Toggle directory in project
-  const toggleDirectoryInProject = (directoryPath: string, wsIndex: number, pIndex: number) => {
-    const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
-    const project = updatedWorkspaces[wsIndex].projects[pIndex]
+  const toggleDirectoryInProject = (directoryPath: string, pIndex: number) => {
+    const updatedProjects = JSON.parse(JSON.stringify(projects.value)) as Project[]
+    const project = updatedProjects[pIndex]
 
     const dirIndex = project.directories.indexOf(directoryPath)
     if (dirIndex > -1) {
@@ -65,16 +52,16 @@ export function useWorkspaceActions() {
     settingsActor?.send({
       type: 'SETTINGS.UPDATE',
       entityType: 'general',
-      label: 'workspaces',
-      path: ['workspaces'],
-      value: updatedWorkspaces
+      label: 'projects',
+      path: [],
+      value: updatedProjects
     })
   }
 
   // Remove directory from project (and delete project if it's the last directory)
-  const removeDirectoryFromProject = (directoryPath: string, wsIndex: number, pIndex: number) => {
-    const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
-    const project = updatedWorkspaces[wsIndex].projects[pIndex]
+  const removeDirectoryFromProject = (directoryPath: string, pIndex: number) => {
+    const updatedProjects = JSON.parse(JSON.stringify(projects.value)) as Project[]
+    const project = updatedProjects[pIndex]
 
     // Remove directory from project
     const dirIndex = project.directories.indexOf(directoryPath)
@@ -84,23 +71,23 @@ export function useWorkspaceActions() {
 
     // If project has no more directories, remove the entire project
     if (project.directories.length === 0) {
-      updatedWorkspaces[wsIndex].projects.splice(pIndex, 1)
+      updatedProjects.splice(pIndex, 1)
     }
 
     // Update settings
     settingsActor?.send({
       type: 'SETTINGS.UPDATE',
       entityType: 'general',
-      label: 'workspaces',
-      path: ['workspaces'],
-      value: updatedWorkspaces
+      label: 'projects',
+      path: [],
+      value: updatedProjects
     })
   }
 
   // Add directory to existing project
-  const addDirectoryToProject = (directoryPath: string, wsIndex: number, pIndex: number) => {
-    const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
-    const project = updatedWorkspaces[wsIndex].projects[pIndex]
+  const addDirectoryToProject = (directoryPath: string, pIndex: number) => {
+    const updatedProjects = JSON.parse(JSON.stringify(projects.value)) as Project[]
+    const project = updatedProjects[pIndex]
 
     // Ensure directories array exists
     if (!project.directories) {
@@ -114,15 +101,15 @@ export function useWorkspaceActions() {
     settingsActor?.send({
       type: 'SETTINGS.UPDATE',
       entityType: 'general',
-      label: 'workspaces',
-      path: ['workspaces'],
-      value: updatedWorkspaces
+      label: 'projects',
+      path: [],
+      value: updatedProjects
     })
   }
 
-  // Create new workspace project with directory
-  const createWorkspaceProject = (directoryPath: string, wsIndex: number) => {
-    const updatedWorkspaces = JSON.parse(JSON.stringify(workspaces.value)) as Workspace[]
+  // Create new project with directory
+  const createProject = (directoryPath: string) => {
+    const updatedProjects = JSON.parse(JSON.stringify(projects.value)) as Project[]
 
     // Extract folder name from path
     const folderName = directoryPath.split('/').filter(Boolean).pop() || 'New Project'
@@ -132,27 +119,26 @@ export function useWorkspaceActions() {
     const randomColor = projectColors[Math.floor(Math.random() * projectColors.length)]
 
     // Create new project
-    const newProject: WorkspaceProject = {
+    const newProject: Project = {
       name: folderName,
       directories: [directoryPath],
       color: randomColor
     }
 
-    // Add to existing workspace
-    updatedWorkspaces[wsIndex].projects.push(newProject)
+    updatedProjects.push(newProject)
 
     // Update settings
     settingsActor?.send({
       type: 'SETTINGS.UPDATE',
       entityType: 'general',
-      label: 'workspaces',
-      path: ['workspaces'],
-      value: updatedWorkspaces
+      label: 'projects',
+      path: [],
+      value: updatedProjects
     })
   }
 
-  // Navigate to workspaces settings
-  const navigateToWorkspaces = () => {
+  // Navigate to projects settings
+  const navigateToProjects = () => {
     // Switch to settings plugin
     applicationState.send({
       type: 'SELECT_PLUGIN',
@@ -165,22 +151,22 @@ export function useWorkspaceActions() {
       tab: 'general'
     })
 
-    // Navigate to Workspaces section
+    // Navigate to Projects section
     settingsActor?.send({
       type: 'GENERAL_NAV.SELECT',
-      item: 'workspaces'
+      item: 'projects'
     })
   }
 
   return {
-    workspaces,
+    projects,
     allProjects,
     isDirectoryInProject,
     checkDuplicateDirectory,
     toggleDirectoryInProject,
     removeDirectoryFromProject,
     addDirectoryToProject,
-    createWorkspaceProject,
-    navigateToWorkspaces
+    createProject,
+    navigateToProjects
   }
 }

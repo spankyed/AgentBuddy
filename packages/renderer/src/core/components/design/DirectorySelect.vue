@@ -48,82 +48,48 @@
             </div>
 
             <!-- Separator -->
-            <div v-if="workspaces.length > 0" class="my-1 border-t border-neutral-700"></div>
+            <div v-if="projects.length > 0" class="my-1 border-t border-neutral-700"></div>
 
-            <!-- Workspace sections -->
-            <div
-              v-for="(workspace, wsIndex) in workspaces"
-              :key="`workspace-${wsIndex}`"
-              class="workspace-section"
-            >
-              <!-- Workspace header (non-clickable visual separator) -->
+            <!-- Project directories -->
+            <template v-for="(project, pIndex) in projects" :key="`project-${pIndex}`">
+              <!-- Project header -->
               <div class="px-3 py-1.5 text-xs font-medium text-neutral-400 bg-neutral-800/50 flex items-center gap-2">
                 <div
-                  class="w-3 h-3 rounded flex-shrink-0"
-                  :style="{ backgroundColor: workspace.color }"
+                  class="w-2 h-2 rounded-full flex-shrink-0"
+                  :style="{ backgroundColor: project.color }"
                 ></div>
-                {{ workspace.name || `Workspace ${wsIndex + 1}` }}
+                {{ project.name || `Project ${pIndex + 1}` }}
               </div>
 
-              <!-- Workspace directory option (if exists) -->
               <div
-                v-if="workspace.directory"
-                @click="selectOption(workspace.directory)"
-                @mouseenter="hoveredIndex = getOptionIndex(workspace.directory)"
+                v-for="(directory, dIndex) in project.directories"
+                :key="`dir-${pIndex}-${dIndex}`"
+                @click="selectOption(directory)"
+                @mouseenter="hoveredIndex = getOptionIndex(directory)"
                 :class="[
                   'px-3 py-2 text-sm cursor-pointer transition-colors pl-6',
-                  modelValue === workspace.directory && hoveredIndex === getOptionIndex(workspace.directory)
+                  modelValue === directory && hoveredIndex === getOptionIndex(directory)
                     ? 'bg-blue-600 text-white'
-                    : hoveredIndex === getOptionIndex(workspace.directory)
+                    : hoveredIndex === getOptionIndex(directory)
                     ? 'bg-neutral-700 text-neutral-200'
                     : 'text-neutral-200 hover:bg-neutral-700'
                 ]"
               >
                 <div class="flex items-center justify-between gap-3">
-                  <div
-                    class="w-2 h-2 rounded-sm flex-shrink-0"
-                    :style="{ backgroundColor: workspace.color }"
+                  <div class="flex items-center gap-2 flex-1 min-w-0 truncate">
+                    <div
+                      class="w-2 h-2 rounded-full flex-shrink-0"
+                      :style="{ backgroundColor: project.color || 'red' }"
                     ></div>
-                  <div class="flex-1 min-w-0 truncate">
-                    <span class="font-medium">{{ getFolderName(workspace.directory) }}</span>
-                    <span class="text-xs text-neutral-400 ml-2">{{ formatFullPath(workspace.directory) }}</span>
+                    <span class="font-medium">{{ getFolderName(directory) }}</span>
+                    <span class="text-xs text-neutral-400">{{ formatFullPath(directory) }}</span>
                   </div>
-                  <div class="text-xs text-neutral-500 flex-shrink-0">{{ workspace.name }}</div>
+                  <div class="text-xs text-neutral-500 flex-shrink-0">
+                    {{ project.name }}{{ project.directories.length > 1 ? ` (${dIndex + 1})` : '' }}
+                  </div>
                 </div>
               </div>
-
-              <!-- Project directories -->
-              <template v-for="(project, pIndex) in workspace.projects" :key="`project-${wsIndex}-${pIndex}`">
-                <div
-                  v-for="(directory, dIndex) in project.directories"
-                  :key="`dir-${wsIndex}-${pIndex}-${dIndex}`"
-                  @click="selectOption(directory)"
-                  @mouseenter="hoveredIndex = getOptionIndex(directory)"
-                  :class="[
-                    'px-3 py-2 text-sm cursor-pointer transition-colors pl-6',
-                    modelValue === directory && hoveredIndex === getOptionIndex(directory)
-                      ? 'bg-blue-600 text-white'
-                      : hoveredIndex === getOptionIndex(directory)
-                      ? 'bg-neutral-700 text-neutral-200'
-                      : 'text-neutral-200 hover:bg-neutral-700'
-                  ]"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2 flex-1 min-w-0 truncate">
-                      <div
-                        class="w-2 h-2 rounded-full flex-shrink-0"
-                        :style="{ backgroundColor: project.color || 'red' }"
-                      ></div>
-                      <span class="font-medium">{{ getFolderName(directory) }}</span>
-                      <span class="text-xs text-neutral-400">{{ formatFullPath(directory) }}</span>
-                    </div>
-                    <div class="text-xs text-neutral-500 flex-shrink-0">
-                      {{ project.name }}{{ project.directories.length > 1 ? ` (${dIndex + 1})` : '' }}
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
+            </template>
           </div>
         </div>
       </Transition>
@@ -134,23 +100,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 
-interface WorkspaceProject {
+interface Project {
   name: string
   directories: string[]
   color: string
 }
 
-interface Workspace {
-  name: string
-  description?: string
-  directory?: string
-  color: string
-  projects: WorkspaceProject[]
-}
-
 interface Props {
   modelValue: string | null
-  workspaces: Workspace[]
+  projects: Project[]
   disabled?: boolean
 }
 
@@ -175,14 +133,9 @@ const dropdownStyle = ref<{ top: string; left: string; width: string }>({
 const allOptions = computed(() => {
   const options: (string | null)[] = [null] // "Use last opened directory"
 
-  props.workspaces.forEach(workspace => {
-    if (workspace.directory) {
-      options.push(workspace.directory)
-    }
-    workspace.projects.forEach(project => {
-      project.directories.forEach(directory => {
-        options.push(directory)
-      })
+  props.projects.forEach(project => {
+    project.directories.forEach(directory => {
+      options.push(directory)
     })
   })
 
@@ -368,9 +321,5 @@ onUnmounted(() => {
 .dropdown-leave-to {
   opacity: 0;
   transform: translateY(-4px);
-}
-
-.workspace-section:not(:last-child) {
-  border-bottom: 1px solid rgb(64 64 64 / 0.5);
 }
 </style>

@@ -74,8 +74,8 @@
           Open Terminal Here
         </ContextMenuItem>
 
-        <!-- Workspace menu items - only for directories -->
-        <WorkspaceMenuItems
+        <!-- Project menu items - only for directories -->
+        <ProjectMenuItems
           v-if="file.type === 'directory'"
           :directory-path="file.path"
           :ItemComponent="ContextMenuItem"
@@ -129,7 +129,7 @@ import {
   ContextMenuCheckboxItem,
   ContextMenuItemIndicator,
 } from 'reka-ui'
-import WorkspaceMenuItems from './components/WorkspaceMenuItems.vue'
+import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
 
 interface FileItem {

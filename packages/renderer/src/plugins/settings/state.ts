@@ -23,13 +23,13 @@ export interface SettingsContext {
   settings: SettingsData | null;
   secretsData: any[];
   activeTab: 'general' | 'plugins' | 'help';
-  generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'misc';
+  generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc';
   selectedPluginId: string | null;
   isLoading: boolean;
 }
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
-  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'hotkeys' | 'misc' }
+  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'SETTINGS.RESET' }

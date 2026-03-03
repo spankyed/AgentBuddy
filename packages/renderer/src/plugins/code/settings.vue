@@ -11,21 +11,21 @@
             Default Base Directory
           </label>
           <button
-            @click="goToWorkspaces"
+            @click="goToProjects"
             class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
           >
-            Go to Workspaces →
+            Go to Projects →
           </button>
         </div>
         <DirectorySelect
           v-model="defaultBaseDirectory"
-          :workspaces="workspaces"
-          :disabled="getAllProjects().length === 0 && workspaces.every(ws => !ws.directory)"
+          :projects="projects"
+          :disabled="getAllProjects().length === 0"
           @update:modelValue="saveDefaultDirectory"
         />
         <p class="text-xs text-neutral-600">
           {{ getAllProjects().length === 0
-            ? 'Add projects in Settings → General → Workspaces to set a default directory'
+            ? 'Add projects in Settings → General → Projects to set a default directory'
             : 'If set, the code editor will always open to this project on startup'
           }}
         </p>
@@ -179,18 +179,10 @@ import { applicationState } from '@/main'
 import { trpc } from '@/core/trpc'
 import type { CodeSettings } from '@app/api'
 
-interface WorkspaceProject {
+interface Project {
   name: string
   directories: string[]  // First directory is primary
   color: string
-}
-
-interface Workspace {
-  name: string
-  description?: string
-  directory?: string
-  color: string
-  projects: WorkspaceProject[]
 }
 
 interface Props {
@@ -221,16 +213,15 @@ const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
 
-// Get workspaces from general settings
+// Get projects from general settings
 const settingsActor = applicationState.system.get('settings')
-const workspaces = computed(() => {
-  const generalSettings = useSelector(settingsActor, (state: any) => state.context.settings?.general?.workspaces).value
-  return (generalSettings?.workspaces || []) as Workspace[]
+const projects = computed(() => {
+  return (useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects).value || []) as Project[]
 })
 
 // Helper functions
-const getAllProjects = (): WorkspaceProject[] => {
-  return workspaces.value.flatMap(ws => ws.projects)
+const getAllProjects = (): Project[] => {
+  return projects.value
 }
 
 // Save functions
@@ -277,12 +268,12 @@ const saveDefaultDirectory = () => {
   })
 }
 
-const goToWorkspaces = () => {
+const goToProjects = () => {
   // Navigate to settings plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
 
-  // Switch to general tab and navigate to workspaces
+  // Switch to general tab and navigate to projects
   settingsActor?.send({ type: 'TAB.SELECT', tab: 'general' })
-  settingsActor?.send({ type: 'GENERAL_NAV.SELECT', item: 'workspaces' })
+  settingsActor?.send({ type: 'GENERAL_NAV.SELECT', item: 'projects' })
 }
 </script>

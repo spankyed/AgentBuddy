@@ -36,7 +36,7 @@ function getIcon(type: ArtifactType) {
     image: Image,
     slack: MessageSquare,
     todo: ListTodo,
-    workspace: Layers,
+    project: Layers,
   };
   return icons[type] || FileText;
 }

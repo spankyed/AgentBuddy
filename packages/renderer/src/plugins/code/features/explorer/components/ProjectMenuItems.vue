@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronLeft, FolderPlus, Folder, Settings } from 'lucide-vue-next'
-import { useWorkspaceActions } from '../composables/useWorkspaceActions'
+import { useProjectActions } from '../composables/useProjectActions'
 import { MENU_ITEM_CLASS, MENU_SUB_CONTENT_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from '../constants'
 
 const props = defineProps<{
@@ -17,19 +17,19 @@ const props = defineProps<{
 }>()
 
 const {
-  workspaces,
+  projects,
   allProjects,
   isDirectoryInProject,
   toggleDirectoryInProject,
-  createWorkspaceProject,
-  navigateToWorkspaces
-} = useWorkspaceActions()
+  createProject,
+  navigateToProjects
+} = useProjectActions()
 </script>
 
 <template>
   <!-- Separator -->
   <component :is="SeparatorComponent" :class="MENU_SEPARATOR_CLASS" />
-  <!-- Add to Workspace Project submenu -->
+  <!-- Add to Project submenu -->
   <component :is="SubComponent" v-if="allProjects.length > 0">
     <component :is="SubTriggerComponent" :class="MENU_ITEM_CLASS">
       <ChevronLeft class="w-3 h-3" />
@@ -40,10 +40,10 @@ const {
       <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS">
         <component
           :is="CheckboxItemComponent"
-          v-for="({ workspace, project, wsIndex, pIndex }) in allProjects"
-          :key="`${wsIndex}-${pIndex}`"
+          v-for="({ project, pIndex }) in allProjects"
+          :key="`${pIndex}`"
           :checked="isDirectoryInProject(project.directories, directoryPath)"
-          @select="() => toggleDirectoryInProject(directoryPath, wsIndex, pIndex)"
+          @select="() => toggleDirectoryInProject(directoryPath, pIndex)"
           :class="MENU_ITEM_CLASS"
         >
           <component :is="ItemIndicatorComponent" class="flex items-center justify-center w-4 h-4">
@@ -56,7 +56,7 @@ const {
               class="w-2 h-2 rounded-full flex-shrink-0"
               :style="{ backgroundColor: project.color }"
             ></span>
-            <span class="truncate">{{ project.name }} ‹ {{ workspace.name }} </span>
+            <span class="truncate">{{ project.name }}</span>
           </div>
         </component>
       </component>
@@ -73,55 +73,23 @@ const {
     No projects available
   </component>
 
-  <!-- Create Workspace Project submenu -->
-  <component :is="SubComponent" v-if="workspaces.length > 0">
-    <component :is="SubTriggerComponent" :class="MENU_ITEM_CLASS">
-      <div class="flex items-center gap-2">
-        <ChevronLeft class="w-3 h-3" />
-        <FolderPlus class="w-4 h-4" />
-        Create Project
-      </div>
-    </component>
-    <component :is="PortalComponent">
-      <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS">
-        <!-- Existing workspaces -->
-        <component
-          :is="ItemComponent"
-          v-for="(workspace, wsIndex) in workspaces"
-          :key="`ws-${wsIndex}`"
-          @select="() => createWorkspaceProject(directoryPath, wsIndex)"
-          :class="MENU_ITEM_CLASS"
-        >
-          <span
-            class="w-2 h-2 rounded-full flex-shrink-0"
-            :style="{ backgroundColor: workspace.color }"
-          ></span>
-          <span class="truncate">{{ workspace.name }}</span>
-        </component>
-
-        <component :is="SeparatorComponent" :class="MENU_SEPARATOR_CLASS" />
-
-        <!-- Manage Workspaces option -->
-        <component
-          :is="ItemComponent"
-          @select="navigateToWorkspaces"
-          :class="MENU_ITEM_CLASS"
-        >
-          <Settings class="w-4 h-4" />
-          Manage Workspaces
-        </component>
-      </component>
-    </component>
-  </component>
-
-  <!-- No workspaces - navigate to manage -->
+  <!-- Create Project -->
   <component
     :is="ItemComponent"
-    v-else
-    @select="navigateToWorkspaces"
+    @select="() => createProject(directoryPath)"
+    :class="MENU_ITEM_CLASS"
+  >
+    <FolderPlus class="w-4 h-4" />
+    Create Project
+  </component>
+
+  <!-- Manage Projects -->
+  <component
+    :is="ItemComponent"
+    @select="navigateToProjects"
     :class="MENU_ITEM_CLASS"
   >
     <Settings class="w-4 h-4" />
-    Manage Workspaces
+    Manage Projects
   </component>
 </template>

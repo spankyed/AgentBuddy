@@ -86,7 +86,7 @@ const typeOf = safeEvents<ReceivableEvents>()
  */
 function resolveInitialDirectory(
   codeSettings: CodeSettings | undefined,
-  workspaces: any[]
+  projects: any[]
 ): string | null {
   // User's explicit default takes priority
   if (codeSettings?.defaultBaseDirectory) {
@@ -98,9 +98,8 @@ function resolveInitialDirectory(
     return codeSettings.lastDirectoryOpened
   }
 
-  // Fall back to first project directory from workspaces
-  const allProjects = workspaces.flatMap((ws: any) => ws.projects || [])
-  const firstProjectDir = allProjects[0]?.directories?.[0]
+  // Fall back to first project directory
+  const firstProjectDir = projects[0]?.directories?.[0]
   if (firstProjectDir) {
     return firstProjectDir
   }
@@ -331,11 +330,10 @@ export const systemMachine = setup({
   initial: 'idle',
   context: () => {
     const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
-    const workspacesSettings = repository.settingsQueries.getGeneralSettings('workspaces') as any
-    const workspaces = workspacesSettings?.workspaces || []
+    const projects = (repository.settingsQueries.getGeneralSettings('projects') as any) || []
 
     // Resolve initial directory using priority chain
-    const baseDir = resolveInitialDirectory(codeSettings, workspaces)
+    const baseDir = resolveInitialDirectory(codeSettings, projects)
 
     return {
       activeDirectory: baseDir,

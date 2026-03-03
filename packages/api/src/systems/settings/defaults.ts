@@ -35,9 +35,7 @@ export const defaultSettings: SettingsData = {
       }
     },
     misc: {},
-    workspaces: {
-      workspaces: []
-    }
+    projects: []
   },
   plugins: {
     _meta: {

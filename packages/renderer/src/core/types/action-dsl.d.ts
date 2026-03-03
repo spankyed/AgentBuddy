@@ -412,7 +412,7 @@ interface Tab {
     artifacts: ArtifactItem[];
     selectedArtifactId?: string;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'workspace';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
@@ -3659,7 +3659,7 @@ interface GeneralSettings {
     secrets: Secrets;
     hotkeys: ApplicationHotkeys;
     misc: MiscSettings;
-    workspaces: WorkspacesSettings;
+    projects: Project[];
 }
 interface Address {
     street: string;
@@ -3701,20 +3701,10 @@ interface ApplicationHotkeys {
 }
 interface MiscSettings {
 }
-interface WorkspaceProject {
+interface Project {
     name: string;
     directories: string[];
     color: string;
-}
-interface Workspace {
-    name: string;
-    description?: string;
-    directory?: string;
-    color: string;
-    projects: WorkspaceProject[];
-}
-interface WorkspacesSettings {
-    workspaces: Workspace[];
 }
 interface PluginVisibilitySettings {
     [pluginId: string]: boolean;

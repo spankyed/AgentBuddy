@@ -37,14 +37,14 @@
         <div class="flex items-center gap-1.5 text-sm">
           <span
             class="font-medium transition-colors"
-            :class="viewMode === 'workspaces' ? 'text-neutral-400 hover:text-neutral-200 cursor-pointer' : 'text-neutral-200'"
-            @click="viewMode === 'workspaces' ? toggleViewMode() : null"
+            :class="viewMode === 'projects' ? 'text-neutral-400 hover:text-neutral-200 cursor-pointer' : 'text-neutral-200'"
+            @click="viewMode === 'projects' ? toggleViewMode() : null"
           >
             Explorer
           </span>
-          <template v-if="viewMode === 'workspaces'">
+          <template v-if="viewMode === 'projects'">
             <span class="text-neutral-600">/</span>
-            <span class="font-medium text-neutral-200">Workspaces</span>
+            <span class="font-medium text-neutral-200">Projects</span>
           </template>
         </div>
       </div>
@@ -102,8 +102,8 @@
           class="flex-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors flex items-center justify-center gap-2"
         >
           <Layers class="w-4 h-4" />
-          <span class="@[420px]:hidden">Workspaces</span>
-          <span class="hidden @[420px]:inline">View Workspaces</span>
+          <span class="@[420px]:hidden">Projects</span>
+          <span class="hidden @[420px]:inline">View Projects</span>
         </button>
 
         <!-- Change Directory Button -->
@@ -118,10 +118,10 @@
       </div>
     </template>
 
-    <!-- Workspaces view -->
-    <template v-else-if="viewMode === 'workspaces'">
-      <WorkspaceView
-        :workspaces="workspaces"
+    <!-- Projects view -->
+    <template v-else-if="viewMode === 'projects'">
+      <ProjectsView
+        :projects="projects"
         @set-directory="handleWorkspaceDirectorySelect"
         @open-terminal="handleOpenTerminal"
       />
@@ -145,7 +145,7 @@
         >
           <Settings class="w-4 h-4" />
           <span class="@[420px]:hidden">Manage</span>
-          <span class="hidden @[420px]:inline">Manage Workspaces</span>
+          <span class="hidden @[420px]:inline">Manage Projects</span>
         </button>
       </div>
     </template>
@@ -172,7 +172,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/components/design/dialog.vue'
 import FileItem from '@/plugins/code/features/explorer/FileItem.vue'
 import DirectoryBreadcrumb from '@/plugins/code/features/explorer/DirectoryBreadcrumb.vue'
-import WorkspaceView from '@/plugins/code/features/explorer/WorkspaceView.vue'
+import ProjectsView from '@/plugins/code/features/explorer/ProjectsView.vue'
 import { FolderOpen, FolderPlus, Settings, Layers, ArrowLeft } from 'lucide-vue-next'
 
 interface FileItem {
@@ -198,10 +198,10 @@ const settingsActor = applicationState.system.get('settings')
 const files = useSelector(explorerActor, (state: any) => state.context.files)
 const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
 const error = useSelector(codeActor, (state: any) => state.context.error)
-const workspaces = useSelector(settingsActor, (state: any) => state.context.settings?.general?.workspaces?.workspaces || [])
+const projects = useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects || [])
 
 // View mode state
-const viewMode = ref<'files' | 'workspaces'>('files')
+const viewMode = ref<'files' | 'projects'>('files')
 
 // No emits needed - handle everything internally
 
@@ -277,7 +277,7 @@ const handleDirectorySelect = async () => {
 }
 
 const handleAddProject = () => {
-  // Navigate to Settings plugin, General tab, Workspaces section
+  // Navigate to Settings plugin, General tab, Projects section
   const settingsActor = applicationState.system.get('settings')
 
   // Switch to settings plugin
@@ -292,10 +292,10 @@ const handleAddProject = () => {
     tab: 'general'
   })
 
-  // Navigate to Workspaces section
+  // Navigate to Projects section
   settingsActor?.send({
     type: 'GENERAL_NAV.SELECT',
-    item: 'workspaces'
+    item: 'projects'
   })
 }
 
@@ -331,7 +331,7 @@ const cancelCreateFolder = () => {
 }
 
 const toggleViewMode = () => {
-  viewMode.value = viewMode.value === 'files' ? 'workspaces' : 'files'
+  viewMode.value = viewMode.value === 'files' ? 'projects' : 'files'
 }
 
 const handleWorkspaceDirectorySelect = (path: string) => {
