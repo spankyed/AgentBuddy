@@ -16,7 +16,7 @@
         </span>
       </div>
     </td>
-    <td class="px-4 py-1.5">
+    <td class="px-6 py-1.5">
       <div class="flex items-center gap-2">
         <span
           v-for="(tag, index) in (thread.tags || []).slice(0, 3)"
@@ -31,7 +31,7 @@
         </span>
       </div>
     </td>
-    <td class="px-4 py-1.5">
+    <td class="px-6 py-1.5">
       <select
         data-onboarding-id="thread-status"
         @click.stop
@@ -49,7 +49,7 @@
         </option>
       </select>
     </td>
-    <td class="px-4 py-1.5">
+    <td class="px-6 py-1.5">
       <div class="flex items-center justify-end gap-2">
         <button
           data-onboarding-id="thread-actions"

@@ -42,12 +42,12 @@
               <td class="px-6 py-1.5">
                 <span class="text-sm font-medium text-neutral-100">{{ action.label }}</span>
               </td>
-              <td class="px-4 py-1.5">
+              <td class="px-6 py-1.5">
                 <span class="text-sm text-neutral-400 line-clamp-1" :title="action.description">
                   {{ action.description || 'No description' }}
                 </span>
               </td>
-              <td class="px-4 py-1.5">
+              <td class="px-6 py-1.5">
                 <span
                   class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
                   :class="action.category ? 'border' : 'text-neutral-500'"
@@ -56,7 +56,7 @@
                   {{ getCategoryName(action.category) }}
                 </span>
               </td>
-              <td class="px-4 py-1.5">
+              <td class="px-6 py-1.5">
                 <div class="flex items-center gap-1.5 overflow-hidden">
                   <template v-if="Object.keys(action.input || {}).length > 0">
                     <span
@@ -78,7 +78,7 @@
                   <span v-else class="text-xs text-neutral-500">none</span>
                 </div>
               </td>
-              <td class="px-4 py-1.5">
+              <td class="px-6 py-1.5">
                 <div class="flex items-center justify-end gap-2">
                   <button
                     @click.stop="handleDelete(action.id)"
