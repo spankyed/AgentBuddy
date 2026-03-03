@@ -510,6 +510,14 @@ export class GitRepository {
     }
   }
 
+  async revertFiles(filePaths: string[]): Promise<void> {
+    if (filePaths.length === 0) return
+    const result = await this.executeGitCommand(['checkout', 'HEAD', '--', ...filePaths])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to revert files')
+    }
+  }
+
   async commit(message: string): Promise<void> {
     if (!message.trim()) {
       throw new Error('Commit message cannot be empty')

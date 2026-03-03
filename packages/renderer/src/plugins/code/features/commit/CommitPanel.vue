@@ -25,6 +25,15 @@
       @cancel="cancelRevert"
     />
 
+    <!-- Discard All Dialog -->
+    <RevertDialog
+      :show="showDiscardAllDialog"
+      :file="null"
+      :fileCount="unstagedFiles.length"
+      @confirm="confirmDiscardAll"
+      @cancel="cancelDiscardAll"
+    />
+
     <!-- Show friendly empty state if no git repository -->
     <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
       <GitBranch :size="48" class="mb-4 text-neutral-600" />
@@ -174,7 +183,12 @@
       <div v-else class="divide-y divide-neutral-800">
         <!-- Staged Changes -->
         <div v-if="stagedFiles.length > 0" class="p-3">
-          <div class="mb-2 text-xs font-medium text-neutral-400">STAGED CHANGES</div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-neutral-400">STAGED CHANGES</span>
+            <button @click="unstageAll" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage All">
+              <Minus class="w-3 h-3 text-neutral-400" />
+            </button>
+          </div>
           <div class="space-y-1">
             <div
               v-for="file in stagedFiles"
@@ -188,13 +202,7 @@
                   : 'hover:bg-neutral-800/50'
               ]"
             >
-              <button
-                @click.stop="unstageFile(file)"
-                class="p-0.5 hover:bg-neutral-700 rounded"
-                title="Unstage"
-              >
-                <Minus class="w-3 h-3 text-neutral-400" />
-              </button>
+
               <div class="flex-1 min-w-0 flex items-center gap-1.5">
                 <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path).filename }}</span>
                 <span v-if="getFileDisplay(file.path).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
@@ -206,10 +214,14 @@
               </span>
               <button
                 @click.stop="openFile(file)"
-                class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                class="p-0.5 hover:bg-neutral-700 rounded"
                 title="Open file"
               >
                 <FileText class="w-3 h-3 text-neutral-400" />
+              </button>
+
+              <button @click.stop="unstageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage">
+                <Minus class="w-3 h-3 text-neutral-400" />
               </button>
             </div>
           </div>
@@ -217,7 +229,17 @@
 
         <!-- Unstaged Changes -->
         <div v-if="unstagedFiles.length > 0" class="p-3">
-          <div class="mb-2 text-xs font-medium text-neutral-400">CHANGES</div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-neutral-400">CHANGES</span>
+            <div class="flex items-center gap-1">
+              <button @click="openDiscardAllDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard All Changes">
+                <RotateCcw class="w-3 h-3 text-red-400" />
+              </button>
+              <button @click="stageAll" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage All Changes">
+                <Plus class="w-3 h-3 text-neutral-400" />
+              </button>
+            </div>
+          </div>
           <div class="space-y-1">
             <div
               v-for="file in unstagedFiles"
@@ -231,22 +253,7 @@
                   : 'hover:bg-neutral-800/50'
               ]"
             >
-              <div class="flex items-center gap-1 flex-shrink-0">
-                <button
-                  @click.stop="stageFile(file)"
-                  class="p-0.5 hover:bg-neutral-700 rounded"
-                  title="Stage"
-                >
-                  <Plus class="w-3 h-3 text-neutral-400" />
-                </button>
-                <button
-                  @click.stop="openRevertDialog(file)"
-                  class="p-0.5 hover:bg-neutral-700 rounded"
-                  title="Discard changes"
-                >
-                  <RotateCcw class="w-3 h-3 text-red-400" />
-                </button>
-              </div>
+
               <div class="flex-1 min-w-0 flex items-center gap-1.5">
                 <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path).filename }}</span>
                 <span v-if="getFileDisplay(file.path).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
@@ -258,10 +265,16 @@
               </span>
               <button
                 @click.stop="openFile(file)"
-                class="p-0.5 hover:bg-neutral-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                class="p-0.5 hover:bg-neutral-700 rounded"
                 title="Open file"
               >
                 <FileText class="w-3 h-3 text-neutral-400" />
+              </button>
+              <button @click.stop="openRevertDialog(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard changes">
+                <RotateCcw class="w-3 h-3 text-red-400" />
+              </button>
+              <button @click.stop="stageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage">
+                <Plus class="w-3 h-3 text-neutral-400" />
               </button>
             </div>
           </div>
@@ -305,6 +318,7 @@ const isPushing = useSelector(commitActor, (state: any) => state.context.isPushi
 const isPulling = useSelector(commitActor, (state: any) => state.context.isPulling)
 
 // Local state
+const showDiscardAllDialog = ref(false)
 const showBranchDropdown = ref(false)
 const isCreatingBranch = ref(false)
 const newBranchName = ref('')
@@ -397,6 +411,27 @@ const handleActionButton = () => {
   } else {
     commitActor?.send({ type: 'commit.PUSH_BRANCH' })
   }
+}
+
+const stageAll = () => {
+  commitActor?.send({ type: 'commit.STAGE_FILES', paths: unstagedFiles.value.map((f: GitStatusFile) => f.path) })
+}
+
+const unstageAll = () => {
+  commitActor?.send({ type: 'commit.UNSTAGE_FILES', paths: stagedFiles.value.map((f: GitStatusFile) => f.path) })
+}
+
+const openDiscardAllDialog = () => {
+  showDiscardAllDialog.value = true
+}
+
+const confirmDiscardAll = () => {
+  commitActor?.send({ type: 'commit.REVERT_FILES', paths: unstagedFiles.value.map((f: GitStatusFile) => f.path) })
+  showDiscardAllDialog.value = false
+}
+
+const cancelDiscardAll = () => {
+  showDiscardAllDialog.value = false
 }
 
 const openRevertDialog = (file: GitStatusFile) => {

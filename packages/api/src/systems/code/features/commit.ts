@@ -20,6 +20,7 @@ export const IncomingCommitEvents = [
   busEvent('commit.COMMIT', { message: z.string() }),
   busEvent('commit.GET_CURRENT_BRANCH', {}),
   busEvent('commit.REVERT_FILE', { path: z.string() }),
+  busEvent('commit.REVERT_FILES', { paths: z.array(z.string()) }),
   busEvent('commit.GET_ALL_BRANCHES', {}),
   busEvent('commit.CHECKOUT_BRANCH', { branchName: z.string() }),
   busEvent('commit.PUBLISH_BRANCH', {}),
@@ -34,6 +35,7 @@ export type OutgoingCommitEvents =
   | { type: 'commit.FILES_UNSTAGED'; data: { paths: string[] } }
   | { type: 'commit.COMMIT_SUCCESS'; data: { message: string } }
   | { type: 'commit.FILE_REVERTED'; data: { path: string } }
+  | { type: 'commit.FILES_REVERTED'; data: { paths: string[] } }
   | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCH_RETRIEVED'; data: { branch: string } }
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
@@ -54,6 +56,7 @@ export type Event =
   | { type: 'commit.COMMIT'; message: string }
   | { type: 'commit.GET_CURRENT_BRANCH' }
   | { type: 'commit.REVERT_FILE'; path: string }
+  | { type: 'commit.REVERT_FILES'; paths: string[] }
   | { type: 'commit.GET_ALL_BRANCHES' }
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
@@ -224,9 +227,9 @@ export const commitSystem = setup({
 
     revertFile: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.REVERT_FILE'; path: string }
-      
+
       if (!requireGitRepository(context)) return
-      
+
       try {
         await context.gitRepository.revertFile(ev.path)
         const wrapped = emit(pluginId, {
@@ -246,6 +249,41 @@ export const commitSystem = setup({
           }
         })
         rootEvents.emitOutgoing(fileChangeWrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    revertFiles: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.REVERT_FILES'; paths: string[] }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.revertFiles(ev.paths)
+        const wrapped = emit(pluginId, {
+          type: 'commit.FILES_REVERTED',
+          data: { paths: ev.paths }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        // Also send updated status
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Notify frontend about file changes
+        for (const path of ev.paths) {
+          const fileChangeWrapped = emit(pluginId, {
+            type: 'explorer.FILE_CHANGED_EXTERNALLY',
+            data: {
+              path,
+              changeType: 'change',
+              modifiedAt: new Date()
+            }
+          })
+          rootEvents.emitOutgoing(fileChangeWrapped.event)
+        }
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -457,6 +495,9 @@ export const commitSystem = setup({
         },
         'commit.REVERT_FILE': {
           actions: 'revertFile'
+        },
+        'commit.REVERT_FILES': {
+          actions: 'revertFiles'
         },
         'commit.COMMIT': {
           actions: 'commit'

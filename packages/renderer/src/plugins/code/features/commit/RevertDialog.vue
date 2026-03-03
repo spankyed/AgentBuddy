@@ -12,9 +12,14 @@
         
         <div class="p-4">
           <p class="mb-4 text-sm text-neutral-300">
-            Are you sure you want to discard all changes to:
+            <template v-if="fileCount != null && !file">
+              Are you sure you want to discard all changes to <strong>{{ fileCount }} files</strong>?
+            </template>
+            <template v-else>
+              Are you sure you want to discard all changes to:
+            </template>
           </p>
-          <div class="px-3 py-2 mb-4 overflow-hidden rounded bg-neutral-800">
+          <div v-if="file" class="px-3 py-2 mb-4 overflow-hidden rounded bg-neutral-800">
             <code class="block text-sm truncate text-neutral-100" dir="rtl">
               <span dir="ltr">{{ file?.path }}</span>
             </code>
@@ -51,6 +56,7 @@ import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 defineProps<{
   show: boolean
   file: GitStatusFile | null
+  fileCount?: number
 }>()
 
 const emit = defineEmits<{

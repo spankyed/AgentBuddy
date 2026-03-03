@@ -57,6 +57,7 @@ export type Event =
   | { type: 'commit.VIEW_DIFF'; path: string; staged: boolean }
   | { type: 'commit.CLEAR_DIFF' }
   | { type: 'commit.REVERT_FILE'; path: string }
+  | { type: 'commit.REVERT_FILES'; paths: string[] }
   | { type: 'commit.TOGGLE_REVERT_DIALOG'; file?: GitStatusFile }
   | { type: 'commit.OPEN_FILE'; file: GitStatusFile }
   | { type: 'commit.GET_ALL_BRANCHES' }
@@ -70,6 +71,7 @@ export type Event =
   | { type: 'commit.FILES_UNSTAGED'; paths: string[] }
   | { type: 'commit.COMMIT_SUCCESS'; message: string }
   | { type: 'commit.FILE_REVERTED'; path: string }
+  | { type: 'commit.FILES_REVERTED'; paths: string[] }
   | { type: 'commit.ERROR_RECEIVED'; data: { message: string } }
   | { type: 'commit.BRANCHES_RECEIVED'; data: { branches: string[] } }
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
@@ -142,6 +144,11 @@ export const commitState = setup({
       if (context.revertDialogFile) {
         sendToBackend('commit.REVERT_FILE', { path: context.revertDialogFile.path })
       }
+    },
+
+    revertFiles: ({ event }) => {
+      const ev = event as { type: 'commit.REVERT_FILES'; paths: string[] }
+      sendToBackend('commit.REVERT_FILES', { paths: ev.paths })
     },
 
     handleFileReverted: assign({
@@ -380,8 +387,14 @@ export const commitState = setup({
         'commit.REVERT_FILE': {
           actions: ['revertFile', 'toggleRevertDialog']
         },
+        'commit.REVERT_FILES': {
+          actions: 'revertFiles'
+        },
         'commit.FILE_REVERTED': {
           actions: ['handleFileReverted', 'refreshGitStatus']
+        },
+        'commit.FILES_REVERTED': {
+          actions: 'refreshGitStatus'
         },
         'commit.CLEAR_DIFF': {
           actions: 'clearGitDiff'
