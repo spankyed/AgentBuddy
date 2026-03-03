@@ -30,13 +30,41 @@
               Open Directory
             </DropdownMenuItem>
             <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
-            <DropdownMenuItem
-              @select="$emit('view-projects')"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Layers class="w-4 h-4" />
-              View Projects
-            </DropdownMenuItem>
+            <DropdownMenuSub v-if="allProjects.length > 0">
+              <DropdownMenuSubTrigger
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <Layers class="w-4 h-4" />
+                <span class="flex-1">Open Projects</span>
+                <ChevronRight class="w-3 h-3 text-neutral-500" />
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent
+                  class="min-w-[180px] max-h-[300px] overflow-auto bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+                  :side-offset="4"
+                >
+                  <template v-for="({ project }, idx) in allProjects" :key="project.name">
+                    <DropdownMenuSeparator v-if="idx > 0" class="h-px my-1 bg-neutral-700" />
+                    <DropdownMenuLabel class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-neutral-400">
+                      <div
+                        class="w-2 h-2 rounded-full flex-shrink-0"
+                        :style="{ backgroundColor: project.color }"
+                      />
+                      {{ project.name }}
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      v-for="dir in project.directories"
+                      :key="dir"
+                      @select="$emit('open-project-directory', dir)"
+                      class="flex items-center gap-2 px-3 pl-7 py-1.5 text-sm transition-colors cursor-pointer text-neutral-300 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                      :title="dir"
+                    >
+                      {{ getShortenedPath(dir) }}
+                    </DropdownMenuItem>
+                  </template>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
             <ProjectMenuItems
               :directory-path="baseDirectory"
               :show-separator="false"
@@ -63,6 +91,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
@@ -71,21 +100,32 @@ import {
   DropdownMenuItemIndicator,
   DropdownMenuSeparator,
 } from 'reka-ui'
-import { FolderOpen, Layers, ChevronDown } from 'lucide-vue-next'
+import { FolderOpen, Layers, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
+import { useProjectActions } from '../composables/useProjectActions'
 
 const props = defineProps<{
   baseDirectory: string
 }>()
 
 defineEmits<{
-  'view-projects': []
   'open-directory': []
+  'open-project-directory': [path: string]
 }>()
 
 const menuOpen = ref(false)
 
+const { allProjects } = useProjectActions()
+
 const directoryName = computed(() => {
   return props.baseDirectory.split('/').pop() || ''
 })
+
+const getShortenedPath = (path: string) => {
+  // Replace /Users/<name> or /home/<name> with ~
+  const display = path.replace(/^\/(?:Users|home)\/[^/]+/, '~')
+  const parts = display.split('/').filter(Boolean)
+  if (parts.length <= 3) return display
+  return parts[0] + '/' + parts[1] + '/.../' + parts[parts.length - 1]
+}
 </script>

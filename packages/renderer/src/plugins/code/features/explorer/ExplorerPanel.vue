@@ -4,39 +4,24 @@
     <CodePanelHeader
       :icon="FolderOpen"
       title="Explorer"
-      :clickable="viewMode === 'projects'"
-      @title-click="viewMode = 'files'"
     >
-      <template #title-extra v-if="viewMode === 'projects'">
-        <span class="text-neutral-600">/</span>
-        <span class="font-medium text-neutral-200">Projects</span>
-      </template>
-
       <template #actions>
         <button
-          v-if="baseDirectory && viewMode === 'files'"
+          v-if="baseDirectory"
           @click="handleCreateNewFolder()"
           class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
           title="Create new folder"
         >
           <FolderPlus :size="16" />
         </button>
-        <button
-          v-if="viewMode === 'projects'"
-          @click="handleManageProjects"
-          class="text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 rounded transition-colors"
-          title="Manage Projects"
-        >
-          <Settings :size="16" />
-        </button>
       </template>
 
       <template #toolbar>
         <BaseDirectoryMenu
-          v-if="viewMode === 'files' && baseDirectory"
+          v-if="baseDirectory"
           :base-directory="baseDirectory"
-          @view-projects="viewMode = 'projects'"
           @open-directory="handleDirectorySelect"
+          @open-project-directory="handleProjectDirectorySelect"
         />
       </template>
     </CodePanelHeader>
@@ -53,7 +38,7 @@
     />
 
     <!-- Files view -->
-    <template v-if="viewMode === 'files' && baseDirectory">
+    <template v-if="baseDirectory">
       <div v-if="isLoading && rootFiles.length === 0" class="flex items-center justify-center flex-1">
         <div class="text-sm text-neutral-400">Loading...</div>
       </div>
@@ -86,16 +71,7 @@
       </div>
     </template>
 
-    <!-- Projects view -->
-    <template v-else-if="viewMode === 'projects'">
-      <ProjectsView
-        :projects="projects"
-        @set-directory="handleWorkspaceDirectorySelect"
-        @open-terminal="handleOpenTerminal"
-      />
-    </template>
-
-    <!-- Show empty state when no directory selected (Files view only) -->
+    <!-- Show empty state when no directory selected -->
     <div v-else class="flex-1 flex flex-col items-center justify-start p-4">
       <p class="text-neutral-400 text-center mb-4">No directory selected</p>
       <button
@@ -115,10 +91,9 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/components/design/dialog.vue'
 import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.vue'
-import ProjectsView from '@/plugins/code/features/explorer/ProjectsView.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import BaseDirectoryMenu from './components/BaseDirectoryMenu.vue'
-import { FolderOpen, FolderPlus, Settings, AlertCircle } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus, AlertCircle } from 'lucide-vue-next'
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
@@ -127,7 +102,6 @@ import type { FileInfo } from './state'
 const codeActor: CodeState = applicationState.system.get(codeId)
 const explorerActor = codeActor.system.get('explorer')!
 const terminalActor = codeActor.system.get('terminal')!
-const settingsActor = applicationState.system.get('settings')
 
 // State selectors
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
@@ -138,10 +112,6 @@ const loadingDirs = useSelector(explorerActor, (state: any) => state.context.loa
 const selectedPaths = useSelector(explorerActor, (state: any) => state.context.selectedPaths as string[])
 const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
 const error = useSelector(codeActor, (state: any) => state.context.error)
-const projects = useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects || [])
-
-// View mode state
-const viewMode = ref<'files' | 'projects'>('files')
 
 // Delete functionality
 const showDeleteDialog = ref(false)
@@ -277,10 +247,6 @@ const handleDirectorySelect = async () => {
   }
 }
 
-const handleOpenTerminal = (path: string) => {
-  terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
-}
-
 const handleCreateNewFolder = () => {
   // Determine target directory: first selected directory, or baseDirectory
   let targetDir = baseDirectory.value
@@ -320,28 +286,8 @@ const handleCreateNewFolder = () => {
   explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newPath })
 }
 
-const handleWorkspaceDirectorySelect = (path: string) => {
+const handleProjectDirectorySelect = (path: string) => {
   explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path })
-  viewMode.value = 'files'
-}
-
-const handleManageProjects = () => {
-  const settingsActorRef = applicationState.system.get('settings')
-
-  applicationState.send({
-    type: 'SELECT_PLUGIN',
-    pluginId: 'settings'
-  })
-
-  settingsActorRef?.send({
-    type: 'SETTINGS_TAB.SELECT',
-    tab: 'general'
-  })
-
-  settingsActorRef?.send({
-    type: 'GENERAL_NAV.SELECT',
-    item: 'projects'
-  })
 }
 
 const handleEmptySpaceClick = (e: MouseEvent) => {
