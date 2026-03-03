@@ -1,4 +1,4 @@
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 
 export function useInlineEdit(
   emit: (event: 'RENAME_ITEM', payload: { itemId: string; name: string }) => void
@@ -11,13 +11,13 @@ export function useInlineEdit(
     editingItemId.value = itemId
     editingName.value = currentName
     originalName.value = currentName
-    nextTick(() => {
+    setTimeout(() => {
       const input = document.querySelector(`#edit-input-${itemId}`) as HTMLInputElement
       if (input) {
         input.focus()
         input.select()
       }
-    })
+    }, 50)
   }
 
   function confirmEdit(itemId: string) {
