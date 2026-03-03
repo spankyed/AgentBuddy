@@ -153,6 +153,18 @@ const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
 const selectedHandle = useSelector(actor, (s) => s.context.selectedHandle)
 
+// Prevent accidental palette clicks when transitioning from list → view state
+const paletteClickDisabled = ref(false)
+
+watch(inViewState, (isView) => {
+  if (isView) {
+    paletteClickDisabled.value = true
+    setTimeout(() => {
+      paletteClickDisabled.value = false
+    }, 500)
+  }
+})
+
 // Watch for flow changes and re-center view after layout is computed
 watch(selectedFlowId, () => {
   // When flow changes, watch for next position update then fitView
@@ -229,6 +241,7 @@ function handleDrop(e: DragEvent) {
 }
 
 function handlePaletteClick(nodeType: string) {
+  if (paletteClickDisabled.value) return
   actor.send({
     type: 'NODE.CREATE',
     nodeType,
