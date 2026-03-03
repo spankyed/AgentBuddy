@@ -14,9 +14,9 @@
     <!-- Show normal UI only when directory is selected -->
     <template v-else>
       <!-- Search Input Section -->
-      <div class="p-4 border-b border-neutral-800">
+      <div class="p-4 border-b border-neutral-800 bg-neutral-800/50">
       <!-- Search Input with Inline Filters -->
-      <div class="flex items-stretch mb-3 overflow-hidden border rounded bg-neutral-800 border-neutral-700 focus-within:border-blue-500">
+      <div class="flex items-stretch mb-3 overflow-hidden border rounded bg-neutral-900 border-neutral-700 focus-within:border-blue-500">
         <input
           v-model="searchQuery"
           @keyup.enter="performSearch"
@@ -88,7 +88,7 @@
             @change="updateOptions"
             type="text"
             placeholder="e.g., *.ts, *.vue"
-            class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+            class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div class="flex items-center gap-2">
@@ -98,7 +98,7 @@
             @change="updateOptions"
             type="text"
             placeholder="e.g., node_modules, *.test.js"
-            class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+            class="flex-1 px-2 py-1 text-xs border rounded bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>
