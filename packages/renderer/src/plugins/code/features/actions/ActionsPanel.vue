@@ -28,8 +28,10 @@
 
     <!-- Actions List -->
     <div v-else class="flex-1 overflow-auto">
-      <div v-if="actions.length === 0" class="p-4 text-sm text-center text-neutral-400">
-        No actions found
+      <div v-if="actions.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <Play class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">No actions found</p>
+        <p class="text-xs text-neutral-500">Click + to create a new action</p>
       </div>
 
       <ContextMenuRoot v-for="action in actions" :key="action.id">

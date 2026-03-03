@@ -48,9 +48,10 @@
         <p class="text-sm text-red-400/90 text-center max-w-xs">{{ error }}</p>
       </div>
 
-      <div v-else-if="rootFiles.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
-        <FolderOpen :size="48" class="text-neutral-600 mb-3" />
-        <p class="text-neutral-400 text-center">This directory is empty</p>
+      <div v-else-if="rootFiles.length === 0" class="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <FolderOpen class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">Directory is empty</p>
+        <p class="text-xs text-neutral-500">This folder contains no files</p>
       </div>
 
       <div
@@ -72,11 +73,12 @@
     </template>
 
     <!-- Show empty state when no directory selected -->
-    <div v-else class="flex-1 flex flex-col items-center justify-start p-4">
-      <p class="text-neutral-400 text-center mb-4">No directory selected</p>
+    <div v-else class="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center">
+      <FolderOpen class="w-5 h-5 text-neutral-500" />
+      <p class="text-sm text-neutral-400">No directory selected</p>
       <button
         @click="handleDirectorySelect"
-        class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+        class="mt-1 px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
       >
         Select a Directory
       </button>

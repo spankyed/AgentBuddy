@@ -156,13 +156,17 @@
       </div>
 
       <!-- No Results -->
-      <div v-else-if="searchQuery && !isSearching" class="p-4 text-center">
-        <div class="text-sm text-neutral-400">No results found</div>
+      <div v-else-if="searchQuery && !isSearching" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <Search class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">No results found</p>
+        <p class="text-xs text-neutral-500">Try a different search term</p>
       </div>
 
       <!-- Initial State -->
-      <div v-else class="p-4 text-center">
-        <div class="text-sm text-neutral-400">Enter a search term to find in files</div>
+      <div v-else class="flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <Search class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">Search files</p>
+        <p class="text-xs text-neutral-500">Enter a search term to find in files</p>
       </div>
     </div>
 

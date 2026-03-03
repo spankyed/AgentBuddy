@@ -18,8 +18,10 @@
 
     <!-- Terminal List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="terminals.length === 0" class="p-4 text-center text-neutral-500">
-        No terminals open
+      <div v-if="terminals.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <Terminal class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">No terminals open</p>
+        <p class="text-xs text-neutral-500">Click + to create a new terminal</p>
       </div>
 
       <div v-else class="p-2">

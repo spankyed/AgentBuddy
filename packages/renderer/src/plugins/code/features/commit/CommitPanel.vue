@@ -35,10 +35,10 @@
     />
 
     <!-- Show friendly empty state if no git repository -->
-    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
-      <GitBranch :size="48" class="mb-4 text-neutral-600" />
-      <h3 class="mb-2 text-base font-medium text-neutral-300">No Git Repository</h3>
-      <p class="max-w-xs text-sm text-neutral-500">
+    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 gap-2 p-8 text-center">
+      <GitBranch class="w-5 h-5 text-neutral-500" />
+      <p class="text-sm text-neutral-400">No Git Repository</p>
+      <p class="max-w-xs text-xs text-neutral-500">
         Open a folder with a git repository to use source control features
       </p>
     </div>
@@ -176,8 +176,10 @@
 
     <!-- File Changes -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="gitStatus.length === 0" class="p-4 text-sm text-center text-neutral-500">
-        No changes to commit
+      <div v-if="gitStatus.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
+        <GitCommit class="w-5 h-5 text-neutral-500" />
+        <p class="text-sm text-neutral-400">No changes to commit</p>
+        <p class="text-xs text-neutral-500">Working tree is clean</p>
       </div>
 
       <div v-else class="divide-y divide-neutral-800">
