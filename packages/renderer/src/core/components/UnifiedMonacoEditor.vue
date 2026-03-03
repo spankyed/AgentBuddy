@@ -149,13 +149,18 @@ const switchToFile = (filePath: string, content: string) => {
   
   // Save current view state
   const currentModel = editorInstance.value.getModel()
-  if (currentModel && props.preserveViewState) {
+  if (currentModel && !currentModel.isDisposed() && props.preserveViewState) {
     const uri = currentModel.uri.toString()
     viewStates.set(uri, editorInstance.value.saveViewState())
   }
   
   // Get or create model for the file
   let model = models.get(filePath)
+  // Model may have been disposed by the library on component unmount
+  if (model && model.isDisposed()) {
+    models.delete(filePath)
+    model = undefined
+  }
   if (!model) {
     const uri = monaco.Uri.file(filePath)
     model = monaco.editor.createModel(content, resolvedLanguage.value, uri)
@@ -299,6 +304,17 @@ watch(
     }
   }
 )
+
+// Watch for mode changes to clean up stale references
+watch(() => props.mode, (newMode, oldMode) => {
+  if (oldMode === 'multi-file') {
+    // VueMonacoEditor is being destroyed — library disposes our models
+    models.clear()
+    viewStates.clear()
+  }
+  // Editor instance will be stale after mode switch
+  editorInstance.value = undefined
+})
 
 // Cleanup
 onBeforeUnmount(() => {
