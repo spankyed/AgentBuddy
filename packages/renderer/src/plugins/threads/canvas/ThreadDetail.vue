@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <NameSaveHeader
-      label="Topic"
+      label="Title"
       :isEditing="isViewMode"
       :isValid="isValid"
       @back="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CANCEL_CREATE' })"
