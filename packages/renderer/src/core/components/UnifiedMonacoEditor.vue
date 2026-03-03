@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, shallowRef, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, shallowRef, onBeforeUnmount, onUnmounted } from 'vue'
 import { VueMonacoEditor, VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import type { editor } from 'monaco-editor'
 import {
@@ -97,6 +97,7 @@ const emit = defineEmits<{
 
 // State
 const editorInstance = shallowRef<editor.IStandaloneCodeEditor>()
+const diffEditorInstance = shallowRef<editor.IStandaloneDiffEditor>()
 const currentValue = ref(props.modelValue)
 const models = new Map<string, editor.ITextModel>()
 const viewStates = new Map<string, editor.ICodeEditorViewState | null>()
@@ -271,16 +272,17 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   emit('mount', editor)
 }
 
-const handleDiffMount = (diffEditor: any) => {
+const handleDiffMount = (diffEditor: editor.IStandaloneDiffEditor) => {
+  diffEditorInstance.value = diffEditor
   const monaco = (window as any).monaco
   if (!monaco) return
-  
+
   // Initialize Monaco
   initializeMonaco({
     enableTypeChecking: false,
     enableSuggestions: false
   })
-  
+
   const modifiedEditor = diffEditor.getModifiedEditor()
   modifiedEditor.onDidChangeModelContent(() => {
     if (!props.readOnly) {
@@ -307,6 +309,12 @@ watch(
 
 // Watch for mode changes to clean up stale references
 watch(() => props.mode, (newMode, oldMode) => {
+  if (oldMode === 'diff') {
+    // Detach models before v-if unmounts the library component —
+    // prevents library's onUnmounted from disposing models before the editor
+    try { diffEditorInstance.value?.setModel(null) } catch {}
+    diffEditorInstance.value = undefined
+  }
   if (oldMode === 'multi-file') {
     // VueMonacoEditor is being destroyed — library disposes our models
     models.clear()
@@ -318,11 +326,22 @@ watch(() => props.mode, (newMode, oldMode) => {
 
 // Cleanup
 onBeforeUnmount(() => {
-  if (props.mode === 'multi-file') {
-    models.forEach(model => model.dispose())
-    models.clear()
-    viewStates.clear()
-  }
+  // Detach models from editors so library cleanup doesn't clash with our disposal
+  try { editorInstance.value?.setModel(null) } catch {}
+  try { diffEditorInstance.value?.setModel(null) } catch {}
+})
+
+onUnmounted(() => {
+  // Library child components have already cleaned up by now
+  models.forEach(model => {
+    if (!model.isDisposed()) {
+      try { model.dispose() } catch {}
+    }
+  })
+  models.clear()
+  viewStates.clear()
+  editorInstance.value = undefined
+  diffEditorInstance.value = undefined
 })
 
 // Expose methods for external use
