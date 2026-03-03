@@ -428,7 +428,6 @@ const brainState = setup({
           { label: 'Event Trace', icon: Layers, event: { type: 'TOGGLE_LEFT_PANEL' }, isActive: ctx.showLeftPanel, iconColor: 'text-primary-400' },
           { label: 'Watched Events', icon: Activity, event: { type: 'TOGGLE_RIGHT_PANEL' }, isActive: ctx.showRightPanel, iconColor: 'text-primary-400' },
           { label: 'Auto-focus Animations', icon: Play, event: { type: 'TOGGLE_ANIMATIONS' }, isActive: ctx.animationsEnabled, iconColor: 'text-blue-400' },
-          { separator: true, label: 'Brain Debug Logs', icon: Terminal, event: { type: 'TOGGLE_DEBUG' }, isActive: ctx.debugEnabled, iconColor: 'text-yellow-400' },
           ...(ctx.brainIsDead
             ? [{ separator: true, label: 'Start Brain', icon: PlayCircle, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-green-400' }]
             : [

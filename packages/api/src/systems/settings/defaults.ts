@@ -146,7 +146,8 @@ export const defaultSettings: SettingsData = {
       enableFlowPreview: true // Enable flow preview on single click
     },
     brain: {
-      runningRootFlowId: undefined // No flow running initially
+      runningRootFlowId: undefined, // No flow running initially
+      debugEnabled: false, // Debug/inspection panel disabled by default
     },
     logs: {
       maxLogs: 1000, // Default to 1000 logs
@@ -157,7 +158,7 @@ export const defaultSettings: SettingsData = {
     hasOnboarded: false,
     tourStarted: false,
     lastInteractionTimestamp: null,
-    version: '0.1.0'
+    version: '0.1.0',
   },
   assistant: {
     name: '',

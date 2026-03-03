@@ -10,7 +10,7 @@
     
     <!-- Main Area -->
     <div class="flex flex-grow overflow-hidden">
-        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
+        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
             <!-- Canvas Area -->
             <CanvasArea
             data-onboarding-id="canvas-area"
@@ -41,14 +41,15 @@
         
         <!-- Horizontal Resizer -->
         <PanelResizer
+            v-if="canShowPanel"
             orientation="horizontal"
             @resize="handleInspectionResize"
             @double-click="handleInspectionDoubleClick"
         />
         
         <!-- Context Panel -->
-        <InspectionPanel 
-            v-if="panelSizes.inspectionWidth > 0"
+        <InspectionPanel
+            v-if="canShowPanel && panelSizes.inspectionWidth > 0"
             data-onboarding-id="inspection-panel"
             @panel-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'panel' })"
             :style="{ width: `${panelSizes.inspectionWidth}px` }"
@@ -65,7 +66,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { Settings as SettingsIcon, PanelRight } from 'lucide-vue-next'
+import { Settings as SettingsIcon, PanelRight, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
 import CanvasArea from '@/core/components/layout/canvas-area.vue'
 import ChatArea from '@/core/components/layout/chat-area.vue'
@@ -86,10 +87,16 @@ const contextMenuItems = useSelector(applicationState, (state) => state.context.
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
 
+const brainActor = applicationState.system.get('brain')
+const debugMode = useSelector(brainActor, (state: any) =>
+  state.context.debugEnabled ?? false
+)
+
 const currentPluginId = computed(() =>
   toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
 )
 
+const canShowPanel = computed(() => debugMode.value || !!activePlugin.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
 
 const allMenuItems = computed<ContextMenuItem[]>(() => {
@@ -102,11 +109,17 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
       event: { type: 'APP_OPEN_PLUGIN_SETTINGS', pluginId: currentPluginId.value },
       separator: pluginItems.length > 0,
     },
-    {
+    ...(canShowPanel.value ? [{
       label: 'Context Panel',
       icon: PanelRight,
       event: { type: 'APP_TOGGLE_INSPECTION_PANEL' },
       isActive: isPanelOpen.value,
+    }] : []),
+    {
+      label: 'Debug Mode',
+      icon: Terminal,
+      event: { type: 'APP_TOGGLE_DEBUG' },
+      isActive: debugMode.value,
     },
   ]
 
@@ -116,6 +129,11 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
 const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   if (event.type === 'APP_TOGGLE_INSPECTION_PANEL') {
     send({ type: 'TOGGLE_INSPECTION_PANEL' })
+    return
+  }
+
+  if (event.type === 'APP_TOGGLE_DEBUG') {
+    brainActor.send({ type: 'TOGGLE_DEBUG' })
     return
   }
 

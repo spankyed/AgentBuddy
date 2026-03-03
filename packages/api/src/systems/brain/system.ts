@@ -297,6 +297,12 @@ export const brainSystem = setup({
           type: 'BRAIN_KILLED'
         }));
       }
+
+      // Restore debug state from persisted settings
+      const brainSettings = repository.settingsQueries.getPluginSettings('brain');
+      const debugEnabled = brainSettings?.debugEnabled ?? false;
+      setBrainDebugEnabled(debugEnabled);
+      system.get(bus).send(emit(brain, { type: 'DEBUG_TOGGLED', enabled: debugEnabled }));
     },
     openTNode: ({ system, event, context }) => {
       const ev = typeOf('OPEN_TNODE', event);
@@ -349,7 +355,10 @@ export const brainSystem = setup({
       const currentState = isBrainDebugEnabled();
       const newState = !currentState;
       setBrainDebugEnabled(newState);
-      
+
+      // Persist to settings DB
+      repository.settingsCommands.updateSettings('plugin', 'brain', ['debugEnabled'], newState);
+
       // Send confirmation back to frontend
       system.get(bus).send(emit(brain, {
         type: 'DEBUG_TOGGLED',

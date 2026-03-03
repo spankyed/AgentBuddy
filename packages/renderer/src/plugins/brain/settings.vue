@@ -116,7 +116,7 @@
     <!-- Debug Mode Section -->
     <CollapsibleSection label="Debug Mode" :default-open="false" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
-        Enable debug mode to see detailed brain execution information
+        Enable debug mode to see detailed brain execution information in the inspection panel
       </p>
       
       <div class="flex items-center gap-3">
