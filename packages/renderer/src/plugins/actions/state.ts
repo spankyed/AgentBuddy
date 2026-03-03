@@ -26,8 +26,6 @@ export interface ActionsContext {
   selectedActionId?: EARS.EntityId;
   actions: ActionEntity[];
   selectedAction?: ActionEntity;
-  page: number;
-  totalPages: number;
   totalCount: number;
   categories: Category[]; // Categories from settings
   selectedCategories: string[]; // Filter state
@@ -73,7 +71,6 @@ type UIEvent =
   | { type: 'ACTION.UPDATE_INPUT'; actionId: string; input: Record<string, any> }
   | { type: 'ACTION.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, any> }
   | { type: 'ACTION.UPDATE_LABEL'; actionId: string; label: string }
-  | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
   | { type: 'FORM.UPDATE_PARAMETERS'; input: Record<string, ActionParameter> }
@@ -107,8 +104,6 @@ const actionsState = setup({
       const ev = typeOf('ACTIONS_LISTED', event);
       return {
         actions: ev.data.actions,
-        page: ev.data.page,
-        totalPages: ev.data.totalPages,
         totalCount: ev.data.totalCount,
         categories: ev.data.categories || [],
       }
@@ -458,8 +453,6 @@ const actionsState = setup({
     selectedActionId: undefined,
     actions: [],
     selectedAction: undefined,
-    page: 1,
-    totalPages: 1,
     totalCount: 0,
     categories: [], // Will be populated from settings
     selectedCategories: [], // Filter state

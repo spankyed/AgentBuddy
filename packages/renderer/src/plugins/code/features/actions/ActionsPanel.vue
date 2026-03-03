@@ -180,30 +180,6 @@
       </ContextMenuRoot>
     </div>
 
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex items-center justify-center gap-2 p-3 border-t border-neutral-800">
-      <button
-        @click="goToPage(page - 1)"
-        :disabled="page === 1 || isLoading"
-        class="px-2 py-1 text-xs transition-colors rounded"
-        :class="page === 1 || isLoading ? 'text-neutral-600 cursor-not-allowed' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'"
-      >
-        Previous
-      </button>
-
-      <span class="text-xs text-neutral-400">
-        Page {{ page }} of {{ totalPages }}
-      </span>
-
-      <button
-        @click="goToPage(page + 1)"
-        :disabled="page === totalPages || isLoading"
-        class="px-2 py-1 text-xs transition-colors rounded"
-        :class="page === totalPages || isLoading ? 'text-neutral-600 cursor-not-allowed' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'"
-      >
-        Next
-      </button>
-    </div>
   </div>
 </template>
 
@@ -232,9 +208,6 @@ const actionsPluginActor = applicationState.system.get(actionsPluginId)!
 
 // State selectors - read from main actions plugin (single source of truth)
 const actions = useSelector(actionsPluginActor, (state: any) => state.context.actions)
-const page = useSelector(actionsPluginActor, (state: any) => state.context.page)
-const totalPages = useSelector(actionsPluginActor, (state: any) => state.context.totalPages)
-// const totalCount = useSelector(actionsPluginActor, (state: any) => state.context.totalCount)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -399,12 +372,6 @@ const createActionInline = () => {
 
 const refreshActions = () => {
   // Actions are already loaded by main actions plugin on connection
-}
-
-const goToPage = (newPage: number) => {
-  if (newPage >= 1 && newPage <= totalPages.value) {
-    actionsPluginActor.send({ type: 'PAGE.CHANGE', page: newPage })
-  }
 }
 
 // No need to load on mount - main actions plugin loads on connection

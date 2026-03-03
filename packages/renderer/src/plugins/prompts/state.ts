@@ -26,8 +26,6 @@ export interface PromptsContext {
   selectedPromptId?: EARS.EntityId;
   prompts: PromptEntity[];
   selectedPrompt?: PromptEntity;
-  page: number;
-  totalPages: number;
   totalCount: number;
   categories: Category[]; // Categories from settings
   selectedCategories: string[]; // Filter state
@@ -74,7 +72,6 @@ type UIEvent =
   | { type: 'PROMPT.CREATE_INLINE'; label: string; templateFn: string; inputs: Record<string, any> }
   | { type: 'PROMPT.UPDATE_LABEL'; promptId: string; label: string }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
-  | { type: 'PAGE.CHANGE'; page: number }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
   | { type: 'FORM.UPDATE_INPUTS'; inputs: Record<string, TemplateInput> }
@@ -107,8 +104,6 @@ const promptsState = setup({
       const ev = typeOf('PROMPTS_CONNECTED', event);
       return {
         prompts: ev.data.prompts,
-        page: ev.data.page,
-        totalPages: ev.data.totalPages,
         totalCount: ev.data.totalCount,
         categories: ev.data.categories || [],
       }
@@ -458,8 +453,6 @@ const promptsState = setup({
     selectedPromptId: undefined,
     prompts: [],
     selectedPrompt: undefined,
-    page: 1,
-    totalPages: 1,
     totalCount: 0,
     categories: [], // Will be populated from settings
     selectedCategories: [], // Filter state
