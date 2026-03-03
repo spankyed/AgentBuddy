@@ -40,7 +40,7 @@ const {
       Add to Project
     </component>
     <component :is="PortalComponent">
-      <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS">
+      <component :is="SubContentComponent" :class="MENU_SUB_CONTENT_CLASS" side="right" :avoid-collisions="false">
         <component
           :is="CheckboxItemComponent"
           v-for="({ project, pIndex }) in allProjects"

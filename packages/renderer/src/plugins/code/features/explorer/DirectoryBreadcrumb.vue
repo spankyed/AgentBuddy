@@ -46,49 +46,65 @@
           </DropdownMenuPortal>
         </DropdownMenuRoot>
 
-        <!-- Regular segment with context menu -->
-        <ContextMenuRoot v-else>
-          <ContextMenuTrigger as-child>
+        <!-- Regular segment with dropdown menu (right-click only) -->
+        <DropdownMenuRoot v-else
+          :open="segmentMenuOpen[index] ?? false"
+          @update:open="(val: boolean) => segmentMenuOpen[index] = val"
+        >
+          <DropdownMenuTrigger as-child>
             <button
-              @click="$emit('navigate', segment.path)"
+              @click.capture="(e: MouseEvent) => { e.stopImmediatePropagation(); $emit('navigate', segment.path) }"
+              @contextmenu.prevent="segmentMenuOpen[index] = true"
               class="mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-              :class="{
-                'font-medium text-neutral-200': segment.path === activeDirectory
-              }"
+              :class="{ 'font-medium text-neutral-200': segment.path === activeDirectory }"
               :title="segment.path"
             >
               {{ segment.name }}
             </button>
-          </ContextMenuTrigger>
-          <ContextMenuPortal>
-            <ContextMenuContent
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
               class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+              :side-offset="5"
+              align="start"
             >
-              <!-- Set as Base Directory - only show if not already base -->
-              <ContextMenuItem
+              <DropdownMenuItem
                 v-if="segment.path !== baseDirectory"
                 @select="() => $emit('set-base', segment.path)"
                 class="px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               >
                 Set as Base Directory
-              </ContextMenuItem>
-
-              <!-- Project menu items -->
+              </DropdownMenuItem>
               <ProjectMenuItems
                 :directory-path="segment.path"
                 :show-separator="segment.path !== baseDirectory"
-                :ItemComponent="ContextMenuItem"
-                :SeparatorComponent="ContextMenuSeparator"
-                :SubComponent="ContextMenuSub"
-                :SubTriggerComponent="ContextMenuSubTrigger"
-                :SubContentComponent="ContextMenuSubContent"
-                :PortalComponent="ContextMenuPortal"
-                :CheckboxItemComponent="ContextMenuCheckboxItem"
-                :ItemIndicatorComponent="ContextMenuItemIndicator"
+                :ItemComponent="DropdownMenuItem"
+                :SeparatorComponent="DropdownMenuSeparator"
+                :SubComponent="DropdownMenuSub"
+                :SubTriggerComponent="DropdownMenuSubTrigger"
+                :SubContentComponent="DropdownMenuSubContent"
+                :PortalComponent="DropdownMenuPortal"
+                :CheckboxItemComponent="DropdownMenuCheckboxItem"
+                :ItemIndicatorComponent="DropdownMenuItemIndicator"
               />
-            </ContextMenuContent>
-          </ContextMenuPortal>
-        </ContextMenuRoot>
+              <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
+              <DropdownMenuItem
+                @select="$emit('view-projects')"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <Layers class="w-4 h-4" />
+                View Projects
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                @select="$emit('open-directory')"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <FolderOpen class="w-4 h-4" />
+                Open Directory
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
 
         <span v-if="index < segments.length - 1" class="text-neutral-600 mx-0.5">/</span>
       </span>
@@ -97,26 +113,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
-  ContextMenuRoot,
-  ContextMenuTrigger,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuPortal,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
-  ContextMenuCheckboxItem,
-  ContextMenuItemIndicator,
-  ContextMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuItemIndicator,
+  DropdownMenuSeparator,
 } from 'reka-ui'
-import { ChevronUp } from 'lucide-vue-next'
+import { ChevronUp, Layers, FolderOpen } from 'lucide-vue-next'
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 
 interface BreadcrumbSegment {
@@ -134,7 +145,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   'navigate': [path: string]
   'set-base': [path: string]
+  'view-projects': []
+  'open-directory': []
 }>()
+
+const segmentMenuOpen = reactive<Record<number, boolean>>({})
 
 // Navigate up logic
 const canNavigateUp = computed(() => {

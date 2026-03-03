@@ -1,29 +1,20 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 prompts-header">
-      <div class="flex items-center gap-2">
-        <Sparkle :size="16" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200">Prompts</h3>
-      </div>
-      <div class="flex items-center gap-1">
+    <CodePanelHeader
+      :icon="Sparkle"
+      title="Prompts"
+    >
+      <template #actions>
         <button
-          @click="createPromptInline"
+          @click="createPromptInline()"
           class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Create new prompt"
         >
           <Plus :size="16" />
         </button>
-        <!-- <button
-          @click="refreshPrompts"
-          :disabled="isLoading"
-          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-          title="Refresh prompts"
-        >
-          <RefreshCw :size="16" :class="{ 'animate-spin': isLoading }" />
-        </button> -->
-      </div>
-    </div>
+      </template>
+    </CodePanelHeader>
 
     <!-- Loading State -->
     <div v-if="isLoading && prompts.length === 0" class="flex items-center justify-center flex-1">
@@ -220,7 +211,8 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
-import { Sparkle, ExternalLink, Plus, X, Pencil, Trash2 } from 'lucide-vue-next'
+import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle } from 'lucide-vue-next'
+import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import type { PromptEntity } from '@app/api'
 import {
   ContextMenuRoot,
@@ -409,6 +401,7 @@ const createPromptInline = () => {
   })
 }
 
+
 const refreshPrompts = () => {
   // Prompts are already loaded by main prompts plugin on connection
 }
@@ -433,8 +426,4 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
-.prompts-header > * {
-  -webkit-app-region: no-drag;
-}
 </style>

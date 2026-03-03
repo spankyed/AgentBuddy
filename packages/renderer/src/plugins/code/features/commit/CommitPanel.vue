@@ -1,5 +1,22 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden min-w-0">
+    <!-- Header -->
+    <CodePanelHeader
+      :icon="GitCommit"
+      title="Source Control"
+    >
+      <template #actions>
+        <button
+          @click="refreshStatus()"
+          :disabled="isGitLoading"
+          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="Refresh"
+        >
+          <RefreshCw :size="16" :class="{ 'animate-spin': isGitLoading }" />
+        </button>
+      </template>
+    </CodePanelHeader>
+
     <!-- Revert Dialog -->
     <RevertDialog
       :show="!!revertDialogFile"
@@ -7,22 +24,6 @@
       @confirm="confirmRevert"
       @cancel="cancelRevert"
     />
-
-    <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 commit-header">
-      <div class="flex items-center gap-2">
-        <GitCommit :size="16" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200">Source Control</h3>
-      </div>
-      <button
-        @click="refreshStatus"
-        :disabled="isGitLoading"
-        class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-        title="Refresh"
-      >
-        <RefreshCw :size="16" :class="{ 'animate-spin': isGitLoading }" />
-      </button>
-    </div>
 
     <!-- Show friendly empty state if no git repository -->
     <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
@@ -256,6 +257,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import { GitBranch, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle } from 'lucide-vue-next'
+import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
 // Get actors
@@ -458,6 +460,7 @@ const getStatusColor = (status: GitStatusFile['status']) => {
   }
 }
 
+
 // Trigger initial load when panel is mounted
 // Git watcher will handle subsequent updates
 refreshStatus()
@@ -465,9 +468,3 @@ refreshStatus()
 commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 </script>
 
-<style scoped>
-/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
-.commit-header > * {
-  -webkit-app-region: no-drag;
-}
-</style>

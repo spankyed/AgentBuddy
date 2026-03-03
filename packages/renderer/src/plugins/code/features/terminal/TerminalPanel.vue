@@ -1,19 +1,20 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 terminal-header">
-      <div class="flex items-center gap-2">
-        <Terminal :size="16" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200">Terminals</h3>
-      </div>
-      <button
-        @click="createNewTerminal"
-        class="pr-2 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-        title="New Terminal"
-      >
-        <Plus :size="16" />
-      </button>
-    </div>
+    <CodePanelHeader
+      :icon="Terminal"
+      title="Terminals"
+    >
+      <template #actions>
+        <button
+          @click="createNewTerminal()"
+          class="pr-2 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          title="New Terminal"
+        >
+          <Plus :size="16" />
+        </button>
+      </template>
+    </CodePanelHeader>
 
     <!-- Terminal List -->
     <div class="flex-1 overflow-y-auto">
@@ -98,7 +99,8 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { TerminalInfo } from './state'
-import { Terminal, Plus, X, Edit } from 'lucide-vue-next'
+import { Terminal, X, Edit, Plus } from 'lucide-vue-next'
+import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -178,11 +180,6 @@ const cancelRename = () => {
   renamingTerminalId.value = null
   renameValue.value = ''
 }
+
 </script>
 
-<style scoped>
-/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
-.terminal-header > * {
-  -webkit-app-region: no-drag;
-}
-</style>

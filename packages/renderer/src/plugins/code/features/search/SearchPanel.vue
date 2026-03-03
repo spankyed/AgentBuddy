@@ -1,12 +1,10 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 search-header">
-      <div class="flex items-center gap-2">
-        <Search :size="16" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200">Search</h3>
-      </div>
-    </div>
+    <CodePanelHeader
+      :icon="Search"
+      title="Search"
+    />
 
     <!-- Show only error if no directory selected -->
     <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
@@ -189,6 +187,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { ChevronRight, FolderOpen, Search } from 'lucide-vue-next'
+import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -378,9 +377,3 @@ watch(searchResults, (results) => {
 })
 </script>
 
-<style scoped>
-/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
-.search-header > * {
-  -webkit-app-region: no-drag;
-}
-</style>

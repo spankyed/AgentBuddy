@@ -1,0 +1,138 @@
+<template>
+  <div>
+    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 panel-header">
+      <div class="flex items-center gap-2">
+        <component :is="icon" :size="16" class="text-neutral-400" />
+        <div class="flex items-center gap-1.5 text-sm">
+          <span
+            class="font-medium transition-colors"
+            :class="clickable ? 'text-neutral-400 hover:text-neutral-200 cursor-pointer' : 'text-neutral-200'"
+            @click="clickable ? $emit('title-click') : null"
+          >
+            {{ title }}
+          </span>
+          <slot name="title-extra" />
+        </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <slot name="actions" />
+      </div>
+    </div>
+
+    <!-- Toolbar row: optional left content + toggle buttons -->
+    <div class="flex items-center border-b border-neutral-800">
+      <div class="flex-1 min-w-0">
+        <slot name="toolbar" />
+      </div>
+      <div class="flex items-center gap-1 p-2 flex-shrink-0">
+        <button
+          v-for="panel in codePanels"
+          :key="panel.id"
+          @click="selectPanel(panel.id)"
+          :class="[
+            'p-1.5 rounded transition-colors',
+            selectedPanel === panel.id
+              ? 'bg-primary-700 text-neutral-100'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+          ]"
+          :title="panel.label"
+        >
+          <component :is="panel.icon" class="w-4 h-4" />
+        </button>
+
+        <div class="h-5 w-px bg-neutral-700 mx-1"></div>
+
+        <button
+          v-for="panel in terminal"
+          :key="panel.id"
+          @click="selectPanel(panel.id)"
+          :class="[
+            'p-1.5 rounded transition-colors',
+            selectedPanel === panel.id
+              ? 'bg-primary-700 text-neutral-100'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+          ]"
+          :title="panel.label"
+        >
+          <component :is="panel.icon" class="w-4 h-4" />
+        </button>
+
+        <div class="h-5 w-px bg-neutral-700 mx-1"></div>
+
+        <button
+          v-for="panel in actionPanels"
+          :key="panel.id"
+          @click="selectPanel(panel.id)"
+          :class="[
+            'p-1.5 rounded transition-colors',
+            selectedPanel === panel.id
+              ? 'bg-primary-700 text-neutral-100'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+          ]"
+          :title="panel.label"
+        >
+          <component :is="panel.icon" class="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { Component } from 'vue'
+import { applicationState } from '@/main'
+import { useSelector } from '@xstate/vue'
+import { id, type CodeState } from '@/plugins/code/state'
+import {
+  FolderOpen,
+  Search,
+  GitCommit,
+  GitPullRequest,
+  Terminal,
+  Play,
+  Sparkle,
+} from 'lucide-vue-next'
+
+defineProps<{
+  icon: Component
+  title: string
+  clickable?: boolean
+}>()
+
+defineEmits<{
+  'title-click': []
+}>()
+
+const actor: CodeState = applicationState.system.get(id)
+
+const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
+
+const codePanels = [
+  { id: 'explorer', label: 'Explorer', icon: FolderOpen },
+  { id: 'search', label: 'Search', icon: Search },
+  { id: 'commit', label: 'Commit Changes', icon: GitCommit },
+  { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
+] as const
+
+const terminal = [
+  { id: 'terminal', label: 'Terminal', icon: Terminal },
+] as const
+
+const actionPanels = [
+  { id: 'actions', label: 'Actions', icon: Play },
+  { id: 'prompts', label: 'Prompts', icon: Sparkle }
+] as const
+
+const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts') => {
+  actor.send({
+    type: 'SELECT_PANEL',
+    panel
+  })
+}
+</script>
+
+<style scoped>
+.panel-header > * {
+  -webkit-app-region: no-drag;
+}
+</style>

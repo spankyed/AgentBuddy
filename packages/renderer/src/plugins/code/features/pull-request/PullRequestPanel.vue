@@ -1,22 +1,21 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 pr-header">
-      <div class="flex items-center gap-2">
-        <GitPullRequest :size="16" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200">Pull Request</h3>
-      </div>
-      <div class="flex items-center gap-1">
+    <CodePanelHeader
+      :icon="GitPullRequest"
+      title="Pull Request"
+    >
+      <template #actions>
         <template v-if="prFiles.length > 0">
           <button
-            @click="expandAll"
+            @click="expandAll()"
             class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
             title="Expand all folders"
           >
             <UnfoldVertical :size="16" />
           </button>
           <button
-            @click="collapseAll"
+            @click="collapseAll()"
             class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
             title="Collapse all folders"
           >
@@ -24,15 +23,15 @@
           </button>
         </template>
         <button
-          @click="refreshStatus"
+          @click="refreshStatus()"
           :disabled="isPrLoading"
           class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Refresh PR changes"
         >
           <RefreshCw :size="16" :class="{ 'animate-spin': isPrLoading }" />
         </button>
-      </div>
-    </div>
+      </template>
+    </CodePanelHeader>
 
     <!-- Show friendly empty state if no git repository -->
     <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 p-8 text-center">
@@ -102,7 +101,8 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { RefreshCw, AlertCircle, Loader2, GitBranch, GitPullRequest, FoldVertical, UnfoldVertical } from 'lucide-vue-next'
+import { AlertCircle, Loader2, GitBranch, GitPullRequest, RefreshCw, UnfoldVertical, FoldVertical } from 'lucide-vue-next'
+import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
@@ -161,6 +161,7 @@ interface TreeNode {
   fileCount?: number
 }
 
+
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
 
@@ -207,8 +208,4 @@ const handleFileSelect = (file: TreeNode) => {
   border-bottom: 1px solid #27272a;
 }
 
-/* Override window drag region to make header elements clickable - only on interactive elements, not whitespace */
-.pr-header > * {
-  -webkit-app-region: no-drag;
-}
 </style>
