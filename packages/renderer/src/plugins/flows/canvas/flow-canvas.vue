@@ -39,8 +39,6 @@
       @drop="handleDrop"
       @go-back="handleGoBack"
       @action-layout="handleLayout"
-      @action-edit-label="openEditDialog"
-      @request-delete-flow="() => currentFlow && openDeleteDialog(currentFlow)"
       @overlay-click="handleOverlayClick"
       @nodes-initialized="handleNodesInitialized"
       @node-drag-stop="handleNodeDragStop"
@@ -153,6 +151,23 @@ const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
 const selectedHandle = useSelector(actor, (s) => s.context.selectedHandle)
+
+// Context-menu dialog bridge flags
+const showEditLabelDialog = useSelector(actor, (s) => s.context.showEditLabelDialog)
+const showDeleteFlowDialog = useSelector(actor, (s) => s.context.showDeleteFlowDialog)
+
+watch(showEditLabelDialog, (show) => {
+  if (show) {
+    openEditDialog()
+    actor.send({ type: 'FLOW.DIALOG_CLOSED' })
+  }
+})
+watch(showDeleteFlowDialog, (show) => {
+  if (show) {
+    if (currentFlow.value) openDeleteDialog(currentFlow.value)
+    actor.send({ type: 'FLOW.DIALOG_CLOSED' })
+  }
+})
 
 // Multi-select state (local only, separate from XState selectedFlowId)
 const multiSelectedFlowIds = ref<Set<string>>(new Set())

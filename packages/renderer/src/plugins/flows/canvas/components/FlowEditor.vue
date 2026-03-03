@@ -73,16 +73,8 @@
         </button>
       </div>
 
-      <!-- Menu and Auto Layout buttons (bottom left) -->
-      <div class="absolute z-10 bottom-4 left-4 flex gap-2">
-        <!-- Menu -->
-        <FlowActionsMenu
-          :selected-flow-id="selectedFlowId"
-          @edit-label="$emit('action-edit-label')"
-          @request-delete="$emit('request-delete-flow')"
-        />
-
-        <!-- Auto Layout Button -->
+      <!-- Auto Layout button (bottom left) -->
+      <div class="absolute z-10 bottom-4 left-4">
         <button
           class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
           title="Auto layout"
@@ -130,7 +122,6 @@ import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
 import type { LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
-import FlowActionsMenu from './FlowActionsMenu.vue'
 
 interface Props {
   nodes: VueFlowNode[]
@@ -168,8 +159,6 @@ const emit = defineEmits<{
   'drop': [event: DragEvent]
   'go-back': []
   'action-layout': [direction?: LayoutDirection]
-  'action-edit-label': []
-  'request-delete-flow': []
   'overlay-click': []
   'nodes-initialized': []
   'node-drag-stop': [event: NodeMouseEvent]

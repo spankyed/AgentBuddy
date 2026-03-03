@@ -1,5 +1,7 @@
 import { assign, log, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
+import { contextMenuFn } from '@/core/context-menu'
+import { Edit, Trash2 } from 'lucide-vue-next'
 import { safeEvents } from '@/core/types/safe-events'
 import {
   targetIs,
@@ -56,6 +58,9 @@ export interface FlowsContext {
   tempIdMap: Record<string, string>; // tempId -> permanentId
   // Settings
   settings?: any; // FlowsSettings
+  // Dialog bridge flags (set by context menu, consumed by watchers in flow-canvas.vue)
+  showEditLabelDialog?: boolean;
+  showDeleteFlowDialog?: boolean;
   // DSL Import state
   dslImport: {
     status: 'idle' | 'importing' | 'success' | 'error';
@@ -113,6 +118,10 @@ type UIEvent =
   // DSL Export events
   | { type: 'DSL.EXPORT'; directory: string }
   | { type: 'DSL.RESET_EXPORT_STATUS' }
+  // Context menu dialog bridge events
+  | { type: 'FLOW.REQUEST_EDIT_LABEL' }
+  | { type: 'FLOW.REQUEST_DELETE' }
+  | { type: 'FLOW.DIALOG_CLOSED' }
   // Layout events
   | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
 
@@ -941,6 +950,11 @@ const flowsState = setup({
     resetExportStatus: assign({
       dslExport: { status: 'idle' as const, errors: [], filePath: '', flowCount: 0 },
     }),
+
+    /* ── Context menu dialog bridge actions ───────────────── */
+    requestEditLabel: assign({ showEditLabelDialog: true }),
+    requestDeleteFlow: assign({ showDeleteFlowDialog: true }),
+    closeDialogs: assign({ showEditLabelDialog: false, showDeleteFlowDialog: false }),
   },
   guards: {
     targetIs,
@@ -1104,18 +1118,28 @@ const flowsState = setup({
           target: 'view',
           getLabel: (ctx) => {
             if (!ctx.selectedFlowId) return '';
-            
+
             // Find in flows array
             const flow = ctx.flows.find(f => f.id === ctx.selectedFlowId);
-            
+
             // Check if it's the root flow (based on settings)
             if (flow && ctx.settings?.rootFlowId === flow.id) {
               return `${flow.label || 'Flow'} (Root)`;
             }
-            
+
             return flow?.label || ctx.selectedFlowId;
           }
-        })
+        }),
+        ...contextMenuFn<FlowsContext>((ctx) => {
+          const isRoot = ctx.selectedFlowId === ctx.settings?.rootFlowId;
+          return [
+            { label: 'Edit Label', icon: Edit, event: { type: 'FLOW.REQUEST_EDIT_LABEL' }, iconColor: 'text-primary-400' },
+            ...(!isRoot ? [{
+              separator: true as const, label: 'Delete Flow', icon: Trash2,
+              event: { type: 'FLOW.REQUEST_DELETE' as const }, iconColor: 'text-red-400'
+            }] : []),
+          ];
+        }),
       },
       on: {
         'FLOW.SELECT': { actions: 'selectFlow'},
@@ -1159,6 +1183,9 @@ const flowsState = setup({
         'FLOW.UPDATE_LABEL': {
           actions: ['updateFlowLabel', 'sendUpdateLabel'],
         },
+        'FLOW.REQUEST_EDIT_LABEL': { actions: 'requestEditLabel' },
+        'FLOW.REQUEST_DELETE': { actions: 'requestDeleteFlow' },
+        'FLOW.DIALOG_CLOSED': { actions: 'closeDialogs' },
         'GO.BACK': {
           target: 'list',
         },
