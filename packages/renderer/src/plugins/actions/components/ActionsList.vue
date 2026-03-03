@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <div class="flex items-center gap-2">
         <Play class="w-4 h-4 text-neutral-500" />
-        <p class="text-sm text-neutral-400">Manage your action functions</p>
+        <p class="text-sm text-neutral-400">Manage action templates</p>
       </div>
       <Button @click="$emit('create')" variant="primary" data-onboarding-id="actions-create-button">
         <span>New Action</span>
