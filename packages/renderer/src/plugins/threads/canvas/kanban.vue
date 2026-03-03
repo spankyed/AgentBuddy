@@ -4,6 +4,7 @@ import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState, type ThreadListItem } from '@/plugins/threads/state'
+import ThreadsHeader from './components/ThreadsHeader.vue'
 // import type { ThreadsSettings } from '@app/api'
 
 const actor: ThreadsState = applicationState.system.get(id)
@@ -167,7 +168,9 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
 </script>
 
 <template>
-  <main class="h-full flex flex-col p-6 bg-transparent">
+  <div class="flex flex-col h-full bg-neutral-900">
+    <ThreadsHeader />
+    <main class="flex-1 flex flex-col p-6 bg-transparent overflow-hidden">
     <div v-if="lists.length === 0" class="flex items-center justify-center h-full">
       <p class="text-neutral-500">No status columns configured. Please configure thread statuses in settings.</p>
     </div>
@@ -229,6 +232,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
       </section>
     </div>
   </main>
+  </div>
 </template>
 
 <style scoped>
