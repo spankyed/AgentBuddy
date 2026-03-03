@@ -7,7 +7,6 @@
         <p class="text-sm text-neutral-400">Manage your prompt templates</p>
       </div>
       <Button @click="$emit('create')" variant="primary" data-onboarding-id="prompts-create-button">
-        <Plus class="w-4 h-4" />
         <span>New Prompt</span>
       </Button>
     </div>
@@ -120,7 +119,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Plus, Trash2, Sparkle } from 'lucide-vue-next';
+import { Trash2, Sparkle } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
 import CategoryFilter from '@/core/components/design/CategoryFilter.vue';
 import type { PromptEntity, EARS, Category } from '@app/api';

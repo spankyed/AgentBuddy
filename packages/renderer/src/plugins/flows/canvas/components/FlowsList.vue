@@ -51,11 +51,10 @@
           <Search class="w-4 h-4" />
         </Button>
         <Button 
-          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center"
+          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center justify-center"
           data-onboarding-id="flow-create-button"
           @click="$emit('create-flow')"
         >
-          <Plus class="w-4 h-4" />
           <span>New Flow</span>
         </Button>
 
@@ -87,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
-import { Workflow, Search, Plus, X } from 'lucide-vue-next'
+import { Workflow, Search, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@app/api'
 import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'

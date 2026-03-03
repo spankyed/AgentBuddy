@@ -7,7 +7,6 @@
         <p class="text-sm text-neutral-400">Manage your action functions</p>
       </div>
       <Button @click="$emit('create')" variant="primary" data-onboarding-id="actions-create-button">
-        <Plus class="w-4 h-4" />
         <span>New Action</span>
       </Button>
     </div>
@@ -113,7 +112,7 @@
 
 <script setup lang="ts">
 import type { ActionEntity, EARS, Category } from '@app/api'
-import { Plus, Play, Trash2 } from 'lucide-vue-next'
+import { Play, Trash2 } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import CategoryFilter from '@/core/components/design/CategoryFilter.vue'
 

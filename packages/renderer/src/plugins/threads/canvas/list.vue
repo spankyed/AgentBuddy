@@ -71,7 +71,6 @@
           variant="primary"
           data-onboarding-id="thread-create-button"
         >
-          <Plus class="w-4 h-4" />
           <span>New Thread</span>
         </Button>
       </div>
@@ -139,7 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Search, Plus, Filter, MessageCircleMore, LayoutList, LayoutGrid, History } from 'lucide-vue-next'
+import { Search, Filter, MessageCircleMore, LayoutList, LayoutGrid, History } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
