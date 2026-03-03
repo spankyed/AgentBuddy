@@ -45,12 +45,38 @@
       <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
       <div class="flex items-center gap-2">
         <GitBranch :size="14" class="text-neutral-400" />
-        <span class="text-xs text-neutral-300">{{ gitBranch || 'unknown' }}</span>
+        <span class="text-xs text-neutral-300">Branch</span>
       </div>
 
-      <!-- Branch Checkout -->
-      <div class="relative mt-2">
-        <div class="relative">
+      <!-- Create Branch Mode -->
+      <div v-if="isCreatingBranch" class="flex items-center gap-1.5 mt-2">
+        <input
+          v-model="newBranchName"
+          @keyup.enter="confirmCreateBranch"
+          @keyup.escape="cancelCreateBranch"
+          placeholder="New branch name..."
+          class="flex-1 min-w-0 px-3 py-1.5 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+        />
+        <button
+          @click="confirmCreateBranch"
+          :disabled="!newBranchName.trim()"
+          class="p-1.5 rounded transition-colors text-green-400 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Create branch"
+        >
+          <Check :size="14" />
+        </button>
+        <button
+          @click="cancelCreateBranch"
+          class="p-1.5 rounded transition-colors text-neutral-400 hover:bg-neutral-700"
+          title="Cancel"
+        >
+          <X :size="14" />
+        </button>
+      </div>
+
+      <!-- Branch Select Mode -->
+      <div v-else class="relative flex items-center gap-1.5 mt-2">
+        <div class="relative flex-1 min-w-0">
           <input
             v-model="branchInput"
             @input="updateBranchInput"
@@ -58,7 +84,7 @@
             @focus="showBranchDropdown = true"
             @blur="hideBranchDropdown"
             :disabled="isCheckingOutBranch"
-            placeholder="Switch branch or create new..."
+            :placeholder="gitBranch || 'Select branch...'"
             class="w-full px-3 py-1.5 pr-8 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 disabled:opacity-50"
           />
           <ChevronDown
@@ -66,23 +92,19 @@
             class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none"
           />
         </div>
-
-        <!-- Custom Dropdown -->
-        <div
-          v-if="showBranchDropdown && (filteredBranches.length > 0 || branchInput.trim())"
-          class="absolute z-10 w-full mt-1 bg-neutral-900 border border-neutral-700 rounded shadow-lg max-h-48 overflow-y-auto"
+        <button
+          @click="startCreateBranch"
+          class="p-1.5 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
+          title="Create new branch"
         >
-          <!-- Create new branch option -->
-          <div
-            v-if="branchInput.trim() && !availableBranches.includes(branchInput.trim())"
-            @mousedown.prevent="selectBranch(branchInput.trim())"
-            class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2"
-          >
-            <GitBranch :size="12" class="text-green-500" />
-            <span class="text-xs text-neutral-300">Create new branch: <span class="font-medium text-green-400">{{ branchInput }}</span></span>
-          </div>
+          <GitBranchPlus :size="14" />
+        </button>
 
-          <!-- Existing branches -->
+        <!-- Dropdown -->
+        <div
+          v-if="showBranchDropdown && filteredBranches.length > 0"
+          class="absolute left-0 right-8 z-10 mt-1 top-full bg-neutral-900 border border-neutral-700 rounded shadow-lg max-h-48 overflow-y-auto"
+        >
           <div
             v-for="branch in filteredBranches"
             :key="branch"
@@ -256,7 +278,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle, Check, X } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
@@ -284,6 +306,8 @@ const isPulling = useSelector(commitActor, (state: any) => state.context.isPulli
 
 // Local state
 const showBranchDropdown = ref(false)
+const isCreatingBranch = ref(false)
+const newBranchName = ref('')
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
@@ -409,6 +433,26 @@ const selectBranch = (branch: string) => {
   commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: branch })
   commitActor?.send({ type: 'commit.CHECKOUT_BRANCH' })
   showBranchDropdown.value = false
+  commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: '' })
+}
+
+const startCreateBranch = () => {
+  isCreatingBranch.value = true
+}
+
+const confirmCreateBranch = () => {
+  const name = newBranchName.value.trim()
+  if (!name) return
+  commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: name })
+  commitActor?.send({ type: 'commit.CHECKOUT_BRANCH' })
+  isCreatingBranch.value = false
+  newBranchName.value = ''
+  commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: '' })
+}
+
+const cancelCreateBranch = () => {
+  isCreatingBranch.value = false
+  newBranchName.value = ''
 }
 
 const hideBranchDropdown = () => {
