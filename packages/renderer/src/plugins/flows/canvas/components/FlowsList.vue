@@ -11,8 +11,9 @@
             :key="flow.id"
             :flow="flow"
             :is-selected="flow.id === selectedFlowId"
+            :is-multi-selected="multiSelectedFlowIds?.has(flow.id!)"
             :is-root="flow.id === rootFlowId"
-            @click="$emit('flow-click', flow)"
+            @click="$emit('flow-click', flow, $event)"
             @dblclick="$emit('flow-dblclick', flow)"
             @request-delete="$emit('request-delete', $event)"
             @request-edit-label="$emit('request-edit-label', $event)"
@@ -96,12 +97,13 @@ interface Props {
   flows: Partial<FlowEntity>[]
   rootFlowId?: string | null
   selectedFlowId?: string | null
+  multiSelectedFlowIds?: Set<string>
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'flow-click': [flow: Partial<FlowEntity>]
+  'flow-click': [flow: Partial<FlowEntity>, event: MouseEvent]
   'flow-dblclick': [flow: Partial<FlowEntity>]
   'create-flow': []
   'request-delete': [flow: Partial<FlowEntity>]

@@ -3,9 +3,12 @@
     <ContextMenuTrigger as-child>
       <button
         class="w-full px-2 py-1.5 text-left cursor-pointer select-none transition-all duration-200 rounded-md hover:bg-neutral-800"
-        :class="isSelected ? 'bg-neutral-800/50' : ''"
+        :class="[
+          isSelected ? 'bg-neutral-800/50' : '',
+          isMultiSelected ? 'ring-1 ring-blue-500/40 bg-blue-500/10' : ''
+        ]"
         :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
-        @click="$emit('click')"
+        @click="$emit('click', $event)"
         @dblclick="$emit('dblclick')"
       >
         <div class="flex items-center gap-2">
@@ -77,13 +80,14 @@ import {
 interface Props {
   flow: Partial<FlowEntity>
   isSelected?: boolean
+  isMultiSelected?: boolean
   isRoot?: boolean
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  click: []
+  click: [event: MouseEvent]
   dblclick: []
   'request-delete': [flow: Partial<FlowEntity>]
   'request-edit-label': [flow: Partial<FlowEntity>]

@@ -8,8 +8,9 @@
         :flows="flows"
         :root-flow-id="rootFlowId"
         :selected-flow-id="selectedFlowId"
-        @flow-click="handleFlowPreview"
-        @flow-dblclick="handleFlowClick"
+        :multi-selected-flow-ids="multiSelectedFlowIds"
+        @flow-click="handleFlowClick"
+        @flow-dblclick="handleFlowDblClick"
         @create-flow="handleCreateFlow"
         @request-delete="openDeleteDialog"
         @request-edit-label="openEditDialog"
@@ -77,9 +78,9 @@
     <!-- Centralized Delete Confirmation Dialog -->
     <ConfirmationDialog
       v-model="deleteDialogOpen"
-      title="Delete Flow"
-      :description="`Are you sure you want to delete '${targetFlow?.label || 'this flow'}'? This action cannot be undone. All nodes and connections in this flow will be permanently deleted.`"
-      confirm-text="Delete Flow"
+      :title="deleteDialogTitle"
+      :description="deleteDialogDescription"
+      :confirm-text="deleteDialogConfirmText"
       cancel-text="Cancel"
       variant="danger"
       @confirm="handleConfirmDelete"
@@ -93,7 +94,7 @@ import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
-import type { FlowEntity, NodeEntity } from '@app/api'
+import type { FlowEntity, NodeEntity, EARS } from '@app/api'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -153,12 +154,17 @@ const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
 const selectedHandle = useSelector(actor, (s) => s.context.selectedHandle)
 
+// Multi-select state (local only, separate from XState selectedFlowId)
+const multiSelectedFlowIds = ref<Set<string>>(new Set())
+const shiftAnchorFlowId = ref<string | null>(null)
+
 // Prevent accidental palette clicks when transitioning from list → view state
 const paletteClickDisabled = ref(false)
 
 watch(inViewState, (isView) => {
   if (isView) {
     paletteClickDisabled.value = true
+    clearMultiSelect()
     setTimeout(() => {
       paletteClickDisabled.value = false
     }, 500)
@@ -168,13 +174,17 @@ watch(inViewState, (isView) => {
 // Delete selected flow on Backspace/Delete while in list state
 function handleKeydown(e: KeyboardEvent) {
   if (e.key !== 'Backspace' && e.key !== 'Delete') return
-  if (!inListState.value || !selectedFlowId.value) return
+  if (!inListState.value) return
   // Don't intercept when user is typing in an input
   const tag = (e.target as HTMLElement)?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
-  const flow = flows.value.find(f => f.id === selectedFlowId.value)
-  if (flow) openDeleteDialog(flow)
+  if (multiSelectedFlowIds.value.size > 0) {
+    openDeleteDialog()
+  } else if (selectedFlowId.value) {
+    const flow = flows.value.find(f => f.id === selectedFlowId.value)
+    if (flow) openDeleteDialog(flow)
+  }
 }
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))
@@ -313,8 +323,17 @@ function handleConnect(params: Connection) {
   })
 }
 
-function handleFlowPreview(flow: Partial<FlowEntity>) {
+function handleFlowClick(flow: Partial<FlowEntity>, event: MouseEvent) {
   if (!flow.id) return
+
+  if (event.shiftKey) {
+    handleShiftClick(flow)
+    return
+  }
+
+  // Normal click: clear multi-select, set anchor, run preview logic
+  clearMultiSelect()
+  shiftAnchorFlowId.value = flow.id
 
   const enablePreview = settings.value?.enableFlowPreview ?? true
   const isAlreadySelected = selectedFlowId.value === flow.id
@@ -326,7 +345,36 @@ function handleFlowPreview(flow: Partial<FlowEntity>) {
   })
 }
 
-function handleFlowClick(flow: Partial<FlowEntity>) {
+function handleShiftClick(flow: Partial<FlowEntity>) {
+  if (!flow.id) return
+  const anchorId = shiftAnchorFlowId.value || selectedFlowId.value
+  if (!anchorId) return
+
+  const flowList = flows.value
+  const anchorIdx = flowList.findIndex(f => f.id === anchorId)
+  const clickedIdx = flowList.findIndex(f => f.id === flow.id)
+  if (anchorIdx === -1 || clickedIdx === -1) return
+
+  const start = Math.min(anchorIdx, clickedIdx)
+  const end = Math.max(anchorIdx, clickedIdx)
+
+  const newSelection = new Set<string>()
+  for (let i = start; i <= end; i++) {
+    const f = flowList[i]
+    // Exclude root flow from multi-select
+    if (f.id && f.id !== rootFlowId.value) {
+      newSelection.add(f.id)
+    }
+  }
+  multiSelectedFlowIds.value = newSelection
+}
+
+function clearMultiSelect() {
+  multiSelectedFlowIds.value = new Set()
+}
+
+function handleFlowDblClick(flow: Partial<FlowEntity>) {
+  clearMultiSelect()
   if (flow.id) actor.send({ type: 'FLOW.SELECT', flowId: flow.id })
 }
 
@@ -340,8 +388,28 @@ function openEditDialog(flow?: Partial<FlowEntity>) {
   if (targetFlow.value) labelDialogOpen.value = true
 }
 
-function openDeleteDialog(flow: Partial<FlowEntity>) {
-  if (flow.id === rootFlowId.value) return
+// Bulk delete computeds
+const isBulkDelete = computed(() => multiSelectedFlowIds.value.size > 1)
+const deleteDialogTitle = computed(() =>
+  isBulkDelete.value ? `Delete ${multiSelectedFlowIds.value.size} Flows` : 'Delete Flow'
+)
+const deleteDialogDescription = computed(() => {
+  if (isBulkDelete.value) {
+    return `Are you sure you want to delete ${multiSelectedFlowIds.value.size} flows? This action cannot be undone. All nodes and connections in these flows will be permanently deleted.`
+  }
+  return `Are you sure you want to delete '${targetFlow.value?.label || 'this flow'}'? This action cannot be undone. All nodes and connections in this flow will be permanently deleted.`
+})
+const deleteDialogConfirmText = computed(() =>
+  isBulkDelete.value ? `Delete ${multiSelectedFlowIds.value.size} Flows` : 'Delete Flow'
+)
+
+function openDeleteDialog(flow?: Partial<FlowEntity>) {
+  if (multiSelectedFlowIds.value.size > 1) {
+    targetFlow.value = null
+    deleteDialogOpen.value = true
+    return
+  }
+  if (!flow || flow.id === rootFlowId.value) return
   targetFlow.value = flow
   deleteDialogOpen.value = true
 }
@@ -355,8 +423,15 @@ const handleUpdateLabel = (label: string) => {
 }
 
 const handleConfirmDelete = () => {
-  if (!targetFlow.value?.id) return
+  if (isBulkDelete.value) {
+    for (const flowId of multiSelectedFlowIds.value) {
+      actor.send({ type: 'FLOW.DELETE', flowId: flowId as EARS.EntityId })
+    }
+    clearMultiSelect()
+    return
+  }
 
+  if (!targetFlow.value?.id) return
   actor.send({ type: 'FLOW.DELETE', flowId: targetFlow.value.id })
   targetFlow.value = null
 }
