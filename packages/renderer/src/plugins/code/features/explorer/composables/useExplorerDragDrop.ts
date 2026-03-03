@@ -11,10 +11,22 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
   const dropPosition = ref<'before' | 'after' | 'inside' | null>(null)
   const isDragging = ref(false)
 
+  /** Remove paths whose parent/ancestor is also in the list */
+  function deduplicateNestedPaths(paths: string[]): string[] {
+    const sorted = paths.sort()
+    const result: string[] = []
+    for (const p of sorted) {
+      if (!result.length || !p.startsWith(result[result.length - 1] + '/')) {
+        result.push(p)
+      }
+    }
+    return result
+  }
+
   function getDraggedPaths(draggedPath: string): string[] {
     // If the dragged item is in the selection, drag all selected items
     if (selectedPaths.value.includes(draggedPath)) {
-      return [...selectedPaths.value]
+      return deduplicateNestedPaths([...selectedPaths.value])
     }
     return [draggedPath]
   }
