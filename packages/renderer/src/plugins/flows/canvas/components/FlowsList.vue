@@ -4,38 +4,19 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="rootFlow || filteredFlows.length > 0" class="h-full overflow-y-auto">
-        <!-- Root flow section -->
-        <div v-if="rootFlow && (!isSearchMode || rootFlowMatchesSearch)" class="p-4 pb-2">
-          <div class="text-[10px] font-medium uppercase tracking-wider text-neutral-500 mb-2">Root flow</div>
+      <div v-if="filteredFlows.length > 0" class="h-full p-4 overflow-y-auto">
+        <div class="space-y-1">
           <FlowItem
-            :flow="rootFlow"
-            :is-selected="rootFlow.id === selectedFlowId"
-            is-root
-            @click="$emit('flow-click', rootFlow)"
-            @dblclick="$emit('flow-dblclick', rootFlow)"
+            v-for="flow in filteredFlows"
+            :key="flow.id"
+            :flow="flow"
+            :is-selected="flow.id === selectedFlowId"
+            :is-root="flow.id === rootFlowId"
+            @click="$emit('flow-click', flow)"
+            @dblclick="$emit('flow-dblclick', flow)"
             @request-delete="$emit('request-delete', $event)"
             @request-edit-label="$emit('request-edit-label', $event)"
           />
-        </div>
-
-        <!-- Sub flows section -->
-        <div v-if="filteredFlows.length > 0" class="p-4 pt-2">
-          <div v-if="rootFlow && (!isSearchMode || rootFlowMatchesSearch)" class="text-[10px] font-medium uppercase tracking-wider text-neutral-500 mb-2">
-            Available Flows
-          </div>
-          <div class="space-y-1">
-            <FlowItem
-              v-for="flow in filteredFlows"
-              :key="flow.id"
-              :flow="flow"
-              :is-selected="flow.id === selectedFlowId"
-              @click="$emit('flow-click', flow)"
-              @dblclick="$emit('flow-dblclick', flow)"
-              @request-delete="$emit('request-delete', $event)"
-              @request-edit-label="$emit('request-edit-label', $event)"
-            />
-          </div>
         </div>
       </div>
 
@@ -106,7 +87,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
-import { Brain, Workflow, Search, Plus, X } from 'lucide-vue-next'
+import { Workflow, Search, Plus, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@app/api'
 import FlowItem from './FlowItem.vue'
 import uFuzzy from '@leeoniya/ufuzzy'
@@ -114,7 +95,7 @@ import Button from '@/core/components/design/button.vue'
 
 interface Props {
   flows: Partial<FlowEntity>[]
-  rootFlow?: Partial<FlowEntity> | undefined
+  rootFlowId?: string | null
   selectedFlowId?: string | null
 }
 
@@ -166,19 +147,6 @@ watch(isSearchMode, (newValue) => {
   }
 })
 
-// Check if root flow matches search
-const rootFlowMatchesSearch = computed(() => {
-  if (!searchQuery.value.trim() || !props.rootFlow) {
-    return true
-  }
-  
-  const label = props.rootFlow.label || 'Main Flow'
-  const description = props.rootFlow.description || ''
-  const searchText = `${label} ${description}`.toLowerCase()
-  
-  return searchText.includes(searchQuery.value.toLowerCase())
-})
-
 // Filtered flows based on search query
 const filteredFlows = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -186,7 +154,7 @@ const filteredFlows = computed(() => {
   }
   
   const haystack = props.flows.map(flow => {
-    const label = flow.label || `Flow ${flow.id}`
+    const label = flow.label || (flow.id === props.rootFlowId ? 'Main Flow' : `Flow ${flow.id}`)
     const description = flow.description || ''
     return `${label} ${description}`.toLowerCase()
   })

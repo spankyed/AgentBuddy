@@ -6,7 +6,7 @@
       <FlowsList
         v-if="inListState"
         :flows="flows"
-        :root-flow="rootFlow"
+        :root-flow-id="rootFlowId"
         :selected-flow-id="selectedFlowId"
         @flow-click="handleFlowPreview"
         @flow-dblclick="handleFlowClick"
@@ -131,8 +131,15 @@ const nodes   = useSelector(actor, (s) => s.context.graph.nodes)
 const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const settings = useSelector(actor, (s) => s.context.settings)
 const allFlows = useSelector(actor, (s) => s.context.flows)
-const flows   = useSelector(actor, (s) => s.context.flows.filter((n) => n.id !== s.context.settings?.rootFlowId))
-const rootFlow = useSelector(actor, (s) => s.context.flows.find((f) => f.id === s.context.settings?.rootFlowId))
+const flows   = useSelector(actor, (s) => {
+  const rootId = s.context.settings?.rootFlowId
+  const all = s.context.flows
+  if (!rootId) return all
+  const root = all.find(f => f.id === rootId)
+  const rest = all.filter(f => f.id !== rootId)
+  return root ? [root, ...rest] : rest
+})
+const rootFlowId = useSelector(actor, (s) => s.context.settings?.rootFlowId)
 const positions = useSelector(actor, (s) => s.context.graph.positions)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selected = useSelector(actor, (s) =>
@@ -193,7 +200,7 @@ const currentFlow = computed(() =>
 )
 
 const currentFlowLabel = computed(() =>
-  currentFlow.value?.label || (currentFlow.value?.id === rootFlow.value?.id ? 'Main Flow' : '')
+  currentFlow.value?.label || (currentFlow.value?.id === rootFlowId.value ? 'Main Flow' : '')
 )
 
 /* ------------------------------------------------------------ */
@@ -306,7 +313,7 @@ function openEditDialog(flow?: Partial<FlowEntity>) {
 }
 
 function openDeleteDialog(flow: Partial<FlowEntity>) {
-  if (flow.id === rootFlow.value?.id) return
+  if (flow.id === rootFlowId.value) return
   targetFlow.value = flow
   deleteDialogOpen.value = true
 }
