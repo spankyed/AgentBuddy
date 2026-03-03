@@ -6,26 +6,26 @@
       <div v-if="filteredLogs.length === 0" class="flex items-center justify-center h-full min-h-[400px]">
         <div class="text-center">
           <div class="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
-            <component 
-              :is="logs.length === 0 ? Terminal : Search" 
-              :size="24" 
+            <component
+              :is="logs.length === 0 ? Terminal : Search"
+              :size="24"
               class="text-neutral-500"
             />
           </div>
-          
+
           <h3 class="mb-2 text-lg font-medium text-neutral-300">
             {{ logs.length === 0 ? 'No logs yet' : 'No matching logs' }}
           </h3>
-          
+
           <p class="max-w-sm text-sm text-neutral-500">
-            {{ logs.length === 0 
-              ? 'Logs from your backend will appear here.' 
-              : 'Try adjusting your search or filters.' 
+            {{ logs.length === 0
+              ? 'Logs from your backend will appear here.'
+              : 'Try adjusting your search or filters.'
             }}
           </p>
-          
+
           <div v-if="logs.length > 0" class="mt-4">
-            <button 
+            <button
               @click="() => { setFilterLevelDirect('all'); clearSearch(); }"
               class="px-4 py-2 text-sm font-medium transition-colors rounded-lg text-neutral-300 bg-neutral-800 hover:bg-neutral-700"
             >
@@ -34,17 +34,17 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Logs List -->
       <div v-else class="divide-y divide-neutral-800/50">
         <TransitionGroup name="log-fade">
-          <div 
-            v-for="log in filteredLogs" 
+          <div
+            v-for="log in filteredLogs"
             :key="log.id"
             class="transition-colors group hover:bg-neutral-800/30"
           >
-            <div 
-              class="flex items-center gap-2 px-4 py-2.5 cursor-pointer"
+            <div
+              class="flex items-center gap-2 px-4 py-1.5 cursor-pointer"
               :class="hasExpandableContent(log) ? 'cursor-pointer' : ''"
               @click="cycleExpansion(log)"
             >
@@ -60,7 +60,7 @@
               ]">
                 <component :is="getLevelIcon(log.level)" :size="14" />
               </div>
-              
+
               <!-- Message -->
               <div class="flex-1 min-w-0">
                 <p class="text-sm break-words text-neutral-200">
@@ -68,36 +68,36 @@
                   <span v-else>{{ log.message }}</span>
                 </p>
               </div>
-              
+
               <!-- Right side metadata -->
               <div class="flex items-center flex-shrink-0 gap-3 ml-auto text-sm">
                 <!-- Source Badge (if exists) -->
-                <span 
-                  v-if="log.source" 
+                <span
+                  v-if="log.source"
                   @contextmenu.prevent="(e) => openContextMenu(e, log.source)"
                   class="px-2 py-0.5 text-[11px] font-mono bg-neutral-800 text-neutral-400 rounded cursor-pointer hover:bg-neutral-700 transition-colors"
                   :title="`Right-click to exclude '${log.source}' from logs`"
                 >
                   {{ log.source }}
                 </span>
-                
+
                 <!-- Timestamp -->
                 <span class="text-neutral-500 tabular-nums">
                   {{ formatTime(log.timestamp) }}
                 </span>
-                
+
                 <!-- Expansion Indicator or spacer -->
                 <div class="flex items-center justify-center w-4">
-                  <ChevronRight 
+                  <ChevronRight
                     v-if="hasExpandableContent(log)"
-                    :size="12" 
+                    :size="12"
                     class="transition-transform text-neutral-400"
                     :class="isExpanded(log.id) ? 'rotate-90' : ''"
                   />
                 </div>
               </div>
             </div>
-            
+
             <!-- Expandable Content -->
             <Transition name="expand-fade">
               <div v-if="isExpanded(log.id)" class="px-4 pb-3 border-l-2 ml-7 border-neutral-800">
@@ -107,7 +107,7 @@
                     <div class="text-sm font-medium text-neutral-400 mb-2">Metadata</div>
                     <DataRenderer :data="log.meta" />
                   </div>
-                  
+
                   <!-- Stack Trace -->
                   <div v-if="expandedContent.get(log.id) === 'stack' && log.stack" class="p-3 border rounded-lg bg-red-500/5 border-red-500/20">
                     <div class="flex items-center gap-1.5 mb-2">
@@ -116,25 +116,25 @@
                     </div>
                     <pre class="font-mono text-sm whitespace-pre-wrap text-red-300/90">{{ formatStackTrace(log.stack) }}</pre>
                   </div>
-                  
+
                   <!-- Content type toggles -->
                   <div v-if="getAvailableContent(log).length > 1" class="flex gap-2 mt-2">
-                    <button 
+                    <button
                       v-if="log.meta && Object.keys(log.meta).length > 0"
                       @click.stop="toggleContent(log.id, 'meta')"
                       class="px-2 py-1 text-sm transition-colors rounded"
-                      :class="expandedContent.get(log.id) === 'meta' 
-                        ? 'bg-neutral-700 text-neutral-200' 
+                      :class="expandedContent.get(log.id) === 'meta'
+                        ? 'bg-neutral-700 text-neutral-200'
                         : 'text-neutral-400 hover:text-neutral-200'"
                     >
                       View metadata
                     </button>
-                    <button 
+                    <button
                       v-if="log.stack"
                       @click.stop="toggleContent(log.id, 'stack')"
                       class="px-2 py-1 text-sm transition-colors rounded"
-                      :class="expandedContent.get(log.id) === 'stack' 
-                        ? 'bg-red-500/20 text-red-400' 
+                      :class="expandedContent.get(log.id) === 'stack'
+                        ? 'bg-red-500/20 text-red-400'
                         : 'text-neutral-400 hover:text-red-400'"
                     >
                       View stack trace
@@ -151,7 +151,7 @@
     <!-- Simplified Header -->
     <div class="border-t border-neutral-800">
       <!-- Search and Filters Row -->
-      <div class="p-4">
+      <div class="p-2">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <!-- Search Input -->
@@ -174,7 +174,7 @@
                 :class="searchTerm ? 'border-neutral-600' : 'border-neutral-700 focus:border-neutral-600'"
               />
               <!-- Clear search button -->
-              <button 
+              <button
                 v-if="searchTerm"
                 @click="clearSearch"
                 class="absolute p-1 transition-colors -translate-y-1/2 right-2 top-1/2 text-neutral-500 hover:text-neutral-300"
@@ -182,74 +182,74 @@
                 <X :size="16" />
               </button>
             </div>
-            
+
             <!-- Level Filter Pills -->
             <div class="flex items-center gap-1 px-3 py-1 rounded-lg bg-neutral-900">
               <button
                 @click="setFilterLevelDirect('all')"
                 class="px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'all' 
-                  ? 'bg-neutral-800 text-neutral-100' 
+                :class="filterLevel === 'all'
+                  ? 'bg-neutral-800 text-neutral-100'
                   : 'text-neutral-400 hover:text-neutral-200'"
               >
                 All
                 <span class="ml-1 text-sm opacity-60">
-                  {{ (filterLevel !== 'all' || searchTerm) && filteredLogs.length !== logs.length 
-                    ? `${filteredLogs.length}/${logs.length}` 
-                    : logs.length 
+                  {{ (filterLevel !== 'all' || searchTerm) && filteredLogs.length !== logs.length
+                    ? `${filteredLogs.length}/${logs.length}`
+                    : logs.length
                   }}
                 </span>
               </button>
-              
+
               <button
                 v-if="debugCount > 0"
                 @click="setFilterLevelDirect('debug')"
                 class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'debug' 
-                  ? 'bg-neutral-700 text-neutral-100' 
+                :class="filterLevel === 'debug'
+                  ? 'bg-neutral-700 text-neutral-100'
                   : 'text-neutral-500 hover:text-neutral-300'"
               >
                 <Bug :size="14" />
                 {{ filterLevel === 'debug' && searchTerm ? filteredLogs.length : debugCount }}
               </button>
-              
+
               <button
                 v-if="infoCount > 0"
                 @click="setFilterLevelDirect('info')"
                 class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'info' 
-                  ? 'bg-blue-500/20 text-blue-400' 
+                :class="filterLevel === 'info'
+                  ? 'bg-blue-500/20 text-blue-400'
                   : 'text-blue-400/60 hover:text-blue-400'"
               >
                 <Info :size="14" />
                 {{ filterLevel === 'info' && searchTerm ? filteredLogs.length : infoCount }}
               </button>
-              
+
               <button
                 v-if="warnCount > 0"
                 @click="setFilterLevelDirect('warn')"
                 class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'warn' 
-                  ? 'bg-yellow-500/20 text-yellow-400' 
+                :class="filterLevel === 'warn'
+                  ? 'bg-yellow-500/20 text-yellow-400'
                   : 'text-yellow-400/60 hover:text-yellow-400'"
               >
                 <AlertTriangle :size="14" />
                 {{ filterLevel === 'warn' && searchTerm ? filteredLogs.length : warnCount }}
               </button>
-              
+
               <button
                 v-if="errorCount > 0"
                 @click="setFilterLevelDirect('error')"
                 class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'error' 
-                  ? 'bg-red-500/20 text-red-400' 
+                :class="filterLevel === 'error'
+                  ? 'bg-red-500/20 text-red-400'
                   : 'text-red-400/60 hover:text-red-400'"
               >
                 <AlertCircle :size="14" />
                 {{ filterLevel === 'error' && searchTerm ? filteredLogs.length : errorCount }}
               </button>
             </div>
-            
+
             <!-- Excluded sources indicator -->
             <button
               v-if="settings.excludedSources && settings.excludedSources.length > 0"
@@ -263,28 +263,28 @@
               </span>
             </button>
           </div>
-          
+
           <!-- Clear logs button (moved to far right) -->
-          <button 
+          <button
             @click="clearLogs"
             class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:text-red-400"
             title="Clear all logs"
           >
-            <Trash2 :size="16" />
+            <Trash :size="16" />
             <span>Clear</span>
           </button>
         </div>
       </div>
     </div>
-    
+
     <!-- Context Menu -->
     <Teleport to="body">
-      <div 
+      <div
         v-if="contextMenu.visible"
         @click="closeContextMenu"
         class="fixed inset-0 z-50"
       >
-        <div 
+        <div
           class="absolute bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[220px] shadow-xl"
           :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
           @click.stop
@@ -311,8 +311,8 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted, onUnmounted, nextTick } from 'vue';
-import { 
-  Search, 
+import {
+  Search,
   ChevronRight,
   ChevronDown,
   AlertCircle,
@@ -324,7 +324,7 @@ import {
   FileWarning,
   Terminal,
   X,
-  Trash2
+  Trash
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -344,7 +344,7 @@ onMounted(async () => {
       behavior: 'instant'
     });
   }
-  
+
 });
 
 // Add escape key handler for context menu
@@ -363,9 +363,9 @@ onUnmounted(() => {
 });
 
 // Simple content type tracking
-// To add new content types: 
+// To add new content types:
 // 1. Add to type union (e.g., 'perf')
-// 2. Update getAvailableContent() 
+// 2. Update getAvailableContent()
 // 3. Add button and content display
 type ContentType = 'meta' | 'stack';
 const expandedContent = reactive(new Map<string, ContentType | null>());
@@ -386,18 +386,18 @@ const settings = useSelector(actor, (s) => (s as any).context.settings);
 
 const filteredLogs = computed(() => {
   let filtered = logs.value;
-  
+
   // Filter by level
   if (filterLevel.value !== 'all') {
     filtered = filtered.filter((log: LogEntry) => log.level === filterLevel.value);
   }
-  
+
   // Filter by search term using the search utility
   if (searchTerm.value && searchTerm.value.trim()) {
     const filter = parseSearchTerm(searchTerm.value);
     filtered = filtered.filter((log: LogEntry) => searchLog(log, filter));
   }
-  
+
   return filtered;
 });
 
@@ -432,13 +432,13 @@ const clearLogs = () => {
 const goToExcludedSourcesSettings = () => {
   // Navigate to settings plugin
   const settingsActor = applicationState.system.get('settings');
-  
+
   // First select the Plugins tab
   settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' });
-  
+
   // Then select the logs plugin within that tab
   settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'logs' });
-  
+
   // Switch to settings plugin
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
 };
@@ -451,28 +451,28 @@ const highlightSearchTermWrapper = (text: string): string => {
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
   const now = new Date();
-  
+
   // If it's today, just show time
   if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString(undefined, { 
+    return date.toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
     });
   }
-  
+
   // If it's yesterday
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday ' + date.toLocaleTimeString(undefined, { 
+    return 'Yesterday ' + date.toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit'
     });
   }
-  
+
   // Otherwise show date
-  return date.toLocaleDateString(undefined, { 
+  return date.toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -490,19 +490,19 @@ const toggleContent = (logId: string, content: ContentType) => {
 const cycleExpansion = (log: LogEntry) => {
   // Get available content for this log
   const availableContent = getAvailableContent(log);
-  
+
   // If no content available, do nothing
   if (availableContent.length === 0) return;
-  
+
   // Get current state
   const current = expandedContent.get(log.id);
-  
+
   // If only one type available, simple toggle
   if (availableContent.length === 1) {
     toggleContent(log.id, availableContent[0]);
     return;
   }
-  
+
   // Multiple types: cycle through null -> first -> second -> ... -> null
   if (!current) {
     expandedContent.set(log.id, availableContent[0]);
@@ -557,20 +557,20 @@ const openContextMenu = (event: MouseEvent, source: string) => {
   // Calculate position to ensure menu stays within viewport
   const menuWidth = 250; // Approximate width
   const menuHeight = 100; // Approximate height
-  
+
   let x = event.clientX;
   let y = event.clientY;
-  
+
   // Adjust if menu would go off right edge
   if (x + menuWidth > window.innerWidth) {
     x = window.innerWidth - menuWidth - 10;
   }
-  
+
   // Adjust if menu would go off bottom edge
   if (y + menuHeight > window.innerHeight) {
     y = window.innerHeight - menuHeight - 10;
   }
-  
+
   contextMenu.visible = true;
   contextMenu.x = x;
   contextMenu.y = y;
@@ -585,10 +585,10 @@ const excludeSource = (source: string) => {
   if (!settings.value.excludedSources.includes(source)) {
     // Get current excluded sources
     const currentExcludedSources = settings.value.excludedSources || [];
-    
+
     // Add the new source
     const updatedSources = [...currentExcludedSources, source];
-    
+
     // Optimistically update the local logs state
     actor.send({
       type: 'LOGS_SETTINGS_UPDATED',
@@ -597,7 +597,7 @@ const excludeSource = (source: string) => {
         excludedSources: updatedSources
       }
     });
-    
+
     // Send update to settings (this will persist it and eventually send it back)
     const settingsActor = applicationState.system.get('settings');
     settingsActor.send({
@@ -608,7 +608,7 @@ const excludeSource = (source: string) => {
       value: updatedSources
     });
   }
-  
+
   closeContextMenu();
 };
 </script>
@@ -634,4 +634,4 @@ const excludeSource = (source: string) => {
   opacity: 0;
   transform: translateY(-4px) scale(0.98);
 }
-</style> 
+</style>
