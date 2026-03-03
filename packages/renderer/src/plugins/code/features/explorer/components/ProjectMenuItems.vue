@@ -43,7 +43,7 @@ const {
       <ChevronRight class="w-3 h-3 text-neutral-500" />
     </component>
     <component :is="PortalComponent">
-      <component :is="SubContentComponent" class="min-w-[180px] max-h-[300px] overflow-auto bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50" :side-offset="4">
+      <component :is="SubContentComponent" class="w-fit max-h-[300px] overflow-auto bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50" :side-offset="4">
         <component
           :is="CheckboxItemComponent"
           v-for="({ project, pIndex }) in allProjects"
