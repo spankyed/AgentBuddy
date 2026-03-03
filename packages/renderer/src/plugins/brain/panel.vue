@@ -1,6 +1,6 @@
 <template>
   <!-- TNode Tree Display -->
-  <div class="h-full agent-panel bg-neutral-900/50 backdrop-blur-sm">
+  <div class="h-full brain-panel bg-neutral-900/50 backdrop-blur-sm">
     <!-- Brain Dead State -->
     <div v-if="brainIsDead" class="flex items-center justify-center h-full">
       <div class="px-6 py-8 text-center">
@@ -11,7 +11,7 @@
         </div>
         <p class="text-sm font-medium text-neutral-400">Brain Stopped</p>
         <p class="mt-1 text-xs text-neutral-500 mb-4">The brain is currently inactive</p>
-        <button 
+        <button
           @click="startBrain"
           class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
         >
@@ -69,11 +69,11 @@ const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead
 // Convert normalized tree back to TrackEntity[] format for TNodeListItem
 const tNodeTree = computed((): TrackEntity[] => {
   if (!normalizedTree.value) return [];
-  
+
   function buildNode(id: string): TrackEntity {
     const node = normalizedTree.value!.byId[id];
     const childIds = normalizedTree.value!.childrenById[id] || [];
-    
+
     return {
       ...node,
       children: childIds.map(childId => buildNode(childId))
@@ -97,27 +97,27 @@ defineEmits<{
 </script>
 
 <style lang="scss" scoped>
-.agent-panel {
+.brain-panel {
   display: flex;
   flex-direction: column;
 }
 
 .tnode-tree {
   flex: 1;
-  
+
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.1);
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
-    
+
     &:hover {
       background: rgba(255, 255, 255, 0.15);
     }
@@ -128,4 +128,4 @@ defineEmits<{
 .tnode-tree > div:last-child {
   scroll-behavior: smooth;
 }
-</style> 
+</style>

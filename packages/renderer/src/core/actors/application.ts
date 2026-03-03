@@ -22,7 +22,6 @@ export interface ApplicationParams {
 export interface ApplicationContext {
   defaultToggles: {
     canvas: boolean;
-    panel: boolean;
   },
   activePlugin: Plugin;
   defaultPlugin: Plugin;
@@ -51,7 +50,7 @@ export type AppState = ActorRefFrom<AppActor>;
 
 export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
-  | { type: 'DEFAULT_TOGGLE'; area: 'canvas' | 'panel' }
+  | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
@@ -369,7 +368,7 @@ export const createApplicationState = () => setup({
         });
       }
     }),
-    handleDefaultToggle: assign(({ context }, params: 'canvas' | 'panel') => ({
+    handleDefaultToggle: assign(({ context }, params: 'canvas') => ({
       defaultToggles: {
         ...context.defaultToggles,
         [params]: !context.defaultToggles[params]
@@ -596,7 +595,6 @@ export const createApplicationState = () => setup({
       contextMenuItems: [],
       defaultToggles: {
         canvas: false,
-        panel: false,
       },
       targetView: '',
       panelSizes,
@@ -722,24 +720,16 @@ export const createApplicationState = () => setup({
     TRAIL_CLICK: {
       actions: ['setTargetView', 'sendRouteClick'],
     },
-    DEFAULT_TOGGLE: [
-      {
-        guard: 'isCanvasToggle',
-        actions: [
-          'trailNewPlugin',
-          {
-            type: 'handleDefaultToggle',
-            params: ({ event }) => event.area // 'canvas'
-          }
-        ]
-      },
-      {
-        actions: {
+    DEFAULT_TOGGLE: {
+      guard: 'isCanvasToggle',
+      actions: [
+        'trailNewPlugin',
+        {
           type: 'handleDefaultToggle',
-          params: ({ event }) => event.area // 'panel'
+          params: ({ event }) => event.area // 'canvas'
         }
-      }
-    ],
+      ]
+    },
     SELECT_PLUGIN: {
       actions: [
         'setActivePlugin',

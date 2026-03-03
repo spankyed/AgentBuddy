@@ -51,12 +51,10 @@
         <InspectionPanel
             v-if="canShowPanel && panelSizes.inspectionWidth > 0"
             data-onboarding-id="inspection-panel"
-            @panel-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'panel' })"
-            :style="{ width: `${panelSizes.inspectionWidth}px` }"
-            :label="`${toggles.panel ? defaultPlugin.label : activePlugin.label} Inspection`">
-            <component v-if="toggles.panel" :is="defaultPlugin.panel" />
-            <component v-else-if="activePlugin.panel" :is="activePlugin.panel" />
-            <component v-else :is="defaultPlugin.panel" />
+:style="{ width: `${panelSizes.inspectionWidth}px` }"
+            :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
+            <component v-if="activePlugin.panel" :is="activePlugin.panel" />
+            <BrainInspectPanel v-else-if="inspectMode" />
         </InspectionPanel>
     </div>
     </div>
@@ -74,6 +72,7 @@ import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import { applicationState } from '@/main'
 import Router from '@/core/components/layout/router.vue'
+import BrainInspectPanel from '@/plugins/brain/panel.vue'
 import type { ContextMenuItem } from '@/core/context-menu'
 
 const send = applicationState.send
