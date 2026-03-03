@@ -1,5 +1,135 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
+        <!-- Simplified Header -->
+    <div class="border-b border-neutral-800">
+      <!-- Search and Filters Row -->
+      <div class="p-2">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <!-- Search Input -->
+            <div class="relative w-96">
+              <Search :size="16" class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-500" />
+              <!-- <input
+                :value="searchTerm"
+                @input="setSearch"
+                type="text"
+                placeholder="Search logs..."
+                class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-800 placeholder-neutral-500"
+                :class="searchTerm ? 'border-neutral-600 bg-neutral-800/70' : 'border-neutral-700 focus:border-neutral-600 focus:bg-neutral-800/50'"
+              /> -->
+              <input
+                :value="searchTerm"
+                @input="setSearch"
+                type="text"
+                placeholder="Filter logs by message, level, or source..."
+                class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-900 placeholder-neutral-500"
+                :class="searchTerm ? 'border-neutral-600' : 'border-neutral-700 focus:border-neutral-600'"
+              />
+              <!-- Clear search button -->
+              <button
+                v-if="searchTerm"
+                @click="clearSearch"
+                class="absolute p-1 transition-colors -translate-y-1/2 right-2 top-1/2 text-neutral-500 hover:text-neutral-300"
+              >
+                <X :size="16" />
+              </button>
+            </div>
+
+            <!-- Level Filter Pills -->
+            <div class="flex items-center gap-1 px-3 py-1 rounded-lg bg-neutral-900">
+              <button
+                @click="setFilterLevelDirect('all')"
+                class="px-3 py-1 text-sm font-medium transition-colors rounded"
+                :class="filterLevel === 'all'
+                  ? 'bg-neutral-800 text-neutral-100'
+                  : 'text-neutral-400 hover:text-neutral-200'"
+              >
+                All
+                <span class="ml-1 text-sm opacity-60">
+                  {{ (filterLevel !== 'all' || searchTerm) && filteredLogs.length !== logs.length
+                    ? `${filteredLogs.length}/${logs.length}`
+                    : logs.length
+                  }}
+                </span>
+              </button>
+
+              <button
+                v-if="debugCount > 0"
+                @click="setFilterLevelDirect('debug')"
+                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
+                :class="filterLevel === 'debug'
+                  ? 'bg-neutral-700 text-neutral-100'
+                  : 'text-neutral-500 hover:text-neutral-300'"
+              >
+                <Bug :size="14" />
+                {{ filterLevel === 'debug' && searchTerm ? filteredLogs.length : debugCount }}
+              </button>
+
+              <button
+                v-if="infoCount > 0"
+                @click="setFilterLevelDirect('info')"
+                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
+                :class="filterLevel === 'info'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'text-blue-400/60 hover:text-blue-400'"
+              >
+                <Info :size="14" />
+                {{ filterLevel === 'info' && searchTerm ? filteredLogs.length : infoCount }}
+              </button>
+
+              <button
+                v-if="warnCount > 0"
+                @click="setFilterLevelDirect('warn')"
+                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
+                :class="filterLevel === 'warn'
+                  ? 'bg-yellow-500/20 text-yellow-400'
+                  : 'text-yellow-400/60 hover:text-yellow-400'"
+              >
+                <AlertTriangle :size="14" />
+                {{ filterLevel === 'warn' && searchTerm ? filteredLogs.length : warnCount }}
+              </button>
+
+              <button
+                v-if="errorCount > 0"
+                @click="setFilterLevelDirect('error')"
+                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
+                :class="filterLevel === 'error'
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'text-red-400/60 hover:text-red-400'"
+              >
+                <AlertCircle :size="14" />
+                {{ filterLevel === 'error' && searchTerm ? filteredLogs.length : errorCount }}
+              </button>
+            </div>
+
+            <!-- Excluded sources indicator -->
+            <button
+              v-if="settings.excludedSources && settings.excludedSources.length > 0"
+              @click="goToExcludedSourcesSettings"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/20 border border-amber-700/30 rounded-lg hover:bg-amber-900/30 transition-colors cursor-pointer"
+              title="Click to manage excluded sources"
+            >
+              <AlertTriangle :size="14" class="text-amber-500" />
+              <span class="text-sm text-amber-400">
+                {{ settings.excludedSources.length }} source{{ settings.excludedSources.length !== 1 ? 's' : '' }} excluded
+              </span>
+            </button>
+          </div>
+
+          <!-- Clear logs button (moved to far right) -->
+          <button
+            @click="clearLogs"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:text-neutral-200"
+            title="Clear all logs"
+          >
+            <Trash :size="16" />
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+
     <!-- Logs Content -->
     <div ref="logsContent" class="flex-1 overflow-y-auto">
       <!-- Empty State -->
@@ -148,135 +278,6 @@
       </div>
     </div>
 
-    <!-- Simplified Header -->
-    <div class="border-t border-neutral-800">
-      <!-- Search and Filters Row -->
-      <div class="p-2">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <!-- Search Input -->
-            <div class="relative w-96">
-              <Search :size="16" class="absolute -translate-y-1/2 left-3 top-1/2 text-neutral-500" />
-              <!-- <input
-                :value="searchTerm"
-                @input="setSearch"
-                type="text"
-                placeholder="Search logs..."
-                class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-800 placeholder-neutral-500"
-                :class="searchTerm ? 'border-neutral-600 bg-neutral-800/70' : 'border-neutral-700 focus:border-neutral-600 focus:bg-neutral-800/50'"
-              /> -->
-              <input
-                :value="searchTerm"
-                @input="setSearch"
-                type="text"
-                placeholder="Filter logs by message, level, or source..."
-                class="w-full py-2 pl-10 pr-3 text-sm transition-colors border rounded-lg outline-none bg-neutral-900 placeholder-neutral-500"
-                :class="searchTerm ? 'border-neutral-600' : 'border-neutral-700 focus:border-neutral-600'"
-              />
-              <!-- Clear search button -->
-              <button
-                v-if="searchTerm"
-                @click="clearSearch"
-                class="absolute p-1 transition-colors -translate-y-1/2 right-2 top-1/2 text-neutral-500 hover:text-neutral-300"
-              >
-                <X :size="16" />
-              </button>
-            </div>
-
-            <!-- Level Filter Pills -->
-            <div class="flex items-center gap-1 px-3 py-1 rounded-lg bg-neutral-900">
-              <button
-                @click="setFilterLevelDirect('all')"
-                class="px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'all'
-                  ? 'bg-neutral-800 text-neutral-100'
-                  : 'text-neutral-400 hover:text-neutral-200'"
-              >
-                All
-                <span class="ml-1 text-sm opacity-60">
-                  {{ (filterLevel !== 'all' || searchTerm) && filteredLogs.length !== logs.length
-                    ? `${filteredLogs.length}/${logs.length}`
-                    : logs.length
-                  }}
-                </span>
-              </button>
-
-              <button
-                v-if="debugCount > 0"
-                @click="setFilterLevelDirect('debug')"
-                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'debug'
-                  ? 'bg-neutral-700 text-neutral-100'
-                  : 'text-neutral-500 hover:text-neutral-300'"
-              >
-                <Bug :size="14" />
-                {{ filterLevel === 'debug' && searchTerm ? filteredLogs.length : debugCount }}
-              </button>
-
-              <button
-                v-if="infoCount > 0"
-                @click="setFilterLevelDirect('info')"
-                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'info'
-                  ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-blue-400/60 hover:text-blue-400'"
-              >
-                <Info :size="14" />
-                {{ filterLevel === 'info' && searchTerm ? filteredLogs.length : infoCount }}
-              </button>
-
-              <button
-                v-if="warnCount > 0"
-                @click="setFilterLevelDirect('warn')"
-                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'warn'
-                  ? 'bg-yellow-500/20 text-yellow-400'
-                  : 'text-yellow-400/60 hover:text-yellow-400'"
-              >
-                <AlertTriangle :size="14" />
-                {{ filterLevel === 'warn' && searchTerm ? filteredLogs.length : warnCount }}
-              </button>
-
-              <button
-                v-if="errorCount > 0"
-                @click="setFilterLevelDirect('error')"
-                class="flex items-center gap-1 px-3 py-1 text-sm font-medium transition-colors rounded"
-                :class="filterLevel === 'error'
-                  ? 'bg-red-500/20 text-red-400'
-                  : 'text-red-400/60 hover:text-red-400'"
-              >
-                <AlertCircle :size="14" />
-                {{ filterLevel === 'error' && searchTerm ? filteredLogs.length : errorCount }}
-              </button>
-            </div>
-
-            <!-- Excluded sources indicator -->
-            <button
-              v-if="settings.excludedSources && settings.excludedSources.length > 0"
-              @click="goToExcludedSourcesSettings"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/20 border border-amber-700/30 rounded-lg hover:bg-amber-900/30 transition-colors cursor-pointer"
-              title="Click to manage excluded sources"
-            >
-              <AlertTriangle :size="14" class="text-amber-500" />
-              <span class="text-sm text-amber-400">
-                {{ settings.excludedSources.length }} source{{ settings.excludedSources.length !== 1 ? 's' : '' }} excluded
-              </span>
-            </button>
-          </div>
-
-          <!-- Clear logs button (moved to far right) -->
-          <button
-            @click="clearLogs"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:text-red-400"
-            title="Clear all logs"
-          >
-            <Trash :size="16" />
-            <span>Clear</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- Context Menu -->
     <Teleport to="body">
       <div
@@ -310,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onUnmounted, nextTick } from 'vue';
+import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
 import {
   Search,
   ChevronRight,
@@ -334,18 +335,6 @@ import { applicationState } from '@/main';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();
-
-// Scroll to bottom when component is mounted
-onMounted(async () => {
-  await nextTick();
-  if (logsContent.value) {
-    logsContent.value.scrollTo({
-      top: logsContent.value.scrollHeight,
-      behavior: 'instant'
-    });
-  }
-
-});
 
 // Add escape key handler for context menu
 const handleEscape = (e: KeyboardEvent) => {
@@ -398,7 +387,7 @@ const filteredLogs = computed(() => {
     filtered = filtered.filter((log: LogEntry) => searchLog(log, filter));
   }
 
-  return filtered;
+  return filtered.slice().reverse();
 });
 
 
