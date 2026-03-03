@@ -1,97 +1,41 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800 bg-neutral-900">
-      <div class="flex items-center gap-3">
-        <BackButton @click="actor.send({ type: 'VIEW_LIST' })" />
-        <div>
-          <h2 class="text-base font-semibold text-neutral-100">Thread Details</h2>
-          <p class="text-xs text-neutral-400">
-            <span v-if="shortCode" class="text-neutral-500">{{ shortCode }} • </span>
-            {{ topic || 'Untitled thread' }}
-          </p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <Button
-          @click="actor.send({ type: 'VIEW_LIST' })"
-          variant="transparent"
+    <NameSaveHeader label="Topic" :isEditing="true" :isValid="isValid" @back="actor.send({ type: 'VIEW_LIST' })" @save="actor.send({ type: 'VIEW_LIST' })">
+      <input
+        :value="topic"
+        @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
+        type="text"
+        placeholder="Enter thread topic"
+        class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+      />
+      <select
+        :value="status"
+        @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
+        class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+      >
+        <option
+          v-for="statusOption in (settings?.statuses || [])"
+          :key="statusOption.label"
+          :value="statusOption.label"
         >
-          Back
-        </Button>
-        <Button
-          @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
-          variant="primary"
-        >
-          <BotMessageSquare class="w-4 h-4" />
-          <span>View Chat</span>
-        </Button>
-      </div>
-    </div>
+          {{ statusOption.label }}
+        </option>
+      </select>
+    </NameSaveHeader>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
       <div class="max-w-4xl p-4 mx-auto space-y-6">
-        <!-- Topic & Status Section -->
         <div class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Topic</label>
-              <div
-                v-show="!isEditingTopic"
-                @click="startEditingTopic"
-                class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 cursor-text hover:border-neutral-600"
-              >
-                {{ topic || 'Untitled thread' }}
-              </div>
-              <input
-                ref="topicInput"
-                v-show="isEditingTopic"
-                :value="topic"
-                @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
-                @blur="isEditingTopic = false"
-                @keydown.enter="isEditingTopic = false"
-                type="text"
-                placeholder="Enter thread topic"
-                class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-600 text-neutral-100 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
-              <select
-                :value="status"
-                @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
-                class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
-              >
-                <option
-                  v-for="statusOption in (settings?.statuses || [])"
-                  :key="statusOption.label"
-                  :value="statusOption.label"
-                >
-                  {{ statusOption.label }}
-                </option>
-              </select>
-            </div>
-          </div>
-
           <!-- Instructions -->
           <div>
             <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
-            <div
-              v-show="!isEditingInstructions"
-              @click="startEditingInstructions"
-              class="min-h-[8rem] px-4 py-3 rounded-md bg-neutral-800 border border-neutral-700 cursor-text hover:border-neutral-600 transition-colors"
-            >
-              <p class="text-sm whitespace-pre-wrap text-neutral-300">{{ instructions || 'Click to add agent instructions...' }}</p>
-            </div>
             <textarea
-              ref="instructionsInput"
-              v-show="isEditingInstructions"
               :value="instructions"
               @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
-              @blur.passive="isEditingInstructions = false"
               placeholder="Enter instructions for the agent"
-              class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-600 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
+              class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
             ></textarea>
           </div>
 
@@ -177,14 +121,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
-import { BotMessageSquare, Plus } from 'lucide-vue-next'
+import { ref, computed, nextTick } from 'vue'
+import { Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import type { Ref } from 'vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
-import Button from '@/core/components/design/button.vue'
-import BackButton from '@/core/components/design/back-button.vue'
+import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue'
 import MessageList from './components/message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
@@ -204,29 +147,13 @@ const instructions = useSelector(actor, (state) => state.context.view.instructio
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 const settings = useSelector(actor, (state) => state.context.settings);
 
+const isValid = computed(() => topic.value.trim() !== '');
+
 const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields] | undefined) => {
   actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
 }
 
-const isEditingTopic = ref(false);
-const isEditingInstructions = ref(false);
-const topicInput: Ref<HTMLInputElement | null> = ref(null);
-const instructionsInput: Ref<HTMLTextAreaElement | null> = ref(null);
 const messagesSection: Ref<HTMLDivElement | null> = ref(null);
-
-const startEditingTopic = () => {
-  isEditingTopic.value = true;
-  nextTick(() => {
-    topicInput.value?.focus();
-  });
-};
-
-const startEditingInstructions = () => {
-  isEditingInstructions.value = true;
-  nextTick(() => {
-    instructionsInput.value?.focus();
-  });
-};
 
 // Scroll messages section into view when opened
 const onMessagesToggle = (isOpen: boolean) => {

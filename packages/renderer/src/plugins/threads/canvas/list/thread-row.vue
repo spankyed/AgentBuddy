@@ -55,14 +55,12 @@
           data-onboarding-id="thread-actions"
           @click.stop="$emit('chat-click', thread.id)"
           type="button"
-          class="p-1.5 flex items-center text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+          class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
           aria-label="View chat"
           title="View chat"
         >
-          View Chat
-          <!-- <MessageCircleMore class="ml-2 w-4 h-4"/> -->
+          <MessageCircleMore class="w-4 h-4"/>
         </button>
-        <div class="w-px h-4 bg-neutral-700"></div>
         <button
           @click.stop="$emit('delete-click', thread.id)"
           type="button"

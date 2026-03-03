@@ -1,73 +1,35 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
-      <div class="flex items-center gap-3">
-        <BackButton @click="actor.send({ type: 'CANCEL_CREATE' })" />
-        <div>
-          <h2 class="text-base font-semibold text-neutral-100">Create Thread</h2>
-          <p class="text-xs text-neutral-400">
-            <span v-if="parentThread">Creating as child of {{ parentThread.shortCode }} - {{ parentThread.topic || 'Untitled' }}</span>
-            <span v-else>Add a new work thread for the agent</span>
-          </p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <Button
-          @click="actor.send({ type: 'CANCEL_CREATE' })"
-          variant="transparent"
-          data-onboarding-id="thread-cancel-button"
+    <NameSaveHeader label="Topic" :isEditing="false" :isValid="isValid" @back="actor.send({ type: 'CANCEL_CREATE' })" @save="actor.send({ type: 'CREATE_THREAD' })">
+      <input
+        :value="topic"
+        @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
+        type="text"
+        placeholder="Enter thread topic"
+        data-onboarding-id="thread-topic-input"
+        class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
+      />
+      <select
+        disabled
+        :value="settings?.statuses?.[0]?.label || 'Backlog'"
+        class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-300 opacity-50 cursor-not-allowed"
+      >
+        <option
+          v-for="status in (settings?.statuses || [])"
+          :key="status.label"
+          :value="status.label"
         >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          :disabled="isSaving"
-          variant="primary"
-          @click="actor.send({ type: 'CREATE_THREAD' })"
-        >
-          Create Thread
-        </Button>
-      </div>
-    </div>
+          {{ status.label }}
+        </option>
+        <option v-if="!settings?.statuses?.length" value="Backlog">Backlog</option>
+      </select>
+    </NameSaveHeader>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
       <div class="max-w-4xl p-4 mx-auto space-y-6">
-        <!-- Topic & Status Section -->
         <div class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-4">
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Topic</label>
-              <input
-                :value="topic"
-                @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
-                type="text"
-                placeholder="Enter thread topic"
-                data-onboarding-id="thread-topic-input"
-                class="w-full px-4 py-3 text-lg font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Status</label>
-              <select
-                disabled
-                :value="settings?.statuses?.[0]?.label || 'Backlog'"
-                class="w-full px-3 py-3 text-sm font-medium transition-colors border rounded-md opacity-50 cursor-not-allowed bg-neutral-800 border-neutral-700 text-neutral-300"
-              >
-                <option
-                  v-for="status in (settings?.statuses || [])"
-                  :key="status.label"
-                  :value="status.label"
-                >
-                  {{ status.label }}
-                </option>
-                <!-- Fallback if no settings loaded yet -->
-                <option v-if="!settings?.statuses?.length" value="Backlog">Backlog</option>
-              </select>
-            </div>
-          </div>
-
           <!-- Instructions -->
           <div>
             <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
@@ -136,13 +98,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { ThreadEditFields } from '@app/api'
-import Button from '@/core/components/design/button.vue';
-import BackButton from '@/core/components/design/back-button.vue';
+import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue';
 import TagInput from '@/core/components/design/tag-input.vue';
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue';
@@ -162,6 +123,7 @@ const tagsExpanded = useCollapsibleState(actor, ['create', 'tagsExpanded'], 'TOG
 const linkedExpanded = useCollapsibleState(actor, ['create', 'linkedExpanded'], 'TOGGLE_LINKED_SECTION');
 
 const isSaving = ref(false)
+const isValid = computed(() => topic.value.trim() !== '' && !isSaving.value)
 
 // Get parent thread from context if creating as child
 const parentThread = useSelector(actor, (state) => state.context.create.parentThread);
