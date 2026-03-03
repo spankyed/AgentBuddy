@@ -58,8 +58,9 @@
         <div class="text-sm text-neutral-400">Loading...</div>
       </div>
 
-      <div v-else-if="error" class="flex-1 p-4">
-        <div class="text-sm text-red-400">{{ error }}</div>
+      <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center p-4">
+        <AlertCircle :size="48" class="text-red-500/60 mb-3" />
+        <p class="text-sm text-red-400/90 text-center max-w-xs">{{ error }}</p>
       </div>
 
       <div v-else-if="rootFiles.length === 0" class="flex-1 flex flex-col items-center justify-center p-4">
@@ -117,7 +118,7 @@ import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.
 import ProjectsView from '@/plugins/code/features/explorer/ProjectsView.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import BaseDirectoryMenu from './components/BaseDirectoryMenu.vue'
-import { FolderOpen, FolderPlus, Settings } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus, Settings, AlertCircle } from 'lucide-vue-next'
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
