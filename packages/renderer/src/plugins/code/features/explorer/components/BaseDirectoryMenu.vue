@@ -1,5 +1,5 @@
 <template>
-  <div class="py-1 pl-3 pr-4">
+  <div class="py-1 pl-2 pr-4">
     <div class="flex items-center text-xs min-w-0">
       <DropdownMenuRoot
         :open="menuOpen"

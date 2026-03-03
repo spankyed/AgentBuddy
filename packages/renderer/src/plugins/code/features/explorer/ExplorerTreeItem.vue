@@ -23,7 +23,7 @@
           :style="dropIndicatorStyle"
         />
 
-        <div class="flex items-center gap-1 min-w-0 flex-1" :style="{ paddingLeft: `${depth * 16 + 8}px`, paddingRight: '8px' }">
+        <div class="flex items-center gap-1 min-w-0 flex-1 ml-1" :style="{ paddingLeft: `${depth * 16 + 8}px`, paddingRight: '8px' }">
           <!-- Expand/collapse arrow for directories -->
           <button
             v-if="file.type === 'directory'"
