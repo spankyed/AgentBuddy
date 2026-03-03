@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, onUpdated } from 'vue'
+import { ref, watch, onMounted, onUnmounted, onUpdated } from 'vue'
 import { ChevronRight, EllipsisVertical } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
@@ -95,11 +95,13 @@ import {
   DropdownMenuSeparator,
 } from 'reka-ui'
 import PluginMenuItems from './PluginMenuItems.vue'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 import type { ContextMenuItem as ContextMenuItemType } from '@/core/context-menu'
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const showScrollButton = ref(false)
 const menuOpen = ref(false)
+watch(menuOpen, onMenuOpenChange)
 
 const checkScroll = () => {
   if (!scrollContainer.value) return

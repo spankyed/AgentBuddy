@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuRoot v-if="terminalPath">
+  <ContextMenuRoot v-if="terminalPath" @update:open="onMenuOpenChange">
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
@@ -30,6 +30,7 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '../constants'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 
 defineProps<{
   terminalPath?: string

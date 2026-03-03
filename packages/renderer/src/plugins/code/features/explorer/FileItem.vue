@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuRoot>
+  <ContextMenuRoot @update:open="onMenuOpenChange">
     <ContextMenuTrigger as-child>
       <div
         @click="handleClick"
@@ -131,6 +131,7 @@ import {
 } from 'reka-ui'
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 
 interface FileItem {
   path: string

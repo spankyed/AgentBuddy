@@ -1,7 +1,9 @@
 <template>
   <div class="relative flex flex-col h-full min-w-0 border-l bg-neutral-900 border-neutral-800">
     <!-- Header for window dragging (absolutely positioned) -->
-    <div class="absolute top-0 left-0 right-0 h-[57px] z-10 inspection-header">
+    <div class="absolute top-0 left-0 right-0 h-[57px] z-10"
+      :class="{ 'inspection-header': !isAnyMenuOpen }"
+    >
       <!-- Empty header for dragging -->
     </div>
     
@@ -32,6 +34,7 @@
 
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { isAnyMenuOpen } from '@/core/composables/useMenuState';
 
 interface Props {
   label: string
