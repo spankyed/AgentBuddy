@@ -53,9 +53,9 @@
       </template>
       <Background variant="dots" />
       <Controls />
-      <!-- <MiniMap 
-        :maskColor="'#26262650'" 
-        :maskStrokeColor="'transparent'" 
+      <!-- <MiniMap
+        :maskColor="'#26262650'"
+        :maskStrokeColor="'transparent'"
         class="opacity-[0.15] hover:opacity-100 transition-opacity duration-200 bg-neutral-900 border border-neutral-700 rounded-lg"
       /> -->
 
@@ -72,7 +72,7 @@
           Back
         </button>
       </div>
-      
+
       <!-- Menu and Auto Layout buttons (bottom left) -->
       <div class="absolute z-10 bottom-4 left-4 flex gap-2">
         <!-- Menu -->
@@ -81,7 +81,7 @@
           @edit-label="$emit('action-edit-label')"
           @request-delete="$emit('request-delete-flow')"
         />
-        
+
         <!-- Auto Layout Button -->
         <button
           class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
@@ -92,15 +92,15 @@
         </button>
       </div>
     </VueFlow>
-    
+
     <!-- Backdrop overlay when in list state -->
-    <div 
-      v-if="showOverlay" 
+    <div
+      v-if="showOverlay"
       class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/40 backdrop-blur-sm"
       @click="$emit('overlay-click')"
     >
       <div class="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none top-20 left-1/2">
-        <div class="px-4 py-2 text-center border rounded-lg bg-neutral-900/90 border-neutral-700">
+        <div class="px-4 py-2 text-center border rounded-lg bg-neutral-800/90 border-neutral-700/50 w-96">
           <div v-if="props.selectedFlowLabel" class="text-base font-semibold text-neutral-100 mb-1">
             {{ props.selectedFlowLabel }}
           </div>
@@ -201,16 +201,16 @@ function handleNodesChange(changes: any[]) {
   const removedNodes = changes
     .filter(change => change.type === 'remove')
     .map(change => ({ id: change.id }));
-  
+
   if (removedNodes.length > 0) {
     emit('nodes-remove', removedNodes);
   }
-  
+
   // Handle selection changes
   const selectionChanges = changes
     .filter(change => change.type === 'select')
     .map(change => ({ id: change.id, selected: change.selected }));
-  
+
   if (selectionChanges.length > 0) {
     emit('selection-change', selectionChanges);
   }
@@ -221,7 +221,7 @@ function handleEdgesChange(changes: any[]) {
   const removedEdges = changes
     .filter(change => change.type === 'remove')
     .map(change => ({ id: change.id }));
-  
+
   if (removedEdges.length > 0) {
     emit('edges-remove', removedEdges);
   }
@@ -266,4 +266,4 @@ function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
 function isValidConnection(connection: Connection): boolean {
   return connection.source !== connection.target
 }
-</script> 
+</script>
