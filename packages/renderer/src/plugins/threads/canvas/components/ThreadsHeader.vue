@@ -1,17 +1,17 @@
 <template>
-  <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
+  <div class="@container flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
     <!-- Left section: Title and subtitle -->
-    <div class="flex items-center gap-6">
+    <div class="hidden @4xl:flex items-center gap-6">
       <div class="flex items-center gap-2">
         <History class="w-4 h-4 text-neutral-500" />
-        <p class="text-sm text-neutral-400">Manage your conversation threads</p>
+        <p class="text-sm text-neutral-400">Manage agent threads</p>
       </div>
     </div>
 
     <!-- Right section: Search and New Thread button -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 flex-1 min-w-0 justify-end">
       <!-- View toggle buttons -->
-      <div class="flex gap-1 pr-3 border-r border-neutral-700">
+      <div class="flex gap-1 pr-3 border-r border-neutral-700 flex-shrink-0">
         <button
           @click="actor.send({ type: 'VIEW_LIST' })"
           class="p-1.5 rounded-md transition-colors"
@@ -34,7 +34,7 @@
         </button>
       </div>
       <!-- Filter buttons -->
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-shrink-0 whitespace-nowrap">
         <Button
           type="button"
           variant="transparent"
@@ -61,7 +61,7 @@
           v-model="searchKeyword"
           type="text"
           placeholder="Search threads..."
-          class="w-64 px-10 py-1.5 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-800"
+          class="w-32 @3xl:w-64 px-10 py-1.5 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-800"
         />
       </div>
 
@@ -69,6 +69,7 @@
         @click="actor.send({ type: 'SHOW_CREATE_FORM' })"
         type="button"
         variant="primary"
+        class="whitespace-nowrap flex-shrink-0"
         data-onboarding-id="thread-create-button"
       >
         <span>New Thread</span>
