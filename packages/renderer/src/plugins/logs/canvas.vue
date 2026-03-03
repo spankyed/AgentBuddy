@@ -166,12 +166,12 @@
       </div>
 
       <!-- Logs List -->
-      <div v-else class="divide-y divide-neutral-800/50">
+      <div v-else>
         <TransitionGroup name="log-fade">
           <div
             v-for="log in filteredLogs"
             :key="log.id"
-            class="transition-colors group hover:bg-neutral-800/30"
+            class="border-b border-neutral-800/30 group hover:bg-neutral-800/30"
           >
             <div
               class="flex items-center gap-2 px-4 py-1.5 cursor-pointer"
@@ -605,12 +605,11 @@ const excludeSource = (source: string) => {
 <style scoped>
 /* Vue Transitions */
 .log-fade-enter-active {
-  transition: all 0.2s ease;
+  transition: opacity 0.6s ease;
 }
 
 .log-fade-enter-from {
   opacity: 0;
-  transform: translateX(-10px);
 }
 
 .expand-fade-enter-active,
