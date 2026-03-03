@@ -145,17 +145,23 @@ export const commitSystem = setup({
 
         if (fileStatus) {
           if (fileStatus.status === 'added' || fileStatus.status === 'untracked') {
-            // New file - original is empty, modified is current file
             originalContent = ''
-            modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+            modifiedContent = ev.staged
+              ? await context.gitRepository.getFileContent(ev.path!, 'index')
+              : await context.gitRepository.getFileContent(ev.path!, 'working')
           } else if (fileStatus.status === 'deleted') {
-            // Deleted file - original is from HEAD, modified is empty
-            originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
+            originalContent = ev.staged
+              ? await context.gitRepository.getFileContent(ev.path!, 'HEAD')
+              : await context.gitRepository.getFileContent(ev.path!, 'index')
             modifiedContent = ''
           } else {
-            // Modified file - get both versions
-            originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
-            modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+            if (ev.staged) {
+              originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
+              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'index')
+            } else {
+              originalContent = await context.gitRepository.getFileContent(ev.path!, 'index')
+              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+            }
           }
         }
 

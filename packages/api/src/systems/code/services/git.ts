@@ -451,33 +451,34 @@ export class GitRepository {
     return result.output || ''
   }
 
-  async getFileContent(filePath: string, version: 'HEAD' | 'working' = 'working'): Promise<string> {
+  async getFileContent(filePath: string, version: 'HEAD' | 'working' | 'index' = 'working'): Promise<string> {
     if (version === 'working') {
       // Get current working file content
       try {
         // Ensure the file path is relative to the working directory
-        const relativePath = filePath.startsWith(this.workingDirectory) 
+        const relativePath = filePath.startsWith(this.workingDirectory)
           ? filePath.slice(this.workingDirectory.length + 1)
           : filePath
-        
+
         // Check if it's a directory
         if (await this.isDirectory(relativePath)) {
           return '' // Return empty content for directories
         }
-        
+
         const fullPath = path.join(this.workingDirectory, relativePath)
         return await fs.readFile(fullPath, 'utf8')
       } catch (error) {
         throw new Error(`Failed to read file: ${error}`)
       }
     } else {
-      // Get file content from HEAD
-      const relativePath = filePath.startsWith(this.workingDirectory) 
+      // Get file content from HEAD or index
+      const relativePath = filePath.startsWith(this.workingDirectory)
         ? filePath.slice(this.workingDirectory.length + 1)
         : filePath
-      const result = await this.executeGitCommand(['show', `HEAD:${relativePath}`])
+      const ref = version === 'HEAD' ? `HEAD:${relativePath}` : `:${relativePath}`
+      const result = await this.executeGitCommand(['show', ref])
       if (!result.success) {
-        // File might be new (not in HEAD)
+        // File might be new (not in HEAD/index)
         return ''
       }
       return result.output || ''
