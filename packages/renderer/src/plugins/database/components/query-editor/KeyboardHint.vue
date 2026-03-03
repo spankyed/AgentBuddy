@@ -1,5 +1,5 @@
 <template>
-  <div class="items-center hidden gap-1 mx-2 text-xs text-neutral-500 sm:flex dark:text-neutral-400">
+  <div class="items-center hidden gap-1 mx-2 text-xs text-neutral-500 @3xl:flex dark:text-neutral-400">
     <Keyboard class="w-3 h-3" />
     <span>{{ hotkeyText }}</span>
   </div>

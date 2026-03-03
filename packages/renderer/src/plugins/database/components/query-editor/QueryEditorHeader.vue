@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+  <div class="@container flex items-center justify-between px-4 py-3 border-b border-neutral-800">
     <div class="flex items-center gap-2">
       <ModeTabs
         :active-mode="activeMode"
