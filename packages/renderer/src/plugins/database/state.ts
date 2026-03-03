@@ -58,6 +58,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
   { type: 'TRANSACTION_ERROR'; error: string } |
+  { type: 'MAGIC_PROMPT_LOADING' } |
   { type: 'MAGIC_PROMPT_GENERATED'; query: string } |
   { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
@@ -186,6 +187,7 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
+        isMagicPromptLoading: false,
       };
     }),
 
@@ -545,6 +547,7 @@ const databaseState = setup({
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
     SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
     SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
+    MAGIC_PROMPT_LOADING: { actions: 'setMagicPromptLoading' },
     MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
     DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
@@ -591,7 +594,7 @@ const databaseState = setup({
           actions: 'saveSnapshot',
         },
         'MAGIC_PROMPT.GENERATE': {
-          actions: ['setMagicPromptLoading', 'generateMagicPrompt'],
+          actions: ['generateMagicPrompt'],
         },
         'DATABASE.REFRESH_SCHEMA': {
           actions: ['setRefreshing', 'refreshSchema'],

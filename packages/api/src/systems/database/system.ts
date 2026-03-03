@@ -76,6 +76,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'TRANSACTION_ERROR'; error: string }
   | { type: 'SNAPSHOT_CREATED'; filename: string }
   | { type: 'SNAPSHOT_ERROR'; error: string }
+  | { type: 'MAGIC_PROMPT_LOADING' }
   | { type: 'MAGIC_PROMPT_GENERATED'; query: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
   | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean }

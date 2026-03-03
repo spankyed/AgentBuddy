@@ -9,6 +9,8 @@ export async function dbQuery(params: any, services: typeof Services) {
   const { dbPrompt } = params;
 
   try {
+    services.emitter.sendToPlugin('database', { type: 'MAGIC_PROMPT_LOADING' });
+
     // Get documents from library service
     const [doc1, doc2] = await Promise.all([
       services.library.getDocByCode('DOC-1'),
