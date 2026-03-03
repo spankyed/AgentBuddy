@@ -268,6 +268,9 @@ function toggleExpand() {
 function handleClick(event: MouseEvent) {
   if (isEditing.value) return
   selectItem(props.file.path, event)
+  if (props.file.type !== 'directory' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+    openFile(props.file.path)
+  }
 }
 
 function handleDoubleClick(e: MouseEvent) {
