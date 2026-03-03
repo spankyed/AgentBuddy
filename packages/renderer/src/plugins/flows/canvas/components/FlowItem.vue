@@ -11,21 +11,21 @@
         <div class="flex items-center gap-2">
           <!-- Flow info -->
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-medium tracking-tight truncate text-neutral-100">
-                {{ flow.label || (isRoot ? 'Main Flow' : `Flow ${flow.id}`) }}
-              </span>
-              <span
-                v-if="isRoot"
-                class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-purple-500/10 text-purple-400 border border-purple-500/20"
-              >
-                root
-              </span>
-            </div>
+            <span class="text-xs font-medium tracking-tight truncate text-neutral-100">
+              {{ flow.label || (isRoot ? 'Main Flow' : `Flow ${flow.id}`) }}
+            </span>
             <div v-if="flow.description" class="text-[10px] text-neutral-500 truncate mt-0.5">
               {{ flow.description }}
             </div>
           </div>
+
+          <!-- Root badge -->
+          <span
+            v-if="isRoot"
+            class="inline-flex items-center flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-purple-500/10 text-purple-400 border border-purple-500/20"
+          >
+            root
+          </span>
 
           <!-- Icon -->
           <component
