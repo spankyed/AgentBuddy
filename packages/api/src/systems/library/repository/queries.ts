@@ -181,6 +181,7 @@ export const libraryQueries = {
       if (folderSymlinkPath) {
         folderItem.isSymlink = true
         folderItem.symlinkPath = folderSymlinkPath
+        folderItem.size = String(childCount)
       }
 
       items.push(folderItem)

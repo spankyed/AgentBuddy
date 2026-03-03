@@ -72,10 +72,10 @@
             </div>
           </div>
         </td>
-        <td class="px-6 py-1">
+        <td class="px-6 py-1 whitespace-nowrap">
           <span class="text-sm text-neutral-400">{{ formatDate(item.updatedAt) }}</span>
         </td>
-        <td class="px-6 py-1">
+        <td class="px-6 py-1 whitespace-nowrap">
           <span class="text-sm text-neutral-400">{{ item.size }}</span>
         </td>
         <td class="px-6 py-1">
