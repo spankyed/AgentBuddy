@@ -31,7 +31,7 @@
           :placeholder="searchPlaceholder"
           class="flex-1 px-3 py-1.5 text-sm bg-transparent border-none outline-none text-neutral-100 placeholder-neutral-500"
         />
-        <div class="flex items-stretch border-l border-neutral-700">
+        <div class="flex items-stretch">
           <button
             @click="toggleOption('caseSensitive')"
             :class="[
