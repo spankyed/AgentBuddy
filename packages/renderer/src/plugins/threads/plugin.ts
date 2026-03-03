@@ -3,8 +3,7 @@ import { History } from 'lucide-vue-next';
 import state, { id } from './state.ts';
 import list from './canvas/list.vue';
 import kanban from './canvas/kanban.vue';
-import create from './canvas/create.vue';
-import view from './canvas/view.vue';
+import ThreadDetail from './canvas/ThreadDetail.vue';
 import settings from './settings.vue';
 
 const threadsPlugin: Plugin = {
@@ -15,8 +14,8 @@ const threadsPlugin: Plugin = {
   canvas: {
     list,
     kanban,
-    create,
-    view,
+    create: ThreadDetail,
+    view: ThreadDetail,
   },
   settings,
 };

@@ -1,18 +1,31 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
     <!-- Header -->
-    <NameSaveHeader label="Topic" :isEditing="true" :isValid="isValid" @back="actor.send({ type: 'VIEW_LIST' })" @save="actor.send({ type: 'VIEW_LIST' })">
+    <NameSaveHeader
+      label="Topic"
+      :isEditing="isViewMode"
+      :isValid="isValid"
+      @back="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CANCEL_CREATE' })"
+      @save="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CREATE_THREAD' })"
+    >
       <input
         :value="topic"
         @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
         type="text"
         placeholder="Enter thread topic"
+        data-onboarding-id="thread-topic-input"
         class="flex-1 min-w-0 px-4 py-2 text-sm font-medium transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
       />
       <select
-        :value="status"
+        :disabled="!isViewMode"
+        :value="statusValue"
         @input="e => updateField('status', (e.target as HTMLSelectElement).value ?? '')"
-        class="px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700 text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500"
+        :class="[
+          'px-3 py-2 text-sm font-medium transition-colors border rounded-md shrink-0 bg-neutral-800 border-neutral-700',
+          isViewMode
+            ? 'text-neutral-100 hover:border-neutral-600 focus:outline-none focus:border-blue-500'
+            : 'text-neutral-300 opacity-50 cursor-not-allowed'
+        ]"
       >
         <option
           v-for="statusOption in (settings?.statuses || [])"
@@ -21,6 +34,7 @@
         >
           {{ statusOption.label }}
         </option>
+        <option v-if="!settings?.statuses?.length" value="Backlog">Backlog</option>
       </select>
     </NameSaveHeader>
 
@@ -35,6 +49,7 @@
               :value="instructions"
               @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
               placeholder="Enter instructions for the agent"
+              data-onboarding-id="thread-instructions-input"
               class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
             ></textarea>
           </div>
@@ -48,7 +63,7 @@
                   <span class="text-neutral-500 mr-1">•</span>
                   <div class="flex flex-wrap gap-1">
                     <span
-                      v-for="(tag, index) in tags.slice(0, 5)"
+                      v-for="tag in tags.slice(0, 5)"
                       :key="tag"
                       :style="getTagStyles(tag)"
                       class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate"
@@ -63,6 +78,7 @@
               </div>
             </template>
             <TagInput
+              data-onboarding-id="thread-tags-section"
               :modelValue="tags || []"
               :available-tags="availableTags"
               @update:modelValue="(newTags) => updateField('tags', newTags)"
@@ -71,8 +87,8 @@
           </CollapsibleSection>
         </div>
 
-        <!-- Messages Section -->
-        <div ref="messagesSection" class="pt-6 border-t border-neutral-800">
+        <!-- Messages Section (view only) -->
+        <div v-if="isViewMode" ref="messagesSection" class="pt-6 border-t border-neutral-800">
           <CollapsibleSection :default-open="false" @toggle="onMessagesToggle">
             <template #label>
               Messages ({{ messages.length }})
@@ -93,6 +109,7 @@
               Linked Threads ({{ linkedThreads.length }})
             </template>
             <ThreadLinkInput
+              :lite="!isViewMode"
               v-model="linkedThreads"
               :available-threads="threadsList"
               :available-tags="availableTags"
@@ -102,7 +119,7 @@
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @update:modelValue="(links) => updateField('linkedThreads', links)"
             >
-              <template #extra-buttons>
+              <template v-if="isViewMode" #extra-buttons>
                 <button
                   @click="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
                   type="button"
@@ -124,38 +141,55 @@
 import { ref, computed, nextTick } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
-import type { Ref } from 'vue'
-import { id, type ThreadsState } from '@/plugins/threads/state';
 import { useSelector } from '@xstate/vue'
+import { id, type ThreadsState } from '@/plugins/threads/state'
+import type { ThreadEditFields } from '@app/api'
+import type { Ref } from 'vue'
 import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue'
 import MessageList from './components/message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
-import type { ThreadEditFields } from '@app/api';
 
 const actor: ThreadsState = applicationState.system.get(id);
-const threadId = useSelector(actor, (state) => state.context.view.id);
-const messages = useSelector(actor, (state) => state.context.view.messages || []);
+
+// Mode derivation from state machine
+const state = useSelector(actor, (s) => s);
+const isViewMode = computed(() => state.value.matches('view'));
+const mode = computed<'view' | 'create'>(() => isViewMode.value ? 'view' : 'create');
+
+// Unified context selectors
+const contextSlice = computed(() =>
+  isViewMode.value ? state.value.context.view : state.value.context.create
+);
+const topic = computed(() => contextSlice.value.topic || '');
+const instructions = computed(() => contextSlice.value.instructions || '');
+const tags = computed(() => contextSlice.value.tags || []);
+const linkedThreads = computed(() => contextSlice.value.linkedThreads || []);
+
+// Shared selectors
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const linkedThreads = useSelector(actor, (state) => state.context.view.linkedThreads || []);
-const tags = useSelector(actor, (state) => state.context.view.tags || []);
-const topic = useSelector(actor, (state) => state.context.view.topic || '');
-const shortCode = useSelector(actor, (state) => state.context.view.shortCode || '');
-const status = useSelector(actor, (state) => state.context.view.status || 'Backlog');
-const instructions = useSelector(actor, (state) => state.context.view.instructions || '');
 const threadsList = useSelector(actor, (state) => state.context.threads || []);
 const settings = useSelector(actor, (state) => state.context.settings);
 
+// View-only selectors
+const threadId = useSelector(actor, (state) => state.context.view.id);
+const messages = useSelector(actor, (state) => state.context.view.messages || []);
+const status = useSelector(actor, (state) => state.context.view.status || 'Backlog');
+
+const statusValue = computed(() =>
+  isViewMode.value ? status.value : (settings.value?.statuses?.[0]?.label || 'Backlog')
+);
+
 const isValid = computed(() => topic.value.trim() !== '');
 
-const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields] | undefined) => {
-  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: 'view' });
-}
+const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof ThreadEditFields]) => {
+  actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: mode.value });
+};
 
+// Messages scroll handling (view only)
 const messagesSection: Ref<HTMLDivElement | null> = ref(null);
 
-// Scroll messages section into view when opened
 const onMessagesToggle = (isOpen: boolean) => {
   if (isOpen && messagesSection.value) {
     nextTick(() => {
@@ -167,9 +201,9 @@ const onMessagesToggle = (isOpen: boolean) => {
 const getTagStyles = (tagName: string) => {
   const color = availableTags.value?.find(t => t.name === tagName)?.color || '#A855F7';
   return {
-    backgroundColor: `${color}1A`, // 10% opacity
+    backgroundColor: `${color}1A`,
     color,
-    border: `1px solid ${color}33` // 20% opacity for border
+    border: `1px solid ${color}33`
   };
 };
 </script>
