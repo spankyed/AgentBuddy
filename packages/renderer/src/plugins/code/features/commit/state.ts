@@ -45,6 +45,7 @@ export interface Context {
   commitsBehind: number
   isPushing: boolean
   isPulling: boolean
+  isGeneratingMessage: boolean
 }
 
 export type Event =
@@ -77,6 +78,8 @@ export type Event =
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
+  | { type: 'commit.GENERATE_MESSAGE' }
+  | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
   | { type: 'CODE_STARTUP' };
 
 export const commitState = setup({
@@ -223,7 +226,22 @@ export const commitState = setup({
       isGitLoading: false,
       isCheckingOutBranch: false,
       isPushing: false,
-      isPulling: false
+      isPulling: false,
+      isGeneratingMessage: false
+    }),
+
+    requestGenerateMessage: () => {
+      sendToBackend('commit.GENERATE_MESSAGE', {})
+    },
+
+    setGeneratingMessage: assign({ isGeneratingMessage: true }),
+
+    handleMessageGenerated: assign({
+      commitMessage: ({ event }) => {
+        const ev = event as { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
+        return ev.data.message
+      },
+      isGeneratingMessage: false
     }),
 
 
@@ -337,7 +355,8 @@ export const commitState = setup({
     commitsAhead: 0,
     commitsBehind: 0,
     isPushing: false,
-    isPulling: false
+    isPulling: false,
+    isGeneratingMessage: false
   },
   states: {
     idle: {
@@ -428,6 +447,12 @@ export const commitState = setup({
         },
         'commit.BRANCH_PULLED': {
           actions: 'handleBranchPulled'
+        },
+        'commit.GENERATE_MESSAGE': {
+          actions: ['setGeneratingMessage', 'requestGenerateMessage']
+        },
+        'commit.MESSAGE_GENERATED': {
+          actions: 'handleMessageGenerated'
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

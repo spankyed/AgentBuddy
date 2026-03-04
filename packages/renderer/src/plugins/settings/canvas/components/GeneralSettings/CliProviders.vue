@@ -7,21 +7,15 @@
       <CliProviderRow
         providerKey="copilot"
         v-model="cliPathValues.copilot"
-        placeholder="Binary path, e.g. /usr/local/bin/gh (default: gh)"
+        placeholder="Binary path, e.g. /usr/local/bin/copilot (default: copilot)"
         :testResult="cliTestResults?.copilot"
         @update:modelValue="debouncedSaveCliPaths()"
         @test="testCliProvider('copilot')"
       >
         <label class="block text-sm font-medium text-gray-200">Copilot CLI</label>
-        <div class="mt-1 space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-neutral-500">Install GitHub CLI</span>
-            <CliCommand>brew install gh</CliCommand>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-neutral-500">Install Copilot extension</span>
-            <CliCommand>gh extension install github/gh-copilot</CliCommand>
-          </div>
+        <div class="mt-1 flex items-center gap-2">
+          <span class="text-xs text-neutral-500">Install via npm</span>
+          <CliCommand>npm install -g @github/copilot</CliCommand>
         </div>
       </CliProviderRow>
 

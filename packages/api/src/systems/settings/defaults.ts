@@ -20,7 +20,7 @@ export const defaultSettings: SettingsData = {
       custom: {},
       required: ['openai', 'anthropic'],
       cliPaths: {
-        'copilot': '/opt/homebrew/bin/gh',
+        'copilot': '/usr/local/bin/copilot',
         'claude-code': process.env.HOME + '/.claude/local/claude',
       },
     },

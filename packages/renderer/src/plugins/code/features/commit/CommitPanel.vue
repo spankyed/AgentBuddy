@@ -136,7 +136,18 @@
     <!-- Commit Message -->
     <div class="p-3 border-b border-neutral-800">
       <div class="space-y-2">
-        <label class="text-sm text-neutral-400">Commit Message</label>
+        <div class="flex items-center justify-between">
+          <label class="text-sm text-neutral-400">Commit Message</label>
+          <button
+            @click="generateMessage"
+            :disabled="isGeneratingMessage || gitStatus.length === 0"
+            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Generate commit message with AI"
+          >
+            <Sparkles v-if="!isGeneratingMessage" :size="14" />
+            <Loader2 v-else :size="14" class="animate-spin" />
+          </button>
+        </div>
         <textarea
           v-model="commitMessage"
           @input="updateCommitMessage"
@@ -293,7 +304,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle, Check, X } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
@@ -318,6 +329,7 @@ const commitsAhead = useSelector(commitActor, (state: any) => state.context.comm
 const commitsBehind = useSelector(commitActor, (state: any) => state.context.commitsBehind)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
 const isPulling = useSelector(commitActor, (state: any) => state.context.isPulling)
+const isGeneratingMessage = useSelector(commitActor, (state: any) => state.context.isGeneratingMessage)
 
 // Local state
 const showDiscardAllDialog = ref(false)
@@ -394,6 +406,10 @@ const stageFile = (file: GitStatusFile) => {
 
 const unstageFile = (file: GitStatusFile) => {
   commitActor?.send({ type: 'commit.UNSTAGE_FILES', paths: [file.path] })
+}
+
+const generateMessage = () => {
+  commitActor?.send({ type: 'commit.GENERATE_MESSAGE' })
 }
 
 const updateCommitMessage = (event: Event) => {

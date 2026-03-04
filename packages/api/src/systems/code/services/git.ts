@@ -30,6 +30,10 @@ export class GitRepository {
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
   }
+
+  getWorkingDir(): string {
+    return this.workingDirectory
+  }
   
   private validateWorkingDirectory(dir: string): void {
     if (!path.isAbsolute(dir)) {
