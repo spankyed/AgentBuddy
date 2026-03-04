@@ -1,19 +1,25 @@
-// @ts-nocheck
-import Services from '@/services';
-import type { EARS } from '@/core/types';
+import type { ActionMeta, Services } from '../types';
 
-/**
- * Name: Mock Block Messages
- * Category: testing
- * Description: Creates a series of mock block-based messages for testing UI interactions
- *
- * This action demonstrates all block interaction types available in the system.
- * It's intended as a reference implementation that can be copied into in-app workflows.
- *
- * @param params.threadId - The thread ID to send messages to (passed from flow)
- */
-export async function mockBlockMessages(params: any, services: typeof Services) {
-  threadId = params.threadId as EARS.EntityId;
+export const meta: ActionMeta = {
+  label: 'Mock Block Messages',
+  description: 'Creates a series of mock block-based messages for testing UI interactions',
+  category: 'testing',
+  input: {
+    threadId: {
+      type: 'string',
+      description: 'The thread ID to send messages to',
+      required: true,
+    },
+  },
+};
+
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+  z: any,
+  flowId: string,
+) {
+  const threadId = params.threadId;
 
   // 1. File picker (directory) - demonstrates directory selection
   services.chat.sendFilePickerBlock({
@@ -121,7 +127,7 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
           target: 'agent',
           data: {
             type: 'SELECT_ARTIFACT',
-            artifactId: birthThread.artifactId
+            artifactId: 'placeholder'
           }
         },
         icon: 'file-text'
@@ -162,7 +168,6 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
   });
 
   // 9. Button group - demonstrates both auto-toggle and manual state buttons
-  // Helper to build button array with specific deployment state
   const buildButtonsWithDeploymentState = (deploymentState: string) => [
     {
       id: 'debug-mode',
@@ -204,12 +209,7 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
     displayText: 'Action completed:'
   });
 
-  // Note: toggleStates buttons (debug-mode, auto-save) automatically cycle on/off when clicked
-  // Manual states buttons (deployment) require backend to update state via updateMessageState
-
-  // Example: Manually transition deployment button through states (simulates flow handling)
-
-  // Simulate deployment: ready → deploying (after 2 seconds)
+  // Simulate deployment: ready -> deploying (after 2 seconds)
   setTimeout(() => {
     services.chat.updateMessageState(messageId, {
       blocks: [{
@@ -223,7 +223,7 @@ export async function mockBlockMessages(params: any, services: typeof Services) 
     });
   }, 2000);
 
-  // Simulate completion: deploying → deployed (after 4 seconds)
+  // Simulate completion: deploying -> deployed (after 4 seconds)
   setTimeout(() => {
     services.chat.updateMessageState(messageId, {
       blocks: [{

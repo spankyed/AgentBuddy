@@ -1,11 +1,25 @@
-// @ts-nocheck
-import Services from '@/services';
-import { z } from 'zod';
+import type { ActionMeta, Services, Z } from '../types';
 
-/**
- * Name: db query
- */
-export async function dbQuery(params: any, services: typeof Services) {
+export const meta: ActionMeta = {
+  label: 'db query',
+  description: 'Generates database operations from natural language prompts using LLM classification',
+  category: 'database',
+  input: {
+    dbPrompt: {
+      type: 'string',
+      description: 'Natural language prompt describing the database operation',
+      required: true,
+      placeholder: 'e.g. Show me all threads created this week',
+    },
+  },
+};
+
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+  z: Z,
+  flowId: string,
+) {
   const { dbPrompt } = params;
 
   try {
@@ -36,7 +50,6 @@ export async function dbQuery(params: any, services: typeof Services) {
     // Define schema for message classification
     const MessageClassificationSchema = z.object({
       type: z.enum(['query', 'transaction']).describe('Whether the message is a read operation (query) or write operation (transaction)'),
-      // reasoning: z.string().describe('Brief explanation of why this classification was chosen')
     });
 
     // Classify the user's message
@@ -63,7 +76,6 @@ export async function dbQuery(params: any, services: typeof Services) {
 
     services.logger.info('Message classified', {
       type: classification.type,
-      // reasoning: classification.reasoning
     });
 
     // Generate the database operation code
@@ -89,8 +101,6 @@ export async function dbQuery(params: any, services: typeof Services) {
   } catch (error) {
     services.logger.error('Error generating database operation', { error });
 
-    // Emit error to database plugin - note: this event type might not exist
-    // You may need to handle errors differently based on your system
     services.emitter.sendToPlugin('database', {
       type: 'QUERY_ERROR',
       error: error instanceof Error ? error.message : 'Unknown error occurred'
