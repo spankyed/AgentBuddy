@@ -29,13 +29,20 @@
               <FolderOpen class="w-4 h-4" />
               Open Directory
             </DropdownMenuItem>
+            <DropdownMenuItem
+              @select="$emit('open-terminal')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Terminal class="w-4 h-4" />
+              Open Terminal Here
+            </DropdownMenuItem>
             <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
             <DropdownMenuSub v-if="allProjects.length > 0">
               <DropdownMenuSubTrigger
                 class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               >
                 <Layers class="w-4 h-4" />
-                <span class="flex-1">Open Projects</span>
+                <span class="flex-1">Open Project</span>
                 <ChevronRight class="w-3 h-3 text-neutral-500" />
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
@@ -100,7 +107,7 @@ import {
   DropdownMenuItemIndicator,
   DropdownMenuSeparator,
 } from 'reka-ui'
-import { FolderOpen, Layers, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
 import { useProjectActions } from '../composables/useProjectActions'
 import { onMenuOpenChange } from '@/core/composables/useMenuState'
@@ -111,6 +118,7 @@ const props = defineProps<{
 
 defineEmits<{
   'open-directory': []
+  'open-terminal': []
   'open-project-directory': [path: string]
 }>()
 

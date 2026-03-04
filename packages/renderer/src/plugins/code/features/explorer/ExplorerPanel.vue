@@ -21,6 +21,7 @@
           v-if="baseDirectory"
           :base-directory="baseDirectory"
           @open-directory="handleDirectorySelect"
+          @open-terminal="terminalActor?.send({ type: 'terminal.CREATE', cwd: baseDirectory })"
           @open-project-directory="handleProjectDirectorySelect"
         />
       </template>
