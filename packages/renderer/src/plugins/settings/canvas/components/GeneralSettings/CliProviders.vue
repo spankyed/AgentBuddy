@@ -2,64 +2,71 @@
   <div class="space-y-4">
     <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">CLI Providers</h3>
 
-    <div class="grid grid-cols-[1fr,400px,80px] gap-y-3 gap-x-4 items-center">
-      <template v-for="provider in cliProviders" :key="provider.key">
-        <!-- Provider Label Column -->
-        <div>
-          <label class="block text-sm font-medium text-gray-200">{{ provider.label }}</label>
-          <p class="text-xs text-gray-500 mt-0.5">
-            {{ provider.guide }} <code class="px-1.5 py-0.5 bg-neutral-800 rounded text-gray-400 font-mono">{{ provider.command }}</code>
-          </p>
+    <div class="space-y-3">
+      <!-- Copilot -->
+      <CliProviderRow
+        providerKey="copilot"
+        v-model="cliPathValues.copilot"
+        placeholder="Binary path, e.g. /usr/local/bin/gh (default: gh)"
+        :testResult="cliTestResults?.copilot"
+        @update:modelValue="debouncedSaveCliPaths()"
+        @test="testCliProvider('copilot')"
+      >
+        <label class="block text-sm font-medium text-gray-200">Copilot CLI</label>
+        <div class="mt-1 space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-neutral-500">Install GitHub CLI</span>
+            <CliCommand>brew install gh</CliCommand>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-neutral-500">Install Copilot extension</span>
+            <CliCommand>gh extension install github/gh-copilot</CliCommand>
+          </div>
         </div>
+      </CliProviderRow>
 
-        <!-- CLI Path Input Column -->
-        <div>
-          <input
-            type="text"
-            v-model="cliPathValues[provider.key]"
-            :placeholder="provider.placeholder"
-            @input="debouncedSaveCliPaths()"
-            class="w-full px-3 py-1.5 bg-neutral-800 border border-neutral-700/50 rounded-md text-white placeholder-neutral-600 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-          />
+      <!-- Claude Code -->
+      <CliProviderRow
+        providerKey="claude-code"
+        v-model="cliPathValues['claude-code']"
+        placeholder="Binary path, e.g. /usr/local/bin/claude (default: claude)"
+        :testResult="cliTestResults?.['claude-code']"
+        @update:modelValue="debouncedSaveCliPaths()"
+        @test="testCliProvider('claude-code')"
+      >
+        <label class="block text-sm font-medium text-gray-200">Claude Code CLI</label>
+        <div class="mt-1 flex items-center gap-2">
+          <span class="text-xs text-neutral-500">Install via npm</span>
+          <CliCommand>npm install -g @anthropic-ai/claude-code</CliCommand>
         </div>
+      </CliProviderRow>
 
-        <!-- Test Button + Status Column -->
-        <div class="flex justify-end items-center gap-2">
-          <CheckCircle
-            v-if="cliTestResults?.[provider.key] === 'success'"
-            class="w-4 h-4 text-green-400"
-          />
-          <XCircle
-            v-else-if="cliTestResults?.[provider.key] === 'error'"
-            class="w-4 h-4 text-red-400"
-          />
-          <button
-            @click="testCliProvider(provider.key)"
-            :disabled="cliTestResults?.[provider.key] === 'testing'"
-            class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
-            :class="cliTestResults?.[provider.key] === 'testing'
-              ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
-              : 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 border border-neutral-700/50'"
-            title="Test if CLI is available"
-          >
-            <Loader2
-              v-if="cliTestResults?.[provider.key] === 'testing'"
-              class="w-3.5 h-3.5 animate-spin"
-            />
-            <span v-else>Test</span>
-          </button>
+      <!-- Codex -->
+      <CliProviderRow
+        providerKey="codex"
+        v-model="cliPathValues.codex"
+        placeholder="Binary path, e.g. /usr/local/bin/codex (default: codex)"
+        :testResult="cliTestResults?.codex"
+        @update:modelValue="debouncedSaveCliPaths()"
+        @test="testCliProvider('codex')"
+      >
+        <label class="block text-sm font-medium text-gray-200">Codex CLI</label>
+        <div class="mt-1 flex items-center gap-2">
+          <span class="text-xs text-neutral-500">Install via npm</span>
+          <CliCommand>npm install -g @openai/codex</CliCommand>
         </div>
-      </template>
+      </CliProviderRow>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
+import CliProviderRow from './CliProviderRow.vue'
+import CliCommand from './CliCommand.vue'
 
 interface Props {
   settings?: {
@@ -77,12 +84,6 @@ const emit = defineEmits<{
     value: any
   }]
 }>()
-
-const cliProviders = [
-  { key: 'copilot', label: 'Copilot CLI', guide: 'Install GitHub CLI, then run:', command: 'gh extension install github/gh-copilot', placeholder: 'Binary path, e.g. /usr/local/bin/gh (default: gh)' },
-  { key: 'claude-code', label: 'Claude Code CLI', guide: 'Install via:', command: 'npm install -g @anthropic-ai/claude-code', placeholder: 'Binary path, e.g. /usr/local/bin/claude (default: claude)' },
-  { key: 'codex', label: 'Codex CLI', guide: 'Install via:', command: 'npm install -g @openai/codex', placeholder: 'Binary path, e.g. /usr/local/bin/codex (default: codex)' },
-]
 
 const settingsActor = applicationState.system.get('settings')
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
