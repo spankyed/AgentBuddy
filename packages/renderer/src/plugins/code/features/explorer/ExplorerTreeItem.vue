@@ -2,6 +2,7 @@
   <ContextMenuRoot @update:open="onMenuOpenChange">
     <ContextMenuTrigger as-child>
       <div
+        ref="itemEl"
         data-explorer-item
         class="flex items-center gap-1 py-0.5 transition-colors cursor-pointer select-none relative"
         :class="[
@@ -193,6 +194,8 @@ const getDirContents = inject<() => Record<string, FileInfo[]>>('explorer-dir-co
 const getLoadingDirs = inject<() => Set<string>>('explorer-loading-dirs')!
 const getBaseDirectory = inject<() => string>('explorer-base-directory')!
 const checkAutoRename = inject<(path: string) => boolean>('explorer-check-auto-rename')!
+const getRevealPath = inject<() => string | null>('explorer-reveal-path')!
+const clearReveal = inject<() => void>('explorer-clear-reveal')!
 
 // Drag-drop injections
 const dragStart = inject<(e: DragEvent, path: string) => void>('explorer-drag-start')!
@@ -207,6 +210,7 @@ const getDropIndicatorStyle = inject<(path: string) => Record<string, string>>('
 const isEditing = ref(false)
 const editingName = ref('')
 const renameInput = ref<HTMLInputElement | null>(null)
+const itemEl = ref<HTMLElement | null>(null)
 
 const isSelected = computed(() => getSelectedPaths().includes(props.file.path))
 const isExpanded = computed(() => getExpandedDirs().has(props.file.path))
@@ -252,9 +256,16 @@ watch(isEditing, async (editing) => {
 })
 
 // Auto-enter rename mode for newly created folders
-onMounted(() => {
+onMounted(async () => {
   if (checkAutoRename(props.file.path)) {
     startRename()
+  }
+
+  // Scroll into view if this item is the reveal target
+  if (getRevealPath() === props.file.path) {
+    await nextTick()
+    itemEl.value?.scrollIntoView({ block: 'nearest' })
+    clearReveal()
   }
 })
 

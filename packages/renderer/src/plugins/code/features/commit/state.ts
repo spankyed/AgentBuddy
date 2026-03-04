@@ -191,6 +191,11 @@ export const commitState = setup({
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })
+
+      system.get('explorer')?.send({
+        type: 'explorer.REVEAL_IN_TREE',
+        path: fullPath
+      })
     },
 
     handleStatusReceived: assign({

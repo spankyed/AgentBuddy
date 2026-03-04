@@ -112,6 +112,7 @@ const expandedDirs = useSelector(explorerActor, (state: any) => state.context.ex
 const dirContents = useSelector(explorerActor, (state: any) => state.context.dirContents as Record<string, FileInfo[]>)
 const loadingDirs = useSelector(explorerActor, (state: any) => state.context.loadingDirs as Set<string>)
 const selectedPaths = useSelector(explorerActor, (state: any) => state.context.selectedPaths as string[])
+const revealPath = useSelector(explorerActor, (state: any) => state.context.revealPath as string | null)
 const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
 const error = useSelector(codeActor, (state: any) => state.context.error)
 
@@ -202,6 +203,10 @@ provide('explorer-check-auto-rename', (itemPath: string): boolean => {
     return true
   }
   return false
+})
+provide('explorer-reveal-path', () => revealPath.value)
+provide('explorer-clear-reveal', () => {
+  explorerActor?.send({ type: 'explorer.CLEAR_REVEAL' })
 })
 
 // Drag-drop provides

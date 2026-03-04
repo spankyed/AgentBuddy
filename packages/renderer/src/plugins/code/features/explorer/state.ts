@@ -53,6 +53,7 @@ export interface Context {
   dirContents: Record<string, FileInfo[]>
   loadingDirs: Set<string>
   selectedPaths: string[]
+  revealPath: string | null
 }
 
 // Quick open types
@@ -97,6 +98,9 @@ export type Event =
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
   // Move result from backend
   | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
+  // Reveal in tree
+  | { type: 'explorer.REVEAL_IN_TREE'; path: string }
+  | { type: 'explorer.CLEAR_REVEAL' }
   // Broadcast events from parent
   | { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } };
 
@@ -316,6 +320,7 @@ export const explorerState = setup({
         dirContents: {} as Record<string, FileInfo[]>,
         loadingDirs: new Set<string>(),
         selectedPaths: [] as string[],
+        revealPath: null as string | null,
       }
     }),
 
@@ -464,7 +469,42 @@ export const explorerState = setup({
         quickOpenResults: ev.data,
         quickOpenLoading: false
       })
-    }
+    },
+
+    revealInTree: assign(({ event, context, self }) => {
+      const ev = event as { type: 'explorer.REVEAL_IN_TREE'; path: string }
+      const parentContext = getParentContext(self)
+      const baseDirectory = parentContext?.baseDirectory || ''
+
+      // Compute ancestor directory paths between baseDirectory and the file
+      const ancestors: string[] = []
+      let current = getParentDir(ev.path)
+      while (current.length >= baseDirectory.length && current !== '') {
+        ancestors.push(current)
+        if (current === baseDirectory) break
+        current = getParentDir(current)
+      }
+
+      const newExpanded = new Set(context.expandedDirs)
+      const newLoading = new Set(context.loadingDirs)
+
+      for (const dir of ancestors) {
+        newExpanded.add(dir)
+        if (!context.dirContents[dir]) {
+          newLoading.add(dir)
+          sendToBackend('explorer.LIST_FILES', { path: dir })
+        }
+      }
+
+      return {
+        expandedDirs: newExpanded,
+        loadingDirs: newLoading,
+        selectedPaths: [ev.path],
+        revealPath: ev.path,
+      }
+    }),
+
+    clearReveal: assign({ revealPath: null }),
   }
 }).createMachine({
   id: 'explorer',
@@ -475,6 +515,7 @@ export const explorerState = setup({
     dirContents: {},
     loadingDirs: new Set<string>(),
     selectedPaths: [],
+    revealPath: null,
   },
   states: {
     idle: {
@@ -560,6 +601,12 @@ export const explorerState = setup({
         },
         'explorer.QUICK_OPEN_RESULTS': {
           actions: 'handleQuickOpenResults'
+        },
+        'explorer.REVEAL_IN_TREE': {
+          actions: 'revealInTree'
+        },
+        'explorer.CLEAR_REVEAL': {
+          actions: 'clearReveal'
         }
       }
     }
