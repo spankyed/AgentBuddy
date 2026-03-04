@@ -8,7 +8,7 @@
       <template #actions>
         <button
           @click="createNewTerminal()"
-          class="pr-2 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="New Terminal"
         >
           <Plus :size="16" />
