@@ -87,7 +87,7 @@ const componentMap: Record<string, any> = {
 
 const navItems = [
   { id: 'personal', label: 'Personal', icon: User },
-  { id: 'secrets', label: 'Secrets', icon: Key },
+  { id: 'secrets', label: 'Providers', icon: Key },
   { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
   { id: 'projects', label: 'Projects', icon: Briefcase },
   { id: 'misc', label: 'Misc', icon: Settings },
