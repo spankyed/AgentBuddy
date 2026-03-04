@@ -88,11 +88,69 @@ The `services` object provides access to all backend modules:
 
 ## Don'ts
 
-- **No imports** — except `import type { ... } from '../types'` (types are stripped at compile time)
+- **No imports** — except `import type { ... } from '../types'` and `import { ... } from '../shared/*'` (see [Shared Helpers](#shared-helpers) below)
 - **No `require()`** — the function body cannot load modules at runtime
 - **No Node.js globals** — `process`, `fs`, `__dirname`, `__filename`, `Buffer`, `global` are not available
 - **No module-scoped state** — everything inside the `action` function is the function body; anything outside is stripped
 - **No top-level side effects** — only the function body is extracted and executed
+
+## Shared Helpers
+
+You can extract reusable logic into shared helper files at `packages/api/actions/shared/`. The compiler inlines imported declarations into the action function body at compile time, so the resulting `actionFn` string remains self-contained.
+
+### Creating a shared file
+
+Create a `.ts` file in `actions/shared/`:
+
+```typescript
+// actions/shared/string-utils.ts
+
+export function formatName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+export function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+```
+
+### Importing in an action
+
+```typescript
+import type { ActionMeta, Services, Z } from '../types';
+import { formatName } from '../shared/string-utils';
+
+export const meta: ActionMeta = {
+  label: 'Greet User',
+  input: { name: { type: 'string', required: true } },
+};
+
+export async function action(params: Record<string, any>, services: Services) {
+  const name = formatName(params.name);
+  return { greeting: `Hello, ${name}!` };
+}
+```
+
+The compiled `actionFn` will contain:
+
+```javascript
+function formatName(name) {
+  return name.trim().toLowerCase();
+}
+
+const name = formatName(params.name);
+return { greeting: `Hello, ${name}!` };
+```
+
+### Constraints
+
+- **Named imports only** — `import { foo } from '../shared/bar'`
+- **No aliases** — `import { foo as bar }` is not supported
+- **No default imports** — `import foo from '../shared/bar'` is not supported
+- **No wildcard imports** — `import * as utils from '../shared/bar'` is not supported
+- **Shared files must be self-contained** — no imports (except `import type`) within shared files
+- **No Node.js globals** in shared files — same restrictions as action files
+- Missing files or exports are treated as **compile errors** (the action is skipped)
 
 ## Metadata Reference
 

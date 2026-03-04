@@ -6,5 +6,5 @@
     "baseUrl": "..",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["types.ts", "defaults/**/*.ts", "../src/**/*"]
+  "include": ["types.ts", "defaults/**/*.ts", "shared/**/*.ts", "../src/**/*"]
 }
