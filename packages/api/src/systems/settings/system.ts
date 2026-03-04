@@ -16,7 +16,7 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
 const CLI_TEST_COMMANDS: Record<string, { command: string; args: string[] }> = {
-  copilot:       { command: 'gh', args: ['--version'] },
+  copilot:       { command: 'copilot', args: ['--version'] },
   'claude-code': { command: 'claude', args: ['--version'] },
   codex:         { command: 'codex', args: ['--version'] },
 };

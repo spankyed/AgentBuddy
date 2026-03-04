@@ -1,6 +1,4 @@
 import { assign, setup } from 'xstate'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
 import { emit } from '@/core/utils/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/utils/event-helpers'
@@ -9,9 +7,7 @@ import { GitRepository } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import { settingsQueries } from '@/systems/settings/repository'
-
-const execFileAsync = promisify(execFile)
+import * as copilotCli from '../services/copilot-cli'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -469,20 +465,11 @@ export const commitSystem = setup({
         // Truncate diff to 40k chars
         const truncatedDiff = diff.length > 40000 ? diff.substring(0, 40000) + '\n... (truncated)' : diff
 
-        // Resolve CLI path from settings
-        const settings = settingsQueries.getSettings()
-        const cliPath = settings.general.secrets.cliPaths?.['copilot'] || 'copilot'
+        const promptText = `Generate a concise git commit message for the following diff. Use conventional commits format (e.g., feat:, fix:, refactor:, docs:, chore:). Keep it to a single line, no markdown wrapping, no backticks. Just output the commit message text.\n\n${truncatedDiff}`
+
         const cwd = context.gitRepository.getWorkingDir()
+        const message = await copilotCli.prompt(promptText, { cwd })
 
-        const prompt = `Generate a concise git commit message for the following diff. Use conventional commits format (e.g., feat:, fix:, refactor:, docs:, chore:). Keep it to a single line, no markdown wrapping, no backticks. Just output the commit message text.\n\n${truncatedDiff}`
-
-        const { stdout } = await execFileAsync(cliPath, ['-p', prompt], {
-          cwd,
-          timeout: 30000,
-          env: { ...process.env }
-        })
-
-        const message = stdout.trim()
         if (!message) {
           const wrapped = emit(pluginId, {
             type: 'commit.ERROR_RECEIVED',
@@ -498,15 +485,9 @@ export const commitSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        let errorMessage = error.message
-        if (error.message?.includes('ENOENT')) {
-          errorMessage = 'GitHub Copilot CLI not found. Install it (npm i -g @github/copilot-cli) or configure the path in Settings > Providers.'
-        } else if (error.killed || error.message?.includes('TIMEOUT') || error.message?.includes('timed out')) {
-          errorMessage = 'Copilot request timed out after 30 seconds.'
-        }
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
-          data: { message: errorMessage }
+          data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
