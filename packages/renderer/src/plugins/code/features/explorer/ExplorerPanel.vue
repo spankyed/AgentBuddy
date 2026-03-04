@@ -40,13 +40,20 @@
 
     <!-- Files view -->
     <template v-if="baseDirectory">
-      <div v-if="isLoading && rootFiles.length === 0" class="flex items-center justify-center flex-1">
-        <div class="text-sm text-neutral-400">Loading...</div>
+      <!-- Error alert banner -->
+      <div v-if="showError" class="flex items-center gap-2 px-3 py-1.5 bg-red-950/60 border-b border-red-900/50 text-red-300 text-xs">
+        <AlertCircle :size="14" class="shrink-0" />
+        <span class="flex-1 truncate">{{ error }}</span>
+        <button
+          @click="dismissedError = error"
+          class="shrink-0 p-0.5 rounded hover:bg-red-900/50 text-red-400 hover:text-red-200 transition-colors"
+        >
+          <X :size="14" />
+        </button>
       </div>
 
-      <div v-else-if="error" class="flex-1 flex flex-col items-center justify-center p-4">
-        <AlertCircle :size="48" class="text-red-500/60 mb-3" />
-        <p class="text-sm text-red-400/90 text-center max-w-xs">{{ error }}</p>
+      <div v-if="isLoading && rootFiles.length === 0" class="flex items-center justify-center flex-1">
+        <div class="text-sm text-neutral-400">Loading...</div>
       </div>
 
       <div v-else-if="rootFiles.length === 0" class="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center">
@@ -56,7 +63,7 @@
       </div>
 
       <div
-        v-else
+        v-else-if="rootFiles.length > 0"
         class="flex-1 overflow-auto"
         @click="handleEmptySpaceClick"
         @dragover.prevent="onEmptySpaceDragOver"
@@ -88,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide } from 'vue'
+import { ref, computed, provide } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -96,7 +103,7 @@ import Dialog from '@/core/components/design/dialog.vue'
 import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import BaseDirectoryMenu from './components/BaseDirectoryMenu.vue'
-import { FolderOpen, FolderPlus, AlertCircle } from 'lucide-vue-next'
+import { FolderOpen, FolderPlus, AlertCircle, X } from 'lucide-vue-next'
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
@@ -116,6 +123,10 @@ const selectedPaths = useSelector(explorerActor, (state: any) => state.context.s
 const revealPath = useSelector(explorerActor, (state: any) => state.context.revealPath as string | null)
 const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
 const error = useSelector(codeActor, (state: any) => state.context.error)
+
+// Error dismissal
+const dismissedError = ref<string | null>(null)
+const showError = computed(() => !!error.value && error.value !== dismissedError.value)
 
 // Delete functionality
 const showDeleteDialog = ref(false)
