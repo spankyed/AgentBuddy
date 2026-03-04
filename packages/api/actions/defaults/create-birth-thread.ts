@@ -1,4 +1,4 @@
-import type { ActionMeta, Services } from '../types';
+import type { ActionMeta, Services, Z } from '../types';
 
 export const meta: ActionMeta = {
   label: 'Create Birth Thread',
@@ -10,7 +10,7 @@ export const meta: ActionMeta = {
 export async function action(
   params: Record<string, any>,
   services: Services,
-  z: any,
+  z: Z,
   flowId: string,
 ) {
   const ASSISTANT_BIRTH_ROLE = services.database.EARS.RoleKind.Custom('assistant_birth');

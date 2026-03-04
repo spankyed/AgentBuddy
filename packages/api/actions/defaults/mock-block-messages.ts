@@ -1,4 +1,4 @@
-import type { ActionMeta, Services } from '../types';
+import type { ActionMeta, Services, Z } from '../types';
 
 export const meta: ActionMeta = {
   label: 'Mock Block Messages',
@@ -16,7 +16,7 @@ export const meta: ActionMeta = {
 export async function action(
   params: Record<string, any>,
   services: Services,
-  z: any,
+  z: Z,
   flowId: string,
 ) {
   const threadId = params.threadId;
