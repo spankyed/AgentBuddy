@@ -109,6 +109,62 @@
     <!-- Divider -->
     <div class="border-t border-neutral-800 my-8"></div>
 
+    <!-- CLI Providers -->
+    <div class="space-y-4">
+      <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">CLI Providers</h3>
+
+      <div class="grid grid-cols-[1fr,400px,80px] gap-y-3 gap-x-4 items-center">
+        <template v-for="provider in cliProviders" :key="provider.key">
+          <!-- Provider Label Column -->
+          <div>
+            <label class="block text-sm font-medium text-gray-200">{{ provider.label }}</label>
+            <p class="text-xs text-gray-500 mt-0.5">{{ provider.guide }}</p>
+          </div>
+
+          <!-- CLI Path Input Column -->
+          <div>
+            <input
+              type="text"
+              v-model="cliPathValues[provider.key]"
+              :placeholder="provider.placeholder"
+              @input="debouncedSaveCliPaths()"
+              class="w-full px-3 py-1.5 bg-neutral-800 border border-neutral-700/50 rounded-md text-white placeholder-neutral-600 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+            />
+          </div>
+
+          <!-- Test Button + Status Column -->
+          <div class="flex justify-end items-center gap-2">
+            <CheckCircle
+              v-if="cliTestResults?.[provider.key] === 'success'"
+              class="w-4 h-4 text-green-400"
+            />
+            <XCircle
+              v-else-if="cliTestResults?.[provider.key] === 'error'"
+              class="w-4 h-4 text-red-400"
+            />
+            <button
+              @click="testCliProvider(provider.key)"
+              :disabled="cliTestResults?.[provider.key] === 'testing'"
+              class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+              :class="cliTestResults?.[provider.key] === 'testing'
+                ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                : 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 border border-neutral-700/50'"
+              title="Test if CLI is available"
+            >
+              <Loader2
+                v-if="cliTestResults?.[provider.key] === 'testing'"
+                class="w-3.5 h-3.5 animate-spin"
+              />
+              <span v-else>Test</span>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="border-t border-neutral-800 my-8"></div>
+
     <!-- Custom Providers -->
     <div class="space-y-4">
       <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">Custom Providers</h3>
@@ -238,9 +294,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
-import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink } from 'lucide-vue-next'
+import { ref, computed, reactive, watch } from 'vue'
+import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink, Play, CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
 import { useDebounce } from '@/core/composables/useDebounce'
+import { useSelector } from '@xstate/vue'
+import { applicationState } from '@/main'
 
 interface Props {
   settings?: {
@@ -251,6 +309,7 @@ interface Props {
     mistral?: string | null
     cohere?: string | null
     custom?: Record<string, string>
+    cliPaths?: Record<string, string>
   }
 }
 
@@ -281,6 +340,35 @@ const standardProviders = [
   { key: 'mistral', label: 'Mistral AI', description: 'Mistral models', url: 'https://console.mistral.ai/api-keys', placeholder: 'Enter Mistral AI API key' },
   { key: 'cohere', label: 'Cohere', description: 'Command, Embed, Rerank', url: 'https://dashboard.cohere.com/api-keys', placeholder: 'Enter Cohere API key' },
 ]
+
+const cliProviders = [
+  { key: 'copilot', label: 'Copilot CLI', guide: 'Install GitHub CLI, then run: gh extension install github/gh-copilot', placeholder: 'Binary path, e.g. /usr/local/bin/gh (default: gh)' },
+  { key: 'claude-code', label: 'Claude Code CLI', guide: 'Install via: npm install -g @anthropic-ai/claude-code', placeholder: 'Binary path, e.g. /usr/local/bin/claude (default: claude)' },
+  { key: 'codex', label: 'Codex CLI', guide: 'Install via: npm install -g @openai/codex', placeholder: 'Binary path, e.g. /usr/local/bin/codex (default: codex)' },
+]
+
+const settingsActor = applicationState.system.get('settings')
+const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
+
+const testCliProvider = (provider: string) => {
+  settingsActor.send({ type: 'CLI.TEST', provider })
+}
+
+// CLI path state
+const cliPathValues = ref<Record<string, string>>({ ...props.settings?.cliPaths })
+
+watch(() => props.settings?.cliPaths, (newPaths) => {
+  if (newPaths) {
+    cliPathValues.value = { ...newPaths }
+  }
+}, { immediate: true })
+
+const { debounced: debouncedSaveCliPaths } = useDebounce(() => {
+  emit('update-setting', {
+    path: ['cliPaths'],
+    value: { ...cliPathValues.value }
+  })
+}, 600)
 
 // State for inline editing
 const editingProviders = ref<Set<string>>(new Set())
