@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
+import * as esbuild from 'esbuild';
 
 // --- Constants ---
 
 const DEFAULTS_DIR = path.join(import.meta.dirname, 'defaults');
-const SHARED_DIR = path.join(import.meta.dirname, 'shared');
 const OUTPUT_FILE = path.join(import.meta.dirname, 'compiled-actions.json');
 
 const DISALLOWED_NODE_PATTERNS = [
@@ -17,16 +17,7 @@ const DISALLOWED_NODE_PATTERNS = [
   { pattern: /\bglobal\b/, label: 'global' },
 ];
 
-// Cache transpiled shared files per compilation run
-const sharedFileCache = new Map<string, string>();
-
 // --- Interfaces ---
-
-interface SharedImportResult {
-  cleanedSource: string;
-  sharedDeclarations: string;
-  errors: string[];
-}
 
 interface CompiledAction {
   label: string;
@@ -37,169 +28,93 @@ interface CompiledAction {
   output?: any;
 }
 
-// --- Helpers ---
+// --- esbuild Plugin ---
 
-function transpileSource(source: string): string {
-  const result = ts.transpileModule(source, {
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-      removeComments: false,
+function createActionValidatorPlugin(entryFilePath: string): esbuild.Plugin {
+  return {
+    name: 'action-validator',
+    setup(build) {
+      // Block bare package imports (e.g. 'lodash', 'fs')
+      build.onResolve({ filter: /^[^./]/ }, (args) => ({
+        errors: [{ text: `Bare package imports are disallowed: '${args.path}'` }],
+      }));
+
+      // Block non-type imports from helper files
+      // esbuild strips `import type` before resolution, so any onResolve call
+      // from a non-entry file means a helper has a non-type import
+      build.onResolve({ filter: /^\./ }, (args) => {
+        if (args.importer && args.importer !== entryFilePath) {
+          return {
+            errors: [{ text: `Helper file cannot have non-type imports (found: '${args.path}' in ${path.relative(path.dirname(entryFilePath), args.importer)})` }],
+          };
+        }
+        return undefined; // let esbuild resolve normally
+      });
     },
-  });
-  return result.outputText;
+  };
 }
 
-function validateSource(source: string, filePath: string, kind: 'action' | 'shared'): string[] {
-  const errors: string[] = [];
-  for (const line of source.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
-    if (/^import\s+type\b/.test(trimmed)) continue;
-    if (/^import\b/.test(trimmed)) {
-      if (kind === 'action') {
-        if (/from\s+['"]\.\.\/types['"]/.test(trimmed)) continue;
-        if (/from\s+['"]\.\.\/shared\//.test(trimmed)) continue;
-        errors.push(`${filePath}: disallowed non-type import: ${trimmed}`);
-      } else {
-        errors.push(`${filePath}: shared files cannot have imports (found: ${trimmed})`);
-      }
+// --- Bundling ---
+
+async function bundleActionFile(filePath: string): Promise<{ bundledJs: string; errors: string[] }> {
+  try {
+    const result = await esbuild.build({
+      entryPoints: [filePath],
+      bundle: true,
+      write: false,
+      format: 'esm',
+      target: 'es2022',
+      platform: 'neutral',
+      plugins: [createActionValidatorPlugin(filePath)],
+    });
+
+    const errors: string[] = [];
+    for (const err of result.errors) {
+      errors.push(err.text);
     }
+    for (const warn of result.warnings) {
+      errors.push(warn.text);
+    }
+
+    if (errors.length > 0 || result.outputFiles.length === 0) {
+      return { bundledJs: '', errors };
+    }
+
+    return { bundledJs: result.outputFiles[0].text, errors: [] };
+  } catch (e: any) {
+    // esbuild throws on build errors — extract messages
+    const errors: string[] = [];
+    if (e.errors) {
+      for (const err of e.errors) {
+        errors.push(err.text);
+      }
+    } else {
+      errors.push(e.message || String(e));
+    }
+    return { bundledJs: '', errors };
   }
+}
+
+// --- Validation ---
+
+function validateBundledOutput(bundledJs: string, filePath: string): string[] {
+  const errors: string[] = [];
   for (const { pattern, label } of DISALLOWED_NODE_PATTERNS) {
-    if (pattern.test(source)) {
+    if (pattern.test(bundledJs)) {
       errors.push(`${filePath}: contains disallowed pattern: ${label}`);
     }
   }
   return errors;
 }
 
-function extractNamedExports(jsSource: string, requestedNames: string[]): { declarations: string; missing: string[] } {
-  const sourceFile = ts.createSourceFile('shared.js', jsSource, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
-  const found = new Map<string, string>();
-
-  for (const stmt of sourceFile.statements) {
-    const isExported = ts.canHaveModifiers(stmt) &&
-      ts.getModifiers(stmt)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword);
-    if (!isExported) continue;
-
-    const names: string[] = [];
-    if ((ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt)) && stmt.name) {
-      names.push(stmt.name.text);
-    } else if (ts.isVariableStatement(stmt)) {
-      for (const decl of stmt.declarationList.declarations) {
-        if (ts.isIdentifier(decl.name)) names.push(decl.name.text);
-      }
-    }
-
-    for (const name of names) {
-      if (requestedNames.includes(name)) {
-        found.set(name, jsSource.substring(stmt.getStart(), stmt.getEnd()).replace(/^export\s+/, ''));
-      }
-    }
-  }
-
-  const missing = requestedNames.filter(n => !found.has(n));
-  // Preserve import order
-  const declarations = requestedNames
-    .filter(n => found.has(n))
-    .map(n => found.get(n)!)
-    .join('\n');
-
-  return { declarations, missing };
-}
-
-function resolveSharedImports(source: string, filePath: string): SharedImportResult {
-  const errors: string[] = [];
-  const allDeclarations: string[] = [];
-
-  // Matches: import { foo, bar } from '../shared/xyz';
-  const SHARED_IMPORT_RE = /^import\s*\{([^}]+)\}\s*from\s*['"]\.\.\/shared\/([^'"]+)['"]\s*;?\s*$/gm;
-
-  let match: RegExpExecArray | null;
-  const importLines: string[] = [];
-
-  while ((match = SHARED_IMPORT_RE.exec(source)) !== null) {
-    const namesRaw = match[1];
-    const moduleName = match[2];
-    importLines.push(match[0]);
-
-    // Parse imported names — reject aliases
-    const names: string[] = [];
-    for (const part of namesRaw.split(',')) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      if (trimmed.includes(' as ')) {
-        errors.push(`${filePath}: import aliases not supported: ${trimmed}`);
-        continue;
-      }
-      names.push(trimmed);
-    }
-
-    if (names.length === 0) continue;
-
-    // Resolve shared file
-    const sharedFileName = moduleName.endsWith('.ts') ? moduleName : `${moduleName}.ts`;
-    const sharedFilePath = path.join(SHARED_DIR, sharedFileName);
-
-    if (!fs.existsSync(sharedFilePath)) {
-      errors.push(`${filePath}: shared file not found: shared/${sharedFileName}`);
-      continue;
-    }
-
-    // Read and validate shared source
-    let sharedJs: string;
-    if (sharedFileCache.has(sharedFilePath)) {
-      sharedJs = sharedFileCache.get(sharedFilePath)!;
-    } else {
-      const sharedSource = fs.readFileSync(sharedFilePath, 'utf-8');
-      const relPath = `shared/${sharedFileName}`;
-
-      // Validate shared source (stricter rules)
-      const validationErrors = validateSource(sharedSource, relPath, 'shared');
-      if (validationErrors.length > 0) {
-        errors.push(...validationErrors);
-        continue;
-      }
-
-      sharedJs = transpileSource(sharedSource);
-      sharedFileCache.set(sharedFilePath, sharedJs);
-    }
-
-    // Extract requested declarations
-    const { declarations, missing } = extractNamedExports(sharedJs, names);
-
-    for (const m of missing) {
-      errors.push(`${filePath}: export '${m}' not found in shared/${sharedFileName}`);
-    }
-
-    if (declarations) {
-      allDeclarations.push(declarations);
-    }
-  }
-
-  // Remove shared import lines from source
-  let cleanedSource = source;
-  for (const line of importLines) {
-    cleanedSource = cleanedSource.replace(line, '');
-  }
-
-  return {
-    cleanedSource,
-    sharedDeclarations: allDeclarations.join('\n\n'),
-    errors,
-  };
-}
+// --- TS AST Extraction ---
 
 function extractMeta(jsSource: string): Record<string, any> | null {
   const sourceFile = ts.createSourceFile('temp.js', jsSource, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
 
   for (const statement of sourceFile.statements) {
-    // Look for: export const meta = { ... }
-    if (
-      ts.isVariableStatement(statement) &&
-      statement.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)
-    ) {
+    // esbuild outputs `var meta = {...}` — find by name, no export keyword check
+    if (ts.isVariableStatement(statement)) {
       for (const decl of statement.declarationList.declarations) {
         if (ts.isIdentifier(decl.name) && decl.name.text === 'meta' && decl.initializer) {
           if (ts.isObjectLiteralExpression(decl.initializer)) {
@@ -223,10 +138,10 @@ function extractFunctionBody(jsSource: string): string | null {
   const sourceFile = ts.createSourceFile('temp.js', jsSource, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
 
   for (const statement of sourceFile.statements) {
+    // esbuild outputs `async function action(...)` — find by name, no export keyword check
     if (
       ts.isFunctionDeclaration(statement) &&
       statement.name?.text === 'action' &&
-      statement.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) &&
       statement.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) &&
       statement.body
     ) {
@@ -235,7 +150,6 @@ function extractFunctionBody(jsSource: string): string | null {
 
       // Dedent: find minimum indentation and remove it
       const lines = bodyText.split('\n');
-      // Filter out empty lines for indent calculation
       const nonEmptyLines = lines.filter(l => l.trim().length > 0);
       if (nonEmptyLines.length === 0) return '';
 
@@ -255,38 +169,71 @@ function extractFunctionBody(jsSource: string): string | null {
   return null;
 }
 
-// --- Compilation ---
+function extractInlinedHelpers(jsSource: string): string {
+  const sourceFile = ts.createSourceFile('temp.js', jsSource, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
+  const helpers: string[] = [];
 
-function compileActionFile(filePath: string): { action: CompiledAction | null; warnings: string[] } {
-  const source = fs.readFileSync(filePath, 'utf-8');
-  const relativePath = path.relative(DEFAULTS_DIR, filePath);
+  for (const statement of sourceFile.statements) {
+    // Skip the meta variable declaration
+    if (ts.isVariableStatement(statement)) {
+      const hasMeta = statement.declarationList.declarations.some(
+        d => ts.isIdentifier(d.name) && d.name.text === 'meta'
+      );
+      if (hasMeta) continue;
+    }
 
-  // Resolve shared imports (before validation)
-  const { cleanedSource, sharedDeclarations, errors: sharedErrors } = resolveSharedImports(source, relativePath);
-  if (sharedErrors.length > 0) {
-    return { action: null, warnings: sharedErrors };
+    // Skip the action function declaration
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === 'action') {
+      continue;
+    }
+
+    // Skip export statements (e.g. `export { meta, action }`)
+    if (ts.isExportDeclaration(statement)) {
+      continue;
+    }
+
+    // Everything else is an inlined helper
+    const text = jsSource.substring(statement.getStart(), statement.getEnd()).trim();
+    if (text) {
+      helpers.push(text);
+    }
   }
 
-  const warnings = validateSource(cleanedSource, relativePath, 'action');
+  return helpers.join('\n');
+}
 
-  // Transpile TS -> JS
-  const jsSource = transpileSource(cleanedSource);
+// --- Compilation ---
+
+async function compileActionFile(filePath: string): Promise<{ action: CompiledAction | null; warnings: string[] }> {
+  const relativePath = path.relative(DEFAULTS_DIR, filePath);
+
+  // Bundle with esbuild (handles TS→JS + import resolution)
+  const { bundledJs, errors: bundleErrors } = await bundleActionFile(filePath);
+  if (bundleErrors.length > 0) {
+    return { action: null, warnings: bundleErrors.map(e => `${relativePath}: ${e}`) };
+  }
+
+  // Validate bundled output for disallowed Node.js patterns
+  const warnings = validateBundledOutput(bundledJs, relativePath);
 
   // Extract meta
-  const meta = extractMeta(jsSource);
+  const meta = extractMeta(bundledJs);
   if (!meta) {
     return { action: null, warnings: [...warnings, `${relativePath}: could not extract meta object`] };
   }
 
   // Extract function body
-  const body = extractFunctionBody(jsSource);
+  const body = extractFunctionBody(bundledJs);
   if (body === null) {
     return { action: null, warnings: [...warnings, `${relativePath}: could not extract action function body`] };
   }
 
-  // Prepend shared declarations to the function body
-  const actionFn = sharedDeclarations
-    ? `${sharedDeclarations}\n\n${body}`
+  // Extract inlined helper declarations
+  const inlinedHelpers = extractInlinedHelpers(bundledJs);
+
+  // Assemble actionFn = helpers + body
+  const actionFn = inlinedHelpers
+    ? `${inlinedHelpers}\n\n${body}`
     : body;
 
   const compiled: CompiledAction = {
@@ -301,8 +248,7 @@ function compileActionFile(filePath: string): { action: CompiledAction | null; w
   return { action: compiled, warnings };
 }
 
-function main() {
-  sharedFileCache.clear();
+async function main() {
   console.log('Compiling actions from:', DEFAULTS_DIR);
 
   if (!fs.existsSync(DEFAULTS_DIR)) {
@@ -310,15 +256,32 @@ function main() {
     process.exit(1);
   }
 
-  const files = fs.readdirSync(DEFAULTS_DIR).filter(f => f.endsWith('.ts')).sort();
-  console.log(`Found ${files.length} action file(s):`, files.join(', '));
+  const allFiles = fs.readdirSync(DEFAULTS_DIR).filter(f => f.endsWith('.ts')).sort();
+
+  // Separate action files (have `export const meta`) from helper files
+  const META_RE = /^export\s+const\s+meta\b/m;
+  const actionFiles: string[] = [];
+  const helperFiles: string[] = [];
+  for (const file of allFiles) {
+    const content = fs.readFileSync(path.join(DEFAULTS_DIR, file), 'utf-8');
+    if (META_RE.test(content)) {
+      actionFiles.push(file);
+    } else {
+      helperFiles.push(file);
+    }
+  }
+
+  console.log(`Found ${actionFiles.length} action file(s): ${actionFiles.join(', ')}`);
+  if (helperFiles.length > 0) {
+    console.log(`Found ${helperFiles.length} helper file(s): ${helperFiles.join(', ')}`);
+  }
 
   const allWarnings: string[] = [];
   const compiledActions: CompiledAction[] = [];
 
-  for (const file of files) {
+  for (const file of actionFiles) {
     const filePath = path.join(DEFAULTS_DIR, file);
-    const { action, warnings } = compileActionFile(filePath);
+    const { action, warnings } = await compileActionFile(filePath);
     allWarnings.push(...warnings);
     if (action) {
       compiledActions.push(action);
@@ -340,4 +303,7 @@ function main() {
   console.log(`\nWrote ${compiledActions.length} action(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}`);
 }
 
-main();
+main().catch(err => {
+  console.error('Compilation failed:', err);
+  process.exit(1);
+});

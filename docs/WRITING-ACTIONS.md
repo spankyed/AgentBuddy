@@ -88,19 +88,22 @@ The `services` object provides access to all backend modules:
 
 ## Don'ts
 
-- **No imports** — except `import type { ... } from '../types'` and `import { ... } from '../shared/*'` (see [Shared Helpers](#shared-helpers) below)
+- **No bare package imports** — you cannot import from `node_modules` (e.g. `import { x } from 'lodash'`). Relative path imports are allowed (e.g. `../shared/utils`, `./helper`, `../../lib/foo`) as long as imported files only use `import type` (no value imports)
 - **No `require()`** — the function body cannot load modules at runtime
 - **No Node.js globals** — `process`, `fs`, `__dirname`, `__filename`, `Buffer`, `global` are not available
 - **No module-scoped state** — everything inside the `action` function is the function body; anything outside is stripped
 - **No top-level side effects** — only the function body is extracted and executed
 
-## Shared Helpers
+## Helper Files
 
-You can extract reusable logic into shared helper files at `packages/api/actions/shared/`. The compiler inlines imported declarations into the action function body at compile time, so the resulting `actionFn` string remains self-contained.
+You can extract reusable logic into helper files at any relative path. The compiler uses esbuild to bundle imports — all imported declarations are inlined into the action function body at compile time, so the resulting `actionFn` string remains self-contained.
 
-### Creating a shared file
+Common locations for helpers:
+- `actions/shared/` — broadly reusable helpers
+- `actions/defaults/` — sibling helpers (files without `export const meta` are skipped during compilation)
+- Any other relative path reachable from the action file
 
-Create a `.ts` file in `actions/shared/`:
+### Creating a helper file
 
 ```typescript
 // actions/shared/string-utils.ts
@@ -115,6 +118,8 @@ export function capitalize(str: string): string {
 ```
 
 ### Importing in an action
+
+All import styles are supported — named, default, aliased, and wildcard:
 
 ```typescript
 import type { ActionMeta, Services, Z } from '../types';
@@ -144,13 +149,11 @@ return { greeting: `Hello, ${name}!` };
 
 ### Constraints
 
-- **Named imports only** — `import { foo } from '../shared/bar'`
-- **No aliases** — `import { foo as bar }` is not supported
-- **No default imports** — `import foo from '../shared/bar'` is not supported
-- **No wildcard imports** — `import * as utils from '../shared/bar'` is not supported
-- **Shared files must be self-contained** — no imports (except `import type`) within shared files
-- **No Node.js globals** in shared files — same restrictions as action files
+- **Helper files must be self-contained** — no imports (except `import type`) within helper files
+- **No Node.js globals** in helper files — same restrictions as action files
+- **No bare package imports** — cannot import from `node_modules`
 - Missing files or exports are treated as **compile errors** (the action is skipped)
+- Files in `defaults/` without `export const meta` are treated as helpers and skipped during compilation
 
 ## Metadata Reference
 
@@ -251,6 +254,6 @@ Or from `packages/api/`:
 npm run compile:actions
 ```
 
-This reads all `.ts` files in `actions/defaults/`, strips types, extracts the function body and metadata, and writes `actions/compiled-actions.json`.
+This uses esbuild to bundle and transpile all `.ts` files in `actions/defaults/`, resolving relative imports and inlining helper code. It then extracts the function body and metadata and writes `actions/compiled-actions.json`. Files without `export const meta` are treated as helper files and skipped during compilation (but can be imported by action files).
 
 The compiled JSON is git-tracked and can be imported via the app UI using the existing IMPORT_ACTIONS flow.
