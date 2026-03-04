@@ -10,6 +10,16 @@ import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 import { agent } from '@/systems/agent/system';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+
+const CLI_TEST_COMMANDS: Record<string, { command: string; args: string[] }> = {
+  copilot:       { command: 'copilot', args: ['--version'] },
+  'claude-code': { command: 'claude', args: ['--version'] },
+  codex:         { command: 'codex', args: ['--version'] },
+};
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -41,6 +51,9 @@ export const IncomingSettingsEvents = [
     id: z.string()
   }),
   busEvent('SECRETS.CMD.GET_API_KEYS', {}),
+  busEvent('TEST_CLI_PROVIDER', {
+    provider: z.string(),
+  }),
 ] as const
 
 export type SettingsInternalEvents = 
@@ -52,6 +65,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['hotkeys'] }
+  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
@@ -293,6 +307,44 @@ export const settingsSystem = setup({
       }
     },
     
+    testCliProvider: ({ system, event }) => {
+      const ev = typeOf('TEST_CLI_PROVIDER', event);
+      const provider = ev.provider;
+      const cmd = CLI_TEST_COMMANDS[provider];
+
+      if (!cmd) {
+        system.get(bus).send(emit(settings, {
+          type: 'CLI_TEST_RESULT',
+          provider,
+          success: false,
+          error: `Unknown CLI provider: ${provider}`,
+        }));
+        return;
+      }
+
+      const data = settingsQueries.getSettings();
+      const storedPath = data.general.secrets.cliPaths?.[provider];
+      const command = storedPath || cmd.command;
+
+      execFileAsync(command, cmd.args, { timeout: 10000 })
+        .then(() => {
+          system.get(bus).send(emit(settings, {
+            type: 'CLI_TEST_RESULT',
+            provider,
+            success: true,
+          }));
+        })
+        .catch((err: any) => {
+          console.error(`[settings] CLI test failed for "${provider}":`, err.message || err);
+          system.get(bus).send(emit(settings, {
+            type: 'CLI_TEST_RESULT',
+            provider,
+            success: false,
+            error: err.message || 'Command failed',
+          }));
+        });
+    },
+
     completeOnboarding: ({ system }) => {
       settingsCommands.updateSettings('internal', null, ['hasOnboarded'], true);
       settingsCommands.updateSettings('internal', null, ['tourStarted'], false);
@@ -340,6 +392,9 @@ export const settingsSystem = setup({
         },
         COMPLETE_ONBOARDING: {
           actions: 'completeOnboarding',
+        },
+        TEST_CLI_PROVIDER: {
+          actions: 'testCliProvider',
         },
         // Forward incoming SECRETS.CMD.* events to secrets actor
         'SECRETS.CMD.*': {

@@ -19,6 +19,10 @@ export const defaultSettings: SettingsData = {
       cohere: null,
       custom: {},
       required: ['openai', 'anthropic'],
+      cliPaths: {
+        'copilot': '/usr/local/bin/copilot',
+        'claude-code': process.env.HOME + '/.claude/local/claude',
+      },
     },
     hotkeys: {
       switchPluginUp: {

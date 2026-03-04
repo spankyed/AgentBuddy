@@ -49,6 +49,7 @@ export interface Secrets {
   cohere?: string | null; // Secret ID reference
   custom?: Record<string, string>; // Custom provider name -> Secret ID
   required: string[]; // List of required providers, e.g., ['openai']
+  cliPaths?: Record<string, string>; // e.g., { 'claude-code': '/usr/local/bin/claude' }
 }
 
 // Base keyboard shortcut configuration

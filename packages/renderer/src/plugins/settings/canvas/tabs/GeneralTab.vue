@@ -20,12 +20,12 @@
 
     <!-- Content Area -->
     <div class="flex-1 p-8 overflow-auto">
-      <component 
+      <component
         :is="componentMap[generalNavItem]"
         :settings="currentSettings"
-        @update-setting="handleUpdateSetting" 
+        @update-setting="handleUpdateSetting"
       />
-      
+
       <!-- Save Status Indicator -->
       <div class="mt-6 flex items-center gap-2">
         <div v-if="saveStatus === 'saving'" class="flex items-center gap-2 text-xs text-neutral-500">
@@ -87,7 +87,7 @@ const componentMap: Record<string, any> = {
 
 const navItems = [
   { id: 'personal', label: 'Personal', icon: User },
-  { id: 'secrets', label: 'Secrets', icon: Key },
+  { id: 'secrets', label: 'Providers', icon: Key },
   { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
   { id: 'projects', label: 'Projects', icon: Briefcase },
   { id: 'misc', label: 'Misc', icon: Settings },
@@ -107,10 +107,10 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
     projects: 'projects',
     misc: 'misc'
   } as const
-  
+
   const currentNavItem = generalNavItem.value as keyof typeof labelMap
   const backendLabel = labelMap[currentNavItem]
-  
+
   // Defensive check to prevent undefined labels
   if (!backendLabel) {
     console.log('event.path: ', event.path);
@@ -119,7 +119,7 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
     console.error('[GeneralTab] Skipping settings update to prevent data corruption')
     return
   }
-  
+
   updateSettings({
     entityType: 'general',
     label: backendLabel,
@@ -128,4 +128,3 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
   })
 }
 </script>
-

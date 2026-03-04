@@ -22,6 +22,7 @@ export type SettingsState = ActorRefFrom<typeof settingsState>
 export interface SettingsContext {
   settings: SettingsData | null;
   secretsData: any[];
+  cliTestResults: Record<string, 'idle' | 'testing' | 'success' | 'error'>;
   activeTab: 'general' | 'plugins' | 'help';
   generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc';
   selectedPluginId: string | null;
@@ -34,6 +35,7 @@ type UIEvent =
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
+  | { type: 'CLI.TEST'; provider: string }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
@@ -41,6 +43,7 @@ export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'SECRETS.EVENT.UPDATED'; id: string }
   | { type: 'SECRETS.EVENT.DELETED'; id: string }
   | { type: 'SECRETS.EVENT.ERROR'; message: string }
+  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string }
 const typeOf = safeEvents<SettingsEvents>()
 
 const settingsState = setup({
@@ -138,6 +141,28 @@ const settingsState = setup({
         type: 'RESET_SETTINGS',
       });
     },
+
+    testCliProvider: assign(({ context, event }) => {
+      const ev = typeOf('CLI.TEST', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'TEST_CLI_PROVIDER',
+        provider: ev.provider,
+      });
+      return {
+        cliTestResults: { ...context.cliTestResults, [ev.provider]: 'testing' as const },
+      };
+    }),
+
+    setCliTestResult: assign(({ context, event }) => {
+      const ev = event as { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string };
+      return {
+        cliTestResults: {
+          ...context.cliTestResults,
+          [ev.provider]: ev.success ? 'success' as const : 'error' as const,
+        },
+      };
+    }),
   },
 }).createMachine({
   id,
@@ -151,6 +176,7 @@ const settingsState = setup({
     return {
       settings: null,
       secretsData: [],
+      cliTestResults: {},
       activeTab: 'general',
       generalNavItem: 'personal',
       selectedPluginId: defaultPluginId,
@@ -201,6 +227,12 @@ const settingsState = setup({
         'SECRETS.EVENT.UPDATED': {},
         'SECRETS.EVENT.DELETED': {},
         'SECRETS.EVENT.ERROR': {},
+        'CLI.TEST': {
+          actions: 'testCliProvider',
+        },
+        'CLI_TEST_RESULT': {
+          actions: 'setCliTestResult',
+        },
       },
     },
   },

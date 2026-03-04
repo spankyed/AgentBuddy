@@ -8,16 +8,22 @@
       </p>
     </div>
 
+    <!-- CLI Providers -->
+    <CliProviders :settings="settings" @update-setting="(e: any) => emit('update-setting', e)" />
+
+    <!-- Divider -->
+    <div class="border-t border-neutral-800 my-8"></div>
+
     <!-- Standard Providers -->
     <div class="space-y-4">
       <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">Standard Providers</h3>
-      
+
       <div class="grid grid-cols-[1fr,400px,80px] gap-y-3 gap-x-4 items-center" data-onboarding-id="settings-secrets-section">
         <template v-for="provider in standardProviders" :key="provider.key">
           <!-- Provider Info Column -->
           <div>
             <div class="flex items-center">
-              <button 
+              <button
                 @click="openProviderUrl(provider.url)"
                 class="flex items-center gap-1 text-sm font-medium text-gray-200 hover:text-blue-400 transition-colors group"
                 :title="`Open ${provider.label} API keys page`"
@@ -25,18 +31,18 @@
                 {{ provider.label }}
                 <ExternalLink class="w-3 h-3 text-gray-400 group-hover:text-blue-400 transition-colors" />
               </button>
-              <div 
+              <div
                 v-if="provider.priority"
                 class="flex items-center gap-1 ml-2"
               >
-                <div 
+                <div
                   :class="{
                     'w-1 h-1 rounded-full flex-shrink-0': true,
                     'bg-red-400': provider.priority === 'required',
                     'bg-amber-400': provider.priority === 'recommended'
                   }"
                 ></div>
-                <span 
+                <span
                   :class="{
                     'text-[11px] font-medium': true,
                     'text-red-400/80': provider.priority === 'required',
@@ -49,14 +55,14 @@
             </div>
             <p class="text-xs text-gray-500 mt-0.5">{{ provider.description }}</p>
           </div>
-          
+
           <!-- Input/Display Column -->
           <div :data-onboarding-id="`settings-${provider.key}-key-input`">
             <div v-if="getSecretForProvider(provider.key) && !isEditing(provider.key)">
               <span class="w-full inline-block text-center text-xs text-gray-500 bg-neutral-800 px-3 py-1.5 rounded-md border border-neutral-700">••••••••</span>
             </div>
             <div v-else class="relative">
-              <input 
+              <input
                 :type="showKeyFor[provider.key] ? 'text' : 'password'"
                 v-model="inlineKeyValues[provider.key]"
                 :placeholder="provider.placeholder"
@@ -73,7 +79,7 @@
               </button>
             </div>
           </div>
-          
+
           <!-- Action Buttons Column -->
           <div class="flex justify-end">
             <div v-if="getSecretForProvider(provider.key) && !isEditing(provider.key)" class="flex gap-1">
@@ -241,6 +247,7 @@
 import { ref, computed, reactive } from 'vue'
 import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink } from 'lucide-vue-next'
 import { useDebounce } from '@/core/composables/useDebounce'
+import CliProviders from './CliProviders.vue'
 
 interface Props {
   settings?: {
@@ -251,6 +258,7 @@ interface Props {
     mistral?: string | null
     cohere?: string | null
     custom?: Record<string, string>
+    cliPaths?: Record<string, string>
   }
 }
 

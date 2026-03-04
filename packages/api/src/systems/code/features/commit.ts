@@ -7,6 +7,7 @@ import { GitRepository } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
+import * as copilotCli from '../services/copilot-cli'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -25,6 +26,7 @@ export const IncomingCommitEvents = [
   busEvent('commit.CHECKOUT_BRANCH', { branchName: z.string() }),
   busEvent('commit.PUBLISH_BRANCH', {}),
   busEvent('commit.PULL_BRANCH', {}),
+  busEvent('commit.GENERATE_MESSAGE', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -42,6 +44,7 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
+  | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -61,6 +64,7 @@ export type Event =
   | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
   | { type: 'commit.PUBLISH_BRANCH' }
   | { type: 'commit.PULL_BRANCH' }
+  | { type: 'commit.GENERATE_MESSAGE' }
   | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
@@ -436,6 +440,59 @@ export const commitSystem = setup({
       }
     },
 
+    generateCommitMessage: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+
+      try {
+        // Get diff: prefer staged, fall back to unstaged
+        const stagedFiles = await context.gitRepository.getStagedFiles()
+        let diff: string
+        if (stagedFiles.length > 0) {
+          diff = await context.gitRepository.getDiff(undefined, true)
+        } else {
+          diff = await context.gitRepository.getDiff(undefined, false)
+        }
+
+        if (!diff.trim()) {
+          const wrapped = emit(pluginId, {
+            type: 'commit.ERROR_RECEIVED',
+            data: { message: 'No changes found to generate a commit message from.' }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+          return
+        }
+
+        // Truncate diff to 40k chars
+        const truncatedDiff = diff.length > 40000 ? diff.substring(0, 40000) + '\n... (truncated)' : diff
+
+        const promptText = `Generate a concise git commit message for the following diff. Use conventional commits format (e.g., feat:, fix:, refactor:, docs:, chore:). Keep it to a single line, no markdown wrapping, no backticks. Just output the commit message text.\n\n${truncatedDiff}`
+
+        const cwd = context.gitRepository.getWorkingDir()
+        const message = await copilotCli.prompt(promptText, { cwd })
+
+        if (!message) {
+          const wrapped = emit(pluginId, {
+            type: 'commit.ERROR_RECEIVED',
+            data: { message: 'Copilot returned an empty response.' }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+          return
+        }
+
+        const wrapped = emit(pluginId, {
+          type: 'commit.MESSAGE_GENERATED',
+          data: { message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
     pullBranch: async ({ context, self }) => {
       if (!requireGitRepository(context)) return
       
@@ -522,6 +579,9 @@ export const commitSystem = setup({
         },
         'commit.PULL_BRANCH': {
           actions: 'pullBranch'
+        },
+        'commit.GENERATE_MESSAGE': {
+          actions: 'generateCommitMessage'
         },
         'commit.UPDATE_BASE_DIRECTORY': {
           actions: 'updateBaseDirectory'
