@@ -55,6 +55,19 @@
       <div class="flex items-center gap-2">
         <GitBranch :size="14" class="text-neutral-400" />
         <span class="text-xs text-neutral-300">Branch</span>
+        <button
+          @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
+          :disabled="isPulling || !hasUpstream"
+          class="relative ml-auto p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Pull latest"
+        >
+          <Loader2 v-if="isPulling" :size="14" class="animate-spin" />
+          <ArrowDownToLine v-else :size="14" />
+          <span
+            v-if="commitsBehind > 0"
+            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+          >{{ commitsBehind }}</span>
+        </button>
       </div>
 
       <!-- Create Branch Mode -->
@@ -304,7 +317,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2 } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
