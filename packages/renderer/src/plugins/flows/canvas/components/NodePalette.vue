@@ -60,7 +60,7 @@ import {
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
   getPaletteGradientClasses
-} from '@/core/components/flow-nodes'
+} from '../nodes'
 
 interface PaletteItem {
   type: string

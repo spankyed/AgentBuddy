@@ -4,9 +4,14 @@ import FireNode from './FireNode.vue'
 import VariableNode from './VariableNode.vue'
 import ActionNode from './ActionNode.vue'
 import type { NodeKind } from '@app/api'
-import { BaseNode, SwitchNode, nodeConfigs } from '@/core/components/flow-nodes'
+import { default as BaseNode } from './BaseNode.vue'
+import { default as SwitchNode } from './SwitchNode.vue'
+import { nodeConfigs } from './node-config'
 
 export { BaseNode }
+export { SwitchNode }
+export type { HandleConfig } from './BaseNode.vue'
+export * from './node-config'
 
 // Map node types to their components
 const componentMap = {

@@ -22,7 +22,7 @@ import type {
   OutgoingBrainEvents,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
-import { getNodeConfig } from '@/core/components/flow-nodes'
+import { getNodeConfig } from './canvas/nodes'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG } from './canvas/layout-utils'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
