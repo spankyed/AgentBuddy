@@ -10,7 +10,6 @@ import { brain } from '../brain/system';
 import services from '@/services';
 import { AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData } from './types';
 import { EARS } from '@/core/types';
-import { initializeMockData } from './repository/mock-artifacts';
 import type { MessageEntity, BlockConfig } from '@/systems/threads/types';
 
 const logger = createLogger('agent');
