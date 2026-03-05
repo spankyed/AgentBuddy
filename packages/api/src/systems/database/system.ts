@@ -17,7 +17,7 @@ import { exportDatabase, importDatabase, getBackupInfo } from './backup';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
+import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { flowsCommands } from '@/systems/flows/repository';
 
 const logger = createLogger('database');

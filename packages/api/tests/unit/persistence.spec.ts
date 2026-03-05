@@ -4,11 +4,11 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { EARS } from '@/core/types';
-import { openEnvAt, type LmdbDbs } from '@/persistence/lmdb/envs';
-import { makeLmdbAdapter } from '@/persistence/lmdb/adapter';
-import { LmdbQuery, decodeAttr } from '@/persistence/lmdb/query';
-import { makePolicy, type Partition } from '@/persistence/partitioning/policy';
-import type { PersistenceSink } from '@/persistence/partitioning/base-sink';
+import { openEnvAt, type LmdbDbs } from '@/core/persistence/lmdb/envs';
+import { makeLmdbAdapter } from '@/core/persistence/lmdb/adapter';
+import { LmdbQuery, decodeAttr } from '@/core/persistence/lmdb/query';
+import { makePolicy, type Partition } from '@/core/persistence/partitioning/policy';
+import type { PersistenceSink } from '@/core/persistence/partitioning/base-sink';
 
 // Must mock before importing sharded-router (it imports getAttr at module level)
 vi.mock('@/core/ears/attribute-storage', () => ({
@@ -16,7 +16,7 @@ vi.mock('@/core/ears/attribute-storage', () => ({
 }));
 
 // Import after mock is set up
-const { makeShardedPersistence } = await import('@/persistence/partitioning/sharded-router');
+const { makeShardedPersistence } = await import('@/core/persistence/partitioning/sharded-router');
 
 function tmpDir(label: string) {
   return path.join(os.tmpdir(), `vitest-persistence-${label}-${crypto.randomBytes(4).toString('hex')}`);

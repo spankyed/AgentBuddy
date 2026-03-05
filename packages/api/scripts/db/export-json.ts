@@ -23,7 +23,7 @@ import { qx } from '@/core/ears/helpers/query';
 import { EARS } from '@/core/types';
 import { getAllEntities, getEntitiesOfType, envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/helpers/paths';
-import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
+import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { createDefaultSettings } from '@/systems/settings/repository';
 import * as os from 'node:os';
 

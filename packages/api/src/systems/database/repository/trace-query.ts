@@ -1,4 +1,4 @@
-import { LmdbQuery } from '@/persistence/lmdb/query';
+import { LmdbQuery } from '@/core/persistence/lmdb/query';
 import { envs } from '@/core/ears/attribute-storage';
 import { EARS } from '@/core/types';
 import type { TNodeEntity, TrackEntity } from '@/systems/brain/types';

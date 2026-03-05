@@ -1,5 +1,5 @@
 // lmdb-query.ts
-import type { LmdbDbs } from '@/persistence/lmdb/envs';
+import type { LmdbDbs } from '@/core/persistence/lmdb/envs';
 import { isDeepStrictEqual } from 'node:util';
 
 const US = '\x1F';
@@ -416,7 +416,7 @@ export class LmdbQuery {
 }
 
 /* Example usage
-import { openEnvAt } from '@/persistence/lmdb/envs';
+import { openEnvAt } from '@/core/persistence/lmdb/envs';
 import { LmdbQuery } from './lmdb-query';
 
 const dbs = openEnvAt('/path/to/ears.lmdb');

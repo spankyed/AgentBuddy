@@ -7,10 +7,10 @@ import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationI
 import { EARS } from "../types";
 import { randomId } from "../helpers/random-id";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/helpers/paths";
-import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/persistence/lmdb/envs";
-import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
-import { makePolicy } from "@/persistence/partitioning/policy";
-import { makeShardedPersistence } from "@/persistence/partitioning/sharded-router";
+import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core/persistence/lmdb/envs";
+import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
+import { makePolicy } from "@/core/persistence/partitioning/policy";
+import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
 
 // Configuration for hard delete mode
 const HARD_DELETE_MODE = true; // Set to true to permanently delete entities instead of tombstoning

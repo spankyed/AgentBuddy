@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 import { parseArgs } from 'node:util';
 import { DatabaseCLI, type CliOptions } from './db-cli';
-import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
+import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 

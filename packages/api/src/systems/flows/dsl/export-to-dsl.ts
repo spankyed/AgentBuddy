@@ -9,7 +9,7 @@
  */
 
 import * as path from 'node:path';
-import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
+import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { exportFlowsDSL } from './export-dsl';
 
