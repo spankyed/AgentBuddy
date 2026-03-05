@@ -20,6 +20,7 @@
     "db:clearSettings": "tsx ./scripts/db/destroy-settings.ts",
     "db:export": "./scripts/db/export.sh",
     "db:import": "tsx scripts/db/import-backup.ts",
+    "db:reset": "tsx scripts/db/reset.ts",
     "db:seed": "tsx scripts/db/seed.ts",
     "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts",
     "compile:actions": "tsx scratchpad/compile.ts actions",
