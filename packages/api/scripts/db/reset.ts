@@ -26,15 +26,15 @@ async function run() {
   // Pre-load central repository to resolve circular dependency
   // (flows repo ↔ central repo — loading central first ensures flows repo
   // is evaluated before central repo accesses flowsQueries)
-  await import('@/repository');
-  const { flowsCommands } = await import('@/systems/flows/repository');
+  // await import('@/repository');
+  // const { flowsCommands } = await import('@/systems/flows/repository');
 
-  console.log('Creating root flow...');
-  const { flow } = flowsCommands.createFlowWithEntryNode({
-    label: 'Root Flow',
-    description: 'The root flow of the application',
-  });
-  flowsCommands.grantRootFlowRole(flow.id);
+  // console.log('Creating root flow...');
+  // const { flow } = flowsCommands.createFlowWithEntryNode({
+  //   label: 'Root Flow',
+  //   description: 'The root flow of the application',
+  // });
+  // flowsCommands.grantRootFlowRole(flow.id);
 
   console.log('Database reset complete.');
   closePersistence();
