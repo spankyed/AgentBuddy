@@ -23,7 +23,7 @@ export async function action(
   const { dbPrompt } = params;
 
   try {
-    services.emitter.sendToPlugin('database', { type: 'MAGIC_PROMPT_LOADING' });
+    services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
 
     // Get documents from library service
     const [doc1, doc2] = await Promise.all([
@@ -94,7 +94,7 @@ export async function action(
 
     // Emit the generated code to database plugin
     services.emitter.sendToPlugin('database', {
-      type: 'MAGIC_PROMPT_GENERATED',
+      type: 'AI_QUERY_GENERATED',
       query: result.text
     });
 

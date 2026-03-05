@@ -12,6 +12,8 @@ import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
+import * as copilotCli from '@/systems/code/services/copilot-cli';
+import { buildQueryPrompt } from './prompt';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
@@ -31,7 +33,7 @@ export const IncomingDatabaseEvents = [
   busEvent('EXECUTE_TRANSACTION', {
     code: z.string(),
   }),
-busEvent('GENERATE_MAGIC_PROMPT', {
+busEvent('GENERATE_AI_QUERY', {
     prompt: z.string(),
   }),
   busEvent('REFRESH_SCHEMA', {}),
@@ -68,8 +70,8 @@ export type OutgoingDatabaseEvents =
   | { type: 'QUERY_ERROR'; error: string }
   | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number }
   | { type: 'TRANSACTION_ERROR'; error: string }
-  |{ type: 'MAGIC_PROMPT_LOADING' }
-  | { type: 'MAGIC_PROMPT_GENERATED'; query: string }
+  |{ type: 'AI_QUERY_LOADING' }
+  | { type: 'AI_QUERY_GENERATED'; query: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
   | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean }
   | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null }
@@ -152,26 +154,46 @@ export const databaseSystem = setup({
         }));
       }
     },
-    handleMagicPrompt: ({ system, event }) => {
-      const { prompt } = typeOf('GENERATE_MAGIC_PROMPT', event);
-      
+    handleAiQuery: async ({ system, event }) => {
+      const { prompt } = typeOf('GENERATE_AI_QUERY', event);
+
       if (!prompt?.trim()) {
-        logger.error('Invalid prompt provided for magic prompt generation');
-        system.get(bus).send(emit(database, { 
+        logger.error('Invalid prompt provided for AI query generation');
+        system.get(bus).send(emit(database, {
           type: 'QUERY_ERROR',
           error: 'Please provide a valid prompt'
         }));
         return;
       }
-      
-      const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'database.query.prompt',
-        payload: prompt.trim(),
-      });
-      
-      logger.info('Sent magic prompt to brain:', { prompt: prompt.trim() });
+
+      system.get(bus).send(emit(database, { type: 'AI_QUERY_LOADING' }));
+
+      try {
+        const schema = generateSchemaInfo();
+        const promptText = buildQueryPrompt(prompt.trim(), schema);
+        const query = await copilotCli.prompt(promptText, { timeout: 60_000 });
+
+        if (!query) {
+          system.get(bus).send(emit(database, {
+            type: 'QUERY_ERROR',
+            error: 'Copilot returned an empty response.'
+          }));
+          return;
+        }
+
+        system.get(bus).send(emit(database, {
+          type: 'AI_QUERY_GENERATED',
+          query
+        }));
+        logger.info('AI query generated successfully');
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('AI query generation failed:', { error: errorMessage });
+        system.get(bus).send(emit(database, {
+          type: 'QUERY_ERROR',
+          error: errorMessage
+        }));
+      }
     },
     getTraceFlows: ({ system }) => {
       try {
@@ -369,8 +391,8 @@ export const databaseSystem = setup({
         EXECUTE_TRANSACTION: {
           actions: 'executeTransaction',
         },
-GENERATE_MAGIC_PROMPT: {
-          actions: 'handleMagicPrompt',
+GENERATE_AI_QUERY: {
+          actions: 'handleAiQuery',
         },
         REFRESH_SCHEMA: {
           actions: 'sendDatabaseRefresh',

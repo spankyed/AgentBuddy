@@ -33,7 +33,7 @@ export interface DatabaseContext {
     value: string;
   } | null;
   mode: 'query' | 'transaction';
-  isMagicPromptLoading: boolean;
+  isAiQueryLoading: boolean;
   isRefreshing: boolean;
   settings: DatabaseSettings | null;
   // Trace viewer fields
@@ -57,8 +57,8 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
   { type: 'TRANSACTION_RESULT'; result: any; executionTime: number } |
   { type: 'TRANSACTION_ERROR'; error: string } |
-  { type: 'MAGIC_PROMPT_LOADING' } |
-  { type: 'MAGIC_PROMPT_GENERATED'; query: string } |
+  { type: 'AI_QUERY_LOADING' } |
+  { type: 'AI_QUERY_GENERATED'; query: string } |
   { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
@@ -76,7 +76,7 @@ type UIEvent =
   |{ type: 'DATABASE.REFRESH_SCHEMA' }
   | { type: 'DATABASE.RESET' }
   | { type: 'MODE.TOGGLE' }
-  | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
+  | { type: 'AI_QUERY.GENERATE'; prompt: string }
   | { type: 'VIEW_MODE.TOGGLE' }
   | { type: 'TRACE.SELECT_FLOW'; flowId: string }
   | { type: 'TRACE.EXPAND_NODE'; nodeId: string }
@@ -185,7 +185,7 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
-        isMagicPromptLoading: false,
+        isAiQueryLoading: false,
       };
     }),
 
@@ -233,29 +233,29 @@ const databaseState = setup({
       error: null,
     }),
 
-    /* ── magic prompt ───────────────────────────────── */
-    generateMagicPrompt: ({ event }) => {
-      const ev = typeOf('MAGIC_PROMPT.GENERATE', event);
+    /* ── ai query ───────────────────────────────── */
+    generateAiQuery: ({ event }) => {
+      const ev = typeOf('AI_QUERY.GENERATE', event);
       if (!ev.prompt?.trim()) {
-        console.error('Invalid prompt provided for magic prompt generation');
+        console.error('Invalid prompt provided for AI query generation');
         return;
       }
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'GENERATE_MAGIC_PROMPT',
+        type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
       });
     },
 
-    setMagicPromptLoading: assign({
-      isMagicPromptLoading: true,
+    setAiQueryLoading: assign({
+      isAiQueryLoading: true,
     }),
 
-    setMagicPromptResult: assign(({ event }) => {
-      const ev = typeOf('MAGIC_PROMPT_GENERATED', event);
+    setAiQueryResult: assign(({ event }) => {
+      const ev = typeOf('AI_QUERY_GENERATED', event);
       return {
         currentQuery: ev.query,
-        isMagicPromptLoading: false,
+        isAiQueryLoading: false,
       };
     }),
 
@@ -486,7 +486,7 @@ const databaseState = setup({
     executionTime: null,
     selectedSchemaItem: null,
     mode: 'query',
-    isMagicPromptLoading: false,
+    isAiQueryLoading: false,
     isRefreshing: false,
     settings: null,
     // Trace viewer fields
@@ -514,8 +514,8 @@ const databaseState = setup({
     QUERY_ERROR: { actions: 'setQueryError' },
     TRANSACTION_RESULT: { actions: 'setTransactionResult' },
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
-MAGIC_PROMPT_LOADING: { actions: 'setMagicPromptLoading' },
-    MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
+AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
+    AI_QUERY_GENERATED: { actions: 'setAiQueryResult' },
     DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
@@ -556,8 +556,8 @@ MAGIC_PROMPT_LOADING: { actions: 'setMagicPromptLoading' },
         'SCHEMA.SELECT': {
           actions: 'selectSchemaItem',
         },
-'MAGIC_PROMPT.GENERATE': {
-          actions: ['generateMagicPrompt'],
+'AI_QUERY.GENERATE': {
+          actions: ['generateAiQuery'],
         },
         'DATABASE.REFRESH_SCHEMA': {
           actions: ['setRefreshing', 'refreshSchema'],

@@ -17,7 +17,7 @@
       </button>
       
       <button
-        @click="$emit('magic-prompt')"
+        @click="$emit('ai-query')"
         class="p-1.5 text-neutral-500 hover:text-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-800 dark:hover:bg-neutral-700 rounded transition-colors"
         title="Generate query with AI"
       >
@@ -67,7 +67,7 @@ defineEmits<{
   'update:activeMode': [mode: 'query' | 'examples'];
   execute: [];
   clear: [];
-  'magic-prompt': [];
+  'ai-query': [];
   toggleMode: [];
 }>();
 </script> 
