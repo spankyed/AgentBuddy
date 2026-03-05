@@ -1,5 +1,5 @@
-import { createLogger } from '@/core/utils/debug/logger';
-import { tidyFunction } from '@/core/utils/tidy-function';
+import { createLogger } from '@/core/helpers/debug/logger';
+import { tidyFunction } from '@/core/helpers/tidy-function';
 
 const nowMs = Date.now();
 

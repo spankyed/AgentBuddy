@@ -1,4 +1,4 @@
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 
 // Toggle this flag to enable/disable brain inspect logs
 export let INSPECT_ENABLED = false;

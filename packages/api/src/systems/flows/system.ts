@@ -1,15 +1,15 @@
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/core/utils/event-helpers';
-import { fromSystem, systemBus } from '@/core/utils/event-helpers';
+import type { MergeReceivable } from '@/core/helpers/event-helpers';
+import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/core/helpers/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
 import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { z } from 'zod';
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import type { ActionEntity } from '@/systems/actions/types';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 

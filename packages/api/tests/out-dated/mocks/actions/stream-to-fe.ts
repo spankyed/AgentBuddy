@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 import type { ActionEntity } from '@/systems/actions/types';
-import { tidyFunction } from '@/core/utils/tidy-function';
+import { tidyFunction } from '@/core/helpers/tidy-function';
 
 const nowMs = Date.now();
 

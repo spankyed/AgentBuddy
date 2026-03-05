@@ -1,11 +1,11 @@
 import { setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import systems from '@/systems';
-import { emit, safeEvents, type SystemId } from '@/core/utils/actor-helpers';
-import { entries } from '@/core/utils';
+import { emit, safeEvents, type SystemId } from '@/core/helpers/actor-helpers';
+import { entries } from '@/core/helpers';
 import { EARS } from '@/core/types';
 import { createEntity } from '@/core/ears';
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { settingsQueries } from '@/systems/settings/repository';
 

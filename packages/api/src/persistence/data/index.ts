@@ -1,4 +1,4 @@
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import { loadSnapshot as loadSnapshotFile, listSnapshots, restoreSnapshot } from '@/systems/database/snapshot';
 
 const logger = createLogger('load-data');

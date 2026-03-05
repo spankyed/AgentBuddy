@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 import type { Rows } from '@/core/data';
-import { tidyFunction } from '@/core/utils/tidy-function';
+import { tidyFunction } from '@/core/helpers/tidy-function';
 
 const nowMs = Date.now();
 

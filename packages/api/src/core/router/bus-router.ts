@@ -2,7 +2,7 @@ import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
 import { IncomingEventSchema, type OutgoingSystemEvents } from '@/core/router/events';
 import { procedure, router } from './trpc';
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import type { AnyRouter } from '@trpc/server';
 

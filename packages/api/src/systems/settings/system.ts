@@ -1,8 +1,8 @@
 import { createMachine, setup, sendTo, enqueueActions } from 'xstate';
-import type { MergeReceivable } from '@/core/utils/event-helpers';
-import { fromSystem, systemBus } from '@/core/utils/event-helpers';
+import type { MergeReceivable } from '@/core/helpers/event-helpers';
+import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/utils/actor-helpers';
+import { emit, safeEvents } from '@/core/helpers/actor-helpers';
 import { SettingsData } from './types';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';

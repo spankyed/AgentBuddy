@@ -1,11 +1,11 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { fromSystem, systemBus, type MergeReceivable } from '@/core/utils/event-helpers';
-import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
+import { fromSystem, systemBus, type MergeReceivable } from '@/core/helpers/event-helpers';
+import { emit, getActor, safeEvents } from '@/core/helpers/actor-helpers';
 import type { LogsState, LogEntry } from './types';
 import { z } from 'zod';
-import { randomId } from '@/core/utils/random-id';
-import { rootEvents } from '../../core/router/bus-emitter';
-import { LogEvent } from '../../core/utils/debug/logger';
+import { randomId } from '@/core/helpers/random-id';
+import { rootEvents } from '@/core/router/bus-emitter';
+import { LogEvent } from '@/core/helpers/debug/logger';
 import { IncomingSystemEvents } from '@/core/router/events';
 import { repository } from '@/repository';
 import type { LogsSettings } from '../settings/types';

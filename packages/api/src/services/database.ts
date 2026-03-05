@@ -14,7 +14,7 @@ export {
   removeRelation,
   grantRole,
   revokeRole
-} from '@/core/utils/repository/transaction-helpers';
+} from '@/core/helpers/repository/transaction-helpers';
 
 // Export EARS transaction builder
 export { tx } from '@/core/ears/helpers/transaction';
@@ -35,7 +35,7 @@ export {
   exists,
   findWithRole,
   findFirstWithRole
-} from '@/core/utils/repository/query-helpers';
+} from '@/core/helpers/repository/query-helpers';
 
 // Re-export EARS types for convenience
 export { EARS } from '@/core/types';

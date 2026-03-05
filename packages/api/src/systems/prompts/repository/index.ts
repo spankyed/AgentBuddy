@@ -8,7 +8,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/utils/repository';
+} from '@/core/helpers/repository';
 import type { PromptEntity } from '../types';
 
 /**

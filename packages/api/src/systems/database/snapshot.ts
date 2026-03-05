@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { EARS } from '@/core/types';
-import { getSnapshotsPath } from '@/core/utils/paths';
+import { getSnapshotsPath } from '@/core/helpers/paths';
 import { 
   getAllEntities, 
   getAll, 

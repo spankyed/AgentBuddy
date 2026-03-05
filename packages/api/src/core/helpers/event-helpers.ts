@@ -4,7 +4,7 @@
  * ========================================================================== */
 
 import { z, type ZodRawShape } from 'zod';
-import type { Simplify } from '@/core/utils/type-helpers';
+import type { Simplify } from '@/core/helpers/type-helpers';
 
 /* --------------------------------------------------------------------------
  *  1.  Tiny utilities

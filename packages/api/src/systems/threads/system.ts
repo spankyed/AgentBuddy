@@ -1,15 +1,15 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/core/utils/event-helpers';
-import { fromSystem, systemBus } from '@/core/utils/event-helpers';
+import type { MergeReceivable } from '@/core/helpers/event-helpers';
+import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/core/utils/actor-helpers';
+import { emit, getActor, safeEvents, sendParentSafe } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { z } from 'zod';
 import { repository } from '@/repository';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData } from '@/types';
 import { ThreadRelations, type ThreadExtendedData } from './types';
-import type { MappedZodLiterals } from '@/core/utils/type-helpers';
+import type { MappedZodLiterals } from '@/core/helpers/type-helpers';
 import { agent } from '@/systems/agent/system';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
 

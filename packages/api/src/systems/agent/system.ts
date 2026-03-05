@@ -1,11 +1,11 @@
 import { setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/core/utils/event-helpers';
-import { fromSystem, systemBus } from '@/core/utils/event-helpers';
+import type { MergeReceivable } from '@/core/helpers/event-helpers';
+import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { z } from 'zod';
 import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents } from '@/core/utils/actor-helpers';
+import { emit, getActor, safeEvents } from '@/core/helpers/actor-helpers';
 import { repository } from '@/repository';
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import { brain } from '../brain/system';
 import services from '@/services';
 import { AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData } from './types';

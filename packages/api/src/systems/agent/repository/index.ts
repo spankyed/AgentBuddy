@@ -1,7 +1,7 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { RepositoryError, RepositoryErrorCode } from '@/core/utils/repository';
+import { RepositoryError, RepositoryErrorCode } from '@/core/helpers/repository';
 // import { Rows, rows } from '@/core/data'; // ! remove asap
 import { MessageEntity, ThreadEntity, ArtifactEntity, BlockConfig } from '@/systems/threads/types';
 import { AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem } from '../types';

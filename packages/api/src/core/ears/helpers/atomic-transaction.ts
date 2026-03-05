@@ -10,7 +10,7 @@ import {
 } from "@/core/ears/attribute-storage";
 import { edgeStore } from "./edge-store";
 import { EARS } from "@/core/types";
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 
 const logger = createLogger('atomic-transaction');
 

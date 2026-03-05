@@ -12,7 +12,7 @@ import * as path from 'node:path';
 import { importDatabase, getBackupInfo } from '@/systems/database/backup';
 import { clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '@/persistence/partitioning/hydrate-sharded';
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import readline from 'readline';
 
 const logger = createLogger('import-backup');

@@ -15,12 +15,12 @@
  *   defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
  */
 import { setup, enqueueActions, assign } from 'xstate'
-import { systemBus, fromSystem } from '@/core/utils/event-helpers'
+import { systemBus, fromSystem } from '@/core/helpers/event-helpers'
 import { z } from 'zod'
-import { safeEvents, emit } from '@/core/utils/actor-helpers'
+import { safeEvents, emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { SystemEvents } from '@/systems/backend'
-import type { MergeReceivable } from '@/core/utils/event-helpers'
+import type { MergeReceivable } from '@/core/helpers/event-helpers'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/repository'

@@ -7,7 +7,7 @@ import {
   createRelation,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/utils/repository';
+} from '@/core/helpers/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type {

@@ -12,7 +12,7 @@ import {
 
 import { relationIndex } from "@/core/ears/relation-index";
 import { EARS } from "@/core/types";
-import { asArr, MaybeArr } from "@/core/utils";
+import { asArr, MaybeArr } from "@/core/helpers";
 
 /*──────── helpers ────────*/
 const isEntity = (v: unknown): v is EARS.Entity =>

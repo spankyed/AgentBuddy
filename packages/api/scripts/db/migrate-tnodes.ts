@@ -6,7 +6,7 @@
  */
 
 import { open, type Database } from 'lmdb';
-import { getLmdbPath, getVolatileLmdbPath } from '@/core/utils/paths';
+import { getLmdbPath, getVolatileLmdbPath } from '@/core/helpers/paths';
 import { EARS } from '@/core/types';
 
 const SEPARATOR = '\x1F';

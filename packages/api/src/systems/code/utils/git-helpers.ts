@@ -1,4 +1,4 @@
-import { emit } from '@/core/utils/actor-helpers'
+import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { GitRepository } from '../services/git'
 

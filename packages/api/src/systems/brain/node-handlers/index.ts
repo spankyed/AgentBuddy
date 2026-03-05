@@ -5,7 +5,7 @@ import { keepAliveNodeHandler } from './keep-alive-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 
 const logger = createLogger('node-executor');
 

@@ -1,12 +1,12 @@
 /*─────────────────────────────────────────────────────────────
  * attribute‑store.ts – single‑bucket, generic mutator + query shims
  *─────────────────────────────────────────────────────────────*/
-import { isPlainObject } from "@/core/utils";
-import { logInternal }   from "@/core/utils/debug/cli/log-internal";
+import { isPlainObject } from "@/core/helpers";
+import { logInternal }   from "@/core/helpers/debug/cli/log-internal";
 import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from "./relation-index";
 import { EARS } from "../types";
-import { randomId } from "../utils/random-id";
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/utils/paths";
+import { randomId } from "../helpers/random-id";
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/helpers/paths";
 import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/persistence/lmdb/envs";
 import { makeLmdbAdapter } from "@/persistence/lmdb/adapter";
 import { makePolicy } from "@/persistence/partitioning/policy";

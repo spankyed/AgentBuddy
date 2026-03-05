@@ -22,7 +22,7 @@ import {
   removeRelation,
   grantRole,
   revokeRole
-} from '@/core/utils/repository/transaction-helpers';
+} from '@/core/helpers/repository/transaction-helpers';
 
 /**
  * Execute a user-provided transaction against the EARS database

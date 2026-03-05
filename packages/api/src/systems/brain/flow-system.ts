@@ -3,7 +3,7 @@ import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
-import { safeEvents } from '@/core/utils/actor-helpers';
+import { safeEvents } from '@/core/helpers/actor-helpers';
 import { brain, brainBus } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
-import { LogEvent } from '../utils/debug/logger';
+import { LogEvent } from '../helpers/debug/logger';
 
 class RootEventEmitter extends EventEmitter {
   emit<K>(eventName: string | symbol, ...args: any[]): boolean {

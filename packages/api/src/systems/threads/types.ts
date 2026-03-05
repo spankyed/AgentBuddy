@@ -1,5 +1,5 @@
 import { BaseEntity } from "@/core/ears";
-import type { Simplify } from "@/core/utils/type-helpers";
+import type { Simplify } from "@/core/helpers/type-helpers";
 import type { EARS } from "@/types";
 
 // Block-based interaction system (composable architecture)

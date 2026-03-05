@@ -1,4 +1,4 @@
-import { createLogger } from '@/core/utils/debug/logger';
+import { createLogger } from '@/core/helpers/debug/logger';
 import type { PromptContext } from './prompt-context';
 
 const logger = createLogger('template-executor');
