@@ -113,7 +113,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { applicationState } from '@/main';
-import type { TourTarget } from '@/core/actors/tour-steps-simple';
+import type { TourTarget } from '@/core/actors/tour/tour-steps-simple';
 
 // Get tour context from application state
 const tourContext = useSelector(applicationState, (snapshot) => {
