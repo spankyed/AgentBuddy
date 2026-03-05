@@ -47,7 +47,7 @@ busEvent('GENERATE_MAGIC_PROMPT', {
   busEvent('EXPORT_DATABASE', {
     path: z.string(),
     name: z.string().optional(),
-    databases: z.array(z.enum(['lmdb', 'searchIndices', 'volatileLmdb', 'secretsLmdb'])),
+    databases: z.array(z.enum(['lmdb', 'volatileLmdb', 'secretsLmdb'])), // 'searchIndices' removed [SEARCH_INDEX_FF]
   }),
   busEvent('IMPORT_DATABASE', {
     path: z.string(),

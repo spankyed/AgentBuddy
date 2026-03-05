@@ -1,14 +1,14 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { getLmdbPath, getSearchIndicesPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/helpers/paths';
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/helpers/paths'; // getSearchIndicesPath removed [SEARCH_INDEX_FF]
 import { closePersistence, reinitializeLmdb } from '@/core/ears/attribute-storage';
 
 const logger = createLogger('database:backup');
 
 const DATABASE_PATHS = {
   lmdb: getLmdbPath(),
-  searchIndices: getSearchIndicesPath(),
+  // searchIndices: getSearchIndicesPath(), // [SEARCH_INDEX_FF]
   volatileLmdb: getVolatileLmdbPath(),
   secretsLmdb: getSecretsLmdbPath(),
 } as const;
@@ -16,7 +16,7 @@ const DATABASE_PATHS = {
 export async function exportDatabase(
   targetPath: string,
   name?: string,
-  databases: Array<keyof typeof DATABASE_PATHS> = ['lmdb', 'searchIndices']
+  databases: Array<keyof typeof DATABASE_PATHS> = ['lmdb'] // 'searchIndices' removed [SEARCH_INDEX_FF]
 ): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);

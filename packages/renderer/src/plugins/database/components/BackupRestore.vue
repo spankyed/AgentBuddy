@@ -148,7 +148,7 @@
                 </div>
               </label>
 
-              <!-- Search Indices Card -->
+              <!-- [SEARCH_INDEX_FF] Search Indices checkbox — commented out
               <label class="relative cursor-pointer group">
                 <input
                   type="checkbox"
@@ -171,6 +171,7 @@
                   </div>
                 </div>
               </label>
+              -->
 
               <!-- Trace Database Card -->
               <label class="relative cursor-pointer group">
@@ -311,7 +312,7 @@ import {
   Loader2,
   AlertTriangle,
   Database,
-  Search,
+  // Search, // [SEARCH_INDEX_FF]
   Activity,
   Lock,
   Check,
@@ -338,7 +339,7 @@ const exportPath = ref('');
 const backupName = ref('');
 const selectedDatabases = ref({
   lmdb: true,
-  searchIndices: true,
+  // searchIndices: true, // [SEARCH_INDEX_FF]
   volatileLmdb: false,
   secretsLmdb: false,
 });
@@ -419,7 +420,7 @@ async function handleExport() {
   try {
     const databases = Object.entries(selectedDatabases.value)
       .filter(([_, selected]) => selected)
-      .map(([key]) => key) as Array<'lmdb' | 'searchIndices' | 'volatileLmdb' | 'secretsLmdb'>;
+      .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb' | 'secretsLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
     await trpc.bus.send.mutate({
       systemId: id,
