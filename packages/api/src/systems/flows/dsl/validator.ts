@@ -6,6 +6,7 @@
 
 import type {
   FlowDSL,
+  FlowConfig,
   Track,
   DSLStepNode,
   ValidationError,
@@ -92,7 +93,7 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
   // Validate root flag: at most one flow may be root
   const rootFlows: string[] = [];
   for (const [flowName, entry] of Object.entries(flows)) {
-    if (!Array.isArray(entry) && typeof entry === 'object' && entry !== null && (entry as any).root) {
+    if (isFlowConfig(entry as Track[] | FlowConfig) && (entry as FlowConfig).root) {
       rootFlows.push(flowName);
     }
   }
@@ -106,7 +107,7 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
     ctx.nodeLabels = new Set();
 
     // Normalize: unwrap FlowConfig to get tracks
-    const tracks = Array.isArray(entry) ? entry : (entry as any)?.tracks;
+    const tracks = resolveTracks(entry as Track[] | FlowConfig);
 
     const flowErrors = validateFlow(flowName, tracks, ctx, options);
     errors.push(...flowErrors);

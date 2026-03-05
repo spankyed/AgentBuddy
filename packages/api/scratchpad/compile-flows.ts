@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { FlowDSL } from './types';
-import { isFlowConfig } from './types';
+import { type FlowDSL, isFlowConfig } from './types';
 
 const FLOWS_DIR = path.join(import.meta.dirname, 'flows');
 const OUTPUT_FILE = path.join(FLOWS_DIR, 'compiled-flows.json');

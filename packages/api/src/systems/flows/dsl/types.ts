@@ -37,6 +37,9 @@ export function resolveTracks(entry: Track[] | FlowConfig): Track[] {
   return isFlowConfig(entry) ? entry.tracks : entry;
 }
 
+/** Role string for the root flow designation */
+export const ROOT_FLOW_ROLE = 'root_flow';
+
 /**
  * A track represents an event listener + its sequential response steps.
  * The event field creates an implicit listen node.

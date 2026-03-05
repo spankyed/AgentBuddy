@@ -22,7 +22,7 @@ import type {
   DSLKeepAliveNode,
   CompilerContext,
 } from './types';
-import { isFlowConfig, resolveTracks } from './types';
+import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './types';
 import { BinaryOperator } from '../config/types';
 
 /*─────────────────────────────────────────────────────────────────
@@ -587,7 +587,7 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
 
     // Emit root_flow role if flagged
     if (isFlowConfig(entry) && entry.root) {
-      roles.push({ entityId: flowId, role: 'root_flow' });
+      roles.push({ entityId: flowId, role: ROOT_FLOW_ROLE });
     }
   }
 

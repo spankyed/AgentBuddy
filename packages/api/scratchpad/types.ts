@@ -4,23 +4,23 @@ import type { z } from 'zod';
 export type Services = typeof services;
 export type Z = typeof z;
 
-export type {
-  FlowDSL,
-  FlowConfig,
-  Track,
-  DSLStepNode,
-  DSLActionNode,
-  DSLLLMNode,
-  DSLSwitchNode,
-  DSLFireNode,
-  DSLTransformNode,
-  DSLQueryNode,
-  DSLFlowNode,
-  DSLCreateNode,
-  DSLUpdateNode,
-  DSLKeepAliveNode,
+export {
+  type FlowDSL,
+  type FlowConfig,
+  type Track,
+  type DSLStepNode,
+  type DSLActionNode,
+  type DSLLLMNode,
+  type DSLSwitchNode,
+  type DSLFireNode,
+  type DSLTransformNode,
+  type DSLQueryNode,
+  type DSLFlowNode,
+  type DSLCreateNode,
+  type DSLUpdateNode,
+  type DSLKeepAliveNode,
+  isFlowConfig,
 } from '@/systems/flows/dsl/types';
-export { isFlowConfig } from '@/systems/flows/dsl/types';
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';

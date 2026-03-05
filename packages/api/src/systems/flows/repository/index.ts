@@ -20,6 +20,7 @@ import { createNodeDefaults } from '../config/node-config';
 import { repository } from '@/repository';
 import { settingsCommands } from '@/systems/settings/repository';
 import type { CompiledRows } from '../dsl/compiler';
+import { ROOT_FLOW_ROLE } from '../dsl/types';
 
 const logger = createLogger('flows-repository');
 
@@ -33,7 +34,7 @@ export const FLOW_EDGE_KINDS = [
 ] as const;
 
 export const FLOW_ROLES = {
-  ROOT_FLOW: EARS.RoleKind.Custom("root_flow"),
+  ROOT_FLOW: EARS.RoleKind.Custom(ROOT_FLOW_ROLE),
   ENTRY_EVENT: "entry_event",
 } as const;
 
