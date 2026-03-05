@@ -20,7 +20,9 @@
     "db:clearSettings": "tsx ./scripts/db/destroy-settings.ts",
     "db:export": "./scripts/db/export.sh",
     "db:import": "tsx scripts/db/import-backup.ts",
-    "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts"
+    "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts",
+    "compile:actions": "tsx scratchpad/compile.ts actions",
+    "compile:prompts": "tsx scratchpad/compile.ts prompts"
   },
   "keywords": [],
   "author": "angel santiago",
@@ -57,6 +59,7 @@
     "zod": "^3.24.4"
   },
   "devDependencies": {
+    "esbuild": "^0.25.0",
     "@trpc/client": "^11.1.2",
     "@trpc/server": "^11.1.2",
     "@types/fs-extra": "^11.0.4",

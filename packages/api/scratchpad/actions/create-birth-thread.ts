@@ -1,17 +1,18 @@
-/**
- * Name: Create Birth Thread
- * Category: onboarding
- * Description: Creates the assistant birth thread with onboarding artifacts
- *
- * This action demonstrates the composable primitive pattern for creating threads and artifacts.
- * It uses services.repository.threadCommands.create() and services.artifact.create() to build
- * a complex workflow from simple primitives.
- */
+import type { ActionMeta, Services, Z } from '../types';
 
-import Services from '@/services';
-import type { EARS } from '@/core/types';
+export const meta: ActionMeta = {
+  label: 'Create Birth Thread',
+  description: 'Creates the assistant birth thread with onboarding artifacts',
+  category: 'onboarding',
+  input: {},
+};
 
-export async function createBirthThread(params: any, services: typeof Services) {
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+  z: Z,
+  flowId: string,
+) {
   const ASSISTANT_BIRTH_ROLE = services.database.EARS.RoleKind.Custom('assistant_birth');
 
   // Check if birth thread already exists
