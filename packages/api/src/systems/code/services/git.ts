@@ -439,7 +439,7 @@ export class GitRepository {
       }
     }
     
-    const args = ['diff', '--binary']
+    const args = ['diff', '--binary', '-M']
     if (staged) {
       args.push('--cached')
     }
@@ -496,6 +496,7 @@ export class GitRepository {
     if (!result.success) {
       throw new Error(result.error || 'Failed to stage files')
     }
+    this.cache.delete('status')
   }
 
   async unstageFiles(filePaths: string[]): Promise<void> {
@@ -505,6 +506,7 @@ export class GitRepository {
     if (!result.success) {
       throw new Error(result.error || 'Failed to unstage files')
     }
+    this.cache.delete('status')
   }
 
   async revertFile(filePath: string): Promise<void> {

@@ -220,7 +220,7 @@
               v-for="file in stagedFiles"
               :key="`staged-${file.path}`"
               @click="selectFile(file)"
-              :title="file.path"
+              :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
               :class="[
                 'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
                 selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
@@ -230,9 +230,9 @@
             >
 
               <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path).filename }}</span>
-                <span v-if="getFileDisplay(file.path).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
-                  {{ getFileDisplay(file.path).directory }}
+                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
+                <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
+                  {{ getFileDisplay(file.path, file).directory }}
                 </span>
               </div>
               <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
@@ -271,7 +271,7 @@
               v-for="file in unstagedFiles"
               :key="`unstaged-${file.path}`"
               @click="selectFile(file)"
-              :title="file.path"
+              :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
               :class="[
                 'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
                 selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
@@ -281,9 +281,9 @@
             >
 
               <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path).filename }}</span>
-                <span v-if="getFileDisplay(file.path).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
-                  {{ getFileDisplay(file.path).directory }}
+                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
+                <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
+                  {{ getFileDisplay(file.path, file).directory }}
                 </span>
               </div>
               <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
@@ -527,15 +527,16 @@ const hideBranchDropdown = () => {
 }
 
 // Helper functions
-const getFileDisplay = (path: string) => {
-  const lastSlashIndex = path.lastIndexOf('/')
-  if (lastSlashIndex === -1) {
-    // No directory, just filename
-    return { filename: path, directory: '' }
-  }
+const getFileDisplay = (filePath: string, file?: GitStatusFile) => {
+  const lastSlashIndex = filePath.lastIndexOf('/')
+  const filename = lastSlashIndex === -1 ? filePath : filePath.substring(lastSlashIndex + 1)
+  const directory = lastSlashIndex === -1 ? '' : filePath.substring(0, lastSlashIndex)
 
-  const filename = path.substring(lastSlashIndex + 1)
-  const directory = path.substring(0, lastSlashIndex)
+  if (file?.status === 'renamed' && file.originalPath) {
+    const origLastSlash = file.originalPath.lastIndexOf('/')
+    const origFilename = origLastSlash === -1 ? file.originalPath : file.originalPath.substring(origLastSlash + 1)
+    return { filename: `${origFilename} → ${filename}`, directory }
+  }
 
   return { filename, directory }
 }
