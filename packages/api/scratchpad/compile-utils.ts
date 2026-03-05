@@ -315,7 +315,8 @@ export async function compileAllSourceFiles(config: CompileConfig): Promise<void
     }
   }
 
-  // Write output
+  // Write output (ensure parent directory exists)
+  fs.mkdirSync(path.dirname(outputFile), { recursive: true });
   fs.writeFileSync(outputFile, JSON.stringify(compiledEntries, null, 2) + '\n');
   console.log(`\nWrote ${compiledEntries.length} entries to ${path.relative(process.cwd(), outputFile)}`);
 }

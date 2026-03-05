@@ -3,7 +3,7 @@ import * as path from 'path';
 import { type FlowDSL, isFlowConfig } from './types';
 
 const FLOWS_DIR = path.join(import.meta.dirname, 'flows');
-const OUTPUT_FILE = path.join(FLOWS_DIR, 'compiled-flows.json');
+const OUTPUT_FILE = path.join(import.meta.dirname, 'compiled', 'compiled-flows.json');
 
 export async function compileFlows(): Promise<void> {
   console.log(`Compiling flows from: ${FLOWS_DIR}`);
@@ -64,6 +64,7 @@ export async function compileFlows(): Promise<void> {
     console.log(`  * Root flow: "${rootFlowName}"`);
   }
 
+  fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(merged, null, 2) + '\n');
   console.log(`\nWrote ${Object.keys(merged).length} flow(s) from ${loaded} file(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}`);
 }

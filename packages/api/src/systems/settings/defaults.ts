@@ -163,6 +163,7 @@ export const defaultSettings: SettingsData = {
     tourStarted: false,
     lastInteractionTimestamp: null,
     version: '0.1.0',
+    seeded: false,
   },
   assistant: {
     name: '',

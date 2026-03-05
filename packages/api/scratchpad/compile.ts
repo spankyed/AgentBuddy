@@ -4,14 +4,14 @@ import { compileFlows } from './compile-flows';
 const configs: Record<string, CompileConfig> = {
   actions: {
     sourceDir: 'actions',
-    outputFile: 'actions/compiled-actions.json',
+    outputFile: 'compiled/compiled-actions.json',
     functionName: 'action',
     isAsync: true,
     fields: { metaInput: 'input', fnBody: 'actionFn', output: 'output' },
   },
   prompts: {
     sourceDir: 'prompts',
-    outputFile: 'prompts/compiled-prompts.json',
+    outputFile: 'compiled/compiled-prompts.json',
     functionName: 'template',
     isAsync: false,
     fields: { metaInput: 'inputs', fnBody: 'templateFn', output: 'outputSchema' },

@@ -160,6 +160,7 @@ export interface InternalSettings {
   tourStarted: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
+  seeded: boolean;
 }
 
 export interface AssistantSettings {

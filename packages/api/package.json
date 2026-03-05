@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts",
+    "build": "tsc && tsc-alias -p tsconfig.json && mkdir -p dist/compiled && cp scratchpad/compiled/*.json dist/compiled/ && tsup src/types.ts src/server.ts --format esm,cjs --dts",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",
@@ -20,6 +20,7 @@
     "db:clearSettings": "tsx ./scripts/db/destroy-settings.ts",
     "db:export": "./scripts/db/export.sh",
     "db:import": "tsx scripts/db/import-backup.ts",
+    "db:seed": "tsx scripts/db/seed.ts",
     "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts",
     "compile:actions": "tsx scratchpad/compile.ts actions",
     "compile:prompts": "tsx scratchpad/compile.ts prompts",
