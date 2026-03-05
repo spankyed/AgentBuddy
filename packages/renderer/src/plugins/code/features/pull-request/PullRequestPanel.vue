@@ -73,14 +73,14 @@
               class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               title="Expand all folders"
             >
-              <UnfoldVertical :size="16" />
+              <UnfoldVertical :size="14" />
             </button>
             <button
               @click="collapseAll()"
               class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               title="Collapse all folders"
             >
-              <FoldVertical :size="16" />
+              <FoldVertical :size="14" />
             </button>
           </div>
         </div>
