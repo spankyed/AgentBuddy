@@ -127,7 +127,8 @@ export type Event =
   | { type: 'HIDE_QUICK_OPEN' }
   | { type: 'UPDATE_QUICK_OPEN_QUERY'; query: string }
   | { type: 'SELECT_QUICK_OPEN_RESULT'; index: number }
-  | { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
+  | { type: 'OPEN_QUICK_OPEN_RESULT'; path: string }
+  | { type: 'SEARCH_IN_FOLDER'; folder: string };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -562,6 +563,19 @@ const codeState = setup({
       self.send({ type: 'SELECT_PANEL', panel: 'search' });
     },
 
+    searchInFolder: ({ event, context, self, system }) => {
+      const ev = event as { type: 'SEARCH_IN_FOLDER'; folder: string }
+      // Compute relative path and set as include pattern glob
+      const relativePath = ev.folder.startsWith(context.baseDirectory)
+        ? ev.folder.slice(context.baseDirectory.length + 1)
+        : ev.folder
+      system.get('search')?.send({
+        type: 'search.UPDATE_OPTIONS',
+        options: { includePattern: `${relativePath}/**` }
+      })
+      self.send({ type: 'SELECT_PANEL', panel: 'search' })
+    },
+
     pinTab: assign(({ event, context }) => {
       const ev = event as { type: 'PIN_TAB'; path: string }
 
@@ -915,6 +929,9 @@ const codeState = setup({
         },
         FOCUS_SEARCH: {
           actions: 'focusSearch'
+        },
+        SEARCH_IN_FOLDER: {
+          actions: 'searchInFolder'
         },
         // Quick open events
         TOGGLE_QUICK_OPEN: {

@@ -204,6 +204,9 @@ provide('explorer-delete', (file: FileInfo) => {
 provide('explorer-open-terminal', (path: string) => {
   terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
 })
+provide('explorer-search-in-folder', (path: string) => {
+  codeActor.send({ type: 'SEARCH_IN_FOLDER', folder: path })
+})
 provide('explorer-selected-paths', () => selectedPaths.value)
 provide('explorer-expanded-dirs', () => expandedDirs.value)
 provide('explorer-dir-contents', () => dirContents.value)

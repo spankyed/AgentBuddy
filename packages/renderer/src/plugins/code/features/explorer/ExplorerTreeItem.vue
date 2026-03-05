@@ -96,6 +96,15 @@
           Open Terminal Here
         </ContextMenuItem>
 
+        <ContextMenuItem
+          v-if="file.type === 'directory'"
+          @select="searchInFolder"
+          :class="MENU_ITEM_CLASS"
+        >
+          <Search class="w-4 h-4" />
+          Search Folder
+        </ContextMenuItem>
+
         <!-- Project menu items - only for directories -->
         <ProjectMenuItems
           v-if="file.type === 'directory'"
@@ -156,6 +165,7 @@ import {
   Trash2,
   Copy,
   Terminal,
+  Search,
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -188,6 +198,7 @@ const openFile = inject<(path: string) => void>('explorer-open-file')!
 const onRename = inject<(oldPath: string, newName: string) => void>('explorer-rename')!
 const onDelete = inject<(file: FileInfo) => void>('explorer-delete')!
 const onOpenTerminal = inject<(path: string) => void>('explorer-open-terminal')!
+const onSearchInFolder = inject<(path: string) => void>('explorer-search-in-folder')!
 const getSelectedPaths = inject<() => string[]>('explorer-selected-paths')!
 const getExpandedDirs = inject<() => Set<string>>('explorer-expanded-dirs')!
 const getDirContents = inject<() => Record<string, FileInfo[]>>('explorer-dir-contents')!
@@ -323,6 +334,10 @@ function deleteItem() {
 
 function openTerminalHere() {
   onOpenTerminal(props.file.path)
+}
+
+function searchInFolder() {
+  onSearchInFolder(props.file.path)
 }
 
 async function copyAbsolutePath() {
