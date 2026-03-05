@@ -128,6 +128,10 @@ export interface BreadcrumbItem {
   path: string[]
 }
 
+export type LibraryResult<T> =
+  | { kind: 'item'; data: T }
+  | { kind: 'refresh'; folderContents: FolderContents }
+
 export interface LibrarySystemContext {
   documents: DocumentDTO[]
   collections: CollectionDTO[]
