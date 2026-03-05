@@ -14,9 +14,31 @@ import type { EARS } from '@/core/types';
  *─────────────────────────────────────────────────────────────────*/
 
 /**
- * Top-level DSL structure: flow name → array of tracks
+ * Top-level DSL structure: flow name → tracks (or FlowConfig with metadata)
  */
-export type FlowDSL = Record<string, Track[]>;
+export type FlowDSL = Record<string, Track[] | FlowConfig>;
+
+/**
+ * Flow configuration with metadata (e.g. root designation)
+ */
+export interface FlowConfig {
+  tracks: Track[];
+  /** Mark this flow as the root flow */
+  root?: boolean;
+}
+
+/** Type guard: distinguish FlowConfig from bare Track[] */
+export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig {
+  return !Array.isArray(value);
+}
+
+/** Extract tracks from a FlowDSL entry (normalizes both formats) */
+export function resolveTracks(entry: Track[] | FlowConfig): Track[] {
+  return isFlowConfig(entry) ? entry.tracks : entry;
+}
+
+/** Role string for the root flow designation */
+export const ROOT_FLOW_ROLE = 'root_flow';
 
 /**
  * A track represents an event listener + its sequential response steps.

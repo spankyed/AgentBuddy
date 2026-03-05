@@ -1,0 +1,138 @@
+{
+  "Greeting Flow": [
+    {
+      "event": "flow.entry",
+      "label": "Flow Entry",
+      "steps": [
+        {
+          "type": "action",
+          "action": "greet_user",
+          "label": "greet"
+        },
+        {
+          "type": "fire",
+          "event": "greeting.sent",
+          "label": "notify"
+        }
+      ]
+    }
+  ],
+  "Support Flow": [
+    {
+      "event": "flow.entry",
+      "label": "Flow Entry",
+      "steps": [
+        {
+          "type": "llm",
+          "prompt": "classify_intent",
+          "label": "classify"
+        },
+        {
+          "type": "switch",
+          "label": "branch",
+          "conditions": [
+            {
+              "if": "$.intent == 'billing'",
+              "steps": [
+                {
+                  "type": "flow",
+                  "flow": "Billing Flow",
+                  "label": "handle billing"
+                }
+              ]
+            },
+            {
+              "if": "$.intent == 'technical'",
+              "steps": [
+                {
+                  "type": "flow",
+                  "flow": "Tech Support Flow",
+                  "label": "handle tech"
+                }
+              ]
+            }
+          ],
+          "else": [
+            {
+              "type": "action",
+              "action": "escalate_to_human",
+              "label": "escalate"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Monitor Flow": [
+    {
+      "event": "flow.entry",
+      "label": "Flow Entry",
+      "steps": [
+        {
+          "type": "action",
+          "action": "initialize_monitor",
+          "label": "init"
+        },
+        {
+          "type": "keep_alive"
+        }
+      ]
+    },
+    {
+      "event": "user.message",
+      "label": "Handle Message",
+      "steps": [
+        {
+          "type": "action",
+          "action": "process_message",
+          "label": "process"
+        }
+      ]
+    },
+    {
+      "event": "user.disconnect",
+      "label": "Handle Disconnect",
+      "steps": [
+        {
+          "type": "action",
+          "action": "cleanup",
+          "label": "cleanup"
+        }
+      ]
+    }
+  ],
+  "Root Flow": {
+    "root": true,
+    "tracks": [
+      {
+        "event": "flow.entry",
+        "label": "Flow Entry",
+        "steps": [
+          {
+            "type": "switch",
+            "label": "choose path",
+            "conditions": [
+              {
+                "if": "$.date.dayOfWeek == 'monday'",
+                "steps": [
+                  {
+                    "type": "action",
+                    "action": "hungry_tell_girlfriend",
+                    "label": "do action"
+                  }
+                ]
+              }
+            ],
+            "else": [
+              {
+                "type": "action",
+                "action": "tell_girlfriend_love_you",
+                "label": "do action"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

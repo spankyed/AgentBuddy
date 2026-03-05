@@ -348,7 +348,7 @@ export const flowsSystem = setup({
       const { dsl } = typeOf('IMPORT_DSL', event);
       const pluginId = flows;
 
-      logger.info('Importing DSL flows', { flowCount: Object.keys(dsl?.flows || {}).length });
+      logger.info('Importing DSL flows', { flowCount: Object.keys(dsl || {}).length });
 
       // Get available actions and prompts for reference resolution
       const actions = repository.actionQueries.all();

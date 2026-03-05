@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import { qx } from '@/core/ears/helpers/query';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { EARS } from '@/core/types';
+import { FLOW_ROLES } from '../repository/index';
 import type {
   FlowDSL,
   Track,
@@ -660,6 +661,9 @@ export function exportFlowsDSL(outputDir: string): { filePath: string; flowCount
     flowMap.set(flow.id, flow.label);
   }
 
+  // Find root flow ID
+  const rootFlowId = qx().withRole(FLOW_ROLES.ROOT_FLOW).first();
+
   // Decompile each flow to track-based DSL
   const dsl: FlowDSL = {};
   let exported = 0;
@@ -670,7 +674,11 @@ export function exportFlowsDSL(outputDir: string): { filePath: string; flowCount
     // Skip empty flows (no tracks)
     if (tracks.length === 0) continue;
 
-    dsl[name] = tracks;
+    if (flow.id === rootFlowId) {
+      dsl[name] = { root: true, tracks };
+    } else {
+      dsl[name] = tracks;
+    }
     exported++;
   }
 
