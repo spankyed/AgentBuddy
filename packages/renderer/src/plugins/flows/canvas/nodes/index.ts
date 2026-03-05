@@ -4,7 +4,7 @@ import FireNode from './FireNode.vue'
 import VariableNode from './VariableNode.vue'
 import ActionNode from './ActionNode.vue'
 import type { NodeKind } from '@app/api'
-import { BaseNode, SwitchNode, nodeConfigs } from '@/components/flow-nodes'
+import { BaseNode, SwitchNode, nodeConfigs } from '@/core/components/flow-nodes'
 
 export { BaseNode }
 

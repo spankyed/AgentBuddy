@@ -147,7 +147,7 @@ import {
   getNodeStatusClasses,
   getNodeConfig,
   nodeConfigs
-} from '@/components/flow-nodes';
+} from '@/core/components/flow-nodes';
 import type { NodeKind } from '@app/api';
 import DataRenderer from '@/plugins/logs/data-renderer.vue';
 

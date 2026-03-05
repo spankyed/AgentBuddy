@@ -47,7 +47,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as databaseId, type DatabaseState } from '../../state'
 import { Loader2 } from 'lucide-vue-next'
-import TNodeListItem from '@/components/shared/TNodeListItem.vue'
+import TNodeListItem from '@/core/components/TNodeListItem.vue'
 
 const databaseActor: DatabaseState = applicationState.system.get(databaseId)
 

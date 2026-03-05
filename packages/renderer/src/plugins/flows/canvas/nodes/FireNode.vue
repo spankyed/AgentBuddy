@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import type { NodeProps } from '@vue-flow/core'
 import type { FireNode } from '@app/api'
-import { BaseNode } from '@/components/flow-nodes'
+import { BaseNode } from '@/core/components/flow-nodes'
 
 interface NodeData extends Partial<FireNode> {
   label: string

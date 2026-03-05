@@ -86,7 +86,7 @@ import {
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { TrackEntity } from '@app/api'
-import { BaseNode } from '@/components/flow-nodes';
+import { BaseNode } from '@/core/components/flow-nodes';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
 

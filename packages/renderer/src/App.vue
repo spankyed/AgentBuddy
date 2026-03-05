@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import WebApp from './WebApp.vue';
-import ApiStatus from './components/ApiStatus.vue';
-import Onboarding from './components/Onboarding.vue';
-import TourSpotlight from './components/TourSpotlight.vue';
+import ApiStatus from './core/components/ApiStatus.vue';
+import Onboarding from './core/components/Onboarding.vue';
+import TourSpotlight from './core/components/TourSpotlight.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';

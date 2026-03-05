@@ -69,7 +69,7 @@
 import { ref, watch } from 'vue'
 import type { NodeEntity, ActionEntity, FlowEntity, ModelConfig, PromptEntity } from '@app/api'
 import { Plus } from 'lucide-vue-next'
-import { getPaletteItems } from '@/components/flow-nodes'
+import { getPaletteItems } from '@/core/components/flow-nodes'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
