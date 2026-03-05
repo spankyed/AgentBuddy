@@ -1,5 +1,19 @@
 [
   {
+    "label": "Analyze Text",
+    "description": "Summarizes text and classifies its intent using prompt templates",
+    "category": "analysis",
+    "input": {
+      "text": {
+        "type": "string",
+        "description": "The text to analyze",
+        "required": true,
+        "placeholder": "e.g. I need help setting up my account"
+      }
+    },
+    "actionFn": "const { text } = params;\nconst summaryPrompt = services.prompt.usePrompt(\"Summarize Text\", {\n  text,\n  maxSentences: 2\n});\nif (!summaryPrompt) {\n  throw new Error('Prompt \"Summarize Text\" not found \\u2014 import compiled-prompts.json first');\n}\nconst summaryResult = await services.llm.generateText({\n  model: { provider: \"openai\", model: \"gpt-4o\" },\n  prompt: summaryPrompt\n});\nconst classifyPrompt = services.prompt.usePrompt(\"Classify Intent\", {\n  message: text,\n  categories: [\"question\", \"request\", \"feedback\", \"complaint\"]\n});\nif (!classifyPrompt) {\n  throw new Error('Prompt \"Classify Intent\" not found \\u2014 import compiled-prompts.json first');\n}\nconst ClassificationSchema = z.object({\n  intent: z.string(),\n  confidence: z.number()\n});\nconst classifyResult = await services.llm.generateObject({\n  model: { provider: \"openai\", model: \"gpt-4o\" },\n  schema: ClassificationSchema,\n  prompt: classifyPrompt\n});\nservices.logger.info(\"Text analysis complete\", {\n  summary: summaryResult.text,\n  classification: classifyResult.object\n});\nreturn {\n  summary: summaryResult.text,\n  intent: classifyResult.object.intent,\n  confidence: classifyResult.object.confidence\n};"
+  },
+  {
     "label": "Create Birth Thread",
     "description": "Creates the assistant birth thread with onboarding artifacts",
     "category": "onboarding",

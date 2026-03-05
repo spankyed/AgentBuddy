@@ -36,7 +36,8 @@
     "db:cli": "cd packages/api && npm run db:cli",
     "db:exec": "cd packages/api && npm run db:exec",
     "db:script": "cd packages/api && npm run db:script",
-    "compile:actions": "npm run compile:actions --workspace @app/api"
+    "compile:actions": "npm run compile:actions --workspace @app/api",
+    "compile:prompts": "npm run compile:prompts --workspace @app/api"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",

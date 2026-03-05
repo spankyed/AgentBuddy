@@ -21,15 +21,11 @@ export interface CompileConfig {
   outputFile: string;
   functionName: string;
   isAsync: boolean;
-}
-
-interface CompiledEntry {
-  label: string;
-  description?: string;
-  category?: string;
-  input: Record<string, any>;
-  actionFn: string;
-  output?: any;
+  fields: {
+    metaInput: string;
+    fnBody: string;
+    output: string;
+  };
 }
 
 // --- esbuild Plugin ---
@@ -232,7 +228,7 @@ async function compileSourceFile(
   filePath: string,
   sourceDir: string,
   config: CompileConfig,
-): Promise<{ entry: CompiledEntry | null; warnings: string[] }> {
+): Promise<{ entry: Record<string, any> | null; warnings: string[] }> {
   const relativePath = path.relative(sourceDir, filePath);
 
   // Bundle with esbuild (handles TS→JS + import resolution)
@@ -259,18 +255,18 @@ async function compileSourceFile(
   // Extract inlined helper declarations
   const inlinedHelpers = extractInlinedHelpers(bundledJs, config.functionName);
 
-  // Assemble actionFn = helpers + body
-  const actionFn = inlinedHelpers
+  // Assemble function body = helpers + body
+  const fnBody = inlinedHelpers
     ? `${inlinedHelpers}\n\n${body}`
     : body;
 
-  const compiled: CompiledEntry = {
+  const compiled: Record<string, any> = {
     label: meta.label,
     ...(meta.description && { description: meta.description }),
     ...(meta.category && { category: meta.category }),
-    input: meta.input || {},
-    actionFn,
-    ...(meta.output && { output: meta.output }),
+    [config.fields.metaInput]: meta[config.fields.metaInput] || {},
+    [config.fields.fnBody]: fnBody,
+    ...(meta[config.fields.output] && { [config.fields.output]: meta[config.fields.output] }),
   };
 
   return { entry: compiled, warnings };
@@ -298,7 +294,7 @@ export async function compileAllSourceFiles(config: CompileConfig): Promise<void
   }
 
   const allWarnings: string[] = [];
-  const compiledEntries: CompiledEntry[] = [];
+  const compiledEntries: Record<string, any>[] = [];
 
   for (const file of sourceFiles) {
     const filePath = path.join(sourceDir, file);

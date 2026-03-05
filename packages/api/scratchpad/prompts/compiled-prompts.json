@@ -1,0 +1,59 @@
+[
+  {
+    "label": "Classify Intent",
+    "description": "Classifies a user message into one of the given categories",
+    "category": "analysis",
+    "inputs": {
+      "message": {
+        "name": "message",
+        "type": "string",
+        "required": true,
+        "description": "The user message to classify"
+      },
+      "categories": {
+        "name": "categories",
+        "type": "array",
+        "required": true,
+        "example": [
+          "question",
+          "request",
+          "feedback"
+        ]
+      }
+    },
+    "templateFn": "const categories = (params.categories || []).join(\", \");\n  return `Classify the following user message into exactly one of these categories: ${categories}\n\nUser message: \"${params.message}\"\n\nRespond with a JSON object containing \"intent\" (the matching category) and \"confidence\" (0-1).`;",
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "intent": {
+          "type": "string",
+          "description": "The classified intent category"
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence score 0-1"
+        }
+      }
+    }
+  },
+  {
+    "label": "Summarize Text",
+    "description": "Generates a concise summary of the provided text",
+    "category": "analysis",
+    "inputs": {
+      "text": {
+        "name": "text",
+        "type": "string",
+        "required": true,
+        "description": "The text to summarize"
+      },
+      "maxSentences": {
+        "name": "maxSentences",
+        "type": "number",
+        "defaultValue": 3,
+        "description": "Maximum sentences in summary"
+      }
+    },
+    "templateFn": "const maxSentences = params.maxSentences || 3;\n  return `Summarize the following text in ${maxSentences} sentence(s) or fewer.\n\nText:\n${params.text}`;"
+  }
+]

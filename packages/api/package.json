@@ -21,7 +21,8 @@
     "db:export": "./scripts/db/export.sh",
     "db:import": "tsx scripts/db/import-backup.ts",
     "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts",
-    "compile:actions": "tsx actions/compile.ts"
+    "compile:actions": "tsx scratchpad/compile.ts actions",
+    "compile:prompts": "tsx scratchpad/compile.ts prompts"
   },
   "keywords": [],
   "author": "angel santiago",
