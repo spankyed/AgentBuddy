@@ -62,7 +62,7 @@
       </div>
 
       <div v-else class="pr-content">
-        <div class="branch-info">
+        <div class="branch-info bg-neutral-800/50">
           <GitBranch class="w-3 h-3 text-neutral-500" />
           <span class="text-xs text-neutral-400">
             Comparing with {{ prBaseBranch }}
@@ -213,7 +213,6 @@ const handleFileSelect = (file: TreeNode) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #0a0a0a;
   border-bottom: 1px solid #27272a;
 }
 
