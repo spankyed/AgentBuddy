@@ -1,39 +1,43 @@
 import type { FlowDSL } from '../types';
-import { entryTrack, classifyAndBranch, modeTracks } from './_patterns';
+import { entryTrack, branch, modeTracks, action, fire, subflow } from './_patterns';
 
 export default {
-  "Greeting Flow": [
+  /** Linear: entry → action → fire */
+  "Analysis Flow": [
     entryTrack([
-      { type: "action", action: "greet_user", label: "greet" },
-      { type: "fire", event: "greeting.sent", label: "notify" },
+      action("Analyze Text", { label: "analyze" }),
+      fire("analysis.complete", { label: "notify" }),
     ]),
   ],
 
+  /** Branching: action → switch → per-branch steps */
   "Support Flow": [
-    entryTrack(
-      classifyAndBranch(
-        "classify_intent",
+    entryTrack([
+      action("Analyze Text", { label: "classify" }),
+      branch(
         [
-          { if: "$.intent == 'billing'", steps: [
-            { type: "flow", flow: "Billing Flow", label: "handle billing" },
+          { if: "$.intent == 'question'", steps: [
+            action("db query", { label: "lookup" }),
           ]},
-          { if: "$.intent == 'technical'", steps: [
-            { type: "flow", flow: "Tech Support Flow", label: "handle tech" },
+          { if: "$.intent == 'request'", steps: [
+            action("Create Birth Thread", { label: "onboard" }),
           ]},
         ],
-        [{ type: "action", action: "escalate_to_human", label: "escalate" }],
+        [fire("support.escalated", { label: "escalate" })],
       ),
-    ),
+    ]),
   ],
 
+  /** Long-running: entry with keep_alive + multiple event listeners */
   "Monitor Flow": modeTracks(
-    [{ type: "action", action: "initialize_monitor", label: "init" }],
+    [action("Analyze Text", { label: "init" })],
     [
       { event: "user.message", label: "Handle Message", steps: [
-        { type: "action", action: "process_message", label: "process" },
+        action("db query", { label: "process" }),
+        fire("message.processed"),
       ]},
       { event: "user.disconnect", label: "Handle Disconnect", steps: [
-        { type: "action", action: "cleanup", label: "cleanup" },
+        fire("session.ended", { label: "end" }),
       ]},
     ],
   ),

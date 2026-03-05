@@ -1,4 +1,5 @@
 import type { FlowDSL } from '../types';
+import { branch, action } from './_patterns';
 
 export default {
   "Root Flow": {
@@ -8,21 +9,20 @@ export default {
         event: "flow.entry",
         label: "Flow Entry",
         steps: [
-          {
-            type: "switch",
-            label: "choose path",
-            conditions: [
+          action("Analyze Text", { label: "analyze input" }),
+          branch(
+            [
               {
-                if: "$.date.dayOfWeek == 'monday'",
-                steps: [
-                  { type: "action", action: "hungry_tell_girlfriend", label: "do action" },
-                ],
+                if: "$.intent == 'question'",
+                steps: [action("db query", { label: "lookup" })],
+              },
+              {
+                if: "$.intent == 'request'",
+                steps: [action("Create Birth Thread", { label: "onboard" })],
               },
             ],
-            else: [
-              { type: "action", action: "tell_girlfriend_love_you", label: "do action" },
-            ],
-          },
+            [action("Mock Block Messages", { label: "default response" })],
+          ),
         ],
       },
     ],

@@ -1,17 +1,17 @@
 {
-  "Greeting Flow": [
+  "Analysis Flow": [
     {
       "event": "flow.entry",
       "label": "Flow Entry",
       "steps": [
         {
           "type": "action",
-          "action": "greet_user",
-          "label": "greet"
+          "action": "Analyze Text",
+          "label": "analyze"
         },
         {
           "type": "fire",
-          "event": "greeting.sent",
+          "event": "analysis.complete",
           "label": "notify"
         }
       ]
@@ -23,39 +23,38 @@
       "label": "Flow Entry",
       "steps": [
         {
-          "type": "llm",
-          "prompt": "classify_intent",
+          "type": "action",
+          "action": "Analyze Text",
           "label": "classify"
         },
         {
           "type": "switch",
-          "label": "branch",
           "conditions": [
             {
-              "if": "$.intent == 'billing'",
+              "if": "$.intent == 'question'",
               "steps": [
                 {
-                  "type": "flow",
-                  "flow": "Billing Flow",
-                  "label": "handle billing"
+                  "type": "action",
+                  "action": "db query",
+                  "label": "lookup"
                 }
               ]
             },
             {
-              "if": "$.intent == 'technical'",
+              "if": "$.intent == 'request'",
               "steps": [
                 {
-                  "type": "flow",
-                  "flow": "Tech Support Flow",
-                  "label": "handle tech"
+                  "type": "action",
+                  "action": "Create Birth Thread",
+                  "label": "onboard"
                 }
               ]
             }
           ],
           "else": [
             {
-              "type": "action",
-              "action": "escalate_to_human",
+              "type": "fire",
+              "event": "support.escalated",
               "label": "escalate"
             }
           ]
@@ -70,7 +69,7 @@
       "steps": [
         {
           "type": "action",
-          "action": "initialize_monitor",
+          "action": "Analyze Text",
           "label": "init"
         },
         {
@@ -84,8 +83,12 @@
       "steps": [
         {
           "type": "action",
-          "action": "process_message",
+          "action": "db query",
           "label": "process"
+        },
+        {
+          "type": "fire",
+          "event": "message.processed"
         }
       ]
     },
@@ -94,9 +97,9 @@
       "label": "Handle Disconnect",
       "steps": [
         {
-          "type": "action",
-          "action": "cleanup",
-          "label": "cleanup"
+          "type": "fire",
+          "event": "session.ended",
+          "label": "end"
         }
       ]
     }
@@ -109,16 +112,30 @@
         "label": "Flow Entry",
         "steps": [
           {
+            "type": "action",
+            "action": "Analyze Text",
+            "label": "analyze input"
+          },
+          {
             "type": "switch",
-            "label": "choose path",
             "conditions": [
               {
-                "if": "$.date.dayOfWeek == 'monday'",
+                "if": "$.intent == 'question'",
                 "steps": [
                   {
                     "type": "action",
-                    "action": "hungry_tell_girlfriend",
-                    "label": "do action"
+                    "action": "db query",
+                    "label": "lookup"
+                  }
+                ]
+              },
+              {
+                "if": "$.intent == 'request'",
+                "steps": [
+                  {
+                    "type": "action",
+                    "action": "Create Birth Thread",
+                    "label": "onboard"
                   }
                 ]
               }
@@ -126,8 +143,8 @@
             "else": [
               {
                 "type": "action",
-                "action": "tell_girlfriend_love_you",
-                "label": "do action"
+                "action": "Mock Block Messages",
+                "label": "default response"
               }
             ]
           }

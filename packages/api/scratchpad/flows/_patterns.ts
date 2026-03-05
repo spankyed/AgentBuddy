@@ -1,25 +1,20 @@
-import type { Track, DSLStepNode } from '../types';
+import type { Track, DSLStepNode, DSLSwitchCondition } from '../types';
 
 /** Standard flow.entry track with optional steps */
 export function entryTrack(steps: DSLStepNode[]): Track {
   return { event: 'flow.entry', label: 'Flow Entry', steps };
 }
 
-/** LLM classify → switch pattern */
-export function classifyAndBranch(
-  prompt: string,
-  branches: { if: string; steps: DSLStepNode[] }[],
+/** Switch node with conditions and optional else */
+export function branch(
+  conditions: DSLSwitchCondition[],
   elseSteps?: DSLStepNode[],
-): DSLStepNode[] {
-  return [
-    { type: 'llm', prompt, label: 'classify' },
-    {
-      type: 'switch',
-      label: 'branch',
-      conditions: branches,
-      ...(elseSteps && { else: elseSteps }),
-    },
-  ];
+): DSLStepNode {
+  return {
+    type: 'switch',
+    conditions,
+    ...(elseSteps && { else: elseSteps }),
+  };
 }
 
 /** Entry + keep_alive + event listener pattern */
@@ -39,4 +34,19 @@ export function modeTracks(
       steps,
     })),
   ];
+}
+
+/** Action step shorthand */
+export function action(name: string, opts?: { label?: string; map?: Record<string, string> }): DSLStepNode {
+  return { type: 'action', action: name, ...opts };
+}
+
+/** Fire event shorthand */
+export function fire(event: string, opts?: { label?: string; scope?: 'local' | 'global' }): DSLStepNode {
+  return { type: 'fire', event, ...opts };
+}
+
+/** Sub-flow step shorthand */
+export function subflow(flow: string, opts?: { label?: string; map?: Record<string, string> }): DSLStepNode {
+  return { type: 'flow', flow, ...opts };
 }

@@ -12,6 +12,7 @@ export {
   type DSLActionNode,
   type DSLLLMNode,
   type DSLSwitchNode,
+  type DSLSwitchCondition,
   type DSLFireNode,
   type DSLTransformNode,
   type DSLQueryNode,
