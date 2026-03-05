@@ -6,7 +6,7 @@ import type { ApplicationHotkeys } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { safeEvents } from '@/core/types/safe-events';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
-import { guidedTourMachine } from '@/core/actors/guided-tour';
+import { guidedTourMachine } from '@/core/actors/tour/guided-tour';
 import type { ContextMenuItem } from '@/core/context-menu';
 
 interface BreadcrumbItem {
@@ -444,14 +444,14 @@ export const createApplicationState = () => setup({
     completeOnboarding: ({ context, self }) => {
       // Navigate to settings/secrets view
       self.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
-      
+
       // Send events to settings plugin to navigate to secrets
       const settingsActor = self.system.get('settings');
       if (settingsActor) {
         settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
         settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
       }
-      
+
       // Send single event to backend to complete onboarding
       // Backend will handle setting hasOnboarded, tourStarted, and plugin visibility
       trpc.bus.send.mutate({
@@ -469,7 +469,7 @@ export const createApplicationState = () => setup({
         path: ['tourStarted'],
         value: true
       });
-      
+
       // Hide non-tour plugins - only show threads, agent, and settings
       const tourVisibility: Record<string, boolean> = {};
       for (const plugin of context.plugins) {
@@ -487,9 +487,9 @@ export const createApplicationState = () => setup({
       });
 
       // Also update the local state immediately
-      self.send({ 
-        type: 'PLUGIN_VISIBILITY_UPDATED', 
-        pluginVisibility: tourVisibility 
+      self.send({
+        type: 'PLUGIN_VISIBILITY_UPDATED',
+        pluginVisibility: tourVisibility
       });
     },
     showInspectionPanel: assign({
@@ -508,16 +508,16 @@ export const createApplicationState = () => setup({
     }),
     routeEvent: ({ context, system, self, event }) => {
       const { target, event: targetEvent } = typeOf('ROUTE_TOUR_EVENT', event);
-      
+
       // Check if this is a plugin visibility update and handle it immediately
-      if (target === 'settings' && 
+      if (target === 'settings' &&
           targetEvent.type === 'SETTINGS.UPDATE' &&
           targetEvent.entityType === 'plugin' &&
           targetEvent.label === '_meta' &&
           targetEvent.path?.[0] === 'visibility') {
-        
+
         let newVisibility = context.pluginVisibility || {};
-        
+
         // Single plugin update: path = ['visibility', pluginId]
         if (targetEvent.path.length === 2) {
           const pluginId = targetEvent.path[1];
@@ -527,18 +527,18 @@ export const createApplicationState = () => setup({
         else if (targetEvent.path.length === 1 && typeof targetEvent.value === 'object') {
           newVisibility = targetEvent.value;
         }
-        
+
         // Send immediate visibility update to application
         self.send({
           type: 'PLUGIN_VISIBILITY_UPDATED',
           pluginVisibility: newVisibility
         });
       }
-      
+
       // Continue with normal routing
       if (target === 'application') {
         self.send(targetEvent);
-      } 
+      }
       // Otherwise, route to the specified plugin
       else {
         const targetActor = system.get(target);
