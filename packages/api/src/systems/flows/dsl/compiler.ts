@@ -22,6 +22,7 @@ import type {
   DSLKeepAliveNode,
   CompilerContext,
 } from './types';
+import { isFlowConfig, resolveTracks } from './types';
 import { BinaryOperator } from '../config/types';
 
 /*─────────────────────────────────────────────────────────────────
@@ -568,7 +569,8 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
   }
 
   // Second pass: compile each flow
-  for (const [flowName, tracks] of Object.entries(dsl)) {
+  for (const [flowName, entry] of Object.entries(dsl)) {
+    const tracks = resolveTracks(entry);
     const flowId = ctx.flows.get(flowName)!;
     const { flowEntity, nodeEntities, flowRelations, flowRoles } = compileFlow(
       flowName,
@@ -582,6 +584,11 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
     entities.push(...nodeEntities);
     relations.push(...flowRelations);
     roles.push(...flowRoles);
+
+    // Emit root_flow role if flagged
+    if (isFlowConfig(entry) && entry.root) {
+      roles.push({ entityId: flowId, role: 'root_flow' });
+    }
   }
 
   return {

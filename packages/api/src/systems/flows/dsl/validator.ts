@@ -11,6 +11,7 @@ import type {
   ValidationError,
   ValidationResult,
 } from './types';
+import { isFlowConfig, resolveTracks } from './types';
 
 // Step node types (excludes 'listen' - that's implicit in track.event)
 const STEP_TYPES = [
@@ -88,10 +89,24 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
     path: '',
   };
 
+  // Validate root flag: at most one flow may be root
+  const rootFlows: string[] = [];
+  for (const [flowName, entry] of Object.entries(flows)) {
+    if (!Array.isArray(entry) && typeof entry === 'object' && entry !== null && (entry as any).root) {
+      rootFlows.push(flowName);
+    }
+  }
+  if (rootFlows.length > 1) {
+    errors.push({ path: '', message: `Multiple flows marked as root: ${rootFlows.join(', ')}. At most one flow can be root.` });
+  }
+
   // Validate each flow
-  for (const [flowName, tracks] of Object.entries(flows)) {
+  for (const [flowName, entry] of Object.entries(flows)) {
     ctx.path = flowName;
     ctx.nodeLabels = new Set();
+
+    // Normalize: unwrap FlowConfig to get tracks
+    const tracks = Array.isArray(entry) ? entry : (entry as any)?.tracks;
 
     const flowErrors = validateFlow(flowName, tracks, ctx, options);
     errors.push(...flowErrors);

@@ -626,7 +626,11 @@ export const flowsCommands = {
 
     // 3. Grant roles
     for (const role of compiled.role) {
-      tx(role.entityId as EARS.EntityId).grant(role.role);
+      if (role.role === FLOW_ROLES.ROOT_FLOW) {
+        flowsCommands.grantRootFlowRole(role.entityId as EARS.EntityId);
+      } else {
+        tx(role.entityId as EARS.EntityId).grant(role.role);
+      }
     }
 
     logger.info('Imported DSL flows', {
