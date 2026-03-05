@@ -1315,21 +1315,6 @@ declare const events: {
         type: "EXECUTE_TRANSACTION";
         systemId: "database";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_SNAPSHOT">;
-        systemId: zod.ZodLiteral<"database">;
-        name: zod.ZodOptional<zod.ZodString>;
-        excludeTypes: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CREATE_SNAPSHOT";
-        systemId: "database";
-        name?: string | undefined;
-        excludeTypes?: string[] | undefined;
-    }, {
-        type: "CREATE_SNAPSHOT";
-        systemId: "database";
-        name?: string | undefined;
-        excludeTypes?: string[] | undefined;
-    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GENERATE_MAGIC_PROMPT">;
         systemId: zod.ZodLiteral<"database">;
         prompt: zod.ZodString;
@@ -1394,18 +1379,18 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
         name: zod.ZodOptional<zod.ZodString>;
-        databases: zod.ZodArray<zod.ZodEnum<["lmdb", "searchIndices", "volatileLmdb", "secretsLmdb"]>, "many">;
+        databases: zod.ZodArray<zod.ZodEnum<["lmdb", "volatileLmdb", "secretsLmdb"]>, "many">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "EXPORT_DATABASE";
         systemId: "database";
         path: string;
-        databases: ("lmdb" | "searchIndices" | "volatileLmdb" | "secretsLmdb")[];
+        databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }, {
         type: "EXPORT_DATABASE";
         systemId: "database";
         path: string;
-        databases: ("lmdb" | "searchIndices" | "volatileLmdb" | "secretsLmdb")[];
+        databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"IMPORT_DATABASE">;
@@ -2645,6 +2630,55 @@ declare const events: {
         fromUserNavigation?: boolean | undefined;
     }>];
     readonly outgoing: {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
         type: "AGENT_CONNECTED";
         data: AgentConnectedData;
         pluginId: "agent";
@@ -2756,55 +2790,6 @@ declare const events: {
         threadId: string;
         pluginId: "threads";
     } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
         type: "FLOWS_CONNECTED";
         data: FlowsConnectedData;
         pluginId: "flows";
@@ -2915,14 +2900,6 @@ declare const events: {
         pluginId: "database";
     } | {
         type: "TRANSACTION_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "SNAPSHOT_CREATED";
-        filename: string;
-        pluginId: "database";
-    } | {
-        type: "SNAPSHOT_ERROR";
         error: string;
         pluginId: "database";
     } | {

@@ -202,18 +202,18 @@ export class GitRepository {
       const rest = entry.substring(3)
       
       // Handle renames - with -z flag, git status uses NUL-separated format
-      // For renames: RXY oldpath\0newpath where X/Y are similarity scores
+      // For renames: XY newpath\0oldpath (the XY line contains the new path,
+      // and the entry after NUL is the original/old path per git docs)
       let fileName: string = rest
       let originalPath: string | undefined
-      
+
       // Handle staged files
       if (indexStatus !== ' ' && indexStatus !== '?') {
         // For renames/copies in staged files, we need to handle the two-path format
         if (indexStatus.startsWith('R') || indexStatus.startsWith('C')) {
-          // Next entry should be the new path
+          // Next entry is the old/original path; fileName already has the new path
           if (i + 1 < entries.length) {
-            originalPath = fileName
-            fileName = entries[++i]
+            originalPath = entries[++i]
           }
         }
         

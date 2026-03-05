@@ -158,6 +158,16 @@ export const commitSystem = setup({
               ? await context.gitRepository.getFileContent(ev.path!, 'HEAD')
               : await context.gitRepository.getFileContent(ev.path!, 'index')
             modifiedContent = ''
+          } else if (fileStatus.status === 'renamed' || fileStatus.status === 'copied') {
+            // For renames/copies, the original content lives at the old path in HEAD
+            const oldPath = fileStatus.originalPath || ev.path!
+            if (ev.staged) {
+              originalContent = await context.gitRepository.getFileContent(oldPath, 'HEAD')
+              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'index')
+            } else {
+              originalContent = await context.gitRepository.getFileContent(ev.path!, 'index')
+              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+            }
           } else {
             if (ev.staged) {
               originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
@@ -214,11 +224,20 @@ export const commitSystem = setup({
 
     unstageFiles: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
-      
+
       if (!requireGitRepository(context)) return
-      
+
       try {
-        await context.gitRepository.unstageFiles(ev.paths)
+        // For renamed/copied files, we need to reset both old and new paths
+        const status = await context.gitRepository.getStatus()
+        const allPaths = new Set(ev.paths)
+        for (const p of ev.paths) {
+          const fileStatus = status.find(f => f.path === p)
+          if (fileStatus && (fileStatus.status === 'renamed' || fileStatus.status === 'copied') && fileStatus.originalPath) {
+            allPaths.add(fileStatus.originalPath)
+          }
+        }
+        await context.gitRepository.unstageFiles([...allPaths])
         const wrapped = emit(pluginId, {
           type: 'commit.FILES_UNSTAGED',
           data: { paths: ev.paths }
