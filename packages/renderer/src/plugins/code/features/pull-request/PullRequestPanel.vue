@@ -6,22 +6,6 @@
       title="Pull Request"
     >
       <template #actions>
-        <template v-if="prFiles.length > 0">
-          <button
-            @click="expandAll()"
-            class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-            title="Expand all folders"
-          >
-            <UnfoldVertical :size="16" />
-          </button>
-          <button
-            @click="collapseAll()"
-            class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-            title="Collapse all folders"
-          >
-            <FoldVertical :size="16" />
-          </button>
-        </template>
         <button
           @click="refreshStatus()"
           :disabled="isPrLoading"
@@ -83,6 +67,22 @@
           <span class="text-xs text-neutral-400">
             Comparing with {{ prBaseBranch }}
           </span>
+          <div class="flex items-center gap-1 ml-auto">
+            <button
+              @click="expandAll()"
+              class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              title="Expand all folders"
+            >
+              <UnfoldVertical :size="14" />
+            </button>
+            <button
+              @click="collapseAll()"
+              class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              title="Collapse all folders"
+            >
+              <FoldVertical :size="14" />
+            </button>
+          </div>
         </div>
 
         <FileTree
