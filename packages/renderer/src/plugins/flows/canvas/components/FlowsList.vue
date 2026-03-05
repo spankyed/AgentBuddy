@@ -48,8 +48,7 @@
         </div>
       </div>
     
-      <div v-if="filteredFlows.length > 0" class="h-full p-4 overflow-y-auto">
-        <div class="space-y-1">
+      <div v-if="filteredFlows.length > 0" class="h-full overflow-y-auto">
           <FlowItem
             v-for="flow in filteredFlows"
             :key="flow.id"
@@ -62,7 +61,6 @@
             @request-delete="$emit('request-delete', $event)"
             @request-edit-label="$emit('request-edit-label', $event)"
           />
-        </div>
       </div>
 
       <!-- No search results -->

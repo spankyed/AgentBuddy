@@ -2,10 +2,10 @@
   <ContextMenuRoot>
     <ContextMenuTrigger as-child>
       <button
-        class="w-full px-2 py-1.5 text-left cursor-pointer select-none transition-all duration-200 rounded-md hover:bg-neutral-800"
+        class="w-full px-4 py-1.5 text-left cursor-pointer select-none transition-all duration-200 hover:bg-neutral-800"
         :class="[
           isSelected ? 'bg-neutral-800/50' : '',
-          isMultiSelected ? 'ring-1 ring-blue-500/40 bg-blue-500/10' : ''
+          isMultiSelected ? 'bg-blue-500/10' : ''
         ]"
         :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
         @click="$emit('click', $event)"
