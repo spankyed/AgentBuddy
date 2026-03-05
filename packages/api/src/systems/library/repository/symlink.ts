@@ -105,6 +105,7 @@ export async function listDirectory(dirPath: string, collectionId: string, relat
         createdAt: stat.birthtime.toISOString(),
         updatedAt: stat.mtime.toISOString(),
         isSymlinked: true,
+        symlinkPath: fullPath,
       })
     } else {
       items.push({

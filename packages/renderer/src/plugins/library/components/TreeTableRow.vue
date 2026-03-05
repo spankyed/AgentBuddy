@@ -19,7 +19,7 @@
         @drop="onDrop($event)"
         @dragend="onDragEnd()"
       >
-        <td class="px-4 py-1 relative" @dblclick="onNameCellDblClick">
+        <td class="px-4 py-1 relative">
           <!-- Drop indicator -->
           <div
             v-if="showDropIndicator"
@@ -45,7 +45,6 @@
             <div class="min-w-0 relative">
               <span
                 @click.stop="handleClick($event)"
-                @dblclick.stop="handleNameDblClickLocal"
                 class="text-sm"
                 :class="[
                   item.type === 'folder' ? 'font-medium' : 'font-normal',
@@ -91,6 +90,20 @@
         >
           <Edit2 class="w-4 h-4" /> Rename
         </ContextMenuItem>
+        <template v-if="isSymlinkedItem && item.type === 'folder'">
+          <ContextMenuItem
+            @select="refreshFolder(item.id)"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+          >
+            <RefreshCw class="w-4 h-4" /> Refresh
+          </ContextMenuItem>
+          <ContextMenuItem
+            @select="copyFolderPath(item)"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+          >
+            <Copy class="w-4 h-4" /> Copy Path
+          </ContextMenuItem>
+        </template>
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
         <ContextMenuItem
           @select="onDelete"
@@ -128,7 +141,7 @@
 
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Unlink } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal, ContextMenuSeparator,
@@ -148,7 +161,8 @@ const expandFolder = inject<(folderId: string) => void>('tree-expand-folder')!
 const collapseFolder = inject<(folderId: string) => void>('tree-collapse-folder')!
 const renameItem = inject<(item: LibraryItem) => void>('tree-rename-item')!
 const deleteItem = inject<(item: LibraryItem) => void>('tree-delete-item')!
-const handleNameDblClick = inject<(item: LibraryItem) => void>('tree-handle-name-dblclick')!
+const refreshFolder = inject<(folderId: string) => void>('tree-refresh-folder')!
+const copyFolderPath = inject<(item: LibraryItem) => void>('tree-copy-folder-path')!
 const getEditingItemId = inject<() => string | null>('tree-get-editing-item-id')!
 const getEditingName = inject<() => string>('tree-get-editing-name')!
 const setEditingName = inject<(name: string) => void>('tree-set-editing-name')!
@@ -172,6 +186,7 @@ const getDropPosition = inject<() => 'before' | 'after' | 'inside' | null>('tree
 
 const contextMenuOpen = ref(false)
 const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
+const isSymlinkedItem = computed(() => (props.item as any).isSymlinked || (props.item as any).isSymlink)
 const isSelected = computed(() => selectedItems().includes(props.item.id))
 const isExpanded = computed(() => expandedFolderIds().includes(props.item.id))
 const isLoading = computed(() => loadingFolderIds().includes(props.item.id))
@@ -206,16 +221,6 @@ function handleClick(event: MouseEvent) {
 
 function handleDoubleClick() {
   doubleClickItem(props.item)
-}
-
-function onNameCellDblClick(event: MouseEvent) {
-  if (isEditing.value) {
-    event.stopPropagation()
-  }
-}
-
-function handleNameDblClickLocal() {
-  handleNameDblClick(props.item)
 }
 
 function onEditInput(event: Event) {

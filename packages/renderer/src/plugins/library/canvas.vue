@@ -142,6 +142,9 @@ const currentEvents = computed(() => {
     CREATE_SYMLINK: (payload: { symlinkPath: string }) => {
       send({ type: 'CREATE_SYMLINK', ...payload })
     },
+    REFRESH_FOLDER: (payload: { folderId: string }) => {
+      send({ type: 'REFRESH_FOLDER', ...payload })
+    },
   }
 
   return {

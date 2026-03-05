@@ -144,6 +144,7 @@ export type LibraryEvents =
   | { type: 'ITEMS_REORDERED'; data: { itemIds: string[]; targetFolderId: string | null } }
   // Symlink events
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
+  | { type: 'REFRESH_FOLDER'; folderId: string }
   // Import/Export events
   | { type: 'LIBRARY.IMPORT'; items: any[] }
   | { type: 'LIBRARY.RESET_IMPORT_STATUS' }
@@ -617,6 +618,24 @@ export const librarySystem = setup({
     //   testResults: [],
     //   isSearching: false,
     // }),
+    // Refresh folder (invalidate cache and re-fetch)
+    refreshFolder: assign(({ context, event }) => {
+      const folderId = (event as any).folderId as string
+      const { [folderId]: _, ...rest } = context.expandedFolderChildren
+      return {
+        expandedFolderChildren: rest,
+        loadingFolderIds: [...context.loadingFolderIds, folderId],
+      }
+    }),
+    requestRefreshFolder: ({ event }) => {
+      const folderId = (event as any).folderId as string
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_FOLDER_CONTENTS',
+        folderId,
+      })
+    },
+
     // Symlink actions
     createSymlink: ({ context, event }) => {
       if (event.type === 'CREATE_SYMLINK') {
@@ -882,6 +901,9 @@ export const librarySystem = setup({
 
     CREATE_SYMLINK: {
       actions: 'createSymlink',
+    },
+    REFRESH_FOLDER: {
+      actions: ['refreshFolder', 'requestRefreshFolder'],
     },
 
     // Import/Export events

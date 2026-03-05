@@ -13,19 +13,23 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Selected Items Details -->
     <div class="pt-6 border-t border-neutral-800">
       <h3 class="mb-3 text-sm font-semibold text-neutral-100">
-        {{ selectedItemsCount > 1 ? `Selected Items (${selectedItemsCount})` : 'Selected Document' }}
+        {{ selectedItemsCount > 1 ? `Selected Items (${selectedItemsCount})` : selectedFolder ? 'Selected Folder' : 'Selected Document' }}
       </h3>
-      
+
       <!-- Single Document Selected -->
       <div v-if="selectedDocument" class="space-y-3">
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs text-neutral-400">Name:</span>
             <span class="text-sm font-medium text-neutral-200">{{ selectedDocument.name }}</span>
+          </div>
+          <div v-if="selectedItemFullPath" class="flex items-start justify-between">
+            <span class="text-xs text-neutral-400 flex-shrink-0">Path:</span>
+            <span class="text-xs text-neutral-300 text-right break-all ml-2">{{ selectedItemFullPath }}</span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-xs text-neutral-400">Code:</span>
@@ -37,8 +41,8 @@
         <div class="space-y-2">
           <h4 class="text-xs font-medium text-neutral-400">Content Overview:</h4>
           <div class="space-y-1.5">
-            <div 
-              v-for="(section, index) in selectedDocument.content" 
+            <div
+              v-for="(section, index) in selectedDocument.content"
               :key="index"
               class="px-2 py-1.5 bg-neutral-800 rounded text-xs"
             >
@@ -56,7 +60,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Document Tags -->
         <div v-if="selectedDocument.tags.length > 0" class="space-y-2">
           <h4 class="text-xs font-medium text-neutral-400">Tags:</h4>
@@ -84,6 +88,18 @@
         </div>
       </div>
 
+      <!-- Single Folder Selected -->
+      <div v-else-if="selectedFolder" class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-neutral-400">Name:</span>
+          <span class="text-sm font-medium text-neutral-200">{{ selectedFolder.name }}</span>
+        </div>
+        <div v-if="selectedItemFullPath" class="flex items-start justify-between">
+          <span class="text-xs text-neutral-400 flex-shrink-0">Path:</span>
+          <span class="text-xs text-neutral-300 text-right break-all ml-2">{{ selectedItemFullPath }}</span>
+        </div>
+      </div>
+
       <!-- Multiple Items Selected -->
       <div v-else-if="selectedItemsCount > 1" class="space-y-3">
         <div class="space-y-2 text-sm">
@@ -96,7 +112,7 @@
             <span class="font-medium text-neutral-200">{{ selectedFoldersCount }}</span>
           </div>
         </div>
-        
+
         <!-- Combined Tags from Selected Documents -->
         <div v-if="selectedItemsTags.length > 0" class="space-y-2">
           <h4 class="text-xs font-medium text-neutral-400">Combined Tags:</h4>
@@ -110,18 +126,18 @@
             </span>
           </div>
         </div>
-        
+
         <div class="pt-2 text-xs text-neutral-500">
           Use bulk actions to manage multiple items at once
         </div>
       </div>
-      
+
       <!-- Nothing Selected -->
       <div v-else class="text-sm text-neutral-500">
         Select items to view details
       </div>
     </div>
-    
+
     <div class="pt-6 border-t border-neutral-800">
       <h3 class="mb-3 text-sm font-semibold text-neutral-100">All Tags</h3>
       <div v-if="sortedTags.length > 0" class="flex flex-wrap gap-2">
@@ -248,6 +264,22 @@ const allVisibleItems = computed(() => {
   return all
 })
 
+const selectedFolder = computed(() => {
+  if (selectedItems.value?.length !== 1) return null
+  const item = allVisibleItems.value.find(i => i.id === selectedItems.value[0])
+  return item?.type === 'folder' ? item : null
+})
+
+const selectedItemFullPath = computed(() => {
+  const item = selectedDocument.value
+    ? allVisibleItems.value.find(i => i.id === selectedDocument.value!.id)
+    : selectedFolder.value
+  if (!item) return null
+  if ((item as any).filePath) return (item as any).filePath
+  if ((item as any).symlinkPath) return (item as any).symlinkPath
+  return null
+})
+
 const send = (event: LibraryEvents) => actor.send(event)
 
 const totalCollections = computed(() => {
@@ -297,7 +329,7 @@ const selectedFoldersCount = computed(() => {
 
 const selectedItemsTags = computed(() => {
   const tags = new Set<string>()
-  
+
   allVisibleItems.value
     .filter(item => selectedItems.value.includes(item.id) && item.type === 'document')
     .forEach((item: any) => {
@@ -305,7 +337,7 @@ const selectedItemsTags = computed(() => {
         item.tags.forEach((tag: string) => tags.add(tag))
       }
     })
-  
+
   return Array.from(tags).sort()
 })
 
@@ -314,14 +346,14 @@ function getTagClass(count: number): string {
   if (counts.length === 0) {
     return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
   }
-  
+
   const maxCount = Math.max(...counts)
   if (maxCount === 0) {
     return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
   }
-  
+
   const percentage = (count / maxCount) * 100
-  
+
   if (percentage >= 75) {
     return 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
   } else if (percentage >= 50) {
@@ -333,7 +365,7 @@ function getTagClass(count: number): string {
 
 const filterByTag = (tag: string) => {} // TODO: Implement tag filtering
 
-const truncateText = (text: string, maxLength: number): string => 
+const truncateText = (text: string, maxLength: number): string =>
   text?.length > maxLength ? `${text.substring(0, maxLength)}...` : text || ''
 
 const countValidFields = (fields: Array<{ key: string; value: string }>): number =>

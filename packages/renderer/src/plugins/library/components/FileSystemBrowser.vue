@@ -291,6 +291,7 @@ const emit = defineEmits<{
   REORDER_ITEMS: [{ itemIds: string[]; targetIndex: number; targetFolderId: string | null }]
   EXPAND_FOLDER: [{ folderId: string }]
   COLLAPSE_FOLDER: [{ folderId: string }]
+  REFRESH_FOLDER: [{ folderId: string }]
   CREATE_SYMLINK: [{ symlinkPath: string }]
   CREATE_SYMLINK_FILE: [{ name: string }]
   CREATE_SYMLINK_FOLDER: [{ name: string }]
@@ -351,7 +352,11 @@ provide('tree-expand-folder', (folderId: string) => emit('EXPAND_FOLDER', { fold
 provide('tree-collapse-folder', (folderId: string) => emit('COLLAPSE_FOLDER', { folderId }))
 provide('tree-rename-item', (item: LibraryItem) => renameItem(item))
 provide('tree-delete-item', (item: LibraryItem) => deleteItem(item))
-provide('tree-handle-name-dblclick', (item: LibraryItem) => handleNameDblClick(item))
+provide('tree-refresh-folder', (folderId: string) => emit('REFRESH_FOLDER', { folderId }))
+provide('tree-copy-folder-path', (item: LibraryItem) => {
+  const fullPath = getSymlinkItemFullPath(item)
+  if (fullPath) navigator.clipboard.writeText(fullPath)
+})
 provide('tree-get-editing-item-id', () => editingItemId.value)
 provide('tree-get-editing-name', () => editingName.value)
 provide('tree-set-editing-name', (name: string) => { editingName.value = name })
@@ -438,8 +443,10 @@ function selectItem(item: LibraryItem, event: MouseEvent) {
   selectItemBase(item, flattenedTreeItems.value, event)
 }
 
-function handleNameDblClick(item: LibraryItem) {
-  startEditingItem(item.id, item.name)
+function getSymlinkItemFullPath(item: LibraryItem): string | null {
+  if ((item as any).symlinkPath) return (item as any).symlinkPath
+  if ((item as any).filePath) return (item as any).filePath
+  return null
 }
 
 function doubleClickItem(item: LibraryItem) {
