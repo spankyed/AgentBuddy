@@ -169,7 +169,7 @@
       <div v-else>
         <TransitionGroup name="log-fade">
           <div
-            v-for="log in filteredLogs"
+            v-for="log in displayedLogs"
             :key="log.id"
             class="border-b border-neutral-800/30 group hover:bg-neutral-800/30"
           >
@@ -275,6 +275,9 @@
             </Transition>
           </div>
         </TransitionGroup>
+        <div v-if="hasMore" ref="sentinel" class="flex items-center justify-center py-3 text-sm text-neutral-500">
+          Showing {{ displayedLogs.length }} of {{ filteredLogs.length }} logs
+        </div>
       </div>
     </div>
 
@@ -311,7 +314,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
+import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import {
   Search,
   ChevronRight,
@@ -345,10 +348,21 @@ const handleEscape = (e: KeyboardEvent) => {
 
 onMounted(() => {
   document.addEventListener('keydown', handleEscape);
+
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting && hasMore.value) {
+      displayLimit.value += BATCH_SIZE;
+    }
+  });
+
+  watch(sentinel, (el) => {
+    if (el) observer?.observe(el);
+  }, { immediate: true });
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscape);
+  observer?.disconnect();
 });
 
 // Simple content type tracking
@@ -390,6 +404,17 @@ const filteredLogs = computed(() => {
   return filtered.slice().reverse();
 });
 
+const BATCH_SIZE = 100;
+const displayLimit = ref(BATCH_SIZE);
+const displayedLogs = computed(() => filteredLogs.value.slice(0, displayLimit.value));
+const hasMore = computed(() => displayLimit.value < filteredLogs.value.length);
+
+watch(filteredLogs, () => {
+  displayLimit.value = BATCH_SIZE;
+});
+
+const sentinel = ref<HTMLElement>();
+let observer: IntersectionObserver | null = null;
 
 const errorCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'error').length);
 const warnCount = computed(() => logs.value.filter((log: LogEntry) => log.level === 'warn').length);
