@@ -29,7 +29,7 @@
           <ContextMenuTrigger as-child>
             <div
               @click="selectTerminal(terminal)"
-              class="flex items-center justify-between p-3 mb-2 transition-colors rounded-lg cursor-pointer"
+              class="flex items-center justify-between py-2 px-4 mb-2 transition-colors rounded-lg cursor-pointer"
               :class="[
                 isActiveTerminal(terminal.id)
                   ? 'bg-primary-800/30 border border-primary-700'

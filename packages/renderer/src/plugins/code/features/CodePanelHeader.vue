@@ -43,7 +43,7 @@
         <div class="h-5 w-px bg-neutral-700 mx-1"></div>
 
         <button
-          v-for="panel in terminal"
+          v-for="panel in supportPanels"
           :key="panel.id"
           @click="selectPanel(panel.id)"
           :class="[
@@ -60,7 +60,7 @@
         <div class="h-5 w-px bg-neutral-700 mx-1"></div>
 
         <button
-          v-for="panel in actionPanels"
+          v-for="panel in internalsPanels"
           :key="panel.id"
           @click="selectPanel(panel.id)"
           :class="[
@@ -109,16 +109,16 @@ const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 
 const codePanels = [
   { id: 'explorer', label: 'Explorer', icon: FolderOpen },
-  { id: 'search', label: 'Search', icon: Search },
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
 ] as const
 
-const terminal = [
+const supportPanels = [
+  { id: 'search', label: 'Search', icon: Search },
   { id: 'terminal', label: 'Terminal', icon: Terminal },
 ] as const
 
-const actionPanels = [
+const internalsPanels = [
   { id: 'actions', label: 'Actions', icon: Play },
   { id: 'prompts', label: 'Prompts', icon: Sparkle }
 ] as const

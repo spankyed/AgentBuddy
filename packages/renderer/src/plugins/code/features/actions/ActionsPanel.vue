@@ -38,7 +38,7 @@
         <ContextMenuTrigger as-child>
           <div
             @click="selectAction(action)"
-            class="px-4 py-3 transition-colors border-b cursor-pointer border-neutral-800 hover:bg-neutral-800/50"
+            class="px-4 py-2 transition-colors border-b cursor-pointer border-neutral-800 hover:bg-neutral-800/50"
           >
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
