@@ -58,7 +58,7 @@ import { computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/state'
-import TNodeListItem from '@/core/components/TNodeListItem.vue'
+import TNodeListItem from '@/core/components/design/TNodeListItem.vue'
 import type { TrackEntity } from '@app/api'
 import { trpc } from '@/core/trpc'
 
