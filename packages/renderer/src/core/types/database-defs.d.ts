@@ -1,4 +1,4 @@
-declare module "@app/dsl/database" {
+declare module "@app/defs/database" {
 
 import { Database, RootDatabase } from 'lmdb';
 

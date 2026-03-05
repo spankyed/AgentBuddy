@@ -10,9 +10,9 @@ const outDir = resolve(__dirname, '../packages/renderer/src/core/types');
 const createConfig = (name, input, moduleName) => ({
   input: resolve(apiDir, input),
   output: {
-    file: resolve(outDir, `${name}-dsl.d.ts`),
+    file: resolve(outDir, `${name}-defs.d.ts`),
     format: 'es',
-    intro: `declare module "@app/dsl/${name}" {`,
+    intro: `declare module "@app/defs/${name}" {`,
     outro: `}`,
     // Don't add any UMD globals or namespace declarations
     generatedCode: {
@@ -45,7 +45,7 @@ const createConfig = (name, input, moduleName) => ({
 
 // Export configurations for each DSL
 export default [
-  createConfig('action', 'dsl/action.ts', 'ActionDSL'),
-  createConfig('prompt', 'dsl/prompt.ts', 'PromptDSL'),
-  createConfig('database', 'dsl/database.ts', 'DatabaseDSL'),
+  createConfig('action', 'defs/action.ts', 'ActionDSL'),
+  createConfig('prompt', 'defs/prompt.ts', 'PromptDSL'),
+  createConfig('database', 'defs/database.ts', 'DatabaseDSL'),
 ];

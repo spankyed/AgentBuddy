@@ -1,4 +1,4 @@
-declare module "@app/dsl/action" {
+declare module "@app/defs/action" {
 
 import * as zod from 'zod';
 import { z } from 'zod';

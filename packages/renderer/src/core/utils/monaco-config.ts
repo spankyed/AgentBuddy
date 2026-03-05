@@ -63,9 +63,9 @@ const LANGUAGE_MAP: Record<string, string> = {
 }
 
 // DSL type imports
-import databaseDslTypes from '../types/database-dsl.d.ts?raw'
-import actionDslTypes from '../types/action-dsl.d.ts?raw'
-import promptDslTypes from '../types/prompt-dsl.d.ts?raw'
+import databaseDslTypes from '../types/database-defs.d.ts?raw'
+import actionDslTypes from '../types/action-defs.d.ts?raw'
+import promptDslTypes from '../types/prompt-defs.d.ts?raw'
 
 const DSL_SCHEMAS: Record<DslType, string> = {
   database: databaseDslTypes,
@@ -296,7 +296,7 @@ function setupDslModules(monaco: Monaco, dslType: DslType, language: Language = 
     : monaco.languages.typescript.javascriptDefaults
   
   // Add the module as a virtual file
-  const moduleUri = `inmemory:///node_modules/@app/dsl/${dslType}/index.d.ts`
+  const moduleUri = `inmemory:///node_modules/@app/defs/${dslType}/index.d.ts`
   langDefaults.addExtraLib(DSL_SCHEMAS[dslType], moduleUri)
   
   registeredDslLibs.add(libKey)
@@ -318,7 +318,7 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
   
   // Create wrapper that imports from the module and makes things available globally
   const wrapperContent = `
-    import * as _dsl from '@app/dsl/${dslType}';
+    import * as _dsl from '@app/defs/${dslType}';
     
     // Make DSL exports available globally for function body
     ${dslType === 'action' ? `

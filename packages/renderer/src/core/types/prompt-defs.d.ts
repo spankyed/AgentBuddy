@@ -1,4 +1,4 @@
-declare module "@app/dsl/prompt" {
+declare module "@app/defs/prompt" {
 
 declare namespace EARS {
     export enum Entity {
