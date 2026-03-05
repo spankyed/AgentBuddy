@@ -73,6 +73,7 @@
       <!-- Create Branch Mode -->
       <div v-if="isCreatingBranch" class="flex items-center gap-1.5 mt-2">
         <input
+          ref="newBranchInput"
           v-model="newBranchName"
           @keyup.enter="confirmCreateBranch"
           @keyup.escape="cancelCreateBranch"
@@ -312,7 +313,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -349,6 +350,7 @@ const showDiscardAllDialog = ref(false)
 const showBranchDropdown = ref(false)
 const isCreatingBranch = ref(false)
 const newBranchName = ref('')
+const newBranchInput = ref<HTMLInputElement | null>(null)
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
@@ -502,6 +504,7 @@ const selectBranch = (branch: string) => {
 
 const startCreateBranch = () => {
   isCreatingBranch.value = true
+  nextTick(() => newBranchInput.value?.focus())
 }
 
 const confirmCreateBranch = () => {
