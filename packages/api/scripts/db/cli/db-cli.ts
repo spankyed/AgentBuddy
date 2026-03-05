@@ -14,7 +14,7 @@ import {
   getRoles,
   getAll
 } from '@/core/ears/attribute-storage';
-import { formatResult, exportToJSON, exportToCSV, confirmAction } from './utils';
+import { formatResult, exportToJSON, exportToCSV, confirmAction } from './cli-utils';
 
 export interface CliOptions {
   mode?: 'interactive' | 'exec' | 'script';
