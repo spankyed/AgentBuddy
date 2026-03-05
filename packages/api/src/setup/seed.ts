@@ -16,6 +16,8 @@ import { flowsCommands } from '@/systems/flows/repository';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import type { ActionEntity } from '@/systems/actions/types';
 import type { FlowDSL } from '@/systems/flows/dsl';
+import { libraryCommands } from '@/systems/library/repository';
+import type { ContentSection } from '@/systems/library/types';
 
 interface SeedCounts {
   created: number;
@@ -26,6 +28,7 @@ export interface SeedResult {
   actions: SeedCounts;
   prompts: SeedCounts;
   flows: SeedCounts;
+  library: SeedCounts;
 }
 
 const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), 'dist/compiled');
@@ -57,6 +60,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     actions: { created: 0, skipped: 0 },
     prompts: { created: 0, skipped: 0 },
     flows: { created: 0, skipped: 0 },
+    library: { created: 0, skipped: 0 },
   };
 
   // --- Actions ---
@@ -157,6 +161,26 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     }
   } else {
     log('  compiled-flows.json not found, skipping flows');
+  }
+
+  // --- Library Docs ---
+  const libraryFile = path.join(compiledDir, 'compiled-library.json');
+  const libraryData = loadJSON<Array<{ name: string; content: ContentSection[]; tags?: string[] }>>(libraryFile);
+
+  if (libraryData) {
+    for (const item of libraryData) {
+      const existing = findWhere(EARS.Entity.Document, 'name', item.name);
+      if (existing.length > 0) {
+        log(`  library doc skipped: ${item.name}`);
+        result.library.skipped++;
+        continue;
+      }
+      libraryCommands.createDocument(item.name, item.content, item.tags ?? []);
+      log(`  library doc created: ${item.name}`);
+      result.library.created++;
+    }
+  } else {
+    log('  compiled-library.json not found, skipping library docs');
   }
 
   // Mark as seeded
