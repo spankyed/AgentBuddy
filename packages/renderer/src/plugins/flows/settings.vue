@@ -201,7 +201,6 @@ import type { FlowsSettings } from '@app/api'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
-import { T } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js'
 
 interface Props {
   settings?: FlowsSettings
