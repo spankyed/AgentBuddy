@@ -10,7 +10,8 @@ import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
 import * as path from 'path'
 import * as os from 'os'
-import { libraryService } from '@/services/library'
+import * as libraryService from '@/services/library'
+import * as symlink from './repository/symlink'
 import type { MergeReceivable } from '@/core/helpers/event-helpers'
 // [SEARCH_INDEX_FF] import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
 import { toMap, toIdentifierSet, mapArray } from '@/systems/settings/settings-changes'
@@ -255,32 +256,32 @@ export const librarySystem = setup({
     },
     createDocument: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
-      const result = await libraryService.createDocument({
+      const document = await libraryService.create({
         name: ev.name,
         content: ev.content,
         tags: ev.tags,
-        collectionId: ev.collectionId,
+        parentId: ev.collectionId,
       })
-      if (result.kind === 'refresh') {
+      if (ev.collectionId && symlink.resolveSymlinkPath(ev.collectionId)) {
+        const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: result.folderContents },
+          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
         })
       } else {
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'DOCUMENT_CREATED' as const, pluginId: 'library', data: { document: result.data } },
+          event: { type: 'DOCUMENT_CREATED' as const, pluginId: 'library', data: { document } },
         })
       }
     },
     updateDocument: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
-      const document = await libraryService.updateDocument({
+      const document = await libraryService.update({
         id: ev.id,
         name: ev.name,
         content: ev.content,
         tags: ev.tags,
-        collectionId: ev.collectionId,
       })
       system.get(bus).send({
         type: 'OUTGOING' as const,
@@ -301,7 +302,7 @@ export const librarySystem = setup({
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
-      const document = await libraryService.getById(ev.id as EARS.EntityId)
+      const document = await libraryService.get(ev.id as EARS.EntityId)
       if (document) {
         system.get(bus).send({
           type: 'OUTGOING' as const,
@@ -327,20 +328,26 @@ export const librarySystem = setup({
     },
     createCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
-      const result = await libraryService.createCollection({
-        name: ev.name,
-        description: ev.description,
-        parentId: ev.parentId,
-      })
-      if (result.kind === 'refresh') {
+      const isSymlink = ev.parentId ? !!symlink.resolveSymlinkPath(ev.parentId) : false
+      if (isSymlink) {
+        await libraryService.createFolder({
+          name: ev.name,
+          parentId: ev.parentId,
+        })
+        const folderContents = await repository.libraryQueries.getFolderContents(ev.parentId as EARS.EntityId)
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: result.folderContents },
+          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
         })
       } else {
+        const collection = repository.libraryCommands.createCollection(
+          ev.name,
+          ev.description,
+          ev.parentId ? ev.parentId as EARS.EntityId : undefined
+        )
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'COLLECTION_CREATED' as const, pluginId: 'library', data: { collection: result.data } },
+          event: { type: 'COLLECTION_CREATED' as const, pluginId: 'library', data: { collection } },
         })
       }
     },
@@ -444,26 +451,41 @@ export const librarySystem = setup({
     },
     renameItem: async ({ system, event }) => {
       const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
-      const result = await libraryService.renameItem({
-        id: ev.id,
-        name: ev.name,
-        itemType: ev.itemType,
-      })
-      if (result.kind === 'refresh') {
+      if (symlink.isSymlinkId(ev.id)) {
+        await libraryService.rename(ev.id, ev.name)
+        // Compute parent folder ID and refresh its contents
+        const parsed = symlink.parseSymlinkId(ev.id)
+        let parentFolderId: string | null = null
+        if (parsed) {
+          const resolved = symlink.resolveSymlinkPath(ev.id)
+          const basePath = symlink.getSymlinkCollectionPath(parsed.collectionId)
+          if (resolved && basePath) {
+            const parentRelPath = path.dirname(path.relative(basePath, resolved.absolutePath))
+            parentFolderId = parentRelPath && parentRelPath !== '.'
+              ? symlink.buildSymlinkId(parsed.collectionId, parentRelPath)
+              : parsed.collectionId
+          } else {
+            parentFolderId = parsed.collectionId
+          }
+        }
+        const folderContents = await repository.libraryQueries.getFolderContents(
+          parentFolderId ? parentFolderId as EARS.EntityId : null
+        )
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: result.folderContents },
+          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
         })
       } else {
+        const item = repository.libraryCommands.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'ITEM_RENAMED' as const, pluginId: 'library', data: { item: result.data } },
+          event: { type: 'ITEM_RENAMED' as const, pluginId: 'library', data: { item } },
         })
       }
     },
     deleteItems: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
-      await libraryService.deleteItems(ev.ids)
+      await libraryService.remove(ev.ids)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: { type: 'ITEMS_DELETED' as const, pluginId: 'library', data: { ids: ev.ids } },
@@ -471,7 +493,7 @@ export const librarySystem = setup({
     },
     moveItems: async ({ system, event }) => {
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
-      await libraryService.moveItems({ ids: ev.ids, targetFolderId: ev.targetFolderId })
+      await libraryService.move(ev.ids, ev.targetFolderId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: { type: 'ITEMS_MOVED' as const, pluginId: 'library', data: { ids: ev.ids, targetFolderId: ev.targetFolderId } },

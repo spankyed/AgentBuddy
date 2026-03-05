@@ -4,7 +4,7 @@ import * as emitter from './event-emitter';
 import * as database from './database';
 import { promptService } from './prompt';
 import { actionService } from './action';
-import { libraryService } from './library';
+import * as library from './library';
 import * as browser from './browser';
 import { repositoryService } from './repository';
 import { settingsService } from './settings';
@@ -20,7 +20,7 @@ const services = {
   database,
   prompt: promptService,
   action: actionService,
-  library: libraryService,
+  library,
   browser,
   repository: repositoryService,
   settings: settingsService,

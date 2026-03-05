@@ -27,8 +27,8 @@ export async function action(
 
     // Get documents from library service
     const [doc1, doc2] = await Promise.all([
-      services.library.getDocByCode('DOC-1'),
-      services.library.getDocByCode('DOC-2')
+      services.library.getByCode('DOC-1'),
+      services.library.getByCode('DOC-2')
     ]);
 
     services.logger.info('db example docs', { dbPrompt, doc1, doc2 })

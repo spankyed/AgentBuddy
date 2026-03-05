@@ -68,7 +68,7 @@ The `services` object provides access to all backend modules:
 - `services.database` — Database access (EARS entity system, queries)
 - `services.prompt` — Prompt template management (`usePrompt`)
 - `services.action` — Action execution (`getByLabel`, `executeAction`)
-- `services.library` — Document library (`getDocByCode`)
+- `services.library` — Document library (`get`, `getByCode`, `getByName`, `getText`, `list`, `create`, `update`, `createFolder`, `remove`, `move`, `rename`)
 - `services.browser` — Browser automation (Playwright)
 - `services.repository` — Data repository (threads, flows, artifacts)
 - `services.settings` — Settings management
