@@ -6,8 +6,6 @@ import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { emit, safeEvents, getActor } from '@/core/helpers/actor-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
-import { EARS } from '@/core/types';
-import { createSnapshot } from './snapshot';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
@@ -33,11 +31,7 @@ export const IncomingDatabaseEvents = [
   busEvent('EXECUTE_TRANSACTION', {
     code: z.string(),
   }),
-  busEvent('CREATE_SNAPSHOT', {
-    name: z.string().optional(),
-    excludeTypes: z.array(z.string()).optional(),
-  }),
-  busEvent('GENERATE_MAGIC_PROMPT', {
+busEvent('GENERATE_MAGIC_PROMPT', {
     prompt: z.string(),
   }),
   busEvent('REFRESH_SCHEMA', {}),
@@ -74,9 +68,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'QUERY_ERROR'; error: string }
   | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number }
   | { type: 'TRANSACTION_ERROR'; error: string }
-  | { type: 'SNAPSHOT_CREATED'; filename: string }
-  | { type: 'SNAPSHOT_ERROR'; error: string }
-  | { type: 'MAGIC_PROMPT_LOADING' }
+  |{ type: 'MAGIC_PROMPT_LOADING' }
   | { type: 'MAGIC_PROMPT_GENERATED'; query: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
   | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean }
@@ -156,27 +148,6 @@ export const databaseSystem = setup({
         logger.error('Transaction execution failed:', { error: errorMessage });
         system.get(bus).send(emit(database, { 
           type: 'TRANSACTION_ERROR',
-          error: errorMessage
-        }));
-      }
-    },
-    createSnapshot: async ({ system, event }) => {
-      const { name, excludeTypes } = typeOf('CREATE_SNAPSHOT', event);
-      
-      try {
-        const filename = await createSnapshot(name, excludeTypes as EARS.Entity[] | undefined);
-        logger.info(`Snapshot created: ${filename}${
-          excludeTypes?.length ? ` (excluded: ${excludeTypes.join(', ')})` : ''
-        }`);
-        system.get(bus).send(emit(database, { 
-          type: 'SNAPSHOT_CREATED',
-          filename
-        }));
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Snapshot creation failed:', { error: errorMessage });
-        system.get(bus).send(emit(database, { 
-          type: 'SNAPSHOT_ERROR',
           error: errorMessage
         }));
       }
@@ -398,10 +369,7 @@ export const databaseSystem = setup({
         EXECUTE_TRANSACTION: {
           actions: 'executeTransaction',
         },
-        CREATE_SNAPSHOT: {
-          actions: 'createSnapshot',
-        },
-        GENERATE_MAGIC_PROMPT: {
+GENERATE_MAGIC_PROMPT: {
           actions: 'handleMagicPrompt',
         },
         REFRESH_SCHEMA: {

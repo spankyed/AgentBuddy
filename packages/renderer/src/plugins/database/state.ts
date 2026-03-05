@@ -13,7 +13,7 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
-import { History, Camera, HardDriveDownload } from 'lucide-vue-next'
+import { History, HardDriveDownload } from 'lucide-vue-next'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -32,7 +32,6 @@ export interface DatabaseContext {
     type: 'entity' | 'attribute' | 'relation';
     value: string;
   } | null;
-  snapshotMessage: string | null;
   mode: 'query' | 'transaction';
   isMagicPromptLoading: boolean;
   isRefreshing: boolean;
@@ -74,8 +73,7 @@ type UIEvent =
   | { type: 'TRANSACTION.EXECUTE'; code: string }
   | { type: 'SCHEMA.SELECT'; itemType: 'entity' | 'attribute' | 'relation'; value: string }
   | { type: 'QUERY.UPDATE'; code: string }
-  | { type: 'DATABASE.SAVE_SNAPSHOT' }
-  | { type: 'DATABASE.REFRESH_SCHEMA' }
+  |{ type: 'DATABASE.REFRESH_SCHEMA' }
   | { type: 'DATABASE.RESET' }
   | { type: 'MODE.TOGGLE' }
   | { type: 'MAGIC_PROMPT.GENERATE'; prompt: string }
@@ -233,34 +231,6 @@ const databaseState = setup({
     setLoading: assign({
       isLoading: true,
       error: null,
-    }),
-
-    saveSnapshot: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'CREATE_SNAPSHOT',
-        excludeTypes: ['TNode'], // Exclude temporary node entities
-      });
-    },
-
-    setSnapshotSuccess: assign(({ event }) => {
-      const ev = typeOf('SNAPSHOT_CREATED', event);
-      return {
-        snapshotMessage: `Snapshot saved: ${ev.filename}`,
-        error: null,
-      };
-    }),
-
-    setSnapshotError: assign(({ event }) => {
-      const ev = typeOf('SNAPSHOT_ERROR', event);
-      return {
-        error: `Snapshot failed: ${ev.error}`,
-        snapshotMessage: null,
-      };
-    }),
-
-    clearSnapshotMessage: assign({
-      snapshotMessage: null,
     }),
 
     /* ── magic prompt ───────────────────────────────── */
@@ -515,7 +485,6 @@ const databaseState = setup({
     error: null,
     executionTime: null,
     selectedSchemaItem: null,
-    snapshotMessage: null,
     mode: 'query',
     isMagicPromptLoading: false,
     isRefreshing: false,
@@ -545,9 +514,7 @@ const databaseState = setup({
     QUERY_ERROR: { actions: 'setQueryError' },
     TRANSACTION_RESULT: { actions: 'setTransactionResult' },
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
-    SNAPSHOT_CREATED: { actions: 'setSnapshotSuccess' },
-    SNAPSHOT_ERROR: { actions: 'setSnapshotError' },
-    MAGIC_PROMPT_LOADING: { actions: 'setMagicPromptLoading' },
+MAGIC_PROMPT_LOADING: { actions: 'setMagicPromptLoading' },
     MAGIC_PROMPT_GENERATED: { actions: 'setMagicPromptResult' },
     DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
@@ -564,8 +531,7 @@ const databaseState = setup({
     ...breadcrumb('explorer', 'Database Explorer', true),
     ...contextMenu([
       { label: 'View Trace History', icon: History, event: { type: 'VIEW_MODE.TOGGLE' }, iconColor: 'text-purple-400' },
-      { label: 'Save Snapshot', icon: Camera, event: { type: 'DATABASE.SAVE_SNAPSHOT' }, iconColor: 'text-primary-500' },
-      { separator: true, label: 'Backup & Restore', icon: HardDriveDownload, event: { type: 'VIEW_BACKUP' }, iconColor: 'text-green-400' },
+{ separator: true, label: 'Backup & Restore', icon: HardDriveDownload, event: { type: 'VIEW_BACKUP' }, iconColor: 'text-green-400' },
     ]),
   },
   states: {
@@ -590,10 +556,7 @@ const databaseState = setup({
         'SCHEMA.SELECT': {
           actions: 'selectSchemaItem',
         },
-        'DATABASE.SAVE_SNAPSHOT': {
-          actions: 'saveSnapshot',
-        },
-        'MAGIC_PROMPT.GENERATE': {
+'MAGIC_PROMPT.GENERATE': {
           actions: ['generateMagicPrompt'],
         },
         'DATABASE.REFRESH_SCHEMA': {

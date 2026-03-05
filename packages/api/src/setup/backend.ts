@@ -3,7 +3,6 @@ import { logErrors } from '@/core/helpers/actor-helpers';
 import { logsSystem } from '@/systems/logs/system';
 import { backendSystem, bus } from '@/systems/backend';
 import { initializeLogCapture } from '@/core/helpers/debug/log-capture';
-import { loadSnapshot } from '@/core/persistence/data';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
@@ -26,9 +25,6 @@ export async function setupBackend(): Promise<void> {
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   seedData();
-
-  // Load data snapshot (can override LMDB data if needed)
-  // await loadSnapshot();
 
   // Start backend actor
   const backendActor = createActor(backendSystem, {

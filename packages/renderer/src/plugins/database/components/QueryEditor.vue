@@ -78,7 +78,6 @@ const actor: DatabaseState = applicationState.system.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);
-const snapshotMessage = useSelector(actor, (state) => state.context.snapshotMessage);
 const mode = useSelector(actor, (state) => state.context.mode);
 const settings = useSelector(actor, (state) => state.context.settings);
 const isMagicPromptLoading = useSelector(actor, (state) => state.context.isMagicPromptLoading);
@@ -115,13 +114,6 @@ watch(successMessage, (msg) => {
     setTimeout(() => {
       successMessage.value = '';
     }, SUCCESS_MESSAGE_TIMEOUT);
-  }
-});
-
-// Handle snapshot messages
-watch(snapshotMessage, (msg) => {
-  if (msg) {
-    successMessage.value = msg;
   }
 });
 

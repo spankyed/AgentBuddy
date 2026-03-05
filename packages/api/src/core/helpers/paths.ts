@@ -11,8 +11,7 @@ const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_
  */
 const SUBDIRS = {
   modelsCache: { prod: 'models-cache', dev: 'src/core/persistence/data/untracked/models' },
-  snapshots: { prod: 'snapshots', dev: 'src/core/persistence/data/untracked/snapshots' },
-  searchIndices: { prod: 'search-indices', dev: 'src/core/persistence/data/untracked/search-indices' },
+searchIndices: { prod: 'search-indices', dev: 'src/core/persistence/data/untracked/search-indices' },
   lmdb: { prod: 'ears-db', dev: 'src/core/persistence/data/untracked/ears-db' },
   volatileLmdb: { prod: 'ears-trace', dev: 'src/core/persistence/data/untracked/ears-trace' },
   secretsLmdb: { prod: 'ears-secrets', dev: 'src/core/persistence/data/untracked/ears-secrets' },
@@ -23,7 +22,6 @@ const SUBDIRS = {
 export const getUserDataPath = (): string => userDataPath
 export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
 export const getModelsCachePath = (): string => resolvePath('modelsCache')
-export const getSnapshotsPath = (): string => resolvePath('snapshots')
 export const getLmdbPath = (): string => resolvePath('lmdb')
 export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
 export const getSecretsLmdbPath = (): string => resolvePath('secretsLmdb')
