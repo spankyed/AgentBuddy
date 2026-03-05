@@ -94,13 +94,13 @@ export const logsSystem = setup({
           timestamp: Date.now(),
         };
         
-        const updatedLogs = [...context.logs, newLog];
+        const updatedLogs = [newLog, ...context.logs];
         
         // Keep only the last maxLogs entries
         const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
 
         if (updatedLogs.length > (settings?.maxLogs || 1000)) {
-          return updatedLogs.slice(updatedLogs.length - (settings?.maxLogs || 1000));
+          return updatedLogs.slice(0, settings?.maxLogs || 1000);
         }
         
         return updatedLogs;
@@ -122,7 +122,7 @@ export const logsSystem = setup({
       rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastNewLog: ({ context }) => {
-      const newLog = context.logs[context.logs.length - 1];
+      const newLog = context.logs[0];
       
       // Get current settings from repository
       const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;

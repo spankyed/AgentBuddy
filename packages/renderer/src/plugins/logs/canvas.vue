@@ -401,7 +401,7 @@ const filteredLogs = computed(() => {
     filtered = filtered.filter((log: LogEntry) => searchLog(log, filter));
   }
 
-  return filtered.slice().reverse();
+  return filtered;
 });
 
 const BATCH_SIZE = 100;

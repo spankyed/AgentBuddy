@@ -58,7 +58,7 @@ const logsState = setup({
         const newLog = typeOf('LOG_ADDED', event).log;
         return context.logs.some(log => log.id === newLog.id) 
           ? context.logs 
-          : [...context.logs, newLog];
+          : [newLog, ...context.logs];
       },
     }),
     clearLogs: assign({
