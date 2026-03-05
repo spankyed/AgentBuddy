@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "generate:dsl-types": "../../scripts/generate-dsl-types-rollup.sh",
+    "generate:dsl-types": "../../build/scripts/generate-dsl-types-rollup.sh",
     "postbuild": "[ -z \"$SKIP_DSL_GEN\" ] && npm run generate:dsl-types || echo '⏭️  Skipping DSL generation'",
     "db:cli": "tsx scripts/db/cli/run-db-cli.ts",
     "db:exec": "tsx scripts/db/cli/run-db-cli.ts --exec",

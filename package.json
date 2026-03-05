@@ -19,8 +19,7 @@
   "scripts": {
     "build": "npm run build -ws --if-present",
     "build-prod": "sh build/build.sh",
-    "prod-app": "sh build/run_with_logs.sh",
-    "copy-dev-data": "sh build/copy-dev-data.sh",
+    "prod-app": "sh build/scripts/run_with_logs.sh",
     "rebuild": "cd packages/api && npm rebuild",
     "package:all": "electron-builder --mac --win --linux",
     "test": "npx playwright test ./tests/e2e.spec.ts",

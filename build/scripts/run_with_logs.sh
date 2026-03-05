@@ -39,7 +39,7 @@ elif [ -d "/Applications/AgentBuddy.app" ]; then
 else
     echo "✗ Error: App not found!"
     echo ""
-    echo "Please build the app first with: ./build/build.sh"
+    echo "Please build the app first with: npm run build-prod"
     echo "The built app will be at: ../dist/mac-arm64/AgentBuddy.app"
     echo ""
     echo "To install (optional):"
