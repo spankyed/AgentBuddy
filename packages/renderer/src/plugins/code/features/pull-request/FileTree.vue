@@ -9,6 +9,7 @@
         :all-collapsed="allCollapsed"
         :all-expanded="allExpanded"
         @select-file="$emit('select-file', $event)"
+        @open-file="$emit('open-file', $event)"
       />
     </div>
     <div v-else class="p-4 text-sm text-center text-neutral-500">
@@ -39,6 +40,7 @@ const props = defineProps<{
 
 defineEmits<{
   'select-file': [file: TreeNode]
+  'open-file': [file: TreeNode]
 }>()
 
 // Helper functions

@@ -90,6 +90,7 @@
           :all-collapsed="allCollapsed"
           :all-expanded="allExpanded"
           @select-file="handleFileSelect"
+          @open-file="handleOpenFile"
         />
       </div>
     </template>
@@ -161,6 +162,14 @@ interface TreeNode {
   fileCount?: number
 }
 
+
+const handleOpenFile = (file: TreeNode) => {
+  if (file.type !== 'file' || !file.status) return
+  prActor?.send({
+    type: 'pr.OPEN_FILE',
+    file: { path: file.path, status: file.status, staged: false }
+  })
+}
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
