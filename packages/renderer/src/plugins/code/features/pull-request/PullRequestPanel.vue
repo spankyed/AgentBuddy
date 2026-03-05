@@ -70,17 +70,17 @@
           <div class="flex items-center gap-1 ml-auto">
             <button
               @click="expandAll()"
-              class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               title="Expand all folders"
             >
-              <UnfoldVertical :size="14" />
+              <UnfoldVertical :size="16" />
             </button>
             <button
               @click="collapseAll()"
-              class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               title="Collapse all folders"
             >
-              <FoldVertical :size="14" />
+              <FoldVertical :size="16" />
             </button>
           </div>
         </div>
