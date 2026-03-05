@@ -58,14 +58,16 @@ export async function action(
     prompt: classifyPrompt,
   });
 
+  const classification = classifyResult.object as { intent: string; confidence: number };
+
   services.logger.info('Text analysis complete', {
     summary: summaryResult.text,
-    classification: classifyResult.object,
+    classification,
   });
 
   return {
     summary: summaryResult.text,
-    intent: classifyResult.object.intent,
-    confidence: classifyResult.object.confidence,
+    intent: classification.intent,
+    confidence: classification.confidence,
   };
 }
