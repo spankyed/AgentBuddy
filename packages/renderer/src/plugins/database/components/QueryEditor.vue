@@ -11,7 +11,7 @@
       :execute-query="settings?.hotkeys?.executeQuery"
       @execute="handleExecute"
       @clear="handleClear"
-      @magic-prompt="showMagicPrompt = true"
+      @ai-query="showAiQueryDialog = true"
       @toggle-mode="handleToggleMode"
     />
 
@@ -33,7 +33,7 @@
         @select="handleExampleSelect"
       />
 
-      <!-- Loading overlay for magic prompt generation -->
+      <!-- Loading overlay for AI query generation -->
       <Transition
         enter-active-class="transition-opacity duration-200"
         leave-active-class="transition-opacity duration-200"
@@ -41,7 +41,7 @@
         leave-to-class="opacity-0"
       >
         <div
-          v-if="isMagicPromptLoading && activeMode === 'query'"
+          v-if="isAiQueryLoading && activeMode === 'query'"
           class="absolute inset-0 flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm z-10"
         >
           <div class="flex flex-col items-center space-y-3">
@@ -56,10 +56,10 @@
     </div>
 
 
-    <MagicPromptDialog
-      v-model="showMagicPrompt"
-      @generate="handleMagicPrompt"
-      @cancel="showMagicPrompt = false"
+    <AiQueryDialog
+      v-model="showAiQueryDialog"
+      @generate="handleAiQuery"
+      @cancel="showAiQueryDialog = false"
     />
   </div>
 </template>
@@ -72,7 +72,7 @@ import { applicationState } from '@/main';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
-import MagicPromptDialog from './query-editor/MagicPromptDialog.vue';
+import AiQueryDialog from './query-editor/AiQueryDialog.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
@@ -80,7 +80,7 @@ const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);
 const mode = useSelector(actor, (state) => state.context.mode);
 const settings = useSelector(actor, (state) => state.context.settings);
-const isMagicPromptLoading = useSelector(actor, (state) => state.context.isMagicPromptLoading);
+const isAiQueryLoading = useSelector(actor, (state) => state.context.isAiQueryLoading);
 
 // Props and emits
 defineProps<{
@@ -93,7 +93,7 @@ const emit = defineEmits<{
 
 // Local state
 const successMessage = ref('');
-const showMagicPrompt = ref(false);
+const showAiQueryDialog = ref(false);
 const editorQuery = ref(currentQuery.value);
 
 // Sync editor query with state
@@ -145,10 +145,10 @@ function handleClear() {
   editorQuery.value = '';
 }
 
-function handleMagicPrompt(prompt: string) {
-  showMagicPrompt.value = false;
+function handleAiQuery(prompt: string) {
+  showAiQueryDialog.value = false;
   actor.send({
-    type: 'MAGIC_PROMPT.GENERATE',
+    type: 'AI_QUERY.GENERATE',
     prompt
   });
 }

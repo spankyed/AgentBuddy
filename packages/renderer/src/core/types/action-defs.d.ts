@@ -1315,16 +1315,16 @@ declare const events: {
         type: "EXECUTE_TRANSACTION";
         systemId: "database";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GENERATE_MAGIC_PROMPT">;
+        type: zod.ZodLiteral<"GENERATE_AI_QUERY">;
         systemId: zod.ZodLiteral<"database">;
         prompt: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         prompt: string;
-        type: "GENERATE_MAGIC_PROMPT";
+        type: "GENERATE_AI_QUERY";
         systemId: "database";
     }, {
         prompt: string;
-        type: "GENERATE_MAGIC_PROMPT";
+        type: "GENERATE_AI_QUERY";
         systemId: "database";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REFRESH_SCHEMA">;
@@ -2903,10 +2903,10 @@ declare const events: {
         error: string;
         pluginId: "database";
     } | {
-        type: "MAGIC_PROMPT_LOADING";
+        type: "AI_QUERY_LOADING";
         pluginId: "database";
     } | {
-        type: "MAGIC_PROMPT_GENERATED";
+        type: "AI_QUERY_GENERATED";
         query: string;
         pluginId: "database";
     } | {

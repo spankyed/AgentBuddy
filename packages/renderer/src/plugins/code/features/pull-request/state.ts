@@ -29,6 +29,7 @@ export type Event =
   | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
   | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
+  | { type: 'pr.OPEN_FILE'; file: GitStatusFile }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
   | { type: 'CODE_STARTUP' };
 
@@ -134,6 +135,30 @@ export const pullRequestState = setup({
       })
     }),
 
+    openFile: ({ event, self, system }) => {
+      const ev = event as { type: 'pr.OPEN_FILE'; file: GitStatusFile }
+      const parentContext = getParentContext(self)
+      const baseDirectory = parentContext?.baseDirectory || ''
+
+      const fullPath = ev.file.path.startsWith('/')
+        ? ev.file.path
+        : baseDirectory.endsWith('/')
+          ? baseDirectory + ev.file.path
+          : baseDirectory + '/' + ev.file.path
+
+      updateParentState(self, { selectedPanel: 'explorer' })
+
+      system.get('explorer')?.send({
+        type: 'explorer.OPEN_FILE',
+        path: fullPath
+      })
+
+      system.get('explorer')?.send({
+        type: 'explorer.REVEAL_IN_TREE',
+        path: fullPath
+      })
+    },
+
     handleCodeStartup: ({ self }) => {
       // Check if we have a directory from parent context
       const parentContext = getParentContext(self)
@@ -171,6 +196,9 @@ export const pullRequestState = setup({
         },
         'pr.VIEW_DIFF': {
           actions: 'viewPrDiff'
+        },
+        'pr.OPEN_FILE': {
+          actions: 'openFile'
         },
         'pr.ERROR': {
           actions: 'assignPrError'

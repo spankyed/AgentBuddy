@@ -73,6 +73,7 @@
       <!-- Create Branch Mode -->
       <div v-if="isCreatingBranch" class="flex items-center gap-1.5 mt-2">
         <input
+          ref="newBranchInput"
           v-model="newBranchName"
           @keyup.enter="confirmCreateBranch"
           @keyup.escape="cancelCreateBranch"
@@ -209,7 +210,7 @@
       <div v-else class="divide-y divide-neutral-800">
         <!-- Staged Changes -->
         <div v-if="stagedFiles.length > 0" class="p-3">
-          <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center justify-between mb-2 mr-2">
             <span class="text-xs font-medium text-neutral-400">STAGED CHANGES</span>
             <button @click="unstageAll" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage All">
               <Minus class="w-3 h-3 text-neutral-400" />
@@ -255,7 +256,7 @@
 
         <!-- Unstaged Changes -->
         <div v-if="unstagedFiles.length > 0" class="p-3">
-          <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center justify-between mb-2 mr-2">
             <span class="text-xs font-medium text-neutral-400">CHANGES</span>
             <div class="flex items-center gap-1">
               <button @click="openDiscardAllDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard All Changes">
@@ -294,7 +295,7 @@
                 class="p-0.5 hover:bg-neutral-700 rounded"
                 title="Open file"
               >
-                <FileText class="w-3 h-3 text-neutral-400" />
+                <File class="w-3 h-3 text-neutral-400" />
               </button>
               <button @click.stop="openRevertDialog(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard changes">
                 <RotateCcw class="w-3 h-3 text-red-400" />
@@ -312,12 +313,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, FileText, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
@@ -349,6 +350,7 @@ const showDiscardAllDialog = ref(false)
 const showBranchDropdown = ref(false)
 const isCreatingBranch = ref(false)
 const newBranchName = ref('')
+const newBranchInput = ref<HTMLInputElement | null>(null)
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
@@ -502,6 +504,7 @@ const selectBranch = (branch: string) => {
 
 const startCreateBranch = () => {
   isCreatingBranch.value = true
+  nextTick(() => newBranchInput.value?.focus())
 }
 
 const confirmCreateBranch = () => {

@@ -62,7 +62,7 @@
       </div>
 
       <div v-else class="pr-content">
-        <div class="branch-info">
+        <div class="branch-info bg-neutral-800/50">
           <GitBranch class="w-3 h-3 text-neutral-500" />
           <span class="text-xs text-neutral-400">
             Comparing with {{ prBaseBranch }}
@@ -70,14 +70,14 @@
           <div class="flex items-center gap-1 ml-auto">
             <button
               @click="expandAll()"
-              class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               title="Expand all folders"
             >
               <UnfoldVertical :size="14" />
             </button>
             <button
               @click="collapseAll()"
-              class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+              class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
               title="Collapse all folders"
             >
               <FoldVertical :size="14" />
@@ -90,6 +90,7 @@
           :all-collapsed="allCollapsed"
           :all-expanded="allExpanded"
           @select-file="handleFileSelect"
+          @open-file="handleOpenFile"
         />
       </div>
     </template>
@@ -162,6 +163,14 @@ interface TreeNode {
 }
 
 
+const handleOpenFile = (file: TreeNode) => {
+  if (file.type !== 'file' || !file.status) return
+  prActor?.send({
+    type: 'pr.OPEN_FILE',
+    file: { path: file.path, status: file.status, staged: false }
+  })
+}
+
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
 
@@ -204,7 +213,6 @@ const handleFileSelect = (file: TreeNode) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #0a0a0a;
   border-bottom: 1px solid #27272a;
 }
 

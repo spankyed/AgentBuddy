@@ -28,29 +28,37 @@
           :all-collapsed="allCollapsed"
           :all-expanded="allExpanded"
           @select-file="$emit('select-file', $event)"
+          @open-file="$emit('open-file', $event)"
         />
       </div>
     </div>
     
     <!-- File -->
-    <button
+    <div
       v-else
-      @click="$emit('select-file', item)"
-      class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800"
+      class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 cursor-pointer"
       :style="{ paddingLeft: `${(level * 16) + 8 + 20}px` }"
+      @click="$emit('select-file', item)"
     >
       <FileCode class="w-4 h-4 text-neutral-400" />
       <span class="text-sm text-neutral-200">{{ item.name }}</span>
-      <span :class="getStatusColor(item.status)" class="ml-auto mr-2 w-4 text-xs font-medium">
+      <span :class="getStatusColor(item.status)" class="ml-auto w-4 text-xs font-medium">
         {{ getStatusIcon(item.status) }}
       </span>
-    </button>
+      <button
+        @click.stop="$emit('open-file', item)"
+        class="p-0.5 hover:bg-neutral-700 rounded"
+        title="Open file"
+      >
+        <File class="w-3 h-3 text-neutral-400" />
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, withDefaults, watch } from 'vue'
-import { ChevronRight, Folder, FileCode } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileCode, File } from 'lucide-vue-next'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
 interface TreeNode {
@@ -73,8 +81,9 @@ const props = withDefaults(defineProps<{
   allExpanded: false
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'select-file': [file: TreeNode]
+  'open-file': [file: TreeNode]
 }>()
 
 const expanded = ref(true)
