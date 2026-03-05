@@ -5,9 +5,6 @@ import * as esbuild from 'esbuild';
 
 // --- Constants ---
 
-const DEFAULTS_DIR = path.join(import.meta.dirname, 'defaults');
-const OUTPUT_FILE = path.join(import.meta.dirname, 'compiled-actions.json');
-
 const DISALLOWED_NODE_PATTERNS = [
   { pattern: /\brequire\s*\(/, label: 'require()' },
   { pattern: /\bprocess\b/, label: 'process' },
@@ -19,7 +16,14 @@ const DISALLOWED_NODE_PATTERNS = [
 
 // --- Interfaces ---
 
-interface CompiledAction {
+export interface CompileConfig {
+  sourceDir: string;
+  outputFile: string;
+  functionName: string;
+  isAsync: boolean;
+}
+
+interface CompiledEntry {
   label: string;
   description?: string;
   category?: string;
@@ -30,9 +34,9 @@ interface CompiledAction {
 
 // --- esbuild Plugin ---
 
-function createActionValidatorPlugin(entryFilePath: string): esbuild.Plugin {
+function createValidatorPlugin(entryFilePath: string): esbuild.Plugin {
   return {
-    name: 'action-validator',
+    name: 'source-validator',
     setup(build) {
       // Block bare package imports (e.g. 'lodash', 'fs')
       build.onResolve({ filter: /^[^./]/ }, (args) => ({
@@ -56,7 +60,7 @@ function createActionValidatorPlugin(entryFilePath: string): esbuild.Plugin {
 
 // --- Bundling ---
 
-async function bundleActionFile(filePath: string): Promise<{ bundledJs: string; errors: string[] }> {
+async function bundleFile(filePath: string): Promise<{ bundledJs: string; errors: string[] }> {
   try {
     const result = await esbuild.build({
       entryPoints: [filePath],
@@ -65,7 +69,7 @@ async function bundleActionFile(filePath: string): Promise<{ bundledJs: string; 
       format: 'esm',
       target: 'es2022',
       platform: 'neutral',
-      plugins: [createActionValidatorPlugin(filePath)],
+      plugins: [createValidatorPlugin(filePath)],
     });
 
     const errors: string[] = [];
@@ -134,15 +138,14 @@ function extractMeta(jsSource: string): Record<string, any> | null {
   return null;
 }
 
-function extractFunctionBody(jsSource: string): string | null {
+function extractFunctionBody(jsSource: string, functionName: string, isAsync: boolean): string | null {
   const sourceFile = ts.createSourceFile('temp.js', jsSource, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
 
   for (const statement of sourceFile.statements) {
-    // esbuild outputs `async function action(...)` — find by name, no export keyword check
     if (
       ts.isFunctionDeclaration(statement) &&
-      statement.name?.text === 'action' &&
-      statement.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword) &&
+      statement.name?.text === functionName &&
+      (!isAsync || statement.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword)) &&
       statement.body
     ) {
       // Get the text between the outermost braces
@@ -169,7 +172,7 @@ function extractFunctionBody(jsSource: string): string | null {
   return null;
 }
 
-function extractInlinedHelpers(jsSource: string): string {
+function extractInlinedHelpers(jsSource: string, functionName: string): string {
   const sourceFile = ts.createSourceFile('temp.js', jsSource, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
   const helpers: string[] = [];
 
@@ -182,8 +185,8 @@ function extractInlinedHelpers(jsSource: string): string {
       if (hasMeta) continue;
     }
 
-    // Skip the action function declaration
-    if (ts.isFunctionDeclaration(statement) && statement.name?.text === 'action') {
+    // Skip the main function declaration
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === functionName) {
       continue;
     }
 
@@ -202,15 +205,40 @@ function extractInlinedHelpers(jsSource: string): string {
   return helpers.join('\n');
 }
 
-// --- Compilation ---
+// --- File scanning ---
 
-async function compileActionFile(filePath: string): Promise<{ action: CompiledAction | null; warnings: string[] }> {
-  const relativePath = path.relative(DEFAULTS_DIR, filePath);
+function scanSourceFiles(dir: string): { sourceFiles: string[]; helperFiles: string[] } {
+  const allFiles = fs.readdirSync(dir).filter(f => f.endsWith('.ts')).sort();
+
+  const META_RE = /^export\s+const\s+meta\b/m;
+  const sourceFiles: string[] = [];
+  const helperFiles: string[] = [];
+
+  for (const file of allFiles) {
+    const content = fs.readFileSync(path.join(dir, file), 'utf-8');
+    if (META_RE.test(content)) {
+      sourceFiles.push(file);
+    } else {
+      helperFiles.push(file);
+    }
+  }
+
+  return { sourceFiles, helperFiles };
+}
+
+// --- Per-file compilation ---
+
+async function compileSourceFile(
+  filePath: string,
+  sourceDir: string,
+  config: CompileConfig,
+): Promise<{ entry: CompiledEntry | null; warnings: string[] }> {
+  const relativePath = path.relative(sourceDir, filePath);
 
   // Bundle with esbuild (handles TS→JS + import resolution)
-  const { bundledJs, errors: bundleErrors } = await bundleActionFile(filePath);
+  const { bundledJs, errors: bundleErrors } = await bundleFile(filePath);
   if (bundleErrors.length > 0) {
-    return { action: null, warnings: bundleErrors.map(e => `${relativePath}: ${e}`) };
+    return { entry: null, warnings: bundleErrors.map(e => `${relativePath}: ${e}`) };
   }
 
   // Validate bundled output for disallowed Node.js patterns
@@ -219,24 +247,24 @@ async function compileActionFile(filePath: string): Promise<{ action: CompiledAc
   // Extract meta
   const meta = extractMeta(bundledJs);
   if (!meta) {
-    return { action: null, warnings: [...warnings, `${relativePath}: could not extract meta object`] };
+    return { entry: null, warnings: [...warnings, `${relativePath}: could not extract meta object`] };
   }
 
   // Extract function body
-  const body = extractFunctionBody(bundledJs);
+  const body = extractFunctionBody(bundledJs, config.functionName, config.isAsync);
   if (body === null) {
-    return { action: null, warnings: [...warnings, `${relativePath}: could not extract action function body`] };
+    return { entry: null, warnings: [...warnings, `${relativePath}: could not extract ${config.functionName} function body`] };
   }
 
   // Extract inlined helper declarations
-  const inlinedHelpers = extractInlinedHelpers(bundledJs);
+  const inlinedHelpers = extractInlinedHelpers(bundledJs, config.functionName);
 
   // Assemble actionFn = helpers + body
   const actionFn = inlinedHelpers
     ? `${inlinedHelpers}\n\n${body}`
     : body;
 
-  const compiled: CompiledAction = {
+  const compiled: CompiledEntry = {
     label: meta.label,
     ...(meta.description && { description: meta.description }),
     ...(meta.category && { category: meta.category }),
@@ -245,47 +273,40 @@ async function compileActionFile(filePath: string): Promise<{ action: CompiledAc
     ...(meta.output && { output: meta.output }),
   };
 
-  return { action: compiled, warnings };
+  return { entry: compiled, warnings };
 }
 
-async function main() {
-  console.log('Compiling actions from:', DEFAULTS_DIR);
+// --- Main compilation loop ---
 
-  if (!fs.existsSync(DEFAULTS_DIR)) {
-    console.error('Defaults directory not found:', DEFAULTS_DIR);
+export async function compileAllSourceFiles(config: CompileConfig): Promise<void> {
+  const baseDir = import.meta.dirname;
+  const sourceDir = path.join(baseDir, config.sourceDir);
+  const outputFile = path.join(baseDir, config.outputFile);
+
+  console.log(`Compiling from: ${sourceDir}`);
+
+  if (!fs.existsSync(sourceDir)) {
+    console.error('Source directory not found:', sourceDir);
     process.exit(1);
   }
 
-  const allFiles = fs.readdirSync(DEFAULTS_DIR).filter(f => f.endsWith('.ts')).sort();
+  const { sourceFiles, helperFiles } = scanSourceFiles(sourceDir);
 
-  // Separate action files (have `export const meta`) from helper files
-  const META_RE = /^export\s+const\s+meta\b/m;
-  const actionFiles: string[] = [];
-  const helperFiles: string[] = [];
-  for (const file of allFiles) {
-    const content = fs.readFileSync(path.join(DEFAULTS_DIR, file), 'utf-8');
-    if (META_RE.test(content)) {
-      actionFiles.push(file);
-    } else {
-      helperFiles.push(file);
-    }
-  }
-
-  console.log(`Found ${actionFiles.length} action file(s): ${actionFiles.join(', ')}`);
+  console.log(`Found ${sourceFiles.length} source file(s): ${sourceFiles.join(', ')}`);
   if (helperFiles.length > 0) {
     console.log(`Found ${helperFiles.length} helper file(s): ${helperFiles.join(', ')}`);
   }
 
   const allWarnings: string[] = [];
-  const compiledActions: CompiledAction[] = [];
+  const compiledEntries: CompiledEntry[] = [];
 
-  for (const file of actionFiles) {
-    const filePath = path.join(DEFAULTS_DIR, file);
-    const { action, warnings } = await compileActionFile(filePath);
+  for (const file of sourceFiles) {
+    const filePath = path.join(sourceDir, file);
+    const { entry, warnings } = await compileSourceFile(filePath, sourceDir, config);
     allWarnings.push(...warnings);
-    if (action) {
-      compiledActions.push(action);
-      console.log(`  + ${action.label}`);
+    if (entry) {
+      compiledEntries.push(entry);
+      console.log(`  + ${entry.label}`);
     } else {
       console.error(`  x ${file} — failed to compile`);
     }
@@ -299,11 +320,6 @@ async function main() {
   }
 
   // Write output
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(compiledActions, null, 2) + '\n');
-  console.log(`\nWrote ${compiledActions.length} action(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}`);
+  fs.writeFileSync(outputFile, JSON.stringify(compiledEntries, null, 2) + '\n');
+  console.log(`\nWrote ${compiledEntries.length} entries to ${path.relative(process.cwd(), outputFile)}`);
 }
-
-main().catch(err => {
-  console.error('Compilation failed:', err);
-  process.exit(1);
-});
