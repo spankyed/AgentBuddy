@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import WebApp from './WebApp.vue';
 import ApiStatus from './core/components/ApiStatus.vue';
-import Onboarding from './core/components/Onboarding.vue';
-import TourSpotlight from './core/components/TourSpotlight.vue';
+import Onboarding from './core/components/onboarding/Onboarding.vue';
+import TourSpotlight from './core/components/onboarding/TourSpotlight.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
@@ -34,7 +34,7 @@ window.addEventListener('keydown', (e) => {
     <!-- Guided tour overlay -->
     <TourSpotlight v-if="isTouring" />
   </template>
-  
+
   <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
   <div v-if="showApiStatus" class="api-status-overlay">
     <button @click="showApiStatus = false" class="close-btn">×</button>
