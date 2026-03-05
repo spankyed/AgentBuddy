@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { clearMemory } from '@/core/ears/attribute-storage';
 import { repository } from '@/repository';
-import { exportPrompts } from '@/systems/prompts/export-prompts';
+import { exportPrompts } from '@/systems/prompts/repository/export-prompts';
 import { promptFixtures } from './helpers/prompt-fixtures';
 
 /*─────────────────────────────────────────────────────────────────

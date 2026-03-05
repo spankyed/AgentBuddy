@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { createLogger } from '@/core/utils/debug/logger';
 import { settings as settingsSystemId } from '@/systems/settings/system';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
-import { exportPrompts } from './export-prompts';
+import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');
 const typeOf = safeEvents<ReceivableEvents>();
