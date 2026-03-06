@@ -42,227 +42,231 @@ function makeSymlinkCollectionDTO(id: string, name: string): CollectionDTO {
 }
 
 // ---------------------------------------------------------------------------
-// Lookups
+// LibraryService
 // ---------------------------------------------------------------------------
 
-export async function get(id: EARS.EntityId): Promise<DocumentDTO | undefined> {
-  if (symlink.isSymlinkId(id)) {
-    const resolved = symlink.resolveSymlinkPath(id)
-    if (!resolved) return undefined
-    const text = await symlink.readFile(resolved.absolutePath)
-    const name = path.basename(resolved.absolutePath)
-    return makeSymlinkDocumentDTO(id, name, [{ type: 'text' as const, text }])
+export class LibraryService {
+  // Lookups
+
+  async get(id: EARS.EntityId): Promise<DocumentDTO | undefined> {
+    if (symlink.isSymlinkId(id)) {
+      const resolved = symlink.resolveSymlinkPath(id)
+      if (!resolved) return undefined
+      const text = await symlink.readFile(resolved.absolutePath)
+      const name = path.basename(resolved.absolutePath)
+      return makeSymlinkDocumentDTO(id, name, [{ type: 'text' as const, text }])
+    }
+    const document = repository.libraryQueries.getDocument(id);
+    return document || undefined;
   }
-  const document = repository.libraryQueries.getDocument(id);
-  return document || undefined;
-}
 
-export async function getByCode(shortCode: string): Promise<DocumentDTO | undefined> {
-  const document = repository.libraryQueries.getDocumentByShortCode(shortCode as DocumentShortCode);
-  return document || undefined;
-}
+  async getByCode(shortCode: string): Promise<DocumentDTO | undefined> {
+    const document = repository.libraryQueries.getDocumentByShortCode(shortCode as DocumentShortCode);
+    return document || undefined;
+  }
 
-export async function getByName(name: string): Promise<DocumentDTO | undefined> {
-  const allDocuments = repository.libraryQueries.getDocuments();
-  return allDocuments.find(doc => doc.name === name);
-}
+  async getByName(name: string): Promise<DocumentDTO | undefined> {
+    const allDocuments = repository.libraryQueries.getDocuments();
+    return allDocuments.find(doc => doc.name === name);
+  }
 
-export async function getText(id: EARS.EntityId): Promise<string | undefined> {
-  const doc = await get(id)
-  if (!doc) return undefined
-  return doc.content
-    .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
-    .map(s => s.text)
-    .join('\n')
-}
-
-export async function list(folderId?: EARS.EntityId): Promise<LibraryItem[]> {
-  const folderContents = await repository.libraryQueries.getFolderContents(folderId ?? null)
-  return folderContents.items
-}
-
-// ---------------------------------------------------------------------------
-// Mutations
-// ---------------------------------------------------------------------------
-
-export async function create(params: {
-  name: string;
-  content: string | ContentSection[];
-  tags?: string[];
-  parentId?: string;
-}): Promise<DocumentDTO> {
-  const { name, parentId } = params
-  const content = normalizeContent(params.content)
-  const tags = params.tags ?? []
-
-  const resolved = parentId ? symlink.resolveSymlinkPath(parentId) : null
-  if (resolved) {
-    await symlink.createFile(resolved.absolutePath, name)
-    const textContent = content
+  async getText(id: EARS.EntityId): Promise<string | undefined> {
+    const doc = await this.get(id)
+    if (!doc) return undefined
+    return doc.content
       .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
       .map(s => s.text)
       .join('\n')
-    if (textContent) {
-      const filePath = path.join(resolved.absolutePath, name)
-      await symlink.writeFile(filePath, textContent)
-    }
-    const newId = symlink.buildSymlinkId(resolved.collectionId,
-      path.relative(
-        symlink.getSymlinkCollectionPath(resolved.collectionId) || resolved.absolutePath,
-        path.join(resolved.absolutePath, name)
-      )
-    )
-    return makeSymlinkDocumentDTO(newId, name, content)
   }
 
-  return repository.libraryCommands.createDocument(
-    name,
-    content,
-    tags,
-    parentId ? parentId as EARS.EntityId : undefined
-  )
-}
+  async list(folderId?: EARS.EntityId): Promise<LibraryItem[]> {
+    const folderContents = await repository.libraryQueries.getFolderContents(folderId ?? null)
+    return folderContents.items
+  }
 
-export async function update(params: {
-  id: string;
-  name?: string;
-  content?: string | ContentSection[];
-  tags?: string[];
-}): Promise<DocumentDTO> {
-  const { id } = params
+  // Mutations
 
-  if (symlink.isSymlinkId(id)) {
-    const resolved = symlink.resolveSymlinkPath(id)
-    const currentName = resolved ? path.basename(resolved.absolutePath) : 'unknown'
-    const name = params.name ?? currentName
-    const content = params.content !== undefined ? normalizeContent(params.content) : [{ type: 'text' as const, text: '' }]
+  async create(params: {
+    name: string;
+    content: string | ContentSection[];
+    tags?: string[];
+    parentId?: string;
+  }): Promise<DocumentDTO> {
+    const { name, parentId } = params
+    const content = normalizeContent(params.content)
+    const tags = params.tags ?? []
 
+    const resolved = parentId ? symlink.resolveSymlinkPath(parentId) : null
     if (resolved) {
+      await symlink.createFile(resolved.absolutePath, name)
       const textContent = content
         .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
         .map(s => s.text)
         .join('\n')
-      await symlink.writeFile(resolved.absolutePath, textContent)
-    }
-    return makeSymlinkDocumentDTO(id, name, content)
-  }
-
-  // For DB documents, fetch existing to fill in missing fields
-  const existing = repository.libraryQueries.getDocument(id as EARS.EntityId)
-  if (!existing) throw new Error(`Document not found: ${id}`)
-
-  const name = params.name ?? existing.name
-  const content = params.content !== undefined ? normalizeContent(params.content) : existing.content
-  const tags = params.tags ?? existing.tags
-
-  return repository.libraryCommands.updateDocument(
-    id as EARS.EntityId,
-    name,
-    content,
-    tags,
-    existing.collectionId
-  )
-}
-
-export async function createFolder(params: {
-  name: string;
-  parentId?: string;
-}): Promise<CollectionDTO> {
-  const { name, parentId } = params
-
-  const resolved = parentId ? symlink.resolveSymlinkPath(parentId) : null
-  if (resolved) {
-    await symlink.createDirectory(resolved.absolutePath, name)
-    const newId = symlink.buildSymlinkId(resolved.collectionId,
-      path.relative(
-        symlink.getSymlinkCollectionPath(resolved.collectionId) || resolved.absolutePath,
-        path.join(resolved.absolutePath, name)
+      if (textContent) {
+        const filePath = path.join(resolved.absolutePath, name)
+        await symlink.writeFile(filePath, textContent)
+      }
+      const newId = symlink.buildSymlinkId(resolved.collectionId,
+        path.relative(
+          symlink.getSymlinkCollectionPath(resolved.collectionId) || resolved.absolutePath,
+          path.join(resolved.absolutePath, name)
+        )
       )
+      return makeSymlinkDocumentDTO(newId, name, content)
+    }
+
+    return repository.libraryCommands.createDocument(
+      name,
+      content,
+      tags,
+      parentId ? parentId as EARS.EntityId : undefined
     )
-    return makeSymlinkCollectionDTO(newId, name)
   }
 
-  return repository.libraryCommands.createCollection(
-    name,
-    undefined,
-    parentId ? parentId as EARS.EntityId : undefined
-  )
-}
+  async update(params: {
+    id: string;
+    name?: string;
+    content?: string | ContentSection[];
+    tags?: string[];
+  }): Promise<DocumentDTO> {
+    const { id } = params
 
-export async function remove(ids: string[]): Promise<void> {
-  const symlinkIds = ids.filter(id => symlink.isSymlinkId(id))
-  const regularIds = ids.filter(id => !symlink.isSymlinkId(id))
-
-  if (symlinkIds.length > 0) {
-    const paths: string[] = []
-    for (const id of symlinkIds) {
+    if (symlink.isSymlinkId(id)) {
       const resolved = symlink.resolveSymlinkPath(id)
-      if (resolved) paths.push(resolved.absolutePath)
+      const currentName = resolved ? path.basename(resolved.absolutePath) : 'unknown'
+      const name = params.name ?? currentName
+      const content = params.content !== undefined ? normalizeContent(params.content) : [{ type: 'text' as const, text: '' }]
+
+      if (resolved) {
+        const textContent = content
+          .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+          .map(s => s.text)
+          .join('\n')
+        await symlink.writeFile(resolved.absolutePath, textContent)
+      }
+      return makeSymlinkDocumentDTO(id, name, content)
     }
-    if (paths.length > 0) {
-      await symlink.deleteItems(paths)
-    }
+
+    // For DB documents, fetch existing to fill in missing fields
+    const existing = repository.libraryQueries.getDocument(id as EARS.EntityId)
+    if (!existing) throw new Error(`Document not found: ${id}`)
+
+    const name = params.name ?? existing.name
+    const content = params.content !== undefined ? normalizeContent(params.content) : existing.content
+    const tags = params.tags ?? existing.tags
+
+    return repository.libraryCommands.updateDocument(
+      id as EARS.EntityId,
+      name,
+      content,
+      tags,
+      existing.collectionId
+    )
   }
 
-  if (regularIds.length > 0) {
-    repository.libraryCommands.deleteItems(regularIds.map(id => id as EARS.EntityId))
+  async createFolder(params: {
+    name: string;
+    parentId?: string;
+  }): Promise<CollectionDTO> {
+    const { name, parentId } = params
+
+    const resolved = parentId ? symlink.resolveSymlinkPath(parentId) : null
+    if (resolved) {
+      await symlink.createDirectory(resolved.absolutePath, name)
+      const newId = symlink.buildSymlinkId(resolved.collectionId,
+        path.relative(
+          symlink.getSymlinkCollectionPath(resolved.collectionId) || resolved.absolutePath,
+          path.join(resolved.absolutePath, name)
+        )
+      )
+      return makeSymlinkCollectionDTO(newId, name)
+    }
+
+    return repository.libraryCommands.createCollection(
+      name,
+      undefined,
+      parentId ? parentId as EARS.EntityId : undefined
+    )
   }
-}
 
-export async function move(ids: string[], targetFolderId: string | null): Promise<void> {
-  const symlinkIds = ids.filter(id => symlink.isSymlinkId(id))
-  const regularIds = ids.filter(id => !symlink.isSymlinkId(id))
+  async remove(ids: string[]): Promise<void> {
+    const symlinkIds = ids.filter(id => symlink.isSymlinkId(id))
+    const regularIds = ids.filter(id => !symlink.isSymlinkId(id))
 
-  if (symlinkIds.length > 0 && targetFolderId) {
-    const targetResolved = symlink.resolveSymlinkPath(targetFolderId)
-    if (targetResolved) {
+    if (symlinkIds.length > 0) {
+      const paths: string[] = []
       for (const id of symlinkIds) {
-        const sourceResolved = symlink.resolveSymlinkPath(id)
-        if (sourceResolved) {
-          await symlink.moveItem(sourceResolved.absolutePath, targetResolved.absolutePath)
+        const resolved = symlink.resolveSymlinkPath(id)
+        if (resolved) paths.push(resolved.absolutePath)
+      }
+      if (paths.length > 0) {
+        await symlink.deleteItems(paths)
+      }
+    }
+
+    if (regularIds.length > 0) {
+      repository.libraryCommands.deleteItems(regularIds.map(id => id as EARS.EntityId))
+    }
+  }
+
+  async move(ids: string[], targetFolderId: string | null): Promise<void> {
+    const symlinkIds = ids.filter(id => symlink.isSymlinkId(id))
+    const regularIds = ids.filter(id => !symlink.isSymlinkId(id))
+
+    if (symlinkIds.length > 0 && targetFolderId) {
+      const targetResolved = symlink.resolveSymlinkPath(targetFolderId)
+      if (targetResolved) {
+        for (const id of symlinkIds) {
+          const sourceResolved = symlink.resolveSymlinkPath(id)
+          if (sourceResolved) {
+            await symlink.moveItem(sourceResolved.absolutePath, targetResolved.absolutePath)
+          }
         }
       }
     }
-  }
 
-  if (regularIds.length > 0) {
-    repository.libraryCommands.moveItems(
-      regularIds.map(id => id as EARS.EntityId),
-      targetFolderId ? targetFolderId as EARS.EntityId : null
-    )
-  }
-}
-
-export async function rename(id: string, newName: string): Promise<void> {
-  if (symlink.isSymlinkId(id)) {
-    const resolved = symlink.resolveSymlinkPath(id)
-    if (resolved) {
-      await symlink.renameItem(resolved.absolutePath, newName)
+    if (regularIds.length > 0) {
+      repository.libraryCommands.moveItems(
+        regularIds.map(id => id as EARS.EntityId),
+        targetFolderId ? targetFolderId as EARS.EntityId : null
+      )
     }
-    return
   }
 
-  // For DB items, determine type from existence checks
-  const doc = repository.libraryQueries.getDocument(id as EARS.EntityId)
-  if (doc) {
-    repository.libraryCommands.updateDocument(
-      id as EARS.EntityId,
-      newName,
-      doc.content,
-      doc.tags,
-      doc.collectionId
-    )
-    return
-  }
+  async rename(id: string, newName: string): Promise<void> {
+    if (symlink.isSymlinkId(id)) {
+      const resolved = symlink.resolveSymlinkPath(id)
+      if (resolved) {
+        await symlink.renameItem(resolved.absolutePath, newName)
+      }
+      return
+    }
 
-  // Must be a collection
-  const collections = repository.libraryQueries.getCollections()
-  const collection = collections.find(c => c.id === id)
-  if (collection) {
-    repository.libraryCommands.updateCollection(
-      id as EARS.EntityId,
-      newName,
-      collection.description
-    )
+    // For DB items, determine type from existence checks
+    const doc = repository.libraryQueries.getDocument(id as EARS.EntityId)
+    if (doc) {
+      repository.libraryCommands.updateDocument(
+        id as EARS.EntityId,
+        newName,
+        doc.content,
+        doc.tags,
+        doc.collectionId
+      )
+      return
+    }
+
+    // Must be a collection
+    const collections = repository.libraryQueries.getCollections()
+    const collection = collections.find(c => c.id === id)
+    if (collection) {
+      repository.libraryCommands.updateCollection(
+        id as EARS.EntityId,
+        newName,
+        collection.description
+      )
+    }
   }
 }
+
+export const libraryService = new LibraryService();
