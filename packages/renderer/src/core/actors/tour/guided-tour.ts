@@ -41,7 +41,7 @@ export const guidedTourMachine = setup({
     },
     completeTour: () => {
       // Send event to backend to complete the tour
-      // Backend will handle setting tourStarted to false and showing all plugins
+      // Backend will handle showing all plugins and completing onboarding
       trpc.bus.send.mutate({
         systemId: 'settings',
         type: 'COMPLETE_ONBOARDING'

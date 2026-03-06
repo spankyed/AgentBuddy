@@ -67,7 +67,7 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-  | { type: 'CLIENT_CONNECTED'; tourComplete: boolean; tourStarted: boolean }
+  | { type: 'CLIENT_CONNECTED'; tourComplete: boolean }
   | { type: 'COMPLETE_ONBOARDING' }
   | { type: 'START_GUIDED_TOUR' }
   | { type: 'TOUR_NEXT' }
@@ -450,23 +450,13 @@ export const createApplicationState = () => setup({
       self.send({ type: 'RESET_CHAT_HEIGHT' });
 
       // Send single event to backend to complete the tour
-      // Backend will handle setting tourComplete, tourStarted, plugin visibility, and triggering onboarding flow
+      // Backend will handle setting tourComplete, plugin visibility, and triggering onboarding flow
       trpc.bus.send.mutate({
         systemId: 'settings',
         type: 'COMPLETE_ONBOARDING'
       });
     },
     startGuidedTour: ({ context, self }) => {
-      // Update tourStarted setting to true
-      trpc.bus.send.mutate({
-        systemId: 'settings',
-        type: 'UPDATE_SETTINGS',
-        entityType: 'internal',
-        label: '',
-        path: ['tourStarted'],
-        value: true
-      });
-
       // Hide non-tour plugins - only show threads, agent, and settings
       const tourVisibility: Record<string, boolean> = {};
       for (const plugin of context.plugins) {
@@ -625,13 +615,7 @@ export const createApplicationState = () => setup({
           {
             actions: [],
             target: 'onboarding',
-            guard: ({ event }) => event.tourComplete === false && !event.tourStarted
-          },
-          {
-            // If tour was started, go to guided tour state
-            actions: [],
-            target: 'guided-tour',
-            guard: ({ event }) => event.tourComplete === false && event.tourStarted === true
+            guard: ({ event }) => event.tourComplete === false
           },
           {
             actions: [],

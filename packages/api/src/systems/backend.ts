@@ -73,14 +73,13 @@ export const backendSystem = setup({
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
 
-      // Query for tourComplete and tourStarted from internal settings and emit to application actor
+      // Query for tourComplete from internal settings and emit to application actor
       const internalSettings = settingsQueries.getInternalSettings();
       system.get(bus).send({
         type: 'OUTGOING',
         event: {
           type: 'CLIENT_CONNECTED',
           tourComplete: internalSettings.tourComplete,
-          tourStarted: internalSettings.tourStarted,
           pluginId: 'application'
         }
       });

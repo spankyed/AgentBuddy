@@ -3776,7 +3776,6 @@ interface PluginSettings {
 interface InternalSettings {
     tourComplete: boolean;
     hasOnboarded: boolean;
-    tourStarted: boolean;
     lastInteractionTimestamp: number | null;
     version: string;
     seeded: boolean;

@@ -158,7 +158,6 @@ export interface PluginSettings {
 export interface InternalSettings {
   tourComplete: boolean;
   hasOnboarded: boolean;
-  tourStarted: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
   seeded: boolean;
