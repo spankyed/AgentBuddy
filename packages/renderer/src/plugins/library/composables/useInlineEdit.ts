@@ -17,7 +17,7 @@ export function useInlineEdit(
         input.focus()
         input.select()
       }
-    }, 50)
+    }, 150)
   }
 
   function confirmEdit(itemId: string) {

@@ -60,6 +60,8 @@ const currentProps = computed(() => {
         expandedFolderChildren: context.value.expandedFolderChildren,
         loadingFolderIds: context.value.loadingFolderIds,
         isInSymlinkContext: context.value.isInSymlinkContext,
+        currentSymlinkRootId: context.value.currentSymlinkRootId,
+        symlinkBasePath: context.value.symlinkBasePath,
       }
     case 'create':
       return {

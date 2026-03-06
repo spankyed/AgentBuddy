@@ -26,6 +26,15 @@ function documentItemToDTO(item: DocumentItem): DocumentDTO {
   }
 }
 
+function parseSymlinkId(id: string): { rootId: string; relPath: string } | null {
+  if (!id.startsWith('symlink:')) return null
+  const rest = id.slice('symlink:'.length)
+  const slashIdx = rest.indexOf('/')
+  return slashIdx === -1
+    ? { rootId: rest, relPath: '' }
+    : { rootId: rest.slice(0, slashIdx), relPath: rest.slice(slashIdx + 1) }
+}
+
 function findItemById(context: LibraryContext, id: string): LibraryItem | undefined {
   const top = context.items.find(i => i.id === id)
   if (top) return top
@@ -84,6 +93,7 @@ export interface LibraryContext {
   // Symlink context
   isInSymlinkContext: boolean
   currentSymlinkRootId: string | null
+  symlinkBasePath: string | null
 
   // Settings
   settings?: any
@@ -355,14 +365,27 @@ export const librarySystem = setup({
       // Find the symlink root ID
       let currentSymlinkRootId: string | null = null
       if (isInSymlinkContext && responseFolderId) {
-        if (responseFolderId.startsWith('symlink:')) {
-          // Extract collection ID from symlink:Collection-abc/path
-          const rest = responseFolderId.slice('symlink:'.length)
-          const slashIdx = rest.indexOf('/')
-          currentSymlinkRootId = slashIdx === -1 ? rest : rest.slice(0, slashIdx)
-        } else {
-          // Could be a symlink root collection itself
-          currentSymlinkRootId = responseFolderId
+        const parsed = parseSymlinkId(responseFolderId)
+        currentSymlinkRootId = parsed ? parsed.rootId : responseFolderId
+      }
+
+      // Derive symlinkBasePath from symlinked items
+      let symlinkBasePath: string | null = null
+      if (isInSymlinkContext && items.length > 0) {
+        const symlinkItem = items.find(i => (i as any).isSymlinked)
+        if (symlinkItem) {
+          const fullPath = (symlinkItem as any).symlinkPath || (symlinkItem as any).filePath
+          if (fullPath && symlinkItem.name) {
+            const parsed = parseSymlinkId(symlinkItem.id)
+            if (parsed) {
+              if (parsed.relPath) {
+                const idx = fullPath.lastIndexOf(parsed.relPath)
+                if (idx > 0) symlinkBasePath = fullPath.slice(0, idx - 1)
+              } else {
+                symlinkBasePath = fullPath.slice(0, fullPath.length - symlinkItem.name.length - 1)
+              }
+            }
+          }
         }
       }
 
@@ -375,6 +398,7 @@ export const librarySystem = setup({
         searchIndices: data.searchIndices || [],
         isInSymlinkContext,
         currentSymlinkRootId,
+        symlinkBasePath,
       }
     }),
     updateNavigation: assign({
@@ -822,6 +846,7 @@ export const librarySystem = setup({
     // Symlink context
     isInSymlinkContext: false,
     currentSymlinkRootId: null,
+    symlinkBasePath: null,
 
     // Settings
     settings: undefined,

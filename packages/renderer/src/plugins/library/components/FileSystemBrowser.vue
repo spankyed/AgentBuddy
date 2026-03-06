@@ -59,16 +59,56 @@
               <!-- Visible breadcrumb segments -->
               <template v-for="(crumb, index) in displayBreadcrumbs" :key="crumb.id">
                 <span class="text-neutral-600 text-xs mx-0.5">/</span>
-                <button
-                  @click="navigateToBreadcrumb(crumb)"
-                  class="px-1.5 py-0.5 transition-colors rounded-md hover:bg-neutral-800 truncate max-w-[160px]"
-                  :class="index === displayBreadcrumbs.length - 1
-                    ? 'text-neutral-100 font-medium'
-                    : 'text-neutral-500 hover:text-neutral-300'"
-                  :title="crumb.name"
-                >
-                  {{ crumb.name }}
-                </button>
+                <ContextMenuRoot>
+                  <ContextMenuTrigger as-child>
+                    <template v-if="editingBreadcrumbId === crumb.id">
+                      <input
+                        :id="'edit-input-' + crumb.id"
+                        v-model="editingBreadcrumbName"
+                        class="px-1.5 py-0.5 text-sm bg-neutral-800 border border-blue-500 rounded-md text-neutral-100 outline-none max-w-[160px]"
+                        @keydown.enter="confirmBreadcrumbEdit(crumb.id!)"
+                        @keydown.escape="cancelBreadcrumbEdit()"
+                        @blur="confirmBreadcrumbEdit(crumb.id!)"
+                      />
+                    </template>
+                    <button
+                      v-else
+                      @click="navigateToBreadcrumb(crumb)"
+                      class="px-1.5 py-0.5 transition-colors rounded-md hover:bg-neutral-800 truncate max-w-[160px]"
+                      :class="index === displayBreadcrumbs.length - 1
+                        ? 'text-neutral-100 font-medium'
+                        : 'text-neutral-500 hover:text-neutral-300'"
+                      :title="crumb.name"
+                    >
+                      {{ crumb.name }}
+                    </button>
+                  </ContextMenuTrigger>
+                  <ContextMenuPortal>
+                    <ContextMenuContent class="min-w-[160px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50">
+                      <ContextMenuItem
+                        @select="startBreadcrumbRename(crumb)"
+                        class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                      >
+                        <Edit2 class="w-4 h-4" /> Rename
+                      </ContextMenuItem>
+                      <template v-if="isBreadcrumbSymlink(crumb)">
+                        <ContextMenuItem
+                          @select="copyBreadcrumbPath(crumb)"
+                          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                        >
+                          <Copy class="w-4 h-4" /> Copy Path
+                        </ContextMenuItem>
+                        <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+                        <ContextMenuItem
+                          @select="emit('REFRESH_FOLDER', { folderId: crumb.id! })"
+                          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                        >
+                          <RefreshCw class="w-4 h-4" /> Refresh
+                        </ContextMenuItem>
+                      </template>
+                    </ContextMenuContent>
+                  </ContextMenuPortal>
+                </ContextMenuRoot>
               </template>
             </template>
           </nav>
@@ -231,7 +271,6 @@
 import { computed, reactive, watch, provide, onMounted, onUnmounted } from 'vue'
 import {
   FolderPlus,
-  Folder,
   FileText,
   ChevronLeft,
   Home,
@@ -241,6 +280,9 @@ import {
   FolderOpen,
   Link,
   X,
+  Edit2,
+  RefreshCw,
+  Copy,
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -248,6 +290,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuPortal,
+  ContextMenuSeparator,
 } from 'reka-ui'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -272,6 +315,8 @@ const props = defineProps<{
   expandedFolderChildren: Record<string, LibraryItem[]>
   loadingFolderIds: string[]
   isInSymlinkContext: boolean
+  currentSymlinkRootId?: string | null
+  symlinkBasePath?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -398,6 +443,40 @@ const deleteDialog = reactive({
 
 const symlinkInput = reactive({ show: false, path: '' })
 
+// Breadcrumb inline editing (reuse composable)
+const {
+  editingItemId: editingBreadcrumbId,
+  editingName: editingBreadcrumbName,
+  startEditingItem: startBreadcrumbEdit,
+  confirmEdit: confirmBreadcrumbEdit,
+  cancelEdit: cancelBreadcrumbEdit,
+} = useInlineEdit(emit)
+
+function isBreadcrumbSymlink(crumb: BreadcrumbItem): boolean {
+  if (!crumb.id) return false
+  return crumb.id.startsWith('symlink:') || crumb.id === props.currentSymlinkRootId
+}
+
+function startBreadcrumbRename(crumb: BreadcrumbItem) {
+  if (crumb.id) startBreadcrumbEdit(crumb.id, crumb.name)
+}
+
+function getBreadcrumbPath(crumb: BreadcrumbItem): string | null {
+  if (!crumb.id || !props.symlinkBasePath) return null
+  if (crumb.id === props.currentSymlinkRootId) return props.symlinkBasePath
+  if (crumb.id.startsWith('symlink:')) {
+    const rest = crumb.id.slice('symlink:'.length)
+    const slashIdx = rest.indexOf('/')
+    const relPath = slashIdx !== -1 ? rest.slice(slashIdx + 1) : ''
+    return relPath ? `${props.symlinkBasePath}/${relPath}` : props.symlinkBasePath
+  }
+  return null
+}
+
+function copyBreadcrumbPath(crumb: BreadcrumbItem) {
+  const fullPath = getBreadcrumbPath(crumb)
+  if (fullPath) navigator.clipboard.writeText(fullPath)
+}
 
 const sortedItems = computed(() => {
   // If no explicit sort is selected, use displayOrder (the user's custom order)
