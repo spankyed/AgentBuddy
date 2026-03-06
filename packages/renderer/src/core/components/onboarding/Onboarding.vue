@@ -10,21 +10,13 @@
         <div class="step" :class="{ completed: step >= 1 }">
           <div class="step-number">1</div>
           <div class="step-content">
-            <h3>Getting Started</h3>
-            <p>AgentBuddy helps you manage your work with AI assistance.</p>
+            <h3>Meet Your Assistant</h3>
+            <p>AgentBuddy helps you manage your work with AI-powered plugins and tools.</p>
           </div>
         </div>
 
         <div class="step" :class="{ completed: step >= 2 }">
           <div class="step-number">2</div>
-          <div class="step-content">
-            <h3>Explore Plugins</h3>
-            <p>Checkout the different ways to interact with and customize your assistant.</p>
-          </div>
-        </div>
-
-        <div class="step" :class="{ completed: step >= 3 }">
-          <div class="step-number">3</div>
           <div class="step-content">
             <h3>Start Building</h3>
             <p>Plan, code, debug, and deploy your projects with your assistant.</p>
@@ -33,21 +25,21 @@
       </div>
 
       <div class="onboarding-actions">
-        <button 
-          v-if="step < 3"
+        <button
+          v-if="step < 2"
           @click="nextStep"
           class="btn btn-secondary"
         >
           Next
         </button>
-        <div v-if="step === 3" class="final-actions">
-          <button 
+        <div v-if="step === 2" class="final-actions">
+          <button
             @click="startGuidedTour"
             class="btn btn-tour"
           >
             Take Guided Tour
           </button>
-          <button 
+          <button
             @click="completeOnboarding"
             class="btn btn-primary"
           >
@@ -70,14 +62,14 @@ const autoplayActive = ref(true);
 const AUTOPLAY_DELAY_SECONDS = 2.4;
 const setAutoplay = () => {
   clearTimeout(autoplayTimer.value!);
-  if (autoplayActive.value && step.value < 3) {
+  if (autoplayActive.value && step.value < 2) {
     const delay = step.value === 1 ? AUTOPLAY_DELAY_SECONDS * .7 : AUTOPLAY_DELAY_SECONDS;
     autoplayTimer.value = setTimeout(() => step.value++, delay * 1000);
   }
 };
 
 const nextStep = () => {
-  if (step.value < 3) {
+  if (step.value < 2) {
     step.value++;
     setAutoplay();
   }
@@ -103,14 +95,12 @@ const startGuidedTour = () => {
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'ArrowLeft' && step.value > 1) {
     previousStep();
-  } else if (event.key === 'ArrowRight' && step.value < 3) {
+  } else if (event.key === 'ArrowRight' && step.value < 2) {
     nextStep();
   } else if (event.key === 'Enter') {
-    // Handle Enter key based on current step
-    if (step.value < 3) {
+    if (step.value < 2) {
       nextStep();
     } else {
-      // On last step, Enter triggers "Get Started" (not tour)
       completeOnboarding();
     }
   }

@@ -346,7 +346,7 @@ export const settingsSystem = setup({
     },
 
     completeOnboarding: ({ system }) => {
-      settingsCommands.updateSettings('internal', null, ['hasOnboarded'], true);
+      settingsCommands.updateSettings('internal', null, ['tourComplete'], true);
       settingsCommands.updateSettings('internal', null, ['tourStarted'], false);
 
       const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
@@ -362,6 +362,12 @@ export const settingsSystem = setup({
         type: 'SETTINGS_UPDATED',
         data
       }));
+
+      // Trigger the onboarding flow via agent → brain
+      const agentActor = system.get(agent);
+      if (agentActor) {
+        agentActor.send({ type: 'BIRTH_FLOW_START' });
+      }
     }
   },
 }).createMachine({

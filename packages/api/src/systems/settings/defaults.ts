@@ -161,6 +161,7 @@ export const defaultSettings: SettingsData = {
   internal: {
     hasOnboarded: false,
     tourStarted: false,
+    tourComplete: false,
     lastInteractionTimestamp: null,
     version: '0.1.0',
     seeded: false,

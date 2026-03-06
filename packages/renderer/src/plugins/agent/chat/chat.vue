@@ -4,36 +4,15 @@
     <div class="flex flex-col flex-grow overflow-hidden min-h-0">
       <!-- Agent Chat Content -->
       <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-        <div v-if="messages.length === 0 && hasRequiredApiKeys" class="flex items-center justify-center h-full">
+        <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
           <p class="text-gray-500">Start a conversation for this thread</p>
         </div>
-        <div v-else-if="messages.length > 0" class="w-9/12 py-2 mx-auto space-y-1">
+        <div v-else class="w-9/12 py-2 mx-auto space-y-1">
           <ChatMessage
             v-for="message in messages"
             :key="message.id"
             :message="message"
           />
-        </div>
-        <!-- API Keys Alert - Always show when keys are missing -->
-        <div v-if="!hasRequiredApiKeys" class="w-9/12 py-2 mx-auto">
-          <div class="flex pb-3 animate-fade-in w-full justify-start">
-            <div class="relative rounded-xl px-4 py-3 bg-yellow-900/20 text-yellow-50 border border-yellow-600/30 hover:shadow-md transition-all duration-200">
-              <div class="flex items-start gap-3">
-                <AlertCircle class="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p class="text-yellow-200/80 text-[15px] leading-relaxed">
-                    <span class="text-yellow-100 font-medium mb-1 text-[15px]">API Keys Required.</span>
-                    Please configure your API keys to start chatting with your assistant.
-                    <button
-                      @click="navigateToSecrets"
-                      class="text-yellow-400 hover:text-yellow-300 underline ml-1 transition-colors">
-                      Configure API Keys
-                    </button>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       <!-- Input -->
@@ -43,7 +22,6 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :modes="modes"
-          :disabled="!hasRequiredApiKeys"
           @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
@@ -69,7 +47,6 @@ import { ref, watch, nextTick } from 'vue'
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
-import { AlertCircle } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
@@ -82,12 +59,7 @@ const recentThreads = useSelector(actor, (state) => (state.context.recentThreads
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
-const hasRequiredApiKeys = useSelector(actor, (state) => state.context.hasRequiredApiKeys)
 const messagesContainer = ref<HTMLElement | null>(null)
-
-const navigateToSecrets = () => {
-  actor.send({ type: 'NAVIGATE_TO_SECRETS' })
-}
 
 watch(messages, async () => {
   await nextTick()
