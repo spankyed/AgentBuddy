@@ -104,6 +104,52 @@
       ]
     }
   ],
+  "Onboarding Flow": [
+    {
+      "event": "flow.entry",
+      "label": "Flow Entry",
+      "steps": [
+        {
+          "type": "action",
+          "action": "Init Onboarding",
+          "label": "setup onboarding"
+        },
+        {
+          "type": "keep_alive"
+        }
+      ]
+    },
+    {
+      "event": "interactive.message.response",
+      "label": "Route Response",
+      "steps": [
+        {
+          "type": "action",
+          "action": "Handle Onboarding Response",
+          "label": "advance step",
+          "map": {
+            "messageId": "$.event.data.payload.messageId",
+            "threadId": "$.event.data.payload.threadId",
+            "response": "$.event.data.payload.response"
+          }
+        }
+      ]
+    },
+    {
+      "event": "user.message",
+      "label": "Ignore Message",
+      "steps": [
+        {
+          "type": "action",
+          "action": "Ignore Onboarding Message",
+          "label": "send unable message",
+          "map": {
+            "threadId": "$.event.data.payload.threadId"
+          }
+        }
+      ]
+    }
+  ],
   "Root Flow": {
     "root": true,
     "tracks": [
@@ -112,41 +158,18 @@
         "label": "Flow Entry",
         "steps": [
           {
-            "type": "action",
-            "action": "Analyze Text",
-            "label": "analyze input"
-          },
+            "type": "keep_alive"
+          }
+        ]
+      },
+      {
+        "event": "tour.complete",
+        "label": "Start Onboarding",
+        "steps": [
           {
-            "type": "switch",
-            "conditions": [
-              {
-                "if": "$.intent == 'question'",
-                "steps": [
-                  {
-                    "type": "action",
-                    "action": "db query",
-                    "label": "lookup"
-                  }
-                ]
-              },
-              {
-                "if": "$.intent == 'request'",
-                "steps": [
-                  {
-                    "type": "action",
-                    "action": "Create Birth Thread",
-                    "label": "onboard"
-                  }
-                ]
-              }
-            ],
-            "else": [
-              {
-                "type": "action",
-                "action": "Mock Block Messages",
-                "label": "default response"
-              }
-            ]
+            "type": "flow",
+            "flow": "Onboarding Flow",
+            "label": "run onboarding"
           }
         ]
       }

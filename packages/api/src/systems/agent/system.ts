@@ -61,23 +61,22 @@ export const agentSystem = setup({
   },
   actions: {
     startBirthFlow: ({ system }) => {
-      // Triggered when required API keys are configured
+      // Triggered from tour completion — fires brain event to start onboarding flow
       const assistantSettings = repository.settingsQueries.getAssistantSettings();
 
       if (!assistantSettings.birthdate) {
         const birthdate = new Date().toISOString();
-
         repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
         logger.info('Assistant birthdate set', { birthdate });
-
-        // Trigger the brain event to start the birth flow
-        const brainActor = getActor(system, brain);
-        brainActor.send({
-          type: 'TRIGGER_BRAIN_EVENT',
-          eventType: 'llm.now.available',
-          payload: {} // Brain will handle thread creation
-        });
       }
+
+      // Fire tour.complete brain event to trigger the onboarding subflow
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'tour.complete',
+        payload: {},
+      });
     },
     sendConnectedData: ({ system }) => {
       system.get(bus).send(emit(agent, {
