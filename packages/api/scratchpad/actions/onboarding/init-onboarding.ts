@@ -69,7 +69,8 @@ export async function action(
     threadId,
     text: 'First things first — what would you like to call me?',
     prompt: 'Give me a name',
-    placeholder: `e.g. ${DEFAULT_NAME}, Alex, Sam...`,
+    placeholder: 'Type a name...',
+    suggestions: [DEFAULT_NAME, 'Alex', 'Sam'],
     displayText: 'Name:',
   });
 

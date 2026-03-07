@@ -30,6 +30,18 @@
       @keyup.enter="!disabled && handleSubmit"
     />
 
+    <!-- Suggestion buttons -->
+    <div v-if="suggestions?.length && !disabled" class="flex flex-wrap gap-2">
+      <button
+        v-for="text in suggestions"
+        :key="text"
+        class="px-3 py-1 text-sm rounded-full border border-neutral-600 text-neutral-300 hover:bg-primary-600/20 hover:border-primary-500 hover:text-primary-400 transition-colors"
+        @click="selectSuggestion(text)"
+      >
+        {{ text }}
+      </button>
+    </div>
+
     <!-- Multi-line textarea -->
     <textarea
       v-else
@@ -83,6 +95,7 @@ interface Props {
   response?: any
   displayText?: string
   debounceMs?: number
+  suggestions?: string[]
 }
 
 interface Emits {
@@ -188,5 +201,10 @@ const handleSubmit = () => {
   }
 
   emit('submit', inputValue.value.trim())
+}
+
+const selectSuggestion = (text: string) => {
+  inputValue.value = text
+  emit('submit', text)
 }
 </script>

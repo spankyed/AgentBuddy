@@ -167,8 +167,9 @@ export function sendTextInputBlock(options: {
   multiline?: boolean;
   required?: boolean;
   displayText?: string;
+  suggestions?: string[];
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText } = options;
+  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -177,7 +178,7 @@ export function sendTextInputBlock(options: {
     },
     {
       type: 'text',
-      props: { placeholder, multiline, required, displayText }
+      props: { placeholder, multiline, required, displayText, suggestions }
     }
   ];
 

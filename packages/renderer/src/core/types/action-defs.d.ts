@@ -4362,6 +4362,7 @@ declare function sendTextInputBlock(options: {
     multiline?: boolean;
     required?: boolean;
     displayText?: string;
+    suggestions?: string[];
 }): {
     messageId: EARS.EntityId;
 };
