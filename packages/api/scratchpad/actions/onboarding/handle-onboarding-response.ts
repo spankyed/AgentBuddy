@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services, Z } from '../../types';
-import { getOnboardingState, type OnboardingState } from './onboarding-helpers';
+import { getOnboardingState, markTaskCompleted, type OnboardingState } from './onboarding-helpers';
 import { handleNameStep } from './steps/handle-name-step';
 import { handleTechLevelStep } from './steps/handle-tech-level-step';
 import { handleProjectsStep } from './steps/handle-projects-step';
@@ -47,7 +47,9 @@ export async function action(
     return { success: false, reason: 'unknown-step' };
   }
 
+  const currentStep = state.step;
   handler(services, state, threadId, responseValue);
+  markTaskCompleted(services, threadId, currentStep);
 
   services.database.tx(stateArtifact.id, true).update('content', state);
 

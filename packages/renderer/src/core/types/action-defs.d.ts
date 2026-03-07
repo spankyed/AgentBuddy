@@ -2723,6 +2723,12 @@ declare const events: {
         message: MessageEntity;
         pluginId: "agent";
     } | {
+        type: "UPDATE_TODO_TASK";
+        artifactId: string;
+        taskId: string;
+        completed: boolean;
+        pluginId: "agent";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
