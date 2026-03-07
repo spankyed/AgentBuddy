@@ -1,4 +1,5 @@
 import type { ActionMeta, Services, Z } from '../types';
+import type { EARS } from '@/core/types';
 import { DEFAULT_NAME, TECH_LEVELS, type OnboardingState } from './onboarding/onboarding-helpers';
 
 export const meta: ActionMeta = {
@@ -21,7 +22,11 @@ export async function action(
   const { threadId, response } = params;
 
   // Find the onboarding-state artifact for this thread
-  const artifacts = services.database.qx().threadArtifacts(threadId);
+  const artifacts = services.database.qx()
+    .relatedTo(threadId)
+    .ofType(services.database.EARS.Entity.Artifact)
+    .pick(['id', 'title', 'content', 'artifactType'] as const)
+    .map((a: any) => ({ id: a.id, type: a.artifactType, title: a.title, content: a.content }));
   const stateArtifact = artifacts.find((a: any) => a.type === 'onboarding-state');
 
   if (!stateArtifact) {
@@ -147,7 +152,7 @@ export async function action(
   }
 
   // Update the onboarding-state artifact
-  services.database.tx().updateArtifact(stateArtifact.id, { content: state });
+  services.database.tx(stateArtifact.id, true).update('content', state);
 
   await services.logger.info('Onboarding step completed', { step: state.step, threadId });
   return { success: true, step: state.step };
@@ -156,7 +161,7 @@ export async function action(
 async function finishOnboarding(
   services: Services,
   state: OnboardingState,
-  threadId: string,
+  threadId: EARS.EntityId,
 ) {
   state.step = 'complete';
 
