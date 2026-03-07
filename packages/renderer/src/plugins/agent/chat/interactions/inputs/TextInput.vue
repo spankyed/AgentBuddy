@@ -153,7 +153,11 @@ watch(inputValue, (newValue) => {
 // Response display text
 const responseText = computed(() => {
   if (!props.response) return ''
-  return String(props.response || '')
+  if (typeof props.response === 'object') {
+    if (props.response.cancelled) return 'Skipped'
+    return props.response.value ?? JSON.stringify(props.response)
+  }
+  return String(props.response)
 })
 
 // Cleanup timer on unmount
