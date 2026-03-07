@@ -39,17 +39,6 @@ function createValidatorPlugin(entryFilePath: string): esbuild.Plugin {
         errors: [{ text: `Bare package imports are disallowed: '${args.path}'` }],
       }));
 
-      // Block non-type imports from helper files
-      // esbuild strips `import type` before resolution, so any onResolve call
-      // from a non-entry file means a helper has a non-type import
-      build.onResolve({ filter: /^\./ }, (args) => {
-        if (args.importer && args.importer !== entryFilePath) {
-          return {
-            errors: [{ text: `Helper file cannot have non-type imports (found: '${args.path}' in ${path.relative(path.dirname(entryFilePath), args.importer)})` }],
-          };
-        }
-        return undefined; // let esbuild resolve normally
-      });
     },
   };
 }

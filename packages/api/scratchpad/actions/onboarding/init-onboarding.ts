@@ -76,8 +76,8 @@ export async function action(
   // Create onboarding-state artifact to track progress
   const onboardingState: OnboardingState = {
     step: 'name',
-    threadId: threadId as string,
-    pendingMessageId: messageId as string,
+    threadId,
+    pendingMessageId: messageId,
     data: {},
   };
 

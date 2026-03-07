@@ -1,3 +1,5 @@
+import type { EntityId, Services } from '../../types';
+
 export const DEFAULT_NAME = 'Kathy';
 
 export const TECH_LEVELS = [
@@ -9,7 +11,39 @@ export const TECH_LEVELS = [
 
 export interface OnboardingState {
   step: 'name' | 'tech-level' | 'projects' | 'finish' | 'complete';
-  threadId: string;
-  pendingMessageId: string;
+  threadId: EntityId;
+  pendingMessageId: EntityId;
   data: { name?: string; techLevel?: string; projects?: string[] };
+}
+
+export function getOnboardingState(services: Services, threadId: EntityId) {
+  const artifacts = services.database.qx()
+    .relatedTo(threadId)
+    .ofType(services.database.EARS.Entity.Artifact)
+    .pick(['id', 'title', 'content', 'artifactType'] as const);
+
+  return artifacts.find((a) => a.artifactType === 'onboarding-state') ?? null;
+}
+
+export function finishOnboarding(
+  services: Services,
+  state: OnboardingState,
+  threadId: EntityId,
+) {
+  state.step = 'complete';
+
+  services.settings.updateInternalSetting(['hasOnboarded'], true);
+
+  services.repository.threadCommands.update(threadId, {
+    topic: 'General',
+    instructions: 'General conversation thread.',
+  });
+
+  services.chat.sendBlockMessage({
+    threadId,
+    text: "All set! Let's get started!",
+    blocks: [],
+  });
+
+  services.chat.openThreadChatAndRefreshRecent(threadId);
 }

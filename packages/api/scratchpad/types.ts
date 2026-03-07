@@ -1,8 +1,10 @@
 import type services from '../src/services/index';
 import type { z } from 'zod';
+import type { EARS } from '@/core/types';
 
 export type Services = typeof services;
 export type Z = typeof z;
+export type EntityId = EARS.EntityId;
 
 export {
   type FlowDSL,
