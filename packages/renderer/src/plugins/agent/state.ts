@@ -230,15 +230,6 @@ const agentState = setup({
         };
       }
 
-      // If current thread was forcing a mode but the new/updated thread isn't, reset to default
-      if (context.currentThread?.forcedMode && !thread.forcedMode) {
-        return {
-          currentThread: thread,
-          mode: 'work',
-          phase: 'plan'
-        };
-      }
-
       return {
         currentThread: thread
       };

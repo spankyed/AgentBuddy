@@ -81,4 +81,9 @@ export function finishOnboarding(
   });
 
   services.chat.openThreadChatAndRefreshRecent(threadId);
+
+  services.emitter.sendToPlugin('agent', {
+    type: 'SET_MODE',
+    mode: 'chat',
+  });
 }
