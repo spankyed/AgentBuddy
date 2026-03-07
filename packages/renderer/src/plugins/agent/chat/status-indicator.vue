@@ -48,7 +48,7 @@ const statusColorClass = useSelector(actor, (state) => state.context.statusColor
 <style lang="scss" module>
 .status-indicator {
   position: absolute;
-  top: -.3rem;                        // nudge so halo sits half outside the border
-  left: -.3rem;                        // nudge so halo sits half outside the border
+  top: -.4rem;                        // nudge so halo sits half outside the border
+  left: -.4rem;                        // nudge so halo sits half outside the border
 }
-</style> 
+</style>
