@@ -40,6 +40,16 @@ export async function action(
   }
 
   const state = stateArtifact.content as OnboardingState;
+
+  if (params.messageId !== state.pendingMessageId) {
+    await services.logger.info('Ignoring response for non-pending message', {
+      received: params.messageId,
+      expected: state.pendingMessageId,
+      step: state.step,
+    });
+    return { success: false, reason: 'message-id-mismatch' };
+  }
+
   const responseValue = response?.value ?? response;
 
   const handler = stepHandlers[state.step];

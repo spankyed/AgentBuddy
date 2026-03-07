@@ -204,6 +204,10 @@ const handleSubmit = () => {
 }
 
 const selectSuggestion = (text: string) => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
   inputValue.value = text
   emit('submit', text)
 }
