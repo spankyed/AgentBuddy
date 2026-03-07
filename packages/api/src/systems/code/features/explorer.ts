@@ -348,6 +348,10 @@ export const explorerSystem = setup({
         const ev = event as { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
         return ev.path
       },
+      repository: ({ event }) => {
+        const ev = event as { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
+        return new FileSystemRepository(ev.path)
+      },
       gitWatcher: ({ event }) => {
         const ev = event as { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
         return ev.gitWatcher
@@ -491,7 +495,7 @@ export const explorerSystem = setup({
           actions: 'moveFiles'
         },
         'explorer.UPDATE_BASE_DIRECTORY': {
-          actions: ['updateBaseDirectory', 'setupFileWatcher']
+          actions: ['updateBaseDirectory', 'setupFileWatcher', 'listBaseFiles']
         },
         'explorer.CLOSE_FILE': {
           actions: 'closeFile'
