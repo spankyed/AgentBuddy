@@ -168,19 +168,18 @@ async function finishOnboarding(
   // Mark onboarding as complete
   services.settings.updateInternalSetting(['hasOnboarded'], true);
 
+  // Rename the current birth thread to "General"
+  services.repository.threadCommands.update(threadId, {
+    topic: 'General',
+    instructions: 'General conversation thread.',
+  });
+
   services.chat.sendBlockMessage({
     threadId,
-    text: "All set! I've created a general thread for us to chat in. Let's get started!",
+    text: "All set! Let's get started!",
     blocks: [],
   });
 
-  // Create general thread
-  const { id: generalThreadId } = services.chat.createThreadAndNotify({
-    topic: 'General',
-    instructions: 'General conversation thread.',
-    tags: [],
-  });
-
-  // Navigate to the new general thread
-  services.chat.openThreadChatAndRefreshRecent(generalThreadId);
+  // Refresh the thread data on FE (reloads chat + recent threads sidebar)
+  services.chat.openThreadChatAndRefreshRecent(threadId);
 }
