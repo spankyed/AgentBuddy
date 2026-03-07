@@ -204,11 +204,11 @@ const handleSubmit = () => {
 }
 
 const selectSuggestion = (text: string) => {
+  inputValue.value = text
   if (debounceTimer) {
     clearTimeout(debounceTimer)
     debounceTimer = null
   }
-  inputValue.value = text
   emit('submit', text)
 }
 </script>
