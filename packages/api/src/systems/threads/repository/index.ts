@@ -183,6 +183,7 @@ export const threadCommands = {
     linkedThreads?: any[];
     lastMessageTimestamp?: number;
     lastVisitedTimestamp?: number;
+    forcedMode?: ThreadEntity['forcedMode'] | null;
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);

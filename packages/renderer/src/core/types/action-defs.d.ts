@@ -4962,6 +4962,7 @@ declare const services: {
                 linkedThreads?: any[];
                 lastMessageTimestamp?: number;
                 lastVisitedTimestamp?: number;
+                forcedMode?: ThreadEntity["forcedMode"] | null;
             }) => void;
             readonly markAsVisited: (id: EARS.EntityId) => void;
             readonly delete: (id: EARS.EntityId) => void;

@@ -71,6 +71,7 @@ export function finishOnboarding(
   services.repository.threadCommands.update(threadId, {
     topic: 'General',
     instructions: 'General conversation thread.',
+    forcedMode: null,
   });
 
   services.chat.sendBlockMessage({
