@@ -24,8 +24,8 @@
             Approve
           </button>
         </div>
-        <span 
-          v-else
+        <span
+          v-else-if="todoData.status === 'approved' || todoData.status === 'rejected'"
           :class="[
             'text-xs px-2 py-0.5 rounded',
             todoData.status === 'approved' 
@@ -112,7 +112,7 @@ interface TodoTask {
 
 interface TodoContent {
   tasks: TodoTask[];
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'active' | 'approved' | 'rejected';
 }
 
 const props = defineProps<{

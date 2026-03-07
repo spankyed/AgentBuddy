@@ -52,7 +52,7 @@ export async function action(
         { id: '2', description: 'Share your technical skill level', completed: false },
         { id: '3', description: 'Share projects you\'re working on', completed: false },
       ],
-      status: 'pending',
+      status: 'active',
     },
     threadId,
   });
