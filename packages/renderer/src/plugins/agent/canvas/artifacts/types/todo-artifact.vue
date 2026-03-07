@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
 import { applicationState } from '@/main';
@@ -126,6 +126,16 @@ const todoData = ref<TodoContent>({
   tasks: props.artifact.content?.tasks || [],
   status: props.artifact.content?.status || 'pending'
 });
+
+// Sync when artifact prop updates (e.g. from UPDATE_TODO_TASK)
+watch(() => props.artifact.content, (newContent) => {
+  if (newContent) {
+    todoData.value = {
+      tasks: newContent.tasks || [],
+      status: newContent.status || 'pending'
+    };
+  }
+}, { deep: true });
 
 const isEditable = computed(() => todoData.value.status === 'pending');
 
