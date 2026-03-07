@@ -19,7 +19,7 @@
           <div class="step-number">2</div>
           <div class="step-content">
             <h3>Start Building</h3>
-            <p>Plan, code, debug, and deploy your projects with your assistant.</p>
+            <p>Plan, code, deploy, and manage your projects with your assistant.</p>
           </div>
         </div>
       </div>
