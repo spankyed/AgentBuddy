@@ -10,7 +10,7 @@
     </div>
 
     <!-- Artifact Content (right side) -->
-    <div class="flex-1 h-full p-6 overflow-auto bg-neutral-850">
+    <div class="flex-1 h-full p-6 overflow-auto bg-neutral-900">
       <div v-if="!selectedArtifact" class="flex items-center justify-center h-full">
         <p class="text-neutral-500">Select an artifact to view</p>
       </div>

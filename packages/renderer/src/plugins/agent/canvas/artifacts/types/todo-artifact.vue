@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-2xl">
-    <div class="rounded-md bg-neutral-900 animate-fade-in">
+    <div class="rounded-md bg-neutral-850 animate-fade-in">
       <!-- Header with integrated buttons -->
       <div class="flex items-center justify-between px-3 py-2">
         <div class="flex items-center gap-2">

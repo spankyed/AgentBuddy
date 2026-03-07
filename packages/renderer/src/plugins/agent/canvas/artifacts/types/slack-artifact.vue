@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-4xl">
-    <div class="p-6 rounded-lg shadow-md bg-neutral-900 animate-fade-in">
+    <div class="p-6 rounded-lg shadow-md bg-neutral-850 animate-fade-in">
       <h3 class="flex items-center mb-4 space-x-2 text-lg font-semibold text-white">
         <MessageSquare :size="20" />
         <span>{{ artifact.title || 'Slack Channel Recap' }}</span>
