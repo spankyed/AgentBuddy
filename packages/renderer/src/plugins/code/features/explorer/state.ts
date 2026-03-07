@@ -303,10 +303,8 @@ export const explorerState = setup({
       const ev = event as { type: 'explorer.SET_BASE_DIRECTORY'; path: string }
 
       // Send SET_BASE_DIRECTORY to the parent code system to update everything
+      // (backend's UPDATE_BASE_DIRECTORY handler auto-lists files via listBaseFiles)
       sendToBackend('SET_BASE_DIRECTORY', { path: ev.path })
-
-      // Explicitly request files after setting directory
-      sendToBackend('explorer.LIST_FILES', { path: ev.path })
 
       // Update parent state
       updateParentState(self, {
