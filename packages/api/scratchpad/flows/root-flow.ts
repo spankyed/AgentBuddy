@@ -1,30 +1,18 @@
 import type { FlowDSL } from '../types';
-import { branch, action } from './_patterns';
+import { modeTracks, subflow } from './_patterns';
 
 export default {
   "Root Flow": {
     root: true,
-    tracks: [
-      {
-        event: "flow.entry",
-        label: "Flow Entry",
-        steps: [
-          action("Analyze Text", { label: "analyze input" }),
-          branch(
-            [
-              {
-                if: "$.intent == 'question'",
-                steps: [action("db query", { label: "lookup" })],
-              },
-              {
-                if: "$.intent == 'request'",
-                steps: [action("Create Birth Thread", { label: "onboard" })],
-              },
-            ],
-            [action("Mock Block Messages", { label: "default response" })],
-          ),
-        ],
-      },
-    ],
+    tracks: modeTracks(
+      [], // no entry steps, just keep_alive
+      [
+        {
+          event: "tour.complete",
+          label: "Start Onboarding",
+          steps: [subflow("Onboarding Flow", { label: "run onboarding" })],
+        },
+      ],
+    ),
   },
 } satisfies FlowDSL;

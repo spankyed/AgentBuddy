@@ -1,6 +1,6 @@
 <template>
-  <div class="max-w-4xl mx-auto">
-    <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
+  <div class="max-w-4xl">
+    <div class="p-6 rounded-lg shadow-md bg-neutral-850 animate-fade-in">
       <h3 class="text-lg font-semibold text-white mb-4">Review & Confirmation</h3>
       <div class="space-y-4">
         <div class="p-4 bg-neutral-900 rounded-lg">

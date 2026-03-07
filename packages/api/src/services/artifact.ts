@@ -54,7 +54,7 @@ export function createAndNotify(options: CreateArtifactOptions): { artifactId: E
           createdAt: Date.now()
         }
       }
-    } as any);
+    });
   }
 
   return result;

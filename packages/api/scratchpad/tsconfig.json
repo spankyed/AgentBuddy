@@ -1,10 +1,10 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
-    "rootDir": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "baseUrl": "..",
-    "paths": { "@/*": ["src/*"] }
-  },
-  "include": ["types.ts", "compile.ts", "compile-flows.ts", "actions/**/*.ts", "prompts/**/*.ts", "flows/**/*.ts", "shared/**/*.ts", "../src/**/*"]
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  }
 }

@@ -1,6 +1,6 @@
 <template>
-  <div class="max-w-2xl mx-auto">
-    <div class="rounded-md bg-neutral-900 animate-fade-in">
+  <div class="max-w-2xl">
+    <div class="rounded-md bg-neutral-850 animate-fade-in">
       <!-- Header with integrated buttons -->
       <div class="flex items-center justify-between px-3 py-2">
         <div class="flex items-center gap-2">
@@ -24,8 +24,8 @@
             Approve
           </button>
         </div>
-        <span 
-          v-else
+        <span
+          v-else-if="todoData.status === 'approved' || todoData.status === 'rejected'"
           :class="[
             'text-xs px-2 py-0.5 rounded',
             todoData.status === 'approved' 
@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
 import { applicationState } from '@/main';
@@ -112,7 +112,7 @@ interface TodoTask {
 
 interface TodoContent {
   tasks: TodoTask[];
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'active' | 'approved' | 'rejected';
 }
 
 const props = defineProps<{
@@ -126,6 +126,16 @@ const todoData = ref<TodoContent>({
   tasks: props.artifact.content?.tasks || [],
   status: props.artifact.content?.status || 'pending'
 });
+
+// Sync when artifact prop updates (e.g. from UPDATE_TODO_TASK)
+watch(() => props.artifact.content, (newContent) => {
+  if (newContent) {
+    todoData.value = {
+      tasks: newContent.tasks || [],
+      status: newContent.status || 'pending'
+    };
+  }
+}, { deep: true });
 
 const isEditable = computed(() => todoData.value.status === 'pending');
 

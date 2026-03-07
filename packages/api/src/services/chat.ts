@@ -61,7 +61,7 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
     type: 'MESSAGE_ADDED',
     threadId: result.threadId,
     message: result.message
-  } as any);
+  });
 
   return { messageId: result.messageId };
 }
@@ -167,8 +167,9 @@ export function sendTextInputBlock(options: {
   multiline?: boolean;
   required?: boolean;
   displayText?: string;
+  suggestions?: string[];
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText } = options;
+  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -177,7 +178,7 @@ export function sendTextInputBlock(options: {
     },
     {
       type: 'text',
-      props: { placeholder, multiline, required, displayText }
+      props: { placeholder, multiline, required, displayText, suggestions }
     }
   ];
 
@@ -348,7 +349,7 @@ export function updateMessageState(
     type: 'UPDATE_MESSAGE_STATE',
     messageId: result.messageId,
     ...result.updates
-  } as any);
+  });
 }
 
 /**
@@ -381,7 +382,7 @@ export function createThreadAndNotify(
     topic: options.topic,
     instructions: options.instructions,
     status: result.status
-  } as any);
+  });
 
   // Refresh recent threads list (thread creation affects ordering)
   sendRecentThreadsRefresh();
@@ -405,7 +406,7 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId) {
   sendToPlugin('agent', {
     type: 'LOAD_CHAT_THREAD',
     data: repository.agentQueries.threadData(threadId),
-  } as any);
+  });
 
   // Send updated recent threads list
   sendRecentThreadsRefresh();
@@ -433,7 +434,7 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
     threadId,
     topic: thread?.topic || `Thread ${threadId}`,
     artifacts
-  } as any);
+  });
 
   // Send updated recent threads list
   sendRecentThreadsRefresh();
@@ -451,5 +452,5 @@ export function sendRecentThreadsRefresh() {
   sendToPlugin('agent', {
     type: 'REFRESH_RECENT_THREADS',
     data: repository.agentQueries.refreshThreadsData()
-  } as any);
+  });
 }

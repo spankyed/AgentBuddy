@@ -48,6 +48,7 @@
         :placeholder="(block.props as any).placeholder"
         :multiline="(block.props as any).multiline"
         :required="(block.props as any).required"
+        :suggestions="(block.props as any).suggestions"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
         :response="response"

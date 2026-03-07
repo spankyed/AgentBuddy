@@ -65,7 +65,8 @@ export type ArtifactType =
   | 'image'
   | 'slack'
   | 'todo'
-  | 'project';
+  | 'project'
+  | 'json';
 
 export interface ArtifactItem {
   id: string;

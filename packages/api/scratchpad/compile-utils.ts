@@ -39,17 +39,6 @@ function createValidatorPlugin(entryFilePath: string): esbuild.Plugin {
         errors: [{ text: `Bare package imports are disallowed: '${args.path}'` }],
       }));
 
-      // Block non-type imports from helper files
-      // esbuild strips `import type` before resolution, so any onResolve call
-      // from a non-entry file means a helper has a non-type import
-      build.onResolve({ filter: /^\./ }, (args) => {
-        if (args.importer && args.importer !== entryFilePath) {
-          return {
-            errors: [{ text: `Helper file cannot have non-type imports (found: '${args.path}' in ${path.relative(path.dirname(entryFilePath), args.importer)})` }],
-          };
-        }
-        return undefined; // let esbuild resolve normally
-      });
     },
   };
 }
@@ -204,20 +193,30 @@ function extractInlinedHelpers(jsSource: string, functionName: string): string {
 // --- File scanning ---
 
 function scanSourceFiles(dir: string): { sourceFiles: string[]; helperFiles: string[] } {
-  const allFiles = fs.readdirSync(dir).filter(f => f.endsWith('.ts')).sort();
-
   const META_RE = /^export\s+const\s+meta\b/m;
   const sourceFiles: string[] = [];
   const helperFiles: string[] = [];
 
-  for (const file of allFiles) {
-    const content = fs.readFileSync(path.join(dir, file), 'utf-8');
-    if (META_RE.test(content)) {
-      sourceFiles.push(file);
-    } else {
-      helperFiles.push(file);
+  function walk(currentDir: string) {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        walk(path.join(currentDir, entry.name));
+      } else if (entry.name.endsWith('.ts')) {
+        const relativePath = path.relative(dir, path.join(currentDir, entry.name));
+        const content = fs.readFileSync(path.join(currentDir, entry.name), 'utf-8');
+        if (META_RE.test(content)) {
+          sourceFiles.push(relativePath);
+        } else {
+          helperFiles.push(relativePath);
+        }
+      }
     }
   }
+
+  walk(dir);
+  sourceFiles.sort();
+  helperFiles.sort();
 
   return { sourceFiles, helperFiles };
 }

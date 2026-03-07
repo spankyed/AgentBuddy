@@ -2,6 +2,8 @@ import { rootEvents } from '@/core/router/bus-emitter';
 import type { OutgoingSystemEvents, IncomingSystemEvents } from '@/core/router/events';
 import type { EARS } from '@/core/types';
 
+type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+
 /**
  * Emit an event to a frontend plugin
  * @param pluginId - The target plugin ID (or 'application' for main plugin)
@@ -12,9 +14,9 @@ import type { EARS } from '@/core/types';
  *   token: 'Hello'
  * });
  */
-export function sendToPlugin<T extends OutgoingSystemEvents>(
-  pluginId: string,
-  event: Omit<T, 'pluginId'>
+export function sendToPlugin<P extends OutgoingSystemEvents['pluginId']>(
+  pluginId: P,
+  event: DistributiveOmit<Extract<OutgoingSystemEvents, { pluginId: P }>, 'pluginId'>
 ): void {
   const fullEvent = { ...event, pluginId } as OutgoingSystemEvents;
   rootEvents.emitOutgoing(fullEvent);

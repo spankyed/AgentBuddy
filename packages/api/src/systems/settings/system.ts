@@ -289,22 +289,14 @@ export const settingsSystem = setup({
       });
     }),
     completeTour: () => {
-      // Check if tourStarted is true and reset it
-      const internalSettings = settingsQueries.getInternalSettings();
-      if (internalSettings.tourStarted) {
-        // Reset tourStarted to false
-        settingsCommands.updateSettings('internal', null, ['tourStarted'], false);
+      // Show all plugins when tour completes
+      const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
+      const visibilityUpdate: Record<string, boolean> = {};
+      allPlugins.forEach(plugin => {
+        visibilityUpdate[plugin] = true;
+      });
 
-        // Show all plugins
-        const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank'];
-        const visibilityUpdate: Record<string, boolean> = {};
-        allPlugins.forEach(plugin => {
-          visibilityUpdate[plugin] = true;
-        });
-        visibilityUpdate['settings'] = true; // Settings should always be visible
-
-        settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
-      }
+      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
     },
     
     testCliProvider: ({ system, event }) => {
@@ -346,8 +338,7 @@ export const settingsSystem = setup({
     },
 
     completeOnboarding: ({ system }) => {
-      settingsCommands.updateSettings('internal', null, ['hasOnboarded'], true);
-      settingsCommands.updateSettings('internal', null, ['tourStarted'], false);
+      settingsCommands.updateSettings('internal', null, ['tourComplete'], true);
 
       const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
       const visibilityUpdate: Record<string, boolean> = {};
@@ -362,6 +353,12 @@ export const settingsSystem = setup({
         type: 'SETTINGS_UPDATED',
         data
       }));
+
+      // Trigger the onboarding flow via agent → brain
+      const agentActor = system.get(agent);
+      if (agentActor) {
+        agentActor.send({ type: 'BIRTH_FLOW_START' });
+      }
     }
   },
 }).createMachine({

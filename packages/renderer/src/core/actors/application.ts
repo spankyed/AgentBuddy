@@ -67,7 +67,7 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; tourStarted: boolean }
+  | { type: 'CLIENT_CONNECTED'; tourComplete: boolean }
   | { type: 'COMPLETE_ONBOARDING' }
   | { type: 'START_GUIDED_TOUR' }
   | { type: 'TOUR_NEXT' }
@@ -77,6 +77,7 @@ export type ApplicationEvent =
   | { type: 'TOUR_ABORTED' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
+  | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'ROUTE_TOUR_EVENT'; target: string; event: any }
   | { type: 'NOOP' }
 
@@ -442,34 +443,20 @@ export const createApplicationState = () => setup({
       };
     }),
     completeOnboarding: ({ context, self }) => {
-      // Navigate to settings/secrets view
-      self.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
+      // Navigate to agent plugin where onboarding thread artifacts are shown
+      self.send({ type: 'SELECT_PLUGIN', pluginId: 'agent' });
 
-      // Send events to settings plugin to navigate to secrets
-      const settingsActor = self.system.get('settings');
-      if (settingsActor) {
-        settingsActor.send({ type: 'TAB.SELECT', tab: 'general' });
-        settingsActor.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
-      }
+      // Ensure chat panel is expanded to default height
+      self.send({ type: 'RESET_CHAT_HEIGHT' });
 
-      // Send single event to backend to complete onboarding
-      // Backend will handle setting hasOnboarded, tourStarted, and plugin visibility
+      // Send single event to backend to complete the tour
+      // Backend will handle setting tourComplete, plugin visibility, and triggering onboarding flow
       trpc.bus.send.mutate({
         systemId: 'settings',
         type: 'COMPLETE_ONBOARDING'
       });
     },
     startGuidedTour: ({ context, self }) => {
-      // Update tourStarted setting to true
-      trpc.bus.send.mutate({
-        systemId: 'settings',
-        type: 'UPDATE_SETTINGS',
-        entityType: 'internal',
-        label: '',
-        path: ['tourStarted'],
-        value: true
-      });
-
       // Hide non-tour plugins - only show threads, agent, and settings
       const tourVisibility: Record<string, boolean> = {};
       for (const plugin of context.plugins) {
@@ -505,6 +492,12 @@ export const createApplicationState = () => setup({
         previousInspectionWidth: context.panelSizes.inspectionWidth,
         inspectionWidth: 0,
       }),
+    }),
+    resetChatHeight: assign(({ context }) => {
+      const defaultCanvasHeight = 50;
+      const newSizes = { ...context.panelSizes, canvasHeight: defaultCanvasHeight };
+      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+      return { panelSizes: newSizes };
     }),
     routeEvent: ({ context, system, self, event }) => {
       const { target, event: targetEvent } = typeOf('ROUTE_TOUR_EVENT', event);
@@ -622,13 +615,7 @@ export const createApplicationState = () => setup({
           {
             actions: [],
             target: 'onboarding',
-            guard: ({ event }) => event.hasOnboarded === false && !event.tourStarted
-          },
-          {
-            // If tour was started, go to guided tour state
-            actions: [],
-            target: 'guided-tour',
-            guard: ({ event }) => event.hasOnboarded === false && event.tourStarted === true
+            guard: ({ event }) => event.tourComplete === false
           },
           {
             actions: [],
@@ -780,6 +767,9 @@ export const createApplicationState = () => setup({
     },
     HIDE_INSPECTION_PANEL: {
       actions: 'hideInspectionPanel'
+    },
+    RESET_CHAT_HEIGHT: {
+      actions: 'resetChatHeight'
     },
     NOOP: {
       // No-op event, do nothing

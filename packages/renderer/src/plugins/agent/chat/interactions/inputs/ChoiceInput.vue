@@ -133,8 +133,12 @@ const emit = defineEmits<Emits>()
 // Response display handling
 const choiceText = computed(() => {
   if (!props.response) return ''
+  if (typeof props.response === 'object' && !Array.isArray(props.response)) {
+    if (props.response.cancelled) return 'Skipped'
+    return props.response.value ?? JSON.stringify(props.response)
+  }
   if (Array.isArray(props.response)) return props.response.join(', ')
-  return String(props.response || '')
+  return String(props.response)
 })
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null

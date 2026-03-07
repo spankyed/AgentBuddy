@@ -1,6 +1,6 @@
 <template>
-  <div class="max-w-2xl mx-auto">
-    <div class="rounded-md bg-neutral-900 animate-fade-in">
+  <div class="max-w-2xl">
+    <div class="rounded-md bg-neutral-850 animate-fade-in">
       <!-- Header -->
       <div class="flex items-center gap-2 px-3 py-2 border-b border-neutral-700/30">
         <Layers :size="14" class="text-neutral-500" />
