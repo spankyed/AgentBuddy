@@ -69,10 +69,10 @@ const {
     </component>
   </component>
 
-  <!-- Create Project -->
+  <!-- New Project -->
   <component :is="ItemComponent" @select="() => createProject(directoryPath)" :class="MENU_ITEM_CLASS">
     <FolderPlus class="w-4 h-4" />
-    Create Project
+    New Project
   </component>
 
   <!-- Show message when no projects -->
