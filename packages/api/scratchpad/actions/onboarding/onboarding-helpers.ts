@@ -57,7 +57,7 @@ export function markTaskCompleted(services: Services, threadId: EntityId, step: 
     artifactId: todoArtifact.id,
     taskId,
     completed: true,
-  } as any);
+  });
 }
 
 export function finishOnboarding(
@@ -86,5 +86,5 @@ export function finishOnboarding(
   services.emitter.sendToPlugin('agent', {
     type: 'SET_MODE',
     mode: 'chat',
-  } as any);
+  });
 }
