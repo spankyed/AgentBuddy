@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-4xl">
     <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
       <div class="relative">
         <pre class="p-6 overflow-x-auto font-mono text-sm text-white rounded-lg bg-neutral-900">

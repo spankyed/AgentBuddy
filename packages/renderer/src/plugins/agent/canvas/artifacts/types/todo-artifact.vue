@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-2xl mx-auto">
+  <div class="max-w-2xl">
     <div class="rounded-md bg-neutral-900 animate-fade-in">
       <!-- Header with integrated buttons -->
       <div class="flex items-center justify-between px-3 py-2">

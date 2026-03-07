@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-4xl">
     <div class="p-6 rounded-lg shadow-md bg-neutral-800 animate-fade-in">
       <DataRenderer :data="parsedContent" :default-expanded="true" :hide-expand="true" />
     </div>
