@@ -1,6 +1,6 @@
-import type { ActionMeta, Services, Z } from '../types';
+import type { ActionMeta, Services, Z } from '../../types';
 import type { EARS } from '@/core/types';
-import { DEFAULT_NAME, TECH_LEVELS, type OnboardingState } from './onboarding/onboarding-helpers';
+import { DEFAULT_NAME, TECH_LEVELS, type OnboardingState } from './onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle Onboarding Response',

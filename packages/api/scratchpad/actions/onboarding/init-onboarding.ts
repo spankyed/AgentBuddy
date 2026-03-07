@@ -1,5 +1,5 @@
-import type { ActionMeta, Services, Z } from '../types';
-import { DEFAULT_NAME, type OnboardingState } from './onboarding/onboarding-helpers';
+import type { ActionMeta, Services, Z } from '../../types';
+import { DEFAULT_NAME, type OnboardingState } from './onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Init Onboarding',

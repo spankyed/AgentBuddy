@@ -1,4 +1,4 @@
-import type { ActionMeta, Services, Z } from '../types';
+import type { ActionMeta, Services, Z } from '../../types';
 
 export const meta: ActionMeta = {
   label: 'Ignore Onboarding Message',
