@@ -22,7 +22,7 @@ export function getOnboardingState(services: Services, threadId: EntityId) {
     .ofType(services.database.EARS.Entity.Artifact)
     .pick(['id', 'title', 'content', 'artifactType'] as const);
 
-  return artifacts.find((a) => a.artifactType === 'onboarding-state') ?? null;
+  return artifacts.find((a) => a.artifactType === 'json') ?? null;
 }
 
 export function finishOnboarding(

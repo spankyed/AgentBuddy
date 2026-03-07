@@ -34,6 +34,7 @@ import ImageArtifact from './artifacts/types/image-artifact.vue';
 import SlackArtifact from './artifacts/types/slack-artifact.vue';
 import TodoArtifact from './artifacts/types/todo-artifact.vue';
 import ProjectArtifact from './artifacts/types/project-artifact.vue';
+import JsonArtifact from './artifacts/types/json-artifact.vue';
 
 const props = defineProps<{
   artifacts: ArtifactItem[];
@@ -57,6 +58,7 @@ function getArtifactComponent(type: string) {
     slack: SlackArtifact,
     todo: TodoArtifact,
     project: ProjectArtifact,
+    json: JsonArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
 }

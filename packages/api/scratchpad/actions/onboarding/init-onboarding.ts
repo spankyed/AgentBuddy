@@ -82,7 +82,7 @@ export async function action(
   };
 
   services.artifact.createAndNotify({
-    artifactType: 'onboarding-state',
+    artifactType: 'json',
     title: 'Onboarding State',
     content: onboardingState,
     threadId,

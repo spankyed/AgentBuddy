@@ -412,7 +412,7 @@ interface Tab {
     artifacts: ArtifactItem[];
     selectedArtifactId?: string;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
