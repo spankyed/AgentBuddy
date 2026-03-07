@@ -8,6 +8,17 @@
       @back="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CANCEL_CREATE' })"
       @save="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CREATE_THREAD' })"
     >
+      <template #actions>
+        <Button
+          v-if="isViewMode"
+          @click="actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
+          variant="ghost"
+          class="shrink-0"
+        >
+          <MessageSquare :size="14" />
+          <span>Chat</span>
+        </Button>
+      </template>
       <input
         :value="topic"
         @input="e => updateField('topic', (e.target as HTMLInputElement).value)"
@@ -139,7 +150,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus, MessageSquare } from 'lucide-vue-next'
+import Button from '@/core/components/design/button.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
