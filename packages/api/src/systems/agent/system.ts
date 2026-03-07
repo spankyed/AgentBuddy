@@ -48,6 +48,7 @@ export type OutgoingAgentEvents =
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: any }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
+  | { type: 'SET_MODE'; mode: string }
 
 export interface AgentContext { }
 

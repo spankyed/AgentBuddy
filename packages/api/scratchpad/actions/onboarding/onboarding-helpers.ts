@@ -46,17 +46,18 @@ export function markTaskCompleted(services: Services, threadId: EntityId, step: 
   const todoArtifact = getTodoArtifact(services, threadId);
   if (!todoArtifact) return;
 
-  const tasks = todoArtifact.content.tasks.map((t: any) =>
+  const content = todoArtifact.content as { tasks: any[] };
+  const tasks = content.tasks.map((t: any) =>
     t.id === taskId ? { ...t, completed: true } : t
   );
-  services.database.tx(todoArtifact.id, true).update('content', { ...todoArtifact.content, tasks });
+  services.database.tx(todoArtifact.id, true).update('content', { ...content, tasks });
 
   services.emitter.sendToPlugin('agent', {
     type: 'UPDATE_TODO_TASK',
     artifactId: todoArtifact.id,
     taskId,
     completed: true,
-  });
+  } as any);
 }
 
 export function finishOnboarding(
@@ -85,5 +86,5 @@ export function finishOnboarding(
   services.emitter.sendToPlugin('agent', {
     type: 'SET_MODE',
     mode: 'chat',
-  });
+  } as any);
 }
