@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div ref="containerRef" class="flex flex-col h-full bg-neutral-900" tabindex="-1">
 
     <ConfirmDialog
       v-model="deleteDialog.show"
@@ -268,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, provide, onMounted, onUnmounted } from 'vue'
+import { ref, computed, reactive, watch, provide, onMounted, onUnmounted } from 'vue'
 import {
   FolderPlus,
   FileText,
@@ -343,6 +343,7 @@ const emit = defineEmits<{
 }>()
 
 // Composables
+const containerRef = ref<HTMLElement | null>(null)
 const { editingItemId, editingName, startEditingItem, confirmEdit, cancelEdit } = useInlineEdit(emit)
 const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggleSelectAll, clearSelection } = useSelection(
   () => props.items,
@@ -686,6 +687,7 @@ function handleScrollAreaClick(event: MouseEvent) {
 
 function handleKeyDown(event: KeyboardEvent) {
   if (editingItemId.value) return
+  if (!containerRef.value?.contains(event.target as Node)) return
 
   const hasSelection = props.selectedItems.length > 0
   const isModified = event.metaKey || event.ctrlKey
