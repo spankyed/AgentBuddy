@@ -5,7 +5,7 @@
       <!-- Agent Chat Content -->
       <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
         <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
-          <p class="text-neutral-500 text-center italic max-w-md">{{ randomQuote }}</p>
+          <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
         </div>
         <div v-else class="w-9/12 py-2 mx-auto space-y-1">
           <ChatMessage
@@ -110,4 +110,4 @@ watch(messages, async (newMessages) => {
 .inputContainer {
   min-height: min-content;
 }
-</style> 
+</style>
