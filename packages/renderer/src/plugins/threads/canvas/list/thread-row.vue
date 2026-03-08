@@ -10,7 +10,11 @@
       >
         <td class="px-6 py-1.5">
           <div class="flex items-center gap-3">
-            <span class="text-sm font-medium text-neutral-100 line-clamp-1" :title="thread.topic || 'Untitled thread'">
+            <span
+              class="text-sm font-medium text-neutral-100 line-clamp-1 hover:underline hover:text-blue-400 transition-colors cursor-pointer"
+              :title="thread.topic || 'Untitled thread'"
+              @click.stop="$emit('select', thread.id)"
+            >
               {{ thread.topic || 'Untitled thread' }}
             </span>
             <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
