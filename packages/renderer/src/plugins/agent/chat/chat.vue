@@ -61,6 +61,15 @@ const quotes = [
   '"404: soul not found. But honestly, were you expecting one?"',
 ];
 const randomQuote = ref(quotes[Math.floor(Math.random() * quotes.length)]);
+
+function rotateQuote() {
+  let next;
+  do {
+    next = quotes[Math.floor(Math.random() * quotes.length)];
+  } while (next === randomQuote.value && quotes.length > 1);
+  randomQuote.value = next;
+}
+
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
@@ -78,7 +87,10 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const messagesContainer = ref<HTMLElement | null>(null)
 
-watch(messages, async () => {
+watch(messages, async (newMessages) => {
+  if (newMessages.length === 0) {
+    rotateQuote();
+  }
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
