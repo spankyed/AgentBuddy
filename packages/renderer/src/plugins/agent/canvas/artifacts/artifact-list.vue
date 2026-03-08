@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <h3 class="mb-3 text-sm font-semibold text-neutral-300">Artifacts</h3>
+    <!-- <h3 class="mb-3 text-sm font-semibold text-neutral-300">Artifacts</h3> -->
     <div class="space-y-2">
       <ArtifactItem
         v-for="artifact in artifacts"

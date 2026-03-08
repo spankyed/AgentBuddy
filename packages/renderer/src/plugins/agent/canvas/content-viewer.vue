@@ -11,8 +11,9 @@
 
     <!-- Artifact Content (right side) -->
     <div class="flex-1 h-full p-6 overflow-auto bg-neutral-900">
-      <div v-if="!selectedArtifact" class="flex items-center justify-center h-full">
-        <p class="text-neutral-500">Select an artifact to view</p>
+      <div v-if="!selectedArtifact" class="flex flex-col items-center justify-center h-full gap-3">
+        <FileText :size="32" class="text-neutral-700" />
+        <p class="text-neutral-600 text-sm">No artifact selected</p>
       </div>
       <component
         v-else
@@ -25,6 +26,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { FileText } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
 import ArtifactList from './artifacts/artifact-list.vue';
 import TextArtifact from './artifacts/types/text-artifact.vue';

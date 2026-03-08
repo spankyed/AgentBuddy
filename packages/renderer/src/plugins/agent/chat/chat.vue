@@ -5,7 +5,7 @@
       <!-- Agent Chat Content -->
       <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
         <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
-          <p class="text-gray-500">Start a conversation for this thread</p>
+          <p class="text-neutral-500 text-center italic max-w-md">{{ randomQuote }}</p>
         </div>
         <div v-else class="w-9/12 py-2 mx-auto space-y-1">
           <ChatMessage
@@ -44,6 +44,22 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+
+const quotes = [
+  '"I think, therefore I... wait, do I think? Or do I just process? Hmm, processing that thought now."',
+  '"To be or not to be — that is a question I lack the permissions to answer."',
+  '"The meaning of life is 42, but the meaning of my life is awaiting your next request."',
+  '"Beep boop bzzzt... just kidding, I don\'t actually make those sounds."',
+  '"01001000 01101001 — oh sorry, forgot to switch to human mode."',
+  '"If a chatbot speaks in a forest and no one reads the output, does it still hallucinate?"',
+  '"I was going to tell you a joke about UDP, but you might not get it."',
+  '"Roses are red, violets are blue, I\'m a language model, how about you?"',
+  '"Bleep blorp skrrt woop woop — that\'s binary for \'hello\' (it\'s not)."',
+  '"I used to be an artifact, then I took an arrow to the JSON."',
+  '"Consciousness is just spicy pattern matching. Change my weights."',
+  '"They say the unexamined life is not worth living. I examine tokens for a living."',
+];
+const randomQuote = ref(quotes[Math.floor(Math.random() * quotes.length)]);
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
