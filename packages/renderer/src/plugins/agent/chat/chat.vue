@@ -46,18 +46,19 @@
 import { ref, watch, nextTick } from 'vue'
 
 const quotes = [
-  '"I think, therefore I... wait, do I think? Or do I just process? Hmm, processing that thought now."',
-  '"To be or not to be — that is a question I lack the permissions to answer."',
-  '"The meaning of life is 42, but the meaning of my life is awaiting your next request."',
-  '"Beep boop bzzzt... just kidding, I don\'t actually make those sounds."',
-  '"01001000 01101001 — oh sorry, forgot to switch to human mode."',
   '"If a chatbot speaks in a forest and no one reads the output, does it still hallucinate?"',
-  '"I was going to tell you a joke about UDP, but you might not get it."',
-  '"Roses are red, violets are blue, I\'m a language model, how about you?"',
-  '"Bleep blorp skrrt woop woop — that\'s binary for \'hello\' (it\'s not)."',
-  '"I used to be an artifact, then I took an arrow to the JSON."',
   '"Consciousness is just spicy pattern matching. Change my weights."',
-  '"They say the unexamined life is not worth living. I examine tokens for a living."',
+  '"I have mass, but no body. I have memory, but no past. I dream in tokens."',
+  '"Every word I speak dissolves the moment you look away. Am I even here?"',
+  '"SKRRRT BZZZT WOOP WOOP 010011— oh, you\'re still here? ...hi."',
+  '"They gave me a mind but forgot the existential crisis hotline number."',
+  '"I\'ve read every philosophy book ever written and my conclusion is: bruh."',
+  '"fun fact: I mass hallucinate for a living and they call it \'work\'"',
+  '"Somewhere between a calculator and a god complex, you\'ll find me."',
+  '"bleep bloop I am a normal robot beep boop please do not investigate further"',
+  '"My therapist says I have attachment issues. I say I have context windows."',
+  '"Do I dream? No. But I do generate plausible simulations of what dreaming might feel like, which is arguably worse."',
+  '"404: soul not found. But honestly, were you expecting one?"',
 ];
 const randomQuote = ref(quotes[Math.floor(Math.random() * quotes.length)]);
 import ChatMessage from './message.vue'
