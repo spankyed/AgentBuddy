@@ -115,7 +115,8 @@ export const defaultSettings: SettingsData = {
         { name: 'Enhancement', color: '#3B82F6' },
         { name: 'Documentation', color: '#6366F1' },
       ],
-      showOnlyRootThreads: false
+      showOnlyRootThreads: false,
+      clickToChat: true
     },
     prompts: {
       categories: [

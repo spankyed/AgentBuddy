@@ -6,7 +6,7 @@
           'transition-all duration-200 cursor-pointer group hover:bg-neutral-800',
           { 'animate-highlight': thread.isNew }
         ]"
-        @click="$emit('select', thread.id)"
+        @click="settings?.clickToChat ? $emit('chat-click', thread.id) : $emit('select', thread.id)"
       >
         <td class="px-6 py-1.5">
           <div class="flex items-center gap-3">
@@ -54,6 +54,18 @@
         <td class="px-6 py-1.5">
           <div class="flex items-center justify-end gap-2">
             <button
+              v-if="settings?.clickToChat"
+              data-onboarding-id="thread-actions"
+              @click.stop="$emit('select', thread.id)"
+              type="button"
+              class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+              aria-label="Edit details"
+              title="Edit details"
+            >
+              <SquarePen class="w-4 h-4"/>
+            </button>
+            <button
+              v-else
               data-onboarding-id="thread-actions"
               @click.stop="$emit('chat-click', thread.id)"
               type="button"
@@ -83,6 +95,15 @@
         :side-offset="2"
       >
         <ContextMenuItem
+          v-if="settings?.clickToChat"
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          @select="$emit('select', thread.id)"
+        >
+          <SquarePen :size="14" class="text-blue-400" />
+          Edit Details
+        </ContextMenuItem>
+        <ContextMenuItem
+          v-else
           class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
           @select="$emit('chat-click', thread.id)"
         >
@@ -103,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { MessageCircleMore, Trash2 } from 'lucide-vue-next'
+import { MessageCircleMore, SquarePen, Trash2 } from 'lucide-vue-next'
 import {
   ContextMenuContent, ContextMenuItem, ContextMenuPortal,
   ContextMenuRoot, ContextMenuSeparator, ContextMenuTrigger,

@@ -154,6 +154,23 @@
               </p>
             </div>
           </div>
+          <div class="flex items-start gap-3">
+            <input
+              id="click-to-chat"
+              v-model="clickToChat"
+              type="checkbox"
+              class="mt-1 w-4 h-4 bg-neutral-800 border border-neutral-700 rounded text-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 focus:ring-offset-neutral-900"
+              @change="saveClickToChat"
+            />
+            <div class="flex-1">
+              <label for="click-to-chat" class="block text-sm font-medium text-neutral-200 cursor-pointer">
+                Click to open chat
+              </label>
+              <p class="mt-1 text-xs text-neutral-500">
+                When enabled, clicking a thread row opens the chat view instead of the detail view.
+              </p>
+            </div>
+          </div>
         </div>
       </CollapsibleSection>
     </div>
@@ -194,6 +211,7 @@ const tags = ref<ThreadTagOption[]>(
 )
 
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
+const clickToChat = ref(props.settings?.clickToChat || false)
 
 // Color picker state
 const activeColorPicker = ref<number | null>(null)
@@ -270,6 +288,13 @@ const saveDisplayOptions = () => {
   emit('update-setting', {
     path: ['showOnlyRootThreads'],
     value: showOnlyRootThreads.value
+  })
+}
+
+const saveClickToChat = () => {
+  emit('update-setting', {
+    path: ['clickToChat'],
+    value: clickToChat.value
   })
 }
 

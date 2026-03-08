@@ -122,6 +122,7 @@ export interface ThreadsSettings {
   statuses: ThreadStatusOption[];
   tags: ThreadTagOption[];
   showOnlyRootThreads: boolean;
+  clickToChat: boolean;
 }
 
 // Actions plugin settings
