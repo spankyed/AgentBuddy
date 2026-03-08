@@ -62,6 +62,9 @@ export async function action(
     threadId
   });
 
+  // Mark birth thread as pinned
+  services.database.tx(threadId).put('pinned', true);
+
   // Open the birth thread in chat (handles markAsVisited + LOAD_CHAT_THREAD + refresh)
   services.chat.openThreadChatAndRefreshRecent(threadId);
 

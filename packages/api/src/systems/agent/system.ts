@@ -21,7 +21,7 @@ const busEvent = systemBus(agent);
 export const IncomingAgentEvents = [
   busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), phase: z.string().optional(), threadId: z.string().optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
-  busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string() }),
+  busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
   busEvent('CANCEL'),
   busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
@@ -42,7 +42,7 @@ export type OutgoingAgentEvents =
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
-  | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[] }
+  | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: any }

@@ -57,7 +57,7 @@ type AgentEvent =
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
   | { type: 'RESET_STATUS_COLOR'; }
   | { type: 'SELECT_TAB'; tabId: string }
-  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string }
+  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: string }
@@ -206,13 +206,14 @@ const agentState = setup({
     setThreadChatData: assign(({ context, event }) => {
       const thread = typeOf('LOAD_CHAT_THREAD', event).data;
 
-      // Request backend to open tab if thread has artifacts
-      if (thread.artifacts?.length && thread.id) {
+      // Always open tab when thread loads in chat
+      if (thread.id) {
         trpc.bus.send.mutate({
           systemId: id,
           type: 'OPEN_THREAD_TAB',
           threadId: thread.id,
-          label: thread.topic || `Thread ${thread.shortCode || ''}`
+          label: thread.topic || `Thread ${thread.shortCode || ''}`,
+          ...(thread.pinned && { pinned: true }),
         });
       }
 
@@ -340,10 +341,17 @@ const agentState = setup({
       activeTabId: typeOf('SELECT_TAB', event).tabId
     })),
     openThreadTab: assign(({ context, event }) => {
-      const { threadId, label } = typeOf('OPEN_THREAD_TAB', event);
+      const { threadId, label, pinned } = typeOf('OPEN_THREAD_TAB', event) as { threadId: string; label: string; pinned?: boolean };
       const existingTab = context.tabs.find(t => t.id === threadId);
 
       if (existingTab) {
+        // Update pinned status if provided
+        if (pinned !== undefined && existingTab.pinned !== pinned) {
+          return {
+            tabs: context.tabs.map(t => t.id === threadId ? { ...t, pinned } : t),
+            activeTabId: threadId
+          };
+        }
         return { activeTabId: threadId };
       }
 
@@ -352,7 +360,8 @@ const agentState = setup({
           id: threadId,
           label,
           artifacts: [],
-          selectedArtifactId: undefined
+          selectedArtifactId: undefined,
+          ...(pinned && { pinned }),
         }],
         activeTabId: threadId
       };
@@ -360,6 +369,9 @@ const agentState = setup({
     closeTab: assign(({ context, event }) => {
       const tabId = typeOf('CLOSE_TAB', event).tabId;
       if (tabId === 'dashboard') return {}; // Can't close dashboard
+
+      const tab = context.tabs.find(t => t.id === tabId);
+      if (tab?.pinned) return {}; // Can't close pinned tabs
 
       const newTabs = context.tabs.filter(t => t.id !== tabId);
       const newActiveTabId = context.activeTabId === tabId ? 'dashboard' : context.activeTabId;
@@ -655,7 +667,7 @@ const agentState = setup({
     },
     THREAD_TAB_REQUESTED: {
       actions: assign(({ context, event }) => {
-        const { threadId, topic, artifacts } = typeOf('THREAD_TAB_REQUESTED', event);
+        const { threadId, topic, artifacts, pinned } = typeOf('THREAD_TAB_REQUESTED', event);
 
         // Use topic from event (sent from backend)
         const label = topic;
@@ -668,7 +680,7 @@ const agentState = setup({
           return {
             tabs: context.tabs.map(tab =>
               tab.id === threadId
-                ? { ...tab, label, artifacts }
+                ? { ...tab, label, artifacts, ...(pinned !== undefined && { pinned }) }
                 : tab
             ),
             activeTabId: threadId
@@ -681,7 +693,8 @@ const agentState = setup({
             id: threadId,
             label,
             artifacts,
-            selectedArtifactId: artifacts[0]?.id
+            selectedArtifactId: artifacts[0]?.id,
+            ...(pinned && { pinned }),
           }],
           activeTabId: threadId
         };

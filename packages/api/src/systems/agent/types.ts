@@ -13,6 +13,7 @@ export type AgentThreadData = {
   messages: ThreadExtendedData['messages'];
   artifacts: ArtifactEntity[];
   forcedMode?: ThreadEntity['forcedMode'];
+  pinned?: boolean;
 }
 
 export type RecentThreadRefreshData = {
@@ -56,6 +57,7 @@ export interface Tab {
   label: string;
   artifacts: ArtifactItem[];
   selectedArtifactId?: string;
+  pinned?: boolean;
 }
 
 export type ArtifactType =

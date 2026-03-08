@@ -84,6 +84,7 @@ export interface ThreadEntity extends BaseEntity {
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
   forcedMode?: 'birth'; // Force a specific mode for this thread
+  pinned?: boolean; // Thread tab should stay pinned in the UI
 }
 
 export interface ArtifactEntity extends BaseEntity {

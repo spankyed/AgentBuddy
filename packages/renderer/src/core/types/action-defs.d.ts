@@ -331,6 +331,7 @@ interface ThreadEntity extends BaseEntity {
     status: string;
     tags?: string[];
     forcedMode?: 'birth';
+    pinned?: boolean;
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
@@ -376,6 +377,7 @@ type AgentThreadData = {
     messages: ThreadExtendedData['messages'];
     artifacts: ArtifactEntity[];
     forcedMode?: ThreadEntity['forcedMode'];
+    pinned?: boolean;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -412,6 +414,7 @@ interface Tab {
     label: string;
     artifacts: ArtifactItem[];
     selectedArtifactId?: string;
+    pinned?: boolean;
 }
 type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json';
 interface ArtifactItem {
@@ -822,16 +825,19 @@ declare const events: {
         systemId: zod.ZodLiteral<"agent">;
         threadId: zod.ZodString;
         label: zod.ZodString;
+        pinned: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
         threadId: string;
+        pinned?: boolean | undefined;
     }, {
         label: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
         threadId: string;
+        pinned?: boolean | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"CANCEL">;
         systemId: zod.ZodLiteral<"agent">;
@@ -2701,6 +2707,7 @@ declare const events: {
         threadId: string;
         topic: string;
         artifacts: any[];
+        pinned?: boolean | undefined;
         pluginId: "agent";
     } | {
         type: "AGENT_SETTINGS_UPDATED";

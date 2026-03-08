@@ -97,19 +97,17 @@ function getThreadsWithCurrent(limit: number = 4): {
   return { threads, currentThread };
 }
 
-// Helper function to get artifacts for a thread/entity
-function getArtifactsForEntity(entityId: EARS.EntityId, relationKind: EARS.RelKind = EARS.RelKind.HAS): ArtifactItem[] {
-  const artifacts = qx(entityId)
-    .linksPick(
-      relationKind,
-      ['id', 'title', 'content', 'artifactType'] as const,
-      EARS.Entity.Artifact,
-    );
-  
+// Helper function to get artifacts for a thread
+function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
+  const artifacts = qx()
+    .relatedTo(threadId)
+    .ofType(EARS.Entity.Artifact)
+    .pick(['id', 'title', 'content', 'artifactType'] as const);
+
   if (!artifacts || artifacts.length === 0) {
     return [];
   }
-  
+
   return artifacts.map(artifact => ({
     id: artifact.id,
     type: (artifact.artifactType || 'text') as ArtifactType,
@@ -119,24 +117,6 @@ function getArtifactsForEntity(entityId: EARS.EntityId, relationKind: EARS.RelKi
       createdAt: Date.now()
     }
   }));
-}
-
-// Helper function to create a tab from thread data
-function createTabFromThread(
-  thread: { id?: EARS.EntityId; topic?: string; shortCode?: string },
-  artifacts: ArtifactItem[],
-  tabId?: string
-): Tab | null {
-  if (!thread.id || artifacts.length === 0) {
-    return null;
-  }
-  
-  return {
-    id: tabId || thread.id,
-    label: thread.topic || `Thread ${thread.shortCode || ''}`,
-    artifacts,
-    selectedArtifactId: artifacts[0]?.id
-  };
 }
 
 // Queries - read-only operations that compose data
@@ -178,6 +158,7 @@ export const agentQueries = {
         "status",
         "timestamp",
         "forcedMode",
+        "pinned",
       ] as const);
 
     // Get thread-specific artifacts (not all artifacts)
@@ -213,26 +194,39 @@ export const agentQueries = {
     // Initialize tabs array
     const tabs: Tab[] = [];
 
-    // Add current thread tab if it has artifacts
-    if (currentThread?.id) {
-      const artifacts = qx()
-        .relatedTo(currentThread.id)
-        .ofType(EARS.Entity.Artifact)
-        .pick(['id', 'title', 'content', 'artifactType'] as const)
-        .map(artifact => ({
-          id: artifact.id,
-          type: (artifact.artifactType || 'text') as ArtifactType,
-          title: String(artifact.title || ''),
-          content: artifact.content,
-          metadata: {
-            createdAt: Date.now()
-          }
-        })) as ArtifactItem[];
+    // Find all pinned threads
+    const pinnedThreads = qx(EARS.Entity.Thread)
+      .where('pinned', true)
+      .pick(["id", "shortCode", "topic"] as const) as Partial<ThreadEntity>[];
+    const pinnedIds = new Set(pinnedThreads.map(t => t.id));
 
-      const threadTab = createTabFromThread(currentThread, artifacts);
-      if (threadTab) {
-        tabs.push(threadTab);
-      }
+    // Always add current thread tab
+    if (currentThread?.id) {
+      const artifacts = getThreadArtifacts(currentThread.id);
+
+      const threadTab: Tab = {
+        id: currentThread.id,
+        label: currentThread.topic || `Thread ${currentThread.shortCode || ''}`,
+        artifacts,
+        selectedArtifactId: artifacts[0]?.id,
+        ...(pinnedIds.has(currentThread.id) && { pinned: true }),
+      };
+      tabs.push(threadTab);
+    }
+
+    // Add all pinned thread tabs not already shown as current
+    for (const pt of pinnedThreads) {
+      if (!pt.id || pt.id === currentThread?.id) continue;
+
+      const ptArtifacts = getThreadArtifacts(pt.id);
+
+      tabs.unshift({
+        id: pt.id,
+        label: pt.topic || 'No topic',
+        artifacts: ptArtifacts,
+        selectedArtifactId: ptArtifacts[0]?.id,
+        pinned: true,
+      });
     }
 
     // Get agent settings

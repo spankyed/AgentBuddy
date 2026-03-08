@@ -442,7 +442,8 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
     type: 'THREAD_TAB_REQUESTED',
     threadId,
     topic: thread?.topic || `Thread ${threadId}`,
-    artifacts
+    artifacts,
+    ...(thread?.pinned && { pinned: true }),
   });
 
   // Send updated recent threads list
