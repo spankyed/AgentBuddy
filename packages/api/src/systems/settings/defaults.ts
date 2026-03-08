@@ -62,6 +62,7 @@ export const defaultSettings: SettingsData = {
     agent: {
       modes: [
         { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
+        { id: 'chat', name: 'Chat', description: 'General conversation mode' },
         {
           id: 'work',
           name: 'Work',
@@ -72,7 +73,6 @@ export const defaultSettings: SettingsData = {
             { id: 'review', name: 'Review', description: 'Code review and refinement' }
           ]
         },
-        { id: 'chat', name: 'Chat', description: 'General conversation mode' },
         { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
       ],
       hotkeys: {
