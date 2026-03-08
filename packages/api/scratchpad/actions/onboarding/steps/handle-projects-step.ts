@@ -36,6 +36,7 @@ export function handleProjectsStep(
       choices,
       allowCustom: false,
       displayText: 'Selected project:',
+      forkable: false,
     });
 
     state.step = 'finish';

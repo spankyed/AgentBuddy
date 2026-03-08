@@ -17,7 +17,7 @@ export function handleNameStep(
     ? `No name provided — I'll go by ${DEFAULT_NAME}! You can always change it later in settings.`
     : `Nice to meet you! I'm ${name}.`;
 
-  services.chat.sendBlockMessage({ threadId, text: confirmText, blocks: [] });
+  services.chat.sendBlockMessage({ threadId, text: confirmText, blocks: [], forkable: false });
 
   const { messageId } = services.chat.sendChoiceBlock({
     threadId,
@@ -25,6 +25,7 @@ export function handleNameStep(
     prompt: 'Select your technical level',
     choices: TECH_LEVELS,
     displayText: 'Technical level:',
+    forkable: false,
   });
 
   state.step = 'tech-level';

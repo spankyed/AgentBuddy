@@ -19,6 +19,7 @@ export function handleTechLevelStep(
     threadId,
     text: `Got it — ${levelLabel}. I'll tailor my responses accordingly.`,
     blocks: [],
+    forkable: false,
   });
 
   const { messageId } = services.chat.sendTextInputBlock({
@@ -28,6 +29,7 @@ export function handleTechLevelStep(
     placeholder: '/Users/you/projects/my-app\n/Users/you/projects/another-app',
     multiline: true,
     displayText: 'Projects:',
+    forkable: false,
   });
 
   state.step = 'projects';

@@ -62,6 +62,7 @@ export async function action(
     threadId,
     text: "I'm alive! Let's get you set up.",
     blocks: [],
+    forkable: false,
   });
 
   // Send name input block
@@ -72,6 +73,7 @@ export async function action(
     placeholder: 'Type a name...',
     suggestions: [DEFAULT_NAME, 'Alex', 'Sam'],
     displayText: 'Name:',
+    forkable: false,
   });
 
   // Create onboarding-state artifact to track progress

@@ -14,6 +14,7 @@ interface BlockMessageOptions {
   threadId: EARS.EntityId;
   text: string;
   blocks: BlockConfig[];
+  forkable?: boolean;
 }
 
 /**
@@ -25,13 +26,14 @@ export function createBlockMessage(options: BlockMessageOptions): {
   threadId: EARS.EntityId;
   message: MessageEntity;
 } {
-  const { threadId, text, blocks } = options;
+  const { threadId, text, blocks, forkable } = options;
 
   const result = repository.agentCommands.addMessage({
     threadId,
     text,
     sender: 'assistant',
     blocks,
+    forkable,
   });
 
   // Construct message entity for return
@@ -44,6 +46,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
     blocks,
     createdAt: result.timestamp,
     updatedAt: result.timestamp,
+    ...(forkable === false && { forkable }),
   };
 
   return { messageId: result.id, threadId, message };
@@ -76,8 +79,9 @@ export function sendFilePickerBlock(options: {
   fileType?: 'file' | 'directory' | 'both';
   allowMultiple?: boolean;
   displayText?: string;
+  forkable?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, fileType = 'both', allowMultiple = false, displayText } = options;
+  const { threadId, text, prompt, fileType = 'both', allowMultiple = false, displayText, forkable } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -90,7 +94,7 @@ export function sendFilePickerBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks });
+  return sendBlockMessage({ threadId, text, blocks, forkable });
 }
 
 /**
@@ -104,8 +108,9 @@ export function sendChoiceBlock(options: {
   multiSelect?: boolean;
   allowCustom?: boolean;
   displayText?: string;
+  forkable?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText } = options;
+  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -118,7 +123,7 @@ export function sendChoiceBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks });
+  return sendBlockMessage({ threadId, text, blocks, forkable });
 }
 
 /**
@@ -131,8 +136,9 @@ export function sendApprovalBlock(options: {
   context?: string;
   requireReason?: boolean;
   allowReason?: boolean;
+  forkable?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, context, requireReason = false, allowReason = true } = options;
+  const { threadId, text, prompt, context, requireReason = false, allowReason = true, forkable } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -153,7 +159,7 @@ export function sendApprovalBlock(options: {
     props: { requireReason, allowReason }
   });
 
-  return sendBlockMessage({ threadId, text, blocks });
+  return sendBlockMessage({ threadId, text, blocks, forkable });
 }
 
 /**
@@ -168,8 +174,9 @@ export function sendTextInputBlock(options: {
   required?: boolean;
   displayText?: string;
   suggestions?: string[];
+  forkable?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions } = options;
+  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions, forkable } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -182,7 +189,7 @@ export function sendTextInputBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks });
+  return sendBlockMessage({ threadId, text, blocks, forkable });
 }
 
 /**
@@ -193,8 +200,9 @@ export function sendLinkBlock(options: {
   text: string;
   prompt?: string;
   links: LinkConfig[];
+  forkable?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, links } = options;
+  const { threadId, text, prompt, links, forkable } = options;
 
   const blocks: BlockConfig[] = [];
 
@@ -210,7 +218,7 @@ export function sendLinkBlock(options: {
     props: { links }
   });
 
-  return sendBlockMessage({ threadId, text, blocks });
+  return sendBlockMessage({ threadId, text, blocks, forkable });
 }
 
 /**
@@ -284,8 +292,9 @@ export function sendButtonGroupBlock(options: {
   buttons: ButtonConfig[];
   keepInteractive?: boolean;
   displayText?: string;
+  forkable?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, buttons, keepInteractive = false, displayText } = options;
+  const { threadId, text, prompt, buttons, keepInteractive = false, displayText, forkable } = options;
 
   const blocks: BlockConfig[] = [];
 
@@ -301,7 +310,7 @@ export function sendButtonGroupBlock(options: {
     props: { buttons, keepInteractive, displayText }
   });
 
-  return sendBlockMessage({ threadId, text, blocks });
+  return sendBlockMessage({ threadId, text, blocks, forkable });
 }
 
 /**

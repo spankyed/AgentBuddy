@@ -79,6 +79,7 @@ export function finishOnboarding(
     threadId,
     text: "All set! Let's get started!",
     blocks: [],
+    forkable: false,
   });
 
   services.chat.openThreadChatAndRefreshRecent(threadId);

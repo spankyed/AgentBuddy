@@ -69,6 +69,7 @@ export interface MessageEntity extends BaseEntity {
   responseTimestamp?: number; // Timestamp when the message was responded to
   blocks?: BlockConfig[];
   blockResponse?: any; // Response data for block-based interactions
+  forkable?: boolean;
 }
 
 export interface ThreadEntity extends BaseEntity {

@@ -37,6 +37,7 @@
           </button>
 
           <button
+            v-if="message.forkable !== false"
             @click="$emit('fork', message.id)"
             class="p-1.5 hover:bg-neutral-700 transition-colors"
             title="Fork conversation"
