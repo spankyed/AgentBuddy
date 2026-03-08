@@ -658,7 +658,7 @@ const agentState = setup({
           return {
             tabs: context.tabs.map(tab =>
               tab.id === threadId
-                ? { ...tab, artifacts }
+                ? { ...tab, label, artifacts }
                 : tab
             ),
             activeTabId: threadId
