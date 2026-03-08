@@ -278,6 +278,16 @@ const agentState = setup({
           mode: forcedMode,
           phase: newPhase
         };
+      } else {
+        const visibleModes = modes.filter(m => !m.hidden);
+        const defaultMode = visibleModes[0];
+        if (defaultMode) {
+          const defaultPhase = defaultMode.phases?.length ? defaultMode.phases[0].id : undefined;
+          modeUpdate = {
+            mode: defaultMode.id,
+            phase: defaultPhase,
+          };
+        }
       }
 
       return {
@@ -530,8 +540,8 @@ const agentState = setup({
     statusColor: 'bg-zinc-500' as StatusColor,
     tabs: [],
     activeTabId: 'dashboard',
-    mode: 'work', // Default mode
-    phase: 'plan', // Default phase
+    mode: '',
+    phase: '',
     phaseByMode: {}, // Track last phase per mode
     modes: [],
     hotkeys: {}, // Will be loaded from settings
