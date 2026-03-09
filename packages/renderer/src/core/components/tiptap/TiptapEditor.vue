@@ -3,7 +3,10 @@
     class="tiptap-wrapper"
     :class="[`tiptap-${mode}`, $attrs.class]"
   >
-    <TiptapToolbar v-if="mode !== 'viewer'" :editor="editor" :mode="mode" />
+    <template v-if="mode === 'editor' && editor">
+      <TiptapBlockMenu :editor="editor" />
+      <TiptapBubbleMenu :editor="editor" />
+    </template>
     <editor-content :editor="editor" :class="editorClass" />
   </div>
 </template>
@@ -12,7 +15,8 @@
 import { watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { createExtensions, type TiptapMode } from './extensions'
-import TiptapToolbar from './TiptapToolbar.vue'
+import TiptapBlockMenu from './TiptapBlockMenu.vue'
+import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
