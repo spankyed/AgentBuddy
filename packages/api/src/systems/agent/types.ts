@@ -32,6 +32,7 @@ export interface AgentMode {
   description: string;
   phases?: AgentPhase[];
   hidden?: boolean; // For modes that shouldn't appear in selector (e.g., birth)
+  disabled?: boolean; // For modes that appear in selector but are non-selectable
 }
 
 export interface AgentSettings {

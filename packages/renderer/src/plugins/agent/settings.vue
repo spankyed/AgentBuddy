@@ -27,6 +27,15 @@
               @input="debouncedSave"
             />
             <button
+              @click="toggleMode(index)"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg transition-all"
+              :class="mode.disabled ? 'text-neutral-600 hover:text-neutral-300' : 'text-neutral-400 hover:text-neutral-200'"
+              :title="mode.disabled ? 'Enable mode' : 'Disable mode'"
+            >
+              <EyeOff v-if="mode.disabled" class="w-4 h-4" />
+              <Eye v-else class="w-4 h-4" />
+            </button>
+            <button
               @click="removeMode(index)"
               class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
               :disabled="modes.length <= 1"
@@ -164,7 +173,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { Plus, X } from 'lucide-vue-next'
+import { Plus, X, Eye, EyeOff } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
@@ -231,6 +240,11 @@ const addMode = () => {
   }
   modes.value.push(newMode)
   saveModes()
+}
+
+const toggleMode = (index: number) => {
+  modes.value[index].disabled = !modes.value[index].disabled
+  debouncedSave()
 }
 
 const removeMode = (index: number) => {

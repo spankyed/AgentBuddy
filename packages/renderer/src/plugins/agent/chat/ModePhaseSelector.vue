@@ -32,9 +32,12 @@
             <DropdownMenuItem
               v-for="mode in visibleModes"
               :key="mode.id"
+              :disabled="mode.disabled"
               @select="handleModeSelect(mode.id)"
-              class="relative flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              :class="{ 'bg-neutral-800/50': currentMode === mode.id }"
+              class="relative flex items-center justify-between px-3 py-2 text-sm transition-colors focus:outline-none"
+              :class="mode.disabled
+                ? 'opacity-50 cursor-not-allowed text-neutral-500'
+                : 'cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800'"
             >
               <span class="font-medium">{{ mode.name }}</span>
               <Check
@@ -175,6 +178,8 @@ const phaseButtonClasses = computed(() => {
 })
 
 const handleModeSelect = (modeId: string) => {
+  const mode = props.modes.find(m => m.id === modeId)
+  if (mode?.disabled) return
   emit('mode-change', modeId)
   isModeOpen.value = false
 }

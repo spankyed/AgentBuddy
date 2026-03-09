@@ -446,7 +446,7 @@ const agentState = setup({
     },
 
     switchMode: ({ context, self }) => {
-      const visibleModes = context.modes.filter(m => !m.hidden);
+      const visibleModes = context.modes.filter(m => !m.hidden && !m.disabled);
       if (!visibleModes.length) return;
 
       const currentIndex = visibleModes.findIndex(m => m.id === context.mode);
