@@ -126,7 +126,7 @@ const arrangeableOptions = {
 /* -------------------------------------------------------------------------- */
 
 function onCardClick(item: WorkItem) {
-  actor.send({ type: 'SELECT_THREAD', id: item.id })
+  actor.send({ type: 'OPEN_THREAD_CHAT', threadId: item.id })
 }
 
 async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) {
