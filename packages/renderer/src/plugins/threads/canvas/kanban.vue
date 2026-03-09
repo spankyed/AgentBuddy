@@ -64,6 +64,7 @@ const statusToListIndex = computed(() => {
 
 // Initialize items from threads
 const items = ref<WorkItem[]>([])
+let droppingItem = false
 
 function initializeItems() {
   if (!threads.value || threads.value.length === 0) {
@@ -107,6 +108,10 @@ function initializeItems() {
 // Initialize and watch for changes
 initializeItems()
 watch([threads, settings], () => {
+  if (droppingItem) {
+    droppingItem = false
+    return
+  }
   initializeItems()
 }, { deep: true })
 
@@ -155,6 +160,9 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
     const destinationList = lists.value.find(list => list.id === destinationListId)
     if (destinationList) {
       const newStatus = destinationList.name
+
+      // Skip the next watcher rebuild — vue-arrange already has the correct state
+      droppingItem = true
 
       // Send status update event
       actor.send({
