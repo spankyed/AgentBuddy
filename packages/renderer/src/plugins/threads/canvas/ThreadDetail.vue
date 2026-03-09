@@ -54,15 +54,16 @@
       <div class="max-w-4xl p-4 mx-auto space-y-6">
         <div class="space-y-4">
           <!-- Instructions -->
-          <div>
+          <div data-onboarding-id="thread-instructions-input">
             <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
-            <textarea
-              :value="instructions"
-              @input="e => updateField('instructions', (e.target as HTMLTextAreaElement).value)"
-              placeholder="Enter instructions for the agent"
-              data-onboarding-id="thread-instructions-input"
-              class="min-h-[8rem] w-full px-4 py-3 text-sm rounded-md bg-neutral-800 border border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500 transition-colors resize-y"
-            ></textarea>
+            <div class="border rounded-md border-neutral-700">
+              <TiptapEditor
+                mode="editor"
+                :model-value="instructions"
+                placeholder="Enter instructions for the agent"
+                @update:model-value="v => updateField('instructions', v)"
+              />
+            </div>
           </div>
 
           <!-- Tags -->
@@ -162,6 +163,7 @@ import MessageList from './components/message-list.vue'
 import TagInput from '@/core/components/design/tag-input.vue'
 import ThreadLinkInput from '@/plugins/threads/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);
 

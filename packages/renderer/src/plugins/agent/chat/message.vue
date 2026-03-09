@@ -61,13 +61,7 @@
 
       <!-- Message content -->
       <div class="leading-relaxed text-[15px]">
-        <p
-          v-for="(paragraph, index) in message.text.split('\n')"
-          :key="index"
-          :class="{ 'mt-2.5': index > 0 }"
-        >
-          {{ paragraph }}
-        </p>
+        <TiptapEditor mode="viewer" :model-value="message.text" />
       </div>
 
       <!-- Block-based interactions -->
@@ -96,6 +90,7 @@
 import { computed } from 'vue'
 import type { MessageEntity } from '@app/api'
 import InteractionContainer from './interactions/InteractionContainer.vue'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 interface ChatMessageProps {
   message: MessageEntity

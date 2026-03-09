@@ -10,7 +10,7 @@
               isUserMsg(message) ? 'bg-neutral-700/20 text-white border border-gray-700/30' : 'bg-neutral-900/40 text-white',
             ]">
           <span :class="{ 'block truncate pr-16': expandedMessageIndex !== index, 'whitespace-pre-wrap': expandedMessageIndex === index }">
-            {{ message.text }}
+            <TiptapEditor mode="viewer" :model-value="message.text ?? ''" />
           </span>
           <!-- Show more indicator -->
           <span 
@@ -36,6 +36,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 interface Message {
   sender?: 'user' | 'assistant' | 'system'
