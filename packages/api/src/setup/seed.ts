@@ -44,6 +44,41 @@ function loadJSON<T>(filePath: string): T | null {
   }
 }
 
+function seedCollection<T>(opts: {
+  file: string;
+  label: string;
+  getKey: (item: T) => string;
+  findExisting: (item: T) => { id: EARS.EntityId } | undefined;
+  create: (item: T) => void;
+  update: (id: EARS.EntityId, item: T) => void;
+  log: (...args: any[]) => void;
+}): SeedCounts {
+  const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
+  const data = loadJSON<T[]>(opts.file);
+  if (!data) {
+    opts.log(`  ${opts.label} file not found, skipping`);
+    return counts;
+  }
+  for (const item of data) {
+    const key = opts.getKey(item);
+    const existing = opts.findExisting(item);
+    if (existing) {
+      opts.update(existing.id, item);
+      opts.log(`  ${opts.label} updated: ${key}`);
+      counts.updated++;
+    } else {
+      opts.create(item);
+      opts.log(`  ${opts.label} created: ${key}`);
+      counts.created++;
+    }
+  }
+  return counts;
+}
+
+function buildLabelMap<T extends { label: string; id: string }>(entities: T[]): Map<string, string> {
+  return new Map(entities.map(e => [e.label, e.id]));
+}
+
 export function seedData(options?: { verbose?: boolean; force?: boolean; compiledDir?: string }): SeedResult | null {
   const log = options?.verbose ? console.log.bind(console) : () => {};
 
@@ -66,71 +101,38 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   };
 
   // --- Actions ---
-  const actionsFile = path.join(compiledDir, 'compiled-actions.json');
-  const actionsData = loadJSON<Array<Record<string, any>>>(actionsFile);
-
-  if (actionsData) {
-    for (const item of actionsData) {
-      const existing = findWhere<ActionEntity>(EARS.Entity.Action, 'label', item.label);
-      if (existing.length > 0) {
-        actionCommands.update(existing[0].id, {
-          description: item.description,
-          category: item.category,
-          input: item.input,
-          actionFn: item.actionFn,
-          output: item.output,
-        });
-        log(`  action updated: ${item.label}`);
-        result.actions.updated++;
-        continue;
-      }
-      actionCommands.create({
-        label: item.label,
-        description: item.description,
-        category: item.category,
-        input: item.input,
-        actionFn: item.actionFn,
-        output: item.output,
-      });
-      log(`  action created: ${item.label}`);
-      result.actions.created++;
-    }
-  } else {
-    log('  compiled-actions.json not found, skipping actions');
-  }
+  result.actions = seedCollection<Record<string, any>>({
+    file: path.join(compiledDir, 'compiled-actions.json'),
+    label: 'action',
+    getKey: item => item.label,
+    findExisting: item => findWhere<ActionEntity>(EARS.Entity.Action, 'label', item.label)[0],
+    create: item => actionCommands.create({
+      label: item.label, description: item.description, category: item.category,
+      input: item.input, actionFn: item.actionFn, output: item.output,
+    }),
+    update: (id, item) => actionCommands.update(id, {
+      description: item.description, category: item.category,
+      input: item.input, actionFn: item.actionFn, output: item.output,
+    }),
+    log,
+  });
 
   // --- Prompts ---
-  const promptsFile = path.join(compiledDir, 'compiled-prompts.json');
-  const promptsData = loadJSON<Array<Record<string, any>>>(promptsFile);
-
-  if (promptsData) {
-    for (const item of promptsData) {
-      const existing = promptQueries.byLabel(item.label);
-      if (existing) {
-        promptCommands.update(existing.id, {
-          label: item.label,
-          description: item.description,
-          category: item.category,
-          inputs: item.inputs,
-          templateFn: item.templateFn,
-        });
-        log(`  prompt updated: ${item.label}`);
-        result.prompts.updated++;
-        continue;
-      }
-      promptCommands.create({
-        label: item.label,
-        description: item.description,
-        category: item.category,
-        inputs: item.inputs,
-        templateFn: item.templateFn,
-      });
-      log(`  prompt created: ${item.label}`);
-      result.prompts.created++;
-    }
-  } else {
-    log('  compiled-prompts.json not found, skipping prompts');
-  }
+  result.prompts = seedCollection<Record<string, any>>({
+    file: path.join(compiledDir, 'compiled-prompts.json'),
+    label: 'prompt',
+    getKey: item => item.label,
+    findExisting: item => promptQueries.byLabel(item.label) ?? undefined,
+    create: item => promptCommands.create({
+      label: item.label, description: item.description, category: item.category,
+      inputs: item.inputs, templateFn: item.templateFn,
+    }),
+    update: (id, item) => promptCommands.update(id, {
+      label: item.label, description: item.description, category: item.category,
+      inputs: item.inputs, templateFn: item.templateFn,
+    }),
+    log,
+  });
 
   // --- Flows ---
   const flowsFile = path.join(compiledDir, 'compiled-flows.json');
@@ -140,30 +142,22 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
     const existingLabels = new Set(existingFlows.map(f => f.label));
 
-    const filteredDSL: FlowDSL = {};
-    for (const key of Object.keys(flowsDSL)) {
-      if (existingLabels.has(key)) {
-        log(`  flow skipped: ${key}`);
-        result.flows.skipped++;
-      } else {
-        filteredDSL[key] = flowsDSL[key];
-      }
-    }
+    const filteredDSL: FlowDSL = Object.fromEntries(
+      Object.entries(flowsDSL).filter(([key]) => {
+        if (existingLabels.has(key)) {
+          log(`  flow skipped: ${key}`);
+          result.flows.skipped++;
+          return false;
+        }
+        return true;
+      })
+    );
 
     if (Object.keys(filteredDSL).length === 0) {
       log('  no new flows to import');
     } else {
-      const actionMap = new Map<string, string>();
-      const allActions = findAll<ActionEntity>(EARS.Entity.Action);
-      for (const a of allActions) {
-        actionMap.set(a.label, a.id);
-      }
-
-      const promptMap = new Map<string, string>();
-      const allPrompts = promptQueries.all();
-      for (const p of allPrompts) {
-        promptMap.set(p.label, p.id);
-      }
+      const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
+      const promptMap = buildLabelMap(promptQueries.all());
 
       const validation = validate(filteredDSL, {
         actions: Array.from(actionMap.keys()),
@@ -192,25 +186,15 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   }
 
   // --- Library Docs ---
-  const libraryFile = path.join(compiledDir, 'compiled-library.json');
-  const libraryData = loadJSON<Array<{ name: string; content: ContentSection[]; tags?: string[] }>>(libraryFile);
-
-  if (libraryData) {
-    for (const item of libraryData) {
-      const existing = findWhere<Document>(EARS.Entity.Document, 'name', item.name);
-      if (existing.length > 0) {
-        libraryCommands.updateDocument(existing[0].id, item.name, item.content, item.tags ?? []);
-        log(`  library doc updated: ${item.name}`);
-        result.library.updated++;
-        continue;
-      }
-      libraryCommands.createDocument(item.name, item.content, item.tags ?? []);
-      log(`  library doc created: ${item.name}`);
-      result.library.created++;
-    }
-  } else {
-    log('  compiled-library.json not found, skipping library docs');
-  }
+  result.library = seedCollection<{ name: string; content: ContentSection[]; tags?: string[] }>({
+    file: path.join(compiledDir, 'compiled-library.json'),
+    label: 'library doc',
+    getKey: item => item.name,
+    findExisting: item => findWhere<Document>(EARS.Entity.Document, 'name', item.name)[0],
+    create: item => libraryCommands.createDocument(item.name, item.content, item.tags ?? []),
+    update: (id, item) => libraryCommands.updateDocument(id, item.name, item.content, item.tags ?? []),
+    log,
+  });
 
   // Mark as seeded
   settingsCommands.updateSettings('internal', null, ['seeded'], true);
