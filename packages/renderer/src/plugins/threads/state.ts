@@ -10,6 +10,16 @@ import { application } from '@/core/actors/application';
 
 export const id = 'threads' as const;
 
+const THREADS_VIEW_KEY = 'threads-view-preference';
+
+function getInitialView(): 'list' | 'kanban' {
+  try {
+    const stored = localStorage.getItem(THREADS_VIEW_KEY);
+    if (stored === 'kanban') return 'kanban';
+  } catch {}
+  return 'list';
+}
+
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 const defaultThread: ThreadCreateData | ThreadViewData = {
@@ -259,6 +269,8 @@ const threadsState = setup({
         threadId,
       });
     },
+    persistListView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'list'); } catch {} },
+    persistKanbanView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'kanban'); } catch {} },
     removeThreadFromList: assign(({ event, context }) => {
       const { threadId } = typeOf('THREAD_DELETED', event);
       return {
@@ -274,7 +286,7 @@ const threadsState = setup({
   }
 }).createMachine({
   id,
-  initial: 'list',
+  initial: getInitialView(),
   context: () => ({
     threads: [],
     selectedThreadCode: undefined,
@@ -350,6 +362,7 @@ const threadsState = setup({
   },
   states: {
     'list': {
+      entry: 'persistListView',
       meta: { ...breadcrumb('list', 'Threads', true) },
       on: {
 
@@ -357,6 +370,7 @@ const threadsState = setup({
     },
 
     'kanban': {
+      entry: 'persistKanbanView',
       meta: { ...breadcrumb('kanban', 'Board') },
       on: {
         UPDATE_THREAD_STATUS: {
