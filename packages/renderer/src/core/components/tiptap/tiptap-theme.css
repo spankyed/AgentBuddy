@@ -166,12 +166,27 @@
 }
 
 .tiptap-editor .block-menu {
-  transform: translateY(-3px);
+  position: relative;
+}
+
+.tiptap-editor .block-menu::before {
+  content: '';
+  position: absolute;
+  inset: -0.5rem;
+}
+
+.tiptap-editor .block-menu .plus-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.tiptap-editor .block-menu:hover .plus-btn {
+  opacity: 1;
 }
 
 .tiptap-editor .ProseMirror {
   min-height: 200px;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  padding: 0.75rem 1rem 0.75rem 1.75rem;
 }
 
 /* Input mode */

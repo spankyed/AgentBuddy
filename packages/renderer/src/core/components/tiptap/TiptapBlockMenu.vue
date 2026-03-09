@@ -2,40 +2,44 @@
   <FloatingMenu
     v-if="editor"
     :editor="editor"
-    :options="{ placement: 'left', offset: { mainAxis: 8 }, strategy: 'absolute' }"
+    :options="{ placement: 'left', offset: { mainAxis: 4 }, strategy: 'absolute' }"
     class="block-menu"
   >
     <div class="relative">
       <button
+        ref="plusBtnRef"
         type="button"
-        class="plus-btn flex items-center justify-center w-7 h-7 rounded hover:bg-neutral-700 text-neutral-500 hover:text-neutral-300 transition-colors"
+        class="plus-btn flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 transition-colors"
         @click.stop="open = !open"
       >
-        <Plus :size="18" />
+        <Plus :size="15" />
       </button>
-
-      <div
-        v-if="open"
-        ref="dropdownRef"
-        class="absolute left-0 top-8 z-50 w-52 py-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
-      >
-        <button
-          v-for="item in blockItems"
-          :key="item.label"
-          type="button"
-          class="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-          @click="runCommand(item.command)"
-        >
-          <component :is="item.icon" :size="16" class="text-neutral-400" />
-          {{ item.label }}
-        </button>
-      </div>
     </div>
   </FloatingMenu>
+
+  <Teleport to="body">
+    <div
+      v-if="open"
+      ref="dropdownRef"
+      class="fixed z-50 w-52 py-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
+      :style="dropdownStyle"
+    >
+      <button
+        v-for="item in blockItems"
+        :key="item.label"
+        type="button"
+        class="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+        @click="runCommand(item.command)"
+      >
+        <component :is="item.icon" :size="16" class="text-neutral-400" />
+        {{ item.label }}
+      </button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { FloatingMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import {
@@ -55,6 +59,17 @@ const props = defineProps<{ editor: Editor }>()
 
 const open = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
+const plusBtnRef = ref<HTMLElement | null>(null)
+const dropdownStyle = reactive({ top: '0px', left: '0px' })
+
+watch(open, async (isOpen) => {
+  if (isOpen && plusBtnRef.value) {
+    await nextTick()
+    const rect = plusBtnRef.value.getBoundingClientRect()
+    dropdownStyle.top = `${rect.bottom + 4}px`
+    dropdownStyle.left = `${rect.left}px`
+  }
+})
 
 interface BlockItem {
   label: string
