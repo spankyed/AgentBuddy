@@ -2,7 +2,7 @@
   <BubbleMenu
     v-if="editor"
     :editor="editor"
-    :tippy-options="{ duration: 150 }"
+    :options="{ placement: 'top', offset: 8, strategy: 'absolute' }"
     class="bubble-menu flex items-center gap-0.5 px-1.5 py-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
     <button

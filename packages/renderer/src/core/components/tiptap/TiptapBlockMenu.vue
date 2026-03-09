@@ -2,7 +2,7 @@
   <FloatingMenu
     v-if="editor"
     :editor="editor"
-    :tippy-options="{ placement: 'left-start', offset: [0, 8] }"
+    :options="{ placement: 'left', offset: { mainAxis: 8 }, strategy: 'absolute' }"
     class="block-menu"
   >
     <div class="relative">
