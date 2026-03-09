@@ -2,28 +2,17 @@
   <div ref="sectionRef" class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <button
-          v-if="section && hasContent"
-          @click="isExpanded = !isExpanded"
-          type="button"
-          class="p-1 text-neutral-400 hover:text-neutral-200 transition-all"
-          :class="{ 'rotate-90': isExpanded }"
-        >
-          <ChevronRight class="w-4 h-4" />
-        </button>
         <select
-          v-if="section && !hasContent"
+          v-if="section"
           :value="section.type"
+          :disabled="hasContent"
           @change="handleTypeChange($event)"
-          class="px-3 py-1.5 text-xs font-medium tracking-wider uppercase transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-400 focus:outline-none focus:border-blue-500"
+          class="px-3 py-1.5 text-xs font-medium tracking-wider uppercase transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-400 focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-default"
         >
           <option value="text">Text Block</option>
           <option value="field">Fields</option>
           <option value="list">List</option>
         </select>
-        <span v-else-if="section" class="text-xs font-medium tracking-wider uppercase text-neutral-400">
-          {{ sectionTypeLabel }}
-        </span>
         <select
           v-else
           v-model="selectedType"
@@ -36,15 +25,25 @@
           <option value="list">List</option>
         </select>
       </div>
-      <button
-        v-if="showRemove"
-        @click="$emit('remove')"
-        type="button"
-        class="p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
-        title="Remove section"
-      >
-        <X class="w-4 h-4" />
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          @click="isExpanded = !isExpanded"
+          type="button"
+          class="p-1 text-neutral-400 hover:text-neutral-200 transition-all"
+          :class="{ 'rotate-90': isExpanded }"
+        >
+          <ChevronRight class="w-4 h-4" />
+        </button>
+        <button
+          v-if="showRemove"
+          @click="$emit('remove')"
+          type="button"
+          class="p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
+          title="Remove section"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <component
@@ -91,20 +90,6 @@ const hasContent = computed(() => {
       return props.section.items.some(item => item.trim())
     default:
       return false
-  }
-})
-
-const sectionTypeLabel = computed(() => {
-  if (!props.section) return ''
-  switch (props.section.type) {
-    case 'field': 
-      const fieldCount = props.section.fields.filter(f => f.key.trim() || f.value.trim()).length
-      return fieldCount > 0 ? `Fields (${fieldCount})` : 'Fields'
-    case 'list': 
-      const itemCount = props.section.items.filter(item => item.trim()).length
-      return itemCount > 0 ? `List (${itemCount})` : 'List'
-    case 'text': 
-      return 'Text Block'
   }
 })
 
