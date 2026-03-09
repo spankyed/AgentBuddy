@@ -355,6 +355,7 @@ type ThreadLinkedFields = {
 type ThreadCreateData = Simplify<ThreadEditFields & {
     role?: EARS.RoleKind;
     forcedMode?: 'birth';
+    pinned?: boolean;
 }>;
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 type ThreadExtendedData = ThreadLinkedFields & {

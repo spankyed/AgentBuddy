@@ -117,6 +117,7 @@ export type ThreadCreateData = Simplify<
   & {
     role?: EARS.RoleKind;  // Optional role to grant (e.g., for special threads like birth)
     forcedMode?: 'birth';  // Optional forced mode for special threads
+    pinned?: boolean;  // Pin the thread tab in the UI
   }
 >;
 export type ThreadViewData = Simplify<

@@ -390,7 +390,8 @@ export function createThreadAndNotify(
     timestamp: result.timestamp,
     topic: options.topic,
     instructions: options.instructions,
-    status: result.status
+    status: result.status,
+    ...(options.pinned && { pinned: true }),
   });
 
   // Refresh recent threads list (thread creation affects ordering)

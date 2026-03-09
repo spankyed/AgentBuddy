@@ -38,6 +38,7 @@ function getRecentThreads(limit: number = 4): Partial<ThreadEntity>[] {
     "lastMessageTimestamp",
     "lastVisitedTimestamp",
     "forcedMode",
+    "pinned",
   ] as const;
 
   const allThreads = qx(EARS.Entity.Thread)

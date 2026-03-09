@@ -71,7 +71,14 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     for (const item of actionsData) {
       const existing = findWhere<ActionEntity>(EARS.Entity.Action, 'label', item.label);
       if (existing.length > 0) {
-        log(`  action skipped: ${item.label}`);
+        actionCommands.update(existing[0].id, {
+          description: item.description,
+          category: item.category,
+          input: item.input,
+          actionFn: item.actionFn,
+          output: item.output,
+        });
+        log(`  action updated: ${item.label}`);
         result.actions.skipped++;
         continue;
       }

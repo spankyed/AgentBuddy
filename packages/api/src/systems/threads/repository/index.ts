@@ -159,7 +159,8 @@ export const threadCommands = {
       topic: input.topic,
       instructions: input.instructions,
       tags: input.tags || [],  // Store tags as array of names
-      ...(input.forcedMode && { forcedMode: input.forcedMode })  // Set forced mode if provided
+      ...(input.forcedMode && { forcedMode: input.forcedMode }),  // Set forced mode if provided
+      ...(input.pinned && { pinned: input.pinned })
     });
 
     // Grant role if provided

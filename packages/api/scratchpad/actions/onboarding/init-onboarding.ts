@@ -40,6 +40,7 @@ export async function action(
     tags: [],
     role: ASSISTANT_BIRTH_ROLE,
     forcedMode: 'birth',
+    pinned: true,
   });
 
   // Create todo artifact
