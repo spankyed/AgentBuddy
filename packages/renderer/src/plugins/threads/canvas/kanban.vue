@@ -5,6 +5,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState, type ThreadListItem } from '@/plugins/threads/state'
 import ThreadsHeader from './components/ThreadsHeader.vue'
+import { SquarePen } from 'lucide-vue-next'
 // import type { ThreadsSettings } from '@app/api'
 
 const actor: ThreadsState = applicationState.system.get(id)
@@ -228,7 +229,11 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
                 <p class="flex-1 text-sm font-medium leading-snug text-neutral-100">
                   {{ card.topic || 'Untitled Thread' }}
                 </p>
-                <span class="text-xs leading-snug font-mono text-neutral-500">{{ card.shortCode }}</span>
+                <SquarePen
+                  class="flex-shrink-0 w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:text-blue-400 rounded"
+                  title="Edit details"
+                  @click.stop="actor.send({ type: 'SELECT_THREAD', id: card.id })"
+                />
               </div>
               <!-- <div class="flex items-center gap-2 mt-2">
                 <span class="text-xs text-neutral-500">{{ card.date }}</span>
@@ -254,6 +259,10 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
 </template>
 
 <style scoped>
+:deep(.cursor-grabbing) {
+  position: fixed !important;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
