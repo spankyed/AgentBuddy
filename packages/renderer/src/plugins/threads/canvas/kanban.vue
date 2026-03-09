@@ -183,7 +183,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
     <div v-if="lists.length === 0" class="flex items-center justify-center h-full">
       <p class="text-neutral-500">No status columns configured. Please configure thread statuses in settings.</p>
     </div>
-    <div v-else class="flex flex-1 gap-4 w-full">
+    <div v-else class="flex flex-1 gap-4 w-full select-none">
       <section
         v-for="list in lists"
         :key="String(list.id)"
