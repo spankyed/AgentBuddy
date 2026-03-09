@@ -16,11 +16,13 @@ import { flowsCommands } from '@/systems/flows/repository';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import type { ActionEntity } from '@/systems/actions/types';
 import type { FlowDSL } from '@/systems/flows/dsl';
+import type { FlowEntity } from '@/systems/flows/config/types';
 import { libraryCommands } from '@/systems/library/repository';
-import type { ContentSection } from '@/systems/library/types';
+import type { ContentSection, Document } from '@/systems/library/types';
 
 interface SeedCounts {
   created: number;
+  updated: number;
   skipped: number;
 }
 
@@ -57,10 +59,10 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   const compiledDir = options?.compiledDir ?? DEFAULT_COMPILED_DIR;
 
   const result: SeedResult = {
-    actions: { created: 0, skipped: 0 },
-    prompts: { created: 0, skipped: 0 },
-    flows: { created: 0, skipped: 0 },
-    library: { created: 0, skipped: 0 },
+    actions: { created: 0, updated: 0, skipped: 0 },
+    prompts: { created: 0, updated: 0, skipped: 0 },
+    flows: { created: 0, updated: 0, skipped: 0 },
+    library: { created: 0, updated: 0, skipped: 0 },
   };
 
   // --- Actions ---
@@ -71,8 +73,15 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     for (const item of actionsData) {
       const existing = findWhere<ActionEntity>(EARS.Entity.Action, 'label', item.label);
       if (existing.length > 0) {
-        log(`  action skipped: ${item.label}`);
-        result.actions.skipped++;
+        actionCommands.update(existing[0].id, {
+          description: item.description,
+          category: item.category,
+          input: item.input,
+          actionFn: item.actionFn,
+          output: item.output,
+        });
+        log(`  action updated: ${item.label}`);
+        result.actions.updated++;
         continue;
       }
       actionCommands.create({
@@ -98,8 +107,15 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     for (const item of promptsData) {
       const existing = promptQueries.byLabel(item.label);
       if (existing) {
-        log(`  prompt skipped: ${item.label}`);
-        result.prompts.skipped++;
+        promptCommands.update(existing.id, {
+          label: item.label,
+          description: item.description,
+          category: item.category,
+          inputs: item.inputs,
+          templateFn: item.templateFn,
+        });
+        log(`  prompt updated: ${item.label}`);
+        result.prompts.updated++;
         continue;
       }
       promptCommands.create({
@@ -121,10 +137,21 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   const flowsDSL = loadJSON<FlowDSL>(flowsFile);
 
   if (flowsDSL) {
-    const existingFlows = findAll(EARS.Entity.Flow);
-    if (existingFlows.length > 0) {
-      log(`  flows skipped: ${existingFlows.length} flow(s) already exist`);
-      result.flows.skipped = Object.keys(flowsDSL).length;
+    const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
+    const existingLabels = new Set(existingFlows.map(f => f.label));
+
+    const filteredDSL: FlowDSL = {};
+    for (const key of Object.keys(flowsDSL)) {
+      if (existingLabels.has(key)) {
+        log(`  flow skipped: ${key}`);
+        result.flows.skipped++;
+      } else {
+        filteredDSL[key] = flowsDSL[key];
+      }
+    }
+
+    if (Object.keys(filteredDSL).length === 0) {
+      log('  no new flows to import');
     } else {
       const actionMap = new Map<string, string>();
       const allActions = findAll<ActionEntity>(EARS.Entity.Action);
@@ -138,7 +165,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
         promptMap.set(p.label, p.id);
       }
 
-      const validation = validate(flowsDSL, {
+      const validation = validate(filteredDSL, {
         actions: Array.from(actionMap.keys()),
         prompts: Array.from(promptMap.keys()),
       });
@@ -148,16 +175,17 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
         for (const err of validation.errors) {
           log(`    ${err.path}: ${err.message}`);
         }
+        result.flows.skipped += Object.keys(filteredDSL).length;
+      } else {
+        const compiled = compile(filteredDSL, {
+          actions: actionMap,
+          prompts: promptMap,
+        });
+
+        const { flowIds } = flowsCommands.importFromDSL(compiled);
+        result.flows.created = flowIds.length;
+        log(`  flows created: ${flowIds.length}`);
       }
-
-      const compiled = compile(flowsDSL, {
-        actions: actionMap,
-        prompts: promptMap,
-      });
-
-      const { flowIds } = flowsCommands.importFromDSL(compiled);
-      result.flows.created = flowIds.length;
-      log(`  flows created: ${flowIds.length}`);
     }
   } else {
     log('  compiled-flows.json not found, skipping flows');
@@ -169,10 +197,11 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
 
   if (libraryData) {
     for (const item of libraryData) {
-      const existing = findWhere(EARS.Entity.Document, 'name', item.name);
+      const existing = findWhere<Document>(EARS.Entity.Document, 'name', item.name);
       if (existing.length > 0) {
-        log(`  library doc skipped: ${item.name}`);
-        result.library.skipped++;
+        libraryCommands.updateDocument(existing[0].id, item.name, item.content, item.tags ?? []);
+        log(`  library doc updated: ${item.name}`);
+        result.library.updated++;
         continue;
       }
       libraryCommands.createDocument(item.name, item.content, item.tags ?? []);
