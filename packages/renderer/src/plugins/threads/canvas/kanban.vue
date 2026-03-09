@@ -124,6 +124,7 @@ const dropGroup = Symbol('kanban-group')
 const arrangeableOptions = {
   hoverClass: 'opacity-90 cursor-grabbing shadow-2xl',
   pickedItemClass: 'opacity-70',
+  handle: true,
 }
 
 /* -------------------------------------------------------------------------- */
@@ -211,14 +212,23 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
         >
           <template #default="{ item: card }">
             <article
-              class="p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
+              class="group p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
               @click="onCardClick(card)"
             >
-              <div class="flex items-start justify-between gap-2 mb-1" :title="`${card.time} • ${card.date}`">
-                <p class="text-sm font-medium leading-snug text-neutral-100">
+              <div class="flex items-center justify-between gap-2 mb-1" :title="`${card.time} • ${card.date}`">
+                <!-- Drag handle -->
+                <span
+                  data-handle
+                  class="flex-shrink-0 cursor-grab text-sm leading-snug text-neutral-600"
+                  title="Drag to move"
+                  @click.stop
+                >
+                  &#x283F;
+                </span>
+                <p class="flex-1 text-sm font-medium leading-snug text-neutral-100">
                   {{ card.topic || 'Untitled Thread' }}
                 </p>
-                <span class="text-xs font-mono text-neutral-500">{{ card.shortCode }}</span>
+                <span class="text-xs leading-snug font-mono text-neutral-500">{{ card.shortCode }}</span>
               </div>
               <!-- <div class="flex items-center gap-2 mt-2">
                 <span class="text-xs text-neutral-500">{{ card.date }}</span>
