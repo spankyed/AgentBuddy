@@ -20,7 +20,7 @@ export default {
             action("db query", { label: "lookup" }),
           ]},
           { if: "$.intent == 'request'", steps: [
-            action("Create Birth Thread", { label: "onboard" }),
+            action("db query", { label: "onboard" }),
           ]},
         ],
         [fire("support.escalated", { label: "escalate" })],

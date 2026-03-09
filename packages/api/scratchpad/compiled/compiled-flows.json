@@ -45,7 +45,7 @@
               "steps": [
                 {
                   "type": "action",
-                  "action": "Create Birth Thread",
+                  "action": "db query",
                   "label": "onboard"
                 }
               ]
