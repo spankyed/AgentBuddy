@@ -50,9 +50,6 @@
         </p>
       </div>
 
-      <!-- Available Context Info -->
-      <AvailableContext />
-
       <!-- Payload Field Mapping -->
       <div class="pt-6 border-t border-neutral-800">
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
@@ -86,7 +83,6 @@
 import { computed } from 'vue'
 import type { NodeEntity } from '@app/api'
 import BaseForm from './BaseForm.vue'
-import AvailableContext from '../components/AvailableContext.vue'
 import TipSection from '../components/TipSection.vue'
 
 const props = defineProps<{

@@ -60,6 +60,7 @@
       :flows="flows"
       :models="models"
       :prompts="prompts"
+      :edges="plainEdges"
       @close="handleCloseNodeEditor"
       @update-node="handleNodeUpdate"
       @create-connected="handleCreateConnectedNode"

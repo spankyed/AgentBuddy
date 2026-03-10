@@ -99,6 +99,10 @@ const props = withDefaults(defineProps<Props>(), {
     {
       label: 'Literal Values',
       examples: ['"hello"', '123', 'true', '["item1", "item2"]']
+    },
+    {
+      label: 'Available Context',
+      examples: ['$.event.type', '$.event.data', '$.event.timestamp', '$.lastStep.result', '$.lastStep.id', '$.lastStep.label', '$.steps']
     }
   ]
 })

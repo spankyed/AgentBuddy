@@ -94,9 +94,6 @@
         </p>
       </div>
 
-      <!-- Available Context Info -->
-      <AvailableContext v-if="selectedAction" />
-
       <!-- Field Mappings with Optimized Updates -->
       <div v-if="selectedAction" class="pt-6 border-t border-neutral-800">
         <label class="block mb-3 text-xs font-semibold tracking-wider uppercase text-neutral-500">
@@ -156,7 +153,6 @@ import {
   useFilter
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
-import AvailableContext from '../components/AvailableContext.vue'
 import TipSection from '../components/TipSection.vue'
 import type { ActionEntity, NodeEntity } from '@app/api'
 import type { FormResources } from '../../types/form-props'
