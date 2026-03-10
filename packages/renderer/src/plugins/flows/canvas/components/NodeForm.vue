@@ -29,7 +29,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
 import type { NodeEntity, ActionEntity, FlowEntity, ModelConfig, PromptEntity } from '@app/api'
-import { getPaletteItems, getNodeConfig } from '../nodes'
 
 // Form components
 import BaseForm from '../forms/BaseForm.vue'
@@ -79,11 +78,6 @@ function getFormComponent(nodeType: string) {
 
 // Next step functionality
 const showNextStepMenu = ref(false)
-const paletteItems = getPaletteItems().filter(item => {
-  if (!item.isImplemented) return false
-  const config = getNodeConfig(item.type)
-  return config && config.connectionRules.inputs !== 0
-})
 
 const hasOutputConnection = computed(() => {
   if (!props.selectedNode?.id || !props.edges) return false
@@ -93,7 +87,6 @@ const hasOutputConnection = computed(() => {
 // Provide next-step state for BaseForm to render
 provide('nextStep', {
   show: computed(() => !hasOutputConnection.value),
-  paletteItems,
   showMenu: showNextStepMenu,
   handleCreate: (nodeType: string) => {
     if (!props.selectedNode?.id) return

@@ -482,6 +482,18 @@ export const getPaletteItems = () => {
     .map(({ type, label, icon, isImplemented }) => ({ type, label, icon, isImplemented }))
 }
 
+/**
+ * Returns node types that can be created as a "next step" connection.
+ * Filters to implemented nodes that accept inputs.
+ */
+export const getConnectableNodeTypes = () => {
+  return getPaletteItems().filter(item => {
+    if (!item.isImplemented) return false
+    const config = getNodeConfig(item.type)
+    return config && config.connectionRules.inputs !== 0
+  })
+}
+
 // ===========================
 // Palette Styling Functions
 // ===========================

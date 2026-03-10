@@ -33,50 +33,25 @@
   />
 
   <!-- Dropdown for quick node creation (opens on dblclick) -->
-  <DropdownMenuRoot
+  <NodeTypeMenu
     :open="showDropdown"
+    side="right"
+    align="start"
     @update:open="showDropdown = $event"
+    @select="handleSelectNode($event)"
   >
-    <DropdownMenuTrigger as-child>
+    <template #trigger>
       <!-- Invisible trigger positioned at handle -->
       <div class="dropdown-trigger" :style="overlayStyle" />
-    </DropdownMenuTrigger>
-
-    <DropdownMenuPortal>
-      <DropdownMenuContent
-        side="right"
-        align="start"
-        :side-offset="8"
-        class="z-50 overflow-hidden border rounded-lg shadow-2xl w-48 bg-neutral-900 border-neutral-700"
-      >
-        <div class="p-1.5 max-h-80 overflow-y-auto">
-          <DropdownMenuItem
-            v-for="item in paletteItems"
-            :key="item.type"
-            @select="handleSelectNode(item.type)"
-            class="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white outline-none focus:bg-neutral-800 focus:text-white"
-          >
-            <component :is="item.icon" class="flex-shrink-0 w-4 h-4" />
-            <span class="font-medium">{{ item.label }}</span>
-          </DropdownMenuItem>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenuPortal>
-  </DropdownMenuRoot>
+    </template>
+  </NodeTypeMenu>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import { Plus } from 'lucide-vue-next'
-import { getPaletteItems, getNodeConfig } from './node-config'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
+import NodeTypeMenu from '../components/NodeTypeMenu.vue'
 
 interface Props {
   nodeId: string
@@ -100,12 +75,6 @@ const emit = defineEmits<{
   'create-connected': [nodeType: string, sourceHandle?: string]
   'edge-select': [nodeId: string, handleId?: string]
 }>()
-
-// Filter out nodes that can't receive inputs (like listen nodes which are entry points)
-const paletteItems = getPaletteItems().filter(item => {
-  const config = getNodeConfig(item.type)
-  return config && config.connectionRules.inputs !== 0
-})
 
 const showDropdown = ref(false)
 

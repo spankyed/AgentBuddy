@@ -7,41 +7,23 @@
       </h2>
       <div class="flex items-center gap-1">
         <!-- Next step dropdown -->
-        <DropdownMenuRoot
+        <NodeTypeMenu
           v-if="nextStep?.show.value"
           :open="nextStep.showMenu.value"
+          side="bottom"
+          align="end"
           @update:open="nextStep.showMenu.value = $event"
+          @select="nextStep.handleCreate($event)"
         >
-          <DropdownMenuTrigger as-child>
+          <template #trigger>
             <button
               class="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-400 rounded-md hover:bg-neutral-800 hover:text-blue-300 transition-colors"
             >
               <Plus class="w-3.5 h-3.5" />
               <span>Next step</span>
             </button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              side="bottom"
-              align="end"
-              :side-offset="8"
-              class="z-50 overflow-hidden border rounded-lg shadow-2xl w-52 bg-neutral-900 border-neutral-700"
-            >
-              <div class="p-1.5 max-h-96 overflow-y-auto">
-                <DropdownMenuItem
-                  v-for="item in nextStep.paletteItems"
-                  :key="item.type"
-                  @select="nextStep.handleCreate(item.type)"
-                  class="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white outline-none focus:bg-neutral-800 focus:text-white"
-                >
-                  <component :is="item.icon" class="flex-shrink-0 w-4 h-4" />
-                  <span class="font-medium">{{ item.label }}</span>
-                </DropdownMenuItem>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+          </template>
+        </NodeTypeMenu>
 
         <button
           @click="$emit('close')"
@@ -78,17 +60,10 @@
 <script setup lang="ts">
 import { inject, type Ref, type ComputedRef } from 'vue'
 import { X, Plus } from 'lucide-vue-next'
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from 'reka-ui'
+import NodeTypeMenu from '../components/NodeTypeMenu.vue'
 
 interface NextStep {
   show: ComputedRef<boolean>
-  paletteItems: { type: string; label: string; icon: any }[]
   showMenu: Ref<boolean>
   handleCreate: (nodeType: string) => void
 }
