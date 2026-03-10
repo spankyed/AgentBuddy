@@ -2,6 +2,8 @@ import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, ContentSection, SearchIndex } from '@app/api'
 import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@/core/trpc'
+import { Trash2 } from 'lucide-vue-next'
+import { contextMenuFn } from '@/core/context-menu'
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb'
 import {
   targetIs,
@@ -494,6 +496,14 @@ export const librarySystem = setup({
     clearEditingDocument: assign({
       editingDocument: undefined,
     }),
+    sendDeleteDocument: ({ event }) => {
+      const ev = event as { type: 'DELETE_DOCUMENT'; documentId: string };
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_ITEMS',
+        ids: [ev.documentId],
+      });
+    },
     updateEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'DOCUMENT_UPDATED' && context.editingDocument?.id === event.data.document.id) {
@@ -1073,10 +1083,15 @@ export const librarySystem = setup({
     },
     edit: {
       entry: assign({ currentView: 'edit' }),
-      meta: breadcrumbWithParams<LibraryContext>({
-        target: 'edit',
-        getLabel: (ctx) => `${ctx.editingDocument?.name || 'Document'}`,
-      }),
+      meta: {
+        ...breadcrumbWithParams<LibraryContext>({
+          target: 'edit',
+          getLabel: (ctx) => `${ctx.editingDocument?.name || 'Document'}`,
+        }),
+        ...contextMenuFn<LibraryContext>((ctx) => [
+          { label: 'Delete Document', icon: Trash2, event: { type: 'DELETE_DOCUMENT' as const, documentId: ctx.editingDocument!.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete "${ctx.editingDocument?.name || 'this document'}"?` },
+        ]),
+      },
       on: {
         SAVE_DOCUMENT: {
           target: 'browser',
@@ -1085,6 +1100,10 @@ export const librarySystem = setup({
         CANCEL_EDIT: {
           target: 'browser',
           actions: 'clearEditingDocument',
+        },
+        DELETE_DOCUMENT: {
+          target: 'browser',
+          actions: ['sendDeleteDocument', 'clearEditingDocument'],
         },
       },
     },

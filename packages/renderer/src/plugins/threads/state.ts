@@ -5,6 +5,8 @@ import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type { ThreadConnectedData, ThreadEntity, ThreadExtended, OutgoingThreadsEvents, ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS } from '@app/api';
 import { trpc } from '@/core/trpc';
+import { Trash2 } from 'lucide-vue-next';
+import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
 
@@ -347,6 +349,7 @@ const threadsState = setup({
     },
     THREAD_DELETED: {
       actions: 'removeThreadFromList',
+      target: '.list',
     },
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([
@@ -414,7 +417,10 @@ const threadsState = setup({
         ...breadcrumbWithParams<ThreadsContext>({
           target: 'view',
           getLabel: (ctx) => ctx.view.topic || 'Untitled Thread'
-        })
+        }),
+        ...contextMenuFn<ThreadsContext>((ctx) => [
+          { label: 'Delete Thread', icon: Trash2, event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.` },
+        ]),
       },
       on: {
         SHOW_CREATE_FORM_AS_CHILD: {

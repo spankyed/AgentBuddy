@@ -7,6 +7,7 @@ export interface ContextMenuItem {
   event: { type: string; [key: string]: any };
   separator?: boolean;
   isActive?: boolean;
+  confirm?: string;
 }
 
 export type ContextMenuMeta =

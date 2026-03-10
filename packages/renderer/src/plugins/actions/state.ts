@@ -15,6 +15,8 @@ import type {
   ActionsSettings,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
+import { Trash2 } from 'lucide-vue-next'
+import { contextMenuFn } from '@/core/context-menu'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -575,7 +577,10 @@ const actionsState = setup({
           getLabel: (ctx) => {
             return ctx.selectedAction?.label || ctx.selectedActionId || '';
           }
-        })
+        }),
+        ...contextMenuFn<ActionsContext>((ctx) => [
+          { label: 'Delete Action', icon: Trash2, event: { type: 'ACTION.DELETE' as const, actionId: ctx.selectedActionId! }, iconColor: 'text-red-400', confirm: 'Are you sure you want to delete this action?' },
+        ]),
       },
       on: {
         'FORM.UPDATE_LABEL': { actions: 'updateFormLabel' },
@@ -587,6 +592,9 @@ const actionsState = setup({
         'ACTION.SAVE': {
           actions: 'sendSaveAction',
           target: 'list',
+        },
+        'ACTION.DELETE': {
+          actions: 'sendDeleteAction',
         },
       },
     },

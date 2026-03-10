@@ -8,7 +8,7 @@
     <component
       :is="ItemComponent"
       class="flex items-center gap-2 px-3 py-2 text-sm rounded outline-none cursor-pointer text-neutral-50 hover:bg-neutral-700 focus:bg-neutral-700 transition-colors"
-      @select="$emit('action', item.event)"
+      @select="handleAction(item)"
     >
       <component
         v-if="item.icon"
@@ -33,7 +33,12 @@ defineProps<{
   SeparatorComponent: any;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   action: [event: { type: string; [key: string]: any }];
 }>();
+
+const handleAction = (item: ContextMenuItem) => {
+  if (item.confirm && !confirm(item.confirm)) return;
+  emit('action', item.event);
+};
 </script>

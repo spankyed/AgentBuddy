@@ -15,6 +15,8 @@ import type {
   PromptsSettings,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
+import { Trash2 } from 'lucide-vue-next'
+import { contextMenuFn } from '@/core/context-menu'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -575,7 +577,10 @@ const promptsState = setup({
           getLabel: (ctx) => {
             return ctx.selectedPrompt?.label || ctx.selectedPromptId || '';
           }
-        })
+        }),
+        ...contextMenuFn<PromptsContext>((ctx) => [
+          { label: 'Delete Prompt', icon: Trash2, event: { type: 'PROMPT.DELETE' as const, promptId: ctx.selectedPromptId! }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete "${ctx.selectedPrompt?.label || 'this prompt'}"?` },
+        ]),
       },
       on: {
         'FORM.UPDATE_LABEL': { actions: 'updateFormLabel' },
@@ -587,6 +592,9 @@ const promptsState = setup({
         'PROMPT.SAVE': {
           actions: 'sendSavePrompt',
           target: 'list',
+        },
+        'PROMPT.DELETE': {
+          actions: 'sendDeletePrompt',
         },
       },
     },
