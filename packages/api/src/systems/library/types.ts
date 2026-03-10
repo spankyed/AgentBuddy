@@ -17,7 +17,7 @@ export type {
 
 export type DocumentShortCode = `DOC-${number}`;
 
-export type ContentType = 'field' | 'list' | 'markdown' | 'text'
+export type ContentType = 'field' | 'list' | 'markdown' | 'text' | 'code'
 
 export interface FieldContent {
   type: 'field'
@@ -39,7 +39,13 @@ export interface TextContent {
   text: string
 }
 
-export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent
+export interface CodeContent {
+  type: 'code'
+  text: string
+  language: string
+}
+
+export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent
 
 export interface Document extends BaseEntity {
   _type: EARS.Entity.Document

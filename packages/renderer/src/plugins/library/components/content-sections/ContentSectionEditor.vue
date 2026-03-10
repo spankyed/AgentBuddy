@@ -12,6 +12,7 @@
         >
           <option value="markdown">Markdown</option>
           <option value="text">Plain Text</option>
+          <option value="code">Code</option>
           <option value="field">Fields</option>
           <option value="list">List</option>
         </select>
@@ -24,6 +25,7 @@
           <option value="" disabled>Select content type</option>
           <option value="markdown">Markdown</option>
           <option value="text">Plain Text</option>
+          <option value="code">Code</option>
           <option value="field">Field (Key-Value)</option>
           <option value="list">List</option>
         </select>
@@ -53,6 +55,7 @@
       v-if="section && isExpanded"
       :is="editorComponent"
       :content="section"
+      v-bind="section.type === 'code' && fileName ? { 'file-name': fileName } : {}"
       @update="handleUpdate"
     />
   </div>
@@ -61,15 +64,17 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { X, ChevronRight } from 'lucide-vue-next'
-import type { ContentSection, ContentType } from '@app/api'
+import type { ContentSection, ContentType, CodeContent } from '@app/api'
 import FieldEditor from './FieldEditor.vue'
 import ListEditor from './ListEditor.vue'
 import MarkdownEditor from './MarkdownEditor.vue'
 import TextEditor from './TextEditor.vue'
+import CodeEditor from './CodeEditor.vue'
 
 const props = defineProps<{
   section?: ContentSection
   showRemove?: boolean
+  fileName?: string
 }>()
 
 const emit = defineEmits<{
@@ -88,6 +93,7 @@ const hasContent = computed(() => {
   switch (props.section.type) {
     case 'markdown':
     case 'text':
+    case 'code':
       return props.section.text.trim().length > 0
     case 'field':
       return props.section.fields.some(f => f.key.trim() || f.value.trim())
@@ -105,6 +111,7 @@ const editorComponent = computed(() => {
     case 'list': return ListEditor as any
     case 'markdown': return MarkdownEditor as any
     case 'text': return TextEditor as any
+    case 'code': return CodeEditor as any
   }
 })
 
@@ -124,6 +131,9 @@ const initializeSection = () => {
       break
     case 'text':
       newSection = { type: 'text', text: '' }
+      break
+    case 'code':
+      newSection = { type: 'code', text: '', language: 'plaintext' }
       break
   }
 
@@ -148,6 +158,9 @@ const handleTypeChange = async (event: Event) => {
     case 'text':
       newSection = { type: 'text', text: '' }
       break
+    case 'code':
+      newSection = { type: 'code', text: '', language: 'plaintext' }
+      break
   }
 
   emit('update', newSection)
@@ -171,6 +184,9 @@ const handleUpdate = (data: any) => {
       break
     case 'text':
       updatedSection = { type: 'text', text: data }
+      break
+    case 'code':
+      updatedSection = { type: 'code', text: data, language: (props.section as CodeContent).language }
       break
   }
 

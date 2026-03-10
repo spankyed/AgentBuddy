@@ -44,6 +44,7 @@
               :ref="el => setSectionRef(el, index)"
               :section="section"
               :show-remove="formData.content.length > 1"
+              :file-name="formData.name"
               @update="updateContentSection(index, $event)"
               @remove="removeContentSection(index)"
               @type-changed="handleTypeChanged(index)"
