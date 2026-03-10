@@ -5,8 +5,9 @@
       label="Title"
       :isEditing="isViewMode"
       :isValid="isValid"
+      :hideSave="isViewMode"
       @back="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CANCEL_CREATE' })"
-      @save="actor.send({ type: isViewMode ? 'VIEW_LIST' : 'CREATE_THREAD' })"
+      @save="actor.send({ type: 'CREATE_THREAD' })"
     >
       <template #actions>
         <Button

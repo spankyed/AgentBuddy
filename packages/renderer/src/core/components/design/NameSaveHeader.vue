@@ -21,7 +21,7 @@
     <!-- Right: Action buttons -->
     <div class="flex items-center justify-end gap-2 pr-6">
       <slot name="actions" />
-      <Button @click="$emit('save')" :disabled="!isValid" variant="primary" class="shrink-0">
+      <Button v-if="!hideSave" @click="$emit('save')" :disabled="!isValid" variant="primary" class="shrink-0">
         <span>{{ isEditing ? 'Save' : 'Create' }}</span>
       </Button>
     </div>
@@ -35,10 +35,12 @@ withDefaults(defineProps<{
   label?: string;
   isEditing?: boolean;
   isValid?: boolean;
+  hideSave?: boolean;
 }>(), {
   label: 'Name',
   isEditing: false,
   isValid: true,
+  hideSave: false,
 });
 
 defineEmits<{
