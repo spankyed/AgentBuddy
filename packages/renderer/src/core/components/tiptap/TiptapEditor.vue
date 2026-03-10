@@ -6,6 +6,7 @@
     <template v-if="mode === 'editor' && editor">
       <TiptapBlockMenu :editor="editor" />
       <TiptapBubbleMenu :editor="editor" />
+      <TiptapImageBubbleMenu :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
   </div>
@@ -17,6 +18,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { createExtensions, type TiptapMode } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
+import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
