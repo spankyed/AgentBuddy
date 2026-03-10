@@ -31,12 +31,15 @@
       <button @click="applyLink" class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded">
         Apply
       </button>
+      <button v-if="hasExistingLink" @click="removeLink" class="p-1 text-neutral-400 hover:text-red-400 transition-colors" title="Remove link">
+        <X :size="14" />
+      </button>
     </div>
   </BubbleMenu>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import {
@@ -45,6 +48,7 @@ import {
   Strikethrough,
   Code,
   Link,
+  X,
 } from 'lucide-vue-next'
 
 const props = defineProps<{ editor: Editor }>()
@@ -52,10 +56,25 @@ const props = defineProps<{ editor: Editor }>()
 const linkInputVisible = ref(false)
 const linkUrl = ref('')
 const linkInputRef = ref<HTMLInputElement>()
+const hasExistingLink = ref(false)
+
+function resetLinkInput() {
+  linkInputVisible.value = false
+  linkUrl.value = ''
+}
+
+onMounted(() => {
+  props.editor.on('selectionUpdate', resetLinkInput)
+})
+
+onBeforeUnmount(() => {
+  props.editor.off('selectionUpdate', resetLinkInput)
+})
 
 function showLinkInput() {
   const existing = props.editor.getAttributes('link').href
   linkUrl.value = existing || ''
+  hasExistingLink.value = !!existing
   linkInputVisible.value = true
   nextTick(() => linkInputRef.value?.focus())
 }
@@ -63,9 +82,14 @@ function showLinkInput() {
 function applyLink() {
   const url = linkUrl.value.trim()
   if (url) {
-    // if (!/^https?:\/\//.test(url)) url = `https://${url}`
     props.editor.chain().focus().setLink({ href: url }).run()
   }
+  linkInputVisible.value = false
+  linkUrl.value = ''
+}
+
+function removeLink() {
+  props.editor.chain().focus().unsetLink().run()
   linkInputVisible.value = false
   linkUrl.value = ''
 }
@@ -114,13 +138,7 @@ const items = computed(() => {
       title: 'Link',
       icon: Link,
       isActive: () => e.isActive('link'),
-      command: () => {
-        if (e.isActive('link')) {
-          e.chain().focus().unsetLink().run()
-        } else {
-          showLinkInput()
-        }
-      },
+      command: () => showLinkInput(),
     },
   ]
 })
