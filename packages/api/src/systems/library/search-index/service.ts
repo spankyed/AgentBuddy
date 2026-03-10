@@ -198,6 +198,7 @@ function applyOccurrence<T>(items: T[], occurrence: Occurrence): T[] {
  */
 function sectionToText(section: ContentSection, key?: string): string {
   switch (section.type) {
+    case 'markdown':
     case 'text':
       return section.text
     case 'list':
@@ -218,7 +219,7 @@ function sectionToText(section: ContentSection, key?: string): string {
  */
 function extractMatchingSections(
   sections: ContentSection[],
-  type: 'text' | 'list' | 'field',
+  type: 'markdown' | 'text' | 'list' | 'field',
   occurrence: Occurrence,
   key?: string
 ): ContentSection[] {

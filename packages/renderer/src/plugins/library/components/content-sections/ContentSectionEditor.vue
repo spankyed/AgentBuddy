@@ -2,6 +2,7 @@
   <div ref="sectionRef" class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
+        <!-- Content type selector -->
         <select
           v-if="section"
           :value="section.type"
@@ -9,7 +10,8 @@
           @change="handleTypeChange($event)"
           class="px-3 py-1.5 text-xs font-medium tracking-wider uppercase transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-400 focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-default"
         >
-          <option value="text">Text Block</option>
+          <option value="markdown">Markdown</option>
+          <option value="text">Plain Text</option>
           <option value="field">Fields</option>
           <option value="list">List</option>
         </select>
@@ -20,7 +22,8 @@
           class="px-3 py-1.5 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
         >
           <option value="" disabled>Select content type</option>
-          <option value="text">Text Block</option>
+          <option value="markdown">Markdown</option>
+          <option value="text">Plain Text</option>
           <option value="field">Field (Key-Value)</option>
           <option value="list">List</option>
         </select>
@@ -61,7 +64,8 @@ import { X, ChevronRight } from 'lucide-vue-next'
 import type { ContentSection, ContentType } from '@app/api'
 import FieldEditor from './FieldEditor.vue'
 import ListEditor from './ListEditor.vue'
-import TextBlockEditor from './TextBlockEditor.vue'
+import MarkdownEditor from './MarkdownEditor.vue'
+import TextEditor from './TextEditor.vue'
 
 const props = defineProps<{
   section?: ContentSection
@@ -80,8 +84,9 @@ const isExpanded = ref(true)
 
 const hasContent = computed(() => {
   if (!props.section) return false
-  
+
   switch (props.section.type) {
+    case 'markdown':
     case 'text':
       return props.section.text.trim().length > 0
     case 'field':
@@ -98,13 +103,14 @@ const editorComponent = computed(() => {
   switch (props.section.type) {
     case 'field': return FieldEditor as any
     case 'list': return ListEditor as any
-    case 'text': return TextBlockEditor as any
+    case 'markdown': return MarkdownEditor as any
+    case 'text': return TextEditor as any
   }
 })
 
 const initializeSection = () => {
   if (!selectedType.value) return
-  
+
   let newSection: ContentSection
   switch (selectedType.value) {
     case 'field':
@@ -113,18 +119,21 @@ const initializeSection = () => {
     case 'list':
       newSection = { type: 'list', items: [''] }
       break
+    case 'markdown':
+      newSection = { type: 'markdown', text: '' }
+      break
     case 'text':
       newSection = { type: 'text', text: '' }
       break
   }
-  
+
   emit('update', newSection)
   selectedType.value = ''
 }
 
 const handleTypeChange = async (event: Event) => {
   const newType = (event.target as HTMLSelectElement).value as ContentType
-  
+
   let newSection: ContentSection
   switch (newType) {
     case 'field':
@@ -133,11 +142,14 @@ const handleTypeChange = async (event: Event) => {
     case 'list':
       newSection = { type: 'list', items: [''] }
       break
+    case 'markdown':
+      newSection = { type: 'markdown', text: '' }
+      break
     case 'text':
       newSection = { type: 'text', text: '' }
       break
   }
-  
+
   emit('update', newSection)
   await nextTick()
   emit('type-changed')
@@ -145,7 +157,7 @@ const handleTypeChange = async (event: Event) => {
 
 const handleUpdate = (data: any) => {
   if (!props.section) return
-  
+
   let updatedSection: ContentSection
   switch (props.section.type) {
     case 'field':
@@ -154,11 +166,14 @@ const handleUpdate = (data: any) => {
     case 'list':
       updatedSection = { type: 'list', items: data }
       break
+    case 'markdown':
+      updatedSection = { type: 'markdown', text: data }
+      break
     case 'text':
       updatedSection = { type: 'text', text: data }
       break
   }
-  
+
   emit('update', updatedSection)
 }
 

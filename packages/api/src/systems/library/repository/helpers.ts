@@ -83,8 +83,8 @@ export const formatFileSize = (bytes: number): string => {
 
 export const getContentLength = (content: ContentSection[] | undefined | null): number => {
   if (!content || !Array.isArray(content)) return 0
-  return content.reduce((length, section) => 
-    length + (section.type === 'text' ? section.text.length :
+  return content.reduce((length, section) =>
+    length + (section.type === 'markdown' || section.type === 'text' ? section.text.length :
     section.type === 'field' ? section.fields.reduce((acc, field) => acc + field.key.length + field.value.length, 0) :
     section.type === 'list' ? section.items.reduce((acc, item) => acc + item.length, 0) : 0), 0)
 }

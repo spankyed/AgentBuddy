@@ -10,7 +10,7 @@ import * as symlink from '@/systems/library/repository/symlink';
 
 function normalizeContent(content: string | ContentSection[]): ContentSection[] {
   if (typeof content === 'string') {
-    return [{ type: 'text' as const, text: content }]
+    return [{ type: 'markdown' as const, text: content }]
   }
   return content
 }
@@ -54,7 +54,8 @@ export class LibraryService {
       if (!resolved) return undefined
       const text = await symlink.readFile(resolved.absolutePath)
       const name = path.basename(resolved.absolutePath)
-      return makeSymlinkDocumentDTO(id, name, [{ type: 'text' as const, text }])
+      const contentType = name.endsWith('.md') ? 'markdown' as const : 'text' as const
+      return makeSymlinkDocumentDTO(id, name, [{ type: contentType, text }])
     }
     const document = repository.libraryQueries.getDocument(id);
     return document || undefined;
@@ -74,7 +75,7 @@ export class LibraryService {
     const doc = await this.get(id)
     if (!doc) return undefined
     return doc.content
-      .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+      .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> => s.type === 'markdown' || s.type === 'text')
       .map(s => s.text)
       .join('\n')
   }
@@ -100,7 +101,7 @@ export class LibraryService {
     if (resolved) {
       await symlink.createFile(resolved.absolutePath, name)
       const textContent = content
-        .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+        .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> => s.type === 'markdown' || s.type === 'text')
         .map(s => s.text)
         .join('\n')
       if (textContent) {
@@ -140,7 +141,7 @@ export class LibraryService {
 
       if (resolved) {
         const textContent = content
-          .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+          .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> => s.type === 'markdown' || s.type === 'text')
           .map(s => s.text)
           .join('\n')
         await symlink.writeFile(resolved.absolutePath, textContent)

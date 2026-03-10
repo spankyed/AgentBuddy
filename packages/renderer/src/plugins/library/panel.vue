@@ -46,9 +46,13 @@
               :key="index"
               class="px-2 py-1.5 bg-neutral-800 rounded text-xs"
             >
-              <template v-if="section.type === 'text'">
+              <template v-if="section.type === 'markdown'">
+                <span class="text-neutral-500">Markdown:</span>
+                <span class="ml-1 text-neutral-300">{{ truncateText((section as MarkdownContent).text, 50) }}</span>
+              </template>
+              <template v-else-if="section.type === 'text'">
                 <span class="text-neutral-500">Text:</span>
-                <span class="ml-1 text-neutral-300">{{ truncateText((section as TextBlockContent).text, 50) }}</span>
+                <span class="ml-1 text-neutral-300">{{ truncateText((section as TextContent).text, 50) }}</span>
               </template>
               <template v-else-if="section.type === 'field'">
                 <span class="text-neutral-500">Fields ({{ countValidFields((section as FieldContent).fields) }}):</span>
@@ -241,7 +245,7 @@ import { applicationState } from '@/main'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
 // [SEARCH_INDEX_FF] import { getModelConfig } from './config/embedding-models'
-import type { ContentSection, TextBlockContent, FieldContent, ListContent } from '@app/api'
+import type { ContentSection, MarkdownContent, TextContent, FieldContent, ListContent } from '@app/api'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = applicationState.system.get(id) as LibraryActor

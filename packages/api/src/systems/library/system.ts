@@ -36,7 +36,12 @@ const ListContentSchema = z.object({
   items: z.array(z.string())
 })
 
-const TextBlockContentSchema = z.object({
+const MarkdownContentSchema = z.object({
+  type: z.literal('markdown'),
+  text: z.string()
+})
+
+const TextContentSchema = z.object({
   type: z.literal('text'),
   text: z.string()
 })
@@ -44,7 +49,8 @@ const TextBlockContentSchema = z.object({
 const ContentSectionSchema = z.union([
   FieldContentSchema,
   ListContentSchema,
-  TextBlockContentSchema
+  MarkdownContentSchema,
+  TextContentSchema
 ])
 
 const IncomingLibraryEvents = [
