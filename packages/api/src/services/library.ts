@@ -8,9 +8,23 @@ import * as symlink from '@/systems/library/repository/symlink';
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+const CODE_EXTENSIONS = new Set([
+  'ts', 'tsx', 'js', 'jsx', 'py', 'json', 'html', 'css',
+  'yaml', 'yml', 'go', 'rs', 'java', 'c', 'cpp', 'rb',
+  'sh', 'sql', 'xml', 'vue', 'php', 'swift', 'kt', 'scss',
+  'less', 'jsonc',
+])
+
+function getContentInfoForFile(name: string): { type: 'markdown' } | { type: 'code'; language: string } | { type: 'text' } {
+  const ext = name.split('.').pop()?.toLowerCase() || ''
+  if (ext === 'md') return { type: 'markdown' }
+  if (CODE_EXTENSIONS.has(ext)) return { type: 'code', language: ext }
+  return { type: 'text' }
+}
+
 function normalizeContent(content: string | ContentSection[]): ContentSection[] {
   if (typeof content === 'string') {
-    return [{ type: 'text' as const, text: content }]
+    return [{ type: 'markdown' as const, text: content }]
   }
   return content
 }
@@ -54,7 +68,11 @@ export class LibraryService {
       if (!resolved) return undefined
       const text = await symlink.readFile(resolved.absolutePath)
       const name = path.basename(resolved.absolutePath)
-      return makeSymlinkDocumentDTO(id, name, [{ type: 'text' as const, text }])
+      const info = getContentInfoForFile(name)
+      const section: ContentSection = info.type === 'code'
+        ? { type: 'code', text, language: info.language }
+        : { type: info.type, text }
+      return makeSymlinkDocumentDTO(id, name, [section])
     }
     const document = repository.libraryQueries.getDocument(id);
     return document || undefined;
@@ -74,7 +92,7 @@ export class LibraryService {
     const doc = await this.get(id)
     if (!doc) return undefined
     return doc.content
-      .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+      .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> | Extract<ContentSection, { type: 'code' }> => s.type === 'markdown' || s.type === 'text' || s.type === 'code')
       .map(s => s.text)
       .join('\n')
   }
@@ -100,7 +118,7 @@ export class LibraryService {
     if (resolved) {
       await symlink.createFile(resolved.absolutePath, name)
       const textContent = content
-        .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+        .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> | Extract<ContentSection, { type: 'code' }> => s.type === 'markdown' || s.type === 'text' || s.type === 'code')
         .map(s => s.text)
         .join('\n')
       if (textContent) {
@@ -140,7 +158,7 @@ export class LibraryService {
 
       if (resolved) {
         const textContent = content
-          .filter((s): s is Extract<ContentSection, { type: 'text' }> => s.type === 'text')
+          .filter((s): s is Extract<ContentSection, { type: 'markdown' }> | Extract<ContentSection, { type: 'text' }> | Extract<ContentSection, { type: 'code' }> => s.type === 'markdown' || s.type === 'text' || s.type === 'code')
           .map(s => s.text)
           .join('\n')
         await symlink.writeFile(resolved.absolutePath, textContent)

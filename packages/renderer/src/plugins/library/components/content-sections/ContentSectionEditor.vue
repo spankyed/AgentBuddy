@@ -2,28 +2,20 @@
   <div ref="sectionRef" class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <button
-          v-if="section && hasContent"
-          @click="isExpanded = !isExpanded"
-          type="button"
-          class="p-1 text-neutral-400 hover:text-neutral-200 transition-all"
-          :class="{ 'rotate-90': isExpanded }"
-        >
-          <ChevronRight class="w-4 h-4" />
-        </button>
+        <!-- Content type selector -->
         <select
-          v-if="section && !hasContent"
+          v-if="section"
           :value="section.type"
+          :disabled="hasContent"
           @change="handleTypeChange($event)"
-          class="px-3 py-1.5 text-xs font-medium tracking-wider uppercase transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-400 focus:outline-none focus:border-blue-500"
+          class="px-3 py-1.5 text-xs font-medium tracking-wider uppercase transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-400 focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-default"
         >
-          <option value="text">Text Block</option>
+          <option value="markdown">Markdown</option>
+          <option value="text">Plain Text</option>
+          <option value="code">Code</option>
           <option value="field">Fields</option>
           <option value="list">List</option>
         </select>
-        <span v-else-if="section" class="text-xs font-medium tracking-wider uppercase text-neutral-400">
-          {{ sectionTypeLabel }}
-        </span>
         <select
           v-else
           v-model="selectedType"
@@ -31,26 +23,39 @@
           class="px-3 py-1.5 text-sm transition-colors border rounded-md bg-neutral-800 border-neutral-700 text-neutral-100 focus:outline-none focus:border-blue-500"
         >
           <option value="" disabled>Select content type</option>
-          <option value="text">Text Block</option>
+          <option value="markdown">Markdown</option>
+          <option value="text">Plain Text</option>
+          <option value="code">Code</option>
           <option value="field">Field (Key-Value)</option>
           <option value="list">List</option>
         </select>
       </div>
-      <button
-        v-if="showRemove"
-        @click="$emit('remove')"
-        type="button"
-        class="p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
-        title="Remove section"
-      >
-        <X class="w-4 h-4" />
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          @click="isExpanded = !isExpanded"
+          type="button"
+          class="p-1 text-neutral-400 hover:text-neutral-200 transition-all"
+          :class="{ 'rotate-90': isExpanded }"
+        >
+          <ChevronRight class="w-4 h-4" />
+        </button>
+        <button
+          v-if="showRemove"
+          @click="$emit('remove')"
+          type="button"
+          class="p-1.5 text-neutral-400 hover:text-red-400 transition-colors"
+          title="Remove section"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <component
       v-if="section && isExpanded"
       :is="editorComponent"
       :content="section"
+      v-bind="section.type === 'code' && fileName ? { 'file-name': fileName } : {}"
       @update="handleUpdate"
     />
   </div>
@@ -59,14 +64,17 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { X, ChevronRight } from 'lucide-vue-next'
-import type { ContentSection, ContentType } from '@app/api'
+import type { ContentSection, ContentType, CodeContent } from '@app/api'
 import FieldEditor from './FieldEditor.vue'
 import ListEditor from './ListEditor.vue'
-import TextBlockEditor from './TextBlockEditor.vue'
+import MarkdownEditor from './MarkdownEditor.vue'
+import TextEditor from './TextEditor.vue'
+import CodeEditor from './CodeEditor.vue'
 
 const props = defineProps<{
   section?: ContentSection
   showRemove?: boolean
+  fileName?: string
 }>()
 
 const emit = defineEmits<{
@@ -81,9 +89,11 @@ const isExpanded = ref(true)
 
 const hasContent = computed(() => {
   if (!props.section) return false
-  
+
   switch (props.section.type) {
+    case 'markdown':
     case 'text':
+    case 'code':
       return props.section.text.trim().length > 0
     case 'field':
       return props.section.fields.some(f => f.key.trim() || f.value.trim())
@@ -94,32 +104,20 @@ const hasContent = computed(() => {
   }
 })
 
-const sectionTypeLabel = computed(() => {
-  if (!props.section) return ''
-  switch (props.section.type) {
-    case 'field': 
-      const fieldCount = props.section.fields.filter(f => f.key.trim() || f.value.trim()).length
-      return fieldCount > 0 ? `Fields (${fieldCount})` : 'Fields'
-    case 'list': 
-      const itemCount = props.section.items.filter(item => item.trim()).length
-      return itemCount > 0 ? `List (${itemCount})` : 'List'
-    case 'text': 
-      return 'Text Block'
-  }
-})
-
 const editorComponent = computed(() => {
   if (!props.section) return null
   switch (props.section.type) {
     case 'field': return FieldEditor as any
     case 'list': return ListEditor as any
-    case 'text': return TextBlockEditor as any
+    case 'markdown': return MarkdownEditor as any
+    case 'text': return TextEditor as any
+    case 'code': return CodeEditor as any
   }
 })
 
 const initializeSection = () => {
   if (!selectedType.value) return
-  
+
   let newSection: ContentSection
   switch (selectedType.value) {
     case 'field':
@@ -128,18 +126,24 @@ const initializeSection = () => {
     case 'list':
       newSection = { type: 'list', items: [''] }
       break
+    case 'markdown':
+      newSection = { type: 'markdown', text: '' }
+      break
     case 'text':
       newSection = { type: 'text', text: '' }
       break
+    case 'code':
+      newSection = { type: 'code', text: '', language: 'plaintext' }
+      break
   }
-  
+
   emit('update', newSection)
   selectedType.value = ''
 }
 
 const handleTypeChange = async (event: Event) => {
   const newType = (event.target as HTMLSelectElement).value as ContentType
-  
+
   let newSection: ContentSection
   switch (newType) {
     case 'field':
@@ -148,11 +152,17 @@ const handleTypeChange = async (event: Event) => {
     case 'list':
       newSection = { type: 'list', items: [''] }
       break
+    case 'markdown':
+      newSection = { type: 'markdown', text: '' }
+      break
     case 'text':
       newSection = { type: 'text', text: '' }
       break
+    case 'code':
+      newSection = { type: 'code', text: '', language: 'plaintext' }
+      break
   }
-  
+
   emit('update', newSection)
   await nextTick()
   emit('type-changed')
@@ -160,7 +170,7 @@ const handleTypeChange = async (event: Event) => {
 
 const handleUpdate = (data: any) => {
   if (!props.section) return
-  
+
   let updatedSection: ContentSection
   switch (props.section.type) {
     case 'field':
@@ -169,11 +179,17 @@ const handleUpdate = (data: any) => {
     case 'list':
       updatedSection = { type: 'list', items: data }
       break
+    case 'markdown':
+      updatedSection = { type: 'markdown', text: data }
+      break
     case 'text':
       updatedSection = { type: 'text', text: data }
       break
+    case 'code':
+      updatedSection = { type: 'code', text: data, language: (props.section as CodeContent).language }
+      break
   }
-  
+
   emit('update', updatedSection)
 }
 

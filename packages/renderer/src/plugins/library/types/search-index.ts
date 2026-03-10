@@ -1,6 +1,6 @@
 import type { EARS, EmbeddingModelId } from '@app/api'
 
-type ContentType = 'field' | 'list' | 'text'
+type ContentType = 'field' | 'list' | 'markdown' | 'text'
 
 export type EmbeddingModel = EmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'

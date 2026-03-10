@@ -394,6 +394,7 @@ interface AgentMode {
     description: string;
     phases?: AgentPhase[];
     hidden?: boolean;
+    disabled?: boolean;
 }
 interface AgentSettings {
     modes: AgentMode[];
@@ -534,11 +535,20 @@ interface ListContent {
     type: 'list';
     items: string[];
 }
-interface TextBlockContent {
+interface MarkdownContent {
+    type: 'markdown';
+    text: string;
+}
+interface TextContent {
     type: 'text';
     text: string;
 }
-type ContentSection = FieldContent | ListContent | TextBlockContent;
+interface CodeContent {
+    type: 'code';
+    text: string;
+    language: string;
+}
+type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 interface DocumentDTO {
     id: EARS.EntityId;
     name: string;
@@ -675,6 +685,111 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"USER_MSG">;
+        systemId: zod.ZodLiteral<"agent">;
+        text: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodString>;
+        phase: zod.ZodOptional<zod.ZodString>;
+        threadId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        text: string;
+        type: "USER_MSG";
+        systemId: "agent";
+        mode?: string | undefined;
+        phase?: string | undefined;
+        threadId?: string | undefined;
+    }, {
+        text: string;
+        type: "USER_MSG";
+        systemId: "agent";
+        mode?: string | undefined;
+        phase?: string | undefined;
+        threadId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
+        systemId: zod.ZodLiteral<"agent">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
+        type: "OPEN_THREAD_CHAT";
+        systemId: "agent";
+    }, {
+        threadId: string;
+        type: "OPEN_THREAD_CHAT";
+        systemId: "agent";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
+        systemId: zod.ZodLiteral<"agent">;
+        threadId: zod.ZodString;
+        label: zod.ZodString;
+        pinned: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        threadId: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "agent";
+        pinned?: boolean | undefined;
+    }, {
+        label: string;
+        threadId: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "agent";
+        pinned?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CANCEL">;
+        systemId: zod.ZodLiteral<"agent">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CANCEL";
+        systemId: "agent";
+    }, {
+        type: "CANCEL";
+        systemId: "agent";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+        tasks: zod.ZodArray<zod.ZodAny, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+        tasks: any[];
+    }, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+        tasks: any[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
+        systemId: zod.ZodLiteral<"agent">;
+        artifactId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REJECT_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+    }, {
+        type: "REJECT_TODO_LIST";
+        systemId: "agent";
+        artifactId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"INTERACTIVE_MSG_RESPONSE">;
+        systemId: zod.ZodLiteral<"agent">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodString;
+        response: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
+        type: "INTERACTIVE_MSG_RESPONSE";
+        systemId: "agent";
+        messageId: string;
+        response?: any;
+    }, {
+        threadId: string;
+        type: "INTERACTIVE_MSG_RESPONSE";
+        systemId: "agent";
+        messageId: string;
+        response?: any;
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -788,111 +903,6 @@ declare const events: {
         type: "TEST_CLI_PROVIDER";
         systemId: "settings";
         provider: string;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"USER_MSG">;
-        systemId: zod.ZodLiteral<"agent">;
-        text: zod.ZodString;
-        mode: zod.ZodOptional<zod.ZodString>;
-        phase: zod.ZodOptional<zod.ZodString>;
-        threadId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "agent";
-        mode?: string | undefined;
-        phase?: string | undefined;
-        threadId?: string | undefined;
-    }, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "agent";
-        mode?: string | undefined;
-        phase?: string | undefined;
-        threadId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
-        systemId: zod.ZodLiteral<"agent">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "OPEN_THREAD_CHAT";
-        systemId: "agent";
-        threadId: string;
-    }, {
-        type: "OPEN_THREAD_CHAT";
-        systemId: "agent";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
-        systemId: zod.ZodLiteral<"agent">;
-        threadId: zod.ZodString;
-        label: zod.ZodString;
-        pinned: zod.ZodOptional<zod.ZodBoolean>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "agent";
-        threadId: string;
-        pinned?: boolean | undefined;
-    }, {
-        label: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "agent";
-        threadId: string;
-        pinned?: boolean | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CANCEL">;
-        systemId: zod.ZodLiteral<"agent">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CANCEL";
-        systemId: "agent";
-    }, {
-        type: "CANCEL";
-        systemId: "agent";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
-        systemId: zod.ZodLiteral<"agent">;
-        artifactId: zod.ZodString;
-        tasks: zod.ZodArray<zod.ZodAny, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-        tasks: any[];
-    }, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-        tasks: any[];
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
-        systemId: zod.ZodLiteral<"agent">;
-        artifactId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REJECT_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-    }, {
-        type: "REJECT_TODO_LIST";
-        systemId: "agent";
-        artifactId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"INTERACTIVE_MSG_RESPONSE">;
-        systemId: zod.ZodLiteral<"agent">;
-        messageId: zod.ZodString;
-        threadId: zod.ZodString;
-        response: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "INTERACTIVE_MSG_RESPONSE";
-        systemId: "agent";
-        threadId: string;
-        messageId: string;
-        response?: any;
-    }, {
-        type: "INTERACTIVE_MSG_RESPONSE";
-        systemId: "agent";
-        threadId: string;
-        messageId: string;
-        response?: any;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -1057,13 +1067,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
-        threadId: string;
     }, {
+        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1071,14 +1081,14 @@ declare const events: {
         status: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         status: string;
+        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
-        threadId: string;
     }, {
         status: string;
+        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1086,15 +1096,15 @@ declare const events: {
         key: zod.ZodString;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
-        threadId: string;
         key: string;
         value?: any;
     }, {
+        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
-        threadId: string;
         key: string;
         value?: any;
     }>, zod.ZodObject<{
@@ -1102,13 +1112,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "DELETE_THREAD";
         systemId: "threads";
-        threadId: string;
     }, {
+        threadId: string;
         type: "DELETE_THREAD";
         systemId: "threads";
-        threadId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -1636,9 +1646,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
+        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
-        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -1646,9 +1656,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
+        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
-        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -1735,6 +1745,15 @@ declare const events: {
             type: "list";
             items: string[];
         }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"markdown">;
+            text: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "markdown";
+        }, {
+            text: string;
+            type: "markdown";
+        }>, zod.ZodObject<{
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
@@ -1743,6 +1762,18 @@ declare const events: {
         }, {
             text: string;
             type: "text";
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"code">;
+            text: zod.ZodString;
+            language: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "code";
+            language: string;
+        }, {
+            text: string;
+            type: "code";
+            language: string;
         }>]>, "many">;
         tags: zod.ZodArray<zod.ZodString, "many">;
         collectionId: zod.ZodOptional<zod.ZodString>;
@@ -1759,7 +1790,14 @@ declare const events: {
             items: string[];
         } | {
             text: string;
+            type: "markdown";
+        } | {
+            text: string;
             type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
@@ -1778,7 +1816,14 @@ declare const events: {
             items: string[];
         } | {
             text: string;
+            type: "markdown";
+        } | {
+            text: string;
             type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
         })[];
         type: "CREATE_DOCUMENT";
         systemId: "library";
@@ -1823,6 +1868,15 @@ declare const events: {
             type: "list";
             items: string[];
         }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"markdown">;
+            text: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "markdown";
+        }, {
+            text: string;
+            type: "markdown";
+        }>, zod.ZodObject<{
             type: zod.ZodLiteral<"text">;
             text: zod.ZodString;
         }, "strip", zod.ZodTypeAny, {
@@ -1831,6 +1885,18 @@ declare const events: {
         }, {
             text: string;
             type: "text";
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"code">;
+            text: zod.ZodString;
+            language: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "code";
+            language: string;
+        }, {
+            text: string;
+            type: "code";
+            language: string;
         }>]>, "many">;
         tags: zod.ZodArray<zod.ZodString, "many">;
         collectionId: zod.ZodOptional<zod.ZodString>;
@@ -1848,7 +1914,14 @@ declare const events: {
             items: string[];
         } | {
             text: string;
+            type: "markdown";
+        } | {
+            text: string;
             type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
@@ -1868,7 +1941,14 @@ declare const events: {
             items: string[];
         } | {
             text: string;
+            type: "markdown";
+        } | {
+            text: string;
             type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
         })[];
         type: "UPDATE_DOCUMENT";
         systemId: "library";
@@ -2638,55 +2718,6 @@ declare const events: {
         fromUserNavigation?: boolean | undefined;
     }>];
     readonly outgoing: {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
         type: "AGENT_CONNECTED";
         data: AgentConnectedData;
         pluginId: "agent";
@@ -2741,6 +2772,55 @@ declare const events: {
         type: "SET_MODE";
         mode: string;
         pluginId: "agent";
+    } | {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
     } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
