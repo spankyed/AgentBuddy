@@ -128,7 +128,7 @@
               </div>
             </div>
           </div>
-          <TipSection :example-categories="tipExamples" />
+          <TipSection />
         </div>
       </div>
     </div>
@@ -171,21 +171,6 @@ const emit = defineEmits<{
 const actionQuery = ref('')
 const isActionDropdownOpen = ref(false)
 
-// Tip examples configuration
-const tipExamples = [
-  {
-    label: 'JSONPath Expressions',
-    examples: [
-      '$.event.data.payload', '$.lastStep.result', '$.steps[1].result',
-      '$.steps[label=First Step].result',
-      '$.context.*', '$.variables.myVar'
-    ]
-  },
-  {
-    label: 'Literal Values',
-    examples: ['"hello"', '123', 'true', '{"key": "value"}']
-  }
-]
 
 const { startsWith } = useFilter({ sensitivity: 'base' })
 

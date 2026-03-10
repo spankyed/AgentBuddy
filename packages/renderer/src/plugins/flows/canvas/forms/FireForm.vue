@@ -72,7 +72,7 @@
               Map data from execution context to send as event payload
             </p>
           </div>
-          <TipSection :example-categories="tipExamples" />
+          <TipSection />
         </div>
       </div>
     </div>
@@ -103,21 +103,6 @@ const scopeOptions = [
   { value: 'global', label: 'Global' }
 ]
 
-// Tip examples configuration
-const tipExamples = [
-  {
-    label: 'JSONPath Expressions',
-    examples: [
-      '$.event.data.payload', '$.lastStep.result', '$.steps[1].result',
-      '$.steps[label=First Step].result',
-      '$.context.*', '$.variables.myVar'
-    ]
-  },
-  {
-    label: 'Literal Values',
-    examples: ['"hello"', '123', 'true', '{"key": "value"}']
-  }
-]
 
 // Field mappings
 const fieldMappings = computed(() => {

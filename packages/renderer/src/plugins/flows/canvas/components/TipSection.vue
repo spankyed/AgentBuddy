@@ -19,7 +19,7 @@
     </button>
     <Transition name="collapse">
       <div v-if="isExpanded" class="p-3 pt-0">
-        <div class="grid grid-cols-2 gap-4">
+        <div :class="['grid gap-4', exampleCategories.length >= 3 ? 'grid-cols-3' : 'grid-cols-2']">
         <div v-for="category in exampleCategories" :key="category.label">
           <div class="text-xs font-semibold text-neutral-300 mb-2 uppercase tracking-wider">{{ category.label }}</div>
           <div class="space-y-1.5">
@@ -163,6 +163,6 @@ const copyToClipboard = async (text: string) => {
 .collapse-enter-to,
 .collapse-leave-from {
   opacity: 1;
-  max-height: 500px;
+  max-height: 800px;
 }
 </style>

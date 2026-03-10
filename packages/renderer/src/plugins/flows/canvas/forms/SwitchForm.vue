@@ -136,28 +136,17 @@
         </div>
       </div>
 
-      <!-- Key Path Tips -->
-      <div class="pt-4 border-t border-neutral-800">
-        <details class="group">
-          <summary class="flex items-center gap-2 text-xs font-medium cursor-pointer text-neutral-500 hover:text-neutral-400">
-            <ChevronRight class="w-3 h-3 transition-transform group-open:rotate-90" />
-            Key Path Examples
-          </summary>
-          <div class="mt-3 p-3 rounded-md bg-neutral-800/30 border border-neutral-700 text-xs text-neutral-400 space-y-2">
-            <p><code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.event.data.status</code> - Event payload field</p>
-            <p><code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.lastStep.result</code> - Previous step result</p>
-            <p><code class="px-1 py-0.5 rounded bg-neutral-700 text-neutral-300">$.steps[label=MyStep].result</code> - Specific step by label</p>
-          </div>
-        </details>
-      </div>
+      <!-- Example Values -->
+      <TipSection />
     </div>
   </BaseForm>
 </template>
 
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { Plus, Trash2, ChevronRight } from 'lucide-vue-next'
+import { Plus, Trash2 } from 'lucide-vue-next'
 import BaseForm from './BaseForm.vue'
+import TipSection from '../components/TipSection.vue'
 import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@app/api'
 
 // Type guard and accessor for object predicates (vs function predicates)
