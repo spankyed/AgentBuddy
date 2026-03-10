@@ -185,7 +185,7 @@ onMounted(() => {
 const handleInput = (e: Event) => {
   if (props.disabled) return
   const target = e.target as HTMLDivElement
-  messageContent.value = target.textContent || ''
+  messageContent.value = target.innerText || ''
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -218,7 +218,7 @@ const handleSubmit = () => {
   if (messageContent.value.trim()) {
     emit('send-message', messageContent.value)
     if (editorRef.value) {
-      editorRef.value.textContent = ''
+      editorRef.value.innerText = ''
       editorRef.value.classList.add('empty')
     }
     messageContent.value = ''
