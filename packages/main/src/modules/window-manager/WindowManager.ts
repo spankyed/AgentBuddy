@@ -8,6 +8,8 @@ import {join} from 'node:path';
 import {WINDOW_CONFIG} from './constants.js';
 import {SPLASH_CONFIG} from '../splash-screen/constants.js';
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+import {getMediaBasePath} from '../media-protocol/paths.js';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -186,6 +188,56 @@ class WindowManager implements AppModule {
       if (/^https?:\/\//.test(url)) {
         await shell.openExternal(url);
       }
+    });
+
+    // Media upload handler
+    ipcMain.handle('media:upload', async (_event, entityId: string, base64Data: string, mimeType: string) => {
+      // Validate entityId and mimeType
+      if (!entityId || entityId.includes('..') || entityId.includes('/') || entityId.includes('\\')) {
+        throw new Error('Invalid entityId');
+      }
+
+      const allowedTypes: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+      };
+
+      const ext = allowedTypes[mimeType];
+      if (!ext) {
+        throw new Error(`Unsupported image type: ${mimeType}`);
+      }
+
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > 10 * 1024 * 1024) {
+        throw new Error('Image exceeds 10MB limit');
+      }
+
+      const filename = `${crypto.randomUUID()}.${ext}`;
+      const dir = join(getMediaBasePath(), entityId);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(join(dir, filename), buffer);
+
+      return `media://${entityId}/${filename}`;
+    });
+
+    // Media delete handler
+    ipcMain.handle('media:delete', async (_event, entityId: string, filename: string) => {
+      if (!entityId || !filename || entityId.includes('..') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        throw new Error('Invalid path');
+      }
+      const filePath = join(getMediaBasePath(), entityId, filename);
+      await fs.unlink(filePath).catch(() => {});
+    });
+
+    // Media delete-all handler
+    ipcMain.handle('media:delete-all', async (_event, entityId: string) => {
+      if (!entityId || entityId.includes('..') || entityId.includes('/') || entityId.includes('\\')) {
+        throw new Error('Invalid entityId');
+      }
+      const dir = join(getMediaBasePath(), entityId);
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
     });
   }
 

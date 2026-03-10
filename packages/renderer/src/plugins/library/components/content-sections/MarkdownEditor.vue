@@ -3,6 +3,7 @@
     <TiptapEditor
       mode="editor"
       :model-value="content.text"
+      :entity-id="entityId"
       placeholder="Enter markdown content..."
       @update:model-value="emit('update', $event)"
     />
@@ -15,6 +16,7 @@ import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 defineProps<{
   content: MarkdownContent
+  entityId?: string
 }>()
 
 const emit = defineEmits<{

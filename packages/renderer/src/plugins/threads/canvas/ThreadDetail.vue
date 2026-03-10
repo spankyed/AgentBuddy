@@ -61,6 +61,7 @@
               <TiptapEditor
                 mode="editor"
                 :model-value="instructions"
+                :entity-id="threadId"
                 placeholder="Enter instructions for the agent"
                 @update:model-value="v => updateField('instructions', v)"
               />

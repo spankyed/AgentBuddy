@@ -46,6 +46,7 @@
               :show-remove="formData.content.length > 1"
               :file-name="formData.name"
               :is-symlink="isSymlink"
+              :entity-id="document?.id"
               @update="updateContentSection(index, $event)"
               @remove="removeContentSection(index)"
               @type-changed="handleTypeChanged(index)"
