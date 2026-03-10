@@ -3,24 +3,40 @@
     v-if="editor"
     :editor="editor"
     :options="{ placement: 'top', offset: 8, strategy: 'absolute' }"
-    class="bubble-menu flex items-center gap-0.5 px-1.5 py-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
+    class="bubble-menu flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
-    <button
-      v-for="item in items"
-      :key="item.action"
-      type="button"
-      class="p-1.5 rounded hover:bg-neutral-600 transition-colors text-neutral-400 hover:text-neutral-200"
-      :class="{ 'bg-neutral-600 text-neutral-100': item.isActive?.() }"
-      :title="item.title"
-      @click="item.command"
-    >
-      <component :is="item.icon" :size="15" />
-    </button>
+    <div class="flex items-center gap-0.5 px-1.5 py-1">
+      <button
+        v-for="item in items"
+        :key="item.action"
+        type="button"
+        class="p-1.5 rounded hover:bg-neutral-600 transition-colors text-neutral-400 hover:text-neutral-200"
+        :class="{ 'bg-neutral-600 text-neutral-100': item.isActive?.() }"
+        :title="item.title"
+        @click="item.command"
+      >
+        <component :is="item.icon" :size="15" />
+      </button>
+    </div>
+    <div v-if="linkInputVisible" class="flex items-center gap-1.5 px-1.5 py-1 border-t border-neutral-700">
+      <input
+        ref="linkInputRef"
+        v-model="linkUrl"
+        type="url"
+        class="w-56 px-2 py-1 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-100 focus:outline-none focus:border-blue-500"
+        placeholder="Enter URL"
+        @keydown.enter="applyLink"
+        @keydown.escape="cancelLink"
+      />
+      <button @click="applyLink" class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded">
+        Apply
+      </button>
+    </div>
   </BubbleMenu>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import {
@@ -32,6 +48,32 @@ import {
 } from 'lucide-vue-next'
 
 const props = defineProps<{ editor: Editor }>()
+
+const linkInputVisible = ref(false)
+const linkUrl = ref('')
+const linkInputRef = ref<HTMLInputElement>()
+
+function showLinkInput() {
+  const existing = props.editor.getAttributes('link').href
+  linkUrl.value = existing || ''
+  linkInputVisible.value = true
+  nextTick(() => linkInputRef.value?.focus())
+}
+
+function applyLink() {
+  const url = linkUrl.value.trim()
+  if (url) {
+    props.editor.chain().focus().setLink({ href: url }).run()
+  }
+  linkInputVisible.value = false
+  linkUrl.value = ''
+}
+
+function cancelLink() {
+  linkInputVisible.value = false
+  linkUrl.value = ''
+  props.editor.chain().focus().run()
+}
 
 const items = computed(() => {
   const e = props.editor
@@ -75,10 +117,7 @@ const items = computed(() => {
         if (e.isActive('link')) {
           e.chain().focus().unsetLink().run()
         } else {
-          const url = window.prompt('Enter URL')
-          if (url) {
-            e.chain().focus().setLink({ href: url }).run()
-          }
+          showLinkInput()
         }
       },
     },
