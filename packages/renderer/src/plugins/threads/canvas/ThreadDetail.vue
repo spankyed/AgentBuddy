@@ -61,7 +61,7 @@
               <TiptapEditor
                 mode="editor"
                 :model-value="instructions"
-                :entity-id="threadId"
+                :entity-id="threadId || mediaEntityId"
                 placeholder="Enter instructions for the agent"
                 @update:model-value="v => updateField('instructions', v)"
               />
@@ -168,6 +168,7 @@ import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 const actor: ThreadsState = applicationState.system.get(id);
+const mediaEntityId = crypto.randomUUID();
 
 // Mode derivation from state machine
 const state = useSelector(actor, (s) => s);

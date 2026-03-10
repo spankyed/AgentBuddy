@@ -46,7 +46,7 @@
               :show-remove="formData.content.length > 1"
               :file-name="formData.name"
               :is-symlink="isSymlink"
-              :entity-id="document?.id"
+              :entity-id="document?.id || mediaEntityId"
               @update="updateContentSection(index, $event)"
               @remove="removeContentSection(index)"
               @type-changed="handleTypeChanged(index)"
@@ -112,6 +112,7 @@ const emit = defineEmits<{
 
 const isEditMode = computed(() => !!props.document)
 const isSymlink = computed(() => props.document?.id?.startsWith('symlink:') ?? false)
+const mediaEntityId = crypto.randomUUID()
 
 // Get settings from state
 const actor = applicationState.system.get('library')
