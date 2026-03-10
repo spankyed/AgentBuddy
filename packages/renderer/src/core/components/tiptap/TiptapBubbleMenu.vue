@@ -63,6 +63,7 @@ function showLinkInput() {
 function applyLink() {
   const url = linkUrl.value.trim()
   if (url) {
+    // if (!/^https?:\/\//.test(url)) url = `https://${url}`
     props.editor.chain().focus().setLink({ href: url }).run()
   }
   linkInputVisible.value = false

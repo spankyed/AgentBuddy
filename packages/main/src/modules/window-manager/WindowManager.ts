@@ -1,6 +1,6 @@
 import type {AppModule} from '../../AppModule.ts';
 import {ModuleContext} from '../../ModuleContext.js';
-import {BrowserWindow, ipcMain, app, dialog} from 'electron';
+import {BrowserWindow, ipcMain, app, dialog, shell} from 'electron';
 import type {AppInitConfig} from '../../AppInitConfig.ts';
 import type {ApiServer} from '../api-server/ApiServer.ts';
 import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
@@ -179,6 +179,13 @@ class WindowManager implements AppModule {
     // Handle file reading
     ipcMain.handle('file:read', async (event, filePath: string) => {
       return fs.readFile(filePath, 'utf-8');
+    });
+
+    // Handle opening external URLs in default browser
+    ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+      if (/^https?:\/\//.test(url)) {
+        await shell.openExternal(url);
+      }
     });
   }
 

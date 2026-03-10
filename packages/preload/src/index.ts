@@ -37,10 +37,16 @@ const fileUtils = {
 // Get the API port
 const apiPort = getApiPort();
 
+// Shell utilities
+const shell = {
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
   fileUtils,
+  shell,
   apiPort,
 });
 

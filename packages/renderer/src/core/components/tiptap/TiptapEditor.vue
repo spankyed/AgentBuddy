@@ -55,6 +55,14 @@ const editor = useEditor({
       }
       return false
     },
+    handleClick: (_view, _pos, event) => {
+      if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
+      const href = (event.target as HTMLElement).closest('a')?.getAttribute('href')
+      if (!href) return false
+      const url = /^https?:\/\//.test(href) ? href : `https://${href}`
+      window.electronAPI?.shell?.openExternal(url)
+      return true
+    },
   },
   onUpdate: ({ editor: e }) => {
     const md = (e.storage as any).markdown.getMarkdown()

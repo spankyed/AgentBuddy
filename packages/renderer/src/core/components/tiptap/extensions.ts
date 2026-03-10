@@ -35,7 +35,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       lowlight,
     }),
     Link.configure({
-      openOnClick: mode === 'viewer',
+      openOnClick: false,
       autolink: true,
     }),
     Table.configure({

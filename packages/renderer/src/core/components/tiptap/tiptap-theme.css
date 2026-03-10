@@ -155,10 +155,29 @@
   color: rgb(96 165 250); /* blue-400 */
   text-decoration: underline;
   text-underline-offset: 2px;
+  position: relative;
 }
 
 .tiptap-wrapper .ProseMirror a:hover {
   color: rgb(147 197 253); /* blue-300 */
+}
+
+.tiptap-wrapper .ProseMirror a:hover::after {
+  content: attr(href);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgb(212 212 212);
+  background: rgb(38 38 38);
+  border: 1px solid rgb(64 64 64);
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
 }
 
 /* Strong / em */
