@@ -33,7 +33,12 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-xs text-neutral-400">Code:</span>
-            <span class="font-mono text-xs text-blue-400">{{ selectedDocument.shortCode === 'DOC-0' ? '' : selectedDocument.shortCode }}</span>
+            <span
+              class="font-mono text-xs cursor-pointer transition-colors"
+              :class="codeCopied ? 'text-green-400' : 'text-blue-400 hover:text-blue-300'"
+              title="Click to copy"
+              @click="copyShortCode"
+            >{{ codeCopied ? 'Copied!' : (selectedDocument.shortCode === 'DOC-0' ? '' : selectedDocument.shortCode) }}</span>
           </div>
         </div>
 
@@ -366,6 +371,16 @@ function getTagClass(count: number): string {
 }
 
 const filterByTag = (tag: string) => {} // TODO: Implement tag filtering
+
+const codeCopied = ref(false)
+const copyShortCode = () => {
+  const code = selectedDocument.value?.shortCode
+  if (code && code !== 'DOC-0') {
+    navigator.clipboard.writeText(code)
+    codeCopied.value = true
+    setTimeout(() => { codeCopied.value = false }, 1200)
+  }
+}
 
 const truncateText = (text: string, maxLength: number): string =>
   text?.length > maxLength ? `${text.substring(0, maxLength)}...` : text || ''
