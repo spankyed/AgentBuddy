@@ -53,6 +53,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import { Clipboard, Maximize2, Trash2 } from 'lucide-vue-next'
+import { getWidthFromSrc, setSrcWidth } from './resizable-image'
 
 const props = defineProps<{ editor: Editor }>()
 
@@ -65,16 +66,10 @@ function getSelectedImageAttrs() {
   return null
 }
 
-function parseWidthFromStyle(style?: string): number {
-  if (!style) return 100
-  const match = style.match(/width:\s*(\d+)%/)
-  return match ? Number(match[1]) : 100
-}
-
 function syncWidth() {
   const attrs = getSelectedImageAttrs()
   if (attrs) {
-    imageWidth.value = parseWidthFromStyle(attrs.style)
+    imageWidth.value = getWidthFromSrc(attrs.src) ?? 100
   }
   resizeVisible.value = false
 }
@@ -110,13 +105,16 @@ function toggleResize() {
   if (resizeVisible.value) {
     const attrs = getSelectedImageAttrs()
     if (attrs) {
-      imageWidth.value = parseWidthFromStyle(attrs.style)
+      imageWidth.value = getWidthFromSrc(attrs.src) ?? 100
     }
   }
 }
 
 function applyResize(pct: number) {
   imageWidth.value = pct
-  props.editor.chain().focus().updateAttributes('image', { style: `width: ${pct}%` }).run()
+  const attrs = getSelectedImageAttrs()
+  if (!attrs?.src) return
+  const newSrc = setSrcWidth(attrs.src, pct)
+  props.editor.chain().focus().updateAttributes('image', { src: newSrc }).run()
 }
 </script>
