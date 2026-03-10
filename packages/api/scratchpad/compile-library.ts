@@ -6,7 +6,7 @@ const OUTPUT_FILE = path.join(import.meta.dirname, 'compiled', 'compiled-library
 
 interface CompiledLibraryItem {
   name: string;
-  content: Array<{ type: 'text'; text: string }>;
+  content: Array<{ type: 'markdown'; text: string }>;
   tags: string[];
 }
 
@@ -39,7 +39,7 @@ export function compileLibrary(): void {
 
     items.push({
       name,
-      content: [{ type: 'text', text }],
+      content: [{ type: 'markdown', text }],
       tags: ['scratchpad'],
     });
 
