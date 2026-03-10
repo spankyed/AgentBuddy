@@ -37,22 +37,20 @@
           </div>
         </div>
 
-        <!-- Content Overview -->
+        <!-- Content Preview -->
         <div class="space-y-2">
-          <h4 class="text-xs font-medium text-neutral-400">Content Overview:</h4>
+          <h4 class="text-xs font-medium text-neutral-400">Content Preview:</h4>
           <div class="space-y-1.5">
             <div
               v-for="(section, index) in selectedDocument.content"
               :key="index"
-              class="px-2 py-1.5 bg-neutral-800 rounded text-xs"
+              class="px-2 py-1.5 bg-neutral-800 rounded text-xs overflow-hidden line-clamp-2 break-all"
             >
               <template v-if="section.type === 'markdown'">
-                <span class="text-neutral-500">Markdown:</span>
-                <span class="ml-1 text-neutral-300">{{ truncateText((section as MarkdownContent).text, 50) }}</span>
+                <span class="text-neutral-300">{{ truncateText((section as MarkdownContent).text, 60) }}</span>
               </template>
               <template v-else-if="section.type === 'text'">
-                <span class="text-neutral-500">Text:</span>
-                <span class="ml-1 text-neutral-300">{{ truncateText((section as TextContent).text, 50) }}</span>
+                <span class="text-neutral-300">{{ truncateText((section as TextContent).text, 60) }}</span>
               </template>
               <template v-else-if="section.type === 'field'">
                 <span class="text-neutral-500">Fields ({{ countValidFields((section as FieldContent).fields) }}):</span>
