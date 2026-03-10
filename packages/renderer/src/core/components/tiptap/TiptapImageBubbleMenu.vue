@@ -41,7 +41,8 @@
         step="5"
         :value="imageWidth"
         class="flex-1 accent-blue-400"
-        @input="applyResize(($event.target as HTMLInputElement).valueAsNumber)"
+        @input="previewResize(($event.target as HTMLInputElement).valueAsNumber)"
+        @change="commitResize(($event.target as HTMLInputElement).valueAsNumber)"
       />
       <span class="text-xs text-neutral-400 w-8">{{ imageWidth }}%</span>
     </div>
@@ -53,6 +54,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import { Clipboard, Maximize2, Trash2 } from 'lucide-vue-next'
+import { NodeSelection } from '@tiptap/pm/state'
 import { getWidthFromSrc, setSrcWidth } from './resizable-image'
 
 const props = defineProps<{ editor: Editor }>()
@@ -110,7 +112,24 @@ function toggleResize() {
   }
 }
 
-function applyResize(pct: number) {
+function getSelectedImageDOM(): HTMLImageElement | null {
+  const selection = props.editor.state.selection
+  if (selection instanceof NodeSelection) {
+    const dom = props.editor.view.nodeDOM(selection.from)
+    return dom instanceof HTMLImageElement ? dom : null
+  }
+  return null
+}
+
+function previewResize(pct: number) {
+  imageWidth.value = pct
+  const imgEl = getSelectedImageDOM()
+  if (imgEl) {
+    imgEl.style.width = pct + '%'
+  }
+}
+
+function commitResize(pct: number) {
   imageWidth.value = pct
   const attrs = getSelectedImageAttrs()
   if (!attrs?.src) return
