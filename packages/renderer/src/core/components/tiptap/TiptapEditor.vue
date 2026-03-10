@@ -136,6 +136,10 @@ const editor = useEditor({
       return handled
     },
   },
+  onCreate: ({ editor: e }) => {
+    // Prevent last image from being auto-selected on initial load
+    e.commands.setTextSelection(0)
+  },
   onUpdate: ({ editor: e }) => {
     const md = (e.storage as any).markdown.getMarkdown()
     emit('update:modelValue', md)
@@ -148,6 +152,8 @@ watch(() => props.modelValue, (newVal) => {
   const currentMd = (editor.value.storage as any).markdown.getMarkdown()
   if (newVal !== currentMd) {
     editor.value.commands.setContent(newVal)
+    // Prevent last image from being auto-selected after content load
+    editor.value.commands.setTextSelection(0)
   }
 })
 
