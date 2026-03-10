@@ -107,31 +107,31 @@ const editor = useEditor({
       const items = event.clipboardData?.items
       if (!items) return false
 
+      let handled = false
       for (const item of items) {
         if (item.type.startsWith('image/')) {
           const file = item.getAsFile()
           if (!file) continue
-          event.preventDefault()
+          if (!handled) { event.preventDefault(); handled = true }
           uploadAndInsertImage(file, editor.value)
-          return true
         }
       }
-      return false
+      return handled
     },
     handleDrop: (view, event) => {
       if (props.mode !== 'editor' || !props.entityId) return false
       const files = event.dataTransfer?.files
       if (!files?.length) return false
 
+      let handled = false
       for (const file of files) {
         if (file.type.startsWith('image/')) {
-          event.preventDefault()
+          if (!handled) { event.preventDefault(); handled = true }
           const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
           uploadAndInsertImage(file, editor.value, coords?.pos)
-          return true
         }
       }
-      return false
+      return handled
     },
   },
   onUpdate: ({ editor: e }) => {
