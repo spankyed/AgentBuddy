@@ -182,7 +182,7 @@ const threadsState = setup({
         return {};
       }
 
-      const { id, shortCode, status, timestamp, topic, instructions, tags } = selectedThread;
+      const { id, shortCode, status, timestamp, topic, instructions, tags, pinned } = selectedThread;
 
       return {
         selectedThreadCode: shortCode,
@@ -190,6 +190,7 @@ const threadsState = setup({
           ...defaultThread,
           id, shortCode, status, timestamp, topic, instructions,
           tags: tags as string[],
+          pinned,
         },
       };
     }),
@@ -419,7 +420,7 @@ const threadsState = setup({
           getLabel: (ctx) => ctx.view.topic || 'Untitled Thread'
         }),
         ...contextMenuFn<ThreadsContext>((ctx) => [
-          { label: 'Delete Thread', icon: Trash2, event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.` },
+          ...(!ctx.view.pinned ? [{ label: 'Delete Thread', icon: Trash2, event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.` }] : []),
         ]),
       },
       on: {

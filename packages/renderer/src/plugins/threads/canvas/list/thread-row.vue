@@ -80,6 +80,7 @@
               <MessageCircleMore class="w-4 h-4"/>
             </button>
             <button
+              v-if="!thread.pinned"
               @click.stop="$emit('delete-click', thread.id)"
               type="button"
               class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
@@ -114,14 +115,16 @@
           <MessageCircleMore :size="14" class="text-blue-400" />
           Chat
         </ContextMenuItem>
-        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-        <ContextMenuItem
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
-          @select="$emit('delete-click', thread.id)"
-        >
-          <Trash2 :size="14" />
-          Delete
-        </ContextMenuItem>
+        <template v-if="!thread.pinned">
+          <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+          <ContextMenuItem
+            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+            @select="$emit('delete-click', thread.id)"
+          >
+            <Trash2 :size="14" />
+            Delete
+          </ContextMenuItem>
+        </template>
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
