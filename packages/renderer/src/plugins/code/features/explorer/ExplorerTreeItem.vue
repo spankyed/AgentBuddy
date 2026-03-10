@@ -155,11 +155,6 @@
 import { computed, ref, watch, nextTick, inject, onMounted } from 'vue'
 import {
   Folder,
-  File,
-  FileCode,
-  FileJson,
-  FileText,
-  Image,
   ChevronRight,
   Edit2,
   Trash2,
@@ -182,6 +177,7 @@ import {
 } from 'reka-ui'
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
+import { getFileIcon } from '../../utils/file-icons'
 import { onMenuOpenChange } from '@/core/composables/useMenuState'
 import type { FileInfo } from './state'
 
@@ -241,20 +237,7 @@ const children = computed(() => {
 // Icon based on file type/extension
 const icon = computed(() => {
   if (props.file.type === 'directory') return Folder
-
-  const ext = props.file.extension
-  if (!ext) return File
-
-  const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
-  const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
-  const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
-
-  if (codeExtensions.includes(ext)) return FileCode
-  if (ext === 'json') return FileJson
-  if (textExtensions.includes(ext)) return FileText
-  if (imageExtensions.includes(ext)) return Image
-
-  return File
+  return getFileIcon(props.file.extension)
 })
 
 // Focus input when editing starts

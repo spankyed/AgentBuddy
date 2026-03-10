@@ -471,12 +471,7 @@
 import { ref, computed } from 'vue'
 import {
   X,
-  FileCode,
-  File,
-  FileJson,
-  FileText,
   FolderMinus,
-  Image,
   GitCompare,
   Terminal,
   Play,
@@ -491,6 +486,7 @@ import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/plugins/
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
 import { groupTabs } from '../utils/tab-management'
+import { getFileIcon } from '../utils/file-icons'
 import GroupLabel from '../components/GroupLabel.vue'
 import { useTabDragDrop } from '../composables/useTabDragDrop'
 import {
@@ -726,17 +722,6 @@ const getFileExtension = (path: string) => {
   return parts.length > 1 ? parts.pop() : ''
 }
 
-const getFileIcon = (extension?: string) => {
-  if (!extension) return File
-  const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
-  const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
-  const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
-  if (codeExtensions.includes(extension)) return FileCode
-  if (extension === 'json') return FileJson
-  if (textExtensions.includes(extension)) return FileText
-  if (imageExtensions.includes(extension)) return Image
-  return File
-}
 
 // Context menu actions
 const copyRelativePath = async (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
