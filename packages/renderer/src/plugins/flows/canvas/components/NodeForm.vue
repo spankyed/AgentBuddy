@@ -12,7 +12,7 @@
       :class="selectedNode ? 'translate-x-0' : 'translate-x-full'"
     >
       <!-- Form content -->
-      <div class="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-800" data-onboarding-id="flow-node-form">
+      <div class="flex-1 bg-neutral-800" data-onboarding-id="flow-node-form">
         <component
           :is="getFormComponent(selectedNode.nodeType)"
           :key="selectedNode.id"

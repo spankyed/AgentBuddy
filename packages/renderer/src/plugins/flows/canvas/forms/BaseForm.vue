@@ -1,7 +1,7 @@
 <template>
-  <section class="w-full min-h-full border-l border-neutral-800 bg-neutral-900">
+  <section class="flex flex-col w-full h-full border-l border-neutral-800 bg-neutral-900">
     <!-- Header with node type and close button -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between flex-shrink-0 px-4 py-2 border-b border-neutral-800">
       <h2 class="text-sm font-semibold text-neutral-100 uppercase">
         {{ node.nodeType }}
       </h2>
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Content -->
-    <div class="p-6 space-y-4">
+    <div class="flex-1 p-6 space-y-4 overflow-y-auto">
       <!-- Common fields for all nodes -->
       <div>
         <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">
