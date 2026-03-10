@@ -12,7 +12,7 @@
         >
           <option value="markdown">Markdown</option>
           <option value="text">Plain Text</option>
-          <option value="code">Code</option>
+          <option v-if="isSymlink" value="code">Code</option>
           <option value="field">Fields</option>
           <option value="list">List</option>
         </select>
@@ -25,7 +25,7 @@
           <option value="" disabled>Select content type</option>
           <option value="markdown">Markdown</option>
           <option value="text">Plain Text</option>
-          <option value="code">Code</option>
+          <option v-if="isSymlink" value="code">Code</option>
           <option value="field">Field (Key-Value)</option>
           <option value="list">List</option>
         </select>
@@ -75,6 +75,7 @@ const props = defineProps<{
   section?: ContentSection
   showRemove?: boolean
   fileName?: string
+  isSymlink?: boolean
 }>()
 
 const emit = defineEmits<{
