@@ -243,6 +243,7 @@ const notesState = setup({
         type: 'CREATE_NOTE',
         title: 'Untitled',
         parentId: ev.parentId,
+        skipContentSync: true,
       })
     },
 

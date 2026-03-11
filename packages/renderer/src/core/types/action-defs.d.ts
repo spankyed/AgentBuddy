@@ -2775,6 +2775,7 @@ declare const events: {
         content: zod.ZodOptional<zod.ZodString>;
         icon: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         parentId: zod.ZodOptional<zod.ZodString>;
+        skipContentSync: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         title: string;
         type: "CREATE_NOTE";
@@ -2782,6 +2783,7 @@ declare const events: {
         content?: string | undefined;
         parentId?: string | undefined;
         icon?: string | null | undefined;
+        skipContentSync?: boolean | undefined;
     }, {
         title: string;
         type: "CREATE_NOTE";
@@ -2789,6 +2791,7 @@ declare const events: {
         content?: string | undefined;
         parentId?: string | undefined;
         icon?: string | null | undefined;
+        skipContentSync?: boolean | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_NOTE">;
         systemId: zod.ZodLiteral<"notes">;

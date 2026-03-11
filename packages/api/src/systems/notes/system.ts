@@ -22,6 +22,7 @@ export const IncomingNoteEvents = [
     content: z.string().optional(),
     icon: z.string().nullable().optional(),
     parentId: z.string().optional(),
+    skipContentSync: z.boolean().optional(),
   }),
   busEvent('UPDATE_NOTE', {
     id: z.string(),
@@ -81,7 +82,17 @@ export const notesSystem = setup({
           note: noteDTO,
         }));
 
-        // If this note has a parent, also send an update for the parent (childCount changed)
+        // If this note has a parent, append sub-page link to parent content (unless skipped)
+        if (ev.parentId && !ev.skipContentSync) {
+          const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
+          if (parentNote) {
+            const linkMarkdown = `\n[${ev.title}](page://${note.id})`;
+            const newContent = (parentNote.content || '') + linkMarkdown;
+            repository.noteCommands.update(ev.parentId as EARS.EntityId, { content: newContent });
+          }
+        }
+
+        // If this note has a parent, also send an update for the parent (childCount/content changed)
         if (ev.parentId) {
           const parentDTO = repository.noteQueries.byIdDTO(ev.parentId as EARS.EntityId);
           if (parentDTO) {
