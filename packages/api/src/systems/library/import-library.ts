@@ -13,6 +13,7 @@ import type { EARS } from '@/core/types'
 import { extractMediaRefs } from '@/core/helpers/media'
 import { getMediaPath } from '@/core/helpers/paths'
 import type { ContentSection } from './types'
+import type { ExportedLibrary } from './export-types'
 
 interface ImportResult {
   created: number

@@ -18,7 +18,9 @@ import type { ActionEntity } from '@/systems/actions/types';
 import type { FlowDSL } from '@/systems/flows/dsl';
 import type { FlowEntity } from '@/systems/flows/config/types';
 import { libraryCommands } from '@/systems/library/repository';
-import type { ContentSection, Document } from '@/systems/library/types';
+import type { ContentSection, Document, Collection } from '@/systems/library/types';
+import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
+import { getMediaPath } from '@/core/helpers/paths';
 
 interface SeedCounts {
   created: number;
@@ -77,6 +79,86 @@ function seedCollection<T>(opts: {
 
 function buildLabelMap<T extends { label: string; id: string }>(entities: T[]): Map<string, string> {
   return new Map(entities.map(e => [e.label, e.id]));
+}
+
+/** Match relative media references like ![alt](media/filename.ext) */
+const RELATIVE_MEDIA_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
+
+function restoreDocMedia(
+  content: ContentSection[],
+  docId: string,
+  mediaDir: string,
+  log: (...a: any[]) => void,
+): { content: ContentSection[]; mediaCount: number } {
+  let mediaCount = 0;
+  const updated = content.map(section => {
+    if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
+      let text = section.text;
+      let match: RegExpExecArray | null;
+      const re = new RegExp(RELATIVE_MEDIA_RE.source, RELATIVE_MEDIA_RE.flags);
+      while ((match = re.exec(section.text)) !== null) {
+        const filename = match[3];
+        const srcFile = path.join(mediaDir, filename);
+        if (!fs.existsSync(srcFile)) continue;
+
+        const destDir = path.join(getMediaPath(), docId);
+        if (!fs.existsSync(destDir)) {
+          fs.mkdirSync(destDir, { recursive: true });
+        }
+        fs.copyFileSync(srcFile, path.join(destDir, filename));
+        text = text.split(`media/${filename}`).join(`media://${docId}/${filename}`);
+        mediaCount++;
+        log(`    media copied: ${filename}`);
+      }
+      return { ...section, text };
+    }
+    return section;
+  });
+  return { content: updated, mediaCount };
+}
+
+function seedLibraryTree(
+  items: ExportedItem[],
+  parentId: EARS.EntityId | undefined,
+  counts: SeedCounts,
+  log: (...a: any[]) => void,
+  mediaDir: string,
+): void {
+  for (const item of items) {
+    if (item.type === 'document') {
+      const existing = findWhere<Document>(EARS.Entity.Document, 'name', item.name)[0];
+      if (existing) {
+        const { content } = restoreDocMedia(item.content, existing.id, mediaDir, log);
+        libraryCommands.updateDocument(existing.id, item.name, content, item.tags ?? []);
+        counts.updated++;
+        log(`  library doc updated: ${item.name}`);
+      } else {
+        const doc = libraryCommands.createDocument(item.name, item.content, item.tags ?? [], parentId);
+        const { content, mediaCount } = restoreDocMedia(item.content, doc.id, mediaDir, log);
+        if (mediaCount > 0) {
+          libraryCommands.updateDocument(doc.id as EARS.EntityId, item.name, content, item.tags ?? []);
+        }
+        counts.created++;
+        log(`  library doc created: ${item.name}`);
+      }
+    } else if (item.type === 'collection') {
+      const existing = findWhere<Collection>(EARS.Entity.Collection, 'name', item.name)[0];
+      let colId: EARS.EntityId;
+      if (existing) {
+        colId = existing.id;
+        libraryCommands.updateCollection(colId, item.name, item.description);
+        counts.updated++;
+        log(`  library collection updated: ${item.name}`);
+      } else {
+        const col = libraryCommands.createCollection(item.name, item.description, parentId);
+        colId = col.id;
+        counts.created++;
+        log(`  library collection created: ${item.name}`);
+      }
+      seedLibraryTree(item.children, colId, counts, log, mediaDir);
+    }
+    // Skip symlinks in seed context
+  }
 }
 
 export function seedData(options?: { verbose?: boolean; force?: boolean; compiledDir?: string }): SeedResult | null {
@@ -186,15 +268,15 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   }
 
   // --- Library Docs ---
-  result.library = seedCollection<{ name: string; content: ContentSection[]; tags?: string[] }>({
-    file: path.join(compiledDir, 'compiled-library.json'),
-    label: 'library doc',
-    getKey: item => item.name,
-    findExisting: item => findWhere<Document>(EARS.Entity.Document, 'name', item.name)[0],
-    create: item => libraryCommands.createDocument(item.name, item.content, item.tags ?? []),
-    update: (id, item) => libraryCommands.updateDocument(id, item.name, item.content, item.tags ?? []),
-    log,
-  });
+  const libraryFile = path.join(compiledDir, 'compiled-library.json');
+  const libraryData = loadJSON<ExportedLibrary | ExportedItem[]>(libraryFile);
+  if (libraryData) {
+    const items = Array.isArray(libraryData) ? libraryData : libraryData.items;
+    const mediaDir = path.join(compiledDir, 'media');
+    seedLibraryTree(items ?? [], undefined, result.library, log, mediaDir);
+  } else {
+    log('  compiled-library.json not found, skipping library');
+  }
 
   // Mark as seeded
   settingsCommands.updateSettings('internal', null, ['seeded'], true);

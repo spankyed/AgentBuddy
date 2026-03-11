@@ -1,3 +1,5 @@
+![Query flow diagram](media/example-diagram.svg)
+
   Entity Retrieval
 
   1. "Get all threads"

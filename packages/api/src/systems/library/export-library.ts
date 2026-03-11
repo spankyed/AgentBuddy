@@ -13,28 +13,7 @@ import { repository } from '@/repository'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
 import type { ContentSection } from './types'
-
-interface ExportedDocument {
-  type: 'document'
-  name: string
-  content: ContentSection[]
-  tags: string[]
-}
-
-interface ExportedCollection {
-  type: 'collection'
-  name: string
-  description?: string
-  children: ExportedItem[]
-}
-
-interface ExportedSymlink {
-  type: 'symlink'
-  name: string
-  symlinkPath: string
-}
-
-type ExportedItem = ExportedDocument | ExportedCollection | ExportedSymlink
+import type { ExportedItem, ExportedCollection, ExportedDocument, ExportedSymlink } from './export-types'
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]
