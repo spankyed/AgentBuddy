@@ -260,3 +260,8 @@
 .tiptap-viewer .ProseMirror {
   min-height: auto;
 }
+
+/* Hide trailing empty paragraph in viewer mode */
+.tiptap-viewer .ProseMirror p:last-child:has(> br.ProseMirror-trailingBreak:only-child) {
+  display: none;
+}
