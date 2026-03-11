@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { createExtensions, type TiptapMode } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
@@ -40,9 +40,22 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'submit'): void
   (e: 'noteLinkClick', noteId: string): void
+  (e: 'subPageLinkDeleted', noteId: string): void
 }>()
 
 defineOptions({ inheritAttrs: false })
+
+const suppressNodeDeletionEvents = ref(false)
+
+function collectSubPageLinkIds(doc: any): Set<string> {
+  const ids = new Set<string>()
+  doc.descendants((node: any) => {
+    if (node.type.name === 'subPageLink' && node.attrs.noteId) {
+      ids.add(node.attrs.noteId)
+    }
+  })
+  return ids
+}
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -98,11 +111,26 @@ const editor = useEditor({
       return false
     },
     handleClick: (_view, _pos, event) => {
+      // Sub-page links open on regular click (no modifier needed)
+      const subPageEl = (event.target as HTMLElement).closest('.sub-page-link')
+      if (subPageEl) {
+        const noteId = subPageEl.getAttribute('data-note-id')
+        if (noteId) {
+          emit('noteLinkClick', noteId)
+          return true
+        }
+      }
+      // Other links require ctrl/cmd+click in editor mode
       if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
       const href = (event.target as HTMLElement).closest('a')?.getAttribute('href')
       if (!href) return false
       if (href.startsWith('note://')) {
         const noteId = href.slice('note://'.length)
+        emit('noteLinkClick', noteId)
+        return true
+      }
+      if (href.startsWith('page://')) {
+        const noteId = href.slice('page://'.length)
         emit('noteLinkClick', noteId)
         return true
       }
@@ -150,6 +178,16 @@ const editor = useEditor({
     const md = (e.storage as any).markdown.getMarkdown()
     emit('update:modelValue', md)
   },
+  onTransaction: ({ transaction }) => {
+    if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
+    const oldIds = collectSubPageLinkIds(transaction.before)
+    const newIds = collectSubPageLinkIds(transaction.doc)
+    for (const id of oldIds) {
+      if (!newIds.has(id)) {
+        emit('subPageLinkDeleted', id)
+      }
+    }
+  },
 })
 
 // Sync modelValue changes from parent into the editor
@@ -157,9 +195,11 @@ watch(() => props.modelValue, (newVal) => {
   if (!editor.value) return
   const currentMd = (editor.value.storage as any).markdown.getMarkdown()
   if (newVal !== currentMd) {
+    suppressNodeDeletionEvents.value = true
     editor.value.commands.setContent(newVal)
     // Prevent last image from being auto-selected after content load
     editor.value.commands.setTextSelection(0)
+    suppressNodeDeletionEvents.value = false
   }
 })
 

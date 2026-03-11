@@ -107,6 +107,20 @@ const notesState = setup({
       })
     },
 
+    updateLocalContent: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.UPDATE_CONTENT', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.noteId ? { ...n, content: ev.content } : n
+      )
+      return {
+        notes: updatedNotes,
+        currentNote:
+          context.currentNoteId === ev.noteId && context.currentNote
+            ? { ...context.currentNote, content: ev.content }
+            : context.currentNote,
+      }
+    }),
+
     sendUpdateContent: ({ event }) => {
       const ev = typeOf('NOTE.UPDATE_CONTENT', event)
       trpc.bus.send.mutate({
@@ -240,7 +254,7 @@ const notesState = setup({
       },
     ],
     'NOTE.TOGGLE_EXPAND': { actions: 'toggleExpand' },
-    'NOTE.UPDATE_CONTENT': { actions: 'sendUpdateContent' },
+    'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
     ...TRAIL_CLICK([
       ['.welcome', 'welcome'],

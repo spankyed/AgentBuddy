@@ -107,29 +107,25 @@ export const notesSystem = setup({
           note: updatedNote,
         }));
 
-        // Sync link text in notes that reference this note (indexed lookup)
-        if (ev.title !== undefined) {
-          const referencingIds = repository.noteQueries.referencedBy(ev.id as EARS.EntityId);
-          const linkPattern = new RegExp(
-            `\\[([^\\]]*)\\]\\(note:\\/\\/${ev.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
-            'g'
-          );
+        // Sync sub-page link title in parent note when child is renamed
+        if (ev.title !== undefined && updatedNote.parentId) {
+          const parentNote = repository.noteQueries.byId(updatedNote.parentId as EARS.EntityId);
+          if (parentNote?.content) {
+            const linkPattern = new RegExp(
+              `\\[([^\\]]*)\\]\\(page:\\/\\/${ev.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
+              'g'
+            );
+            const newContent = parentNote.content.replace(linkPattern, `[${ev.title}](page://${ev.id})`);
+            if (newContent !== parentNote.content) {
+              repository.noteCommands.update(updatedNote.parentId as EARS.EntityId, { content: newContent });
 
-          for (const refId of referencingIds) {
-            const note = repository.noteQueries.byId(refId);
-            if (!note?.content) continue;
-
-            const newContent = note.content.replace(linkPattern, `[${ev.title}](note://${ev.id})`);
-            if (newContent === note.content) continue;
-
-            repository.noteCommands.update(refId, { content: newContent });
-
-            const affectedNote = repository.noteQueries.byIdDTO(refId);
-            if (affectedNote) {
-              system.get(bus).send(emit(notes, {
-                type: 'NOTE_UPDATED',
-                note: affectedNote,
-              }));
+              const updatedParent = repository.noteQueries.byIdDTO(updatedNote.parentId as EARS.EntityId);
+              if (updatedParent) {
+                system.get(bus).send(emit(notes, {
+                  type: 'NOTE_UPDATED',
+                  note: updatedParent,
+                }));
+              }
             }
           }
         }
@@ -199,6 +195,22 @@ export const notesSystem = setup({
             type: 'NOTE_UPDATED',
             note: updatedRef,
           }));
+        }
+      }
+
+      // Strip page:// links from parent note content (no REFERENCES relation for these)
+      if (parentId) {
+        const parentNote = repository.noteQueries.byId(parentId as EARS.EntityId);
+        if (parentNote?.content) {
+          let newContent = parentNote.content;
+          for (const deletedId of allDeletedIds) {
+            const escaped = deletedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pagePattern = new RegExp(`\\[([^\\]]*)\\]\\(page:\\/\\/${escaped}\\)\\n?`, 'g');
+            newContent = newContent.replace(pagePattern, '');
+          }
+          if (newContent !== parentNote.content) {
+            repository.noteCommands.update(parentId as EARS.EntityId, { content: newContent });
+          }
         }
       }
 

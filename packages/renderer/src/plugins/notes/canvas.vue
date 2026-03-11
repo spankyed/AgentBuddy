@@ -39,6 +39,7 @@
           class="h-full"
           @update:model-value="handleContentUpdate"
           @note-link-click="handleNoteLinkClick"
+          @sub-page-link-deleted="handleSubPageLinkDeleted"
         />
       </div>
     </div>
@@ -103,9 +104,8 @@ watch(
           .chain()
           .focus()
           .insertContentAt(oldVal.cursorPos, {
-            type: 'text',
-            text: newChild.title,
-            marks: [{ type: 'link', attrs: { href: `note://${newChild.id}` } }],
+            type: 'subPageLink',
+            attrs: { noteId: newChild.id, title: newChild.title },
           })
           .run()
 
@@ -132,22 +132,28 @@ function handleCreateNote(parentId?: string) {
 
 function handleContentUpdate(content: string) {
   if (!currentNote.value) return
+  const noteId = currentNote.value.id
   if (contentDebounceTimer) clearTimeout(contentDebounceTimer)
   contentDebounceTimer = setTimeout(() => {
-    actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId: currentNote.value!.id, content })
+    actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
   }, 500)
 }
 
 function handleTitleInput(event: Event) {
   const title = (event.target as HTMLInputElement).value
   if (!currentNote.value) return
+  const noteId = currentNote.value.id
   if (titleDebounceTimer) clearTimeout(titleDebounceTimer)
   titleDebounceTimer = setTimeout(() => {
-    actor.send({ type: 'NOTE.UPDATE_TITLE', noteId: currentNote.value!.id, title })
+    actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
   }, 500)
 }
 
 function handleNoteLinkClick(noteId: string) {
   actor.send({ type: 'NOTE.LINK_CLICKED', noteId })
+}
+
+function handleSubPageLinkDeleted(noteId: string) {
+  actor.send({ type: 'NOTE.DELETE', noteId })
 }
 </script>
