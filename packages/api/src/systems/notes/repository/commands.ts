@@ -19,6 +19,7 @@ export const noteCommands = {
   create: (input: {
     title: string;
     content?: string;
+    icon?: string | null;
     parentId?: string;
     displayOrder?: number;
   }): NoteEntity => {
@@ -50,6 +51,7 @@ export const noteCommands = {
       {
         title: input.title,
         content: input.content || '',
+        icon: input.icon ?? null,
         displayOrder,
       } as any,
       'NOTE'
@@ -75,6 +77,7 @@ export const noteCommands = {
   update: (id: EARS.EntityId, updates: {
     title?: string;
     content?: string;
+    icon?: string | null;
     displayOrder?: number;
   }): void => {
     if (!findById<NoteEntity>(id)) {
@@ -84,6 +87,7 @@ export const noteCommands = {
     const filteredUpdates: Record<string, any> = {};
     if (updates.title !== undefined) filteredUpdates.title = updates.title;
     if (updates.content !== undefined) filteredUpdates.content = updates.content;
+    if (updates.icon !== undefined) filteredUpdates.icon = updates.icon;
     if (updates.displayOrder !== undefined) filteredUpdates.displayOrder = updates.displayOrder;
 
     if (Object.keys(filteredUpdates).length > 0) {

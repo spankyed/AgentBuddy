@@ -20,13 +20,26 @@
       v-else-if="state.hasTag('editor') && currentNote"
       class="flex flex-col h-full"
     >
-      <!-- Title -->
-      <input
-        :value="currentNote.title"
-        class="w-full px-6 py-3 text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
-        placeholder="Untitled"
-        @input="handleTitleInput"
-      />
+      <!-- Title row -->
+      <div class="flex items-center gap-1 px-6 py-3">
+        <EmojiPicker :model-value="currentNote.icon" @update:model-value="handleIconUpdate">
+          <template #default="{ toggle }">
+            <button
+              class="flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-800 transition-colors shrink-0"
+              @click="toggle"
+            >
+              <span v-if="currentNote.icon" class="text-xl leading-none">{{ currentNote.icon }}</span>
+              <FileText v-else :size="20" class="text-neutral-500" />
+            </button>
+          </template>
+        </EmojiPicker>
+        <input
+          :value="currentNote.title"
+          class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
+          placeholder="Untitled"
+          @input="handleTitleInput"
+        />
+      </div>
 
       <!-- Editor -->
       <div class="flex-1 overflow-y-auto px-2">
@@ -54,10 +67,12 @@ import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
 import { NotebookText, FileText } from 'lucide-vue-next'
+import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 
 const actor: NotesState = applicationState.system.get(id)
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
+const notes = useSelector(actor, (s) => s.context.notes)
 const pendingPageInsert = useSelector(actor, (s) => s.context.pendingPageInsert)
 
 const editorRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
@@ -105,7 +120,7 @@ watch(
           .focus()
           .insertContentAt(oldVal.cursorPos, {
             type: 'subPageLink',
-            attrs: { noteId: newChild.id, title: newChild.title },
+            attrs: { noteId: newChild.id, title: newChild.title, icon: newChild.icon },
           })
           .run()
 
@@ -156,4 +171,34 @@ function handleNoteLinkClick(noteId: string) {
 function handleSubPageLinkDeleted(noteId: string) {
   actor.send({ type: 'NOTE.DELETE', noteId })
 }
+
+function handleIconUpdate(icon: string | null) {
+  if (!currentNote.value) return
+  actor.send({ type: 'NOTE.UPDATE_ICON', noteId: currentNote.value.id, icon })
+}
+
+// Sync sub-page link node attrs (title/icon) when child notes change
+watch(
+  notes,
+  (allNotes) => {
+    const editor = editorRef.value?.editor
+    if (!editor || !currentNote.value) return
+
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'subPageLink' && node.attrs.noteId) {
+        const child = allNotes.find(n => n.id === node.attrs.noteId)
+        if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              title: child.title,
+              icon: child.icon,
+            })
+          )
+        }
+      }
+    })
+  },
+  { deep: true }
+)
 </script>

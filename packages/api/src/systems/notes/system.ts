@@ -20,12 +20,14 @@ export const IncomingNoteEvents = [
   busEvent('CREATE_NOTE', {
     title: z.string(),
     content: z.string().optional(),
+    icon: z.string().nullable().optional(),
     parentId: z.string().optional(),
   }),
   busEvent('UPDATE_NOTE', {
     id: z.string(),
     title: z.string().optional(),
     content: z.string().optional(),
+    icon: z.string().nullable().optional(),
   }),
   busEvent('DELETE_NOTE', {
     id: z.string(),
@@ -68,6 +70,7 @@ export const notesSystem = setup({
       const note = repository.noteCommands.create({
         title: ev.title,
         content: ev.content,
+        icon: ev.icon,
         parentId: ev.parentId,
       });
 
@@ -97,6 +100,7 @@ export const notesSystem = setup({
 
       if (ev.title !== undefined) updates.title = ev.title;
       if (ev.content !== undefined) updates.content = ev.content;
+      if (ev.icon !== undefined) updates.icon = ev.icon;
 
       repository.noteCommands.update(ev.id as EARS.EntityId, updates);
 

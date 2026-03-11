@@ -29,6 +29,7 @@
         @toggle-expand="handleToggleExpand"
         @create="handleCreateNote"
         @delete="handleDeleteNote"
+        @update-icon="handleUpdateIcon"
       />
     </div>
   </div>
@@ -67,5 +68,9 @@ function handleCreateNote(parentId?: string) {
 
 function handleDeleteNote(noteId: string) {
   actor.send({ type: 'NOTE.DELETE', noteId })
+}
+
+function handleUpdateIcon(noteId: string, icon: string | null) {
+  actor.send({ type: 'NOTE.UPDATE_ICON', noteId, icon })
 }
 </script>

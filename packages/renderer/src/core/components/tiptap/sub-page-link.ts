@@ -11,6 +11,7 @@ export const SubPageLink = Node.create({
     return {
       noteId: { default: null },
       title: { default: '' },
+      icon: { default: null },
     }
   },
 
@@ -38,9 +39,47 @@ export const SubPageLink = Node.create({
         class: 'sub-page-link',
         'data-note-id': node.attrs.noteId,
       }),
-      ['span', { class: 'sub-page-link-icon', innerHTML: FILE_TEXT_SVG }],
+      ['span', { class: 'sub-page-link-icon' }, node.attrs.icon || ''],
       ['span', { class: 'sub-page-link-title' }, node.attrs.title],
     ]
+  },
+
+  addNodeView() {
+    return ({ node }) => {
+      const dom = document.createElement('div')
+      dom.classList.add('sub-page-link')
+      dom.dataset.noteId = node.attrs.noteId
+
+      const iconSpan = document.createElement('span')
+      iconSpan.classList.add('sub-page-link-icon')
+      if (node.attrs.icon) {
+        iconSpan.textContent = node.attrs.icon
+      } else {
+        iconSpan.innerHTML = FILE_TEXT_SVG
+      }
+
+      const titleSpan = document.createElement('span')
+      titleSpan.classList.add('sub-page-link-title')
+      titleSpan.textContent = node.attrs.title
+
+      dom.appendChild(iconSpan)
+      dom.appendChild(titleSpan)
+
+      return {
+        dom,
+        update(updatedNode) {
+          if (updatedNode.type.name !== 'subPageLink') return false
+          dom.dataset.noteId = updatedNode.attrs.noteId
+          if (updatedNode.attrs.icon) {
+            iconSpan.textContent = updatedNode.attrs.icon
+          } else {
+            iconSpan.innerHTML = FILE_TEXT_SVG
+          }
+          titleSpan.textContent = updatedNode.attrs.title
+          return true
+        },
+      }
+    }
   },
 
   addStorage() {

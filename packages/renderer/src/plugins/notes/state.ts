@@ -33,6 +33,7 @@ type UIEvent =
   | { type: 'NOTE.DELETE'; noteId: string }
   | { type: 'NOTE.UPDATE_CONTENT'; noteId: string; content: string }
   | { type: 'NOTE.UPDATE_TITLE'; noteId: string; title: string }
+  | { type: 'NOTE.UPDATE_ICON'; noteId: string; icon: string | null }
   | { type: 'NOTE.TOGGLE_EXPAND'; nodeId: string }
   | { type: 'NOTE.LINK_CLICKED'; noteId: string }
   | { type: 'NOTE.REQUEST_PAGE_INSERT'; parentId: string; cursorPos: number }
@@ -138,6 +139,30 @@ const notesState = setup({
         type: 'UPDATE_NOTE',
         id: ev.noteId,
         title: ev.title,
+      })
+    },
+
+    updateLocalIcon: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.UPDATE_ICON', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.noteId ? { ...n, icon: ev.icon } : n
+      )
+      return {
+        notes: updatedNotes,
+        currentNote:
+          context.currentNoteId === ev.noteId && context.currentNote
+            ? { ...context.currentNote, icon: ev.icon }
+            : context.currentNote,
+      }
+    }),
+
+    sendUpdateIcon: ({ event }) => {
+      const ev = typeOf('NOTE.UPDATE_ICON', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.noteId,
+        icon: ev.icon,
       })
     },
 
@@ -256,6 +281,7 @@ const notesState = setup({
     'NOTE.TOGGLE_EXPAND': { actions: 'toggleExpand' },
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
+    'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },
     ...TRAIL_CLICK([
       ['.welcome', 'welcome'],
       ['.editor', 'editor'],
@@ -292,8 +318,8 @@ const notesState = setup({
           const ancestors = getAncestorChain(ctx.notes, ctx.currentNoteId)
           return [
             { label: 'Notes', target: 'welcome' },
-            ...ancestors.map(a => ({ label: a.title, target: 'editor', info: a.id })),
-            { label: ctx.currentNote.title, target: 'editor', info: ctx.currentNoteId },
+            ...ancestors.map(a => ({ label: (a.icon ? a.icon + ' ' : '') + a.title, target: 'editor', info: a.id })),
+            { label: (ctx.currentNote.icon ? ctx.currentNote.icon + ' ' : '') + ctx.currentNote.title, target: 'editor', info: ctx.currentNoteId },
           ]
         }),
         ...contextMenuFn<NotesContext>((ctx) => [
