@@ -86,7 +86,7 @@ const blockItems: BlockItem[] = [
   { label: 'Horizontal Line', icon: Minus, command: e => e.chain().focus().setHorizontalRule().run() },
 ]
 
-const allItems = computed(() => [...blockItems, ...extraItems])
+const allItems = computed(() => [...extraItems, ...blockItems])
 
 function runCommand(command: (e: Editor) => void) {
   command(props.editor)
