@@ -47,6 +47,18 @@ defineOptions({ inheritAttrs: false })
 
 const suppressNodeDeletionEvents = ref(false)
 
+function getMarkdown(): string {
+  return (editor.value!.storage as any).markdown.getMarkdown()
+}
+
+function resetContent(content: string) {
+  if (!editor.value) return
+  suppressNodeDeletionEvents.value = true
+  editor.value.commands.setContent(content)
+  editor.value.commands.setTextSelection(0)
+  suppressNodeDeletionEvents.value = false
+}
+
 function collectSubPageLinkIds(doc: any): Set<string> {
   const ids = new Set<string>()
   doc.descendants((node: any) => {
@@ -124,15 +136,11 @@ const editor = useEditor({
       if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
       const href = (event.target as HTMLElement).closest('a')?.getAttribute('href')
       if (!href) return false
-      if (href.startsWith('note://')) {
-        const noteId = href.slice('note://'.length)
-        emit('noteLinkClick', noteId)
-        return true
-      }
-      if (href.startsWith('page://')) {
-        const noteId = href.slice('page://'.length)
-        emit('noteLinkClick', noteId)
-        return true
+      for (const protocol of ['note://', 'page://']) {
+        if (href.startsWith(protocol)) {
+          emit('noteLinkClick', href.slice(protocol.length))
+          return true
+        }
       }
       const url = /^https?:\/\//.test(href) ? href : `https://${href}`
       window.electronAPI?.shell?.openExternal(url)
@@ -175,7 +183,7 @@ const editor = useEditor({
     e.commands.setTextSelection(0)
   },
   onUpdate: ({ editor: e }) => {
-    const md = (e.storage as any).markdown.getMarkdown()
+    const md = getMarkdown()
     emit('update:modelValue', md)
   },
   onTransaction: ({ transaction }) => {
@@ -193,23 +201,14 @@ const editor = useEditor({
 // Sync modelValue changes from parent into the editor
 watch(() => props.modelValue, (newVal) => {
   if (!editor.value) return
-  const currentMd = (editor.value.storage as any).markdown.getMarkdown()
-  if (newVal !== currentMd) {
-    suppressNodeDeletionEvents.value = true
-    editor.value.commands.setContent(newVal)
-    // Prevent last image from being auto-selected after content load
-    editor.value.commands.setTextSelection(0)
-    suppressNodeDeletionEvents.value = false
+  if (newVal !== getMarkdown()) {
+    resetContent(newVal)
   }
 })
 
 // Force-reset editor content on entity switch to prevent stale content display
 watch(() => props.entityId, () => {
-  if (!editor.value) return
-  suppressNodeDeletionEvents.value = true
-  editor.value.commands.setContent(props.modelValue)
-  editor.value.commands.setTextSelection(0)
-  suppressNodeDeletionEvents.value = false
+  resetContent(props.modelValue)
 })
 
 // Sync disabled/editable
