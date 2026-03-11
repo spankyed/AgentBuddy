@@ -13,6 +13,7 @@ import { settings, settingsSystem, SettingsSystemEvents } from '@/systems/settin
 import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/system';
 import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/system';
 import { id as code, systemMachine as codeSystem, incomingSystemEvents as CodeSystemEvents } from '@/systems/code/system';
+import { notes, notesSystem, NotesSystemEvents } from '@/systems/notes/system';
 
 export default {
   [settings]: settingsSystem,
@@ -25,6 +26,7 @@ export default {
   [actions]: actionsSystem,
   [library]: librarySystem,
   [code]: codeSystem,
+  [notes]: notesSystem,
   // [logs]: logsSystem,
 } as const;
 
@@ -39,7 +41,8 @@ export const events = mergeSystems(
   PromptsSystemEvents,
   ActionsSystemEvents,
   LibrarySystemEvents,
-  CodeSystemEvents
+  CodeSystemEvents,
+  NotesSystemEvents
 );
 
 export { backendSystem } from "@/systems/backend";

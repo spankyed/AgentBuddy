@@ -10,6 +10,7 @@ import Actions from './actions/plugin.ts';
 import Blank from './_blank/plugin.ts';
 import Library from './library/plugin.ts';
 import Code from './code/plugin.ts';
+import Notes from './notes/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import {
   Code as CodeIcon,
@@ -39,7 +40,6 @@ const mockPlugins: Plugin[] = [
   // mockPlugin({ id: 'includes', label: 'Includes', icon: AtSign, }),
 
   // planned
-  // mockPlugin({ id: 'notes', label: 'Notes', icon: NotebookText, }),
   // mockPlugin({ id: 'Todo', label: 'Todo', icon: ListTodo, }),
   // mockPlugin({ id: 'angel', label: 'Angel', icon: Bird, isPinned: true, }),
 ];
@@ -49,6 +49,7 @@ export default [
   Agent,
   Library,
   Code,
+  Notes,
   Actions,
   Prompts,
   Flows,

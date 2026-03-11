@@ -16,6 +16,7 @@ import { settingsQueries, settingsCommands } from '@/systems/settings/repository
 import { secretsQueries, secretsCommands } from '@/systems/settings/secrets/repository';
 import { terminalQueries, terminalCommands } from '@/systems/code/repository';
 import { threadQueries, threadCommands } from '@/systems/threads/repository';
+import { noteQueries, noteCommands } from '@/systems/notes/repository';
 
 // Export centralized repository
 export const repository = {
@@ -58,6 +59,10 @@ export const repository = {
   // Threads system
   threadQueries,
   threadCommands,
+
+  // Notes system
+  noteQueries,
+  noteCommands,
 } as const;
 
 // Type export for better IDE support

@@ -36,4 +36,7 @@ export type * from './systems/code/types';
 export type { OutgoingSettingsEvents } from './systems/settings/system';
 export type * from './systems/settings/types';
 
+export type { OutgoingNotesEvents } from './systems/notes/system';
+export type * from './systems/notes/types';
+
 // todo, we should probably export all the entities from here

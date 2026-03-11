@@ -1,0 +1,111 @@
+import { EARS } from '@/core/types';
+import {
+  findById,
+  findByIdRaw,
+  createEntityWithDefaults,
+  updateEntity,
+  createRelation,
+  removeRelation,
+  RepositoryError,
+  RepositoryErrorCode,
+} from '@/core/helpers/repository';
+import { qx } from '@/core/ears/helpers/query';
+import { tx } from '@/core/ears/helpers/transaction';
+import type { NoteEntity } from '../types';
+
+export const noteCommands = {
+  create: (input: {
+    title: string;
+    content?: string;
+    parentId?: string;
+    displayOrder?: number;
+  }): NoteEntity => {
+    if (!input.title?.trim()) {
+      throw new RepositoryError('Title is required', RepositoryErrorCode.VALIDATION_ERROR);
+    }
+
+    // Calculate displayOrder if not provided
+    let displayOrder = input.displayOrder ?? 0;
+    if (displayOrder === 0) {
+      if (input.parentId) {
+        const siblings = qx(input.parentId as EARS.EntityId)
+          .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note)
+          .ids();
+        displayOrder = siblings.length;
+      } else {
+        // Count root notes (notes with no parent)
+        const allNotes = qx(EARS.Entity.Note).ids();
+        const rootCount = allNotes.filter(id => {
+          const parents = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+          return parents.length === 0;
+        }).length;
+        displayOrder = rootCount;
+      }
+    }
+
+    const note = createEntityWithDefaults<NoteEntity>(
+      EARS.Entity.Note,
+      {
+        title: input.title,
+        content: input.content || '',
+        displayOrder,
+      } as any,
+      'NOTE'
+    );
+
+    // Create parent-child relationship
+    if (input.parentId) {
+      createRelation(
+        input.parentId as EARS.EntityId,
+        EARS.RelKind.CONTAINS,
+        note.id
+      );
+    }
+
+    return note;
+  },
+
+  update: (id: EARS.EntityId, updates: {
+    title?: string;
+    content?: string;
+    displayOrder?: number;
+  }): void => {
+    if (!findById<NoteEntity>(id)) {
+      throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const filteredUpdates: Record<string, any> = {};
+    if (updates.title !== undefined) filteredUpdates.title = updates.title;
+    if (updates.content !== undefined) filteredUpdates.content = updates.content;
+    if (updates.displayOrder !== undefined) filteredUpdates.displayOrder = updates.displayOrder;
+
+    if (Object.keys(filteredUpdates).length > 0) {
+      updateEntity(id, filteredUpdates);
+    }
+  },
+
+  delete: (id: EARS.EntityId): void => {
+    const existing = findByIdRaw<NoteEntity>(id);
+    if (!existing) {
+      throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    // Recursively delete children first
+    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    for (const childId of childIds) {
+      noteCommands.delete(childId);
+    }
+
+    // Remove parent relationship (if any)
+    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    for (const parentId of parentIds) {
+      removeRelation(parentId, EARS.RelKind.CONTAINS, id);
+    }
+
+    // Remove CONTAINS relationships to children (already deleted)
+    tx(id).unlinkWhere({ kind: EARS.RelKind.CONTAINS });
+
+    // Destroy the entity
+    tx(id).destroy();
+  },
+} as const;

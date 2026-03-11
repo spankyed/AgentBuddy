@@ -39,6 +39,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'submit'): void
+  (e: 'noteLinkClick', noteId: string): void
 }>()
 
 defineOptions({ inheritAttrs: false })
@@ -100,6 +101,11 @@ const editor = useEditor({
       if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
       const href = (event.target as HTMLElement).closest('a')?.getAttribute('href')
       if (!href) return false
+      if (href.startsWith('note://')) {
+        const noteId = href.slice('note://'.length)
+        emit('noteLinkClick', noteId)
+        return true
+      }
       const url = /^https?:\/\//.test(href) ? href : `https://${href}`
       window.electronAPI?.shell?.openExternal(url)
       return true

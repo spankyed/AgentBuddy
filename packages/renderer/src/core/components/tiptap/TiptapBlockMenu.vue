@@ -25,7 +25,7 @@
       :style="dropdownStyle"
     >
       <button
-        v-for="item in blockItems"
+        v-for="item in allItems"
         :key="item.label"
         type="button"
         class="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
@@ -39,7 +39,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, inject, onMounted, onBeforeUnmount } from 'vue'
+import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from './injection-keys'
 import { FloatingMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import {
@@ -71,11 +72,7 @@ watch(open, async (isOpen) => {
   }
 })
 
-interface BlockItem {
-  label: string
-  icon: typeof Plus
-  command: (e: Editor) => void
-}
+const extraItems = inject(EXTRA_BLOCK_ITEMS_KEY, [])
 
 const blockItems: BlockItem[] = [
   { label: 'Heading 1', icon: Heading1, command: e => e.chain().focus().toggleHeading({ level: 1 }).run() },
@@ -88,6 +85,8 @@ const blockItems: BlockItem[] = [
   { label: 'Code Block', icon: CodeSquare, command: e => e.chain().focus().toggleCodeBlock().run() },
   { label: 'Horizontal Line', icon: Minus, command: e => e.chain().focus().setHorizontalRule().run() },
 ]
+
+const allItems = computed(() => [...blockItems, ...extraItems])
 
 function runCommand(command: (e: Editor) => void) {
   command(props.editor)
