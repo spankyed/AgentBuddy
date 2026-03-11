@@ -203,6 +203,15 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 
+// Force-reset editor content on entity switch to prevent stale content display
+watch(() => props.entityId, () => {
+  if (!editor.value) return
+  suppressNodeDeletionEvents.value = true
+  editor.value.commands.setContent(props.modelValue)
+  editor.value.commands.setTextSelection(0)
+  suppressNodeDeletionEvents.value = false
+})
+
 // Sync disabled/editable
 watch(() => props.disabled, (disabled) => {
   if (editor.value) {
