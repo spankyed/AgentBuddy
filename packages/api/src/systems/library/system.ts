@@ -206,7 +206,7 @@ const IncomingLibraryEvents = [
     parentId: z.string().optional(),
   }),
   // Import/Export events
-  busEvent('IMPORT_LIBRARY', { items: z.any() }),
+  busEvent('IMPORT_LIBRARY', { directory: z.string() }),
   busEvent('EXPORT_LIBRARY', { directory: z.string() }),
 ] as const
 
@@ -631,23 +631,11 @@ export const librarySystem = setup({
     },
     // Import/Export actions
     importLibraryItems: async ({ system, event }) => {
-      const ev = event as { type: 'IMPORT_LIBRARY'; items: any }
+      const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
       const pluginId = library
 
-      if (!Array.isArray(ev.items)) {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
-            type: 'LIBRARY_IMPORT_FAILED' as const,
-            pluginId,
-            errors: ['Invalid import data: expected an array of items'],
-          },
-        })
-        return
-      }
-
       try {
-        const result = importLibrary(ev.items)
+        const result = importLibrary(ev.directory)
 
         if (result.created === 0 && result.errors.length > 0) {
           system.get(bus).send({

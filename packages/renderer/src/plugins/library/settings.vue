@@ -68,7 +68,7 @@
     <!-- Import Library Section -->
     <CollapsibleSection label="Import Library" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
-        Import library items from an exported JSON file
+        Import library items from an export folder
       </p>
 
       <div class="space-y-4">
@@ -78,7 +78,7 @@
           class="px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm font-medium hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Upload class="w-4 h-4" />
-          {{ isImporting ? 'Importing...' : 'Select JSON File...' }}
+          {{ isImporting ? 'Importing...' : 'Select Export Folder...' }}
         </button>
 
         <!-- Success message -->
@@ -309,40 +309,20 @@ const exportErrors = useSelector(libraryActor, (state: any) => state.context.lib
 const exportedFilePath = useSelector(libraryActor, (state: any) => state.context.libraryExport.filePath)
 const exportedItemCount = useSelector(libraryActor, (state: any) => state.context.libraryExport.itemCount)
 
-// Import - file picker and send to state machine
+// Import - directory picker and send to state machine
 const selectAndImportLibrary = async () => {
   libraryActor.send({ type: 'LIBRARY.RESET_IMPORT_STATUS' })
 
-  const filePath = await window.electronAPI?.fileUtils.selectPath({
-    type: 'file'
+  const directory = await window.electronAPI?.fileUtils.selectPath({
+    type: 'directory'
   })
 
-  if (!filePath || Array.isArray(filePath)) return
+  if (!directory || Array.isArray(directory)) return
 
-  if (!filePath.endsWith('.json')) return
-
-  try {
-    const content = await window.electronAPI?.fileUtils.readFile(filePath)
-    if (!content) return
-
-    let parsed: any
-    try {
-      parsed = JSON.parse(content)
-    } catch {
-      return
-    }
-
-    // Support both { version, items } wrapper and raw array
-    const items = Array.isArray(parsed) ? parsed : parsed?.items
-    if (!Array.isArray(items)) return
-
-    libraryActor.send({
-      type: 'LIBRARY.IMPORT',
-      items,
-    })
-  } catch {
-    // Silently fail for file reading errors
-  }
+  libraryActor.send({
+    type: 'LIBRARY.IMPORT',
+    directory,
+  })
 }
 
 // Export

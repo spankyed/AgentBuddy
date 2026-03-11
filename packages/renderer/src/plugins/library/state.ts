@@ -158,7 +158,7 @@ export type LibraryEvents =
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
   | { type: 'REFRESH_FOLDER'; folderId: string }
   // Import/Export events
-  | { type: 'LIBRARY.IMPORT'; items: any[] }
+  | { type: 'LIBRARY.IMPORT'; directory: string }
   | { type: 'LIBRARY.RESET_IMPORT_STATUS' }
   | { type: 'LIBRARY.EXPORT'; directory: string }
   | { type: 'LIBRARY.RESET_EXPORT_STATUS' }
@@ -697,7 +697,7 @@ export const librarySystem = setup({
         trpc.bus.send.mutate({
           systemId: id,
           type: 'IMPORT_LIBRARY',
-          items: event.items,
+          directory: event.directory,
         } as any)
       }
     },

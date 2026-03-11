@@ -11,6 +11,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { repository } from '@/repository'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
+import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
 import type { ContentSection } from './types'
 
 interface ExportedDocument {
@@ -83,7 +84,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   }
 }
 
-export function exportLibrary(outputDir: string): { filePath: string; itemCount: number } {
+export function exportLibrary(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   const items: ExportedItem[] = []
   let itemCount = 0
 
@@ -125,7 +126,37 @@ export function exportLibrary(outputDir: string): { filePath: string; itemCount:
 
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
-  return { filePath, itemCount }
+  // Copy referenced media files into outputDir/media/
+  const mediaRefs = collectMediaRefs(items)
+  let mediaCopied = 0
+  for (const ref of mediaRefs) {
+    const resolved = resolveMedia(ref)
+    if (!resolved) continue
+    const destDir = path.join(outputDir, 'media', ref.entityId)
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true })
+    }
+    fs.copyFileSync(resolved.filePath, path.join(destDir, ref.filename))
+    mediaCopied++
+  }
+
+  return { filePath, itemCount, mediaCopied }
+}
+
+function collectMediaRefs(items: ExportedItem[]) {
+  const refs: ReturnType<typeof extractMediaRefs> = []
+  for (const item of items) {
+    if (item.type === 'document') {
+      for (const section of item.content) {
+        if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
+          refs.push(...extractMediaRefs(section.text))
+        }
+      }
+    } else if (item.type === 'collection') {
+      refs.push(...collectMediaRefs(item.children))
+    }
+  }
+  return refs
 }
 
 function countItems(item: ExportedItem): number {
