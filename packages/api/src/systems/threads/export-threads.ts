@@ -30,10 +30,12 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
       timestamp: msg.timestamp || 0,
     }))
 
-    const exportedLinks: ExportedThreadLink[] = linkedThreads.map(link => ({
-      shortCode: link.shortCode as string,
-      relation: link.relation as ExportedThreadLink['relation'],
-    }))
+    const exportedLinks: ExportedThreadLink[] = linkedThreads
+      // .filter(link => link.shortCode)
+      .map(link => ({
+        shortCode: link.shortCode as string,
+        relation: link.relation as ExportedThreadLink['relation'],
+      }))
 
     const exported: ExportedThread = {
       topic: thread.topic,
