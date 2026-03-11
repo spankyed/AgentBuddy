@@ -12,6 +12,8 @@ import { ThreadRelations, type ThreadExtendedData } from './types';
 import type { MappedZodLiterals } from '@/core/helpers/type-helpers';
 import { agent } from '@/systems/agent/system';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
+import { exportThreads } from './export-threads';
+import { importThreads } from './import-threads';
 
 export const threads = 'threads' as const;
 
@@ -49,6 +51,8 @@ export const IncomingThreadsEvents = [
     value: z.any(),
   }),
   busEvent('DELETE_THREAD', { threadId: z.string() }),
+  busEvent('EXPORT_THREADS', { directory: z.string() }),
+  busEvent('IMPORT_THREADS', { directory: z.string() }),
 ] as const
 
 export type ThreadsInternalEvents = 
@@ -63,6 +67,10 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, instructions?: string, status?: string }
   | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
   | { type: 'THREAD_DELETED', threadId: string }
+  | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
+  | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
+  | { type: 'THREADS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'THREADS_IMPORT_FAILED'; errors: string[] }
 
 export interface ThreadsContext {}
 
@@ -243,6 +251,64 @@ export const threadsSystem = setup({
       const agentActor = system.get(agent);
       agentActor.send({ type: 'THREAD_DELETED', threadId });
     },
+    exportThreadsToFile: ({ system, event }) => {
+      const ev = event as { type: 'EXPORT_THREADS'; directory: string };
+
+      try {
+        const { filePath, threadCount } = exportThreads(ev.directory);
+
+        system.get(bus).send(emit(threads, {
+          type: 'THREADS_EXPORTED',
+          filePath,
+          threadCount,
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(threads, {
+          type: 'THREADS_EXPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
+    importThreadItems: ({ system, event }) => {
+      const ev = event as { type: 'IMPORT_THREADS'; directory: string };
+
+      try {
+        const result = importThreads(ev.directory);
+
+        if (result.created === 0 && result.errors.length > 0) {
+          system.get(bus).send(emit(threads, {
+            type: 'THREADS_IMPORT_FAILED',
+            errors: result.errors,
+          }));
+          return;
+        }
+
+        system.get(bus).send(emit(threads, {
+          type: 'THREADS_IMPORTED',
+          count: result.created,
+          ...(result.errors.length > 0 ? { errors: result.errors } : {}),
+        }));
+
+        // Refresh thread data for FE
+        const connectedData = repository.threadQueries.connectedData();
+        const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+
+        system.get(bus).send(emit(threads, {
+          type: 'THREAD_CONNECTED',
+          data: {
+            ...connectedData,
+            settings: threadsSettings || null,
+          },
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(threads, {
+          type: 'THREADS_IMPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
   },
 }).createMachine(
   {
@@ -274,6 +340,12 @@ export const threadsSystem = setup({
           },
           DELETE_THREAD: {
             actions: 'deleteThread',
+          },
+          EXPORT_THREADS: {
+            actions: 'exportThreadsToFile',
+          },
+          IMPORT_THREADS: {
+            actions: 'importThreadItems',
           },
         },
       },

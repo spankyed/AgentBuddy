@@ -8,47 +8,10 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
-import type { ContentSection } from './types'
+import { ensureDirectoryExists } from '@/core/helpers/paths'
 import type { ExportedItem } from './export-types'
-import { buildExportTree, countItems } from './export-library'
-
-export function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-export function serializeContentToMarkdown(sections: ContentSection[]): string {
-  const parts: string[] = []
-
-  for (const section of sections) {
-    switch (section.type) {
-      case 'markdown':
-      case 'text':
-        parts.push(section.text)
-        break
-      case 'code':
-        parts.push(`\`\`\`${section.language}\n${section.text}\n\`\`\``)
-        break
-      case 'field':
-        parts.push(
-          section.fields.map(f => `**${f.key}**: ${f.value}`).join('\n')
-        )
-        break
-      case 'list':
-        parts.push(section.items.map(item => `- ${item}`).join('\n'))
-        break
-    }
-  }
-
-  return parts.join('\n\n')
-}
-
-function buildFrontmatter(tags: string[]): string {
-  if (!tags.length) return ''
-  return `---\ntags: [${tags.join(', ')}]\n---\n\n`
-}
+import { buildExportTree } from './export-library'
+import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
 
 function rewriteMediaUrls(
   markdown: string,
@@ -65,21 +28,10 @@ function rewriteMediaUrls(
   )
 }
 
-function uniqueFilename(name: string, existingNames: Set<string>): string {
-  if (!existingNames.has(name)) return name
-  const ext = path.extname(name)
-  const base = name.slice(0, name.length - ext.length)
-  let counter = 2
-  while (existingNames.has(`${base}-${counter}${ext}`)) counter++
-  return `${base}-${counter}${ext}`
-}
-
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   const { items, itemCount } = buildExportTree()
 
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true })
-  }
+  ensureDirectoryExists(outputDir)
 
   // First pass: collect all media refs and build a flat filename map
   const mediaFilenameMap = new Map<string, string>() // "entityId/filename" → flat filename
@@ -99,9 +51,7 @@ export function exportLibraryMarkdown(outputDir: string): { filePath: string; it
     const resolved = resolveMedia({ alt: '', originalUrl: '', entityId, filename })
     if (!resolved) continue
 
-    if (!fs.existsSync(mediaDir)) {
-      fs.mkdirSync(mediaDir, { recursive: true })
-    }
+    ensureDirectoryExists(mediaDir)
     fs.copyFileSync(resolved.filePath, path.join(mediaDir, flatName))
     mediaCopied++
   }
@@ -159,9 +109,7 @@ function writeItems(
       usedNames.add(dirName)
 
       const subDir = path.join(dir, dirName)
-      if (!fs.existsSync(subDir)) {
-        fs.mkdirSync(subDir, { recursive: true })
-      }
+      ensureDirectoryExists(subDir)
 
       const childNames = new Set<string>()
       writeItems(item.children, subDir, mediaFilenameMap, childNames)

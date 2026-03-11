@@ -1119,6 +1119,30 @@ declare const events: {
         type: "DELETE_THREAD";
         systemId: "threads";
         threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_THREADS">;
+        systemId: zod.ZodLiteral<"threads">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }, {
+        type: "EXPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_THREADS">;
+        systemId: zod.ZodLiteral<"threads">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }, {
+        type: "IMPORT_THREADS";
+        systemId: "threads";
+        directory: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -2890,6 +2914,24 @@ declare const events: {
     } | {
         type: "THREAD_DELETED";
         threadId: string;
+        pluginId: "threads";
+    } | {
+        type: "THREADS_EXPORTED";
+        filePath: string;
+        threadCount: number;
+        pluginId: "threads";
+    } | {
+        type: "THREADS_EXPORT_FAILED";
+        errors: string[];
+        pluginId: "threads";
+    } | {
+        type: "THREADS_IMPORTED";
+        count: number;
+        errors?: string[] | undefined;
+        pluginId: "threads";
+    } | {
+        type: "THREADS_IMPORT_FAILED";
+        errors: string[];
         pluginId: "threads";
     } | {
         type: "FLOWS_CONNECTED";

@@ -1,16 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { ExportedItem, ExportedLibrary } from '@/systems/library/export-types'
+import { toTitleCase, countDocs } from '@/systems/library/utils'
 
 const LIBRARY_DIR = path.join(import.meta.dirname, 'library')
 const COMPILED_DIR = path.join(import.meta.dirname, 'compiled')
 const OUTPUT_FILE = path.join(COMPILED_DIR, 'compiled-library.json')
-
-function toTitleCase(str: string): string {
-  return str
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-}
 
 function walkDirectory(dir: string): ExportedItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
@@ -67,13 +62,6 @@ export function compileLibrary(): void {
 
   const docCount = countDocs(items)
   console.log(`\nWrote ${docCount} library doc(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}`)
-}
-
-function countDocs(items: ExportedItem[]): number {
-  return items.reduce((sum, item) => {
-    if (item.type === 'collection') return sum + countDocs(item.children)
-    return sum + 1
-  }, 0)
 }
 
 // Run directly

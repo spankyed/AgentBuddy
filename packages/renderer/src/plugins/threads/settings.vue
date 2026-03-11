@@ -6,8 +6,8 @@
         Manage the status options available for threads
       </p>
       <div class="space-y-3">
-        <div 
-          v-for="(status, index) in statuses" 
+        <div
+          v-for="(status, index) in statuses"
           :key="`status-${index}`"
           class="group flex items-center gap-3"
         >
@@ -20,7 +20,7 @@
               title="Change color"
             />
             <!-- Simple color picker dropdown -->
-            <div 
+            <div
               v-if="activeColorPicker === index"
               class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
             >
@@ -71,8 +71,8 @@
         Manage the tags available for organizing threads
       </p>
       <div class="space-y-3"  data-onboarding-id="settings-thread-tags">
-        <div 
-          v-for="(tag, index) in tags" 
+        <div
+          v-for="(tag, index) in tags"
           :key="`tag-${index}`"
           class="group flex items-center gap-3"
         >
@@ -85,7 +85,7 @@
               title="Change color"
             />
             <!-- Simple color picker dropdown -->
-            <div 
+            <div
               v-if="activeTagColorPicker === index"
               class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
             >
@@ -175,15 +175,135 @@
       </CollapsibleSection>
     </div>
 
+    <!-- Import Threads Section -->
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Import Threads" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Import threads from an export folder
+        </p>
+
+        <div class="space-y-4">
+          <button
+            @click="selectAndImportThreads"
+            :disabled="isImporting"
+            class="px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm font-medium hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Upload class="w-4 h-4" />
+            {{ isImporting ? 'Importing...' : 'Select Export Folder...' }}
+          </button>
+
+          <!-- Success message -->
+          <div v-if="importStatus === 'success'" class="p-4 bg-emerald-900/20 border border-emerald-700/50 rounded-lg">
+            <div class="flex items-start gap-3">
+              <CheckCircle class="w-5 h-5 text-emerald-500 mt-0.5" />
+              <div class="flex-1">
+                <h4 class="text-sm font-medium text-emerald-400 mb-1">
+                  Successfully imported {{ importedCount }} thread{{ importedCount !== 1 ? 's' : '' }}
+                </h4>
+                <ul v-if="importErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
+                  <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error message -->
+          <div v-if="importStatus === 'error'" class="p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
+            <div class="flex items-start gap-3">
+              <XCircle class="w-5 h-5 text-red-500 mt-0.5" />
+              <div class="flex-1">
+                <h4 class="text-sm font-medium text-red-400 mb-1">
+                  Import failed
+                </h4>
+                <ul class="text-sm text-neutral-400 list-disc list-inside">
+                  <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CollapsibleSection>
+    </div>
+
+    <!-- Export Threads Section -->
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Export Threads" :default-open="false" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Export all threads with messages and relations to a JSON file
+        </p>
+
+        <div class="space-y-4">
+          <!-- Directory picker row -->
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              :value="exportDirectory"
+              readonly
+              placeholder="Select output directory..."
+              class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white text-sm focus:outline-none cursor-default placeholder-neutral-500"
+            />
+            <button
+              @click="selectExportDirectory"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-1.5"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Browse
+            </button>
+          </div>
+
+          <!-- Export button -->
+          <button
+            @click="exportThreadsToFile"
+            :disabled="isExporting || !exportDirectory"
+            class="px-4 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-300 text-sm font-medium hover:bg-neutral-700 hover:border-neutral-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download class="w-4 h-4" />
+            {{ isExporting ? 'Exporting...' : 'Export' }}
+          </button>
+
+          <!-- Success message -->
+          <div v-if="exportStatus === 'success'" class="p-4 bg-emerald-900/20 border border-emerald-700/50 rounded-lg">
+            <div class="flex items-start gap-3">
+              <CheckCircle class="w-5 h-5 text-emerald-500 mt-0.5" />
+              <div class="flex-1">
+                <h4 class="text-sm font-medium text-emerald-400 mb-1">
+                  Successfully exported {{ exportedThreadCount }} thread{{ exportedThreadCount !== 1 ? 's' : '' }}
+                </h4>
+                <p class="text-sm text-neutral-400">{{ exportedFilePath }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error message -->
+          <div v-if="exportStatus === 'error'" class="p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
+            <div class="flex items-start gap-3">
+              <XCircle class="w-5 h-5 text-red-500 mt-0.5" />
+              <div class="flex-1">
+                <h4 class="text-sm font-medium text-red-400 mb-1">
+                  Export failed
+                </h4>
+                <ul class="text-sm text-neutral-400 list-disc list-inside">
+                  <li v-for="(error, idx) in exportErrors" :key="idx">{{ error }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CollapsibleSection>
+    </div>
+
     <!-- Save status will be managed by parent -->
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Plus, X } from 'lucide-vue-next'
+import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
+import { applicationState } from '@/main'
+import { useSelector } from '@xstate/vue'
+import { id } from './state'
 import type { ThreadsSettings, ThreadStatusOption, ThreadTagOption } from '@app/api'
 
 interface Props {
@@ -339,5 +459,50 @@ const removeTag = (index: number) => {
     tags.value.splice(index, 1)
     saveTags()
   }
+}
+
+// Get threads actor for import/export state
+const threadsActor = applicationState.system.get(id)
+
+// Import state
+const isImporting = useSelector(threadsActor, (state: any) => state.context.threadsImport.status === 'importing')
+const importStatus = useSelector(threadsActor, (state: any) => state.context.threadsImport.status)
+const importErrors = useSelector(threadsActor, (state: any) => state.context.threadsImport.errors)
+const importedCount = useSelector(threadsActor, (state: any) => state.context.threadsImport.importedCount)
+
+// Export state
+const exportDirectory = ref<string>('')
+const isExporting = useSelector(threadsActor, (state: any) => state.context.threadsExport.status === 'exporting')
+const exportStatus = useSelector(threadsActor, (state: any) => state.context.threadsExport.status)
+const exportErrors = useSelector(threadsActor, (state: any) => state.context.threadsExport.errors)
+const exportedFilePath = useSelector(threadsActor, (state: any) => state.context.threadsExport.filePath)
+const exportedThreadCount = useSelector(threadsActor, (state: any) => state.context.threadsExport.threadCount)
+
+// Import - directory picker and send to state machine
+const selectAndImportThreads = async () => {
+  threadsActor.send({ type: 'THREADS.RESET_IMPORT_STATUS' })
+
+  const directory = await window.electronAPI?.fileUtils.selectPath({
+    type: 'directory'
+  })
+
+  if (!directory || Array.isArray(directory)) return
+
+  threadsActor.send({
+    type: 'THREADS.IMPORT',
+    directory,
+  })
+}
+
+// Export
+const selectExportDirectory = async () => {
+  const dir = await window.electronAPI?.fileUtils.selectPath({ type: 'directory' })
+  if (dir && typeof dir === 'string') exportDirectory.value = dir
+}
+
+const exportThreadsToFile = () => {
+  if (!exportDirectory.value) return
+  threadsActor.send({ type: 'THREADS.RESET_EXPORT_STATUS' })
+  threadsActor.send({ type: 'THREADS.EXPORT', directory: exportDirectory.value })
 }
 </script>

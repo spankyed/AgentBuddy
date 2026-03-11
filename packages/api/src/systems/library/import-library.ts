@@ -13,9 +13,10 @@ import * as path from 'node:path'
 import { repository } from '@/repository'
 import type { EARS } from '@/core/types'
 import { extractMediaRefs } from '@/core/helpers/media'
-import { getMediaPath } from '@/core/helpers/paths'
+import { getMediaPath, ensureDirectoryExists } from '@/core/helpers/paths'
 import type { ContentSection } from './types'
 import type { ExportedLibrary } from './export-types'
+import { toTitleCase, parseFrontmatter } from './utils'
 
 interface ImportResult {
   created: number
@@ -185,9 +186,7 @@ function importDocument(
           if (!fs.existsSync(srcFile)) continue
 
           const destDir = path.join(getMediaPath(), newId)
-          if (!fs.existsSync(destDir)) {
-            fs.mkdirSync(destDir, { recursive: true })
-          }
+          ensureDirectoryExists(destDir)
           fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
           result.mediaRestored++
 
@@ -214,28 +213,6 @@ function importDocument(
 }
 
 // ── Markdown Import ──────────────────────────────────────────
-
-function toTitleCase(str: string): string {
-  return str
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-}
-
-function parseFrontmatter(content: string): { tags: string[]; body: string } {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n\n?/)
-  if (!match) return { tags: [], body: content }
-
-  const frontmatter = match[1]
-  const body = content.slice(match[0].length)
-
-  // Parse tags: [tag1, tag2] from YAML
-  const tagsMatch = frontmatter.match(/tags:\s*\[([^\]]*)\]/)
-  const tags = tagsMatch
-    ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean)
-    : []
-
-  return { tags, body }
-}
 
 function importLibraryMarkdown(importDir: string): ImportResult {
   const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
@@ -308,9 +285,7 @@ function importMarkdownDir(
           if (!fs.existsSync(srcFile)) continue
 
           const destDir = path.join(getMediaPath(), newId)
-          if (!fs.existsSync(destDir)) {
-            fs.mkdirSync(destDir, { recursive: true })
-          }
+          ensureDirectoryExists(destDir)
           fs.copyFileSync(srcFile, path.join(destDir, filename))
           result.mediaRestored++
 

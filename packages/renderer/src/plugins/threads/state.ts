@@ -36,6 +36,10 @@ type SystemEvent =
   | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
   | { type: 'THREAD_DELETED'; threadId: string }
+  | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
+  | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
+  | { type: 'THREADS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'THREADS_IMPORT_FAILED'; errors: string[] }
 type UIEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'SHOW_CREATE_FORM' }
@@ -56,6 +60,10 @@ type UIEvent =
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | { type: 'TOGGLE_TAGS_SECTION'; show: boolean }
   | { type: 'TOGGLE_LINKED_SECTION'; show: boolean }
+  | { type: 'THREADS.IMPORT'; directory: string }
+  | { type: 'THREADS.RESET_IMPORT_STATUS' }
+  | { type: 'THREADS.EXPORT'; directory: string }
+  | { type: 'THREADS.RESET_EXPORT_STATUS' }
 type ThreadEvents =
   | UIEvent
   | SystemEvent
@@ -80,6 +88,8 @@ interface ThreadsContext {
   };
   availableTags: ThreadTagOption[];
   settings: ThreadsSettings | null;
+  threadsImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number };
+  threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
 }
 
 const threadsState = setup({
@@ -283,6 +293,104 @@ const threadsState = setup({
         selectedThreadCode: context.view.id === threadId ? undefined : context.selectedThreadCode,
       };
     }),
+
+    /* ── Threads Import actions ────────────────────────────── */
+    setImportingThreads: assign(({ context }) => ({
+      threadsImport: {
+        ...context.threadsImport,
+        status: 'importing' as const,
+      },
+    })),
+
+    sendImportThreads: ({ event }) => {
+      if (event.type === 'THREADS.IMPORT') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'IMPORT_THREADS',
+          directory: event.directory,
+        } as any)
+      }
+    },
+
+    handleThreadsImported: assign(({ event }) => {
+      if (event.type === 'THREADS_IMPORTED') {
+        return {
+          threadsImport: {
+            status: 'success' as const,
+            errors: event.errors || [],
+            importedCount: event.count,
+          },
+        }
+      }
+      return {}
+    }),
+
+    handleThreadsImportFailed: assign(({ event }) => {
+      if (event.type === 'THREADS_IMPORT_FAILED') {
+        return {
+          threadsImport: {
+            status: 'error' as const,
+            errors: event.errors,
+            importedCount: 0,
+          },
+        }
+      }
+      return {}
+    }),
+
+    resetImportThreadsStatus: assign({
+      threadsImport: { status: 'idle' as const, errors: [] as string[], importedCount: 0 },
+    }),
+
+    /* ── Threads Export actions ────────────────────────────── */
+    setExportingThreads: assign(({ context }) => ({
+      threadsExport: {
+        ...context.threadsExport,
+        status: 'exporting' as const,
+      },
+    })),
+
+    sendExportThreads: ({ event }) => {
+      if (event.type === 'THREADS.EXPORT') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'EXPORT_THREADS',
+          directory: event.directory,
+        } as any)
+      }
+    },
+
+    handleThreadsExported: assign(({ event }) => {
+      if (event.type === 'THREADS_EXPORTED') {
+        return {
+          threadsExport: {
+            status: 'success' as const,
+            errors: [] as string[],
+            filePath: event.filePath,
+            threadCount: event.threadCount,
+          },
+        }
+      }
+      return {}
+    }),
+
+    handleThreadsExportFailed: assign(({ event }) => {
+      if (event.type === 'THREADS_EXPORT_FAILED') {
+        return {
+          threadsExport: {
+            status: 'error' as const,
+            errors: event.errors,
+            filePath: '',
+            threadCount: 0,
+          },
+        }
+      }
+      return {}
+    }),
+
+    resetExportThreadsStatus: assign({
+      threadsExport: { status: 'idle' as const, errors: [] as string[], filePath: '', threadCount: 0 },
+    }),
   },
   guards: {
     targetIs
@@ -303,6 +411,8 @@ const threadsState = setup({
     create: { ...defaultThread },
     availableTags: [],
     settings: null,
+    threadsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
+    threadsExport: { status: 'idle' as const, errors: [], filePath: '', threadCount: 0 },
   }),
   on: {
     SHOW_CREATE_FORM: {
@@ -352,6 +462,33 @@ const threadsState = setup({
       actions: 'removeThreadFromList',
       target: '.list',
     },
+
+    // Import/Export events
+    'THREADS.IMPORT': {
+      actions: ['setImportingThreads', 'sendImportThreads'],
+    },
+    'THREADS.RESET_IMPORT_STATUS': {
+      actions: 'resetImportThreadsStatus',
+    },
+    THREADS_IMPORTED: {
+      actions: 'handleThreadsImported',
+    },
+    THREADS_IMPORT_FAILED: {
+      actions: 'handleThreadsImportFailed',
+    },
+    'THREADS.EXPORT': {
+      actions: ['setExportingThreads', 'sendExportThreads'],
+    },
+    'THREADS.RESET_EXPORT_STATUS': {
+      actions: 'resetExportThreadsStatus',
+    },
+    THREADS_EXPORTED: {
+      actions: 'handleThreadsExported',
+    },
+    THREADS_EXPORT_FAILED: {
+      actions: 'handleThreadsExportFailed',
+    },
+
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([
       ['.list', 'list'],

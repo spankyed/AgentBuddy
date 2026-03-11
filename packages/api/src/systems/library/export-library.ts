@@ -11,10 +11,12 @@ import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
+import { ensureDirectoryExists } from '@/core/helpers/paths'
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
 import type { ExportFormat } from './export-types'
 import { exportLibraryMarkdown } from './export-markdown'
+import { countExportedItems } from './utils'
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]
@@ -75,7 +77,7 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
     if (isRootCollection(col.id as EARS.EntityId)) {
       const item = buildCollectionTree(col.id as EARS.EntityId)
       items.push(item)
-      itemCount += countItems(item)
+      itemCount += countExportedItems(item)
     }
   }
 
@@ -97,11 +99,6 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
   return { items, itemCount }
 }
 
-export function countItems(item: ExportedItem): number {
-  if (item.type === 'document' || item.type === 'symlink') return 1
-  return 1 + item.children.reduce((sum, child) => sum + countItems(child), 0)
-}
-
 function exportLibraryJson(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   const { items, itemCount } = buildExportTree()
 
@@ -112,9 +109,7 @@ function exportLibraryJson(outputDir: string): { filePath: string; itemCount: nu
 
   const filePath = path.join(outputDir, 'exported-library.json')
 
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true })
-  }
+  ensureDirectoryExists(outputDir)
 
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
@@ -125,9 +120,7 @@ function exportLibraryJson(outputDir: string): { filePath: string; itemCount: nu
     const resolved = resolveMedia(ref)
     if (!resolved) continue
     const destDir = path.join(outputDir, 'media', ref.entityId)
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true })
-    }
+    ensureDirectoryExists(destDir)
     fs.copyFileSync(resolved.filePath, path.join(destDir, ref.filename))
     mediaCopied++
   }
