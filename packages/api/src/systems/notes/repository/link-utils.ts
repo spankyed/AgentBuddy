@@ -21,6 +21,7 @@ export function parseNoteLinks(content: string): EARS.EntityId[] {
  */
 export function syncReferences(sourceId: EARS.EntityId, content: string): void {
   const parsed = new Set(parseNoteLinks(content));
+  parsed.delete(sourceId);
   const current = new Set(
     qx(sourceId).linksTo(REFERENCES, EARS.Entity.Note, true).ids()
   );

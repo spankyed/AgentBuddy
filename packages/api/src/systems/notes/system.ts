@@ -165,6 +165,43 @@ export const notesSystem = setup({
       };
       const descendantIds = collectDescendants(ev.id as EARS.EntityId);
 
+      // Remove link markdown from referencing notes before deletion
+      const allDeletedIds = [ev.id, ...descendantIds];
+      const deletedSet = new Set(allDeletedIds);
+      const affectedRefIds = new Set<string>();
+
+      for (const deletedId of allDeletedIds) {
+        const refIds = repository.noteQueries.referencedBy(deletedId as EARS.EntityId);
+        for (const refId of refIds) {
+          if (!deletedSet.has(refId)) {
+            affectedRefIds.add(refId);
+          }
+        }
+      }
+
+      for (const refId of affectedRefIds) {
+        const note = repository.noteQueries.byId(refId as EARS.EntityId);
+        if (!note?.content) continue;
+
+        let newContent = note.content;
+        for (const deletedId of allDeletedIds) {
+          const escaped = deletedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const linkPattern = new RegExp(`\\[([^\\]]*)\\]\\(note:\\/\\/${escaped}\\)`, 'g');
+          newContent = newContent.replace(linkPattern, '$1');
+        }
+        if (newContent === note.content) continue;
+
+        repository.noteCommands.update(refId as EARS.EntityId, { content: newContent });
+
+        const updatedRef = repository.noteQueries.byIdDTO(refId as EARS.EntityId);
+        if (updatedRef) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_UPDATED',
+            note: updatedRef,
+          }));
+        }
+      }
+
       repository.noteCommands.delete(ev.id as EARS.EntityId);
 
       // Notify about deleted note and all descendants
