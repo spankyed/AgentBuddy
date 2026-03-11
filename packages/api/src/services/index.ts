@@ -12,6 +12,7 @@ import { createTextStreamService } from './text-stream';
 import * as chat from './chat';
 import * as artifact from './artifact';
 import * as brain from './brain';
+import * as media from './media';
 
 const services = {
   logger: loggerService,
@@ -28,6 +29,7 @@ const services = {
   chat,
   artifact,
   brain,
+  media,
 }
 
 export default services;

@@ -7,6 +7,7 @@ import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { ResizableImage } from './resizable-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Markdown } from 'tiptap-markdown'
@@ -47,6 +48,10 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     TaskList,
     TaskItem.configure({
       nested: true,
+    }),
+    ResizableImage.configure({
+      inline: false,
+      allowBase64: false,
     }),
   ]
 

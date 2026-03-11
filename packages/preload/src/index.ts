@@ -42,11 +42,22 @@ const shell = {
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 };
 
+// Media utilities
+const media = {
+  upload: (entityId: string, base64Data: string, mimeType: string) =>
+    ipcRenderer.invoke('media:upload', entityId, base64Data, mimeType) as Promise<string>,
+  delete: (entityId: string, filename: string) =>
+    ipcRenderer.invoke('media:delete', entityId, filename) as Promise<void>,
+  deleteAll: (entityId: string) =>
+    ipcRenderer.invoke('media:delete-all', entityId) as Promise<void>,
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
   fileUtils,
   shell,
+  media,
   apiPort,
 });
 

@@ -55,7 +55,10 @@
       v-if="section && isExpanded"
       :is="editorComponent"
       :content="section"
-      v-bind="section.type === 'code' && fileName ? { 'file-name': fileName } : {}"
+      v-bind="{
+        ...(section.type === 'code' && fileName ? { 'file-name': fileName } : {}),
+        ...(section.type === 'markdown' && entityId ? { 'entity-id': entityId } : {}),
+      }"
       @update="handleUpdate"
     />
   </div>
@@ -76,6 +79,7 @@ const props = defineProps<{
   showRemove?: boolean
   fileName?: string
   isSymlink?: boolean
+  entityId?: string
 }>()
 
 const emit = defineEmits<{

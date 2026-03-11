@@ -6,6 +6,7 @@
     <template v-if="mode === 'editor' && editor">
       <TiptapBlockMenu :editor="editor" />
       <TiptapBubbleMenu :editor="editor" />
+      <TiptapImageBubbleMenu :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
   </div>
@@ -17,6 +18,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { createExtensions, type TiptapMode } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
+import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
@@ -25,11 +27,13 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   disabled?: boolean
   editorClass?: string
+  entityId?: string
 }>(), {
   modelValue: '',
   placeholder: '',
   disabled: false,
   editorClass: '',
+  entityId: undefined,
 })
 
 const emit = defineEmits<{
@@ -38,6 +42,43 @@ const emit = defineEmits<{
 }>()
 
 defineOptions({ inheritAttrs: false })
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.split(',')[1]) // strip data URI prefix
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function uploadAndInsertImage(file: File, editorInstance: ReturnType<typeof useEditor>['value'], pos?: number) {
+  if (!editorInstance || !props.entityId) return false
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) return false
+  if (file.size > MAX_IMAGE_SIZE) return false
+
+  try {
+    const base64 = await fileToBase64(file)
+    const url = await window.electronAPI?.media.upload(props.entityId, base64, file.type)
+    if (!url) return false
+
+    if (pos !== undefined) {
+      editorInstance.chain().focus().insertContentAt(pos, { type: 'image', attrs: { src: url } }).run()
+    } else {
+      editorInstance.chain().focus().setImage({ src: url }).run()
+    }
+    return true
+  } catch (err) {
+    console.error('Failed to upload image:', err)
+    return false
+  }
+}
 
 const editor = useEditor({
   extensions: createExtensions({
@@ -63,6 +104,41 @@ const editor = useEditor({
       window.electronAPI?.shell?.openExternal(url)
       return true
     },
+    handlePaste: (_view, event) => {
+      if (props.mode !== 'editor' || !props.entityId) return false
+      const items = event.clipboardData?.items
+      if (!items) return false
+
+      let handled = false
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (!file) continue
+          if (!handled) { event.preventDefault(); handled = true }
+          uploadAndInsertImage(file, editor.value)
+        }
+      }
+      return handled
+    },
+    handleDrop: (view, event) => {
+      if (props.mode !== 'editor' || !props.entityId) return false
+      const files = event.dataTransfer?.files
+      if (!files?.length) return false
+
+      let handled = false
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          if (!handled) { event.preventDefault(); handled = true }
+          const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+          uploadAndInsertImage(file, editor.value, coords?.pos)
+        }
+      }
+      return handled
+    },
+  },
+  onCreate: ({ editor: e }) => {
+    // Prevent last image from being auto-selected on initial load
+    e.commands.setTextSelection(0)
   },
   onUpdate: ({ editor: e }) => {
     const md = (e.storage as any).markdown.getMarkdown()
@@ -76,6 +152,8 @@ watch(() => props.modelValue, (newVal) => {
   const currentMd = (editor.value.storage as any).markdown.getMarkdown()
   if (newVal !== currentMd) {
     editor.value.commands.setContent(newVal)
+    // Prevent last image from being auto-selected after content load
+    editor.value.commands.setTextSelection(0)
   }
 })
 
