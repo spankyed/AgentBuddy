@@ -116,10 +116,39 @@
     <!-- Export Library Section -->
     <CollapsibleSection label="Export Library" :default-open="false" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
-        Export all library items to a JSON file
+        {{ exportFormat === 'markdown'
+          ? 'Export library as flat markdown files with a media/ folder'
+          : 'Export all library items to a JSON file (full-fidelity round-trip)'
+        }}
       </p>
 
       <div class="space-y-4">
+        <!-- Format toggle -->
+        <div class="flex items-center gap-1 p-1 bg-neutral-800 rounded-lg w-fit">
+          <button
+            @click="exportFormat = 'markdown'"
+            :class="[
+              'px-3 py-1.5 text-sm rounded-md transition-all',
+              exportFormat === 'markdown'
+                ? 'bg-neutral-700 text-white font-medium'
+                : 'text-neutral-400 hover:text-neutral-300'
+            ]"
+          >
+            Markdown
+          </button>
+          <button
+            @click="exportFormat = 'json'"
+            :class="[
+              'px-3 py-1.5 text-sm rounded-md transition-all',
+              exportFormat === 'json'
+                ? 'bg-neutral-700 text-white font-medium'
+                : 'text-neutral-400 hover:text-neutral-300'
+            ]"
+          >
+            JSON
+          </button>
+        </div>
+
         <!-- Directory picker row -->
         <div class="flex items-center gap-2">
           <input
@@ -302,6 +331,7 @@ const importErrors = useSelector(libraryActor, (state: any) => state.context.lib
 const importedCount = useSelector(libraryActor, (state: any) => state.context.libraryImport.importedCount)
 
 // Export state
+const exportFormat = ref<'markdown' | 'json'>('markdown')
 const exportDirectory = ref<string>('')
 const isExporting = useSelector(libraryActor, (state: any) => state.context.libraryExport.status === 'exporting')
 const exportStatus = useSelector(libraryActor, (state: any) => state.context.libraryExport.status)
@@ -334,6 +364,6 @@ const selectExportDirectory = async () => {
 const exportLibraryToFile = () => {
   if (!exportDirectory.value) return
   libraryActor.send({ type: 'LIBRARY.RESET_EXPORT_STATUS' })
-  libraryActor.send({ type: 'LIBRARY.EXPORT', directory: exportDirectory.value })
+  libraryActor.send({ type: 'LIBRARY.EXPORT', directory: exportDirectory.value, format: exportFormat.value })
 }
 </script>

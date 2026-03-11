@@ -160,7 +160,7 @@ export type LibraryEvents =
   // Import/Export events
   | { type: 'LIBRARY.IMPORT'; directory: string }
   | { type: 'LIBRARY.RESET_IMPORT_STATUS' }
-  | { type: 'LIBRARY.EXPORT'; directory: string }
+  | { type: 'LIBRARY.EXPORT'; directory: string; format: 'markdown' | 'json' }
   | { type: 'LIBRARY.RESET_EXPORT_STATUS' }
   | { type: 'LIBRARY_IMPORTED'; count: number; errors?: string[] }
   | { type: 'LIBRARY_IMPORT_FAILED'; errors: string[] }
@@ -746,6 +746,7 @@ export const librarySystem = setup({
           systemId: id,
           type: 'EXPORT_LIBRARY',
           directory: event.directory,
+          format: event.format,
         } as any)
       }
     },

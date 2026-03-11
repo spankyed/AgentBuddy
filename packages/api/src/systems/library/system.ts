@@ -207,7 +207,7 @@ const IncomingLibraryEvents = [
   }),
   // Import/Export events
   busEvent('IMPORT_LIBRARY', { directory: z.string() }),
-  busEvent('EXPORT_LIBRARY', { directory: z.string() }),
+  busEvent('EXPORT_LIBRARY', { directory: z.string(), format: z.enum(['markdown', 'json']) }),
 ] as const
 
 export type OutgoingLibraryEvents =
@@ -689,11 +689,11 @@ export const librarySystem = setup({
       }
     },
     exportLibraryToFile: async ({ system, event }) => {
-      const ev = event as { type: 'EXPORT_LIBRARY'; directory: string }
+      const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
       const pluginId = library
 
       try {
-        const { filePath, itemCount } = exportLibrary(ev.directory)
+        const { filePath, itemCount } = exportLibrary(ev.directory, ev.format)
 
         system.get(bus).send({
           type: 'OUTGOING' as const,

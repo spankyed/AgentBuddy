@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && mkdir -p dist/compiled && cp scratchpad/compiled/*.json dist/compiled/ && cp -r scratchpad/compiled/media dist/compiled/media 2>/dev/null || true && tsup src/types.ts src/server.ts --format esm,cjs --dts",
+    "build": "tsc && tsc-alias -p tsconfig.json && cp -r scratchpad/compiled dist/ && tsup src/types.ts src/server.ts --format esm,cjs --dts",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",

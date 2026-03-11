@@ -26,3 +26,5 @@ export interface ExportedLibrary {
   version: number
   items: ExportedItem[]
 }
+
+export type ExportFormat = 'markdown' | 'json'

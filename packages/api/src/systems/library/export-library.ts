@@ -1,19 +1,20 @@
 /**
- * Library Export Function
+ * Library Export Functions
  *
- * Exports all library items (collections, documents, symlinks) as a portable
- * nested JSON tree, stripping internal fields.
+ * Exports all library items (collections, documents, symlinks).
+ * Supports JSON (full-fidelity) and Markdown (flat, human-readable) formats.
  */
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
-import { repository } from '@/repository'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
 import type { ContentSection } from './types'
-import type { ExportedItem, ExportedCollection, ExportedDocument, ExportedSymlink } from './export-types'
+import type { ExportedItem } from './export-types'
+import type { ExportFormat } from './export-types'
+import { exportLibraryMarkdown } from './export-markdown'
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]
@@ -63,7 +64,8 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   }
 }
 
-export function exportLibrary(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
+/** Build the full export tree and count items. Shared by both JSON and Markdown exporters. */
+export function buildExportTree(): { items: ExportedItem[]; itemCount: number } {
   const items: ExportedItem[] = []
   let itemCount = 0
 
@@ -92,6 +94,17 @@ export function exportLibrary(outputDir: string): { filePath: string; itemCount:
     }
   }
 
+  return { items, itemCount }
+}
+
+export function countItems(item: ExportedItem): number {
+  if (item.type === 'document' || item.type === 'symlink') return 1
+  return 1 + item.children.reduce((sum, child) => sum + countItems(child), 0)
+}
+
+function exportLibraryJson(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
+  const { items, itemCount } = buildExportTree()
+
   const exportData = {
     version: 1,
     items,
@@ -105,7 +118,7 @@ export function exportLibrary(outputDir: string): { filePath: string; itemCount:
 
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
-  // Copy referenced media files into outputDir/media/
+  // Copy referenced media files into outputDir/media/{entityId}/
   const mediaRefs = collectMediaRefs(items)
   let mediaCopied = 0
   for (const ref of mediaRefs) {
@@ -138,8 +151,6 @@ function collectMediaRefs(items: ExportedItem[]) {
   return refs
 }
 
-function countItems(item: ExportedItem): number {
-  if (item.type === 'document' || item.type === 'symlink') return 1
-  // collection: count self + recurse children
-  return 1 + item.children.reduce((sum, child) => sum + countItems(child), 0)
+export function exportLibrary(outputDir: string, format: ExportFormat = 'markdown'): { filePath: string; itemCount: number; mediaCopied: number } {
+  return format === 'json' ? exportLibraryJson(outputDir) : exportLibraryMarkdown(outputDir)
 }

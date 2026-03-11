@@ -1,9 +1,11 @@
 /**
  * Library Import Function
  *
- * Imports library items from an export directory containing exported-library.json
- * and an optional media/ folder. Recreates collections, documents, and symlink
- * collections. Media files are copied to new entity directories and URLs rewritten.
+ * Imports library items from an export directory. Auto-detects format:
+ * - If exported-library.json exists → JSON import (full-fidelity)
+ * - Otherwise scans for .md files → Markdown import (flat structure)
+ *
+ * Media files are copied to new entity directories and URLs rewritten.
  */
 
 import * as fs from 'node:fs'
@@ -23,13 +25,26 @@ interface ImportResult {
 }
 
 export function importLibrary(importDir: string): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
-
   const jsonPath = path.join(importDir, 'exported-library.json')
-  if (!fs.existsSync(jsonPath)) {
-    result.errors.push(`exported-library.json not found in ${importDir}`)
-    return result
+
+  if (fs.existsSync(jsonPath)) {
+    return importLibraryJson(importDir, jsonPath)
   }
+
+  // Check for .md files
+  const entries = fs.readdirSync(importDir)
+  const hasMdFiles = entries.some(e => e.endsWith('.md'))
+  if (hasMdFiles) {
+    return importLibraryMarkdown(importDir)
+  }
+
+  return { created: 0, skipped: 0, mediaRestored: 0, errors: [`No exported-library.json or .md files found in ${importDir}`] }
+}
+
+// ── JSON Import ──────────────────────────────────────────────
+
+function importLibraryJson(importDir: string, jsonPath: string): ImportResult {
+  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
 
   let parsed: any
   try {
@@ -195,5 +210,128 @@ function importDocument(
     const message = err instanceof Error ? err.message : String(err)
     result.errors.push(`Failed to create document "${item.name}": ${message}`)
     result.skipped++
+  }
+}
+
+// ── Markdown Import ──────────────────────────────────────────
+
+function toTitleCase(str: string): string {
+  return str
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function parseFrontmatter(content: string): { tags: string[]; body: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n\n?/)
+  if (!match) return { tags: [], body: content }
+
+  const frontmatter = match[1]
+  const body = content.slice(match[0].length)
+
+  // Parse tags: [tag1, tag2] from YAML
+  const tagsMatch = frontmatter.match(/tags:\s*\[([^\]]*)\]/)
+  const tags = tagsMatch
+    ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean)
+    : []
+
+  return { tags, body }
+}
+
+function importLibraryMarkdown(importDir: string): ImportResult {
+  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  const hasMedia = fs.existsSync(path.join(importDir, 'media'))
+
+  importMarkdownDir(importDir, undefined, result, importDir, hasMedia)
+  return result
+}
+
+function importMarkdownDir(
+  dir: string,
+  parentId: EARS.EntityId | undefined,
+  result: ImportResult,
+  rootImportDir: string,
+  hasMedia: boolean,
+): void {
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+
+  for (const entry of entries) {
+    if (entry.name === 'media') continue
+    const fullPath = path.join(dir, entry.name)
+
+    if (entry.isDirectory()) {
+      // Subdirectory → collection
+      const name = toTitleCase(entry.name)
+      try {
+        const collection = repository.libraryCommands.createCollection(name, undefined, parentId)
+        result.created++
+        importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        result.errors.push(`Failed to create collection "${name}": ${message}`)
+        result.skipped++
+      }
+    } else if (entry.name.endsWith('.md')) {
+      // .md file → document
+      const basename = entry.name.slice(0, -3) // strip .md
+      const name = toTitleCase(basename)
+
+      try {
+        const raw = fs.readFileSync(fullPath, 'utf-8')
+        const { tags, body } = parseFrontmatter(raw)
+
+        // Create content as a single markdown section
+        const content: ContentSection[] = body.trim()
+          ? [{ type: 'markdown', text: body }]
+          : []
+
+        const document = repository.libraryCommands.createDocument(name, content, tags, parentId)
+        result.created++
+
+        if (!hasMedia || content.length === 0) continue
+
+        // Restore media: scan for media/{filename} refs, copy to new entity dir
+        const newId = document.id
+        let contentChanged = false
+        const section = content[0] as { type: 'markdown'; text: string }
+
+        // Match media/filename patterns in markdown images
+        const mediaRefPattern = /media\/([^)\s]+)/g
+        let match: RegExpExecArray | null
+        const processedFiles = new Set<string>()
+
+        while ((match = mediaRefPattern.exec(section.text)) !== null) {
+          const filename = match[1]
+          if (processedFiles.has(filename)) continue
+          processedFiles.add(filename)
+
+          const srcFile = path.join(rootImportDir, 'media', filename)
+          if (!fs.existsSync(srcFile)) continue
+
+          const destDir = path.join(getMediaPath(), newId)
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true })
+          }
+          fs.copyFileSync(srcFile, path.join(destDir, filename))
+          result.mediaRestored++
+
+          // Rewrite media/filename → media://{newId}/filename
+          section.text = section.text.split(`media/${filename}`).join(`media://${newId}/${filename}`)
+          contentChanged = true
+        }
+
+        if (contentChanged) {
+          repository.libraryCommands.updateDocument(
+            newId as EARS.EntityId,
+            name,
+            content,
+            tags,
+          )
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        result.errors.push(`Failed to import "${name}": ${message}`)
+        result.skipped++
+      }
+    }
   }
 }
