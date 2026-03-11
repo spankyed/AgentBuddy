@@ -79,7 +79,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
   | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }
   | { type: 'IMPORT_DATABASE_ERROR'; error: string }
-  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number } | null }
+  | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null }
   | { type: 'RESET_DATABASE_SUCCESS'; message: string }
   | { type: 'RESET_DATABASE_ERROR'; error: string };
 

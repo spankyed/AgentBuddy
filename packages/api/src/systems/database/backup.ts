@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@/core/helpers/paths'; // getSearchIndicesPath removed [SEARCH_INDEX_FF]
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@/core/helpers/paths'; // getSearchIndicesPath removed [SEARCH_INDEX_FF]
 import { closePersistence, reinitializeLmdb } from '@/core/ears/attribute-storage';
 
 const logger = createLogger('database:backup');
@@ -22,10 +22,21 @@ export async function exportDatabase(
   const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);
   
   await fs.ensureDir(fullBackupPath);
+
+  // Check if media assets should be included (when main database is selected)
+  let includesMedia = false;
+  if (databases.includes('lmdb')) {
+    const mediaPath = getMediaPath();
+    if (await fs.pathExists(mediaPath)) {
+      includesMedia = true;
+    }
+  }
+
   await fs.writeJson(path.join(fullBackupPath, 'metadata.json'), {
     timestamp: Date.now(),
     databases,
     version: '1.0.0',
+    includesMedia,
   });
 
   for (const dbName of databases) {
@@ -34,6 +45,12 @@ export async function exportDatabase(
       await fs.copy(sourcePath, path.join(fullBackupPath, dbName));
       logger.info(`Backed up ${dbName}`);
     }
+  }
+
+  // Bundle media assets when main database is included
+  if (includesMedia) {
+    await fs.copy(getMediaPath(), path.join(fullBackupPath, 'media'));
+    logger.info('Backed up media assets');
   }
 
   logger.info('Backup completed', { path: fullBackupPath });
@@ -57,6 +74,15 @@ export async function importDatabase(backupPath: string) {
     }
   }
 
+  // Backup current media assets if backup includes media
+  const mediaPath = getMediaPath();
+  const backupMediaPath = path.join(backupPath, 'media');
+  const hasMediaInBackup = await fs.pathExists(backupMediaPath);
+
+  if (hasMediaInBackup && await fs.pathExists(mediaPath)) {
+    await fs.copy(mediaPath, path.join(tempBackupPath, 'media'));
+  }
+
   try {
     // Close LMDB connections before modifying files
     closePersistence();
@@ -71,6 +97,13 @@ export async function importDatabase(backupPath: string) {
         await fs.copy(backupDbPath, targetPath);
         logger.info(`Imported ${dbName}`);
       }
+    }
+
+    // Restore media assets if present in backup
+    if (hasMediaInBackup) {
+      await fs.remove(mediaPath);
+      await fs.copy(backupMediaPath, mediaPath);
+      logger.info('Restored media assets');
     }
 
     // Reopen LMDB connections with new files
@@ -90,6 +123,13 @@ export async function importDatabase(backupPath: string) {
         await fs.remove(targetPath);
         await fs.copy(tempDbPath, targetPath);
       }
+    }
+
+    // Restore media from temp backup on failure
+    const tempMediaPath = path.join(tempBackupPath, 'media');
+    if (await fs.pathExists(tempMediaPath)) {
+      await fs.remove(mediaPath);
+      await fs.copy(tempMediaPath, mediaPath);
     }
 
     reinitializeLmdb();
@@ -114,10 +154,14 @@ export async function getBackupInfo(backupPath: string) {
       }
     }
 
+    const mediaPath = path.join(backupPath, 'media');
+    const hasMedia = await fs.pathExists(mediaPath);
+
     return {
       timestamp: metadata.timestamp,
       databases: metadata.databases,
       size: totalSize,
+      hasMedia,
     };
   } catch {
     return null;

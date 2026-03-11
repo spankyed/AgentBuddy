@@ -253,7 +253,7 @@
           <!-- Backup Info Section -->
           <Transition name="slide-fade">
             <div v-if="backupInfo" class="bg-neutral-900/50 rounded-xl border border-neutral-800 p-6">
-              <div class="grid grid-cols-3 gap-4">
+              <div :class="['grid gap-4', backupInfo.hasMedia ? 'grid-cols-4' : 'grid-cols-3']">
                 <div class="bg-neutral-800/50 rounded-lg p-3">
                   <div class="flex items-center gap-2 mb-1">
                     <Calendar class="w-4 h-4 text-neutral-400" />
@@ -276,6 +276,14 @@
                     <span class="text-xs text-neutral-400">Size</span>
                   </div>
                   <p class="text-sm text-white">{{ formatSize(backupInfo.size) }}</p>
+                </div>
+
+                <div v-if="backupInfo.hasMedia" class="bg-neutral-800/50 rounded-lg p-3">
+                  <div class="flex items-center gap-2 mb-1">
+                    <ImageIcon class="w-4 h-4 text-neutral-400" />
+                    <span class="text-xs text-neutral-400">Media</span>
+                  </div>
+                  <p class="text-sm text-white">Included</p>
                 </div>
               </div>
             </div>
@@ -319,7 +327,8 @@ import {
   CheckCircle,
   AlertCircle,
   Calendar,
-  HardDrive
+  HardDrive,
+  Image as ImageIcon
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/main';
