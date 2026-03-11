@@ -38,6 +38,7 @@
           class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
           placeholder="Untitled"
           @input="handleTitleInput"
+          @keydown.enter.prevent="editorRef?.editor?.commands.focus()"
         />
       </div>
 
