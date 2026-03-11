@@ -6,6 +6,7 @@ import { emit, safeEvents } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import type { NoteDTO, NotesConnectedData } from './types';
 import { repository } from '@/repository';
+import { syncReferences } from './repository/link-utils';
 import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
 
@@ -105,7 +106,44 @@ export const notesSystem = setup({
           type: 'NOTE_UPDATED',
           note: updatedNote,
         }));
+
+        // Sync link text in notes that reference this note (indexed lookup)
+        if (ev.title !== undefined) {
+          const referencingIds = repository.noteQueries.referencedBy(ev.id as EARS.EntityId);
+          const linkPattern = new RegExp(
+            `\\[([^\\]]*)\\]\\(note:\\/\\/${ev.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
+            'g'
+          );
+
+          for (const refId of referencingIds) {
+            const note = repository.noteQueries.byId(refId);
+            if (!note?.content) continue;
+
+            const newContent = note.content.replace(linkPattern, `[${ev.title}](note://${ev.id})`);
+            if (newContent === note.content) continue;
+
+            repository.noteCommands.update(refId, { content: newContent });
+
+            const affectedNote = repository.noteQueries.byIdDTO(refId);
+            if (affectedNote) {
+              system.get(bus).send(emit(notes, {
+                type: 'NOTE_UPDATED',
+                note: affectedNote,
+              }));
+            }
+          }
+        }
       }
+    },
+
+    bootstrapReferences: () => {
+      const allNotes = repository.noteQueries.all();
+      for (const note of allNotes) {
+        if (note.content) {
+          syncReferences(note.id as EARS.EntityId, note.content);
+        }
+      }
+      logger.info(`Bootstrapped REFERENCES relations for ${allNotes.length} notes`);
     },
 
     deleteNote: ({ system, event }) => {
@@ -170,6 +208,7 @@ export const notesSystem = setup({
   },
   states: {
     idle: {
+      entry: 'bootstrapReferences',
       on: {
         CLIENT_CONNECTED: {
           actions: 'sendNotesConnectedData',

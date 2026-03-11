@@ -2,6 +2,7 @@ import { EARS } from '@/core/types';
 import { findById, findAll } from '@/core/helpers/repository';
 import { qx } from '@/core/ears/helpers/query';
 import type { NoteEntity, NoteDTO } from '../types';
+import { REFERENCES } from '../types';
 
 function toDTO(note: NoteEntity): NoteDTO {
   // Find parent: who CONTAINS this note?
@@ -66,6 +67,9 @@ export const noteQueries = {
 
     return chain;
   },
+
+  referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
+    qx(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
 
   connectedData: () => ({
     notes: noteQueries.allDTOs(),

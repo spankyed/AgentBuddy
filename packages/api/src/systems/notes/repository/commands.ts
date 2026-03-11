@@ -12,6 +12,8 @@ import {
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { NoteEntity } from '../types';
+import { REFERENCES } from '../types';
+import { syncReferences } from './link-utils';
 
 export const noteCommands = {
   create: (input: {
@@ -62,6 +64,11 @@ export const noteCommands = {
       );
     }
 
+    // Sync REFERENCES relations from content links
+    if (input.content) {
+      syncReferences(note.id, input.content);
+    }
+
     return note;
   },
 
@@ -81,6 +88,11 @@ export const noteCommands = {
 
     if (Object.keys(filteredUpdates).length > 0) {
       updateEntity(id, filteredUpdates);
+    }
+
+    // Sync REFERENCES relations when content changes
+    if (updates.content !== undefined) {
+      syncReferences(id, updates.content);
     }
   },
 
@@ -104,6 +116,15 @@ export const noteCommands = {
 
     // Remove CONTAINS relationships to children (already deleted)
     tx(id).unlinkWhere({ kind: EARS.RelKind.CONTAINS });
+
+    // Clean up REFERENCES relations (outgoing)
+    tx(id).unlinkWhere({ kind: REFERENCES });
+
+    // Clean up incoming REFERENCES (other notes pointing to this one)
+    const referencingIds = qx(id).linksTo(REFERENCES, EARS.Entity.Note, false).ids();
+    for (const refId of referencingIds) {
+      tx(refId).unlinkIf(REFERENCES, id);
+    }
 
     // Destroy the entity
     tx(id).destroy();

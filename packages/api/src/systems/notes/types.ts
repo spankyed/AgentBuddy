@@ -1,5 +1,7 @@
 import { BaseEntity, EARS } from '@/core/types';
 
+export const REFERENCES = EARS.RelKind.Custom('references');
+
 export interface NoteEntity extends BaseEntity {
   entityType: EARS.Entity.Note;
   title: string;
