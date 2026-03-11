@@ -1,10 +1,10 @@
 <template>
-  <div class="border rounded-md border-neutral-700">
+  <div>
     <textarea
       ref="textareaRef"
       :value="content.text"
       placeholder="Plain text content..."
-      class="w-full min-h-[12rem] bg-transparent text-neutral-200 p-3 resize-none outline-none"
+      class="w-full min-h-[12rem] bg-transparent text-neutral-200 resize-none outline-none"
       @input="onInput"
     />
   </div>

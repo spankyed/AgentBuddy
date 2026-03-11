@@ -1,7 +1,7 @@
 <template>
   <div
     ref="containerRef"
-    class="border rounded-md border-neutral-700 overflow-hidden"
+    class="overflow-hidden"
     :style="{ height: containerHeight + 'px' }"
   >
     <UnifiedMonacoEditor

@@ -1,5 +1,5 @@
 <template>
-  <div class="border rounded-md border-neutral-700">
+  <div>
     <TiptapEditor
       mode="editor"
       :model-value="content.text"

@@ -1,7 +1,15 @@
 <template>
   <div ref="sectionRef" class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 ml-1">
+        <button
+          @click="isExpanded = !isExpanded"
+          type="button"
+          class="p-1 text-neutral-400 hover:text-neutral-200 transition-all"
+          :class="{ 'rotate-90': isExpanded }"
+        >
+          <ChevronRight class="w-4 h-4" />
+        </button>
         <!-- Content type selector -->
         <select
           v-if="section"
@@ -31,14 +39,6 @@
         </select>
       </div>
       <div class="flex items-center gap-1">
-        <button
-          @click="isExpanded = !isExpanded"
-          type="button"
-          class="p-1 text-neutral-400 hover:text-neutral-200 transition-all"
-          :class="{ 'rotate-90': isExpanded }"
-        >
-          <ChevronRight class="w-4 h-4" />
-        </button>
         <button
           v-if="showRemove"
           @click="$emit('remove')"
