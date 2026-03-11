@@ -99,11 +99,14 @@ watch(
       // Insert the link at the saved cursor position
       const editor = editorRef.value?.editor
       if (editor) {
-        const linkMd = `[${newChild.title}](note://${newChild.id})`
         editor
           .chain()
           .focus()
-          .insertContentAt(oldVal.cursorPos, linkMd)
+          .insertContentAt(oldVal.cursorPos, {
+            type: 'text',
+            text: newChild.title,
+            marks: [{ type: 'link', attrs: { href: `note://${newChild.id}` } }],
+          })
           .run()
       }
     }

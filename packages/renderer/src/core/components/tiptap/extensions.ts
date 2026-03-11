@@ -38,6 +38,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     Link.configure({
       openOnClick: false,
       autolink: true,
+      protocols: ['note'],
     }),
     Table.configure({
       resizable: mode !== 'viewer',
