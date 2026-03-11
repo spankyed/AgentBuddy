@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide } from 'vue'
+import { ref, watch, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
@@ -95,6 +95,13 @@ const pageBlockItem: BlockItem[] = [
   },
 ]
 provide(EXTRA_BLOCK_ITEMS_KEY, pageBlockItem)
+
+// Focus editor when navigating into a note
+watch(currentNote, (note) => {
+  if (note) {
+    nextTick(() => editorRef.value?.editor?.commands.focus())
+  }
+})
 
 // Watch for pending page insert completion (new child note created)
 watch(
