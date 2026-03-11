@@ -3,7 +3,6 @@ import breadcrumb, { breadcrumbList } from '@/core/breadcrumb'
 import { safeEvents } from '@/core/types/safe-events'
 import {
   targetIs,
-  TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
 import type {
@@ -283,10 +282,26 @@ const notesState = setup({
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },
-    ...TRAIL_CLICK([
-      ['.welcome', 'welcome'],
-      ['.editor', 'editor'],
-    ]),
+    TRAIL_CLICK: [
+      {
+        guard: { type: 'targetIs', params: { view: 'welcome' } },
+        target: '.welcome',
+        actions: 'clearCurrentNote',
+      },
+      {
+        guard: { type: 'targetIs', params: { view: 'editor' } },
+        target: '.editor',
+        actions: assign(({ event, context }) => {
+          const noteId = (event as TrailClickEvent).info
+          if (!noteId) return {}
+          const note = context.notes.find(n => n.id === noteId) || null
+          return {
+            currentNoteId: noteId,
+            currentNote: note,
+          }
+        }),
+      },
+    ],
   },
   states: {
     welcome: {
@@ -314,11 +329,10 @@ const notesState = setup({
       meta: {
         ...breadcrumbList<NotesContext>((ctx) => {
           if (!ctx.currentNoteId || !ctx.currentNote) {
-            return [{ label: 'Notes', target: 'welcome' }]
+            return []
           }
           const ancestors = getAncestorChain(ctx.notes, ctx.currentNoteId)
           return [
-            { label: 'Notes', target: 'welcome' },
             ...ancestors.map(a => ({ label: (a.icon ? a.icon + ' ' : '') + a.title, target: 'editor', info: a.id })),
             { label: (ctx.currentNote.icon ? ctx.currentNote.icon + ' ' : '') + ctx.currentNote.title, target: 'editor', info: ctx.currentNoteId },
           ]

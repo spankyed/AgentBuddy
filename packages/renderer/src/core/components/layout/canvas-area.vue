@@ -42,7 +42,7 @@
         <div v-for="(crumb, idx) in breadcrumbs" :key="idx" class="flex items-center">
           <span
             class="text-xs font-semibold tracking-wider uppercase transition-colors cursor-pointer hover:text-white"
-            @click="$emit('crumb-click', crumb.target || '')"
+            @click="$emit('crumb-click', crumb.target || '', crumb.info)"
           >
             {{ crumb.label }}
           </span>
@@ -83,7 +83,7 @@ watch(menuOpen, onMenuOpenChange)
 
 interface Props {
   label: string
-  breadcrumbs?: { label: string; target?: string }[]
+  breadcrumbs?: { label: string; target?: string; info?: any }[]
   menuItems?: ContextMenuItemType[]
   headerClass?: string
 }
@@ -92,7 +92,7 @@ withDefaults(defineProps<Props>(), {
 })
 defineEmits<{
   (e: 'canvas-toggle'): void
-  (e: 'crumb-click', target: string): void
+  (e: 'crumb-click', target: string, info?: any): void
   (e: 'menu-action', event: { type: string; [key: string]: any }): void
 }>()
 </script>

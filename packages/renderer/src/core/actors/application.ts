@@ -12,6 +12,7 @@ import type { ContextMenuItem } from '@/core/context-menu';
 interface BreadcrumbItem {
   label: string;
   target: string;
+  info?: any;
 }
 
 export interface ApplicationParams {
@@ -52,7 +53,7 @@ export type ApplicationEvent =
   | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string; menuItems: ContextMenuItem[] }
-  | { type: 'TRAIL_CLICK'; target: string }
+  | { type: 'TRAIL_CLICK'; target: string; info?: any }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'TOGGLE_INSPECTION_PANEL' }
   | HotkeyEvent

@@ -114,7 +114,7 @@ export default function trailActor(actor: AnyActor, onStateChange: (data: Update
 }
 
 // Helpers
-export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string };
+export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string; info?: any };
 const typeOf = safeEvents<TrailClickEvent>();
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export const targetIs = ({ event }: any, params: { view: string }) => typeOf('TRAIL_CLICK', event).target === params.view
