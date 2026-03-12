@@ -19,7 +19,7 @@
       type="button"
       class="drag-btn flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 transition-colors"
       draggable="true"
-      @mousedown.stop="onDragHandleMouseDown"
+      @mousedown.stop.prevent="onDragHandleMouseDown"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
     >
