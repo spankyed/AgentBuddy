@@ -2,6 +2,22 @@ import { Node, mergeAttributes } from '@tiptap/core'
 
 const FILE_TEXT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`
 
+function parsePageHref(href: string) {
+  const url = href.slice('page://'.length)
+  const qIndex = url.indexOf('?icon=')
+  const noteId = qIndex >= 0 ? url.slice(0, qIndex) : url
+  const icon = qIndex >= 0 ? decodeURIComponent(url.slice(qIndex + 6)) : null
+  return { noteId, icon }
+}
+
+function setIcon(el: HTMLSpanElement, icon: string | null) {
+  if (icon) {
+    el.textContent = icon
+  } else {
+    el.innerHTML = FILE_TEXT_SVG
+  }
+}
+
 export const SubPageLink = Node.create({
   name: 'subPageLink',
   group: 'block',
@@ -22,11 +38,8 @@ export const SubPageLink = Node.create({
         priority: 60,
         getAttrs(node) {
           const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          return {
-            noteId: href.slice('page://'.length),
-            title: el.textContent || '',
-          }
+          const { noteId, icon } = parsePageHref(el.getAttribute('href') || '')
+          return { noteId, title: el.textContent || '', icon }
         },
       },
     ]
@@ -52,11 +65,7 @@ export const SubPageLink = Node.create({
 
       const iconSpan = document.createElement('span')
       iconSpan.classList.add('sub-page-link-icon')
-      if (node.attrs.icon) {
-        iconSpan.textContent = node.attrs.icon
-      } else {
-        iconSpan.innerHTML = FILE_TEXT_SVG
-      }
+      setIcon(iconSpan, node.attrs.icon)
 
       const titleSpan = document.createElement('span')
       titleSpan.classList.add('sub-page-link-title')
@@ -70,11 +79,7 @@ export const SubPageLink = Node.create({
         update(updatedNode) {
           if (updatedNode.type.name !== 'subPageLink') return false
           dom.dataset.noteId = updatedNode.attrs.noteId
-          if (updatedNode.attrs.icon) {
-            iconSpan.textContent = updatedNode.attrs.icon
-          } else {
-            iconSpan.innerHTML = FILE_TEXT_SVG
-          }
+          setIcon(iconSpan, updatedNode.attrs.icon)
           titleSpan.textContent = updatedNode.attrs.title
           return true
         },
@@ -103,7 +108,8 @@ export const SubPageLink = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          state.write(`[${node.attrs.title}](page://${node.attrs.noteId})`)
+          const icon = node.attrs.icon ? `?icon=${encodeURIComponent(node.attrs.icon)}` : ''
+          state.write(`[${node.attrs.title}](page://${node.attrs.noteId}${icon})`)
           state.ensureNewLine()
         },
         parse: {},
