@@ -38,7 +38,7 @@
           class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
           placeholder="Untitled"
           @input="handleTitleInput"
-          @keydown.enter.prevent="editorRef?.editor?.commands.focus()"
+          @keydown.enter.prevent="handleTitleEnter"
         />
       </div>
 
@@ -178,6 +178,18 @@ function handleNoteLinkClick(noteId: string) {
 
 function handleSubPageLinkDeleted(noteId: string) {
   actor.send({ type: 'NOTE.DELETE', noteId })
+}
+
+function handleTitleEnter() {
+  const editor = editorRef.value?.editor
+  if (!editor) return
+
+  const firstNode = editor.state.doc.firstChild
+  if (firstNode?.type.name === 'subPageLink') {
+    editor.chain().insertContentAt(0, { type: 'paragraph' }).focus('start').run()
+  } else {
+    editor.commands.focus()
+  }
 }
 
 function handleIconUpdate(icon: string | null) {
