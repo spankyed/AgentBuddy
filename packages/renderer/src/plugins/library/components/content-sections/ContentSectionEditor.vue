@@ -1,5 +1,5 @@
 <template>
-  <div ref="sectionRef" class="space-y-4 p-4 border rounded-md border-neutral-700 bg-neutral-800/50">
+  <div ref="sectionRef" class="space-y-4 p-4 px-6 border rounded-md border-neutral-700 bg-neutral-800/50">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2 ml-1">
         <button
@@ -54,6 +54,10 @@
     <component
       v-if="section && isExpanded"
       :is="editorComponent"
+      :class="{
+        '-mx-4': isMarkdown,
+        'mx-4': isPlainText
+      }"
       :content="section"
       v-bind="{
         ...(section.type === 'code' && fileName ? { 'file-name': fileName } : {}),
@@ -91,6 +95,9 @@ const emit = defineEmits<{
 const selectedType = ref<ContentType | ''>('')
 const sectionRef = ref<HTMLDivElement | null>(null)
 const isExpanded = ref(true)
+
+const isMarkdown = computed(() => props.section?.type === 'markdown')
+const isPlainText = computed(() => props.section?.type === 'text')
 
 const hasContent = computed(() => {
   if (!props.section) return false

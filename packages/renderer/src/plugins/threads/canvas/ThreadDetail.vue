@@ -57,7 +57,7 @@
           <!-- Instructions -->
           <div data-onboarding-id="thread-instructions-input">
             <label class="block mb-2 text-xs font-medium tracking-wider uppercase text-neutral-400">Instructions</label>
-            <div class="border rounded-md border-neutral-700 p-3">
+            <div class="border rounded-md border-neutral-700 p-3 pr-6 pl-1">
               <TiptapEditor
                 mode="editor"
                 :model-value="instructions"
