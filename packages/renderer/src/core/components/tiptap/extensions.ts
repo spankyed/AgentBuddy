@@ -13,6 +13,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
 import { mergeAttributes } from '@tiptap/core'
+import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
 
@@ -74,6 +75,29 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       },
     }),
     Details.extend({
+      addKeyboardShortcuts() {
+        const parentShortcuts = this.parent?.()
+        return {
+          ...parentShortcuts,
+          Enter: (args) => {
+            const { state, view } = args.editor
+            const { $head } = state.selection
+
+            // Only intercept: cursor in summary + content visible
+            if (
+              $head.parent.type === state.schema.nodes.detailsSummary &&
+              (view.domAtPos($head.after() + 1).node as HTMLElement).offsetParent !== null
+            ) {
+              // Move cursor into existing content instead of inserting new paragraph at index 0
+              const sel = Selection.near(state.doc.resolve($head.after() + 1), 1)
+              view.dispatch(state.tr.setSelection(sel).scrollIntoView())
+              return true
+            }
+
+            return parentShortcuts?.Enter?.(args) ?? false
+          },
+        }
+      },
       addAttributes() {
         return {
           open: {
