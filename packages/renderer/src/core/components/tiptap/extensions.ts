@@ -12,7 +12,8 @@ import { SubPageLink } from './sub-page-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
-import { mergeAttributes } from '@tiptap/core'
+import { mergeAttributes, wrappingInputRule, InputRule } from '@tiptap/core'
+import Blockquote from '@tiptap/extension-blockquote'
 import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
@@ -31,6 +32,17 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     StarterKit.configure({
       codeBlock: false,
       link: false,
+      blockquote: false,
+    }),
+    Blockquote.extend({
+      addInputRules() {
+        return [
+          wrappingInputRule({
+            find: /^\s*\|\s$/,
+            type: this.type,
+          }),
+        ]
+      },
     }),
     Markdown.configure({
       html: true,
@@ -75,6 +87,16 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       },
     }),
     Details.extend({
+      addInputRules() {
+        return [
+          new InputRule({
+            find: /^\s*>\s$/,
+            handler: ({ state, range, chain }) => {
+              chain().deleteRange(range).setDetails().run()
+            },
+          }),
+        ]
+      },
       addKeyboardShortcuts() {
         const parentShortcuts = this.parent?.()
         return {
