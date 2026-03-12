@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide, nextTick } from 'vue'
+import { ref, watch, provide } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
@@ -73,18 +73,29 @@ import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
 import { NotebookText, FileText } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
+import { useDebounce } from '@/core/composables/useDebounce'
+import { useNoteFocus } from './composables/useNoteFocus'
+import { usePageInsert } from './composables/usePageInsert'
 
 const actor: NotesState = applicationState.system.get(id)
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)
-const pendingPageInsert = useSelector(actor, (s) => s.context.pendingPageInsert)
 
 const editorRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const titleRef = ref<HTMLInputElement | null>(null)
 
-let contentDebounceTimer: ReturnType<typeof setTimeout> | null = null
-let titleDebounceTimer: ReturnType<typeof setTimeout> | null = null
+// Composables
+useNoteFocus(actor, titleRef, editorRef)
+usePageInsert(actor, editorRef, currentNote)
+
+// Debounced handlers
+const { debounced: debouncedUpdateContent } = useDebounce((noteId: string, content: string) => {
+  actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
+})
+const { debounced: debouncedUpdateTitle } = useDebounce((noteId: string, title: string) => {
+  actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
+})
 
 // Provide extra block items for the "Page" action
 const pageBlockItem: BlockItem[] = [
@@ -101,59 +112,6 @@ const pageBlockItem: BlockItem[] = [
 ]
 provide(EXTRA_BLOCK_ITEMS_KEY, pageBlockItem)
 
-// Focus editor when navigating into a different note
-watch(currentNote, (note, oldNote) => {
-  if (note && note.id !== oldNote?.id) {
-    nextTick(() => editorRef.value?.editor?.commands.focus())
-  }
-})
-
-// Watch for pending page insert completion (new child note created)
-watch(
-  () => pendingPageInsert.value,
-  (newVal, oldVal) => {
-    // When pendingPageInsert transitions from non-null to null, the child was created
-    if (oldVal && !newVal) {
-      const notes = actor.getSnapshot().context.notes
-      const noteId = currentNote.value?.id
-      if (!noteId) return
-
-      // Find the most recently created child note
-      const children = notes
-        .filter(n => n.parentId === noteId)
-        .sort((a, b) => b.createdAt - a.createdAt)
-      const newChild = children[0]
-      if (!newChild) return
-
-      // Insert the link at the saved cursor position
-      const editor = editorRef.value?.editor
-      if (editor) {
-        editor
-          .chain()
-          .focus()
-          .insertContentAt(oldVal.cursorPos, {
-            type: 'subPageLink',
-            attrs: { noteId: newChild.id, title: newChild.title, icon: newChild.icon },
-          })
-          .run()
-
-        // Save parent content immediately (bypass debounce), then navigate to new child
-        const content = (editor.storage as any).markdown.getMarkdown()
-        actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
-
-        // Auto-expand parent in tree so child is visible
-        const snapshot = actor.getSnapshot()
-        if (!snapshot.context.expandedNodeIds.includes(noteId)) {
-          actor.send({ type: 'NOTE.TOGGLE_EXPAND', nodeId: noteId })
-        }
-
-        // Navigate to the new child note
-        actor.send({ type: 'NOTE.SELECT', noteId: newChild.id })
-      }
-    }
-  }
-)
-
 function focusTitleEnd() {
   const el = titleRef.value
   if (!el) return
@@ -167,21 +125,13 @@ function handleCreateNote(parentId?: string) {
 
 function handleContentUpdate(content: string) {
   if (!currentNote.value) return
-  const noteId = currentNote.value.id
-  if (contentDebounceTimer) clearTimeout(contentDebounceTimer)
-  contentDebounceTimer = setTimeout(() => {
-    actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
-  }, 500)
+  debouncedUpdateContent(currentNote.value.id, content)
 }
 
 function handleTitleInput(event: Event) {
   const title = (event.target as HTMLInputElement).value
   if (!currentNote.value) return
-  const noteId = currentNote.value.id
-  if (titleDebounceTimer) clearTimeout(titleDebounceTimer)
-  titleDebounceTimer = setTimeout(() => {
-    actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
-  }, 500)
+  debouncedUpdateTitle(currentNote.value.id, title)
 }
 
 function handleNoteLinkClick(noteId: string) {

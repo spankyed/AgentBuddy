@@ -196,19 +196,11 @@ const notesState = setup({
 
     addCreatedNote: assign(({ context, event }) => {
       const ev = typeOf('NOTE_CREATED', event)
-      const updated = {
+      return {
         notes: [...context.notes, ev.note],
-      } as Partial<NotesContext>
-
-      // Handle pending page insert: auto-select the new note if it was a root create
-      // and no note is currently selected
-      if (!context.currentNoteId && !ev.note.parentId) {
-        updated.currentNoteId = ev.note.id
-        updated.currentNote = ev.note
+        currentNoteId: ev.note.id,
+        currentNote: ev.note,
       }
-
-      // If there's a pending page insert, the canvas will handle it
-      return updated
     }),
 
     handlePageInsertCreated: assign(({ context, event }) => {
