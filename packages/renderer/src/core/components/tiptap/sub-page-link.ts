@@ -82,6 +82,23 @@ export const SubPageLink = Node.create({
     }
   },
 
+  addKeyboardShortcuts() {
+    return {
+      Backspace: ({ editor }) => {
+        const { state } = editor
+        const { selection } = state
+        if (!selection.empty || selection.from !== 1) return false
+
+        const firstNode = state.doc.firstChild
+        if (!firstNode || firstNode.type.name !== 'paragraph' || firstNode.content.size !== 0) return false
+        if (state.doc.childCount < 2) return false
+
+        editor.commands.deleteRange({ from: 0, to: firstNode.nodeSize })
+        return true
+      },
+    }
+  },
+
   addStorage() {
     return {
       markdown: {
