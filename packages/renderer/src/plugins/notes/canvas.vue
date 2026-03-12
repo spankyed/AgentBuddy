@@ -149,13 +149,7 @@ function handleSubPageLinkRestored(noteId: string) {
 function handleTitleEnter() {
   const editor = editorRef.value?.editor
   if (!editor) return
-
-  const firstNode = editor.state.doc.firstChild
-  if (firstNode?.type.name === 'subPageLink') {
-    editor.chain().insertContentAt(0, { type: 'paragraph' }).focus('start').run()
-  } else {
-    editor.commands.focus()
-  }
+  editor.commands.focus('start')
 }
 
 function handleIconUpdate(icon: string | null) {
