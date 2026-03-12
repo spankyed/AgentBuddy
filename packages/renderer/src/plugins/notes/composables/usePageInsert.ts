@@ -33,7 +33,6 @@ export function usePageInsert(
       if (editor) {
         editor
           .chain()
-          .focus()
           .insertContentAt(oldVal.cursorPos, {
             type: 'subPageLink',
             attrs: { noteId: newChild.id, title: newChild.title, icon: newChild.icon },
