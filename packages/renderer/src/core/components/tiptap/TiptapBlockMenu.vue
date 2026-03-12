@@ -202,17 +202,26 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
+function onTransaction({ transaction }: { transaction: any }) {
+  if (transaction.docChanged) {
+    open.value = false
+    buttonVisible.value = false
+  }
+}
+
 onMounted(() => {
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.addEventListener('mousemove', onEditorMouseMove)
   editorDom.addEventListener('mouseleave', onEditorMouseLeave)
   document.addEventListener('click', onClickOutside)
   document.addEventListener('keydown', onKeydown)
+  props.editor.on('transaction', onTransaction)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onClickOutside)
   document.removeEventListener('keydown', onKeydown)
+  props.editor.off('transaction', onTransaction)
   if (props.editor.isDestroyed) return
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.removeEventListener('mousemove', onEditorMouseMove)
