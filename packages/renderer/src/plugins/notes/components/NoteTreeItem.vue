@@ -13,7 +13,7 @@
     >
       <!-- Expand/Collapse chevron -->
       <button
-        v-if="note.childCount > 0"
+        v-if="children.length > 0"
         class="flex items-center justify-center w-4 h-4 text-neutral-500 hover:text-neutral-300 transition-colors"
         @click.stop="$emit('toggle-expand', note.id)"
       >
@@ -61,7 +61,7 @@
     </div>
 
     <!-- Children (recursive) -->
-    <template v-if="isExpanded && note.childCount > 0">
+    <template v-if="isExpanded && children.length > 0">
       <NoteTreeItem
         v-for="child in children"
         :key="child.id"
