@@ -11,6 +11,7 @@ import { ResizableImage } from './resizable-image'
 import { SubPageLink } from './sub-page-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
 
@@ -55,6 +56,12 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     ResizableImage.configure({
       inline: false,
       allowBase64: false,
+    }),
+    DetailsSummary,
+    DetailsContent,
+    Details.configure({
+      persist: true,
+      HTMLAttributes: { class: 'details-block' },
     }),
   ]
 
