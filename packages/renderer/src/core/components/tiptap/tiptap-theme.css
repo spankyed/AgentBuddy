@@ -252,25 +252,22 @@
 
 /* Details (collapsible) */
 .tiptap-wrapper .ProseMirror [data-type="details"] {
-  border: 1px solid rgb(64 64 64);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0.5em 0;
-  position: relative;
   list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
 }
 
 .tiptap-wrapper .ProseMirror [data-type="details"] > button {
-  position: absolute;
-  top: 0.6rem;
-  left: 0.5rem;
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
+  margin-top: 0.45rem;
   color: rgb(163 163 163);
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 /* Triangle arrow for toggle */
@@ -284,20 +281,20 @@
   transform: rotate(90deg);
 }
 
+.tiptap-wrapper .ProseMirror [data-type="details"] > div {
+  flex: 1;
+  min-width: 0;
+}
+
 .tiptap-wrapper .ProseMirror [data-type="details"] summary {
   cursor: pointer;
   font-weight: 600;
   color: rgb(212 212 212);
   user-select: none;
-  padding-left: 1rem;
 }
 
 .tiptap-wrapper .ProseMirror [data-type="details"].is-open summary {
   margin-bottom: 0.5rem;
-}
-
-.tiptap-wrapper .ProseMirror [data-type="detailsContent"] {
-  padding-left: 1rem;
 }
 
 /* Mode-specific styles */
