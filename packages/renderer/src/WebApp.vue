@@ -14,7 +14,7 @@
             <!-- Canvas Area -->
             <CanvasArea
             data-onboarding-id="canvas-area"
-            @crumb-click="(target: string) => send({ type: 'TRAIL_CLICK', target })"
+            @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
             @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
             @menu-action="handleMenuAction"
             :style="{ height: `${panelSizes.canvasHeight}%` }"

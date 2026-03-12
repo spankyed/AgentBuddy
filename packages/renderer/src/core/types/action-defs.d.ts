@@ -37,7 +37,8 @@ declare namespace EARS {
         Directory = "Directory",
         Settings = "Settings",
         FAQ = "FAQ",
-        Secret = "Secret"
+        Secret = "Secret",
+        Note = "Note"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {
@@ -159,6 +160,32 @@ type Simplify<T> = {
 type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
     [K in keyof S]: z.infer<S[K]>;
 }[number];
+
+interface NoteEntity extends BaseEntity {
+    entityType: EARS.Entity.Note;
+    title: string;
+    content: string;
+    icon: string | null;
+    displayOrder: number;
+    createdAt: number;
+    updatedAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
+}
+interface NoteDTO {
+    id: string;
+    title: string;
+    content: string;
+    icon: string | null;
+    parentId: string | null;
+    displayOrder: number;
+    childCount: number;
+    createdAt: number;
+    updatedAt: number;
+}
+interface NotesConnectedData {
+    notes: NoteDTO[];
+}
 
 /**
  * Prompt template types and definitions
@@ -2743,6 +2770,102 @@ declare const events: {
         systemId: "code";
         path: string;
         fromUserNavigation?: boolean | undefined;
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        title: zod.ZodString;
+        content: zod.ZodOptional<zod.ZodString>;
+        icon: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        parentId: zod.ZodOptional<zod.ZodString>;
+        skipContentSync: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        title: string;
+        type: "CREATE_NOTE";
+        systemId: "notes";
+        content?: string | undefined;
+        parentId?: string | undefined;
+        icon?: string | null | undefined;
+        skipContentSync?: boolean | undefined;
+    }, {
+        title: string;
+        type: "CREATE_NOTE";
+        systemId: "notes";
+        content?: string | undefined;
+        parentId?: string | undefined;
+        icon?: string | null | undefined;
+        skipContentSync?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+        title: zod.ZodOptional<zod.ZodString>;
+        content: zod.ZodOptional<zod.ZodString>;
+        icon: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "UPDATE_NOTE";
+        systemId: "notes";
+        title?: string | undefined;
+        content?: string | undefined;
+        icon?: string | null | undefined;
+    }, {
+        id: string;
+        type: "UPDATE_NOTE";
+        systemId: "notes";
+        title?: string | undefined;
+        content?: string | undefined;
+        icon?: string | null | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "DELETE_NOTE";
+        systemId: "notes";
+    }, {
+        id: string;
+        type: "DELETE_NOTE";
+        systemId: "notes";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SOFT_DELETE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SOFT_DELETE_NOTE";
+        systemId: "notes";
+    }, {
+        id: string;
+        type: "SOFT_DELETE_NOTE";
+        systemId: "notes";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTORE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "RESTORE_NOTE";
+        systemId: "notes";
+    }, {
+        id: string;
+        type: "RESTORE_NOTE";
+        systemId: "notes";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"MOVE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+        newParentId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "MOVE_NOTE";
+        systemId: "notes";
+        newParentId?: string | null | undefined;
+    }, {
+        id: string;
+        type: "MOVE_NOTE";
+        systemId: "notes";
+        newParentId?: string | null | undefined;
     }>];
     readonly outgoing: {
         type: "SETTINGS_LOADED";
@@ -3090,6 +3213,7 @@ declare const events: {
             timestamp: number;
             databases: string[];
             size: number;
+            hasMedia?: boolean;
         } | null;
         pluginId: "database";
     } | {
@@ -3610,6 +3734,26 @@ declare const events: {
         type: "CODE_SETTINGS_UPDATED";
         settings: CodeSettings;
         pluginId: "code";
+    } | {
+        type: "NOTES_CONNECTED";
+        data: NotesConnectedData;
+        pluginId: "notes";
+    } | {
+        type: "NOTE_CREATED";
+        note: NoteDTO;
+        pluginId: "notes";
+    } | {
+        type: "NOTE_UPDATED";
+        note: NoteDTO;
+        pluginId: "notes";
+    } | {
+        type: "NOTE_DELETED";
+        noteId: string;
+        pluginId: "notes";
+    } | {
+        type: "NOTE_RESTORED";
+        note: NoteDTO;
+        pluginId: "notes";
     };
 };
 
@@ -3823,7 +3967,7 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boole
         roles?: string | string[];
     }) => /*elided*/ any;
     readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
 };
 
 type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
@@ -4250,16 +4394,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reverse: () => /*elided*/ any;
     readonly limit: (n: number) => /*elided*/ any;
     readonly page: (size: number, cursor?: string | null) => {
-        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`)[];
+        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
         readonly nextCursor: string | null;
     };
     readonly distinct: (field?: string) => /*elided*/ any;
     readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`)[];
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
+    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
     readonly count: () => number;
-    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
-    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | null;
+    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | null;
     readonly exists: () => boolean;
     readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
     readonly forEach: (fn: (i: EARS.EntityId) => void) => {
@@ -4289,16 +4433,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
         readonly reverse: () => /*elided*/ any;
         readonly limit: (n: number) => /*elided*/ any;
         readonly page: (size: number, cursor?: string | null) => {
-            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`)[];
+            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
             readonly nextCursor: string | null;
         };
         readonly distinct: (field?: string) => /*elided*/ any;
         readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`)[];
-        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
+        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
+        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
         readonly count: () => number;
-        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
-        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | null;
+        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | null;
         readonly exists: () => boolean;
         readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
         readonly forEach: /*elided*/ any;
@@ -4885,7 +5029,7 @@ declare const services: {
         readonly agentQueries: {
             readonly hasRequiredApiKeys: () => boolean;
             readonly threadArtifacts: (threadId: EARS.EntityId) => {
-                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
+                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
                 type: unknown;
                 title: unknown;
                 content: unknown;
@@ -5124,7 +5268,7 @@ declare const services: {
             readonly kanbanItems: () => {
                 content: {
                     workItems: {
-                        id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}`;
+                        id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
                         name: string;
                         time: string;
                         date: string;
@@ -5158,6 +5302,37 @@ declare const services: {
                 forcedMode?: ThreadEntity["forcedMode"] | null;
             }) => void;
             readonly markAsVisited: (id: EARS.EntityId) => void;
+            readonly delete: (id: EARS.EntityId) => void;
+        };
+        readonly noteQueries: {
+            readonly byId: (id: EARS.EntityId) => NoteEntity | undefined;
+            readonly byIdDTO: (id: EARS.EntityId) => NoteDTO | undefined;
+            readonly all: () => NoteEntity[];
+            readonly allDTOs: () => NoteDTO[];
+            readonly children: (parentId: EARS.EntityId) => NoteDTO[];
+            readonly ancestorChain: (noteId: EARS.EntityId) => NoteDTO[];
+            readonly referencedBy: (noteId: EARS.EntityId) => EARS.EntityId[];
+            readonly expiredSoftDeleted: (maxAgeDays: number) => NoteEntity[];
+            readonly connectedData: () => {
+                notes: NoteDTO[];
+            };
+        };
+        readonly noteCommands: {
+            readonly create: (input: {
+                title: string;
+                content?: string;
+                icon?: string | null;
+                parentId?: string;
+                displayOrder?: number;
+            }) => NoteEntity;
+            readonly update: (id: EARS.EntityId, updates: {
+                title?: string;
+                content?: string;
+                icon?: string | null;
+                displayOrder?: number;
+            }) => void;
+            readonly softDelete: (id: EARS.EntityId) => string[];
+            readonly restore: (id: EARS.EntityId) => string[];
             readonly delete: (id: EARS.EntityId) => void;
         };
     };

@@ -26,6 +26,7 @@ export namespace EARS {
     Settings = 'Settings',
     FAQ = 'FAQ',
     Secret = 'Secret',
+    Note = 'Note',
   }
   export type EntityId = `${Entity}-${string}`;
 

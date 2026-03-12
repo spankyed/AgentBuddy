@@ -8,6 +8,7 @@ import TableHeader from '@tiptap/extension-table-header'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import { ResizableImage } from './resizable-image'
+import { SubPageLink } from './sub-page-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Markdown } from 'tiptap-markdown'
@@ -38,7 +39,9 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     Link.configure({
       openOnClick: false,
       autolink: true,
+      protocols: ['note'],
     }),
+    SubPageLink,
     Table.configure({
       resizable: mode !== 'viewer',
     }),

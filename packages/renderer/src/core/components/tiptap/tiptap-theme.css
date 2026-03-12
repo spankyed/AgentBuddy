@@ -183,6 +183,40 @@
   pointer-events: none;
 }
 
+/* Sub-page link (block atom) */
+.tiptap-wrapper .ProseMirror .sub-page-link {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tiptap-wrapper .ProseMirror .sub-page-link:hover .sub-page-link-title {
+  text-decoration: underline;
+}
+
+.tiptap-wrapper .ProseMirror .sub-page-link.ProseMirror-selectednode {
+  outline: none;
+  background-color: rgb(64 64 64);
+  border-radius: 3px;
+  margin-left: -0.5rem;
+  padding-left: 0.5rem;
+}
+
+.tiptap-wrapper .ProseMirror .sub-page-link-icon {
+  flex-shrink: 0;
+  color: rgb(163 163 163);
+  display: flex;
+  align-items: center;
+}
+
+.tiptap-wrapper .ProseMirror .sub-page-link-title {
+  color: rgb(212 212 212);
+  font-weight: 600;
+}
+
 /* Strong / em */
 .tiptap-wrapper .ProseMirror strong {
   font-weight: 600;

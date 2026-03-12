@@ -3,7 +3,7 @@
     v-if="editor"
     :editor="editor"
     :options="{ placement: 'top', offset: 8, strategy: 'absolute' }"
-    :should-show="({ state, editor: e }) => !state.selection.empty && !e.isActive('image')"
+    :should-show="({ state, editor: e }) => !state.selection.empty && !e.isActive('image') && !e.isActive('subPageLink')"
     class="bubble-menu flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
     <div class="flex items-center gap-0.5 px-1.5 py-1">
@@ -82,9 +82,14 @@ function showLinkInput() {
 
 function applyLink() {
   const url = linkUrl.value.trim()
-  if (url) {
-    props.editor.chain().focus().setLink({ href: url }).run()
+  if (!url) {
+    linkInputVisible.value = false
+    linkUrl.value = ''
+    return
   }
+
+  props.editor.chain().focus().setLink({ href: url }).run()
+
   linkInputVisible.value = false
   linkUrl.value = ''
 }
