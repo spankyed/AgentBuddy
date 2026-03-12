@@ -201,14 +201,15 @@
   outline: none;
   background-color: rgb(64 64 64);
   border-radius: 3px;
-  margin-left: -0.5rem;
-  padding-left: 0.5rem;
+  margin-left: -0.6rem;
+  padding-left: 0.6rem;
 }
 
 .tiptap-wrapper .ProseMirror .sub-page-link-icon {
   flex-shrink: 0;
   color: rgb(163 163 163);
   display: flex;
+  margin-left: -0.1rem;
   align-items: center;
 }
 
