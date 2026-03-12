@@ -18,7 +18,7 @@ export function useNoteFocus(
         titleRef.value?.focus()
         titleRef.value?.select()
       } else {
-        editorRef.value?.editor?.commands.focus()
+        editorRef.value?.editor?.commands.focus('start')
       }
     })
   })

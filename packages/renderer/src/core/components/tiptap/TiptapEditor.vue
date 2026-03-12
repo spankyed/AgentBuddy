@@ -15,6 +15,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
@@ -47,6 +48,12 @@ const emit = defineEmits<{
 
 defineOptions({ inheritAttrs: false })
 
+function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: import('@tiptap/pm/view').EditorView }) {
+  const { tr } = e.state
+  tr.setSelection(Selection.atStart(e.state.doc))
+  e.view.dispatch(tr)
+}
+
 const suppressNodeDeletionEvents = ref(false)
 
 function getMarkdown(): string {
@@ -57,7 +64,7 @@ function resetContent(content: string) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
   editor.value.commands.setContent(content)
-  editor.value.commands.setTextSelection(0)
+  selectStart(editor.value)
   suppressNodeDeletionEvents.value = false
 }
 
@@ -185,8 +192,7 @@ const editor = useEditor({
     },
   },
   onCreate: ({ editor: e }) => {
-    // Prevent last image from being auto-selected on initial load
-    e.commands.setTextSelection(0)
+    selectStart(e)
   },
   onUpdate: ({ editor: e }) => {
     const md = getMarkdown()
