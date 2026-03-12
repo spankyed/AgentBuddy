@@ -61,6 +61,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     }),
     DetailsSummary,
     DetailsContent.extend({
+      // Remove default hidden attribute — CSS handles visibility via parent's is-open class
       addNodeView() {
         return ({ HTMLAttributes }) => {
           const dom = document.createElement('div')
@@ -68,27 +69,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
             'data-type': this.name,
           })
           Object.entries(attributes).forEach(([key, value]) => dom.setAttribute(key, value))
-
-          dom.addEventListener('toggleDetailsContent', () => {
-            dom.toggleAttribute('hidden')
-          })
-
-          return {
-            dom,
-            contentDOM: dom,
-            ignoreMutation(mutation: Record<string, any>) {
-              if (mutation.type === 'selection') {
-                return false
-              }
-              return !dom.contains(mutation.target) || dom === mutation.target
-            },
-            update: (updatedNode: any) => {
-              if (updatedNode.type !== this.type) {
-                return false
-              }
-              return true
-            },
-          }
+          return { dom, contentDOM: dom }
         }
       },
     }),
@@ -98,15 +79,11 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
           open: {
             default: true,
             parseHTML: element => element.hasAttribute('open'),
-            renderHTML: ({ open }) => {
-              if (!open) {
-                return {}
-              }
-              return { open: '' }
-            },
+            renderHTML: ({ open }) => (open ? { open: '' } : {}),
           },
         }
       },
+      // Override to apply is-open class synchronously instead of via setTimeout
       addNodeView() {
         return ({ editor, getPos, node, HTMLAttributes }) => {
           const dom = document.createElement('div')
@@ -122,31 +99,12 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
           const content = document.createElement('div')
           dom.append(content)
 
-          const toggleDetailsContent = (setToValue?: boolean) => {
-            if (setToValue !== undefined) {
-              if (setToValue) {
-                if (dom.classList.contains(this.options.openClassName)) return
-                dom.classList.add(this.options.openClassName)
-              } else {
-                if (!dom.classList.contains(this.options.openClassName)) return
-                dom.classList.remove(this.options.openClassName)
-              }
-            } else {
-              dom.classList.toggle(this.options.openClassName)
-            }
-
-            const event = new Event('toggleDetailsContent')
-            const detailsContent = content.querySelector(':scope > div[data-type="detailsContent"]')
-            detailsContent?.dispatchEvent(event)
-          }
-
-          // Apply open class immediately — CSS handles visibility, no setTimeout needed
           if (node.attrs.open) {
             dom.classList.add(this.options.openClassName)
           }
 
           toggle.addEventListener('click', () => {
-            toggleDetailsContent()
+            dom.classList.toggle(this.options.openClassName)
 
             if (!this.options.persist) {
               editor.commands.focus(undefined, { scrollIntoView: false })
@@ -155,7 +113,6 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
 
             if (editor.isEditable && typeof getPos === 'function') {
               const { from, to } = editor.state.selection
-
               editor
                 .chain()
                 .command(({ tr }) => {
@@ -163,9 +120,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
                   if (!pos) return false
                   const currentNode = tr.doc.nodeAt(pos)
                   if (currentNode?.type !== this.type) return false
-                  tr.setNodeMarkup(pos, undefined, {
-                    open: !currentNode.attrs.open,
-                  })
+                  tr.setNodeMarkup(pos, undefined, { open: !currentNode.attrs.open })
                   return true
                 })
                 .setTextSelection({ from, to })
@@ -177,15 +132,9 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
           return {
             dom,
             contentDOM: content,
-            ignoreMutation(mutation: Record<string, any>) {
-              if (mutation.type === 'selection') return false
-              return !dom.contains(mutation.target) || dom === mutation.target
-            },
             update: (updatedNode: any) => {
               if (updatedNode.type !== this.type) return false
-              if (updatedNode.attrs.open !== undefined) {
-                toggleDetailsContent(updatedNode.attrs.open)
-              }
+              dom.classList.toggle(this.options.openClassName, !!updatedNode.attrs.open)
               return true
             },
           }
