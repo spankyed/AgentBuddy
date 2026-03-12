@@ -34,11 +34,13 @@
           </template>
         </EmojiPicker>
         <input
+          ref="titleRef"
           :value="currentNote.title"
           class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
           placeholder="Untitled"
           @input="handleTitleInput"
           @keydown.enter.prevent="handleTitleEnter"
+          @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
         />
       </div>
 
@@ -54,6 +56,7 @@
           @update:model-value="handleContentUpdate"
           @note-link-click="handleNoteLinkClick"
           @sub-page-link-deleted="handleSubPageLinkDeleted"
+          @focus-title="titleRef?.focus()"
         />
       </div>
     </div>
@@ -77,6 +80,7 @@ const notes = useSelector(actor, (s) => s.context.notes)
 const pendingPageInsert = useSelector(actor, (s) => s.context.pendingPageInsert)
 
 const editorRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
+const titleRef = ref<HTMLInputElement | null>(null)
 
 let contentDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let titleDebounceTimer: ReturnType<typeof setTimeout> | null = null

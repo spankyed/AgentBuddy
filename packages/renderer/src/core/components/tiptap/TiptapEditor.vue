@@ -41,6 +41,7 @@ const emit = defineEmits<{
   (e: 'submit'): void
   (e: 'noteLinkClick', noteId: string): void
   (e: 'subPageLinkDeleted', noteId: string): void
+  (e: 'focusTitle'): void
 }>()
 
 defineOptions({ inheritAttrs: false })
@@ -114,10 +115,14 @@ const editor = useEditor({
   content: props.modelValue,
   editable: props.mode !== 'viewer' && !props.disabled,
   editorProps: {
-    handleKeyDown: (_view, event) => {
+    handleKeyDown: (view, event) => {
       if (props.mode === 'input' && event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault()
         emit('submit')
+        return true
+      }
+      if (event.key === 'ArrowUp' && view.state.selection.from <= 1) {
+        emit('focusTitle')
         return true
       }
       return false
