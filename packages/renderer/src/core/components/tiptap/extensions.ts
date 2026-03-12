@@ -20,6 +20,12 @@ import { common, createLowlight } from 'lowlight'
 
 const lowlight = createLowlight(common)
 
+function applyAttributes(dom: HTMLElement, ...sources: Record<string, any>[]) {
+  for (const [key, value] of Object.entries(mergeAttributes(...sources))) {
+    dom.setAttribute(key, value)
+  }
+}
+
 export type TiptapMode = 'editor' | 'input' | 'viewer'
 
 interface CreateExtensionsOptions {
@@ -74,14 +80,11 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
     }),
     DetailsSummary,
     DetailsContent.extend({
-      // Remove default hidden attribute — CSS handles visibility via parent's is-open class
+      // CSS handles visibility via parent's is-open class, so remove default hidden attribute
       addNodeView() {
         return ({ HTMLAttributes }) => {
           const dom = document.createElement('div')
-          const attributes = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-            'data-type': this.name,
-          })
-          Object.entries(attributes).forEach(([key, value]) => dom.setAttribute(key, value))
+          applyAttributes(dom, this.options.HTMLAttributes, HTMLAttributes, { 'data-type': this.name })
           return { dom, contentDOM: dom }
         }
       },
@@ -91,7 +94,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
         return [
           new InputRule({
             find: /^\s*>\s$/,
-            handler: ({ state, range, chain }) => {
+            handler: ({ range, chain }) => {
               chain().deleteRange(range).setDetails().run()
             },
           }),
@@ -129,14 +132,11 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
           },
         }
       },
-      // Override to apply is-open class synchronously instead of via setTimeout
+      // Apply is-open class synchronously instead of via setTimeout
       addNodeView() {
         return ({ editor, getPos, node, HTMLAttributes }) => {
           const dom = document.createElement('div')
-          const attributes = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-            'data-type': this.name,
-          })
-          Object.entries(attributes).forEach(([key, value]) => dom.setAttribute(key, value))
+          applyAttributes(dom, this.options.HTMLAttributes, HTMLAttributes, { 'data-type': this.name })
 
           const toggle = document.createElement('button')
           toggle.type = 'button'
