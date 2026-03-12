@@ -19,7 +19,8 @@
       type="button"
       class="drag-btn flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 transition-colors"
       draggable="true"
-      @mousedown.stop.prevent="onDragHandleMouseDown"
+      @mousedown.stop="onDragHandleMouseDown"
+      @mouseup="onDragHandleMouseUp"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
     >
@@ -98,8 +99,11 @@ function onDragHandleMouseDown() {
   try {
     const tr = props.editor.state.tr.setSelection(NodeSelection.create(props.editor.state.doc, pos))
     props.editor.view.dispatch(tr)
-    props.editor.view.focus()
   } catch { /* node type doesn't support NodeSelection */ }
+}
+
+function onDragHandleMouseUp() {
+  props.editor.view.focus()
 }
 
 function onDragStart(event: DragEvent) {
