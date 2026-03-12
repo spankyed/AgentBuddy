@@ -91,12 +91,13 @@ useNoteFocus(actor, titleRef, editorRef)
 usePageInsert(actor, editorRef, currentNote)
 
 // Debounced handlers
+const SAVE_DEBOUNCE_MS = 150
 const { debounced: debouncedUpdateContent } = useDebounce((noteId: string, content: string) => {
   actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
-})
+}, SAVE_DEBOUNCE_MS)
 const { debounced: debouncedUpdateTitle } = useDebounce((noteId: string, title: string) => {
   actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
-})
+}, SAVE_DEBOUNCE_MS)
 
 // Provide extra block items for the "Page" action
 const pageBlockItem: BlockItem[] = [
