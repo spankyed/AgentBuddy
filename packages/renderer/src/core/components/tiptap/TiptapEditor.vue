@@ -122,7 +122,7 @@ const editor = useEditor({
         emit('submit')
         return true
       }
-      if (event.key === 'ArrowUp' && view.state.selection.from <= 1) {
+      if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
         emit('focusTitle')
         return true
       }

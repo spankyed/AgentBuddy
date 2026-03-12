@@ -57,7 +57,7 @@
           @note-link-click="handleNoteLinkClick"
           @sub-page-link-deleted="handleSubPageLinkDeleted"
           @sub-page-link-restored="handleSubPageLinkRestored"
-          @focus-title="titleRef?.focus()"
+          @focus-title="focusTitleEnd()"
         />
       </div>
     </div>
@@ -153,6 +153,13 @@ watch(
     }
   }
 )
+
+function focusTitleEnd() {
+  const el = titleRef.value
+  if (!el) return
+  el.focus()
+  el.setSelectionRange(el.value.length, el.value.length)
+}
 
 function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
