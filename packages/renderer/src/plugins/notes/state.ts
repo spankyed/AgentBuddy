@@ -30,6 +30,8 @@ type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
   | { type: 'NOTE.CREATE'; parentId?: string }
   | { type: 'NOTE.DELETE'; noteId: string }
+  | { type: 'NOTE.SOFT_DELETE'; noteId: string }
+  | { type: 'NOTE.RESTORE'; noteId: string }
   | { type: 'NOTE.UPDATE_CONTENT'; noteId: string; content: string }
   | { type: 'NOTE.UPDATE_TITLE'; noteId: string; title: string }
   | { type: 'NOTE.UPDATE_ICON'; noteId: string; icon: string | null }
@@ -106,6 +108,33 @@ const notesState = setup({
         id: ev.noteId,
       })
     },
+
+    sendSoftDeleteNote: ({ event }) => {
+      const ev = typeOf('NOTE.SOFT_DELETE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'SOFT_DELETE_NOTE',
+        id: ev.noteId,
+      })
+    },
+
+    sendRestoreNote: ({ event }) => {
+      const ev = typeOf('NOTE.RESTORE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'RESTORE_NOTE',
+        id: ev.noteId,
+      })
+    },
+
+    addRestoredNote: assign(({ context, event }) => {
+      const ev = typeOf('NOTE_RESTORED', event)
+      const exists = context.notes.some(n => n.id === ev.note.id)
+      if (exists) return {}
+      return {
+        notes: [...context.notes, ev.note],
+      }
+    }),
 
     updateLocalContent: assign(({ context, event }) => {
       const ev = typeOf('NOTE.UPDATE_CONTENT', event)
@@ -265,6 +294,9 @@ const notesState = setup({
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
     NOTE_UPDATED: { actions: 'updateNoteInList' },
+    NOTE_RESTORED: { actions: 'addRestoredNote' },
+    'NOTE.SOFT_DELETE': { actions: 'sendSoftDeleteNote' },
+    'NOTE.RESTORE': { actions: 'sendRestoreNote' },
     NOTE_DELETED: [
       {
         guard: ({ context, event }) => {

@@ -56,6 +56,7 @@
           @update:model-value="handleContentUpdate"
           @note-link-click="handleNoteLinkClick"
           @sub-page-link-deleted="handleSubPageLinkDeleted"
+          @sub-page-link-restored="handleSubPageLinkRestored"
           @focus-title="titleRef?.focus()"
         />
       </div>
@@ -181,7 +182,11 @@ function handleNoteLinkClick(noteId: string) {
 }
 
 function handleSubPageLinkDeleted(noteId: string) {
-  actor.send({ type: 'NOTE.DELETE', noteId })
+  actor.send({ type: 'NOTE.SOFT_DELETE', noteId })
+}
+
+function handleSubPageLinkRestored(noteId: string) {
+  actor.send({ type: 'NOTE.RESTORE', noteId })
 }
 
 function handleTitleEnter() {

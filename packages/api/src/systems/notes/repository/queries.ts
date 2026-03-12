@@ -72,6 +72,12 @@ export const noteQueries = {
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
     qx(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
 
+  expiredSoftDeleted: (maxAgeDays: number): NoteEntity[] => {
+    const cutoff = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
+    const all = qx(EARS.Entity.Note).pickAll() as unknown as NoteEntity[];
+    return all.filter(n => n.deleted && n.deletedAt && n.deletedAt < cutoff);
+  },
+
   connectedData: () => ({
     notes: noteQueries.allDTOs(),
   }),

@@ -41,6 +41,7 @@ const emit = defineEmits<{
   (e: 'submit'): void
   (e: 'noteLinkClick', noteId: string): void
   (e: 'subPageLinkDeleted', noteId: string): void
+  (e: 'subPageLinkRestored', noteId: string): void
   (e: 'focusTitle'): void
 }>()
 
@@ -198,6 +199,11 @@ const editor = useEditor({
     for (const id of oldIds) {
       if (!newIds.has(id)) {
         emit('subPageLinkDeleted', id)
+      }
+    }
+    for (const id of newIds) {
+      if (!oldIds.has(id)) {
+        emit('subPageLinkRestored', id)
       }
     }
   },

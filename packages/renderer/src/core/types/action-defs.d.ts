@@ -169,6 +169,8 @@ interface NoteEntity extends BaseEntity {
     displayOrder: number;
     createdAt: number;
     updatedAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
 }
 interface NoteDTO {
     id: string;
@@ -2826,6 +2828,30 @@ declare const events: {
         type: "DELETE_NOTE";
         systemId: "notes";
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SOFT_DELETE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SOFT_DELETE_NOTE";
+        systemId: "notes";
+    }, {
+        id: string;
+        type: "SOFT_DELETE_NOTE";
+        systemId: "notes";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTORE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "RESTORE_NOTE";
+        systemId: "notes";
+    }, {
+        id: string;
+        type: "RESTORE_NOTE";
+        systemId: "notes";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"MOVE_NOTE">;
         systemId: zod.ZodLiteral<"notes">;
         id: zod.ZodString;
@@ -3723,6 +3749,10 @@ declare const events: {
     } | {
         type: "NOTE_DELETED";
         noteId: string;
+        pluginId: "notes";
+    } | {
+        type: "NOTE_RESTORED";
+        note: NoteDTO;
         pluginId: "notes";
     };
 };
@@ -5282,6 +5312,7 @@ declare const services: {
             readonly children: (parentId: EARS.EntityId) => NoteDTO[];
             readonly ancestorChain: (noteId: EARS.EntityId) => NoteDTO[];
             readonly referencedBy: (noteId: EARS.EntityId) => EARS.EntityId[];
+            readonly expiredSoftDeleted: (maxAgeDays: number) => NoteEntity[];
             readonly connectedData: () => {
                 notes: NoteDTO[];
             };
@@ -5300,6 +5331,8 @@ declare const services: {
                 icon?: string | null;
                 displayOrder?: number;
             }) => void;
+            readonly softDelete: (id: EARS.EntityId) => string[];
+            readonly restore: (id: EARS.EntityId) => string[];
             readonly delete: (id: EARS.EntityId) => void;
         };
     };

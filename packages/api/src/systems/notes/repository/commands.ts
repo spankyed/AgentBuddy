@@ -100,6 +100,31 @@ export const noteCommands = {
     }
   },
 
+  softDelete: (id: EARS.EntityId): string[] => {
+    const existing = findById<NoteEntity>(id);
+    if (!existing) return [];
+    const now = Date.now();
+    const deletedIds: string[] = [id];
+    updateEntity(id, { deleted: true, deletedAt: now });
+    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    for (const childId of childIds) {
+      deletedIds.push(...noteCommands.softDelete(childId));
+    }
+    return deletedIds;
+  },
+
+  restore: (id: EARS.EntityId): string[] => {
+    const existing = findByIdRaw<NoteEntity>(id);
+    if (!existing || !existing.deleted) return [];
+    const restoredIds: string[] = [id];
+    updateEntity(id, { deleted: false, deletedAt: 0 });
+    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+    for (const childId of childIds) {
+      restoredIds.push(...noteCommands.restore(childId));
+    }
+    return restoredIds;
+  },
+
   delete: (id: EARS.EntityId): void => {
     const existing = findByIdRaw<NoteEntity>(id);
     if (!existing) {

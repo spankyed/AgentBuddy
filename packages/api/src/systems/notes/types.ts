@@ -10,6 +10,8 @@ export interface NoteEntity extends BaseEntity {
   displayOrder: number;
   createdAt: number;
   updatedAt: number;
+  deleted?: boolean;
+  deletedAt?: number;
 }
 
 export interface NoteDTO {

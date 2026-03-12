@@ -6,6 +6,7 @@ import { emit, safeEvents } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import type { NoteDTO, NotesConnectedData } from './types';
 import { repository } from '@/repository';
+import { qx } from '@/core/ears/helpers/query';
 import { syncReferences } from './repository/link-utils';
 import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
@@ -33,6 +34,12 @@ export const IncomingNoteEvents = [
   busEvent('DELETE_NOTE', {
     id: z.string(),
   }),
+  busEvent('SOFT_DELETE_NOTE', {
+    id: z.string(),
+  }),
+  busEvent('RESTORE_NOTE', {
+    id: z.string(),
+  }),
   busEvent('MOVE_NOTE', {
     id: z.string(),
     newParentId: z.string().nullable().optional(),
@@ -46,6 +53,7 @@ export type OutgoingNotesEvents =
   | { type: 'NOTE_CREATED'; note: NoteDTO }
   | { type: 'NOTE_UPDATED'; note: NoteDTO }
   | { type: 'NOTE_DELETED'; noteId: string }
+  | { type: 'NOTE_RESTORED'; note: NoteDTO }
 
 export const NotesSystemEvents = fromSystem(IncomingNoteEvents)<OutgoingNotesEvents, typeof notes>();
 type ReceivableEvents = MergeReceivable<typeof IncomingNoteEvents, NotesInternalEvents>;
@@ -155,6 +163,74 @@ export const notesSystem = setup({
         }
       }
       logger.info(`Bootstrapped REFERENCES relations for ${allNotes.length} notes`);
+    },
+
+    softDeleteNote: ({ system, event }) => {
+      const ev = typeOf('SOFT_DELETE_NOTE', event);
+      const deletedIds = repository.noteCommands.softDelete(ev.id as EARS.EntityId);
+
+      for (const deletedId of deletedIds) {
+        system.get(bus).send(emit(notes, {
+          type: 'NOTE_DELETED',
+          noteId: deletedId,
+        }));
+      }
+
+      // Update parent's childCount
+      const noteEntity = repository.noteQueries.byId(ev.id as EARS.EntityId);
+      if (!noteEntity) {
+        // Note is soft-deleted, look up parent via relations
+        const parentIds = qx(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        if (parentIds.length > 0) {
+          const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
+          if (parentDTO) {
+            system.get(bus).send(emit(notes, {
+              type: 'NOTE_UPDATED',
+              note: parentDTO,
+            }));
+          }
+        }
+      }
+    },
+
+    restoreNote: ({ system, event }) => {
+      const ev = typeOf('RESTORE_NOTE', event);
+      const restoredIds = repository.noteCommands.restore(ev.id as EARS.EntityId);
+
+      for (const restoredId of restoredIds) {
+        const noteDTO = repository.noteQueries.byIdDTO(restoredId as EARS.EntityId);
+        if (noteDTO) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_RESTORED',
+            note: noteDTO,
+          }));
+        }
+      }
+
+      // Update parent's childCount
+      const parentIds = qx(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      if (parentIds.length > 0) {
+        const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
+        if (parentDTO) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_UPDATED',
+            note: parentDTO,
+          }));
+        }
+      }
+    },
+
+    cleanupExpiredNotes: () => {
+      const expired = repository.noteQueries.expiredSoftDeleted(10);
+      if (expired.length === 0) return;
+      for (const note of expired) {
+        try {
+          repository.noteCommands.delete(note.id as EARS.EntityId);
+        } catch {
+          // Already deleted or missing — skip
+        }
+      }
+      logger.info(`Cleaned up ${expired.length} expired soft-deleted notes`);
     },
 
     deleteNote: ({ system, event }) => {
@@ -269,10 +345,16 @@ export const notesSystem = setup({
     DELETE_NOTE: {
       actions: 'deleteNote',
     },
+    SOFT_DELETE_NOTE: {
+      actions: 'softDeleteNote',
+    },
+    RESTORE_NOTE: {
+      actions: 'restoreNote',
+    },
   },
   states: {
     idle: {
-      entry: 'bootstrapReferences',
+      entry: ['bootstrapReferences', 'cleanupExpiredNotes'],
       on: {
         CLIENT_CONNECTED: {
           actions: 'sendNotesConnectedData',
