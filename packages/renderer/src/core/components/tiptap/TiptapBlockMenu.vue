@@ -111,7 +111,8 @@ function onPlusClick() {
   const editor = props.editor
   const pos = editor.view.posAtDOM(hoveredBlockEl.value, 0)
   const $pos = editor.state.doc.resolve(pos)
-  const hasContent = $pos.parent.textContent.trim().length > 0
+  const isAtomBlock = !!$pos.nodeAfter?.isAtom
+  const hasContent = isAtomBlock || $pos.parent.textContent.trim().length > 0
 
   if (!hasContent) {
     editor.chain().focus().setTextSelection(pos).run()
@@ -119,7 +120,10 @@ function onPlusClick() {
     return
   }
 
-  editor.chain().focus().insertContentAt($pos.end($pos.depth) + 1, { type: 'paragraph' }).run()
+  const insertPos = isAtomBlock
+    ? pos + $pos.nodeAfter!.nodeSize
+    : $pos.end($pos.depth) + 1
+  editor.chain().focus().insertContentAt(insertPos, { type: 'paragraph' }).run()
   nextTick(() => {
     const editorDom = editor.view.dom as HTMLElement
     const block = resolveBlock(editor.view.domAtPos(editor.state.selection.from).node, editorDom)
