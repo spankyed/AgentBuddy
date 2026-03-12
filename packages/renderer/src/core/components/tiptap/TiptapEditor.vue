@@ -63,7 +63,8 @@ function getMarkdown(): string {
 function resetContent(content: string) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
-  editor.value.commands.setContent(content)
+  const parsed = (editor.value.storage as any).markdown.parser.parse(content)
+  editor.value.commands.setContent(parsed)
   selectStart(editor.value)
   suppressNodeDeletionEvents.value = false
 }
