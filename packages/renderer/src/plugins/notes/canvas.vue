@@ -101,9 +101,9 @@ const pageBlockItem: BlockItem[] = [
 ]
 provide(EXTRA_BLOCK_ITEMS_KEY, pageBlockItem)
 
-// Focus editor when navigating into a note
-watch(currentNote, (note) => {
-  if (note) {
+// Focus editor when navigating into a different note
+watch(currentNote, (note, oldNote) => {
+  if (note && note.id !== oldNote?.id) {
     nextTick(() => editorRef.value?.editor?.commands.focus())
   }
 })
