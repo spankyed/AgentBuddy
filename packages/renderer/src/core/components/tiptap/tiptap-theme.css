@@ -319,6 +319,28 @@
   transition: opacity 0.15s ease;
   pointer-events: auto;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.tiptap-editor .drag-btn {
+  cursor: grab;
+}
+.tiptap-editor .drag-btn:active {
+  cursor: grabbing;
+}
+
+/* Drop indicator */
+.tiptap-editor .block-drop-indicator {
+  position: absolute;
+  left: 2.75rem;
+  right: 0;
+  height: 2px;
+  background: #3b82f6;
+  pointer-events: none;
+  z-index: 20;
+  border-radius: 1px;
 }
 
 .tiptap-editor .block-handle.is-visible {
@@ -327,7 +349,7 @@
 
 .tiptap-editor .ProseMirror {
   min-height: 200px;
-  padding: 0 0 0 1.5rem;
+  padding: 0 0 0 2.75rem;
 }
 
 /* Input mode */

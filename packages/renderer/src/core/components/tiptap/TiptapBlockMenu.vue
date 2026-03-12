@@ -15,7 +15,20 @@
     >
       <Plus :size="15" />
     </button>
+    <button
+      type="button"
+      class="drag-btn flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 transition-colors"
+      draggable="true"
+      @mousedown.stop="onDragHandleMouseDown"
+      @dragstart="onDragStart"
+      @dragend="onDragEnd"
+    >
+      <GripVertical :size="15" />
+    </button>
   </div>
+
+  <!-- Drop indicator line -->
+  <div v-if="dropIndicatorTop !== null" class="block-drop-indicator" :style="{ top: dropIndicatorTop + 'px' }" />
 
   <Teleport to="body">
     <div
@@ -42,8 +55,10 @@
 import { ref, reactive, computed, watch, nextTick, inject, onMounted, onBeforeUnmount } from 'vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from './injection-keys'
 import type { Editor } from '@tiptap/vue-3'
+import { NodeSelection } from '@tiptap/pm/state'
 import {
   Plus,
+  GripVertical,
   Heading1,
   Heading2,
   Heading3,
@@ -67,6 +82,81 @@ const dropdownStyle = reactive({ top: '0px', left: '0px' })
 const buttonVisible = ref(false)
 const buttonTop = ref(0)
 const hoveredBlockEl = ref<HTMLElement | null>(null)
+const dropIndicatorTop = ref<number | null>(null)
+let dragState: { pos: number; node: any } | null = null
+
+function getBlockNodeAt(blockEl: HTMLElement) {
+  const pos = props.editor.view.posAtDOM(blockEl, 0)
+  const $pos = props.editor.state.doc.resolve(pos)
+  const topPos = $pos.before(1)
+  return { pos: topPos, node: props.editor.state.doc.nodeAt(topPos)! }
+}
+
+function onDragHandleMouseDown() {
+  if (!hoveredBlockEl.value) return
+  const { pos } = getBlockNodeAt(hoveredBlockEl.value)
+  try {
+    const tr = props.editor.state.tr.setSelection(NodeSelection.create(props.editor.state.doc, pos))
+    props.editor.view.dispatch(tr)
+    props.editor.view.focus()
+  } catch { /* node type doesn't support NodeSelection */ }
+}
+
+function onDragStart(event: DragEvent) {
+  if (!hoveredBlockEl.value || !event.dataTransfer) return
+  dragState = getBlockNodeAt(hoveredBlockEl.value)
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('application/x-block-drag', '')
+  event.dataTransfer.setDragImage(hoveredBlockEl.value, 0, 0)
+}
+
+function onDragEnd() {
+  dropIndicatorTop.value = null
+  dragState = null
+}
+
+function getDropBoundary(clientY: number): { indicatorY: number; insertPos: number } {
+  const editor = props.editor
+  const editorDom = editor.view.dom as HTMLElement
+  const wrapper = editorDom.closest('.tiptap-editor') as HTMLElement
+  const wrapperTop = wrapper?.getBoundingClientRect().top ?? 0
+  const children = Array.from(editorDom.children) as HTMLElement[]
+
+  for (const child of children) {
+    const r = child.getBoundingClientRect()
+    if (clientY < (r.top + r.bottom) / 2) {
+      const pos = editor.view.posAtDOM(child, 0)
+      const insertPos = editor.state.doc.resolve(pos).before(1)
+      return { indicatorY: r.top - wrapperTop, insertPos }
+    }
+  }
+  return { indicatorY: (children.at(-1)?.getBoundingClientRect().bottom ?? 0) - wrapperTop, insertPos: editor.state.doc.content.size }
+}
+
+function onEditorDragOver(event: DragEvent) {
+  if (!dragState) return
+  event.preventDefault()
+  event.stopPropagation()
+  dropIndicatorTop.value = getDropBoundary(event.clientY).indicatorY
+}
+
+function onEditorDrop(event: DragEvent) {
+  if (!dragState) return
+  event.preventDefault()
+  event.stopPropagation()
+
+  const { pos: sourcePos, node } = dragState
+  const { insertPos } = getDropBoundary(event.clientY)
+
+  let tr = props.editor.state.tr.delete(sourcePos, sourcePos + node.nodeSize)
+  const mapped = Math.min(tr.mapping.map(insertPos), tr.doc.content.size)
+  tr = tr.insert(mapped, node)
+  props.editor.view.dispatch(tr)
+
+  dropIndicatorTop.value = null
+  dragState = null
+}
+
 function walkToDirectChild(node: HTMLElement | null, parent: HTMLElement): HTMLElement | null {
   while (node && node.parentElement !== parent) node = node.parentElement
   return node?.parentElement === parent ? node : null
@@ -213,6 +303,8 @@ onMounted(() => {
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.addEventListener('mousemove', onEditorMouseMove)
   editorDom.addEventListener('mouseleave', onEditorMouseLeave)
+  editorDom.addEventListener('dragover', onEditorDragOver, true)
+  editorDom.addEventListener('drop', onEditorDrop, true)
   document.addEventListener('click', onClickOutside)
   document.addEventListener('keydown', onKeydown)
   props.editor.on('transaction', onTransaction)
@@ -226,5 +318,7 @@ onBeforeUnmount(() => {
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.removeEventListener('mousemove', onEditorMouseMove)
   editorDom.removeEventListener('mouseleave', onEditorMouseLeave)
+  editorDom.removeEventListener('dragover', onEditorDragOver, true)
+  editorDom.removeEventListener('drop', onEditorDrop, true)
 })
 </script>
