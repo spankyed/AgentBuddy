@@ -163,7 +163,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
                 .chain()
                 .command(({ tr }) => {
                   const pos = getPos()
-                  if (!pos) return false
+                  if (pos == null) return false
                   const currentNode = tr.doc.nodeAt(pos)
                   if (currentNode?.type !== this.type) return false
                   tr.setNodeMarkup(pos, undefined, { open: !currentNode.attrs.open })
