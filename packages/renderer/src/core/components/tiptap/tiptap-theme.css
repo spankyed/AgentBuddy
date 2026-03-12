@@ -286,6 +286,10 @@
   min-width: 0;
 }
 
+.tiptap-wrapper .ProseMirror [data-type="details"]:not(.is-open) [data-type="detailsContent"] {
+  display: none;
+}
+
 .tiptap-wrapper .ProseMirror [data-type="details"] summary {
   cursor: pointer;
   font-weight: 600;

@@ -12,6 +12,7 @@ import { SubPageLink } from './sub-page-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
+import { mergeAttributes } from '@tiptap/core'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
 
@@ -59,8 +60,138 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       allowBase64: false,
     }),
     DetailsSummary,
-    DetailsContent,
-    Details.configure({
+    DetailsContent.extend({
+      addNodeView() {
+        return ({ HTMLAttributes }) => {
+          const dom = document.createElement('div')
+          const attributes = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+            'data-type': this.name,
+          })
+          Object.entries(attributes).forEach(([key, value]) => dom.setAttribute(key, value))
+
+          dom.addEventListener('toggleDetailsContent', () => {
+            dom.toggleAttribute('hidden')
+          })
+
+          return {
+            dom,
+            contentDOM: dom,
+            ignoreMutation(mutation: Record<string, any>) {
+              if (mutation.type === 'selection') {
+                return false
+              }
+              return !dom.contains(mutation.target) || dom === mutation.target
+            },
+            update: (updatedNode: any) => {
+              if (updatedNode.type !== this.type) {
+                return false
+              }
+              return true
+            },
+          }
+        }
+      },
+    }),
+    Details.extend({
+      addAttributes() {
+        return {
+          open: {
+            default: true,
+            parseHTML: element => element.hasAttribute('open'),
+            renderHTML: ({ open }) => {
+              if (!open) {
+                return {}
+              }
+              return { open: '' }
+            },
+          },
+        }
+      },
+      addNodeView() {
+        return ({ editor, getPos, node, HTMLAttributes }) => {
+          const dom = document.createElement('div')
+          const attributes = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+            'data-type': this.name,
+          })
+          Object.entries(attributes).forEach(([key, value]) => dom.setAttribute(key, value))
+
+          const toggle = document.createElement('button')
+          toggle.type = 'button'
+          dom.append(toggle)
+
+          const content = document.createElement('div')
+          dom.append(content)
+
+          const toggleDetailsContent = (setToValue?: boolean) => {
+            if (setToValue !== undefined) {
+              if (setToValue) {
+                if (dom.classList.contains(this.options.openClassName)) return
+                dom.classList.add(this.options.openClassName)
+              } else {
+                if (!dom.classList.contains(this.options.openClassName)) return
+                dom.classList.remove(this.options.openClassName)
+              }
+            } else {
+              dom.classList.toggle(this.options.openClassName)
+            }
+
+            const event = new Event('toggleDetailsContent')
+            const detailsContent = content.querySelector(':scope > div[data-type="detailsContent"]')
+            detailsContent?.dispatchEvent(event)
+          }
+
+          // Apply open class immediately — CSS handles visibility, no setTimeout needed
+          if (node.attrs.open) {
+            dom.classList.add(this.options.openClassName)
+          }
+
+          toggle.addEventListener('click', () => {
+            toggleDetailsContent()
+
+            if (!this.options.persist) {
+              editor.commands.focus(undefined, { scrollIntoView: false })
+              return
+            }
+
+            if (editor.isEditable && typeof getPos === 'function') {
+              const { from, to } = editor.state.selection
+
+              editor
+                .chain()
+                .command(({ tr }) => {
+                  const pos = getPos()
+                  if (!pos) return false
+                  const currentNode = tr.doc.nodeAt(pos)
+                  if (currentNode?.type !== this.type) return false
+                  tr.setNodeMarkup(pos, undefined, {
+                    open: !currentNode.attrs.open,
+                  })
+                  return true
+                })
+                .setTextSelection({ from, to })
+                .focus(undefined, { scrollIntoView: false })
+                .run()
+            }
+          })
+
+          return {
+            dom,
+            contentDOM: content,
+            ignoreMutation(mutation: Record<string, any>) {
+              if (mutation.type === 'selection') return false
+              return !dom.contains(mutation.target) || dom === mutation.target
+            },
+            update: (updatedNode: any) => {
+              if (updatedNode.type !== this.type) return false
+              if (updatedNode.attrs.open !== undefined) {
+                toggleDetailsContent(updatedNode.attrs.open)
+              }
+              return true
+            },
+          }
+        }
+      },
+    }).configure({
       persist: true,
       HTMLAttributes: { class: 'details-block' },
     }),
