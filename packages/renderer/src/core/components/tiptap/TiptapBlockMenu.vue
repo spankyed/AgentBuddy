@@ -11,7 +11,7 @@
       ref="plusBtnRef"
       type="button"
       class="plus-btn flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 transition-colors"
-      @click.stop="open = !open"
+      @click.stop="onPlusClick"
     >
       <Plus :size="15" />
     </button>
@@ -96,6 +96,41 @@ function findBlockFromGutter(editorDom: HTMLElement, event: MouseEvent): HTMLEle
     if (dist < closestDist) { closestDist = dist; closest = child as HTMLElement }
   }
   return closest
+}
+
+function onPlusClick() {
+  if (open.value) { open.value = false; return }
+  if (!hoveredBlockEl.value) return
+
+  const editor = props.editor
+  const pos = editor.view.posAtDOM(hoveredBlockEl.value, 0)
+  const $pos = editor.state.doc.resolve(pos)
+  const blockEnd = $pos.end($pos.depth)
+  const blockNode = $pos.parent
+  const hasContent = blockNode.textContent.trim().length > 0
+
+  if (hasContent) {
+    editor.chain().focus().insertContentAt(blockEnd + 1, { type: 'paragraph' }).run()
+    nextTick(() => {
+      const editorDom = editor.view.dom as HTMLElement
+      const sel = editor.state.selection
+      const domAtPos = editor.view.domAtPos(sel.from)
+      const node = (domAtPos.node.nodeType === Node.TEXT_NODE ? domAtPos.node.parentElement : domAtPos.node) as HTMLElement
+      hoveredBlockEl.value = walkToDirectChild(node, editorDom)
+      if (hoveredBlockEl.value) {
+        const wrapper = editorDom.closest('.tiptap-editor') as HTMLElement
+        if (wrapper) {
+          const wrapperRect = wrapper.getBoundingClientRect()
+          const blockRect = hoveredBlockEl.value.getBoundingClientRect()
+          buttonTop.value = blockRect.top - wrapperRect.top
+        }
+      }
+      open.value = true
+    })
+  } else {
+    editor.chain().focus().setTextSelection(pos).run()
+    open.value = true
+  }
 }
 
 function onEditorMouseMove(event: MouseEvent) {
