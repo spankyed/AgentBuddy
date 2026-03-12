@@ -21,7 +21,7 @@ export function usePageInsert(
       const editor = editorRef.value?.editor
       if (!noteId || !editor) return
 
-      const { notes, expandedNodeIds } = actor.getSnapshot().context
+      const { notes } = actor.getSnapshot().context
 
       const newChild = notes
         .filter(n => n.parentId === noteId)
@@ -38,10 +38,6 @@ export function usePageInsert(
 
       const content = (editor.storage as any).markdown.getMarkdown()
       actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
-
-      if (!expandedNodeIds.includes(noteId)) {
-        actor.send({ type: 'NOTE.TOGGLE_EXPAND', nodeId: noteId })
-      }
 
       actor.send({ type: 'NOTE.SELECT', noteId: newChild.id })
     }

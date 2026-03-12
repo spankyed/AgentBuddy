@@ -75,18 +75,22 @@ const notesState = setup({
     selectNote: assign(({ event, context }) => {
       const ev = typeOf('NOTE.SELECT', event)
       const note = context.notes.find(n => n.id === ev.noteId) || null
+      const ancestorIds = getAncestorChain(context.notes, ev.noteId).map(n => n.id)
       return {
         currentNoteId: ev.noteId,
         currentNote: note,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
 
     navigateToNote: assign(({ event, context }) => {
       const ev = typeOf('NOTE.LINK_CLICKED', event)
       const note = context.notes.find(n => n.id === ev.noteId) || null
+      const ancestorIds = getAncestorChain(context.notes, ev.noteId).map(n => n.id)
       return {
         currentNoteId: ev.noteId,
         currentNote: note,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
 
