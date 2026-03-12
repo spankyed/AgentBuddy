@@ -21,7 +21,7 @@
       class="flex flex-col h-full"
     >
       <!-- Title row -->
-      <div class="flex items-center gap-1 px-4 pt-3">
+      <div class="flex items-center gap-1 px-4 py-3">
         <EmojiPicker :model-value="currentNote.icon" @update:model-value="handleIconUpdate">
           <template #default="{ toggle }">
             <button
