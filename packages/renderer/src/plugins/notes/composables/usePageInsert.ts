@@ -17,41 +17,33 @@ export function usePageInsert(
       // When pendingPageInsert transitions from non-null to null, the child was created
       if (!oldVal || newVal) return
 
-      const notes = actor.getSnapshot().context.notes
       const noteId = currentNote.value?.id
-      if (!noteId) return
+      const editor = editorRef.value?.editor
+      if (!noteId || !editor) return
 
-      // Find the most recently created child note
-      const children = notes
+      const { notes, expandedNodeIds } = actor.getSnapshot().context
+
+      const newChild = notes
         .filter(n => n.parentId === noteId)
-        .sort((a, b) => b.createdAt - a.createdAt)
-      const newChild = children[0]
+        .sort((a, b) => b.createdAt - a.createdAt)[0]
       if (!newChild) return
 
-      // Insert the link at the saved cursor position
-      const editor = editorRef.value?.editor
-      if (editor) {
-        editor
-          .chain()
-          .insertContentAt(oldVal.cursorPos, {
-            type: 'subPageLink',
-            attrs: { noteId: newChild.id, title: newChild.title, icon: newChild.icon },
-          })
-          .run()
+      editor
+        .chain()
+        .insertContentAt(oldVal.cursorPos, {
+          type: 'subPageLink',
+          attrs: { noteId: newChild.id, title: newChild.title, icon: newChild.icon },
+        })
+        .run()
 
-        // Save parent content immediately (bypass debounce), then navigate to new child
-        const content = (editor.storage as any).markdown.getMarkdown()
-        actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
+      const content = (editor.storage as any).markdown.getMarkdown()
+      actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
 
-        // Auto-expand parent in tree so child is visible
-        const snapshot = actor.getSnapshot()
-        if (!snapshot.context.expandedNodeIds.includes(noteId)) {
-          actor.send({ type: 'NOTE.TOGGLE_EXPAND', nodeId: noteId })
-        }
-
-        // Navigate to the new child note
-        actor.send({ type: 'NOTE.SELECT', noteId: newChild.id })
+      if (!expandedNodeIds.includes(noteId)) {
+        actor.send({ type: 'NOTE.TOGGLE_EXPAND', nodeId: noteId })
       }
+
+      actor.send({ type: 'NOTE.SELECT', noteId: newChild.id })
     }
   )
 }
