@@ -72,8 +72,16 @@ function walkToDirectChild(node: HTMLElement | null, parent: HTMLElement): HTMLE
   return node?.parentElement === parent ? node : null
 }
 
-function findBlock(editorDom: HTMLElement, event: MouseEvent): HTMLElement | null {
-  return walkToDirectChild(event.target as HTMLElement, editorDom)
+function resolveBlock(node: Node, editorDom: HTMLElement): HTMLElement | null {
+  const el = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node) as HTMLElement
+  return walkToDirectChild(el, editorDom)
+}
+
+function updateButtonPosition(block: HTMLElement) {
+  const wrapper = (props.editor.view.dom as HTMLElement).closest('.tiptap-editor') as HTMLElement
+  if (wrapper) {
+    buttonTop.value = block.getBoundingClientRect().top - wrapper.getBoundingClientRect().top
+  }
 }
 
 function findBlockFromGutter(editorDom: HTMLElement, event: MouseEvent): HTMLElement | null {
@@ -81,9 +89,7 @@ function findBlockFromGutter(editorDom: HTMLElement, event: MouseEvent): HTMLEle
   const contentX = rect.left + (parseFloat(getComputedStyle(editorDom).paddingLeft) || 0) + 4
   const pos = props.editor.view.posAtCoords({ left: contentX, top: event.clientY })
   if (pos) {
-    const domAtPos = props.editor.view.domAtPos(pos.pos)
-    const node = (domAtPos.node.nodeType === Node.TEXT_NODE ? domAtPos.node.parentElement : domAtPos.node) as HTMLElement
-    const block = walkToDirectChild(node, editorDom)
+    const block = resolveBlock(props.editor.view.domAtPos(pos.pos).node, editorDom)
     if (block) return block
   }
   // Fallback for atom nodes (e.g. subpage links): find nearest child by vertical position
@@ -105,39 +111,31 @@ function onPlusClick() {
   const editor = props.editor
   const pos = editor.view.posAtDOM(hoveredBlockEl.value, 0)
   const $pos = editor.state.doc.resolve(pos)
-  const blockEnd = $pos.end($pos.depth)
-  const blockNode = $pos.parent
-  const hasContent = blockNode.textContent.trim().length > 0
+  const hasContent = $pos.parent.textContent.trim().length > 0
 
-  if (hasContent) {
-    editor.chain().focus().insertContentAt(blockEnd + 1, { type: 'paragraph' }).run()
-    nextTick(() => {
-      const editorDom = editor.view.dom as HTMLElement
-      const sel = editor.state.selection
-      const domAtPos = editor.view.domAtPos(sel.from)
-      const node = (domAtPos.node.nodeType === Node.TEXT_NODE ? domAtPos.node.parentElement : domAtPos.node) as HTMLElement
-      hoveredBlockEl.value = walkToDirectChild(node, editorDom)
-      if (hoveredBlockEl.value) {
-        const wrapper = editorDom.closest('.tiptap-editor') as HTMLElement
-        if (wrapper) {
-          const wrapperRect = wrapper.getBoundingClientRect()
-          const blockRect = hoveredBlockEl.value.getBoundingClientRect()
-          buttonTop.value = blockRect.top - wrapperRect.top
-        }
-      }
-      open.value = true
-    })
-  } else {
+  if (!hasContent) {
     editor.chain().focus().setTextSelection(pos).run()
     open.value = true
+    return
   }
+
+  editor.chain().focus().insertContentAt($pos.end($pos.depth) + 1, { type: 'paragraph' }).run()
+  nextTick(() => {
+    const editorDom = editor.view.dom as HTMLElement
+    const block = resolveBlock(editor.view.domAtPos(editor.state.selection.from).node, editorDom)
+    if (block) {
+      hoveredBlockEl.value = block
+      updateButtonPosition(block)
+    }
+    open.value = true
+  })
 }
 
 function onEditorMouseMove(event: MouseEvent) {
   if (open.value) return
 
   const editorDom = props.editor.view.dom as HTMLElement
-  const block = findBlock(editorDom, event) ?? findBlockFromGutter(editorDom, event)
+  const block = walkToDirectChild(event.target as HTMLElement, editorDom) ?? findBlockFromGutter(editorDom, event)
 
   if (!block) {
     buttonVisible.value = false
@@ -146,14 +144,7 @@ function onEditorMouseMove(event: MouseEvent) {
 
   hoveredBlockEl.value = block
   buttonVisible.value = true
-
-  // Position relative to the wrapper (.tiptap-editor), not the ProseMirror element
-  const wrapper = editorDom.closest('.tiptap-editor') as HTMLElement
-  if (wrapper) {
-    const wrapperRect = wrapper.getBoundingClientRect()
-    const blockRect = block.getBoundingClientRect()
-    buttonTop.value = blockRect.top - wrapperRect.top
-  }
+  updateButtonPosition(block)
 }
 
 function onEditorMouseLeave() {
