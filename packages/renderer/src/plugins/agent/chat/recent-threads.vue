@@ -42,10 +42,10 @@
         type="button"
         class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
       >
-        Recent Threads
+        <History v-if="!isOpen" :size="16" class="mr-2" />
+        <ChevronUp v-else :size="16" class="mr-2" />
 
-        <History v-if="!isOpen" :size="16" class="ml-2" />
-        <ChevronUp v-else :size="16" class="ml-2" />
+        Recent Threads
       </button>
 
       <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
