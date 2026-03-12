@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode } from './extensions'
@@ -233,10 +233,6 @@ watch(() => props.disabled, (disabled) => {
   if (editor.value) {
     editor.value.setEditable(!disabled && props.mode !== 'viewer')
   }
-})
-
-onBeforeUnmount(() => {
-  editor.value?.destroy()
 })
 
 defineExpose({ editor })

@@ -184,10 +184,11 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  document.removeEventListener('click', onClickOutside)
+  document.removeEventListener('keydown', onKeydown)
+  if (props.editor.isDestroyed) return
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.removeEventListener('mousemove', onEditorMouseMove)
   editorDom.removeEventListener('mouseleave', onEditorMouseLeave)
-  document.removeEventListener('click', onClickOutside)
-  document.removeEventListener('keydown', onKeydown)
 })
 </script>

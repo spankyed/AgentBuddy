@@ -28,6 +28,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
   const extensions: AnyExtension[] = [
     StarterKit.configure({
       codeBlock: false,
+      link: false,
     }),
     Markdown.configure({
       html: false,
