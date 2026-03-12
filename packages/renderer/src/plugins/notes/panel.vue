@@ -13,7 +13,7 @@
     </div>
 
     <!-- Tree -->
-    <div class="flex-1 overflow-y-auto py-1">
+    <div class="flex-1 overflow-y-auto p-3 px-2">
       <div v-if="rootNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
         No notes yet
       </div>

@@ -2,19 +2,19 @@
   <div>
     <!-- Node row -->
     <div
-      class="flex items-center gap-1 px-2 py-1 cursor-pointer text-sm transition-colors group"
+      class="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
           ? 'bg-neutral-700 text-neutral-100'
           : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
       ]"
-      :style="{ paddingLeft: `${depth * 16 + 8}px` }"
+      :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
       @click="$emit('select', note.id)"
     >
       <!-- Expand/Collapse chevron -->
       <button
         v-if="children.length > 0"
-        class="flex items-center justify-center w-4 h-4 text-neutral-500 hover:text-neutral-300 transition-colors"
+        class="flex items-center justify-center w-4 h-4 mr-0.5 text-neutral-500 hover:text-neutral-300 transition-colors"
         @click.stop="$emit('toggle-expand', note.id)"
       >
         <ChevronRight
@@ -39,7 +39,7 @@
       </EmojiPicker>
 
       <!-- Title -->
-      <span class="truncate flex-1">{{ note.title || 'Untitled' }}</span>
+      <span class="truncate flex-1 ml-0.5">{{ note.title || 'Untitled' }}</span>
 
       <!-- Actions (on hover) -->
       <div class="hidden group-hover:flex items-center gap-0.5">
@@ -85,6 +85,9 @@ import { computed } from 'vue'
 import type { NoteDTO } from '@app/api'
 import { ChevronRight, FileText, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
+
+const INDENT_PX = 8
+const BASE_PADDING_PX = 4
 
 const props = defineProps<{
   note: NoteDTO
