@@ -251,6 +251,22 @@
   outline-offset: 2px;
 }
 
+/* Block-level node selection (drag handle click) */
+.tiptap-wrapper .ProseMirror p.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror h1.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror h2.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror h3.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror blockquote.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror [data-type="details"].ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror ul.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror ol.ProseMirror-selectednode {
+  outline: none;
+  background-color: rgb(64 64 64 / 0.5);
+  border-radius: 3px;
+  margin-left: -0.6rem;
+  padding-left: 0.6rem;
+}
+
 /* Details (collapsible) */
 .tiptap-wrapper .ProseMirror [data-type="details"] {
   list-style: none;
@@ -334,7 +350,7 @@
 /* Drop indicator */
 .tiptap-editor .block-drop-indicator {
   position: absolute;
-  left: 2.75rem;
+  left: 3.25rem;
   right: 0;
   height: 2px;
   background: #3b82f6;
@@ -349,7 +365,7 @@
 
 .tiptap-editor .ProseMirror {
   min-height: 200px;
-  padding: 0 0 0 2.75rem;
+  padding: 0 0 0 3.25rem;
 }
 
 /* Input mode */

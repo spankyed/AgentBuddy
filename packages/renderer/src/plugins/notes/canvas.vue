@@ -46,7 +46,7 @@
       </div>
 
       <!-- Editor -->
-      <div class="flex-1 overflow-y-auto px-2">
+      <div class="flex-1 overflow-y-auto pl-1 pr-4">
         <TiptapEditor
           ref="editorRef"
           mode="editor"
