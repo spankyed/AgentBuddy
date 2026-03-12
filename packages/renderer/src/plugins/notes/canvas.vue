@@ -41,6 +41,7 @@
           @input="handleTitleInput"
           @keydown.enter.prevent="handleTitleEnter"
           @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
+          @keydown.right="handleTitleRight"
         />
       </div>
 
@@ -144,6 +145,14 @@ function handleSubPageLinkDeleted(noteId: string) {
 
 function handleSubPageLinkRestored(noteId: string) {
   actor.send({ type: 'NOTE.RESTORE', noteId })
+}
+
+function handleTitleRight(event: KeyboardEvent) {
+  const el = event.target as HTMLInputElement
+  if (el.selectionStart === el.value.length && el.selectionEnd === el.value.length) {
+    event.preventDefault()
+    editorRef.value?.editor?.commands.focus('start')
+  }
 }
 
 function handleTitleEnter() {
