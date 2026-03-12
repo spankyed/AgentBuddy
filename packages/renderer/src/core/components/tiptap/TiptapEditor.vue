@@ -15,7 +15,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { Selection } from '@tiptap/pm/state'
+import { NodeSelection, Selection } from '@tiptap/pm/state'
+import { GapCursor } from '@tiptap/pm/gapcursor'
 import { createExtensions, type TiptapMode } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
@@ -130,12 +131,25 @@ const editor = useEditor({
         return true
       }
       if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
+        // If it's a NodeSelection on the first block, let ProseMirror show gapcursor first
+        if (view.state.selection instanceof NodeSelection) {
+          return false
+        }
         emit('focusTitle')
         return true
       }
       return false
     },
-    handleClick: (_view, _pos, event) => {
+    handleClick: (view, _pos, event) => {
+      // Click in top padding shows gapcursor above first block
+      if (props.mode === 'editor' && view.dom.firstElementChild) {
+        if (event.clientY < view.dom.firstElementChild.getBoundingClientRect().top) {
+          const resolved = view.state.doc.resolve(0)
+          const gc = new GapCursor(resolved)
+          view.dispatch(view.state.tr.setSelection(gc))
+          return true
+        }
+      }
       // Sub-page links open on regular click (no modifier needed)
       const subPageEl = (event.target as HTMLElement).closest('.sub-page-link')
       if (subPageEl) {
