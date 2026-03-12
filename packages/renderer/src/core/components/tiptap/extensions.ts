@@ -31,7 +31,7 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       link: false,
     }),
     Markdown.configure({
-      html: false,
+      html: true,
       transformCopiedText: true,
       transformPastedText: true,
     }),
