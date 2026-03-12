@@ -305,28 +305,24 @@
   overflow: visible;
 }
 
-.tiptap-editor .block-menu {
-  position: relative;
-}
-
-.tiptap-editor .block-menu::before {
-  content: '';
+/* Block handle (hover + button) */
+.tiptap-editor .block-handle {
   position: absolute;
-  inset: -0.5rem;
-}
-
-.tiptap-editor .block-menu .plus-btn {
+  left: 0;
+  margin-top: 0.175rem;
   opacity: 0;
   transition: opacity 0.15s ease;
+  pointer-events: auto;
+  z-index: 10;
 }
 
-.tiptap-editor .block-menu:hover .plus-btn {
+.tiptap-editor .block-handle.is-visible {
   opacity: 1;
 }
 
 .tiptap-editor .ProseMirror {
   min-height: 200px;
-  padding: 0 0 0 1rem;
+  padding: 0 0 0 1.5rem;
 }
 
 /* Input mode */
