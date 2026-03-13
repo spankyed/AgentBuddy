@@ -13,6 +13,15 @@ import { createLogger } from '@/core/helpers/debug/logger';
 
 const logger = createLogger('notes');
 
+function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boolean {
+  const childIds = qx(ancestorId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+  for (const childId of childIds) {
+    if (childId === noteId) return true;
+    if (isDescendantOf(noteId, childId)) return true;
+  }
+  return false;
+}
+
 export const notes = 'notes' as const;
 
 const busEvent = systemBus(notes);
@@ -41,8 +50,8 @@ export const IncomingNoteEvents = [
     id: z.string(),
   }),
   busEvent('MOVE_NOTE', {
-    id: z.string(),
-    newParentId: z.string().nullable().optional(),
+    ids: z.array(z.string()),
+    newParentId: z.string().nullable(),
   }),
   busEvent('VIEW_NOTE', {
     id: z.string(),
@@ -240,6 +249,52 @@ export const notesSystem = setup({
       logger.info(`Cleaned up ${expired.length} expired soft-deleted notes`);
     },
 
+    moveNotes: ({ system, event }) => {
+      const ev = typeOf('MOVE_NOTE', event);
+      const newParentId = ev.newParentId as EARS.EntityId | null;
+      const affectedParentIds = new Set<string>();
+
+      for (const noteId of ev.ids) {
+        const id = noteId as EARS.EntityId;
+
+        // Skip self-drop
+        if (newParentId === id) continue;
+
+        // Skip descendant-drop (would create circular reference)
+        if (newParentId && isDescendantOf(newParentId, id)) continue;
+
+        // Find current parent to skip same-parent no-op
+        const currentParentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const currentParentId = currentParentIds.length > 0 ? currentParentIds[0] : null;
+        if (currentParentId === newParentId) continue;
+
+        const { oldParentId } = repository.noteCommands.move(id, newParentId);
+
+        if (oldParentId) affectedParentIds.add(oldParentId);
+        if (newParentId) affectedParentIds.add(newParentId);
+
+        // Emit update for the moved note
+        const movedDTO = repository.noteQueries.byIdDTO(id);
+        if (movedDTO) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_UPDATED',
+            note: movedDTO,
+          }));
+        }
+      }
+
+      // Emit updates for all affected parents
+      for (const parentId of affectedParentIds) {
+        const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
+        if (parentDTO) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_UPDATED',
+            note: parentDTO,
+          }));
+        }
+      }
+    },
+
     searchNotes: ({ system, event }) => {
       const ev = typeOf('SEARCH_NOTES', event);
       const query = ev.query.trim().toLowerCase();
@@ -335,7 +390,7 @@ export const notesSystem = setup({
           let newContent = parentNote.content;
           for (const deletedId of allDeletedIds) {
             const escaped = deletedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const pagePattern = new RegExp(`\\[([^\\]]*)\\]\\(page:\\/\\/${escaped}\\)\\n?`, 'g');
+            const pagePattern = new RegExp(`\\[([^\\]]*)\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)\\n?`, 'g');
             newContent = newContent.replace(pagePattern, '');
           }
           if (newContent !== parentNote.content) {
@@ -389,6 +444,9 @@ export const notesSystem = setup({
     },
     RESTORE_NOTE: {
       actions: 'restoreNote',
+    },
+    MOVE_NOTE: {
+      actions: 'moveNotes',
     },
     VIEW_NOTE: {
       actions: 'viewNote',

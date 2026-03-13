@@ -146,15 +146,19 @@ const editor = useEditor({
           return true
         }
       }
+      // page:// inline links also open on regular click (no modifier needed)
+      const anchor = (event.target as HTMLElement).closest('a')
+      const href = anchor?.getAttribute('href')
+      if (href?.startsWith('page://')) {
+        emit('noteLinkClick', href.slice('page://'.length))
+        return true
+      }
       // Other links require ctrl/cmd+click in editor mode
       if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
-      const href = (event.target as HTMLElement).closest('a')?.getAttribute('href')
       if (!href) return false
-      for (const protocol of ['note://', 'page://']) {
-        if (href.startsWith(protocol)) {
-          emit('noteLinkClick', href.slice(protocol.length))
-          return true
-        }
+      if (href.startsWith('note://')) {
+        emit('noteLinkClick', href.slice('note://'.length))
+        return true
       }
       const url = /^https?:\/\//.test(href) ? href : `https://${href}`
       window.electronAPI?.shell?.openExternal(url)

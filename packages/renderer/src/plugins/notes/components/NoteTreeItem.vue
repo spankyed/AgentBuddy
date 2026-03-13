@@ -2,14 +2,22 @@
   <div>
     <!-- Node row -->
     <div
+      data-note-tree-item
       class="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
           ? 'bg-neutral-700 text-neutral-100'
           : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+        itemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
-      @click="$emit('select', note.id)"
+      :draggable="true"
+      @click="handleClick"
+      @dragstart="$emit('drag-start', $event, note.id)"
+      @dragover="$emit('drag-over', $event, note.id)"
+      @dragleave="$emit('drag-leave', $event)"
+      @drop="$emit('drop', $event, note.id)"
+      @dragend="$emit('drag-end')"
     >
       <!-- Expand/Collapse chevron -->
       <button
@@ -70,11 +78,19 @@
         :current-note-id="currentNoteId"
         :expanded-node-ids="expandedNodeIds"
         :depth="depth + 1"
+        :item-class="getItemClass(child.id)"
+        :get-item-class="getItemClass"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
         @create="$emit('create', $event)"
         @delete="$emit('delete', $event)"
         @update-icon="(noteId: string, icon: string | null) => $emit('update-icon', noteId, icon)"
+        @toggle-select="$emit('toggle-select', $event)"
+        @drag-start="(e: DragEvent, id: string) => $emit('drag-start', e, id)"
+        @drag-over="(e: DragEvent, id: string) => $emit('drag-over', e, id)"
+        @drag-leave="(e: DragEvent) => $emit('drag-leave', e)"
+        @drop="(e: DragEvent, id: string) => $emit('drop', e, id)"
+        @drag-end="$emit('drag-end')"
       />
     </template>
   </div>
@@ -95,15 +111,31 @@ const props = defineProps<{
   currentNoteId: string | null
   expandedNodeIds: string[]
   depth: number
+  itemClass: string
+  getItemClass: (noteId: string) => string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select', noteId: string): void
   (e: 'toggle-expand', nodeId: string): void
   (e: 'create', parentId: string): void
   (e: 'delete', noteId: string): void
   (e: 'update-icon', noteId: string, icon: string | null): void
+  (e: 'toggle-select', noteId: string): void
+  (e: 'drag-start', event: DragEvent, noteId: string): void
+  (e: 'drag-over', event: DragEvent, noteId: string): void
+  (e: 'drag-leave', event: DragEvent): void
+  (e: 'drop', event: DragEvent, noteId: string): void
+  (e: 'drag-end'): void
 }>()
+
+function handleClick(e: MouseEvent) {
+  if (e.ctrlKey || e.metaKey) {
+    emit('toggle-select', props.note.id)
+  } else {
+    emit('select', props.note.id)
+  }
+}
 
 const isExpanded = computed(() => props.expandedNodeIds.includes(props.note.id))
 

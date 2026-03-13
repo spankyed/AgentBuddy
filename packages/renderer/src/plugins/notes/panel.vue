@@ -13,7 +13,11 @@
     </div>
 
     <!-- Tree -->
-    <div class="flex-1 overflow-y-auto p-3 px-2">
+    <div
+      class="flex-1 overflow-y-auto p-3 px-2"
+      @dragover.prevent="handleRootDragOver"
+      @drop="handleRootDrop"
+    >
       <div v-if="rootNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
         No notes yet
       </div>
@@ -25,11 +29,19 @@
         :current-note-id="currentNoteId"
         :expanded-node-ids="expandedNodeIds"
         :depth="0"
+        :item-class="getItemClass(note.id)"
+        :get-item-class="getItemClass"
         @select="handleSelectNote"
         @toggle-expand="handleToggleExpand"
         @create="handleCreateNote"
         @delete="handleDeleteNote"
         @update-icon="handleUpdateIcon"
+        @toggle-select="handleToggleSelect"
+        @drag-start="handleDragStart"
+        @drag-over="handleDragOver"
+        @drag-leave="handleDragLeave"
+        @drop="handleNoteTreeDrop"
+        @drag-end="handleDragEnd"
       />
     </div>
   </div>
@@ -42,11 +54,13 @@ import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus } from 'lucide-vue-next'
+import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 
 const actor: NotesState = applicationState.system.get(id)
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
+const selectedNoteIds = useSelector(actor, (s) => s.context.selectedNoteIds)
 
 const rootNotes = computed(() =>
   notes.value
@@ -54,8 +68,28 @@ const rootNotes = computed(() =>
     .sort((a, b) => a.displayOrder - b.displayOrder)
 )
 
+const {
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd,
+  getItemClass,
+} = useNoteTreeDragDrop({
+  notes,
+  selectedNoteIds,
+  onMove: (noteIds, newParentId) => {
+    actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })
+  },
+})
+
 function handleSelectNote(noteId: string) {
+  actor.send({ type: 'NOTE.CLEAR_SELECTION' })
   actor.send({ type: 'NOTE.SELECT', noteId })
+}
+
+function handleToggleSelect(noteId: string) {
+  actor.send({ type: 'NOTE.TOGGLE_SELECT', noteId })
 }
 
 function handleToggleExpand(nodeId: string) {
@@ -72,5 +106,17 @@ function handleDeleteNote(noteId: string) {
 
 function handleUpdateIcon(noteId: string, icon: string | null) {
   actor.send({ type: 'NOTE.UPDATE_ICON', noteId, icon })
+}
+
+function handleNoteTreeDrop(e: DragEvent, noteId: string) {
+  handleDrop(e, noteId)
+}
+
+function handleRootDragOver(e: DragEvent) {
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+}
+
+function handleRootDrop(e: DragEvent) {
+  handleDrop(e, null)
 }
 </script>

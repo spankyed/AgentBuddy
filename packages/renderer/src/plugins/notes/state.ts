@@ -23,6 +23,7 @@ export interface NotesContext {
   expandedNodeIds: string[]
   pendingPageInsert: { cursorPos: number } | null
   searchResults: NoteDTO[]
+  selectedNoteIds: string[]
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -40,6 +41,9 @@ type UIEvent =
   | { type: 'NOTE.LINK_CLICKED'; noteId: string }
   | { type: 'NOTE.REQUEST_PAGE_INSERT'; parentId: string; cursorPos: number }
   | { type: 'NOTE.SEARCH'; query: string }
+  | { type: 'NOTE.TOGGLE_SELECT'; noteId: string }
+  | { type: 'NOTE.CLEAR_SELECTION' }
+  | { type: 'NOTE.MOVE'; noteIds: string[]; newParentId: string | null }
   | { type: 'VIEW_WELCOME' }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
@@ -297,6 +301,29 @@ const notesState = setup({
       return { searchResults: ev.results }
     }),
 
+    toggleSelect: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.TOGGLE_SELECT', event)
+      const ids = context.selectedNoteIds
+      const exists = ids.includes(ev.noteId)
+      return {
+        selectedNoteIds: exists
+          ? ids.filter(id => id !== ev.noteId)
+          : [...ids, ev.noteId],
+      }
+    }),
+
+    clearSelection: assign({ selectedNoteIds: [] }),
+
+    sendMoveNotes: ({ event }) => {
+      const ev = typeOf('NOTE.MOVE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'MOVE_NOTE',
+        ids: ev.noteIds,
+        newParentId: ev.newParentId,
+      })
+    },
+
     clearCurrentNote: assign({
       currentNoteId: null,
       currentNote: null,
@@ -313,6 +340,7 @@ const notesState = setup({
     expandedNodeIds: [],
     pendingPageInsert: null,
     searchResults: [],
+    selectedNoteIds: [],
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -334,6 +362,9 @@ const notesState = setup({
       },
     ],
     'NOTE.TOGGLE_EXPAND': { actions: 'toggleExpand' },
+    'NOTE.TOGGLE_SELECT': { actions: 'toggleSelect' },
+    'NOTE.CLEAR_SELECTION': { actions: 'clearSelection' },
+    'NOTE.MOVE': { actions: ['sendMoveNotes', 'clearSelection'] },
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },

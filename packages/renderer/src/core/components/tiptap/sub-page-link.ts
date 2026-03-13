@@ -112,7 +112,30 @@ export const SubPageLink = Node.create({
           state.write(`[${node.attrs.title}](page://${node.attrs.noteId}${icon})`)
           state.ensureNewLine()
         },
-        parse: {},
+        parse: {
+          updateDOM(element: HTMLElement) {
+            element.querySelectorAll('a[href^="page://"]').forEach(el => {
+              const parent = el.parentElement
+              if (!parent || parent.tagName !== 'P') return
+
+              // Clone <p> for content before the link
+              const before = parent.cloneNode(false) as HTMLElement
+              while (parent.firstChild && parent.firstChild !== el) {
+                before.appendChild(parent.firstChild)
+              }
+              // Only insert if there's meaningful (non-whitespace) content
+              if (before.childNodes.length > 0 && before.textContent?.trim()) {
+                parent.parentElement!.insertBefore(before, parent)
+              }
+              // Move <a> to block level
+              parent.parentElement!.insertBefore(el, parent)
+              // Remove <p> shell if empty or whitespace-only
+              if (!parent.textContent?.trim()) {
+                parent.remove()
+              }
+            })
+          },
+        },
       },
     }
   },

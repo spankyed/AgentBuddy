@@ -128,6 +128,59 @@ export const noteCommands = {
     return restoredIds;
   },
 
+  move: (id: EARS.EntityId, newParentId: EARS.EntityId | null): { oldParentId: string | null } => {
+    const note = findById<NoteEntity>(id);
+    if (!note) {
+      throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    // Find current parent
+    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const oldParentId = parentIds.length > 0 ? parentIds[0] : null;
+
+    // Early return if already has this parent
+    if (oldParentId === newParentId) return { oldParentId };
+
+    // Remove old CONTAINS relation and strip sub-page link from old parent content
+    if (oldParentId) {
+      removeRelation(oldParentId, EARS.RelKind.CONTAINS, id);
+      const oldParent = findById<NoteEntity>(oldParentId);
+      if (oldParent?.content) {
+        const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pagePattern = new RegExp(`\\n?\\[([^\\]]*)\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
+        const newContent = oldParent.content.replace(pagePattern, '');
+        if (newContent !== oldParent.content) {
+          updateEntity(oldParentId, { content: newContent });
+        }
+      }
+    }
+
+    // Create new CONTAINS relation and append sub-page link to new parent content
+    if (newParentId) {
+      createRelation(newParentId, EARS.RelKind.CONTAINS, id);
+      const newParent = findById<NoteEntity>(newParentId);
+      if (newParent) {
+        const linkMarkdown = `\n[${note.title}](page://${id})`;
+        const newContent = (newParent.content || '') + linkMarkdown;
+        updateEntity(newParentId, { content: newContent });
+      }
+
+      // Update displayOrder to end of new parent's children
+      const newSiblings = qx(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+      updateEntity(id, { displayOrder: newSiblings.length - 1 });
+    } else {
+      // Moving to root: calculate root-level displayOrder
+      const allNotes = qx(EARS.Entity.Note).ids();
+      const rootCount = allNotes.filter(nid => {
+        const parents = qx(nid).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        return parents.length === 0;
+      }).length;
+      updateEntity(id, { displayOrder: rootCount - 1 });
+    }
+
+    return { oldParentId };
+  },
+
   delete: (id: EARS.EntityId): void => {
     const existing = findByIdRaw<NoteEntity>(id);
     if (!existing) {
