@@ -80,23 +80,13 @@ const notesState = setup({
     }),
 
     selectNote: assign(({ event, context }) => {
-      const ev = typeOf('NOTE.SELECT', event)
-      const note = context.notes.find(n => n.id === ev.noteId) || null
-      const ancestorIds = getAncestorChain(context.notes, ev.noteId).map(n => n.id)
+      const noteId = (event as { noteId: string }).noteId
+      const note = context.notes.find(n => n.id === noteId) || null
+      const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
       return {
-        currentNoteId: ev.noteId,
+        currentNoteId: noteId,
         currentNote: note,
-        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
-      }
-    }),
-
-    navigateToNote: assign(({ event, context }) => {
-      const ev = typeOf('NOTE.LINK_CLICKED', event)
-      const note = context.notes.find(n => n.id === ev.noteId) || null
-      const ancestorIds = getAncestorChain(context.notes, ev.noteId).map(n => n.id)
-      return {
-        currentNoteId: ev.noteId,
-        currentNote: note,
+        selectedNoteIds: [],
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
@@ -257,6 +247,7 @@ const notesState = setup({
         notes: updatedNotes,
         currentNoteId: wasCurrentNote ? null : context.currentNoteId,
         currentNote: wasCurrentNote ? null : context.currentNote,
+        selectedNoteIds: context.selectedNoteIds.filter(id => id !== ev.noteId),
       }
     }),
 
@@ -470,7 +461,7 @@ const notesState = setup({
           actions: 'sendDeleteNote',
         },
         'NOTE.LINK_CLICKED': {
-          actions: ['navigateToNote', 'sendViewNote'],
+          actions: ['selectNote', 'sendViewNote'],
         },
         'NOTE.REQUEST_PAGE_INSERT': {
           actions: ['requestPageInsert', 'sendCreateChildForPageInsert'],

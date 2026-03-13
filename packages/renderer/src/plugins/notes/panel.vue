@@ -30,7 +30,6 @@
         :current-note-id="currentNoteId"
         :expanded-node-ids="expandedNodeIds"
         :depth="0"
-        :item-class="getItemClass(note.id)"
         :get-item-class="getItemClass"
         @select="handleSelectNote"
         @toggle-expand="handleToggleExpand"
@@ -42,7 +41,7 @@
         @drag-start="handleDragStart"
         @drag-over="handleDragOver"
         @drag-leave="handleDragLeave"
-        @drop="handleNoteTreeDrop"
+        @drop="(e: DragEvent, id: string) => handleDrop(e, id)"
         @drag-end="handleDragEnd"
       />
     </div>
@@ -86,7 +85,7 @@ const {
   },
 })
 
-function getVisibleNodeIds(): string[] {
+const visibleNodeIds = computed(() => {
   const result: string[] = []
   function walk(parentId: string | null) {
     const children = notes.value
@@ -101,10 +100,10 @@ function getVisibleNodeIds(): string[] {
   }
   walk(null)
   return result
-}
+})
 
 function handleShiftSelect(noteId: string) {
-  const visible = getVisibleNodeIds()
+  const visible = visibleNodeIds.value
   const anchor = currentNoteId.value
   if (!anchor) {
     handleSelectNote(noteId)
@@ -123,7 +122,6 @@ function handleShiftSelect(noteId: string) {
 }
 
 function handleSelectNote(noteId: string) {
-  actor.send({ type: 'NOTE.CLEAR_SELECTION' })
   actor.send({ type: 'NOTE.SELECT', noteId })
 }
 
@@ -145,10 +143,6 @@ function handleDeleteNote(noteId: string) {
 
 function handleUpdateIcon(noteId: string, icon: string | null) {
   actor.send({ type: 'NOTE.UPDATE_ICON', noteId, icon })
-}
-
-function handleNoteTreeDrop(e: DragEvent, noteId: string) {
-  handleDrop(e, noteId)
 }
 
 function handleOutsideClick(e: MouseEvent) {

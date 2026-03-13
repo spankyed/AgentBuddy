@@ -8,7 +8,7 @@
         note.id === currentNoteId
           ? 'bg-neutral-700 text-neutral-100'
           : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-        itemClass,
+        ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
       :draggable="true"
@@ -78,7 +78,6 @@
         :current-note-id="currentNoteId"
         :expanded-node-ids="expandedNodeIds"
         :depth="depth + 1"
-        :item-class="getItemClass(child.id)"
         :get-item-class="getItemClass"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
@@ -112,7 +111,6 @@ const props = defineProps<{
   currentNoteId: string | null
   expandedNodeIds: string[]
   depth: number
-  itemClass: string
   getItemClass: (noteId: string) => string
 }>()
 
@@ -140,6 +138,8 @@ function handleClick(e: MouseEvent) {
     emit('select', props.note.id)
   }
 }
+
+const ownItemClass = computed(() => props.getItemClass(props.note.id))
 
 const isExpanded = computed(() => props.expandedNodeIds.includes(props.note.id))
 
