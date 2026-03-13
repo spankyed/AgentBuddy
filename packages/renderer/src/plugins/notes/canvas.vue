@@ -57,22 +57,48 @@
           <div v-if="recentNotes.length === 0" class="text-sm text-neutral-500 text-center py-8">
             No recently viewed notes
           </div>
-          <div v-else class="flex flex-wrap gap-3 pb-2">
-            <button
-              v-for="note in recentNotes" :key="note.id"
-              class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-neutral-700/50 hover:border-neutral-600/50"
-              style="min-height: 140px"
-              @click="handleSelectNote(note.id)"
+          <div v-else class="relative">
+            <!-- Left edge shadow + arrow -->
+            <div
+              v-show="canScrollLeft"
+              class="absolute left-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-r from-neutral-900/80 to-transparent group/left cursor-pointer"
+              @click="scrollCarousel(-1)"
             >
-              <div>
-                <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
-                <FileText v-else :size="28" class="text-neutral-600" />
-              </div>
-              <div class="mt-3">
-                <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
-                <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
-              </div>
-            </button>
+              <button class="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/left:opacity-100">
+                <ChevronLeft :size="16" class="text-neutral-200" />
+              </button>
+            </div>
+            <div
+              ref="carouselRef"
+              class="flex gap-3 pb-2 overflow-x-auto scroll-smooth carousel-hide-scrollbar"
+              @scroll="updateScrollState"
+            >
+              <button
+                v-for="note in recentNotes" :key="note.id"
+                class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-neutral-700/50 hover:border-neutral-600/50"
+                style="min-height: 140px"
+                @click="handleSelectNote(note.id)"
+              >
+                <div>
+                  <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
+                  <FileText v-else :size="28" class="text-neutral-600" />
+                </div>
+                <div class="mt-3">
+                  <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
+                  <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
+                </div>
+              </button>
+            </div>
+            <!-- Right edge shadow + arrow -->
+            <div
+              v-show="canScrollRight"
+              class="absolute right-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-l from-neutral-900/80 to-transparent group/right cursor-pointer"
+              @click="scrollCarousel(1)"
+            >
+              <button class="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/right:opacity-100">
+                <ChevronRight :size="16" class="text-neutral-200" />
+              </button>
+            </div>
           </div>
         </div>
         </div>
@@ -130,13 +156,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, provide } from 'vue'
+import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
-import { NotebookText, FileText, Search, Clock } from 'lucide-vue-next'
+import { NotebookText, FileText, Search, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
@@ -192,6 +218,28 @@ watch(searchQuery, (query) => {
 
 const editorRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const titleRef = ref<HTMLInputElement | null>(null)
+const carouselRef = ref<HTMLDivElement | null>(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+function updateScrollState() {
+  const el = carouselRef.value
+  if (!el) return
+  canScrollLeft.value = el.scrollLeft > 0
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+function scrollCarousel(direction: -1 | 1) {
+  const el = carouselRef.value
+  if (!el) return
+  el.scrollBy({ left: direction * 320, behavior: 'smooth' })
+}
+
+watch(recentNotes, () => nextTick(updateScrollState))
+watch(() => state.value.hasTag('welcome'), (isWelcome) => {
+  if (isWelcome) nextTick(updateScrollState)
+})
+onMounted(() => nextTick(updateScrollState))
 
 // Composables
 useNoteFocus(actor, titleRef, editorRef)
@@ -308,3 +356,13 @@ watch(
   { deep: true }
 )
 </script>
+
+<style scoped>
+.carousel-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.carousel-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+</style>
