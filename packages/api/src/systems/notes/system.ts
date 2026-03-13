@@ -4,7 +4,7 @@ import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
-import type { NoteDTO, NotesConnectedData } from './types';
+import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { syncReferences } from './repository/link-utils';
@@ -44,6 +44,12 @@ export const IncomingNoteEvents = [
     id: z.string(),
     newParentId: z.string().nullable().optional(),
   }),
+  busEvent('VIEW_NOTE', {
+    id: z.string(),
+  }),
+  busEvent('SEARCH_NOTES', {
+    query: z.string(),
+  }),
 ] as const;
 
 export type NotesInternalEvents = SystemEvents;
@@ -54,6 +60,7 @@ export type OutgoingNotesEvents =
   | { type: 'NOTE_UPDATED'; note: NoteDTO }
   | { type: 'NOTE_DELETED'; noteId: string }
   | { type: 'NOTE_RESTORED'; note: NoteDTO }
+  | OutgoingNotesSearchEvent
 
 export const NotesSystemEvents = fromSystem(IncomingNoteEvents)<OutgoingNotesEvents, typeof notes>();
 type ReceivableEvents = MergeReceivable<typeof IncomingNoteEvents, NotesInternalEvents>;
@@ -233,6 +240,38 @@ export const notesSystem = setup({
       logger.info(`Cleaned up ${expired.length} expired soft-deleted notes`);
     },
 
+    searchNotes: ({ system, event }) => {
+      const ev = typeOf('SEARCH_NOTES', event);
+      const query = ev.query.trim().toLowerCase();
+      if (!query) {
+        system.get(bus).send(emit(notes, {
+          type: 'NOTES_SEARCH_RESULTS',
+          results: [],
+        }));
+        return;
+      }
+      const allNotes = repository.noteQueries.allDTOs();
+      const results = allNotes.filter(n =>
+        (n.title || '').toLowerCase().includes(query)
+      );
+      system.get(bus).send(emit(notes, {
+        type: 'NOTES_SEARCH_RESULTS',
+        results,
+      }));
+    },
+
+    viewNote: ({ system, event }) => {
+      const ev = typeOf('VIEW_NOTE', event);
+      repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() });
+      const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
+      if (updatedNote) {
+        system.get(bus).send(emit(notes, {
+          type: 'NOTE_UPDATED',
+          note: updatedNote,
+        }));
+      }
+    },
+
     deleteNote: ({ system, event }) => {
       const ev = typeOf('DELETE_NOTE', event);
 
@@ -350,6 +389,12 @@ export const notesSystem = setup({
     },
     RESTORE_NOTE: {
       actions: 'restoreNote',
+    },
+    VIEW_NOTE: {
+      actions: 'viewNote',
+    },
+    SEARCH_NOTES: {
+      actions: 'searchNotes',
     },
   },
   states: {

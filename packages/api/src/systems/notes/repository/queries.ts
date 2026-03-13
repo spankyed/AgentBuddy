@@ -22,6 +22,7 @@ function toDTO(note: NoteEntity): NoteDTO {
     childCount,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
+    lastSeen: note.lastSeen ?? 0,
   };
 }
 

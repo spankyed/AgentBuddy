@@ -53,6 +53,7 @@ export const noteCommands = {
         content: input.content || '',
         icon: input.icon ?? null,
         displayOrder,
+        lastSeen: 0,
       } as any,
       'NOTE'
     );
@@ -79,6 +80,7 @@ export const noteCommands = {
     content?: string;
     icon?: string | null;
     displayOrder?: number;
+    lastSeen?: number;
   }): void => {
     if (!findById<NoteEntity>(id)) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
@@ -89,6 +91,7 @@ export const noteCommands = {
     if (updates.content !== undefined) filteredUpdates.content = updates.content;
     if (updates.icon !== undefined) filteredUpdates.icon = updates.icon;
     if (updates.displayOrder !== undefined) filteredUpdates.displayOrder = updates.displayOrder;
+    if (updates.lastSeen !== undefined) filteredUpdates.lastSeen = updates.lastSeen;
 
     if (Object.keys(filteredUpdates).length > 0) {
       updateEntity(id, filteredUpdates);

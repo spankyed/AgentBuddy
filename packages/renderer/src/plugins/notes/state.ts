@@ -22,6 +22,7 @@ export interface NotesContext {
   currentNote: NoteDTO | null
   expandedNodeIds: string[]
   pendingPageInsert: { cursorPos: number } | null
+  searchResults: NoteDTO[]
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -38,6 +39,7 @@ type UIEvent =
   | { type: 'NOTE.TOGGLE_EXPAND'; nodeId: string }
   | { type: 'NOTE.LINK_CLICKED'; noteId: string }
   | { type: 'NOTE.REQUEST_PAGE_INSERT'; parentId: string; cursorPos: number }
+  | { type: 'NOTE.SEARCH'; query: string }
   | { type: 'VIEW_WELCOME' }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
@@ -93,6 +95,16 @@ const notesState = setup({
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
+
+    sendViewNote: ({ context }) => {
+      if (context.currentNoteId) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'VIEW_NOTE',
+          id: context.currentNoteId,
+        })
+      }
+    },
 
     sendCreateNote: ({ event }) => {
       const ev = typeOf('NOTE.CREATE', event)
@@ -271,6 +283,20 @@ const notesState = setup({
       })
     },
 
+    sendSearchNotes: ({ event }) => {
+      const ev = typeOf('NOTE.SEARCH', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'SEARCH_NOTES',
+        query: ev.query,
+      })
+    },
+
+    setSearchResults: assign(({ event }) => {
+      const ev = typeOf('NOTES_SEARCH_RESULTS', event)
+      return { searchResults: ev.results }
+    }),
+
     clearCurrentNote: assign({
       currentNoteId: null,
       currentNote: null,
@@ -286,6 +312,7 @@ const notesState = setup({
     currentNote: null,
     expandedNodeIds: [],
     pendingPageInsert: null,
+    searchResults: [],
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -319,21 +346,25 @@ const notesState = setup({
       {
         guard: { type: 'targetIs', params: { view: 'editor' } },
         target: '.editor',
-        actions: assign(({ event, context }) => {
-          const noteId = (event as TrailClickEvent).info
-          if (!noteId) return {}
-          const note = context.notes.find(n => n.id === noteId) || null
-          return {
-            currentNoteId: noteId,
-            currentNote: note,
-          }
-        }),
+        actions: [
+          assign(({ event, context }) => {
+            const noteId = (event as TrailClickEvent).info
+            if (!noteId) return {}
+            const note = context.notes.find(n => n.id === noteId) || null
+            return {
+              currentNoteId: noteId,
+              currentNote: note,
+            }
+          }),
+          'sendViewNote',
+        ],
       },
     ],
   },
   states: {
     welcome: {
       tags: ['welcome'],
+      entry: assign({ searchResults: [] }),
       meta: { ...breadcrumb('welcome', 'Notes', true) },
       on: {
         'NOTE.CREATE': {
@@ -344,11 +375,17 @@ const notesState = setup({
           target: 'editor',
         },
         'NOTE.SELECT': {
-          actions: 'selectNote',
+          actions: ['selectNote', 'sendViewNote'],
           target: 'editor',
         },
         'NOTE.DELETE': {
           actions: 'sendDeleteNote',
+        },
+        'NOTE.SEARCH': {
+          actions: 'sendSearchNotes',
+        },
+        NOTES_SEARCH_RESULTS: {
+          actions: 'setSearchResults',
         },
       },
     },
@@ -377,7 +414,7 @@ const notesState = setup({
       },
       on: {
         'NOTE.SELECT': {
-          actions: 'selectNote',
+          actions: ['selectNote', 'sendViewNote'],
         },
         'NOTE.CREATE': {
           actions: 'sendCreateNote',
@@ -395,7 +432,7 @@ const notesState = setup({
           actions: 'sendDeleteNote',
         },
         'NOTE.LINK_CLICKED': {
-          actions: 'navigateToNote',
+          actions: ['navigateToNote', 'sendViewNote'],
         },
         'NOTE.REQUEST_PAGE_INSERT': {
           actions: ['requestPageInsert', 'sendCreateChildForPageInsert'],

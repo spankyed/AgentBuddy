@@ -10,6 +10,7 @@ export interface NoteEntity extends BaseEntity {
   displayOrder: number;
   createdAt: number;
   updatedAt: number;
+  lastSeen: number;
   deleted?: boolean;
   deletedAt?: number;
 }
@@ -24,7 +25,10 @@ export interface NoteDTO {
   childCount: number;
   createdAt: number;
   updatedAt: number;
+  lastSeen: number;
 }
+
+export type OutgoingNotesSearchEvent = { type: 'NOTES_SEARCH_RESULTS'; results: NoteDTO[] }
 
 export interface NotesConnectedData {
   notes: NoteDTO[];
