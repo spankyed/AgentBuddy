@@ -15,6 +15,7 @@
     <!-- Tree -->
     <div
       class="flex-1 overflow-y-auto p-3 px-2"
+      @click="handleOutsideClick"
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
@@ -37,6 +38,7 @@
         @delete="handleDeleteNote"
         @update-icon="handleUpdateIcon"
         @toggle-select="handleToggleSelect"
+        @shift-select="handleShiftSelect"
         @drag-start="handleDragStart"
         @drag-over="handleDragOver"
         @drag-leave="handleDragLeave"
@@ -78,10 +80,47 @@ const {
 } = useNoteTreeDragDrop({
   notes,
   selectedNoteIds,
+  currentNoteId,
   onMove: (noteIds, newParentId) => {
     actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })
   },
 })
+
+function getVisibleNodeIds(): string[] {
+  const result: string[] = []
+  function walk(parentId: string | null) {
+    const children = notes.value
+      .filter(n => (n.parentId ?? null) === parentId)
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+    for (const child of children) {
+      result.push(child.id)
+      if (expandedNodeIds.value.includes(child.id)) {
+        walk(child.id)
+      }
+    }
+  }
+  walk(null)
+  return result
+}
+
+function handleShiftSelect(noteId: string) {
+  const visible = getVisibleNodeIds()
+  const anchor = currentNoteId.value
+  if (!anchor) {
+    handleSelectNote(noteId)
+    return
+  }
+  const anchorIdx = visible.indexOf(anchor)
+  const targetIdx = visible.indexOf(noteId)
+  if (anchorIdx === -1 || targetIdx === -1) {
+    handleSelectNote(noteId)
+    return
+  }
+  const start = Math.min(anchorIdx, targetIdx)
+  const end = Math.max(anchorIdx, targetIdx)
+  const rangeIds = visible.slice(start, end + 1)
+  actor.send({ type: 'NOTE.RANGE_SELECT', noteIds: rangeIds })
+}
 
 function handleSelectNote(noteId: string) {
   actor.send({ type: 'NOTE.CLEAR_SELECTION' })
@@ -110,6 +149,13 @@ function handleUpdateIcon(noteId: string, icon: string | null) {
 
 function handleNoteTreeDrop(e: DragEvent, noteId: string) {
   handleDrop(e, noteId)
+}
+
+function handleOutsideClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('[data-note-tree-item]')) {
+    actor.send({ type: 'NOTE.CLEAR_SELECTION' })
+  }
 }
 
 function handleRootDragOver(e: DragEvent) {

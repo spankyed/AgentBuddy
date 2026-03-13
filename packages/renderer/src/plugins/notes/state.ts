@@ -42,6 +42,7 @@ type UIEvent =
   | { type: 'NOTE.REQUEST_PAGE_INSERT'; parentId: string; cursorPos: number }
   | { type: 'NOTE.SEARCH'; query: string }
   | { type: 'NOTE.TOGGLE_SELECT'; noteId: string }
+  | { type: 'NOTE.RANGE_SELECT'; noteIds: string[] }
   | { type: 'NOTE.CLEAR_SELECTION' }
   | { type: 'NOTE.MOVE'; noteIds: string[]; newParentId: string | null }
   | { type: 'VIEW_WELCOME' }
@@ -312,6 +313,11 @@ const notesState = setup({
       }
     }),
 
+    rangeSelect: assign(({ event }) => {
+      const ev = typeOf('NOTE.RANGE_SELECT', event)
+      return { selectedNoteIds: ev.noteIds }
+    }),
+
     clearSelection: assign({ selectedNoteIds: [] }),
 
     sendMoveNotes: ({ event }) => {
@@ -363,6 +369,7 @@ const notesState = setup({
     ],
     'NOTE.TOGGLE_EXPAND': { actions: 'toggleExpand' },
     'NOTE.TOGGLE_SELECT': { actions: 'toggleSelect' },
+    'NOTE.RANGE_SELECT': { actions: 'rangeSelect' },
     'NOTE.CLEAR_SELECTION': { actions: 'clearSelection' },
     'NOTE.MOVE': { actions: ['sendMoveNotes', 'clearSelection'] },
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },

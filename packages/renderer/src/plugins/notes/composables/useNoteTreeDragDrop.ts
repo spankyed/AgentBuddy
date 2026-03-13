@@ -4,12 +4,14 @@ import type { NoteDTO } from '@app/api'
 interface NoteTreeDragDropOptions {
   notes: Ref<NoteDTO[]>
   selectedNoteIds: Ref<string[]>
+  currentNoteId: Ref<string | null>
   onMove: (noteIds: string[], newParentId: string | null) => void
 }
 
 export function useNoteTreeDragDrop({
   notes,
   selectedNoteIds,
+  currentNoteId,
   onMove,
 }: NoteTreeDragDropOptions) {
   const draggedNoteIds = ref<string[]>([])
@@ -17,8 +19,10 @@ export function useNoteTreeDragDrop({
   const isDragging = ref(false)
 
   function getDraggedItems(noteId: string): string[] {
-    if (selectedNoteIds.value.includes(noteId)) {
-      return [...selectedNoteIds.value]
+    const effective = new Set(selectedNoteIds.value)
+    if (currentNoteId.value) effective.add(currentNoteId.value)
+    if (effective.has(noteId)) {
+      return [...effective]
     }
     return [noteId]
   }
@@ -127,8 +131,8 @@ export function useNoteTreeDragDrop({
     if (draggedOverId.value === noteId && isValidDrop(noteId)) {
       classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
     }
-    if (selectedNoteIds.value.includes(noteId)) {
-      classes.push('!bg-blue-500/10')
+    if (selectedNoteIds.value.includes(noteId) && noteId !== currentNoteId.value) {
+      classes.push('!bg-neutral-700/20')
     }
     return classes.join(' ')
   }

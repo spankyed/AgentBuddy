@@ -86,6 +86,7 @@
         @delete="$emit('delete', $event)"
         @update-icon="(noteId: string, icon: string | null) => $emit('update-icon', noteId, icon)"
         @toggle-select="$emit('toggle-select', $event)"
+        @shift-select="$emit('shift-select', $event)"
         @drag-start="(e: DragEvent, id: string) => $emit('drag-start', e, id)"
         @drag-over="(e: DragEvent, id: string) => $emit('drag-over', e, id)"
         @drag-leave="(e: DragEvent) => $emit('drag-leave', e)"
@@ -127,10 +128,13 @@ const emit = defineEmits<{
   (e: 'drag-leave', event: DragEvent): void
   (e: 'drop', event: DragEvent, noteId: string): void
   (e: 'drag-end'): void
+  (e: 'shift-select', noteId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
-  if (e.ctrlKey || e.metaKey) {
+  if (e.shiftKey) {
+    emit('shift-select', props.note.id)
+  } else if (e.ctrlKey || e.metaKey) {
     emit('toggle-select', props.note.id)
   } else {
     emit('select', props.note.id)
