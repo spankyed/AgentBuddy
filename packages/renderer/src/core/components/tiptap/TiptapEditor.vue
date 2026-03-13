@@ -64,7 +64,8 @@ function resetContent(content: string) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
   const parsed = (editor.value.storage as any).markdown.parser.parse(content)
-  editor.value.commands.setContent(parsed)
+  // Set content without recording in undo history so note switches can't be undone
+  editor.value.chain().setMeta('addToHistory', false).setContent(parsed).run()
   selectStart(editor.value)
   suppressNodeDeletionEvents.value = false
 }
