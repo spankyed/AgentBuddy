@@ -19,29 +19,32 @@
       @drop="$emit('drop', $event, note.id)"
       @dragend="$emit('drag-end')"
     >
-      <!-- Expand/Collapse chevron -->
-      <button
-        v-if="children.length > 0"
-        class="flex items-center justify-center w-4 h-4 mr-0.5 text-neutral-500 hover:text-neutral-300 transition-colors"
-        @click.stop="$emit('toggle-expand', note.id)"
-      >
-        <ChevronRight
-          :size="14"
-          class="transition-transform"
-          :class="isExpanded ? 'rotate-90' : ''"
-        />
-      </button>
-      <div v-else class="w-4" />
-
-      <!-- Note icon -->
+      <!-- Note icon / Expand chevron -->
       <EmojiPicker :model-value="note.icon" @update:model-value="(icon: string | null) => $emit('update-icon', note.id, icon)">
         <template #default="{ toggle }">
           <button
             class="flex items-center justify-center w-4 h-4 shrink-0"
-            @click.stop="toggle"
+            @click.stop="children.length > 0 ? $emit('toggle-expand', note.id) : toggle()"
           >
-            <span v-if="note.icon" class="text-sm leading-none">{{ note.icon }}</span>
-            <FileText v-else :size="14" class="text-neutral-500" />
+            <!-- Chevron shown on hover when item has children -->
+            <ChevronRight
+              v-if="children.length > 0"
+              :size="14"
+              class="transition-transform hidden group-hover:block text-neutral-500"
+              :class="isExpanded ? 'rotate-90' : ''"
+            />
+            <!-- Note icon shown by default, hidden on hover when item has children -->
+            <span
+              v-if="note.icon"
+              class="text-sm leading-none"
+              :class="children.length > 0 ? 'group-hover:hidden' : ''"
+            >{{ note.icon }}</span>
+            <FileText
+              v-else
+              :size="14"
+              class="text-neutral-500"
+              :class="children.length > 0 ? 'group-hover:hidden' : ''"
+            />
           </button>
         </template>
       </EmojiPicker>
