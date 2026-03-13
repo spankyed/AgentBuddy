@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Welcome State -->
-    <div v-if="state.hasTag('welcome')" class="flex flex-col h-full">
+    <div v-if="state.hasTag('welcome')" class="flex flex-col h-full overflow-y-auto">
       <!-- Empty state: no notes at all -->
       <template v-if="notes.length === 0">
         <div class="flex flex-col items-center justify-center h-full gap-4 text-neutral-400">
@@ -18,9 +18,13 @@
 
       <!-- Home state: has notes -->
       <template v-else>
-        <!-- Search bar -->
-        <div class="px-4 pt-4 pb-2">
-          <div class="relative">
+        <!-- Greeting -->
+        <h1 class="text-3xl font-bold text-neutral-100 text-center pt-12 pb-6">{{ greeting }}</h1>
+
+        <!-- Centered content column -->
+        <div class="w-full max-w-2xl mx-auto px-6">
+          <!-- Search bar -->
+          <div class="relative mb-6">
             <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
             <input
               v-model="searchQuery"
@@ -28,37 +32,49 @@
               class="w-full pl-9 pr-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-500"
             />
           </div>
-        </div>
 
-        <!-- Search results (when typing) -->
-        <div v-if="searchQuery.trim()" class="flex-1 overflow-y-auto px-4 py-2">
-          <div v-if="searchResults.length === 0" class="text-sm text-neutral-500 text-center py-8">
-            No notes found
+          <!-- Search results (when typing) -->
+          <div v-if="searchQuery.trim()" class="flex-1">
+            <div v-if="searchResults.length === 0" class="text-sm text-neutral-500 text-center py-8">
+              No notes found
+            </div>
+            <button v-for="note in searchResults" :key="note.id"
+              class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-neutral-800 transition-colors text-left"
+              @click="handleSelectNote(note.id)"
+            >
+              <span v-if="note.icon" class="text-base">{{ note.icon }}</span>
+              <FileText v-else :size="16" class="text-neutral-500 shrink-0" />
+              <span class="truncate">{{ note.title || 'Untitled' }}</span>
+            </button>
           </div>
-          <button v-for="note in searchResults" :key="note.id"
-            class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-neutral-800 transition-colors text-left"
-            @click="handleSelectNote(note.id)"
-          >
-            <span v-if="note.icon" class="text-base">{{ note.icon }}</span>
-            <FileText v-else :size="16" class="text-neutral-500 shrink-0" />
-            <span class="truncate">{{ note.title || 'Untitled' }}</span>
-          </button>
-        </div>
 
-        <!-- Recently viewed (default) -->
-        <div v-else class="flex-1 overflow-y-auto px-4 py-2">
-          <p class="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-2">Recently viewed</p>
+          <!-- Recently visited cards -->
+          <div v-else class="pb-6">
+          <div class="flex items-center gap-2 mb-3">
+            <Clock :size="16" class="text-neutral-500" />
+            <p class="text-sm font-medium text-neutral-400">Recently visited</p>
+          </div>
           <div v-if="recentNotes.length === 0" class="text-sm text-neutral-500 text-center py-8">
             No recently viewed notes
           </div>
-          <button v-for="note in recentNotes" :key="note.id"
-            class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-neutral-300 hover:bg-neutral-800 transition-colors text-left"
-            @click="handleSelectNote(note.id)"
-          >
-            <span v-if="note.icon" class="text-base">{{ note.icon }}</span>
-            <FileText v-else :size="16" class="text-neutral-500 shrink-0" />
-            <span class="truncate">{{ note.title || 'Untitled' }}</span>
-          </button>
+          <div v-else class="flex flex-wrap gap-3 pb-2">
+            <button
+              v-for="note in recentNotes" :key="note.id"
+              class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-neutral-700/50 hover:border-neutral-600/50"
+              style="min-height: 140px"
+              @click="handleSelectNote(note.id)"
+            >
+              <div>
+                <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
+                <FileText v-else :size="28" class="text-neutral-600" />
+              </div>
+              <div class="mt-3">
+                <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
+                <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
+              </div>
+            </button>
+          </div>
+        </div>
         </div>
       </template>
     </div>
@@ -120,7 +136,7 @@ import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
-import { NotebookText, FileText, Search } from 'lucide-vue-next'
+import { NotebookText, FileText, Search, Clock } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
@@ -133,6 +149,26 @@ const notes = useSelector(actor, (s) => s.context.notes)
 
 const searchQuery = ref('')
 const searchResults = useSelector(actor, (s) => s.context.searchResults)
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+})
+
+function formatRelativeTime(timestamp: number): string {
+  if (!timestamp) return ''
+  const diff = Date.now() - timestamp
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 const recentNotes = computed(() =>
   notes.value
