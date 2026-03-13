@@ -106,7 +106,7 @@ import { ChevronRight, FileText, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 
 const INDENT_PX = 8
-const BASE_PADDING_PX = 4
+const BASE_PADDING_PX = 8
 
 const props = defineProps<{
   note: NoteDTO
