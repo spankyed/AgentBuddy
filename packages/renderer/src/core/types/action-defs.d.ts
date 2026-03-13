@@ -4389,7 +4389,7 @@ declare function createEntityWithDefaults<T extends {
 }>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
     id: EARS.EntityId;
 };
-declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>): void;
+declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>, skipTimestamp?: boolean): void;
 declare function createRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId: EARS.EntityId): void;
 declare function removeRelation(sourceId: EARS.EntityId, relationType: EARS.RelKind, targetId?: EARS.EntityId): void;
 declare function grantRole(entityId: EARS.EntityId, role: string): void;
@@ -5361,7 +5361,7 @@ declare const services: {
                 icon?: string | null;
                 displayOrder?: number;
                 lastSeen?: number;
-            }) => void;
+            }, skipTimestamp?: boolean) => void;
             readonly softDelete: (id: EARS.EntityId) => string[];
             readonly restore: (id: EARS.EntityId) => string[];
             readonly move: (id: EARS.EntityId, newParentId: EARS.EntityId | null) => {

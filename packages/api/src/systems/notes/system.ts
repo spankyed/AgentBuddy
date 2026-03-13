@@ -317,7 +317,7 @@ export const notesSystem = setup({
 
     viewNote: ({ system, event }) => {
       const ev = typeOf('VIEW_NOTE', event);
-      repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() });
+      repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       if (updatedNote) {
         system.get(bus).send(emit(notes, {

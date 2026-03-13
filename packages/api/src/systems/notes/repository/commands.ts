@@ -81,7 +81,7 @@ export const noteCommands = {
     icon?: string | null;
     displayOrder?: number;
     lastSeen?: number;
-  }): void => {
+  }, skipTimestamp?: boolean): void => {
     if (!findById<NoteEntity>(id)) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -94,7 +94,7 @@ export const noteCommands = {
     if (updates.lastSeen !== undefined) filteredUpdates.lastSeen = updates.lastSeen;
 
     if (Object.keys(filteredUpdates).length > 0) {
-      updateEntity(id, filteredUpdates);
+      updateEntity(id, filteredUpdates, skipTimestamp);
     }
 
     // Sync REFERENCES relations when content changes
