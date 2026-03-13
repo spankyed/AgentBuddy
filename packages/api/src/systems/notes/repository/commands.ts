@@ -147,7 +147,7 @@ export const noteCommands = {
       const oldParent = findById<NoteEntity>(oldParentId);
       if (oldParent?.content) {
         const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const pagePattern = new RegExp(`\\n?\\[([^\\]]*)\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
+        const pagePattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
         const newContent = oldParent.content.replace(pagePattern, '');
         if (newContent !== oldParent.content) {
           updateEntity(oldParentId, { content: newContent });
@@ -160,7 +160,7 @@ export const noteCommands = {
       createRelation(newParentId, EARS.RelKind.CONTAINS, id);
       const newParent = findById<NoteEntity>(newParentId);
       if (newParent) {
-        const linkMarkdown = `\n[${note.title}](page://${id})`;
+        const linkMarkdown = `\n\n[${note.title}](page://${id})`;
         const newContent = (newParent.content || '') + linkMarkdown;
         updateEntity(newParentId, { content: newContent });
       }

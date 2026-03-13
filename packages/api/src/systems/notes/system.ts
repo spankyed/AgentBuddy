@@ -110,7 +110,7 @@ export const notesSystem = setup({
         if (ev.parentId && !ev.skipContentSync) {
           const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
           if (parentNote) {
-            const linkMarkdown = `\n[${ev.title}](page://${note.id})`;
+            const linkMarkdown = `\n\n[${ev.title}](page://${note.id})`;
             const newContent = (parentNote.content || '') + linkMarkdown;
             repository.noteCommands.update(ev.parentId as EARS.EntityId, { content: newContent });
           }
@@ -390,7 +390,7 @@ export const notesSystem = setup({
           let newContent = parentNote.content;
           for (const deletedId of allDeletedIds) {
             const escaped = deletedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const pagePattern = new RegExp(`\\[([^\\]]*)\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)\\n?`, 'g');
+            const pagePattern = new RegExp(`\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)\\n?\\n?`, 'g');
             newContent = newContent.replace(pagePattern, '');
           }
           if (newContent !== parentNote.content) {
