@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode } from './extensions'
@@ -55,6 +55,7 @@ function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: i
 }
 
 const suppressNodeDeletionEvents = ref(false)
+const lastResetMarkdown = ref<string | null>(null)
 
 function getMarkdown(): string {
   return (editor.value!.storage as any).markdown.getMarkdown()
@@ -67,11 +68,8 @@ function resetContent(content: string) {
   // Set content without recording in undo history so note switches can't be undone
   editor.value.chain().setMeta('addToHistory', false).setContent(parsed).run()
   selectStart(editor.value)
-  // Keep suppression through nextTick to cover deferred callbacks (e.g. focus, node view init)
-  // that can trigger onUpdate after setContent with round-trip-different content (e.g. <details> blocks)
-  nextTick(() => {
-    suppressNodeDeletionEvents.value = false
-  })
+  lastResetMarkdown.value = getMarkdown()
+  suppressNodeDeletionEvents.value = false
 }
 
 function collectSubPageLinkIds(doc: any): Set<string> {
@@ -207,6 +205,8 @@ const editor = useEditor({
   onUpdate: ({ editor: e }) => {
     if (suppressNodeDeletionEvents.value) return
     const md = getMarkdown()
+    if (lastResetMarkdown.value !== null && md === lastResetMarkdown.value) return
+    lastResetMarkdown.value = null
     emit('update:modelValue', md)
   },
   onTransaction: ({ transaction }) => {
@@ -246,11 +246,5 @@ watch(() => props.disabled, (disabled) => {
   }
 })
 
-function withUpdatesSuppressed(fn: () => void) {
-  suppressNodeDeletionEvents.value = true
-  fn()
-  suppressNodeDeletionEvents.value = false
-}
-
-defineExpose({ editor, withUpdatesSuppressed })
+defineExpose({ editor })
 </script>

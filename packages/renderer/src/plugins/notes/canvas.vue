@@ -284,8 +284,12 @@ function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
 }
 
+const isSyncingSubPageLinks = ref(false)
+
 function handleContentUpdate(content: string) {
   if (!currentNote.value) return
+  if (content === currentNote.value.content) return
+  if (isSyncingSubPageLinks.value) return
   debouncedUpdateContent(currentNote.value.id, content)
 }
 
@@ -338,24 +342,22 @@ watch(
     const editor = editorRef.value?.editor
     if (!editor || !currentNote.value) return
 
-    // Wrap in withUpdatesSuppressed — these are display-only attr syncs, not user edits,
-    // and emitting would serialize round-trip-different content (e.g. details blocks) as a "change"
-    editorRef.value?.withUpdatesSuppressed(() => {
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'subPageLink' && node.attrs.noteId) {
-          const child = allNotes.find(n => n.id === node.attrs.noteId)
-          if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
-            editor.view.dispatch(
-              editor.state.tr.setNodeMarkup(pos, undefined, {
-                ...node.attrs,
-                title: child.title,
-                icon: child.icon,
-              })
-            )
-          }
+    isSyncingSubPageLinks.value = true
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'subPageLink' && node.attrs.noteId) {
+        const child = allNotes.find(n => n.id === node.attrs.noteId)
+        if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              title: child.title,
+              icon: child.icon,
+            })
+          )
         }
-      })
+      }
     })
+    isSyncingSubPageLinks.value = false
   },
   { deep: true }
 )

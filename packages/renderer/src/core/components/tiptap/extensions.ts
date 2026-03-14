@@ -78,7 +78,21 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       inline: false,
       allowBase64: false,
     }),
-    DetailsSummary,
+    DetailsSummary.extend({
+      addStorage() {
+        return {
+          markdown: {
+            serialize(state: any, node: any) {
+              state.write('<summary>')
+              state.renderInline(node)
+              state.write('</summary>')
+              state.closeBlock(node)
+            },
+            parse: {},
+          },
+        }
+      },
+    }),
     DetailsContent.extend({
       // CSS handles visibility via parent's is-open class, so remove default hidden attribute
       addNodeView() {
@@ -86,6 +100,17 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
           const dom = document.createElement('div')
           applyAttributes(dom, this.options.HTMLAttributes, HTMLAttributes, { 'data-type': this.name })
           return { dom, contentDOM: dom }
+        }
+      },
+      addStorage() {
+        return {
+          markdown: {
+            serialize(state: any, node: any) {
+              state.write('\n')
+              state.renderContent(node)
+            },
+            parse: {},
+          },
         }
       },
     }),
@@ -129,6 +154,20 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
             default: true,
             parseHTML: element => element.hasAttribute('open'),
             renderHTML: ({ open }) => (open ? { open: '' } : {}),
+          },
+        }
+      },
+      addStorage() {
+        return {
+          markdown: {
+            serialize(state: any, node: any) {
+              state.write(node.attrs.open ? '<details open>\n' : '<details>\n')
+              state.renderContent(node)
+              state.ensureNewLine()
+              state.write('</details>')
+              state.closeBlock(node)
+            },
+            parse: {},
           },
         }
       },
