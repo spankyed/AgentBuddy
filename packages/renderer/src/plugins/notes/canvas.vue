@@ -338,19 +338,23 @@ watch(
     const editor = editorRef.value?.editor
     if (!editor || !currentNote.value) return
 
-    editor.state.doc.descendants((node, pos) => {
-      if (node.type.name === 'subPageLink' && node.attrs.noteId) {
-        const child = allNotes.find(n => n.id === node.attrs.noteId)
-        if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
-          editor.view.dispatch(
-            editor.state.tr.setNodeMarkup(pos, undefined, {
-              ...node.attrs,
-              title: child.title,
-              icon: child.icon,
-            })
-          )
+    // Wrap in withUpdatesSuppressed — these are display-only attr syncs, not user edits,
+    // and emitting would serialize round-trip-different content (e.g. details blocks) as a "change"
+    editorRef.value?.withUpdatesSuppressed(() => {
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'subPageLink' && node.attrs.noteId) {
+          const child = allNotes.find(n => n.id === node.attrs.noteId)
+          if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
+            editor.view.dispatch(
+              editor.state.tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                title: child.title,
+                icon: child.icon,
+              })
+            )
+          }
         }
-      }
+      })
     })
   },
   { deep: true }

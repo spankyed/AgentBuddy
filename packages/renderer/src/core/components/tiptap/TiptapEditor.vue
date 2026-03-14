@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { createExtensions, type TiptapMode } from './extensions'
@@ -67,7 +67,11 @@ function resetContent(content: string) {
   // Set content without recording in undo history so note switches can't be undone
   editor.value.chain().setMeta('addToHistory', false).setContent(parsed).run()
   selectStart(editor.value)
-  suppressNodeDeletionEvents.value = false
+  // Keep suppression through nextTick to cover deferred callbacks (e.g. focus, node view init)
+  // that can trigger onUpdate after setContent with round-trip-different content (e.g. <details> blocks)
+  nextTick(() => {
+    suppressNodeDeletionEvents.value = false
+  })
 }
 
 function collectSubPageLinkIds(doc: any): Set<string> {
@@ -242,5 +246,11 @@ watch(() => props.disabled, (disabled) => {
   }
 })
 
-defineExpose({ editor })
+function withUpdatesSuppressed(fn: () => void) {
+  suppressNodeDeletionEvents.value = true
+  fn()
+  suppressNodeDeletionEvents.value = false
+}
+
+defineExpose({ editor, withUpdatesSuppressed })
 </script>
