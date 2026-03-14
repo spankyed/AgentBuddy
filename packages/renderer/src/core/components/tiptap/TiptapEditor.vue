@@ -201,6 +201,7 @@ const editor = useEditor({
     selectStart(e)
   },
   onUpdate: ({ editor: e }) => {
+    if (suppressNodeDeletionEvents.value) return
     const md = getMarkdown()
     emit('update:modelValue', md)
   },
