@@ -307,8 +307,8 @@ onMounted(() => {
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.addEventListener('mousemove', onEditorMouseMove)
   editorDom.addEventListener('mouseleave', onEditorMouseLeave)
-  editorDom.addEventListener('dragover', onEditorDragOver, true)
-  editorDom.addEventListener('drop', onEditorDrop, true)
+  document.addEventListener('dragover', onEditorDragOver, true)
+  document.addEventListener('drop', onEditorDrop, true)
   document.addEventListener('click', onClickOutside)
   document.addEventListener('keydown', onKeydown)
   props.editor.on('transaction', onTransaction)
@@ -318,11 +318,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onClickOutside)
   document.removeEventListener('keydown', onKeydown)
   props.editor.off('transaction', onTransaction)
+  document.removeEventListener('dragover', onEditorDragOver, true)
+  document.removeEventListener('drop', onEditorDrop, true)
   if (props.editor.isDestroyed) return
   const editorDom = props.editor.view.dom as HTMLElement
   editorDom.removeEventListener('mousemove', onEditorMouseMove)
   editorDom.removeEventListener('mouseleave', onEditorMouseLeave)
-  editorDom.removeEventListener('dragover', onEditorDragOver, true)
-  editorDom.removeEventListener('drop', onEditorDrop, true)
 })
 </script>
