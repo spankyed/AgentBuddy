@@ -4,7 +4,7 @@ import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
-import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
+import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { syncReferences } from './repository/link-utils';
@@ -33,12 +33,15 @@ export const IncomingNoteEvents = [
     icon: z.string().nullable().optional(),
     parentId: z.string().optional(),
     skipContentSync: z.boolean().optional(),
+    noteType: z.enum(['note', 'tasklist']).optional(),
+    completed: z.boolean().optional(),
   }),
   busEvent('UPDATE_NOTE', {
     id: z.string(),
     title: z.string().optional(),
     content: z.string().optional(),
     icon: z.string().nullable().optional(),
+    completed: z.boolean().optional(),
   }),
   busEvent('DELETE_NOTE', {
     id: z.string(),
@@ -97,6 +100,8 @@ export const notesSystem = setup({
         content: ev.content,
         icon: ev.icon,
         parentId: ev.parentId,
+        noteType: ev.noteType,
+        completed: ev.completed,
       });
 
       const noteDTO = repository.noteQueries.byIdDTO(note.id as EARS.EntityId);
@@ -106,8 +111,17 @@ export const notesSystem = setup({
           note: noteDTO,
         }));
 
+        // Check if parent is a tasklist - skip content sync for tasklist children
+        let parentIsTaskList = false;
+        if (ev.parentId) {
+          const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
+          if (parentNote && (parentNote as NoteEntity).noteType === 'tasklist') {
+            parentIsTaskList = true;
+          }
+        }
+
         // If this note has a parent, append sub-page link to parent content (unless skipped)
-        if (ev.parentId && !ev.skipContentSync) {
+        if (ev.parentId && !ev.skipContentSync && !parentIsTaskList) {
           const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
           if (parentNote) {
             const linkMarkdown = `\n\n[${ev.title}](page://${note.id})`;
@@ -136,6 +150,7 @@ export const notesSystem = setup({
       if (ev.title !== undefined) updates.title = ev.title;
       if (ev.content !== undefined) updates.content = ev.content;
       if (ev.icon !== undefined) updates.icon = ev.icon;
+      if (ev.completed !== undefined) updates.completed = ev.completed;
 
       repository.noteCommands.update(ev.id as EARS.EntityId, updates);
 

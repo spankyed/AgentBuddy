@@ -17,6 +17,8 @@ function toDTO(note: NoteEntity): NoteDTO {
     title: note.title,
     content: note.content,
     icon: note.icon ?? null,
+    noteType: note.noteType ?? 'note',
+    completed: note.completed ?? false,
     parentId,
     displayOrder: note.displayOrder,
     childCount,

@@ -3,13 +3,34 @@
     <!-- Header -->
     <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700">
       <span class="text-sm font-medium text-neutral-300">Notes</span>
-      <button
-        class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-        title="New Note"
-        @click="handleCreateNote()"
-      >
-        <Plus :size="16" />
-      </button>
+      <div class="relative">
+        <button
+          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+          title="New Note (right-click for options)"
+          @click="handleCreateNote()"
+          @contextmenu.prevent="showCreateMenu = true"
+        >
+          <Plus :size="16" />
+        </button>
+        <div
+          v-if="showCreateMenu"
+          ref="createMenuRef"
+          class="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+        >
+          <button
+            class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+            @click="handleCreateNote(); showCreateMenu = false"
+          >
+            New Note
+          </button>
+          <button
+            class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+            @click="handleCreateTaskList(); showCreateMenu = false"
+          >
+            New Task List
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Tree -->
@@ -49,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
@@ -58,6 +79,18 @@ import { Plus } from 'lucide-vue-next'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 
 const actor: NotesState = applicationState.system.get(id)
+
+const showCreateMenu = ref(false)
+const createMenuRef = ref<HTMLDivElement | null>(null)
+
+function handleClickOutsideMenu(e: MouseEvent) {
+  if (createMenuRef.value && !createMenuRef.value.contains(e.target as Node)) {
+    showCreateMenu.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutsideMenu))
+onUnmounted(() => document.removeEventListener('click', handleClickOutsideMenu))
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
@@ -135,6 +168,10 @@ function handleToggleExpand(nodeId: string) {
 
 function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
+}
+
+function handleCreateTaskList() {
+  actor.send({ type: 'NOTE.CREATE_TASKLIST' })
 }
 
 function handleDeleteNote(noteId: string) {

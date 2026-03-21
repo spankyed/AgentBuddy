@@ -22,6 +22,8 @@ export const noteCommands = {
     icon?: string | null;
     parentId?: string;
     displayOrder?: number;
+    noteType?: 'note' | 'tasklist';
+    completed?: boolean;
   }): NoteEntity => {
     if (!input.title?.trim()) {
       throw new RepositoryError('Title is required', RepositoryErrorCode.VALIDATION_ERROR);
@@ -52,6 +54,8 @@ export const noteCommands = {
         title: input.title,
         content: input.content || '',
         icon: input.icon ?? null,
+        noteType: input.noteType ?? 'note',
+        completed: input.completed ?? false,
         displayOrder,
         lastSeen: 0,
       } as any,
@@ -81,6 +85,7 @@ export const noteCommands = {
     icon?: string | null;
     displayOrder?: number;
     lastSeen?: number;
+    completed?: boolean;
   }, skipTimestamp?: boolean): void => {
     if (!findById<NoteEntity>(id)) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
@@ -92,6 +97,7 @@ export const noteCommands = {
     if (updates.icon !== undefined) filteredUpdates.icon = updates.icon;
     if (updates.displayOrder !== undefined) filteredUpdates.displayOrder = updates.displayOrder;
     if (updates.lastSeen !== undefined) filteredUpdates.lastSeen = updates.lastSeen;
+    if (updates.completed !== undefined) filteredUpdates.completed = updates.completed;
 
     if (Object.keys(filteredUpdates).length > 0) {
       updateEntity(id, filteredUpdates, skipTimestamp);

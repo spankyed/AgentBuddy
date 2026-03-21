@@ -24,6 +24,9 @@ export interface NotesContext {
   pendingPageInsert: { cursorPos: number } | null
   searchResults: NoteDTO[]
   selectedNoteIds: string[]
+  selectedTaskId: string | null
+  selectedTask: NoteDTO | null
+  showCompletedTasks: boolean
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -31,6 +34,7 @@ type SystemEvent = OutgoingNotesEvents
 type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
   | { type: 'NOTE.CREATE'; parentId?: string }
+  | { type: 'NOTE.CREATE_TASKLIST' }
   | { type: 'NOTE.DELETE'; noteId: string }
   | { type: 'NOTE.SOFT_DELETE'; noteId: string }
   | { type: 'NOTE.RESTORE'; noteId: string }
@@ -45,6 +49,14 @@ type UIEvent =
   | { type: 'NOTE.RANGE_SELECT'; noteIds: string[] }
   | { type: 'NOTE.CLEAR_SELECTION' }
   | { type: 'NOTE.MOVE'; noteIds: string[]; newParentId: string | null }
+  | { type: 'TASK.SELECT'; taskId: string }
+  | { type: 'TASK.DESELECT' }
+  | { type: 'TASK.CREATE'; parentId: string }
+  | { type: 'TASK.DELETE'; taskId: string }
+  | { type: 'TASK.TOGGLE_COMPLETE'; taskId: string }
+  | { type: 'TASK.UPDATE_CONTENT'; taskId: string; content: string }
+  | { type: 'TASK.UPDATE_TITLE'; taskId: string; title: string }
+  | { type: 'TASK.TOGGLE_SHOW_COMPLETED' }
   | { type: 'VIEW_WELCOME' }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
@@ -87,6 +99,8 @@ const notesState = setup({
         currentNoteId: noteId,
         currentNote: note,
         selectedNoteIds: [],
+        selectedTaskId: null,
+        selectedTask: null,
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
@@ -236,6 +250,7 @@ const notesState = setup({
       return {
         notes: updatedNotes,
         currentNote: context.currentNoteId === ev.note.id ? ev.note : context.currentNote,
+        selectedTask: context.selectedTaskId === ev.note.id ? ev.note : context.selectedTask,
       }
     }),
 
@@ -243,11 +258,14 @@ const notesState = setup({
       const ev = typeOf('NOTE_DELETED', event)
       const updatedNotes = context.notes.filter(n => n.id !== ev.noteId)
       const wasCurrentNote = context.currentNoteId === ev.noteId
+      const wasSelectedTask = context.selectedTaskId === ev.noteId
       return {
         notes: updatedNotes,
         currentNoteId: wasCurrentNote ? null : context.currentNoteId,
         currentNote: wasCurrentNote ? null : context.currentNote,
         selectedNoteIds: context.selectedNoteIds.filter(id => id !== ev.noteId),
+        selectedTaskId: wasSelectedTask ? null : context.selectedTaskId,
+        selectedTask: wasSelectedTask ? null : context.selectedTask,
       }
     }),
 
@@ -321,6 +339,99 @@ const notesState = setup({
       })
     },
 
+    sendCreateTaskList: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NOTE',
+        title: 'Untitled',
+        noteType: 'tasklist',
+      })
+    },
+
+    selectTask: assign(({ event, context }) => {
+      const ev = typeOf('TASK.SELECT', event)
+      const task = context.notes.find(n => n.id === ev.taskId) || null
+      return {
+        selectedTaskId: ev.taskId,
+        selectedTask: task,
+      }
+    }),
+
+    deselectTask: assign({
+      selectedTaskId: null,
+      selectedTask: null,
+    }),
+
+    sendCreateTask: ({ event }) => {
+      const ev = typeOf('TASK.CREATE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NOTE',
+        title: 'Untitled',
+        parentId: ev.parentId,
+        skipContentSync: true,
+      })
+    },
+
+    sendToggleComplete: ({ event, context }) => {
+      const ev = typeOf('TASK.TOGGLE_COMPLETE', event)
+      const task = context.notes.find(n => n.id === ev.taskId)
+      if (!task) return
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.taskId,
+        completed: !task.completed,
+      })
+    },
+
+    sendTaskUpdateContent: ({ event }) => {
+      const ev = typeOf('TASK.UPDATE_CONTENT', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.taskId,
+        content: ev.content,
+      })
+    },
+
+    updateLocalTaskContent: assign(({ context, event }) => {
+      const ev = typeOf('TASK.UPDATE_CONTENT', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.taskId ? { ...n, content: ev.content } : n
+      )
+      return {
+        notes: updatedNotes,
+        selectedTask:
+          context.selectedTaskId === ev.taskId && context.selectedTask
+            ? { ...context.selectedTask, content: ev.content }
+            : context.selectedTask,
+      }
+    }),
+
+    sendTaskUpdateTitle: ({ event }) => {
+      const ev = typeOf('TASK.UPDATE_TITLE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.taskId,
+        title: ev.title,
+      })
+    },
+
+    sendDeleteTask: ({ event }) => {
+      const ev = typeOf('TASK.DELETE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_NOTE',
+        id: ev.taskId,
+      })
+    },
+
+    toggleShowCompleted: assign(({ context }) => ({
+      showCompletedTasks: !context.showCompletedTasks,
+    })),
+
     clearCurrentNote: assign({
       currentNoteId: null,
       currentNote: null,
@@ -338,6 +449,9 @@ const notesState = setup({
     pendingPageInsert: null,
     searchResults: [],
     selectedNoteIds: [],
+    selectedTaskId: null,
+    selectedTask: null,
+    showCompletedTasks: true,
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -366,6 +480,13 @@ const notesState = setup({
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },
+    'TASK.SELECT': { actions: 'selectTask' },
+    'TASK.DESELECT': { actions: 'deselectTask' },
+    'TASK.TOGGLE_COMPLETE': { actions: 'sendToggleComplete' },
+    'TASK.UPDATE_CONTENT': { actions: ['updateLocalTaskContent', 'sendTaskUpdateContent'] },
+    'TASK.UPDATE_TITLE': { actions: 'sendTaskUpdateTitle' },
+    'TASK.DELETE': { actions: 'sendDeleteTask' },
+    'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'toggleShowCompleted' },
     TRAIL_CLICK: [
       {
         guard: { type: 'targetIs', params: { view: 'welcome' } },
@@ -398,6 +519,9 @@ const notesState = setup({
       on: {
         'NOTE.CREATE': {
           actions: 'sendCreateNote',
+        },
+        'NOTE.CREATE_TASKLIST': {
+          actions: 'sendCreateTaskList',
         },
         NOTE_CREATED: {
           actions: 'addCreatedNote',
@@ -448,10 +572,29 @@ const notesState = setup({
         'NOTE.CREATE': {
           actions: 'sendCreateNote',
         },
+        'NOTE.CREATE_TASKLIST': {
+          actions: 'sendCreateTaskList',
+        },
+        'TASK.CREATE': {
+          actions: 'sendCreateTask',
+        },
         NOTE_CREATED: [
           {
             guard: ({ context }) => context.pendingPageInsert !== null,
             actions: 'handlePageInsertCreated',
+          },
+          {
+            // If the new note's parent is the current tasklist, add to list but don't navigate
+            guard: ({ context, event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              return context.currentNote?.noteType === 'tasklist' && ev.note.parentId === context.currentNoteId
+            },
+            actions: assign(({ context, event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              return {
+                notes: [...context.notes, ev.note],
+              }
+            }),
           },
           {
             actions: 'addCreatedNote',

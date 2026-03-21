@@ -39,6 +39,12 @@
               class="text-sm leading-none"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             >{{ note.icon }}</span>
+            <ListChecks
+              v-else-if="note.noteType === 'tasklist'"
+              :size="14"
+              class="text-neutral-500"
+              :class="children.length > 0 ? 'group-hover:hidden' : ''"
+            />
             <FileText
               v-else
               :size="14"
@@ -102,7 +108,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { ChevronRight, FileText, Plus, Trash2 } from 'lucide-vue-next'
+import { ChevronRight, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 
 const INDENT_PX = 8
