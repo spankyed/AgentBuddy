@@ -532,9 +532,26 @@ const notesState = setup({
             const noteId = (event as TrailClickEvent).info
             if (!noteId) return {}
             const note = context.notes.find(n => n.id === noteId) || null
+
+            // If clicking a task segment, navigate to its parent tasklist and select the task
+            if (note?.noteType === 'task') {
+              const taskList = findNearestTaskList(context.notes, noteId)
+              if (taskList) {
+                return {
+                  currentNoteId: taskList.id,
+                  currentNote: taskList,
+                  selectedTaskId: noteId,
+                  selectedTask: note,
+                }
+              }
+            }
+
+            // Regular note or tasklist — navigate directly, clear task selection
             return {
               currentNoteId: noteId,
               currentNote: note,
+              selectedTaskId: null,
+              selectedTask: null,
             }
           }),
           'sendViewNote',
@@ -610,10 +627,25 @@ const notesState = setup({
             return []
           }
           const ancestors = getAncestorChain(ctx.notes, ctx.currentNoteId)
-          return [
+          const crumbs = [
             ...ancestors.map(a => ({ label: (a.icon ? a.icon + ' ' : '') + a.title, target: 'editor', info: a.id })),
             { label: (ctx.currentNote.icon ? ctx.currentNote.icon + ' ' : '') + ctx.currentNote.title, target: 'editor', info: ctx.currentNoteId },
           ]
+          if (ctx.selectedTask) {
+            // Build full path from tasklist to selected task (including intermediate parent tasks)
+            const taskAncestors = getAncestorChain(ctx.notes, ctx.selectedTask.id)
+            const taskListIndex = taskAncestors.findIndex(a => a.id === ctx.currentNoteId)
+            const intermediates = taskAncestors.slice(taskListIndex + 1)
+            for (const t of intermediates) {
+              crumbs.push({ label: (t.icon ? t.icon + ' ' : '') + t.title, target: 'editor', info: t.id })
+            }
+            crumbs.push({
+              label: (ctx.selectedTask.icon ? ctx.selectedTask.icon + ' ' : '') + ctx.selectedTask.title,
+              target: 'editor',
+              info: ctx.selectedTask.id,
+            })
+          }
+          return crumbs
         }),
         ...contextMenuFn<NotesContext>((ctx) => [
           {
