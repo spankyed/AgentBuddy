@@ -11,7 +11,7 @@
         @click="$emit('deselect-task')"
       >
         <span v-if="currentNoteIcon" class="text-sm leading-none shrink-0">{{ currentNoteIcon }}</span>
-        <ListChecks v-else :size="14" class="text-neutral-500 shrink-0" />
+        <ListChecks v-else :size="16" class="text-neutral-500 shrink-0" />
         <span class="truncate">{{ currentNoteTitle || 'Untitled' }}</span>
       </button>
       <div class="flex items-center gap-1">
@@ -21,8 +21,8 @@
           :title="showCompleted ? 'Hide completed' : 'Show completed'"
           @click="$emit('toggle-show-completed')"
         >
-          <Eye v-if="showCompleted" :size="14" />
-          <EyeOff v-else :size="14" />
+          <Eye v-if="showCompleted" :size="16" />
+          <EyeOff v-else :size="16" />
         </button>
         <button
           class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"

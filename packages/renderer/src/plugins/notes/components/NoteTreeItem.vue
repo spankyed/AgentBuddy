@@ -9,7 +9,7 @@
     <!-- Node row -->
     <div
       data-note-tree-item
-      class="relative flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
+      class="relative flex items-center gap-1 px-2 py-2 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
           ? taskMode && (note.completed || muted) ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
@@ -30,13 +30,13 @@
       <EmojiPicker :model-value="note.icon" @update:model-value="(icon: string | null) => $emit('update-icon', note.id, icon)">
         <template #default="{ toggle }">
           <button
-            class="flex items-center justify-center w-4 h-4 shrink-0"
+            class="flex items-center justify-center w-5 h-5 shrink-0"
             @click.stop="children.length > 0 ? $emit('toggle-expand', note.id) : toggle()"
           >
             <!-- Chevron shown on hover when item has children -->
             <ChevronRight
               v-if="children.length > 0"
-              :size="14"
+              :size="16"
               class="transition-transform hidden group-hover:block text-neutral-500"
               :class="isExpanded ? 'rotate-90' : ''"
             />
@@ -48,19 +48,19 @@
             >{{ note.icon }}</span>
             <ListChecks
               v-else-if="note.noteType === 'tasklist'"
-              :size="14"
+              :size="16"
               class="text-neutral-500"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             />
             <CircleCheck
               v-else-if="note.noteType === 'task'"
-              :size="14"
+              :size="16"
               class="text-neutral-500"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             />
             <FileText
               v-else
-              :size="14"
+              :size="16"
               class="text-neutral-500"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             />
@@ -74,7 +74,7 @@
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode && note.noteType === 'task'">
         <!-- Grouped action pill (visible on hover) -->
-        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 py-0.5 shrink-0">
+        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0">
           <button
             class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
             title="Add sub-task"
@@ -103,7 +103,7 @@
       </template>
 
       <!-- Actions (on hover, normal mode) -->
-      <div v-else class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 py-0.5">
+      <div v-else class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1">
         <button
           class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
           :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
@@ -120,20 +120,31 @@
         </button>
       </div>
 
-      <!-- Task context menu -->
+    </div>
+
+    <!-- Context menu (positioned at cursor) -->
+    <Teleport to="body">
       <div
-        v-if="showTaskMenu"
-        ref="taskMenuRef"
-        class="absolute right-2 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[130px]"
+        v-if="showContextMenu"
+        ref="contextMenuRef"
+        class="fixed z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+        :style="{ left: `${contextMenuPos.x}px`, top: `${contextMenuPos.y}px` }"
       >
         <button
+          v-if="isTaskRelated"
           class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
-          @click="$emit('create', note.id); showTaskMenu = false"
+          @click="$emit('create', note.id); showContextMenu = false"
         >
-          Sub-Note
+          Add Sub-Note
+        </button>
+        <button
+          class="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-neutral-700 transition-colors"
+          @click="$emit('delete', note.id); showContextMenu = false"
+        >
+          Delete
         </button>
       </div>
-    </div>
+    </Teleport>
 
     <!-- Drop indicator: after (only when not expanded, to avoid ambiguity) -->
     <div
@@ -231,25 +242,26 @@ function handleClick(e: MouseEvent) {
 }
 
 const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props.note.noteType === 'task')
-const showTaskMenu = ref(false)
-const taskMenuRef = ref<HTMLDivElement | null>(null)
+const showContextMenu = ref(false)
+const contextMenuRef = ref<HTMLDivElement | null>(null)
+const contextMenuPos = ref({ x: 0, y: 0 })
 
 function handleContextMenu(e: MouseEvent) {
-  if (!isTaskRelated.value) return
   e.preventDefault()
-  showTaskMenu.value = true
+  contextMenuPos.value = { x: e.clientX, y: e.clientY }
+  showContextMenu.value = true
 }
 
-function handleClickOutsideTaskMenu(e: MouseEvent) {
-  if (taskMenuRef.value && !taskMenuRef.value.contains(e.target as Node)) {
-    showTaskMenu.value = false
+function handleClickOutsideContextMenu(e: MouseEvent) {
+  if (contextMenuRef.value && !contextMenuRef.value.contains(e.target as Node)) {
+    showContextMenu.value = false
   }
 }
 
-onMounted(() => document.addEventListener('mousedown', handleClickOutsideTaskMenu))
-onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideTaskMenu))
+onMounted(() => document.addEventListener('mousedown', handleClickOutsideContextMenu))
+onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideContextMenu))
 
-watch(showTaskMenu, (val) => onMenuOpenChange(val))
+watch(showContextMenu, (val) => onMenuOpenChange(val))
 
 const showDropBefore = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'before')
 const showDropAfter = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'after')
