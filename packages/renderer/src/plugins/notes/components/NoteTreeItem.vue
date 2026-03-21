@@ -151,10 +151,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import type { NoteDTO } from '@app/api'
 import { Check, ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8
@@ -216,6 +217,8 @@ function handleClickOutsideTaskMenu(e: MouseEvent) {
 
 onMounted(() => document.addEventListener('mousedown', handleClickOutsideTaskMenu))
 onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideTaskMenu))
+
+watch(showTaskMenu, (val) => onMenuOpenChange(val))
 
 const ownItemClass = computed(() => props.getItemClass(props.note.id))
 

@@ -71,13 +71,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus } from 'lucide-vue-next'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 
 const actor: NotesState = applicationState.system.get(id)
 
@@ -92,6 +93,8 @@ function handleClickOutsideMenu(e: MouseEvent) {
 
 onMounted(() => document.addEventListener('mousedown', handleClickOutsideMenu))
 onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideMenu))
+
+watch(showCreateMenu, (val) => onMenuOpenChange(val))
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
