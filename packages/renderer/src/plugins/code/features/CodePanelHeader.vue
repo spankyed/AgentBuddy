@@ -111,10 +111,10 @@ const codePanels = [
   { id: 'explorer', label: 'Explorer', icon: FolderOpen },
   { id: 'commit', label: 'Commit Changes', icon: GitCommit },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
+  { id: 'search', label: 'Search', icon: Search },
 ] as const
 
 const supportPanels = [
-  { id: 'search', label: 'Search', icon: Search },
   { id: 'terminal', label: 'Terminal', icon: Terminal },
 ] as const
 
