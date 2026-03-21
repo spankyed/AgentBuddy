@@ -1,7 +1,10 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700"
+      @dragover.prevent="handleRootDragOver"
+      @drop="handleRootDrop"
+    >
       <span class="text-sm font-medium text-neutral-300">Notes</span>
       <div class="relative">
         <button

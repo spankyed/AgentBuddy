@@ -180,10 +180,21 @@ export function useNoteTreeDragDrop({
     if (!draggedNoteIds.value.length) return
 
     const currentTarget = dropTarget.value
-    const position = currentTarget?.position ?? 'on'
+    const position = (currentTarget && currentTarget.noteId === targetId) ? currentTarget.position : 'on'
 
-    // For root drop or 'on' position: reparent
+    // For root drop or 'on' position: reparent (or reorder to top)
     if (!targetId || position === 'on') {
+      // Single-item drag onto its own parent → reorder to index 0 (move to top)
+      if (onReorder && draggedNoteIds.value.length === 1) {
+        const draggedId = draggedNoteIds.value[0]
+        const draggedParent = getCurrentParentId(draggedId)
+        if (draggedParent === targetId) {
+          onReorder(draggedId, targetId, 0)
+          handleDragEnd()
+          return
+        }
+      }
+
       if (!isValidDrop(targetId, 'on')) {
         handleDragEnd()
         return

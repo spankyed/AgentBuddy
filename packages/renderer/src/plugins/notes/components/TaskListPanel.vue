@@ -1,7 +1,10 @@
 <template>
   <div class="flex flex-col h-full w-[250px] min-w-[250px] border-r border-neutral-800">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800"
+      @dragover.prevent="handleRootDragOver"
+      @drop="handleRootDrop"
+    >
       <button
         class="flex items-center gap-1.5 text-sm font-medium transition-colors rounded px-1 -ml-1"
         :class="!selectedTaskId ? 'text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'"
