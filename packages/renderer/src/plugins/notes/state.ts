@@ -606,9 +606,10 @@ const notesState = setup({
         },
         NOTE_CREATED: [
           {
-            guard: ({ event }) => {
+            guard: ({ event, context }) => {
               const ev = typeOf('NOTE_CREATED', event)
-              return ev.note.noteType === 'task'
+              const updatedNotes = [...context.notes, ev.note]
+              return findNearestTaskList(updatedNotes, ev.note.id) !== null
             },
             actions: [
               assign(({ context, event }) => {
@@ -709,7 +710,9 @@ const notesState = setup({
             // If the new note's parent is the current tasklist, add to list but don't navigate
             guard: ({ context, event }) => {
               const ev = typeOf('NOTE_CREATED', event)
-              return context.currentNote?.noteType === 'tasklist' && ev.note.parentId === context.currentNoteId
+              const updatedNotes = [...context.notes, ev.note]
+              return context.currentNote?.noteType === 'tasklist'
+                && findNearestTaskList(updatedNotes, ev.note.id)?.id === context.currentNoteId
             },
             actions: assign(({ context, event }) => {
               const ev = typeOf('NOTE_CREATED', event)

@@ -125,6 +125,7 @@
         @deselect-task="actor.send({ type: 'TASK.DESELECT' })"
         @create-task="actor.send({ type: 'TASK.CREATE', parentId: currentNote.id })"
         @create-task-child="(parentId: string) => actor.send({ type: 'TASK.CREATE', parentId })"
+        @create-subnote="(parentId: string) => actor.send({ type: 'NOTE.CREATE', parentId })"
         @delete-task="(taskId: string) => actor.send({ type: 'TASK.DELETE', taskId })"
         @toggle-complete="(taskId: string) => actor.send({ type: 'TASK.TOGGLE_COMPLETE', taskId })"
         @toggle-show-completed="actor.send({ type: 'TASK.TOGGLE_SHOW_COMPLETED' })"
