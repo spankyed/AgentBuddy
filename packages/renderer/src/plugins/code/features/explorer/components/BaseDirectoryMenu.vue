@@ -9,7 +9,7 @@
           <button
             @click.capture="(e: MouseEvent) => { e.stopImmediatePropagation(); menuOpen = true }"
             @contextmenu.prevent="menuOpen = true"
-            class="flex items-center gap-1 mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 font-medium truncate"
+            class="flex items-center gap-1 mx-1 px-1 py-1 transition-all rounded hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 font-medium min-w-0"
             :title="baseDirectory"
           >
             <ChevronDown :size="14" class="shrink-0" />
