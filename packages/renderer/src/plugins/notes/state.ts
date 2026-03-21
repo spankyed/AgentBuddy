@@ -554,10 +554,39 @@ const notesState = setup({
         'NOTE.CREATE_TASKLIST': {
           actions: 'sendCreateTaskList',
         },
-        NOTE_CREATED: {
-          actions: 'addCreatedNote',
-          target: 'editor',
+        'TASK.CREATE': {
+          actions: 'sendCreateTask',
         },
+        NOTE_CREATED: [
+          {
+            guard: ({ event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              return ev.note.noteType === 'task'
+            },
+            actions: [
+              assign(({ context, event }) => {
+                const ev = typeOf('NOTE_CREATED', event)
+                const taskList = findNearestTaskList([...context.notes, ev.note], ev.note.id)
+                if (!taskList) return { notes: [...context.notes, ev.note] }
+                const ancestorIds = getAncestorChain([...context.notes, ev.note], taskList.id).map(n => n.id)
+                return {
+                  notes: [...context.notes, ev.note],
+                  currentNoteId: taskList.id,
+                  currentNote: taskList,
+                  selectedTaskId: ev.note.id,
+                  selectedTask: ev.note,
+                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+                }
+              }),
+              'sendViewNote',
+            ],
+            target: 'editor',
+          },
+          {
+            actions: 'addCreatedNote',
+            target: 'editor',
+          },
+        ],
         'NOTE.SELECT': {
           actions: ['selectNote', 'sendViewNote'],
           target: 'editor',
@@ -624,8 +653,34 @@ const notesState = setup({
               const ev = typeOf('NOTE_CREATED', event)
               return {
                 notes: [...context.notes, ev.note],
+                selectedTaskId: ev.note.id,
+                selectedTask: ev.note,
               }
             }),
+          },
+          {
+            // Task created for a tasklist that isn't currently viewed — navigate to it
+            guard: ({ event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              return ev.note.noteType === 'task'
+            },
+            actions: [
+              assign(({ context, event }) => {
+                const ev = typeOf('NOTE_CREATED', event)
+                const taskList = findNearestTaskList([...context.notes, ev.note], ev.note.id)
+                if (!taskList) return { notes: [...context.notes, ev.note] }
+                const ancestorIds = getAncestorChain([...context.notes, ev.note], taskList.id).map(n => n.id)
+                return {
+                  notes: [...context.notes, ev.note],
+                  currentNoteId: taskList.id,
+                  currentNote: taskList,
+                  selectedTaskId: ev.note.id,
+                  selectedTask: ev.note,
+                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+                }
+              }),
+              'sendViewNote',
+            ],
           },
           {
             actions: 'addCreatedNote',

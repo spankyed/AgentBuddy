@@ -9,6 +9,7 @@ export function useNoteFocus(
   editorRef: Ref<InstanceType<typeof TiptapEditor> | null>,
 ) {
   const currentNote = useSelector(actor, (s) => s.context.currentNote)
+  const selectedTask = useSelector(actor, (s) => s.context.selectedTask)
 
   watch(currentNote, (note, oldNote) => {
     if (!note || note.id === oldNote?.id) return
@@ -21,5 +22,16 @@ export function useNoteFocus(
         editorRef.value?.editor?.commands.focus('start')
       }
     })
+  })
+
+  watch(selectedTask, (task, oldTask) => {
+    if (!task || task.id === oldTask?.id) return
+    const isNewTask = task.title === 'Untitled' && !task.content
+    if (isNewTask) {
+      nextTick(() => {
+        titleRef.value?.focus()
+        titleRef.value?.select()
+      })
+    }
   })
 }
