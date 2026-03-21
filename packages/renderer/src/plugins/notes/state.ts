@@ -370,6 +370,7 @@ const notesState = setup({
         title: 'Untitled',
         parentId: ev.parentId,
         skipContentSync: true,
+        noteType: 'task',
       })
     },
 

@@ -22,7 +22,7 @@ export const noteCommands = {
     icon?: string | null;
     parentId?: string;
     displayOrder?: number;
-    noteType?: 'note' | 'tasklist';
+    noteType?: 'note' | 'tasklist' | 'task';
     completed?: boolean;
   }): NoteEntity => {
     if (!input.title?.trim()) {

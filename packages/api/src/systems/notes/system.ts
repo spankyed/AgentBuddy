@@ -33,7 +33,7 @@ export const IncomingNoteEvents = [
     icon: z.string().nullable().optional(),
     parentId: z.string().optional(),
     skipContentSync: z.boolean().optional(),
-    noteType: z.enum(['note', 'tasklist']).optional(),
+    noteType: z.enum(['note', 'tasklist', 'task']).optional(),
     completed: z.boolean().optional(),
   }),
   busEvent('UPDATE_NOTE', {

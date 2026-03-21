@@ -45,6 +45,12 @@
               class="text-neutral-500"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             />
+            <CircleCheck
+              v-else-if="note.noteType === 'task'"
+              :size="14"
+              class="text-neutral-500"
+              :class="children.length > 0 ? 'group-hover:hidden' : ''"
+            />
             <FileText
               v-else
               :size="14"
@@ -108,7 +114,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { ChevronRight, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
+import { ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 
 const INDENT_PX = 8

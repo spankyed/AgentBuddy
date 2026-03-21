@@ -135,6 +135,8 @@
                 @click="toggle"
               >
                 <span v-if="editingNote.icon" class="text-xl leading-none">{{ editingNote.icon }}</span>
+                <ListChecks v-else-if="editingNote.noteType === 'tasklist'" :size="20" class="text-neutral-500" />
+                <CircleCheck v-else-if="editingNote.noteType === 'task'" :size="20" class="text-neutral-500" />
                 <FileText v-else :size="20" class="text-neutral-500" />
               </button>
             </template>
@@ -180,7 +182,7 @@ import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
-import { NotebookText, FileText, Search, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'

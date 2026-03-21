@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-full w-[250px] min-w-[250px] border-r border-neutral-700">
+  <div class="flex flex-col h-full w-[250px] min-w-[250px] border-r border-neutral-800">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
       <span class="text-sm font-medium text-neutral-300">Tasks</span>
       <div class="flex items-center gap-1">
         <button
@@ -36,7 +36,7 @@
       </button>
 
       <!-- Divider -->
-      <div class="border-b border-neutral-700/50 mx-3 my-1" />
+      <div class="border-b border-neutral-800/50 mx-3 my-1" />
 
       <!-- Incomplete tasks -->
       <div

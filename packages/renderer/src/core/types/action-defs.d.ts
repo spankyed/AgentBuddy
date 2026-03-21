@@ -166,7 +166,7 @@ interface NoteEntity extends BaseEntity {
     title: string;
     content: string;
     icon: string | null;
-    noteType: 'note' | 'tasklist';
+    noteType: 'note' | 'tasklist' | 'task';
     completed: boolean;
     displayOrder: number;
     createdAt: number;
@@ -180,7 +180,7 @@ interface NoteDTO {
     title: string;
     content: string;
     icon: string | null;
-    noteType: 'note' | 'tasklist';
+    noteType: 'note' | 'tasklist' | 'task';
     completed: boolean;
     parentId: string | null;
     displayOrder: number;
@@ -2784,7 +2784,7 @@ declare const events: {
         icon: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         parentId: zod.ZodOptional<zod.ZodString>;
         skipContentSync: zod.ZodOptional<zod.ZodBoolean>;
-        noteType: zod.ZodOptional<zod.ZodEnum<["note", "tasklist"]>>;
+        noteType: zod.ZodOptional<zod.ZodEnum<["note", "tasklist", "task"]>>;
         completed: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         title: string;
@@ -2795,7 +2795,7 @@ declare const events: {
         parentId?: string | undefined;
         icon?: string | null | undefined;
         skipContentSync?: boolean | undefined;
-        noteType?: "note" | "tasklist" | undefined;
+        noteType?: "note" | "tasklist" | "task" | undefined;
     }, {
         title: string;
         type: "CREATE_NOTE";
@@ -2805,7 +2805,7 @@ declare const events: {
         parentId?: string | undefined;
         icon?: string | null | undefined;
         skipContentSync?: boolean | undefined;
-        noteType?: "note" | "tasklist" | undefined;
+        noteType?: "note" | "tasklist" | "task" | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_NOTE">;
         systemId: zod.ZodLiteral<"notes">;
@@ -5367,7 +5367,7 @@ declare const services: {
                 icon?: string | null;
                 parentId?: string;
                 displayOrder?: number;
-                noteType?: "note" | "tasklist";
+                noteType?: "note" | "tasklist" | "task";
                 completed?: boolean;
             }) => NoteEntity;
             readonly update: (id: EARS.EntityId, updates: {
