@@ -248,7 +248,11 @@ const contextMenuPos = ref({ x: 0, y: 0 })
 
 function handleContextMenu(e: MouseEvent) {
   e.preventDefault()
-  contextMenuPos.value = { x: e.clientX, y: e.clientY }
+  const menuWidth = 160
+  const menuHeight = isTaskRelated.value ? 72 : 36
+  const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8)
+  const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8)
+  contextMenuPos.value = { x, y }
   showContextMenu.value = true
 }
 
