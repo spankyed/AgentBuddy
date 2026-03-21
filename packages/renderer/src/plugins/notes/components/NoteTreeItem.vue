@@ -90,8 +90,8 @@
       <div v-else class="hidden group-hover:flex items-center gap-0.5">
         <button
           class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 rounded transition-colors"
-          title="Add child note"
-          @click.stop="$emit('create', note.id)"
+          :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
+          @click.stop="isTaskRelated ? $emit('create-task', note.id) : $emit('create', note.id)"
         >
           <Plus :size="12" />
         </button>
@@ -112,9 +112,9 @@
       >
         <button
           class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
-          @click="$emit('create-task', note.id); showTaskMenu = false"
+          @click="$emit('create', note.id); showTaskMenu = false"
         >
-          New Task
+          Sub-Note
         </button>
       </div>
     </div>
