@@ -62,7 +62,7 @@
       </EmojiPicker>
 
       <!-- Title -->
-      <span class="truncate flex-1 ml-0.5">{{ note.title || 'Untitled' }}</span>
+      <span class="truncate flex-1 ml-0.5" :class="note.completed && !taskMode ? 'line-through text-neutral-600' : ''">{{ note.title || 'Untitled' }}</span>
 
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode">
