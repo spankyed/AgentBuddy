@@ -3,7 +3,7 @@
     <!-- Node row -->
     <div
       data-note-tree-item
-      class="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
+      class="relative flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
           ? taskMode && note.completed ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
@@ -13,6 +13,7 @@
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
       :draggable="!taskMode"
       @click="handleClick"
+      @contextmenu="handleContextMenu"
       @dragstart="$emit('drag-start', $event, note.id)"
       @dragover="$emit('drag-over', $event, note.id)"
       @dragleave="$emit('drag-leave', $event)"
@@ -102,6 +103,20 @@
           <Trash2 :size="12" />
         </button>
       </div>
+
+      <!-- Task context menu -->
+      <div
+        v-if="showTaskMenu"
+        ref="taskMenuRef"
+        class="absolute right-2 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[130px]"
+      >
+        <button
+          class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+          @click="$emit('create-task', note.id); showTaskMenu = false"
+        >
+          New Task
+        </button>
+      </div>
     </div>
 
     <!-- Children (recursive) -->
@@ -124,6 +139,7 @@
         @toggle-select="$emit('toggle-select', $event)"
         @shift-select="$emit('shift-select', $event)"
         @toggle-complete="$emit('toggle-complete', $event)"
+        @create-task="$emit('create-task', $event)"
         @drag-start="(e: DragEvent, id: string) => $emit('drag-start', e, id)"
         @drag-over="(e: DragEvent, id: string) => $emit('drag-over', e, id)"
         @drag-leave="(e: DragEvent) => $emit('drag-leave', e)"
@@ -135,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { NoteDTO } from '@app/api'
 import { Check, ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
@@ -169,6 +185,7 @@ const emit = defineEmits<{
   (e: 'drag-end'): void
   (e: 'shift-select', noteId: string): void
   (e: 'toggle-complete', noteId: string): void
+  (e: 'create-task', parentId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
@@ -180,6 +197,25 @@ function handleClick(e: MouseEvent) {
     emit('select', props.note.id)
   }
 }
+
+const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props.note.noteType === 'task')
+const showTaskMenu = ref(false)
+const taskMenuRef = ref<HTMLDivElement | null>(null)
+
+function handleContextMenu(e: MouseEvent) {
+  if (!isTaskRelated.value) return
+  e.preventDefault()
+  showTaskMenu.value = true
+}
+
+function handleClickOutsideTaskMenu(e: MouseEvent) {
+  if (taskMenuRef.value && !taskMenuRef.value.contains(e.target as Node)) {
+    showTaskMenu.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutsideTaskMenu))
+onUnmounted(() => document.removeEventListener('click', handleClickOutsideTaskMenu))
 
 const ownItemClass = computed(() => props.getItemClass(props.note.id))
 

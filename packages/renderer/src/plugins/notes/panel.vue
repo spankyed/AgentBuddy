@@ -64,6 +64,7 @@
         @drag-leave="handleDragLeave"
         @drop="(e: DragEvent, id: string) => handleDrop(e, id)"
         @drag-end="handleDragEnd"
+        @create-task="handleCreateTask"
       />
     </div>
   </div>
@@ -172,6 +173,10 @@ function handleCreateNote(parentId?: string) {
 
 function handleCreateTaskList() {
   actor.send({ type: 'NOTE.CREATE_TASKLIST' })
+}
+
+function handleCreateTask(parentId: string) {
+  actor.send({ type: 'TASK.CREATE', parentId })
 }
 
 function handleDeleteNote(noteId: string) {
