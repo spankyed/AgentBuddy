@@ -111,8 +111,8 @@ const notesState = setup({
       const noteId = (event as { noteId: string }).noteId
       const note = context.notes.find(n => n.id === noteId) || null
 
-      // If selecting a task note, open its parent tasklist instead
-      if (note?.noteType === 'task') {
+      // If selecting a note inside a tasklist, open the tasklist with this note selected
+      if (note && note.noteType !== 'tasklist') {
         const taskList = findNearestTaskList(context.notes, noteId)
         if (taskList) {
           const ancestorIds = getAncestorChain(context.notes, taskList.id).map(n => n.id)
@@ -726,10 +726,11 @@ const notesState = setup({
             }),
           },
           {
-            // Task created for a tasklist that isn't currently viewed — navigate to it
-            guard: ({ event }) => {
+            // Note created for a tasklist that isn't currently viewed — navigate to it
+            guard: ({ context, event }) => {
               const ev = typeOf('NOTE_CREATED', event)
-              return ev.note.noteType === 'task'
+              const updatedNotes = [...context.notes, ev.note]
+              return findNearestTaskList(updatedNotes, ev.note.id) !== null
             },
             actions: [
               assign(({ context, event }) => {
