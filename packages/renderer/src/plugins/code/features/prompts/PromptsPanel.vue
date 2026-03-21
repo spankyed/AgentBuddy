@@ -40,7 +40,8 @@
             @click="selectPrompt(prompt)"
             class="px-4 py-2 transition-colors border-b cursor-pointer border-neutral-800 hover:bg-neutral-800/50"
           >
-            <div class="flex items-start justify-between">
+            <!-- Header row: label + controls on same line -->
+            <div class="flex items-start gap-2">
               <div class="flex-1 min-w-0">
                 <template v-if="editingNameForPrompt === prompt.id">
                   <div class="relative w-full" @click.stop>
@@ -66,95 +67,99 @@
                   <div class="text-sm font-medium truncate text-neutral-200" :title="prompt.description">
                     {{ prompt.label }}
                   </div>
+                  <div v-if="prompt.category" class="text-[11px] text-neutral-500 truncate">
+                    {{ prompt.category }}
+                  </div>
                 </template>
-                <div class="mt-1 space-y-1">
-                  <!-- Input Parameters -->
-                  <div v-if="prompt.inputs && Object.keys(prompt.inputs).length > 0" class="flex flex-wrap gap-1">
-                    <span
-                      v-for="(input, key) in prompt.inputs"
-                      :key="key"
-                      class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400 transition-colors"
-                    >
-                      <template v-if="editingParameter?.promptId === prompt.id && editingParameter?.key === String(key)">
-                        <input
-                          v-model="editedParameterName"
-                          :data-edit-param="`${prompt.id}-${key}`"
-                          @keydown.enter.stop="confirmEditParameter(prompt)"
-                          @keydown.escape.stop="cancelEditParameter"
-                          @blur="confirmEditParameter(prompt)"
-                          @click.stop
-                          class="w-16 px-1 text-xs bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200"
-                        />
-                        <button
-                          @mousedown.prevent.stop="cancelEditParameter"
-                          class="p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
-                          title="Cancel edit"
-                        >
-                          <X :size="10" />
-                        </button>
-                      </template>
-                      <template v-else>
-                        <span
-                          @click.stop="startEditParameter(prompt.id, String(key))"
-                          class="cursor-pointer hover:text-neutral-200"
-                        >
-                          <span class="font-medium">{{ input.name || key }}</span>
-                          <span class="text-neutral-500">({{ input.type }})</span>
-                          <span v-if="input.required !== false" class="text-red-400">*</span>
-                        </span>
-                        <button
-                          @click.stop="removeParameter(prompt, String(key))"
-                          class="ml-0.5 p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
-                          title="Remove parameter"
-                        >
-                          <X :size="10" />
-                        </button>
-                      </template>
-                    </span>
-                  </div>
-                  <div v-else-if="addingParameterForPrompt !== prompt.id" class="text-xs italic text-neutral-500">
-                    No inputs
-                  </div>
-
-                  <!-- Add Parameter Input -->
-                  <div v-if="addingParameterForPrompt === prompt.id" class="mt-1 relative">
-                    <input
-                      v-model="newParameterName"
-                      :data-add-param="prompt.id"
-                      @keydown.enter.stop="confirmAddParameter(prompt)"
-                      @keydown.escape.stop="cancelAddParameter"
-                      @blur="confirmAddParameter(prompt)"
-                      @click.stop
-                      class="w-full pl-2 pr-6 py-1 text-xs rounded bg-neutral-800 border border-blue-500 text-neutral-200 focus:outline-none"
-                      placeholder="Parameter name"
-                    />
-                    <button
-                      @mousedown.prevent.stop="cancelAddParameter"
-                      class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-colors"
-                      title="Cancel"
-                    >
-                      <X :size="12" />
-                    </button>
-                  </div>
-                </div>
               </div>
 
-              <!-- Right side controls -->
-              <div class="flex items-center gap-2 ml-3">
-                <!-- Category Tag -->
-                <div v-if="prompt.category">
-                  <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded bg-neutral-700 text-neutral-300">
-                    {{ prompt.category }}
-                  </span>
-                </div>
-
-                <!-- External Link Button -->
+              <!-- Controls -->
+              <div class="flex items-center gap-1 shrink-0">
                 <button
                   @click.stop="goToPrompt(prompt)"
                   class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
                   title="Go to prompt"
                 >
-                  <ExternalLink :size="16" />
+                  <ExternalLink :size="14" />
+                </button>
+                <button
+                  @click.stop="toggleInputs(prompt.id)"
+                  class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
+                  :title="expandedPrompts.has(prompt.id) ? 'Hide inputs' : 'Show inputs'"
+                >
+                  <ChevronDown v-if="expandedPrompts.has(prompt.id)" :size="14" />
+                  <ChevronRight v-else :size="14" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Expanded inputs -->
+            <div v-if="expandedPrompts.has(prompt.id)" class="mt-1 space-y-1">
+              <div v-if="prompt.inputs && Object.keys(prompt.inputs).length > 0" class="flex flex-wrap gap-1">
+                <span
+                  v-for="(input, key) in prompt.inputs"
+                  :key="key"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400 transition-colors"
+                >
+                  <template v-if="editingParameter?.promptId === prompt.id && editingParameter?.key === String(key)">
+                    <input
+                      v-model="editedParameterName"
+                      :data-edit-param="`${prompt.id}-${key}`"
+                      @keydown.enter.stop="confirmEditParameter(prompt)"
+                      @keydown.escape.stop="cancelEditParameter"
+                      @blur="confirmEditParameter(prompt)"
+                      @click.stop
+                      class="w-16 px-1 text-xs bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200"
+                    />
+                    <button
+                      @mousedown.prevent.stop="cancelEditParameter"
+                      class="p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
+                      title="Cancel edit"
+                    >
+                      <X :size="10" />
+                    </button>
+                  </template>
+                  <template v-else>
+                    <span
+                      @click.stop="startEditParameter(prompt.id, String(key))"
+                      class="cursor-pointer hover:text-neutral-200"
+                    >
+                      <span class="font-medium">{{ input.name || key }}</span>
+                      <span class="text-neutral-500">({{ input.type }})</span>
+                      <span v-if="input.required !== false" class="text-red-400">*</span>
+                    </span>
+                    <button
+                      @click.stop="removeParameter(prompt, String(key))"
+                      class="ml-0.5 p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
+                      title="Remove parameter"
+                    >
+                      <X :size="10" />
+                    </button>
+                  </template>
+                </span>
+              </div>
+              <div v-else-if="addingParameterForPrompt !== prompt.id" class="text-xs italic text-neutral-500">
+                No inputs
+              </div>
+
+              <!-- Add Parameter Input -->
+              <div v-if="addingParameterForPrompt === prompt.id" class="mt-1 relative">
+                <input
+                  v-model="newParameterName"
+                  :data-add-param="prompt.id"
+                  @keydown.enter.stop="confirmAddParameter(prompt)"
+                  @keydown.escape.stop="cancelAddParameter"
+                  @blur="confirmAddParameter(prompt)"
+                  @click.stop
+                  class="w-full pl-2 pr-6 py-1 text-xs rounded bg-neutral-800 border border-blue-500 text-neutral-200 focus:outline-none"
+                  placeholder="Parameter name"
+                />
+                <button
+                  @mousedown.prevent.stop="cancelAddParameter"
+                  class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-colors"
+                  title="Cancel"
+                >
+                  <X :size="12" />
                 </button>
               </div>
             </div>
@@ -189,7 +194,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
-import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle } from 'lucide-vue-next'
+import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import type { PromptEntity } from '@app/api'
 import {
@@ -216,6 +221,19 @@ const addingParameterForPrompt = ref<string | null>(null)
 const newParameterName = ref('')
 const editingParameter = ref<{ promptId: string, key: string } | null>(null)
 const editedParameterName = ref('')
+
+// State for expanded inputs
+const expandedPrompts = ref<Set<string>>(new Set())
+
+const toggleInputs = (promptId: string) => {
+  const next = new Set(expandedPrompts.value)
+  if (next.has(promptId)) {
+    next.delete(promptId)
+  } else {
+    next.add(promptId)
+  }
+  expandedPrompts.value = next
+}
 
 // State for editing name
 const editingNameForPrompt = ref<string | null>(null)
