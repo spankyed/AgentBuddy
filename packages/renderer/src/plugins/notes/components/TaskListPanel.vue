@@ -49,6 +49,8 @@
         :depth="0"
         :get-item-class="getItemClass"
         :task-mode="true"
+        :drop-indicator-note-id="dropIndicator?.noteId ?? null"
+        :drop-indicator-position="dropIndicator?.position ?? null"
         @select="(id: string) => $emit('select-task', id)"
         @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
         @delete="(id: string) => $emit('delete-task', id)"
@@ -75,6 +77,8 @@
           :get-item-class="getItemClass"
           :task-mode="true"
           :muted="true"
+          :drop-indicator-note-id="dropIndicator?.noteId ?? null"
+          :drop-indicator-position="dropIndicator?.position ?? null"
           @select="(id: string) => $emit('select-task', id)"
           @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
           @delete="(id: string) => $emit('delete-task', id)"
@@ -124,14 +128,16 @@ const emit = defineEmits<{
   (e: 'toggle-show-completed'): void
   (e: 'toggle-expand', nodeId: string): void
   (e: 'move-task', noteIds: string[], newParentId: string | null): void
+  (e: 'reorder-task', noteId: string, newParentId: string | null, newIndex: number): void
 }>()
 
-const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, getItemClass } =
+const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, getItemClass, dropIndicator } =
   useNoteTreeDragDrop({
     notes: computed(() => props.allNotes),
     selectedNoteIds: ref([]),
     currentNoteId: computed(() => props.selectedTaskId),
     onMove: (noteIds, newParentId) => emit('move-task', noteIds, newParentId),
+    onReorder: (noteId, newParentId, newIndex) => emit('reorder-task', noteId, newParentId, newIndex),
   })
 
 function handleRootDragOver(e: DragEvent) {

@@ -1,11 +1,19 @@
-import { ref, type Ref } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import type { NoteDTO } from '@app/api'
+
+type DropPosition = 'before' | 'after' | 'on'
+
+interface DropTarget {
+  noteId: string
+  position: DropPosition
+}
 
 interface NoteTreeDragDropOptions {
   notes: Ref<NoteDTO[]>
   selectedNoteIds: Ref<string[]>
   currentNoteId: Ref<string | null>
   onMove: (noteIds: string[], newParentId: string | null) => void
+  onReorder?: (noteId: string, newParentId: string | null, newIndex: number) => void
 }
 
 export function useNoteTreeDragDrop({
@@ -13,9 +21,10 @@ export function useNoteTreeDragDrop({
   selectedNoteIds,
   currentNoteId,
   onMove,
+  onReorder,
 }: NoteTreeDragDropOptions) {
   const draggedNoteIds = ref<string[]>([])
-  const draggedOverId = ref<string | null>(null)
+  const dropTarget = ref<DropTarget | null>(null)
   const isDragging = ref(false)
 
   function getDraggedItems(noteId: string): string[] {
@@ -41,11 +50,31 @@ export function useNoteTreeDragDrop({
     return note?.parentId ?? null
   }
 
-  function isValidDrop(targetId: string | null): boolean {
+  function isValidDrop(targetId: string | null, position: DropPosition): boolean {
     if (!draggedNoteIds.value.length) return false
-    // Can't drop on self
+
+    if (position === 'before' || position === 'after') {
+      // Reorder mode: only single-item
+      if (draggedNoteIds.value.length > 1) return false
+      const draggedId = draggedNoteIds.value[0]
+
+      // Can't drop on self
+      if (targetId === draggedId) return false
+
+      // Can't drop on own descendant
+      if (targetId && isDescendant(targetId, draggedId)) return false
+
+      // Block if target is completed
+      if (targetId) {
+        const target = notes.value.find(n => n.id === targetId)
+        if (target?.completed) return false
+      }
+
+      return true
+    }
+
+    // 'on' mode — reparent
     if (targetId && draggedNoteIds.value.includes(targetId)) return false
-    // Can't drop on own descendant
     if (targetId) {
       for (const id of draggedNoteIds.value) {
         if (isDescendant(targetId, id)) return false
@@ -100,21 +129,38 @@ export function useNoteTreeDragDrop({
     e.preventDefault()
     if (!e.dataTransfer) return
 
-    if (!isValidDrop(noteId)) {
-      e.dataTransfer.dropEffect = 'none'
-      draggedOverId.value = null
-      return
+    const target = e.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const relativeY = (e.clientY - rect.top) / rect.height
+
+    let position: DropPosition
+    if (relativeY < 0.25) {
+      position = 'before'
+    } else if (relativeY > 0.75) {
+      position = 'after'
+    } else {
+      position = 'on'
     }
+
+    if (!isValidDrop(noteId, position)) {
+      // Try falling back to 'on' if before/after isn't valid
+      if (position !== 'on' && isValidDrop(noteId, 'on')) {
+        position = 'on'
+      } else {
+        e.dataTransfer.dropEffect = 'none'
+        dropTarget.value = null
+        return
+      }
+    }
+
     e.dataTransfer.dropEffect = 'move'
-    if (draggedOverId.value !== noteId) {
-      draggedOverId.value = noteId
-    }
+    dropTarget.value = { noteId, position }
   }
 
   function handleDragLeave(e: DragEvent) {
     const related = e.relatedTarget as HTMLElement
     if (!related || !related.closest('[data-note-tree-item]')) {
-      draggedOverId.value = null
+      dropTarget.value = null
     }
   }
 
@@ -122,17 +168,61 @@ export function useNoteTreeDragDrop({
     e.preventDefault()
     e.stopPropagation()
     if (!draggedNoteIds.value.length) return
-    if (!isValidDrop(targetId)) {
+
+    const currentTarget = dropTarget.value
+    const position = currentTarget?.position ?? 'on'
+
+    // For root drop or 'on' position: reparent
+    if (!targetId || position === 'on') {
+      if (!isValidDrop(targetId, 'on')) {
+        handleDragEnd()
+        return
+      }
+      onMove(draggedNoteIds.value, targetId)
       handleDragEnd()
       return
     }
-    onMove(draggedNoteIds.value, targetId)
+
+    // For before/after: reorder
+    if ((position === 'before' || position === 'after') && onReorder) {
+      if (!isValidDrop(targetId, position)) {
+        handleDragEnd()
+        return
+      }
+
+      const targetNote = notes.value.find(n => n.id === targetId)
+      if (!targetNote) {
+        handleDragEnd()
+        return
+      }
+
+      const parentId = targetNote.parentId
+      const siblings = notes.value
+        .filter(n => (n.parentId ?? null) === (parentId ?? null))
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+
+      const targetIndex = siblings.findIndex(s => s.id === targetId)
+      let newIndex = position === 'before' ? targetIndex : targetIndex + 1
+
+      // Adjust if dragged note is in same parent and before the target
+      const draggedId = draggedNoteIds.value[0]
+      const draggedNote = notes.value.find(n => n.id === draggedId)
+      if (draggedNote && (draggedNote.parentId ?? null) === (parentId ?? null)) {
+        const draggedIndex = siblings.findIndex(s => s.id === draggedId)
+        if (draggedIndex < newIndex) {
+          newIndex -= 1
+        }
+      }
+
+      onReorder(draggedId, parentId, newIndex)
+    }
+
     handleDragEnd()
   }
 
   function handleDragEnd() {
     draggedNoteIds.value = []
-    draggedOverId.value = null
+    dropTarget.value = null
     isDragging.value = false
   }
 
@@ -141,7 +231,7 @@ export function useNoteTreeDragDrop({
     if (isDragging.value && draggedNoteIds.value.includes(noteId)) {
       classes.push('opacity-50')
     }
-    if (draggedOverId.value === noteId && isValidDrop(noteId)) {
+    if (dropTarget.value?.noteId === noteId && dropTarget.value.position === 'on' && isValidDrop(noteId, 'on')) {
       classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
     }
     if (selectedNoteIds.value.includes(noteId) && noteId !== currentNoteId.value) {
@@ -150,10 +240,20 @@ export function useNoteTreeDragDrop({
     return classes.join(' ')
   }
 
+  const dropIndicator = computed(() => {
+    if (!dropTarget.value) return null
+    if (dropTarget.value.position === 'on') return null
+    return {
+      noteId: dropTarget.value.noteId,
+      position: dropTarget.value.position,
+    }
+  })
+
   return {
     isDragging,
     draggedNoteIds,
-    draggedOverId,
+    dropTarget,
+    dropIndicator,
     handleDragStart,
     handleDragOver,
     handleDragLeave,

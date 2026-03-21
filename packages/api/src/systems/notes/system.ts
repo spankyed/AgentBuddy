@@ -56,6 +56,11 @@ export const IncomingNoteEvents = [
     ids: z.array(z.string()),
     newParentId: z.string().nullable(),
   }),
+  busEvent('REORDER_NOTE', {
+    id: z.string(),
+    newParentId: z.string().nullable(),
+    newIndex: z.number(),
+  }),
   busEvent('VIEW_NOTE', {
     id: z.string(),
   }),
@@ -145,14 +150,46 @@ export const notesSystem = setup({
 
     updateNote: ({ system, event }) => {
       const ev = typeOf('UPDATE_NOTE', event);
+      const noteBeforeUpdate = repository.noteQueries.byId(ev.id as EARS.EntityId) as NoteEntity | undefined;
       const updates: Record<string, any> = {};
 
       if (ev.title !== undefined) updates.title = ev.title;
       if (ev.content !== undefined) updates.content = ev.content;
       if (ev.icon !== undefined) updates.icon = ev.icon;
-      if (ev.completed !== undefined) updates.completed = ev.completed;
+      if (ev.completed !== undefined) {
+        updates.completed = ev.completed;
+        // When completing: save current displayOrder
+        if (ev.completed && noteBeforeUpdate && !noteBeforeUpdate.completed) {
+          updates.savedDisplayOrder = noteBeforeUpdate.displayOrder;
+        }
+      }
 
       repository.noteCommands.update(ev.id as EARS.EntityId, updates);
+
+      // When uncompleting: restore saved position
+      if (ev.completed === false && noteBeforeUpdate?.savedDisplayOrder !== undefined && noteBeforeUpdate.savedDisplayOrder !== undefined) {
+        const parentIds = qx(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+        const parentId = parentIds.length > 0 ? parentIds[0] : null;
+        const { affectedIds } = repository.noteCommands.reorder(
+          ev.id as EARS.EntityId,
+          parentId,
+          noteBeforeUpdate.savedDisplayOrder
+        );
+        repository.noteCommands.update(ev.id as EARS.EntityId, { savedDisplayOrder: null }, true);
+
+        // Emit updates for all affected siblings
+        for (const affectedId of affectedIds) {
+          if (affectedId !== ev.id) {
+            const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
+            if (affectedDTO) {
+              system.get(bus).send(emit(notes, {
+                type: 'NOTE_UPDATED',
+                note: affectedDTO,
+              }));
+            }
+          }
+        }
+      }
 
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       if (updatedNote) {
@@ -299,6 +336,56 @@ export const notesSystem = setup({
       }
 
       // Emit updates for all affected parents
+      for (const parentId of affectedParentIds) {
+        const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
+        if (parentDTO) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_UPDATED',
+            note: parentDTO,
+          }));
+        }
+      }
+    },
+
+    reorderNote: ({ system, event }) => {
+      const ev = typeOf('REORDER_NOTE', event);
+      const noteId = ev.id as EARS.EntityId;
+      const newParentId = ev.newParentId as EARS.EntityId | null;
+
+      // Skip self-drop
+      if (newParentId === noteId) return;
+
+      // Skip descendant-drop
+      if (newParentId && isDescendantOf(newParentId, noteId)) return;
+
+      const { oldParentId, affectedIds } = repository.noteCommands.reorder(noteId, newParentId, ev.newIndex);
+
+      // Emit updates for the reordered note
+      const reorderedDTO = repository.noteQueries.byIdDTO(noteId);
+      if (reorderedDTO) {
+        system.get(bus).send(emit(notes, {
+          type: 'NOTE_UPDATED',
+          note: reorderedDTO,
+        }));
+      }
+
+      // Emit updates for all affected siblings
+      for (const affectedId of affectedIds) {
+        if (affectedId !== ev.id) {
+          const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
+          if (affectedDTO) {
+            system.get(bus).send(emit(notes, {
+              type: 'NOTE_UPDATED',
+              note: affectedDTO,
+            }));
+          }
+        }
+      }
+
+      // Emit updates for old/new parent (childCount changes)
+      const affectedParentIds = new Set<string>();
+      if (oldParentId && oldParentId !== newParentId) affectedParentIds.add(oldParentId);
+      if (newParentId && newParentId !== oldParentId) affectedParentIds.add(newParentId);
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
@@ -462,6 +549,9 @@ export const notesSystem = setup({
     },
     MOVE_NOTE: {
       actions: 'moveNotes',
+    },
+    REORDER_NOTE: {
+      actions: 'reorderNote',
     },
     VIEW_NOTE: {
       actions: 'viewNote',

@@ -84,6 +84,7 @@ export const noteCommands = {
     content?: string;
     icon?: string | null;
     displayOrder?: number;
+    savedDisplayOrder?: number | null;
     lastSeen?: number;
     completed?: boolean;
   }, skipTimestamp?: boolean): void => {
@@ -96,6 +97,7 @@ export const noteCommands = {
     if (updates.content !== undefined) filteredUpdates.content = updates.content;
     if (updates.icon !== undefined) filteredUpdates.icon = updates.icon;
     if (updates.displayOrder !== undefined) filteredUpdates.displayOrder = updates.displayOrder;
+    if (updates.savedDisplayOrder !== undefined) filteredUpdates.savedDisplayOrder = updates.savedDisplayOrder === null ? undefined : updates.savedDisplayOrder;
     if (updates.lastSeen !== undefined) filteredUpdates.lastSeen = updates.lastSeen;
     if (updates.completed !== undefined) filteredUpdates.completed = updates.completed;
 
@@ -185,6 +187,94 @@ export const noteCommands = {
     }
 
     return { oldParentId };
+  },
+
+  reorder: (id: EARS.EntityId, newParentId: EARS.EntityId | null, newIndex: number): { oldParentId: string | null; affectedIds: string[] } => {
+    const note = findById<NoteEntity>(id);
+    if (!note) {
+      throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    // Find current parent
+    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    const oldParentId = parentIds.length > 0 ? parentIds[0] : null;
+    const parentChanged = oldParentId !== newParentId;
+    const affectedIds: string[] = [];
+
+    // If parent changed, handle reparenting (reuse move logic for link cleanup)
+    if (parentChanged) {
+      // Remove old CONTAINS relation and strip sub-page link from old parent content
+      if (oldParentId) {
+        removeRelation(oldParentId, EARS.RelKind.CONTAINS, id);
+        const oldParent = findById<NoteEntity>(oldParentId);
+        if (oldParent?.content) {
+          const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const pagePattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
+          const newContent = oldParent.content.replace(pagePattern, '');
+          if (newContent !== oldParent.content) {
+            updateEntity(oldParentId, { content: newContent });
+          }
+        }
+      }
+
+      // Create new CONTAINS relation and append sub-page link to new parent content
+      if (newParentId) {
+        createRelation(newParentId, EARS.RelKind.CONTAINS, id);
+        const newParent = findById<NoteEntity>(newParentId);
+        if (newParent && newParent.noteType !== 'tasklist' && newParent.noteType !== 'task') {
+          const linkMarkdown = `\n\n[${note.title}](page://${id})`;
+          const newContent = (newParent.content || '') + linkMarkdown;
+          updateEntity(newParentId, { content: newContent });
+        }
+      }
+    }
+
+    // Get siblings under new parent, sorted by displayOrder
+    const siblingIds = newParentId
+      ? qx(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
+      : qx(EARS.Entity.Note).ids().filter(nid => {
+          const parents = qx(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+          return parents.length === 0;
+        });
+
+    const siblings = siblingIds
+      .map(sid => findById<NoteEntity>(sid as EARS.EntityId))
+      .filter((n): n is NoteEntity => n !== undefined)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+
+    // Remove the moved note from siblings list
+    const filteredSiblings = siblings.filter(s => s.id !== id);
+
+    // Insert at clamped index
+    const insertAt = Math.min(newIndex, filteredSiblings.length);
+    filteredSiblings.splice(insertAt, 0, note);
+
+    // Re-index all siblings
+    for (let i = 0; i < filteredSiblings.length; i++) {
+      const sib = filteredSiblings[i];
+      if (sib.displayOrder !== i) {
+        updateEntity(sib.id, { displayOrder: i });
+        affectedIds.push(sib.id);
+      }
+    }
+
+    // If parent changed, also re-index old parent's remaining children
+    if (parentChanged && oldParentId) {
+      const oldSiblingIds = qx(oldParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
+      const oldSiblings = oldSiblingIds
+        .map(sid => findById<NoteEntity>(sid as EARS.EntityId))
+        .filter((n): n is NoteEntity => n !== undefined)
+        .sort((a, b) => a.displayOrder - b.displayOrder);
+      for (let i = 0; i < oldSiblings.length; i++) {
+        const sib = oldSiblings[i];
+        if (sib.displayOrder !== i) {
+          updateEntity(sib.id, { displayOrder: i });
+          if (!affectedIds.includes(sib.id)) affectedIds.push(sib.id);
+        }
+      }
+    }
+
+    return { oldParentId, affectedIds };
   },
 
   delete: (id: EARS.EntityId): void => {

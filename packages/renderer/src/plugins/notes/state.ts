@@ -50,6 +50,7 @@ type UIEvent =
   | { type: 'NOTE.RANGE_SELECT'; noteIds: string[] }
   | { type: 'NOTE.CLEAR_SELECTION' }
   | { type: 'NOTE.MOVE'; noteIds: string[]; newParentId: string | null }
+  | { type: 'NOTE.REORDER'; noteId: string; newParentId: string | null; newIndex: number }
   | { type: 'TASK.SELECT'; taskId: string }
   | { type: 'TASK.DESELECT' }
   | { type: 'TASK.CREATE'; parentId: string }
@@ -384,6 +385,17 @@ const notesState = setup({
       })
     },
 
+    sendReorderNote: ({ event }) => {
+      const ev = typeOf('NOTE.REORDER', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REORDER_NOTE',
+        id: ev.noteId,
+        newParentId: ev.newParentId,
+        newIndex: ev.newIndex,
+      })
+    },
+
     sendCreateTaskList: () => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -525,6 +537,7 @@ const notesState = setup({
     'NOTE.RANGE_SELECT': { actions: 'rangeSelect' },
     'NOTE.CLEAR_SELECTION': { actions: 'clearSelection' },
     'NOTE.MOVE': { actions: ['sendMoveNotes', 'clearSelection'] },
+    'NOTE.REORDER': { actions: ['sendReorderNote', 'clearSelection'] },
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },

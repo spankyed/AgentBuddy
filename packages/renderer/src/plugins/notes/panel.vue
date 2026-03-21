@@ -52,6 +52,8 @@
         :expanded-node-ids="expandedNodeIds"
         :depth="0"
         :get-item-class="getItemClass"
+        :drop-indicator-note-id="dropIndicator?.noteId ?? null"
+        :drop-indicator-position="dropIndicator?.position ?? null"
         @select="handleSelectNote"
         @toggle-expand="handleToggleExpand"
         @create="handleCreateNote"
@@ -113,12 +115,16 @@ const {
   handleDrop,
   handleDragEnd,
   getItemClass,
+  dropIndicator,
 } = useNoteTreeDragDrop({
   notes,
   selectedNoteIds,
   currentNoteId,
   onMove: (noteIds, newParentId) => {
     actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })
+  },
+  onReorder: (noteId, newParentId, newIndex) => {
+    actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })
   },
 })
 

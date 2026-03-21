@@ -21,6 +21,7 @@ function toDTO(note: NoteEntity): NoteDTO {
     completed: note.completed ?? false,
     parentId,
     displayOrder: note.displayOrder,
+    savedDisplayOrder: note.savedDisplayOrder ?? null,
     childCount,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,

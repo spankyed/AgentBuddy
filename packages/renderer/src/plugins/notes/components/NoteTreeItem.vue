@@ -1,5 +1,11 @@
 <template>
   <div>
+    <!-- Drop indicator: before -->
+    <div
+      v-if="showDropBefore"
+      class="h-0.5 bg-blue-500 mx-2 rounded-full"
+      :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
+    />
     <!-- Node row -->
     <div
       data-note-tree-item
@@ -11,7 +17,7 @@
         ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
-      :draggable="true"
+      :draggable="!(taskMode && (note.completed || muted))"
       @click="handleClick"
       @contextmenu="handleContextMenu"
       @dragstart="$emit('drag-start', $event, note.id)"
@@ -126,6 +132,12 @@
       </div>
     </div>
 
+    <!-- Drop indicator: after (only when not expanded, to avoid ambiguity) -->
+    <div
+      v-if="showDropAfter && !isExpanded"
+      class="h-0.5 bg-blue-500 mx-2 rounded-full"
+      :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
+    />
     <!-- Children (recursive) -->
     <template v-if="isExpanded && children.length > 0">
       <NoteTreeItem
@@ -139,6 +151,8 @@
         :get-item-class="getItemClass"
         :task-mode="taskMode"
         :muted="muted"
+        :drop-indicator-note-id="dropIndicatorNoteId"
+        :drop-indicator-position="dropIndicatorPosition"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
         @create="$emit('create', $event)"
@@ -177,9 +191,13 @@ const props = withDefaults(defineProps<{
   getItemClass: (noteId: string) => string
   taskMode?: boolean
   muted?: boolean
+  dropIndicatorNoteId?: string | null
+  dropIndicatorPosition?: 'before' | 'after' | null
 }>(), {
   taskMode: false,
   muted: false,
+  dropIndicatorNoteId: null,
+  dropIndicatorPosition: null,
 })
 
 const emit = defineEmits<{
@@ -229,6 +247,9 @@ onMounted(() => document.addEventListener('mousedown', handleClickOutsideTaskMen
 onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideTaskMenu))
 
 watch(showTaskMenu, (val) => onMenuOpenChange(val))
+
+const showDropBefore = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'before')
+const showDropAfter = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'after')
 
 const ownItemClass = computed(() => props.getItemClass(props.note.id))
 
