@@ -51,6 +51,13 @@ export function useNoteTreeDragDrop({
     return note?.parentId ?? null
   }
 
+  function hasDraggedTask(): boolean {
+    return draggedNoteIds.value.some(id => {
+      const note = notes.value.find(n => n.id === id)
+      return note?.noteType === 'task'
+    })
+  }
+
   function isValidDrop(targetId: string | null, position: DropPosition): boolean {
     if (!draggedNoteIds.value.length) return false
 
@@ -71,6 +78,14 @@ export function useNoteTreeDragDrop({
         if (target?.completed) return false
       }
 
+      // Tasks cannot be reordered next to non-task/non-tasklist items
+      if (hasDraggedTask() && targetId) {
+        const target = notes.value.find(n => n.id === targetId)
+        if (target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
+          return false
+        }
+      }
+
       return true
     }
 
@@ -87,14 +102,11 @@ export function useNoteTreeDragDrop({
     )
     if (allSameParent) return false
 
-    // Tasks can only be dropped on tasks or tasklists, not regular notes
-    if (targetId) {
+    // Tasks can only be dropped on tasks or tasklists
+    if (hasDraggedTask()) {
+      if (!targetId) return false
       const target = notes.value.find(n => n.id === targetId)
-      const hasDraggedTask = draggedNoteIds.value.some(id => {
-        const note = notes.value.find(n => n.id === id)
-        return note?.noteType === 'task'
-      })
-      if (hasDraggedTask && target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
+      if (target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
         return false
       }
     }
