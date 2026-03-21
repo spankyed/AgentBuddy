@@ -6,12 +6,12 @@
       class="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
-          ? 'bg-neutral-700 text-neutral-100'
-          : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+          ? taskMode && note.completed ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
+          : taskMode && note.completed ? 'text-neutral-600 hover:bg-neutral-800' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
         ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
-      :draggable="true"
+      :draggable="!taskMode"
       @click="handleClick"
       @dragstart="$emit('drag-start', $event, note.id)"
       @dragover="$emit('drag-over', $event, note.id)"
@@ -64,8 +64,29 @@
       <!-- Title -->
       <span class="truncate flex-1 ml-0.5">{{ note.title || 'Untitled' }}</span>
 
-      <!-- Actions (on hover) -->
-      <div class="hidden group-hover:flex items-center gap-0.5">
+      <!-- Task actions + checkbox (taskMode only) -->
+      <template v-if="taskMode">
+        <button
+          class="hidden group-hover:flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded transition-colors shrink-0"
+          title="Delete task"
+          @click.stop="$emit('delete', note.id)"
+        >
+          <Trash2 :size="12" />
+        </button>
+        <div class="hidden group-hover:block w-px h-3.5 bg-neutral-600 shrink-0" />
+        <button
+          class="flex items-center justify-center w-4 h-4 shrink-0 rounded border transition-colors"
+          :class="note.completed
+            ? 'border-neutral-600 bg-neutral-700'
+            : 'border-neutral-500 hover:border-neutral-300'"
+          @click.stop="$emit('toggle-complete', note.id)"
+        >
+          <Check v-if="note.completed" :size="10" class="text-neutral-400" />
+        </button>
+      </template>
+
+      <!-- Actions (on hover, normal mode) -->
+      <div v-else class="hidden group-hover:flex items-center gap-0.5">
         <button
           class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 rounded transition-colors"
           title="Add child note"
@@ -94,6 +115,7 @@
         :expanded-node-ids="expandedNodeIds"
         :depth="depth + 1"
         :get-item-class="getItemClass"
+        :task-mode="taskMode"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
         @create="$emit('create', $event)"
@@ -101,6 +123,7 @@
         @update-icon="(noteId: string, icon: string | null) => $emit('update-icon', noteId, icon)"
         @toggle-select="$emit('toggle-select', $event)"
         @shift-select="$emit('shift-select', $event)"
+        @toggle-complete="$emit('toggle-complete', $event)"
         @drag-start="(e: DragEvent, id: string) => $emit('drag-start', e, id)"
         @drag-over="(e: DragEvent, id: string) => $emit('drag-over', e, id)"
         @drag-leave="(e: DragEvent) => $emit('drag-leave', e)"
@@ -114,20 +137,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
+import { Check, ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   note: NoteDTO
   allNotes: NoteDTO[]
   currentNoteId: string | null
   expandedNodeIds: string[]
   depth: number
   getItemClass: (noteId: string) => string
-}>()
+  taskMode?: boolean
+}>(), {
+  taskMode: false,
+})
 
 const emit = defineEmits<{
   (e: 'select', noteId: string): void
@@ -142,6 +168,7 @@ const emit = defineEmits<{
   (e: 'drop', event: DragEvent, noteId: string): void
   (e: 'drag-end'): void
   (e: 'shift-select', noteId: string): void
+  (e: 'toggle-complete', noteId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {

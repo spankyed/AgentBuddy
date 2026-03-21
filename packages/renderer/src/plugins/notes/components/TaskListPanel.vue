@@ -39,51 +39,38 @@
       <div class="border-b border-neutral-800/50 mx-3 my-1" />
 
       <!-- Incomplete tasks -->
-      <div
+      <NoteTreeItem
         v-for="task in incompleteTasks"
         :key="task.id"
-        class="flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors cursor-pointer group"
-        :class="task.id === selectedTaskId ? 'bg-neutral-700 text-neutral-100' : 'text-neutral-300 hover:bg-neutral-800'"
-        @click="$emit('select-task', task.id)"
-      >
-        <button
-          class="flex items-center justify-center w-4 h-4 shrink-0 rounded border border-neutral-500 hover:border-neutral-300 transition-colors"
-          @click.stop="$emit('toggle-complete', task.id)"
-        >
-        </button>
-        <span class="truncate flex-1">{{ task.title || 'Untitled' }}</span>
-        <button
-          class="hidden group-hover:flex items-center justify-center w-4 h-4 text-neutral-500 hover:text-red-400 transition-colors shrink-0"
-          @click.stop="$emit('delete-task', task.id)"
-        >
-          <Trash2 :size="12" />
-        </button>
-      </div>
+        :note="task"
+        :all-notes="tasks"
+        :current-note-id="selectedTaskId"
+        :expanded-node-ids="[]"
+        :depth="0"
+        :get-item-class="noopItemClass"
+        :task-mode="true"
+        @select="(id: string) => $emit('select-task', id)"
+        @delete="(id: string) => $emit('delete-task', id)"
+        @toggle-complete="(id: string) => $emit('toggle-complete', id)"
+      />
 
-      <!-- Completed tasks -->
+      <!-- Completed section -->
       <template v-if="showCompleted && completedTasks.length > 0">
-        <div v-if="incompleteTasks.length > 0" class="border-b border-neutral-700/50 mx-3 my-1" />
-        <div
+        <div v-if="incompleteTasks.length > 0" class="border-b border-neutral-800/50 mx-3 my-1" />
+        <NoteTreeItem
           v-for="task in completedTasks"
           :key="task.id"
-          class="flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors cursor-pointer group"
-          :class="task.id === selectedTaskId ? 'bg-neutral-700 text-neutral-400' : 'text-neutral-600 hover:bg-neutral-800'"
-          @click="$emit('select-task', task.id)"
-        >
-          <button
-            class="flex items-center justify-center w-4 h-4 shrink-0 rounded border border-neutral-600 bg-neutral-700 transition-colors"
-            @click.stop="$emit('toggle-complete', task.id)"
-          >
-            <Check :size="10" class="text-neutral-400" />
-          </button>
-          <span class="truncate flex-1">{{ task.title || 'Untitled' }}</span>
-          <button
-            class="hidden group-hover:flex items-center justify-center w-4 h-4 text-neutral-500 hover:text-red-400 transition-colors shrink-0"
-            @click.stop="$emit('delete-task', task.id)"
-          >
-            <Trash2 :size="12" />
-          </button>
-        </div>
+          :note="task"
+          :all-notes="tasks"
+          :current-note-id="selectedTaskId"
+          :expanded-node-ids="[]"
+          :depth="0"
+          :get-item-class="noopItemClass"
+          :task-mode="true"
+          @select="(id: string) => $emit('select-task', id)"
+          @delete="(id: string) => $emit('delete-task', id)"
+          @toggle-complete="(id: string) => $emit('toggle-complete', id)"
+        />
       </template>
 
       <!-- Empty state -->
@@ -97,7 +84,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Plus, FileText, Trash2, Check, Eye, EyeOff } from 'lucide-vue-next'
+import { Plus, FileText, Eye, EyeOff } from 'lucide-vue-next'
+import NoteTreeItem from './NoteTreeItem.vue'
 
 const props = defineProps<{
   tasks: NoteDTO[]
@@ -113,6 +101,8 @@ defineEmits<{
   (e: 'toggle-complete', taskId: string): void
   (e: 'toggle-show-completed'): void
 }>()
+
+const noopItemClass = () => ''
 
 const incompleteTasks = computed(() =>
   props.tasks
