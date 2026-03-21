@@ -62,6 +62,19 @@ type UIEvent =
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<NotesEvents>()
 
+function findNearestTaskList(notes: NoteDTO[], noteId: string): NoteDTO | null {
+  let currentId: string | null = noteId
+  while (currentId) {
+    const note = notes.find(n => n.id === currentId)
+    if (!note || !note.parentId) return null
+    const parent = notes.find(n => n.id === note.parentId)
+    if (!parent) return null
+    if (parent.noteType === 'tasklist') return parent
+    currentId = parent.id
+  }
+  return null
+}
+
 function getAncestorChain(notes: NoteDTO[], noteId: string): NoteDTO[] {
   const chain: NoteDTO[] = []
   let currentId: string | null = noteId
@@ -94,6 +107,23 @@ const notesState = setup({
     selectNote: assign(({ event, context }) => {
       const noteId = (event as { noteId: string }).noteId
       const note = context.notes.find(n => n.id === noteId) || null
+
+      // If selecting a task note, open its parent tasklist instead
+      if (note?.noteType === 'task') {
+        const taskList = findNearestTaskList(context.notes, noteId)
+        if (taskList) {
+          const ancestorIds = getAncestorChain(context.notes, taskList.id).map(n => n.id)
+          return {
+            currentNoteId: taskList.id,
+            currentNote: taskList,
+            selectedNoteIds: [],
+            selectedTaskId: noteId,
+            selectedTask: note,
+            expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+          }
+        }
+      }
+
       const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
       return {
         currentNoteId: noteId,
