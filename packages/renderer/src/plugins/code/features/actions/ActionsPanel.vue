@@ -96,47 +96,55 @@
             <!-- Expanded inputs -->
             <div v-if="expandedActions.has(action.id)" class="mt-1 space-y-1">
               <div v-if="action.input && Object.keys(action.input).length > 0" class="flex flex-wrap gap-1">
-                <span
-                  v-for="(param, key) in action.input"
-                  :key="key"
-                  class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400 transition-colors"
-                >
-                  <template v-if="editingParameter?.actionId === action.id && editingParameter?.key === String(key)">
-                    <input
-                      v-model="editedParameterName"
-                      :data-edit-param="`${action.id}-${key}`"
-                      @keydown.enter.stop="confirmEditParameter(action)"
-                      @keydown.escape.stop="cancelEditParameter"
-                      @blur="confirmEditParameter(action)"
-                      @click.stop
-                      class="w-16 px-1 text-xs bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200"
-                    />
-                    <button
-                      @mousedown.prevent.stop="cancelEditParameter"
-                      class="p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
-                      title="Cancel edit"
-                    >
-                      <X :size="10" />
-                    </button>
-                  </template>
-                  <template v-else>
+                <ContextMenuRoot v-for="(param, key) in action.input" :key="key">
+                  <ContextMenuTrigger as-child>
                     <span
-                      @click.stop="startEditParameter(action.id, String(key))"
-                      class="cursor-pointer hover:text-neutral-200"
+                      @contextmenu.stop
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-neutral-800 text-neutral-400 transition-colors"
                     >
-                      <span class="font-medium">{{ key }}</span>
-                      <span class="text-neutral-500">({{ param.type }})</span>
-                      <span v-if="param.required" class="text-red-400">*</span>
+                      <template v-if="editingParameter?.actionId === action.id && editingParameter?.key === String(key)">
+                        <input
+                          v-model="editedParameterName"
+                          :data-edit-param="`${action.id}-${key}`"
+                          @keydown.enter.stop="confirmEditParameter(action)"
+                          @keydown.escape.stop="cancelEditParameter"
+                          @blur="confirmEditParameter(action)"
+                          @click.stop
+                          class="w-16 px-1 text-xs bg-transparent border-b border-blue-500 focus:outline-none text-neutral-200"
+                        />
+                        <button
+                          @mousedown.prevent.stop="cancelEditParameter"
+                          class="p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
+                          title="Cancel edit"
+                        >
+                          <X :size="10" />
+                        </button>
+                      </template>
+                      <template v-else>
+                        <span
+                          @dblclick.stop="startEditParameter(action.id, String(key))"
+                          class="cursor-pointer hover:text-neutral-200"
+                        >
+                          <span class="font-medium">{{ key }}</span>
+                          <span class="text-neutral-500">({{ param.type }})</span>
+                          <span v-if="param.required" class="text-red-400">*</span>
+                        </span>
+                      </template>
                     </span>
-                    <button
-                      @click.stop="removeParameter(action, String(key))"
-                      class="ml-0.5 p-0.5 rounded hover:bg-neutral-600 text-neutral-500 hover:text-red-400 transition-colors"
-                      title="Remove parameter"
-                    >
-                      <X :size="10" />
-                    </button>
-                  </template>
-                </span>
+                  </ContextMenuTrigger>
+                  <ContextMenuPortal>
+                    <ContextMenuContent :class="MENU_CONTENT_CLASS">
+                      <ContextMenuItem @select="startEditParameter(action.id, String(key))" :class="MENU_ITEM_CLASS">
+                        <Pencil :size="16" />
+                        Rename
+                      </ContextMenuItem>
+                      <ContextMenuItem @select="removeParameter(action, String(key))" :class="MENU_ITEM_CLASS">
+                        <Trash2 :size="16" />
+                        Delete
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenuPortal>
+                </ContextMenuRoot>
               </div>
               <div v-else-if="addingParameterForAction !== action.id" class="text-xs italic text-neutral-500">
                 No parameters
