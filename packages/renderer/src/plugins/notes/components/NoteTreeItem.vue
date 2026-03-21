@@ -74,7 +74,7 @@
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode && note.noteType === 'task'">
         <!-- Grouped action pill (visible on hover) -->
-        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0">
+        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1">
           <button
             class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
             title="Add sub-task"
