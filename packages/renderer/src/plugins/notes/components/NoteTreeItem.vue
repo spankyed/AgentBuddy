@@ -68,6 +68,13 @@
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode && note.noteType === 'task'">
         <button
+          class="hidden group-hover:flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 rounded transition-colors shrink-0"
+          title="Add sub-task"
+          @click.stop="$emit('create-task', note.id)"
+        >
+          <Plus :size="12" />
+        </button>
+        <button
           class="hidden group-hover:flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded transition-colors shrink-0"
           title="Delete task"
           @click.stop="$emit('delete', note.id)"

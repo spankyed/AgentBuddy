@@ -21,6 +21,7 @@ export interface NotesContext {
   currentNoteId: string | null
   currentNote: NoteDTO | null
   expandedNodeIds: string[]
+  taskExpandedNodeIds: string[]
   pendingPageInsert: { cursorPos: number } | null
   searchResults: NoteDTO[]
   selectedNoteIds: string[]
@@ -57,6 +58,7 @@ type UIEvent =
   | { type: 'TASK.UPDATE_CONTENT'; taskId: string; content: string }
   | { type: 'TASK.UPDATE_TITLE'; taskId: string; title: string }
   | { type: 'TASK.TOGGLE_SHOW_COMPLETED' }
+  | { type: 'TASK.TOGGLE_EXPAND'; nodeId: string }
   | { type: 'VIEW_WELCOME' }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
@@ -312,6 +314,16 @@ const notesState = setup({
       }
     }),
 
+    toggleExpandTask: assign(({ context, event }) => {
+      const ev = typeOf('TASK.TOGGLE_EXPAND', event)
+      const isExpanded = context.taskExpandedNodeIds.includes(ev.nodeId)
+      return {
+        taskExpandedNodeIds: isExpanded
+          ? context.taskExpandedNodeIds.filter(id => id !== ev.nodeId)
+          : [...context.taskExpandedNodeIds, ev.nodeId],
+      }
+    }),
+
     requestPageInsert: assign(({ event }) => {
       const ev = typeOf('NOTE.REQUEST_PAGE_INSERT', event)
       return {
@@ -480,6 +492,7 @@ const notesState = setup({
     currentNoteId: null,
     currentNote: null,
     expandedNodeIds: [],
+    taskExpandedNodeIds: [],
     pendingPageInsert: null,
     searchResults: [],
     selectedNoteIds: [],
@@ -507,6 +520,7 @@ const notesState = setup({
       },
     ],
     'NOTE.TOGGLE_EXPAND': { actions: 'toggleExpand' },
+    'TASK.TOGGLE_EXPAND': { actions: 'toggleExpandTask' },
     'NOTE.TOGGLE_SELECT': { actions: 'toggleSelect' },
     'NOTE.RANGE_SELECT': { actions: 'rangeSelect' },
     'NOTE.CLEAR_SELECTION': { actions: 'clearSelection' },
@@ -595,7 +609,7 @@ const notesState = setup({
                   currentNote: taskList,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
-                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, taskList.id])],
+                  taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, taskList.id])],
                 }
               }),
               'sendViewNote',
@@ -694,7 +708,7 @@ const notesState = setup({
                 notes: updatedNotes,
                 selectedTaskId: ev.note.id,
                 selectedTask: ev.note,
-                expandedNodeIds: [...new Set([...context.expandedNodeIds, ...intermediateIds, ...(context.currentNoteId ? [context.currentNoteId] : [])])],
+                taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...intermediateIds, ...(context.currentNoteId ? [context.currentNoteId] : [])])],
               }
             }),
           },
@@ -720,7 +734,7 @@ const notesState = setup({
                   currentNote: taskList,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
-                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, ...intermediateIds, taskList.id])],
+                  taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, ...intermediateIds, taskList.id])],
                 }
               }),
               'sendViewNote',

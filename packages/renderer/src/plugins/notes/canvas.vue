@@ -116,7 +116,7 @@
         :tasks="taskChildren"
         :all-notes="taskDescendants"
         :selected-task-id="selectedTaskId"
-        :expanded-node-ids="expandedNodeIds"
+        :expanded-node-ids="taskExpandedNodeIds"
         :current-note-id="currentNote.id"
         :show-completed="showCompletedTasks"
         @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
@@ -126,7 +126,7 @@
         @delete-task="(taskId: string) => actor.send({ type: 'TASK.DELETE', taskId })"
         @toggle-complete="(taskId: string) => actor.send({ type: 'TASK.TOGGLE_COMPLETE', taskId })"
         @toggle-show-completed="actor.send({ type: 'TASK.TOGGLE_SHOW_COMPLETED' })"
-        @toggle-expand="(nodeId: string) => actor.send({ type: 'NOTE.TOGGLE_EXPAND', nodeId })"
+        @toggle-expand="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_EXPAND', nodeId })"
         @move-task="(noteIds: string[], newParentId: string | null) => actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })"
       />
 
@@ -206,7 +206,7 @@ const showCompletedTasks = useSelector(actor, (s) => s.context.showCompletedTask
 
 const isTaskList = computed(() => currentNote.value?.noteType === 'tasklist')
 const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
-const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
+const taskExpandedNodeIds = useSelector(actor, (s) => s.context.taskExpandedNodeIds)
 const taskChildren = computed(() =>
   notes.value
     .filter(n => n.parentId === currentNote.value?.id)
