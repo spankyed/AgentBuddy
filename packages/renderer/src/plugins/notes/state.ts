@@ -131,7 +131,7 @@ const notesState = setup({
         selectedNoteIds: [],
         selectedTaskId: null,
         selectedTask: null,
-        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, noteId])],
       }
     }),
 
@@ -251,10 +251,13 @@ const notesState = setup({
 
     addCreatedNote: assign(({ context, event }) => {
       const ev = typeOf('NOTE_CREATED', event)
+      const updatedNotes = [...context.notes, ev.note]
+      const ancestorIds = getAncestorChain(updatedNotes, ev.note.id).map(n => n.id)
       return {
-        notes: [...context.notes, ev.note],
+        notes: updatedNotes,
         currentNoteId: ev.note.id,
         currentNote: ev.note,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
 
@@ -592,7 +595,7 @@ const notesState = setup({
                   currentNote: taskList,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
-                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, taskList.id])],
                 }
               }),
               'sendViewNote',
@@ -683,10 +686,15 @@ const notesState = setup({
             },
             actions: assign(({ context, event }) => {
               const ev = typeOf('NOTE_CREATED', event)
+              const updatedNotes = [...context.notes, ev.note]
+              const taskAncestors = getAncestorChain(updatedNotes, ev.note.id)
+              const taskListIndex = taskAncestors.findIndex(a => a.id === context.currentNoteId)
+              const intermediateIds = taskAncestors.slice(taskListIndex + 1).map(a => a.id)
               return {
-                notes: [...context.notes, ev.note],
+                notes: updatedNotes,
                 selectedTaskId: ev.note.id,
                 selectedTask: ev.note,
+                expandedNodeIds: [...new Set([...context.expandedNodeIds, ...intermediateIds, ...(context.currentNoteId ? [context.currentNoteId] : [])])],
               }
             }),
           },
@@ -699,16 +707,20 @@ const notesState = setup({
             actions: [
               assign(({ context, event }) => {
                 const ev = typeOf('NOTE_CREATED', event)
-                const taskList = findNearestTaskList([...context.notes, ev.note], ev.note.id)
-                if (!taskList) return { notes: [...context.notes, ev.note] }
-                const ancestorIds = getAncestorChain([...context.notes, ev.note], taskList.id).map(n => n.id)
+                const updatedNotes = [...context.notes, ev.note]
+                const taskList = findNearestTaskList(updatedNotes, ev.note.id)
+                if (!taskList) return { notes: updatedNotes }
+                const ancestorIds = getAncestorChain(updatedNotes, taskList.id).map(n => n.id)
+                const taskAncestors = getAncestorChain(updatedNotes, ev.note.id)
+                const taskListIndex = taskAncestors.findIndex(a => a.id === taskList.id)
+                const intermediateIds = taskAncestors.slice(taskListIndex + 1).map(a => a.id)
                 return {
-                  notes: [...context.notes, ev.note],
+                  notes: updatedNotes,
                   currentNoteId: taskList.id,
                   currentNote: taskList,
                   selectedTaskId: ev.note.id,
                   selectedTask: ev.note,
-                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+                  expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, ...intermediateIds, taskList.id])],
                 }
               }),
               'sendViewNote',
