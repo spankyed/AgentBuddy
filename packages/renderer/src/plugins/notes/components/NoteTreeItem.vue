@@ -73,21 +73,24 @@
 
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode && note.noteType === 'task'">
-        <button
-          class="hidden group-hover:flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 rounded transition-colors shrink-0"
-          title="Add sub-task"
-          @click.stop="$emit('create-task', note.id)"
-        >
-          <Plus :size="12" />
-        </button>
-        <button
-          class="hidden group-hover:flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded transition-colors shrink-0"
-          title="Delete task"
-          @click.stop="$emit('delete', note.id)"
-        >
-          <Trash2 :size="12" />
-        </button>
-        <div class="hidden group-hover:block w-px h-3.5 bg-neutral-600 shrink-0" />
+        <!-- Grouped action pill (visible on hover) -->
+        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 py-0.5 shrink-0">
+          <button
+            class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
+            title="Add sub-task"
+            @click.stop="$emit('create-task', note.id)"
+          >
+            <Plus :size="13" />
+          </button>
+          <button
+            class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+            title="Delete task"
+            @click.stop="$emit('delete', note.id)"
+          >
+            <Trash2 :size="13" />
+          </button>
+        </div>
+        <!-- Checkbox (always visible) -->
         <button
           class="flex items-center justify-center w-4 h-4 shrink-0 rounded border transition-colors"
           :class="note.completed
@@ -100,20 +103,20 @@
       </template>
 
       <!-- Actions (on hover, normal mode) -->
-      <div v-else class="hidden group-hover:flex items-center gap-0.5">
+      <div v-else class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 py-0.5">
         <button
-          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 rounded transition-colors"
+          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
           :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
           @click.stop="isTaskRelated ? $emit('create-task', note.id) : $emit('create', note.id)"
         >
-          <Plus :size="12" />
+          <Plus :size="13" />
         </button>
         <button
-          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded transition-colors"
+          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
           title="Delete note"
           @click.stop="$emit('delete', note.id)"
         >
-          <Trash2 :size="12" />
+          <Trash2 :size="13" />
         </button>
       </div>
 
