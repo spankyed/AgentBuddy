@@ -11,7 +11,7 @@
         ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
-      :draggable="!taskMode"
+      :draggable="true"
       @click="handleClick"
       @contextmenu="handleContextMenu"
       @dragstart="$emit('drag-start', $event, note.id)"
@@ -66,7 +66,7 @@
       <span class="truncate flex-1 ml-0.5" :class="note.completed && !taskMode ? 'line-through text-neutral-600' : ''">{{ note.title || 'Untitled' }}</span>
 
       <!-- Task actions + checkbox (taskMode only) -->
-      <template v-if="taskMode">
+      <template v-if="taskMode && note.noteType === 'task'">
         <button
           class="hidden group-hover:flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded transition-colors shrink-0"
           title="Delete task"

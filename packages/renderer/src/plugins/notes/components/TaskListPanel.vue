@@ -24,7 +24,11 @@
     </div>
 
     <!-- Task list -->
-    <div class="flex-1 overflow-y-auto py-1">
+    <div
+      class="flex-1 overflow-y-auto py-1"
+      @dragover.prevent="handleRootDragOver"
+      @drop="handleRootDrop"
+    >
       <!-- Overview item -->
       <button
         class="w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors text-left"
@@ -43,15 +47,22 @@
         v-for="task in incompleteTasks"
         :key="task.id"
         :note="task"
-        :all-notes="tasks"
+        :all-notes="allNotes"
         :current-note-id="selectedTaskId"
-        :expanded-node-ids="[]"
+        :expanded-node-ids="expandedNodeIds"
         :depth="0"
-        :get-item-class="noopItemClass"
+        :get-item-class="getItemClass"
         :task-mode="true"
         @select="(id: string) => $emit('select-task', id)"
+        @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
         @delete="(id: string) => $emit('delete-task', id)"
         @toggle-complete="(id: string) => $emit('toggle-complete', id)"
+        @create-task="(parentId: string) => $emit('create-task-child', parentId)"
+        @drag-start="handleDragStart"
+        @drag-over="handleDragOver"
+        @drag-leave="handleDragLeave"
+        @drop="handleDrop"
+        @drag-end="handleDragEnd"
       />
 
       <!-- Completed section -->
@@ -61,15 +72,22 @@
           v-for="task in completedTasks"
           :key="task.id"
           :note="task"
-          :all-notes="tasks"
+          :all-notes="allNotes"
           :current-note-id="selectedTaskId"
-          :expanded-node-ids="[]"
+          :expanded-node-ids="expandedNodeIds"
           :depth="0"
-          :get-item-class="noopItemClass"
+          :get-item-class="getItemClass"
           :task-mode="true"
           @select="(id: string) => $emit('select-task', id)"
+          @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
           @delete="(id: string) => $emit('delete-task', id)"
           @toggle-complete="(id: string) => $emit('toggle-complete', id)"
+          @create-task="(parentId: string) => $emit('create-task-child', parentId)"
+          @drag-start="handleDragStart"
+          @drag-over="handleDragOver"
+          @drag-leave="handleDragLeave"
+          @drop="handleDrop"
+          @drag-end="handleDragEnd"
         />
       </template>
 
@@ -82,27 +100,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
 import { Plus, FileText, Eye, EyeOff } from 'lucide-vue-next'
 import NoteTreeItem from './NoteTreeItem.vue'
+import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
 
 const props = defineProps<{
   tasks: NoteDTO[]
+  allNotes: NoteDTO[]
   selectedTaskId: string | null
+  expandedNodeIds: string[]
+  currentNoteId: string | null
   showCompleted: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select-task', taskId: string): void
   (e: 'deselect-task'): void
   (e: 'create-task'): void
+  (e: 'create-task-child', parentId: string): void
   (e: 'delete-task', taskId: string): void
   (e: 'toggle-complete', taskId: string): void
   (e: 'toggle-show-completed'): void
+  (e: 'toggle-expand', nodeId: string): void
+  (e: 'move-task', noteIds: string[], newParentId: string | null): void
 }>()
 
-const noopItemClass = () => ''
+const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, getItemClass } =
+  useNoteTreeDragDrop({
+    notes: computed(() => props.allNotes),
+    selectedNoteIds: ref([]),
+    currentNoteId: computed(() => props.selectedTaskId),
+    onMove: (noteIds, newParentId) => emit('move-task', noteIds, newParentId),
+  })
+
+function handleRootDragOver(e: DragEvent) {
+  e.dataTransfer!.dropEffect = 'move'
+}
+
+function handleRootDrop(e: DragEvent) {
+  handleDrop(e, props.currentNoteId)
+}
 
 const incompleteTasks = computed(() =>
   props.tasks

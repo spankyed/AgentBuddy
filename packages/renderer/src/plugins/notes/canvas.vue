@@ -114,14 +114,20 @@
       <TaskListPanel
         v-if="isTaskList"
         :tasks="taskChildren"
+        :all-notes="taskDescendants"
         :selected-task-id="selectedTaskId"
+        :expanded-node-ids="expandedNodeIds"
+        :current-note-id="currentNote.id"
         :show-completed="showCompletedTasks"
         @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
         @deselect-task="actor.send({ type: 'TASK.DESELECT' })"
         @create-task="actor.send({ type: 'TASK.CREATE', parentId: currentNote.id })"
+        @create-task-child="(parentId: string) => actor.send({ type: 'TASK.CREATE', parentId })"
         @delete-task="(taskId: string) => actor.send({ type: 'TASK.DELETE', taskId })"
         @toggle-complete="(taskId: string) => actor.send({ type: 'TASK.TOGGLE_COMPLETE', taskId })"
         @toggle-show-completed="actor.send({ type: 'TASK.TOGGLE_SHOW_COMPLETED' })"
+        @toggle-expand="(nodeId: string) => actor.send({ type: 'NOTE.TOGGLE_EXPAND', nodeId })"
+        @move-task="(noteIds: string[], newParentId: string | null) => actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })"
       />
 
       <!-- Editor area -->
@@ -178,6 +184,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
+import type { NoteDTO } from '@app/api'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
@@ -199,10 +206,27 @@ const showCompletedTasks = useSelector(actor, (s) => s.context.showCompletedTask
 
 const isTaskList = computed(() => currentNote.value?.noteType === 'tasklist')
 const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
+const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
 const taskChildren = computed(() =>
   notes.value
     .filter(n => n.parentId === currentNote.value?.id)
 )
+const taskDescendants = computed(() => {
+  if (!currentNote.value) return []
+  const rootId = currentNote.value.id
+  const result: NoteDTO[] = []
+  const queue = [rootId]
+  while (queue.length > 0) {
+    const parentId = queue.shift()!
+    for (const n of notes.value) {
+      if (n.parentId === parentId) {
+        result.push(n)
+        queue.push(n.id)
+      }
+    }
+  }
+  return result
+})
 
 const searchQuery = ref('')
 const searchResults = useSelector(actor, (s) => s.context.searchResults)
