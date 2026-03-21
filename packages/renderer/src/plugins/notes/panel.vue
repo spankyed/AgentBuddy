@@ -114,6 +114,7 @@ const {
   handleDragLeave,
   handleDrop,
   handleDragEnd,
+  cancelDragLeave,
   getItemClass,
   dropIndicator,
 } = useNoteTreeDragDrop({
@@ -204,6 +205,7 @@ function handleOutsideClick(e: MouseEvent) {
 }
 
 function handleRootDragOver(e: DragEvent) {
+  cancelDragLeave()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 

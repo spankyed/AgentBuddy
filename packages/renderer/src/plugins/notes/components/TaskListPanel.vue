@@ -131,7 +131,7 @@ const emit = defineEmits<{
   (e: 'reorder-task', noteId: string, newParentId: string | null, newIndex: number): void
 }>()
 
-const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, getItemClass, dropIndicator } =
+const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, cancelDragLeave, getItemClass, dropIndicator } =
   useNoteTreeDragDrop({
     notes: computed(() => props.allNotes),
     selectedNoteIds: ref([]),
@@ -141,6 +141,7 @@ const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDrag
   })
 
 function handleRootDragOver(e: DragEvent) {
+  cancelDragLeave()
   e.dataTransfer!.dropEffect = 'move'
 }
 

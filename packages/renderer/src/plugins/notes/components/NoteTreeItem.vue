@@ -3,7 +3,7 @@
     <!-- Drop indicator: before -->
     <div
       v-if="showDropBefore"
-      class="h-0.5 bg-blue-500 mx-2 rounded-full"
+      class="h-0.5 bg-blue-500 mx-2 rounded-full pointer-events-none"
       :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
     />
     <!-- Node row -->
@@ -135,7 +135,7 @@
     <!-- Drop indicator: after (only when not expanded, to avoid ambiguity) -->
     <div
       v-if="showDropAfter && !isExpanded"
-      class="h-0.5 bg-blue-500 mx-2 rounded-full"
+      class="h-0.5 bg-blue-500 mx-2 rounded-full pointer-events-none"
       :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
     />
     <!-- Children (recursive) -->

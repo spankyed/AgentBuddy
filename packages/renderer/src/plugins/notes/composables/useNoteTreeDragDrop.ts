@@ -26,6 +26,7 @@ export function useNoteTreeDragDrop({
   const draggedNoteIds = ref<string[]>([])
   const dropTarget = ref<DropTarget | null>(null)
   const isDragging = ref(false)
+  let dragLeaveTimer: ReturnType<typeof setTimeout> | null = null
 
   function getDraggedItems(noteId: string): string[] {
     const effective = new Set(selectedNoteIds.value)
@@ -129,6 +130,12 @@ export function useNoteTreeDragDrop({
     e.preventDefault()
     if (!e.dataTransfer) return
 
+    // Cancel any pending drag-leave clear
+    if (dragLeaveTimer) {
+      clearTimeout(dragLeaveTimer)
+      dragLeaveTimer = null
+    }
+
     const target = e.currentTarget as HTMLElement
     const rect = target.getBoundingClientRect()
     const relativeY = (e.clientY - rect.top) / rect.height
@@ -157,11 +164,14 @@ export function useNoteTreeDragDrop({
     dropTarget.value = { noteId, position }
   }
 
-  function handleDragLeave(e: DragEvent) {
-    const related = e.relatedTarget as HTMLElement
-    if (!related || !related.closest('[data-note-tree-item]')) {
+  function handleDragLeave(_e: DragEvent) {
+    // Defer clearing so the next dragover (on an adjacent item) can cancel it.
+    // This prevents flicker when the cursor crosses gaps between items.
+    if (dragLeaveTimer) clearTimeout(dragLeaveTimer)
+    dragLeaveTimer = setTimeout(() => {
       dropTarget.value = null
-    }
+      dragLeaveTimer = null
+    }, 50)
   }
 
   function handleDrop(e: DragEvent, targetId: string | null) {
@@ -220,7 +230,18 @@ export function useNoteTreeDragDrop({
     handleDragEnd()
   }
 
+  function cancelDragLeave() {
+    if (dragLeaveTimer) {
+      clearTimeout(dragLeaveTimer)
+      dragLeaveTimer = null
+    }
+  }
+
   function handleDragEnd() {
+    if (dragLeaveTimer) {
+      clearTimeout(dragLeaveTimer)
+      dragLeaveTimer = null
+    }
     draggedNoteIds.value = []
     dropTarget.value = null
     isDragging.value = false
@@ -259,6 +280,7 @@ export function useNoteTreeDragDrop({
     handleDragLeave,
     handleDrop,
     handleDragEnd,
+    cancelDragLeave,
     getItemClass,
   }
 }
