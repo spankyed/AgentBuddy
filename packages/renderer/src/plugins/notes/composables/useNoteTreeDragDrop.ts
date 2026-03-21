@@ -56,6 +56,19 @@ export function useNoteTreeDragDrop({
       id => getCurrentParentId(id) === targetId
     )
     if (allSameParent) return false
+
+    // Tasks can only be dropped on tasks or tasklists, not regular notes
+    if (targetId) {
+      const target = notes.value.find(n => n.id === targetId)
+      const hasDraggedTask = draggedNoteIds.value.some(id => {
+        const note = notes.value.find(n => n.id === id)
+        return note?.noteType === 'task'
+      })
+      if (hasDraggedTask && target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
+        return false
+      }
+    }
+
     return true
   }
 

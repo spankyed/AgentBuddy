@@ -165,7 +165,7 @@ export const noteCommands = {
     if (newParentId) {
       createRelation(newParentId, EARS.RelKind.CONTAINS, id);
       const newParent = findById<NoteEntity>(newParentId);
-      if (newParent) {
+      if (newParent && newParent.noteType !== 'tasklist' && newParent.noteType !== 'task') {
         const linkMarkdown = `\n\n[${note.title}](page://${id})`;
         const newContent = (newParent.content || '') + linkMarkdown;
         updateEntity(newParentId, { content: newContent });
