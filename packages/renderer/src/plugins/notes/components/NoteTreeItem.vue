@@ -6,8 +6,8 @@
       class="relative flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
-          ? taskMode && note.completed ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
-          : taskMode && note.completed ? 'text-neutral-600 hover:bg-neutral-800' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+          ? taskMode && (note.completed || muted) ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
+          : taskMode && (note.completed || muted) ? 'text-neutral-600 hover:bg-neutral-800' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
         ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
@@ -63,7 +63,7 @@
       </EmojiPicker>
 
       <!-- Title -->
-      <span class="truncate flex-1 ml-0.5" :class="note.completed && !taskMode ? 'line-through text-neutral-600' : ''">{{ note.title || 'Untitled' }}</span>
+      <span class="truncate flex-1 ml-0.5" :class="note.completed ? 'line-through' : ''">{{ note.title || 'Untitled' }}</span>
 
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode && note.noteType === 'task'">
@@ -138,6 +138,7 @@
         :depth="depth + 1"
         :get-item-class="getItemClass"
         :task-mode="taskMode"
+        :muted="muted"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
         @create="$emit('create', $event)"
@@ -175,8 +176,10 @@ const props = withDefaults(defineProps<{
   depth: number
   getItemClass: (noteId: string) => string
   taskMode?: boolean
+  muted?: boolean
 }>(), {
   taskMode: false,
+  muted: false,
 })
 
 const emit = defineEmits<{

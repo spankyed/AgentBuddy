@@ -118,6 +118,8 @@
         :selected-task-id="selectedTaskId"
         :expanded-node-ids="taskExpandedNodeIds"
         :current-note-id="currentNote.id"
+        :current-note-title="currentNote.title"
+        :current-note-icon="currentNote.icon"
         :show-completed="showCompletedTasks"
         @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
         @deselect-task="actor.send({ type: 'TASK.DESELECT' })"

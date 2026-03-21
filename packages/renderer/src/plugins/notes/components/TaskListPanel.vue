@@ -2,7 +2,15 @@
   <div class="flex flex-col h-full w-[250px] min-w-[250px] border-r border-neutral-800">
     <!-- Header -->
     <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
-      <span class="text-sm font-medium text-neutral-300">Tasks</span>
+      <button
+        class="flex items-center gap-1.5 text-sm font-medium transition-colors rounded px-1 -ml-1"
+        :class="!selectedTaskId ? 'text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'"
+        @click="$emit('deselect-task')"
+      >
+        <span v-if="currentNoteIcon" class="text-sm leading-none shrink-0">{{ currentNoteIcon }}</span>
+        <ListChecks v-else :size="14" class="text-neutral-500 shrink-0" />
+        <span class="truncate">{{ currentNoteTitle || 'Untitled' }}</span>
+      </button>
       <div class="flex items-center gap-1">
         <button
           class="flex items-center justify-center w-6 h-6 rounded transition-colors"
@@ -29,18 +37,6 @@
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
-      <!-- Overview item -->
-      <button
-        class="w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors text-left"
-        :class="!selectedTaskId ? 'bg-neutral-700 text-neutral-100' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'"
-        @click="$emit('deselect-task')"
-      >
-        <FileText :size="14" class="text-neutral-500 shrink-0" />
-        <span class="truncate">Overview</span>
-      </button>
-
-      <!-- Divider -->
-      <div class="border-b border-neutral-800/50 mx-3 my-1" />
 
       <!-- Incomplete tasks -->
       <NoteTreeItem
@@ -78,6 +74,7 @@
           :depth="0"
           :get-item-class="getItemClass"
           :task-mode="true"
+          :muted="true"
           @select="(id: string) => $emit('select-task', id)"
           @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
           @delete="(id: string) => $emit('delete-task', id)"
@@ -102,7 +99,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Plus, FileText, Eye, EyeOff } from 'lucide-vue-next'
+import { Plus, ListChecks, Eye, EyeOff } from 'lucide-vue-next'
 import NoteTreeItem from './NoteTreeItem.vue'
 import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
 
@@ -112,6 +109,8 @@ const props = defineProps<{
   selectedTaskId: string | null
   expandedNodeIds: string[]
   currentNoteId: string | null
+  currentNoteTitle: string
+  currentNoteIcon: string | null
   showCompleted: boolean
 }>()
 
