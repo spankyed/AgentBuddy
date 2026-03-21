@@ -214,8 +214,8 @@ function handleClickOutsideTaskMenu(e: MouseEvent) {
   }
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutsideTaskMenu))
-onUnmounted(() => document.removeEventListener('click', handleClickOutsideTaskMenu))
+onMounted(() => document.addEventListener('mousedown', handleClickOutsideTaskMenu))
+onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideTaskMenu))
 
 const ownItemClass = computed(() => props.getItemClass(props.note.id))
 

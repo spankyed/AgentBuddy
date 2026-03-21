@@ -90,8 +90,8 @@ function handleClickOutsideMenu(e: MouseEvent) {
   }
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutsideMenu))
-onUnmounted(() => document.removeEventListener('click', handleClickOutsideMenu))
+onMounted(() => document.addEventListener('mousedown', handleClickOutsideMenu))
+onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideMenu))
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
