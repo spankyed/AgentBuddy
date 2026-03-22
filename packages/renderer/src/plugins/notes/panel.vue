@@ -30,7 +30,7 @@
             class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
             @click="handleCreateTaskList(); showCreateMenu = false"
           >
-            Task List
+            New Task List
           </button>
         </div>
       </div>

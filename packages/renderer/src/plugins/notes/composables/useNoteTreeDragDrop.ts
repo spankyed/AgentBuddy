@@ -84,6 +84,17 @@ export function useNoteTreeDragDrop({
         if (target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
           return false
         }
+        // Also check that the target's parent is a valid task container
+        // (dropping before/after places the item at the target's parent level)
+        if (target?.parentId) {
+          const parent = notes.value.find(n => n.id === target.parentId)
+          if (parent?.noteType !== 'task' && parent?.noteType !== 'tasklist') {
+            return false
+          }
+        } else {
+          // Target is at root level — tasks can't go to root
+          return false
+        }
       }
 
       return true
