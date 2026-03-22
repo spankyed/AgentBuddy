@@ -221,8 +221,7 @@ export function useNoteTreeDragDrop({
       }
       // Single-item: use onReorder for proper displayOrder indexing
       if (onReorder && draggedNoteIds.value.length === 1) {
-        const childrenCount = notes.value.filter(n => n.parentId === targetId).length
-        onReorder(draggedNoteIds.value[0], targetId, childrenCount)
+        onReorder(draggedNoteIds.value[0], targetId, 0)
       } else {
         onMove(draggedNoteIds.value, targetId)
       }
