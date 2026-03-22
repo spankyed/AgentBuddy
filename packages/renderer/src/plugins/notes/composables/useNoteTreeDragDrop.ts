@@ -152,13 +152,18 @@ export function useNoteTreeDragDrop({
     const rect = target.getBoundingClientRect()
     const relativeY = (e.clientY - rect.top) / rect.height
 
+    // Hysteresis: use biased thresholds based on current position to prevent flickering
+    const currentPosition = dropTarget.value?.noteId === noteId ? dropTarget.value.position : null
+
     let position: DropPosition
-    if (relativeY < 0.25) {
-      position = 'before'
-    } else if (relativeY > 0.75) {
-      position = 'after'
+    if (currentPosition === 'before') {
+      position = relativeY < 0.40 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+    } else if (currentPosition === 'after') {
+      position = relativeY > 0.60 ? 'after' : relativeY < 0.30 ? 'before' : 'on'
+    } else if (currentPosition === 'on') {
+      position = relativeY < 0.20 ? 'before' : relativeY > 0.80 ? 'after' : 'on'
     } else {
-      position = 'on'
+      position = relativeY < 0.30 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
     }
 
     if (!isValidDrop(noteId, position)) {
@@ -171,6 +176,9 @@ export function useNoteTreeDragDrop({
         return
       }
     }
+
+    // Skip update if nothing changed
+    if (dropTarget.value?.noteId === noteId && dropTarget.value?.position === position) return
 
     e.dataTransfer.dropEffect = 'move'
     dropTarget.value = { noteId, position }
@@ -211,7 +219,13 @@ export function useNoteTreeDragDrop({
         handleDragEnd()
         return
       }
-      onMove(draggedNoteIds.value, targetId)
+      // Single-item: use onReorder for proper displayOrder indexing
+      if (onReorder && draggedNoteIds.value.length === 1) {
+        const childrenCount = notes.value.filter(n => n.parentId === targetId).length
+        onReorder(draggedNoteIds.value[0], targetId, childrenCount)
+      } else {
+        onMove(draggedNoteIds.value, targetId)
+      }
       handleDragEnd()
       return
     }
