@@ -199,7 +199,7 @@ import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, Chevron
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
-import { useDocumentInsert } from './composables/useDocumentInsert'
+import { useSubDocumentInsert } from './composables/useSubDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
 
 const actor: NotesState = applicationState.system.get(id)
@@ -302,7 +302,7 @@ onMounted(() => nextTick(updateScrollState))
 
 // Composables
 useNoteFocus(actor, titleRef, editorRef)
-useDocumentInsert(actor, editorRef, editingNote)
+useSubDocumentInsert(actor, editorRef, editingNote)
 
 // Debounced handlers
 const SAVE_DEBOUNCE_MS = 150

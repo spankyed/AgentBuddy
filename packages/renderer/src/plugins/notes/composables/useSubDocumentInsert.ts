@@ -4,27 +4,27 @@ import type { NotesState } from '../state'
 import type { NoteDTO } from '@app/api'
 import type TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
-export function useDocumentInsert(
+export function useSubDocumentInsert(
   actor: NotesState,
   editorRef: Ref<InstanceType<typeof TiptapEditor> | null>,
   editingNote: Ref<NoteDTO | null>,
 ) {
-  const pendingDocumentInsert = useSelector(actor, (s) => s.context.pendingDocumentInsert)
+  const pendingSubDocumentInsert = useSelector(actor, (s) => s.context.pendingSubDocumentInsert)
 
   watch(
-    () => pendingDocumentInsert.value,
+    () => pendingSubDocumentInsert.value,
     (newVal, oldVal) => {
-      // When pendingDocumentInsert transitions from non-null to null, the child was created
+      // When pendingSubDocumentInsert transitions from non-null to null, the child was created
       if (!oldVal || newVal) return
 
       const noteId = editingNote.value?.id
       const editor = editorRef.value?.editor
       if (!noteId || !editor) return
 
-      const { notes, lastDocumentInsertChildId } = actor.getSnapshot().context
-      if (!lastDocumentInsertChildId) return
+      const { notes, lastSubDocumentInsertChildId } = actor.getSnapshot().context
+      if (!lastSubDocumentInsertChildId) return
 
-      const newChild = notes.find(n => n.id === lastDocumentInsertChildId)
+      const newChild = notes.find(n => n.id === lastSubDocumentInsertChildId)
       if (!newChild) return
 
       editor

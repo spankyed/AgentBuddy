@@ -22,8 +22,8 @@ export interface NotesContext {
   currentNote: NoteDTO | null
   expandedNodeIds: string[]
   taskExpandedNodeIds: string[]
-  pendingDocumentInsert: { cursorPos: number } | null
-  lastDocumentInsertChildId: string | null
+  pendingSubDocumentInsert: { cursorPos: number } | null
+  lastSubDocumentInsertChildId: string | null
   searchResults: NoteDTO[]
   selectedNoteIds: string[]
   selectedTaskId: string | null
@@ -300,10 +300,10 @@ const notesState = setup({
       }
     }),
 
-    handleDocumentInsertCreated: assign(({ context, event }) => {
+    handleSubDocumentInsertCreated: assign(({ context, event }) => {
       const ev = typeOf('NOTE_CREATED', event)
-      // Only handle if there's a pending document insert and the new note has a parent
-      if (!context.pendingDocumentInsert || !ev.note.parentId) return {}
+      // Only handle if there's a pending sub-document insert and the new note has a parent
+      if (!context.pendingSubDocumentInsert || !ev.note.parentId) return {}
       const validParentId = context.selectedTaskId ?? context.currentNoteId
       if (ev.note.parentId !== validParentId) return {}
 
@@ -311,8 +311,8 @@ const notesState = setup({
       // component can insert the link without guessing by timestamp
       return {
         notes: [...context.notes, ev.note],
-        pendingDocumentInsert: null,
-        lastDocumentInsertChildId: ev.note.id,
+        pendingSubDocumentInsert: null,
+        lastSubDocumentInsertChildId: ev.note.id,
       }
     }),
 
@@ -363,14 +363,14 @@ const notesState = setup({
       }
     }),
 
-    requestDocumentInsert: assign(({ event }) => {
+    requestSubDocumentInsert: assign(({ event }) => {
       const ev = typeOf('NOTE.REQUEST_DOCUMENT_INSERT', event)
       return {
-        pendingDocumentInsert: { cursorPos: ev.cursorPos },
+        pendingSubDocumentInsert: { cursorPos: ev.cursorPos },
       }
     }),
 
-    sendCreateChildForDocumentInsert: ({ event }) => {
+    sendCreateChildForSubDocumentInsert: ({ event }) => {
       const ev = typeOf('NOTE.REQUEST_DOCUMENT_INSERT', event)
       trpc.bus.send.mutate({
         systemId: id,
@@ -577,8 +577,8 @@ const notesState = setup({
     currentNote: null,
     expandedNodeIds: [],
     taskExpandedNodeIds: [],
-    pendingDocumentInsert: null,
-    lastDocumentInsertChildId: null,
+    pendingSubDocumentInsert: null,
+    lastSubDocumentInsertChildId: null,
     searchResults: [],
     selectedNoteIds: [],
     selectedTaskId: null,
@@ -783,8 +783,8 @@ const notesState = setup({
         },
         NOTE_CREATED: [
           {
-            guard: ({ context }) => context.pendingDocumentInsert !== null,
-            actions: 'handleDocumentInsertCreated',
+            guard: ({ context }) => context.pendingSubDocumentInsert !== null,
+            actions: 'handleSubDocumentInsertCreated',
           },
           {
             // If the new note's parent is the current tasklist, add to list but don't navigate
@@ -848,7 +848,7 @@ const notesState = setup({
           actions: ['selectNote', 'sendViewNote'],
         },
         'NOTE.REQUEST_DOCUMENT_INSERT': {
-          actions: ['requestDocumentInsert', 'sendCreateChildForDocumentInsert'],
+          actions: ['requestSubDocumentInsert', 'sendCreateChildForSubDocumentInsert'],
         },
         'VIEW_WELCOME': {
           actions: 'clearCurrentNote',
