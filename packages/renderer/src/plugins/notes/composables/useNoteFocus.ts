@@ -18,7 +18,7 @@ export function useNoteFocus(
       if (isNewNote) {
         titleRef.value?.focus()
         titleRef.value?.select()
-      } else {
+      } else if (note.noteType !== 'tasklist') {
         editorRef.value?.editor?.commands.focus('start')
       }
     })
