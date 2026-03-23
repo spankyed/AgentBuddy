@@ -75,6 +75,7 @@
         @toggle-complete="(id: string) => $emit('toggle-complete', id)"
         @create-task="(parentId: string) => $emit('create-task-child', parentId)"
         @create="(parentId: string) => $emit('create-subnote', parentId)"
+        @open="(noteId: string) => $emit('open-tasklist', noteId)"
         @drag-start="handleDragStart"
         @drag-over="handleDragOver"
         @drag-leave="handleDragLeave"
@@ -104,6 +105,7 @@
           @toggle-complete="(id: string) => $emit('toggle-complete', id)"
           @create-task="(parentId: string) => $emit('create-task-child', parentId)"
           @create="(parentId: string) => $emit('create-subnote', parentId)"
+          @open="(noteId: string) => $emit('open-tasklist', noteId)"
           @drag-start="handleDragStart"
           @drag-over="handleDragOver"
           @drag-leave="handleDragLeave"
@@ -151,6 +153,7 @@ const emit = defineEmits<{
   (e: 'move-task', noteIds: string[], newParentId: string | null): void
   (e: 'reorder-task', noteId: string, newParentId: string | null, newIndex: number): void
   (e: 'create-subnote', parentId: string): void
+  (e: 'open-tasklist', noteId: string): void
 }>()
 
 const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, cancelDragLeave, getItemClass, dropIndicator } =

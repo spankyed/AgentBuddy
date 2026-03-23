@@ -19,6 +19,7 @@
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
       :draggable="!(taskMode && (note.completed || muted) && depth === 0)"
       @click="handleClick"
+      @dblclick="$emit('open', note.id)"
       @contextmenu="handleContextMenu"
       @dragstart="$emit('drag-start', $event, note.id)"
       @dragover="$emit('drag-over', $event, note.id)"
@@ -181,6 +182,7 @@
         @drag-leave="(e: DragEvent) => $emit('drag-leave', e)"
         @drop="(e: DragEvent, id: string) => $emit('drop', e, id)"
         @drag-end="$emit('drag-end')"
+        @open="$emit('open', $event)"
       />
     </template>
   </div>
@@ -229,6 +231,7 @@ const emit = defineEmits<{
   (e: 'shift-select', noteId: string): void
   (e: 'toggle-complete', noteId: string): void
   (e: 'create-task', parentId: string): void
+  (e: 'open', noteId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
