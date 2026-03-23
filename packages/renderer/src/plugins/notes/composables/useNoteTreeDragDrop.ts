@@ -197,22 +197,39 @@ export function useNoteTreeDragDrop({
     }, 50)
   }
 
+  function getEndIndex(parentId: string | null, draggedId: string): number {
+    const siblings = notes.value
+      .filter(n => (n.parentId ?? null) === (parentId ?? null))
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+    let newIndex = siblings.length
+    const draggedNote = notes.value.find(n => n.id === draggedId)
+    if (draggedNote && (draggedNote.parentId ?? null) === (parentId ?? null)) {
+      const draggedIndex = siblings.findIndex(s => s.id === draggedId)
+      if (draggedIndex < newIndex) {
+        newIndex -= 1
+      }
+    }
+    return newIndex
+  }
+
   function handleDrop(e: DragEvent, targetId: string | null) {
     e.preventDefault()
     e.stopPropagation()
     if (!draggedNoteIds.value.length) return
 
     const currentTarget = dropTarget.value
-    const position = (currentTarget && currentTarget.noteId === targetId) ? currentTarget.position : 'on'
+    const isEmptySpaceDrop = !currentTarget || currentTarget.noteId !== targetId
+    const position = isEmptySpaceDrop ? 'on' : currentTarget.position
 
-    // For root drop or 'on' position: reparent (or reorder to top)
+    // For root drop or 'on' position: reparent (or reorder)
     if (!targetId || position === 'on') {
-      // Single-item drag onto its own parent → reorder to index 0 (move to top)
+      // Single-item drag onto its own parent → reorder
       if (onReorder && draggedNoteIds.value.length === 1) {
         const draggedId = draggedNoteIds.value[0]
         const draggedParent = getCurrentParentId(draggedId)
         if (draggedParent === targetId) {
-          onReorder(draggedId, targetId, 0)
+          const index = isEmptySpaceDrop ? getEndIndex(targetId, draggedId) : 0
+          onReorder(draggedId, targetId, index)
           handleDragEnd()
           return
         }
@@ -224,7 +241,8 @@ export function useNoteTreeDragDrop({
       }
       // Single-item: use onReorder for proper displayOrder indexing
       if (onReorder && draggedNoteIds.value.length === 1) {
-        onReorder(draggedNoteIds.value[0], targetId, 0)
+        const index = isEmptySpaceDrop ? getEndIndex(targetId, draggedNoteIds.value[0]) : 0
+        onReorder(draggedNoteIds.value[0], targetId, index)
       } else {
         onMove(draggedNoteIds.value, targetId)
       }
