@@ -75,20 +75,40 @@
       <!-- Task actions + checkbox (taskMode only) -->
       <template v-if="taskMode && note.noteType === 'task'">
         <!-- Grouped action pill (visible on hover) -->
-        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1">
+        <div class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'">
+          <DropdownMenuRoot v-model:open="dropdownOpen">
+            <DropdownMenuTrigger as-child>
+              <button
+                class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
+                title="More actions"
+                @click.stop
+              >
+                <MoreHorizontal :size="13" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent
+                class="bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px] z-50"
+                :side-offset="4"
+              >
+                <DropdownMenuItem
+                  v-for="item in menuItems"
+                  :key="item.label"
+                  class="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                  :class="item.class"
+                  @select="item.action"
+                >
+                  {{ item.label }}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenuRoot>
           <button
             class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
             title="Add sub-task"
             @click.stop="$emit('create-task', note.id)"
           >
             <Plus :size="13" />
-          </button>
-          <button
-            class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-            title="Delete task"
-            @click.stop="$emit('delete', note.id)"
-          >
-            <Trash2 :size="13" />
           </button>
         </div>
         <!-- Checkbox (always visible) -->
@@ -104,7 +124,7 @@
       </template>
 
       <!-- Actions (on hover, normal mode) -->
-      <div v-else class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1">
+      <div v-else class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'">
         <button
           class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
           :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
@@ -112,13 +132,33 @@
         >
           <Plus :size="13" />
         </button>
-        <button
-          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-          title="Delete note"
-          @click.stop="$emit('delete', note.id)"
-        >
-          <Trash2 :size="13" />
-        </button>
+        <DropdownMenuRoot v-model:open="dropdownOpen">
+          <DropdownMenuTrigger as-child>
+            <button
+              class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
+              title="More actions"
+              @click.stop
+            >
+              <MoreHorizontal :size="13" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              class="bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px] z-50"
+              :side-offset="4"
+            >
+              <DropdownMenuItem
+                v-for="item in menuItems"
+                :key="item.label"
+                class="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                :class="item.class"
+                @select="item.action"
+              >
+                {{ item.label }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
       </div>
 
     </div>
@@ -132,17 +172,13 @@
         :style="{ left: `${contextMenuPos.x}px`, top: `${contextMenuPos.y}px` }"
       >
         <button
-          v-if="isTaskRelated"
-          class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
-          @click="$emit('create', note.id); showContextMenu = false"
+          v-for="item in menuItems"
+          :key="item.label"
+          class="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
+          :class="item.class"
+          @click="item.action(); showContextMenu = false"
         >
-          Add Sub-Note
-        </button>
-        <button
-          class="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-neutral-700 transition-colors"
-          @click="$emit('delete', note.id); showContextMenu = false"
-        >
-          Delete
+          {{ item.label }}
         </button>
       </div>
     </Teleport>
@@ -191,7 +227,14 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Check, ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
+import { Check, ChevronRight, CircleCheck, FileText, ListChecks, MoreHorizontal, Plus } from 'lucide-vue-next'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from 'reka-ui'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { onMenuOpenChange } from '@/core/composables/useMenuState'
 
@@ -245,6 +288,17 @@ function handleClick(e: MouseEvent) {
 }
 
 const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props.note.noteType === 'task')
+
+const menuItems = computed(() => {
+  const items: { label: string; class: string; action: () => void }[] = []
+  if (isTaskRelated.value) {
+    items.push({ label: 'Add Sub-Note', class: 'text-neutral-300', action: () => emit('create', props.note.id) })
+  }
+  items.push({ label: 'Delete', class: 'text-red-400', action: () => emit('delete', props.note.id) })
+  return items
+})
+
+const dropdownOpen = ref(false)
 const showContextMenu = ref(false)
 const contextMenuRef = ref<HTMLDivElement | null>(null)
 const contextMenuPos = ref({ x: 0, y: 0 })
