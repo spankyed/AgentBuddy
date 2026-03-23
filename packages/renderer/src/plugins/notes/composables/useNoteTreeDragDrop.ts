@@ -78,13 +78,10 @@ export function useNoteTreeDragDrop({
         if (target?.completed) return false
       }
 
-      // Tasks cannot be reordered next to non-task/non-tasklist items
+      // Tasks can only be reordered within task/tasklist containers
       if (hasDraggedTask() && targetId) {
         const target = notes.value.find(n => n.id === targetId)
-        if (target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
-          return false
-        }
-        // Also check that the target's parent is a valid task container
+        // Check that the target's parent is a valid task container
         // (dropping before/after places the item at the target's parent level)
         if (target?.parentId) {
           const parent = notes.value.find(n => n.id === target.parentId)
