@@ -7,7 +7,7 @@ import type TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 export function usePageInsert(
   actor: NotesState,
   editorRef: Ref<InstanceType<typeof TiptapEditor> | null>,
-  currentNote: Ref<NoteDTO | null>,
+  editingNote: Ref<NoteDTO | null>,
 ) {
   const pendingPageInsert = useSelector(actor, (s) => s.context.pendingPageInsert)
 
@@ -17,7 +17,7 @@ export function usePageInsert(
       // When pendingPageInsert transitions from non-null to null, the child was created
       if (!oldVal || newVal) return
 
-      const noteId = currentNote.value?.id
+      const noteId = editingNote.value?.id
       const editor = editorRef.value?.editor
       if (!noteId || !editor) return
 

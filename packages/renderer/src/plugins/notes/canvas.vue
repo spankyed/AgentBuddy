@@ -303,7 +303,7 @@ onMounted(() => nextTick(updateScrollState))
 
 // Composables
 useNoteFocus(actor, titleRef, editorRef)
-usePageInsert(actor, editorRef, currentNote)
+usePageInsert(actor, editorRef, editingNote)
 
 // Debounced handlers
 const SAVE_DEBOUNCE_MS = 150
@@ -326,7 +326,7 @@ const pageBlockItem: BlockItem[] = [
     label: 'Page',
     icon: FileText,
     command: (editor) => {
-      const noteId = currentNote.value?.id
+      const noteId = editingNote.value?.id
       if (!noteId) return
       const cursorPos = editor.state.selection.from
       actor.send({ type: 'NOTE.REQUEST_PAGE_INSERT', parentId: noteId, cursorPos })

@@ -117,6 +117,9 @@ const notesState = setup({
         const taskList = findNearestTaskList(context.notes, noteId)
         if (taskList) {
           const ancestorIds = getAncestorChain(context.notes, taskList.id).map(n => n.id)
+          const taskAncestors = getAncestorChain(context.notes, noteId)
+          const taskListIndex = taskAncestors.findIndex(a => a.id === taskList.id)
+          const intermediateIds = taskAncestors.slice(taskListIndex + 1).map(a => a.id)
           return {
             currentNoteId: taskList.id,
             currentNote: taskList,
@@ -124,6 +127,7 @@ const notesState = setup({
             selectedTaskId: noteId,
             selectedTask: note,
             expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+            taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...intermediateIds, taskList.id])],
           }
         }
       }
@@ -283,7 +287,8 @@ const notesState = setup({
       const ev = typeOf('NOTE_CREATED', event)
       // Only handle if there's a pending page insert and the new note has a parent
       if (!context.pendingPageInsert || !ev.note.parentId) return {}
-      if (ev.note.parentId !== context.currentNoteId) return {}
+      const validParentId = context.selectedTaskId ?? context.currentNoteId
+      if (ev.note.parentId !== validParentId) return {}
 
       // Clear pending flag - the canvas component will detect this via the note
       // and insert the link using the editor ref
