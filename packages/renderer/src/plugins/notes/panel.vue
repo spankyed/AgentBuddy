@@ -20,12 +20,12 @@
           ref="createMenuRef"
           class="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
         >
-          <!-- <button
+          <button
             class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
             @click="handleCreateNote(); showCreateMenu = false"
           >
             New Note
-          </button> -->
+          </button>
           <button
             class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
             @click="handleCreateTaskList(); showCreateMenu = false"

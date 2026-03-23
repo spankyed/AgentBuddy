@@ -141,7 +141,8 @@ export const notesSystem = setup({
 
     updateNote: ({ system, event }) => {
       const ev = typeOf('UPDATE_NOTE', event);
-      const noteBeforeUpdate = repository.noteQueries.byId(ev.id as EARS.EntityId) as NoteEntity | undefined;
+      const noteId = ev.id as EARS.EntityId;
+      const noteBeforeUpdate = repository.noteQueries.byId(noteId) as NoteEntity | undefined;
       if (!noteBeforeUpdate) return;
       const updates: Record<string, any> = {};
 
@@ -151,27 +152,27 @@ export const notesSystem = setup({
       if (ev.completed !== undefined) {
         updates.completed = ev.completed;
         // When completing: save current displayOrder
-        if (ev.completed && noteBeforeUpdate && !noteBeforeUpdate.completed) {
+        if (ev.completed && !noteBeforeUpdate.completed) {
           updates.savedDisplayOrder = noteBeforeUpdate.displayOrder;
         }
       }
 
-      repository.noteCommands.update(ev.id as EARS.EntityId, updates);
+      repository.noteCommands.update(noteId, updates);
 
       // When uncompleting: restore saved position
-      if (ev.completed === false && noteBeforeUpdate?.savedDisplayOrder !== undefined && noteBeforeUpdate.savedDisplayOrder !== undefined) {
-        const parentIds = qx(ev.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+      if (ev.completed === false && noteBeforeUpdate.savedDisplayOrder !== undefined) {
+        const parentIds = qx(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
         const parentId = parentIds.length > 0 ? parentIds[0] : null;
         const { affectedIds } = repository.noteCommands.reorder(
-          ev.id as EARS.EntityId,
+          noteId,
           parentId,
           noteBeforeUpdate.savedDisplayOrder
         );
-        repository.noteCommands.update(ev.id as EARS.EntityId, { savedDisplayOrder: null }, true);
+        repository.noteCommands.update(noteId, { savedDisplayOrder: null }, true);
 
         // Emit updates for all affected siblings
         for (const affectedId of affectedIds) {
-          if (affectedId !== ev.id) {
+          if (affectedId !== noteId) {
             const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
             if (affectedDTO) {
               system.get(bus).send(emit(notes, {
@@ -183,7 +184,7 @@ export const notesSystem = setup({
         }
       }
 
-      const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
+      const updatedNote = repository.noteQueries.byIdDTO(noteId);
       if (updatedNote) {
         system.get(bus).send(emit(notes, {
           type: 'NOTE_UPDATED',
@@ -195,10 +196,10 @@ export const notesSystem = setup({
           const parentNote = repository.noteQueries.byId(updatedNote.parentId as EARS.EntityId);
           if (parentNote?.content) {
             const linkPattern = new RegExp(
-              `\\[([^\\]]*)\\]\\(page:\\/\\/${ev.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
+              `\\[([^\\]]*)\\]\\(page:\\/\\/${(noteId as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
               'g'
             );
-            const newContent = parentNote.content.replace(linkPattern, `[${ev.title}](page://${ev.id})`);
+            const newContent = parentNote.content.replace(linkPattern, `[${ev.title}](page://${noteId})`);
             if (newContent !== parentNote.content) {
               repository.noteCommands.update(updatedNote.parentId as EARS.EntityId, { content: newContent });
 
@@ -363,7 +364,7 @@ export const notesSystem = setup({
 
       // Emit updates for all affected siblings
       for (const affectedId of affectedIds) {
-        if (affectedId !== ev.id) {
+        if (affectedId !== noteId) {
           const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
           if (affectedDTO) {
             system.get(bus).send(emit(notes, {

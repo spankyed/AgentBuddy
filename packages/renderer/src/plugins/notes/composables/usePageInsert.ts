@@ -21,11 +21,10 @@ export function usePageInsert(
       const editor = editorRef.value?.editor
       if (!noteId || !editor) return
 
-      const { notes } = actor.getSnapshot().context
+      const { notes, lastPageInsertChildId } = actor.getSnapshot().context
+      if (!lastPageInsertChildId) return
 
-      const newChild = notes
-        .filter(n => n.parentId === noteId)
-        .sort((a, b) => b.createdAt - a.createdAt)[0]
+      const newChild = notes.find(n => n.id === lastPageInsertChildId)
       if (!newChild) return
 
       editor

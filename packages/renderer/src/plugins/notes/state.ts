@@ -23,6 +23,7 @@ export interface NotesContext {
   expandedNodeIds: string[]
   taskExpandedNodeIds: string[]
   pendingPageInsert: { cursorPos: number } | null
+  lastPageInsertChildId: string | null
   searchResults: NoteDTO[]
   selectedNoteIds: string[]
   selectedTaskId: string | null
@@ -306,11 +307,12 @@ const notesState = setup({
       const validParentId = context.selectedTaskId ?? context.currentNoteId
       if (ev.note.parentId !== validParentId) return {}
 
-      // Clear pending flag - the canvas component will detect this via the note
-      // and insert the link using the editor ref
+      // Clear pending flag and store the created child's ID so the canvas
+      // component can insert the link without guessing by timestamp
       return {
         notes: [...context.notes, ev.note],
         pendingPageInsert: null,
+        lastPageInsertChildId: ev.note.id,
       }
     }),
 
@@ -556,6 +558,7 @@ const notesState = setup({
     expandedNodeIds: [],
     taskExpandedNodeIds: [],
     pendingPageInsert: null,
+    lastPageInsertChildId: null,
     searchResults: [],
     selectedNoteIds: [],
     selectedTaskId: null,

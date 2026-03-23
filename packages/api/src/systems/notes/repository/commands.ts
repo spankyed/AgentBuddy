@@ -15,6 +15,36 @@ import type { NoteEntity } from '../types';
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
 
+function reparent(id: EARS.EntityId, oldParentId: string | null, newParentId: EARS.EntityId | null, noteType: string): void {
+  // Remove old CONTAINS relation and strip sub-page link from old parent content
+  if (oldParentId) {
+    const oldParentEntityId = oldParentId as EARS.EntityId;
+    removeRelation(oldParentEntityId, EARS.RelKind.CONTAINS, id);
+    const oldParent = findById<NoteEntity>(oldParentEntityId);
+    if (oldParent?.content) {
+      const escaped = (id as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pagePattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
+      const newContent = oldParent.content.replace(pagePattern, '');
+      if (newContent !== oldParent.content) {
+        updateEntity(oldParentEntityId, { content: newContent });
+      }
+    }
+  }
+
+  // Create new CONTAINS relation and append sub-page link to new parent content
+  if (newParentId) {
+    createRelation(newParentId, EARS.RelKind.CONTAINS, id);
+    const newParent = findById<NoteEntity>(newParentId);
+    const note = findById<NoteEntity>(id);
+    if (newParent && noteType !== 'task') {
+      const title = note?.title ?? 'Untitled';
+      const linkMarkdown = `\n\n[${title}](page://${id})`;
+      const newContent = (newParent.content || '') + linkMarkdown;
+      updateEntity(newParentId, { content: newContent });
+    }
+  }
+}
+
 export const noteCommands = {
   create: (input: {
     title: string;
@@ -149,30 +179,9 @@ export const noteCommands = {
     // Early return if already has this parent
     if (oldParentId === newParentId) return { oldParentId };
 
-    // Remove old CONTAINS relation and strip sub-page link from old parent content
-    if (oldParentId) {
-      removeRelation(oldParentId, EARS.RelKind.CONTAINS, id);
-      const oldParent = findById<NoteEntity>(oldParentId);
-      if (oldParent?.content) {
-        const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const pagePattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
-        const newContent = oldParent.content.replace(pagePattern, '');
-        if (newContent !== oldParent.content) {
-          updateEntity(oldParentId, { content: newContent });
-        }
-      }
-    }
+    reparent(id, oldParentId, newParentId, note.noteType);
 
-    // Create new CONTAINS relation and append sub-page link to new parent content
     if (newParentId) {
-      createRelation(newParentId, EARS.RelKind.CONTAINS, id);
-      const newParent = findById<NoteEntity>(newParentId);
-      if (newParent && note.noteType !== 'task') {
-        const linkMarkdown = `\n\n[${note.title}](page://${id})`;
-        const newContent = (newParent.content || '') + linkMarkdown;
-        updateEntity(newParentId, { content: newContent });
-      }
-
       // Update displayOrder to end of new parent's children
       const newSiblings = qx(newParentId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
       updateEntity(id, { displayOrder: newSiblings.length - 1 });
@@ -201,32 +210,9 @@ export const noteCommands = {
     const parentChanged = oldParentId !== newParentId;
     const affectedIds: string[] = [];
 
-    // If parent changed, handle reparenting (reuse move logic for link cleanup)
+    // If parent changed, handle reparenting
     if (parentChanged) {
-      // Remove old CONTAINS relation and strip sub-page link from old parent content
-      if (oldParentId) {
-        removeRelation(oldParentId, EARS.RelKind.CONTAINS, id);
-        const oldParent = findById<NoteEntity>(oldParentId);
-        if (oldParent?.content) {
-          const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const pagePattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
-          const newContent = oldParent.content.replace(pagePattern, '');
-          if (newContent !== oldParent.content) {
-            updateEntity(oldParentId, { content: newContent });
-          }
-        }
-      }
-
-      // Create new CONTAINS relation and append sub-page link to new parent content
-      if (newParentId) {
-        createRelation(newParentId, EARS.RelKind.CONTAINS, id);
-        const newParent = findById<NoteEntity>(newParentId);
-        if (newParent && note.noteType !== 'task') {
-          const linkMarkdown = `\n\n[${note.title}](page://${id})`;
-          const newContent = (newParent.content || '') + linkMarkdown;
-          updateEntity(newParentId, { content: newContent });
-        }
-      }
+      reparent(id, oldParentId, newParentId, note.noteType);
     }
 
     // Get siblings under new parent, sorted by displayOrder
