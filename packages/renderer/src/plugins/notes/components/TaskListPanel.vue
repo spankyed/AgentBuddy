@@ -1,25 +1,26 @@
 <template>
   <div class="flex flex-col h-full w-[250px] min-w-[250px] border-r border-neutral-800">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800"
+    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800 cursor-pointer transition-colors"
+      :class="!selectedTaskId ? 'bg-neutral-700' : 'hover:bg-neutral-800'"
+      @click="$emit('deselect-task')"
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
-      <button
+      <div
         class="flex items-center gap-1.5 text-sm font-medium transition-colors rounded px-1 -ml-1"
         :class="!selectedTaskId ? 'text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'"
-        @click="$emit('deselect-task')"
       >
         <span v-if="currentNoteIcon" class="text-sm leading-none shrink-0">{{ currentNoteIcon }}</span>
         <ListChecks v-else :size="16" class="text-neutral-500 shrink-0" />
         <span class="truncate">{{ currentNoteTitle || 'Untitled' }}</span>
-      </button>
+      </div>
       <div class="flex items-center gap-1">
         <button
           class="flex items-center justify-center w-6 h-6 rounded transition-colors"
           :class="showCompleted ? 'text-neutral-400 hover:text-neutral-200' : 'text-neutral-600 hover:text-neutral-400'"
           :title="showCompleted ? 'Hide completed' : 'Show completed'"
-          @click="$emit('toggle-show-completed')"
+          @click.stop="$emit('toggle-show-completed')"
         >
           <Eye v-if="showCompleted" :size="16" />
           <EyeOff v-else :size="16" />
@@ -28,7 +29,7 @@
           <button
             class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
             title="Add task (right-click for options)"
-            @click="$emit('create-task')"
+            @click.stop="$emit('create-task')"
             @contextmenu.prevent="showCreateMenu = true"
           >
             <Plus :size="16" />
