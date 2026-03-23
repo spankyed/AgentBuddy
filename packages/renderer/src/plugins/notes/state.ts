@@ -28,7 +28,6 @@ export interface NotesContext {
   selectedNoteIds: string[]
   selectedTaskId: string | null
   selectedTask: NoteDTO | null
-  showCompletedTasks: boolean
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -539,9 +538,17 @@ const notesState = setup({
       })
     },
 
-    toggleShowCompleted: assign(({ context }) => ({
-      showCompletedTasks: !context.showCompletedTasks,
-    })),
+    sendToggleShowCompleted: ({ context }) => {
+      if (!context.currentNoteId) return
+      const note = context.notes.find(n => n.id === context.currentNoteId)
+      if (!note) return
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: context.currentNoteId,
+        hideCompletedChildren: !note.hideCompletedChildren,
+      })
+    },
 
     sendToggleHideCompletedChildren: ({ event, context }) => {
       const ev = typeOf('TASK.TOGGLE_HIDE_COMPLETED_CHILDREN', event)
@@ -576,7 +583,6 @@ const notesState = setup({
     selectedNoteIds: [],
     selectedTaskId: null,
     selectedTask: null,
-    showCompletedTasks: true,
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -613,7 +619,7 @@ const notesState = setup({
     'TASK.UPDATE_CONTENT': { actions: ['updateLocalTaskContent', 'sendTaskUpdateContent'] },
     'TASK.UPDATE_TITLE': { actions: ['updateLocalTaskTitle', 'sendTaskUpdateTitle'] },
     'TASK.DELETE': { actions: 'sendDeleteTask' },
-    'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'toggleShowCompleted' },
+    'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'sendToggleShowCompleted' },
     'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN': { actions: 'sendToggleHideCompletedChildren' },
     TRAIL_CLICK: [
       {
