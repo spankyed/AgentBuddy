@@ -1,6 +1,6 @@
 import {sha256sum} from './nodeCrypto.js';
 import {versions} from './versions.js';
-import {ipcRenderer, contextBridge} from 'electron';
+import {ipcRenderer, contextBridge, webFrame} from 'electron';
 
 function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
@@ -52,12 +52,18 @@ const media = {
     ipcRenderer.invoke('media:delete-all', entityId) as Promise<void>,
 };
 
+// Zoom utilities
+const zoom = {
+  getZoomFactor: () => webFrame.getZoomFactor(),
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
   fileUtils,
   shell,
   media,
+  zoom,
   apiPort,
 });
 

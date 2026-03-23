@@ -1,5 +1,5 @@
 <template>
-  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar">
+  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar" :style="toolbarZoomStyle">
     <!-- Window controls area (macOS traffic lights) -->
     <div class="window-controls-area h-[50px] flex items-center justify-center">
       <WindowControls v-if="!isMac" />
@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import type { Plugin } from '@/core/types';
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import WindowControls from './WindowControls.vue';
 
 defineEmits<(e: 'select-plugin', id: string) => void>();
@@ -67,6 +67,21 @@ const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned)
 const isMac = computed(() => {
   return navigator.platform.toLowerCase().includes('mac');
 });
+
+// Counter-zoom the toolbar so macOS traffic lights stay aligned at any page zoom level
+const zoomFactor = ref(1);
+const updateZoomFactor = () => {
+  zoomFactor.value = window.electronAPI?.zoom?.getZoomFactor() ?? 1;
+};
+const toolbarZoomStyle = computed(() =>
+  zoomFactor.value === 1 ? {} : { zoom: 1 / zoomFactor.value },
+);
+
+onMounted(() => {
+  updateZoomFactor();
+  window.addEventListener('resize', updateZoomFactor);
+});
+onUnmounted(() => window.removeEventListener('resize', updateZoomFactor));
 </script>
 
 <style lang="scss">

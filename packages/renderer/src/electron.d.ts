@@ -22,6 +22,9 @@ declare global {
         delete: (entityId: string, filename: string) => Promise<void>;
         deleteAll: (entityId: string) => Promise<void>;
       };
+      zoom: {
+        getZoomFactor: () => number;
+      };
       apiPort: number;
     };
   }
