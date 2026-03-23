@@ -279,6 +279,8 @@ const notesState = setup({
         notes: updatedNotes,
         currentNoteId: ev.note.id,
         currentNote: ev.note,
+        selectedTaskId: null,
+        selectedTask: null,
         expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
