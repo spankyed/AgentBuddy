@@ -41,8 +41,8 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'submit'): void
   (e: 'noteLinkClick', noteId: string): void
-  (e: 'subPageLinkDeleted', noteId: string): void
-  (e: 'subPageLinkRestored', noteId: string): void
+  (e: 'subDocumentLinkDeleted', noteId: string): void
+  (e: 'subDocumentLinkRestored', noteId: string): void
   (e: 'focusTitle'): void
 }>()
 
@@ -72,10 +72,10 @@ function resetContent(content: string) {
   suppressNodeDeletionEvents.value = false
 }
 
-function collectSubPageLinkIds(doc: any): Set<string> {
+function collectSubDocumentLinkIds(doc: any): Set<string> {
   const ids = new Set<string>()
   doc.descendants((node: any) => {
-    if (node.type.name === 'subPageLink' && node.attrs.noteId) {
+    if (node.type.name === 'subDocumentLink' && node.attrs.noteId) {
       ids.add(node.attrs.noteId)
     }
   })
@@ -140,20 +140,20 @@ const editor = useEditor({
       return false
     },
     handleClick: (_view, _pos, event) => {
-      // Sub-page links open on regular click (no modifier needed)
-      const subPageEl = (event.target as HTMLElement).closest('.sub-page-link')
-      if (subPageEl) {
-        const noteId = subPageEl.getAttribute('data-note-id')
+      // Sub-document links open on regular click (no modifier needed)
+      const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
+      if (subDocumentEl) {
+        const noteId = subDocumentEl.getAttribute('data-note-id')
         if (noteId) {
           emit('noteLinkClick', noteId)
           return true
         }
       }
-      // page:// inline links also open on regular click (no modifier needed)
+      // document:// inline links also open on regular click (no modifier needed)
       const anchor = (event.target as HTMLElement).closest('a')
       const href = anchor?.getAttribute('href')
-      if (href?.startsWith('page://')) {
-        emit('noteLinkClick', href.slice('page://'.length))
+      if (href?.startsWith('document://')) {
+        emit('noteLinkClick', href.slice('document://'.length))
         return true
       }
       // Other links require ctrl/cmd+click in editor mode
@@ -211,16 +211,16 @@ const editor = useEditor({
   },
   onTransaction: ({ transaction }) => {
     if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
-    const oldIds = collectSubPageLinkIds(transaction.before)
-    const newIds = collectSubPageLinkIds(transaction.doc)
+    const oldIds = collectSubDocumentLinkIds(transaction.before)
+    const newIds = collectSubDocumentLinkIds(transaction.doc)
     for (const id of oldIds) {
       if (!newIds.has(id)) {
-        emit('subPageLinkDeleted', id)
+        emit('subDocumentLinkDeleted', id)
       }
     }
     for (const id of newIds) {
       if (!oldIds.has(id)) {
-        emit('subPageLinkRestored', id)
+        emit('subDocumentLinkRestored', id)
       }
     }
   },

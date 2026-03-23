@@ -184,7 +184,7 @@
 }
 
 /* Sub-page link (block atom) */
-.tiptap-wrapper .ProseMirror .sub-page-link {
+.tiptap-wrapper .ProseMirror .sub-document-link {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -193,11 +193,11 @@
   user-select: none;
 }
 
-.tiptap-wrapper .ProseMirror .sub-page-link:hover .sub-page-link-title {
+.tiptap-wrapper .ProseMirror .sub-document-link:hover .sub-document-link-title {
   text-decoration: underline;
 }
 
-.tiptap-wrapper .ProseMirror .sub-page-link.ProseMirror-selectednode {
+.tiptap-wrapper .ProseMirror .sub-document-link.ProseMirror-selectednode {
   outline: none;
   background-color: rgb(64 64 64);
   border-radius: 3px;
@@ -205,7 +205,7 @@
   padding-left: 0.6rem;
 }
 
-.tiptap-wrapper .ProseMirror .sub-page-link-icon {
+.tiptap-wrapper .ProseMirror .sub-document-link-icon {
   flex-shrink: 0;
   color: rgb(163 163 163);
   display: flex;
@@ -213,7 +213,7 @@
   align-items: center;
 }
 
-.tiptap-wrapper .ProseMirror .sub-page-link-title {
+.tiptap-wrapper .ProseMirror .sub-document-link-title {
   color: rgb(212 212 212);
   font-weight: 600;
 }

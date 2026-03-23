@@ -156,7 +156,7 @@
         </DropdownMenuRoot>
         <button
           class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
-          :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
+          :title="isTaskRelated ? 'Add task' : 'Add document'"
           @click.stop="isTaskRelated ? $emit('create-task', note.id) : $emit('create', note.id)"
         >
           <Plus :size="13" />
@@ -286,7 +286,7 @@ const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props
 const menuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = []
   if (isTaskRelated.value) {
-    items.push({ label: 'Add Sub-Note', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create', props.note.id) })
+    items.push({ label: 'Add Document', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create', props.note.id) })
   }
   if (hasCompletedChildren.value) {
     items.push({

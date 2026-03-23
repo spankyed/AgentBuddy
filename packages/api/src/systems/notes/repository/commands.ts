@@ -16,29 +16,29 @@ import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
 
 function reparent(id: EARS.EntityId, oldParentId: string | null, newParentId: EARS.EntityId | null, noteType: string): void {
-  // Remove old CONTAINS relation and strip sub-page link from old parent content
+  // Remove old CONTAINS relation and strip sub-document link from old parent content
   if (oldParentId) {
     const oldParentEntityId = oldParentId as EARS.EntityId;
     removeRelation(oldParentEntityId, EARS.RelKind.CONTAINS, id);
     const oldParent = findById<NoteEntity>(oldParentEntityId);
     if (oldParent?.content) {
       const escaped = (id as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pagePattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
-      const newContent = oldParent.content.replace(pagePattern, '');
+      const documentPattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(document:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
+      const newContent = oldParent.content.replace(documentPattern, '');
       if (newContent !== oldParent.content) {
         updateEntity(oldParentEntityId, { content: newContent });
       }
     }
   }
 
-  // Create new CONTAINS relation and append sub-page link to new parent content
+  // Create new CONTAINS relation and append sub-document link to new parent content
   if (newParentId) {
     createRelation(newParentId, EARS.RelKind.CONTAINS, id);
     const newParent = findById<NoteEntity>(newParentId);
     const note = findById<NoteEntity>(id);
     if (newParent && noteType !== 'task') {
       const title = note?.title ?? 'Untitled';
-      const linkMarkdown = `\n\n[${title}](page://${id})`;
+      const linkMarkdown = `\n\n[${title}](document://${id})`;
       const newContent = (newParent.content || '') + linkMarkdown;
       updateEntity(newParentId, { content: newContent });
     }
@@ -52,7 +52,7 @@ export const noteCommands = {
     icon?: string | null;
     parentId?: string;
     displayOrder?: number;
-    noteType?: 'note' | 'tasklist' | 'task';
+    noteType?: 'document' | 'tasklist' | 'task';
     completed?: boolean;
   }): NoteEntity => {
     if (!input.title?.trim()) {
@@ -84,7 +84,7 @@ export const noteCommands = {
         title: input.title,
         content: input.content || '',
         icon: input.icon ?? null,
-        noteType: input.noteType ?? 'note',
+        noteType: input.noteType ?? 'document',
         completed: input.completed ?? false,
         displayOrder,
         lastSeen: 0,

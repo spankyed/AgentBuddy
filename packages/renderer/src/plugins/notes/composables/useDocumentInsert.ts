@@ -4,33 +4,33 @@ import type { NotesState } from '../state'
 import type { NoteDTO } from '@app/api'
 import type TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
-export function usePageInsert(
+export function useDocumentInsert(
   actor: NotesState,
   editorRef: Ref<InstanceType<typeof TiptapEditor> | null>,
   editingNote: Ref<NoteDTO | null>,
 ) {
-  const pendingPageInsert = useSelector(actor, (s) => s.context.pendingPageInsert)
+  const pendingDocumentInsert = useSelector(actor, (s) => s.context.pendingDocumentInsert)
 
   watch(
-    () => pendingPageInsert.value,
+    () => pendingDocumentInsert.value,
     (newVal, oldVal) => {
-      // When pendingPageInsert transitions from non-null to null, the child was created
+      // When pendingDocumentInsert transitions from non-null to null, the child was created
       if (!oldVal || newVal) return
 
       const noteId = editingNote.value?.id
       const editor = editorRef.value?.editor
       if (!noteId || !editor) return
 
-      const { notes, lastPageInsertChildId } = actor.getSnapshot().context
-      if (!lastPageInsertChildId) return
+      const { notes, lastDocumentInsertChildId } = actor.getSnapshot().context
+      if (!lastDocumentInsertChildId) return
 
-      const newChild = notes.find(n => n.id === lastPageInsertChildId)
+      const newChild = notes.find(n => n.id === lastDocumentInsertChildId)
       if (!newChild) return
 
       editor
         .chain()
         .insertContentAt(oldVal.cursorPos, {
-          type: 'subPageLink',
+          type: 'subDocumentLink',
           attrs: { noteId: newChild.id, title: newChild.title, icon: newChild.icon },
         })
         .run()

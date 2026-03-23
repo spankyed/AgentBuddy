@@ -7,7 +7,7 @@ export interface NoteEntity extends BaseEntity {
   title: string;
   content: string;
   icon: string | null;
-  noteType: 'note' | 'tasklist' | 'task';
+  noteType: 'document' | 'tasklist' | 'task';
   completed: boolean;
   hideCompletedChildren: boolean;
   displayOrder: number;
@@ -24,7 +24,7 @@ export interface NoteDTO {
   title: string;
   content: string;
   icon: string | null;
-  noteType: 'note' | 'tasklist' | 'task';
+  noteType: 'document' | 'tasklist' | 'task';
   completed: boolean;
   hideCompletedChildren: boolean;
   parentId: string | null;

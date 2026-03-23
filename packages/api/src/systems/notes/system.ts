@@ -33,7 +33,7 @@ export const IncomingNoteEvents = [
     icon: z.string().nullable().optional(),
     parentId: z.string().optional(),
     skipContentSync: z.boolean().optional(),
-    noteType: z.enum(['note', 'tasklist', 'task']).optional(),
+    noteType: z.enum(['document', 'tasklist', 'task']).optional(),
     completed: z.boolean().optional(),
   }),
   busEvent('UPDATE_NOTE', {
@@ -117,11 +117,11 @@ export const notesSystem = setup({
           note: noteDTO,
         }));
 
-        // If this note has a parent, append sub-page link to parent content
+        // If this note has a parent, append sub-document link to parent content
         if (ev.parentId && !ev.skipContentSync) {
           const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
           if (parentNote) {
-            const linkMarkdown = `\n\n[${ev.title}](page://${note.id})`;
+            const linkMarkdown = `\n\n[${ev.title}](document://${note.id})`;
             const newContent = (parentNote.content || '') + linkMarkdown;
             repository.noteCommands.update(ev.parentId as EARS.EntityId, { content: newContent });
           }
@@ -193,15 +193,15 @@ export const notesSystem = setup({
           note: updatedNote,
         }));
 
-        // Sync sub-page link title in parent note when child is renamed
+        // Sync sub-document link title in parent note when child is renamed
         if (ev.title !== undefined && updatedNote.parentId) {
           const parentNote = repository.noteQueries.byId(updatedNote.parentId as EARS.EntityId);
           if (parentNote?.content) {
             const linkPattern = new RegExp(
-              `\\[([^\\]]*)\\]\\(page:\\/\\/${(noteId as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
+              `\\[([^\\]]*)\\]\\(document:\\/\\/${(noteId as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
               'g'
             );
-            const newContent = parentNote.content.replace(linkPattern, `[${ev.title}](page://${noteId})`);
+            const newContent = parentNote.content.replace(linkPattern, `[${ev.title}](document://${noteId})`);
             if (newContent !== parentNote.content) {
               repository.noteCommands.update(updatedNote.parentId as EARS.EntityId, { content: newContent });
 
@@ -481,15 +481,15 @@ export const notesSystem = setup({
         }
       }
 
-      // Strip page:// links from parent note content (no REFERENCES relation for these)
+      // Strip document:// links from parent note content (no REFERENCES relation for these)
       if (parentId) {
         const parentNote = repository.noteQueries.byId(parentId as EARS.EntityId);
         if (parentNote?.content) {
           let newContent = parentNote.content;
           for (const deletedId of allDeletedIds) {
             const escaped = deletedId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const pagePattern = new RegExp(`\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(page:\\/\\/${escaped}(?:\\?[^)]*)?\\)\\n?\\n?`, 'g');
-            newContent = newContent.replace(pagePattern, '');
+            const documentPattern = new RegExp(`\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(document:\\/\\/${escaped}(?:\\?[^)]*)?\\)\\n?\\n?`, 'g');
+            newContent = newContent.replace(documentPattern, '');
           }
           if (newContent !== parentNote.content) {
             repository.noteCommands.update(parentId as EARS.EntityId, { content: newContent });

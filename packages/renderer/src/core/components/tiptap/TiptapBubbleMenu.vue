@@ -3,7 +3,7 @@
     v-if="editor"
     :editor="editor"
     :options="{ placement: 'top', offset: 8, strategy: 'absolute' }"
-    :should-show="({ state, editor: e }) => !state.selection.empty && !e.isActive('image') && !e.isActive('subPageLink')"
+    :should-show="({ state, editor: e }) => !state.selection.empty && !e.isActive('image') && !e.isActive('subDocumentLink')"
     class="bubble-menu flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
     <div class="flex items-center gap-0.5 px-1.5 py-1">

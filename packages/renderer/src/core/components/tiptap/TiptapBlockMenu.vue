@@ -186,7 +186,7 @@ function findBlockFromGutter(editorDom: HTMLElement, event: MouseEvent): HTMLEle
     const block = resolveBlock(props.editor.view.domAtPos(pos.pos).node, editorDom)
     if (block) return block
   }
-  // Fallback for atom nodes (e.g. subpage links): find nearest child by vertical position
+  // Fallback for atom nodes (e.g. subdocument links): find nearest child by vertical position
   let closest: HTMLElement | null = null
   let closestDist = Infinity
   for (const child of editorDom.children) {

@@ -37,7 +37,7 @@
         </DropdownMenuRoot>
         <button
           class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-          title="New Note"
+          title="New Document"
           @click="handleCreateNote()"
         >
           <Plus :size="16" />

@@ -11,7 +11,7 @@
             class="px-4 py-2 text-sm bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-colors"
             @click="handleCreateNote()"
           >
-            New Note
+            New Document
           </button>
         </div>
       </template>
@@ -177,8 +177,8 @@
             class="h-full"
             @update:model-value="handleContentUpdate"
             @note-link-click="handleNoteLinkClick"
-            @sub-page-link-deleted="handleSubPageLinkDeleted"
-            @sub-page-link-restored="handleSubPageLinkRestored"
+            @sub-document-link-deleted="handleSubDocumentLinkDeleted"
+            @sub-document-link-restored="handleSubDocumentLinkRestored"
             @focus-title="focusTitleEnd()"
           />
         </div>
@@ -199,7 +199,7 @@ import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, Chevron
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
-import { usePageInsert } from './composables/usePageInsert'
+import { useDocumentInsert } from './composables/useDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
 
 const actor: NotesState = applicationState.system.get(id)
@@ -302,7 +302,7 @@ onMounted(() => nextTick(updateScrollState))
 
 // Composables
 useNoteFocus(actor, titleRef, editorRef)
-usePageInsert(actor, editorRef, editingNote)
+useDocumentInsert(actor, editorRef, editingNote)
 
 // Debounced handlers
 const SAVE_DEBOUNCE_MS = 150
@@ -329,20 +329,20 @@ watch(selectedTask, () => {
   cancelTaskTitleUpdate()
 })
 
-// Provide extra block items for the "Page" action
-const pageBlockItem: BlockItem[] = [
+// Provide extra block items for the "Document" action
+const documentBlockItem: BlockItem[] = [
   {
-    label: 'Page',
+    label: 'Document',
     icon: FileText,
     command: (editor) => {
       const noteId = editingNote.value?.id
       if (!noteId) return
       const cursorPos = editor.state.selection.from
-      actor.send({ type: 'NOTE.REQUEST_PAGE_INSERT', parentId: noteId, cursorPos })
+      actor.send({ type: 'NOTE.REQUEST_DOCUMENT_INSERT', parentId: noteId, cursorPos })
     },
   },
 ]
-provide(EXTRA_BLOCK_ITEMS_KEY, pageBlockItem)
+provide(EXTRA_BLOCK_ITEMS_KEY, documentBlockItem)
 
 function focusTitleEnd() {
   const el = titleRef.value
@@ -359,13 +359,13 @@ function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
 }
 
-const isSyncingSubPageLinks = ref(false)
+const isSyncingSubDocumentLinks = ref(false)
 
 function handleContentUpdate(content: string) {
   const note = editingNote.value
   if (!note) return
   if (content === note.content) return
-  if (isSyncingSubPageLinks.value) return
+  if (isSyncingSubDocumentLinks.value) return
   if (selectedTask.value) {
     debouncedUpdateTaskContent(selectedTask.value.id, content)
   } else {
@@ -386,11 +386,11 @@ function handleNoteLinkClick(noteId: string) {
   actor.send({ type: 'NOTE.LINK_CLICKED', noteId })
 }
 
-function handleSubPageLinkDeleted(noteId: string) {
+function handleSubDocumentLinkDeleted(noteId: string) {
   actor.send({ type: 'NOTE.SOFT_DELETE', noteId })
 }
 
-function handleSubPageLinkRestored(noteId: string) {
+function handleSubDocumentLinkRestored(noteId: string) {
   actor.send({ type: 'NOTE.RESTORE', noteId })
 }
 
@@ -419,16 +419,16 @@ watch(() => state.value.hasTag('welcome'), (isWelcome) => {
   if (!isWelcome) searchQuery.value = ''
 })
 
-// Sync sub-page link node attrs (title/icon) when child notes change
+// Sync sub-document link node attrs (title/icon) when child notes change
 watch(
   notes,
   (allNotes) => {
     const editor = editorRef.value?.editor
     if (!editor || !currentNote.value) return
 
-    isSyncingSubPageLinks.value = true
+    isSyncingSubDocumentLinks.value = true
     editor.state.doc.descendants((node, pos) => {
-      if (node.type.name === 'subPageLink' && node.attrs.noteId) {
+      if (node.type.name === 'subDocumentLink' && node.attrs.noteId) {
         const child = allNotes.find(n => n.id === node.attrs.noteId)
         if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
           editor.view.dispatch(
@@ -441,7 +441,7 @@ watch(
         }
       }
     })
-    isSyncingSubPageLinks.value = false
+    isSyncingSubDocumentLinks.value = false
   },
   { deep: true }
 )

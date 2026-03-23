@@ -203,7 +203,7 @@ function handleHeaderContextMenu(e: MouseEvent) {
 
 const headerMenuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = []
-  items.push({ label: 'Add Note', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create-subnote', props.currentNoteId!) })
+  items.push({ label: 'Add Document', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create-subnote', props.currentNoteId!) })
   items.push({
     label: props.showCompleted ? 'Hide Completed' : 'Show Completed',
     icon: props.showCompleted ? EyeOff : Eye,
