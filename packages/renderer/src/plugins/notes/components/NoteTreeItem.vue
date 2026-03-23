@@ -210,6 +210,7 @@
         @drag-end="$emit('drag-end')"
         @open="$emit('open', $event)"
         @toggle-hide-completed="$emit('toggle-hide-completed', $event)"
+        @create-tasklist="$emit('create-tasklist', $event)"
       />
     </template>
   </div>
@@ -269,6 +270,7 @@ const emit = defineEmits<{
   (e: 'create-task', parentId: string): void
   (e: 'open', noteId: string): void
   (e: 'toggle-hide-completed', nodeId: string): void
+  (e: 'create-tasklist', parentId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
@@ -287,6 +289,9 @@ const menuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = []
   if (isTaskRelated.value) {
     items.push({ label: 'Add Document', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create', props.note.id) })
+  }
+  if (!isTaskRelated.value) {
+    items.push({ label: 'Add Tasklist', icon: ListChecks, class: 'text-neutral-300', action: () => emit('create-tasklist', props.note.id) })
   }
   if (hasCompletedChildren.value) {
     items.push({

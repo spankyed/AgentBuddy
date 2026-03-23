@@ -36,7 +36,7 @@ type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
   | { type: 'NOTE.OPEN'; noteId: string }
   | { type: 'NOTE.CREATE'; parentId?: string }
-  | { type: 'NOTE.CREATE_TASKLIST' }
+  | { type: 'NOTE.CREATE_TASKLIST'; parentId?: string }
   | { type: 'NOTE.DELETE'; noteId: string }
   | { type: 'NOTE.SOFT_DELETE'; noteId: string }
   | { type: 'NOTE.RESTORE'; noteId: string }
@@ -434,12 +434,14 @@ const notesState = setup({
       })
     },
 
-    sendCreateTaskList: () => {
+    sendCreateTaskList: ({ event }) => {
+      const ev = typeOf('NOTE.CREATE_TASKLIST', event)
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_NOTE',
         title: 'Untitled',
         noteType: 'tasklist',
+        parentId: ev.parentId,
       })
     },
 

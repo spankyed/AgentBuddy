@@ -80,6 +80,7 @@
         @drag-end="handleDragEnd"
         @create-task="handleCreateTask"
         @open="handleOpenNote"
+        @create-tasklist="handleCreateTaskList"
       />
     </div>
   </div>
@@ -199,8 +200,8 @@ function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
 }
 
-function handleCreateTaskList() {
-  actor.send({ type: 'NOTE.CREATE_TASKLIST' })
+function handleCreateTaskList(parentId?: string) {
+  actor.send({ type: 'NOTE.CREATE_TASKLIST', parentId })
 }
 
 function handleCreateTask(parentId: string) {
