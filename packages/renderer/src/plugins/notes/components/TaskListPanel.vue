@@ -68,6 +68,7 @@
         :depth="0"
         :get-item-class="getItemClass"
         :task-mode="true"
+        :hide-completed-children-ids="hideCompletedChildrenIds"
         :drop-indicator-note-id="dropIndicator?.noteId ?? null"
         :drop-indicator-position="dropIndicator?.position ?? null"
         @select="(id: string) => $emit('select-task', id)"
@@ -77,6 +78,7 @@
         @create-task="(parentId: string) => $emit('create-task-child', parentId)"
         @create="(parentId: string) => $emit('create-subnote', parentId)"
         @open="(noteId: string) => $emit('open-note', noteId)"
+        @toggle-hide-completed="(nodeId: string) => $emit('toggle-hide-completed', nodeId)"
         @drag-start="handleDragStart"
         @drag-over="handleDragOver"
         @drag-leave="handleDragLeave"
@@ -98,6 +100,7 @@
           :get-item-class="getItemClass"
           :task-mode="true"
           :muted="true"
+          :hide-completed-children-ids="hideCompletedChildrenIds"
           :drop-indicator-note-id="dropIndicator?.noteId ?? null"
           :drop-indicator-position="dropIndicator?.position ?? null"
           @select="(id: string) => $emit('select-task', id)"
@@ -107,6 +110,7 @@
           @create-task="(parentId: string) => $emit('create-task-child', parentId)"
           @create="(parentId: string) => $emit('create-subnote', parentId)"
           @open="(noteId: string) => $emit('open-note', noteId)"
+          @toggle-hide-completed="(nodeId: string) => $emit('toggle-hide-completed', nodeId)"
           @drag-start="handleDragStart"
           @drag-over="handleDragOver"
           @drag-leave="handleDragLeave"
@@ -140,6 +144,7 @@ const props = defineProps<{
   currentNoteTitle: string
   currentNoteIcon: string | null
   showCompleted: boolean
+  hideCompletedChildrenIds?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -155,6 +160,7 @@ const emit = defineEmits<{
   (e: 'reorder-task', noteId: string, newParentId: string | null, newIndex: number): void
   (e: 'create-subnote', parentId: string): void
   (e: 'open-note', noteId: string): void
+  (e: 'toggle-hide-completed', nodeId: string): void
 }>()
 
 const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, cancelDragLeave, getItemClass, dropIndicator } =

@@ -125,13 +125,6 @@
 
       <!-- Actions (on hover, normal mode) -->
       <div v-else class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'">
-        <button
-          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
-          :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
-          @click.stop="isTaskRelated ? $emit('create-task', note.id) : $emit('create', note.id)"
-        >
-          <Plus :size="13" />
-        </button>
         <DropdownMenuRoot v-model:open="dropdownOpen">
           <DropdownMenuTrigger as-child>
             <button
@@ -159,6 +152,13 @@
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenuRoot>
+        <button
+          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
+          :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
+          @click.stop="isTaskRelated ? $emit('create-task', note.id) : $emit('create', note.id)"
+        >
+          <Plus :size="13" />
+        </button>
       </div>
 
     </div>
@@ -202,6 +202,7 @@
         :get-item-class="getItemClass"
         :task-mode="taskMode"
         :muted="false"
+        :hide-completed-children-ids="hideCompletedChildrenIds"
         :drop-indicator-note-id="dropIndicatorNoteId"
         :drop-indicator-position="dropIndicatorPosition"
         @select="$emit('select', $event)"
@@ -219,6 +220,7 @@
         @drop="(e: DragEvent, id: string) => $emit('drop', e, id)"
         @drag-end="$emit('drag-end')"
         @open="$emit('open', $event)"
+        @toggle-hide-completed="$emit('toggle-hide-completed', $event)"
       />
     </template>
   </div>
@@ -250,11 +252,13 @@ const props = withDefaults(defineProps<{
   getItemClass: (noteId: string) => string
   taskMode?: boolean
   muted?: boolean
+  hideCompletedChildrenIds?: string[]
   dropIndicatorNoteId?: string | null
   dropIndicatorPosition?: 'before' | 'after' | null
 }>(), {
   taskMode: false,
   muted: false,
+  hideCompletedChildrenIds: () => [],
   dropIndicatorNoteId: null,
   dropIndicatorPosition: null,
 })
@@ -275,6 +279,7 @@ const emit = defineEmits<{
   (e: 'toggle-complete', noteId: string): void
   (e: 'create-task', parentId: string): void
   (e: 'open', noteId: string): void
+  (e: 'toggle-hide-completed', nodeId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
@@ -293,6 +298,13 @@ const menuItems = computed(() => {
   const items: { label: string; class: string; action: () => void }[] = []
   if (isTaskRelated.value) {
     items.push({ label: 'Add Sub-Note', class: 'text-neutral-300', action: () => emit('create', props.note.id) })
+  }
+  if (hasCompletedChildren.value) {
+    items.push({
+      label: isHidingCompleted.value ? 'Show Completed' : 'Hide Completed',
+      class: 'text-neutral-300',
+      action: () => emit('toggle-hide-completed', props.note.id),
+    })
   }
   items.push({ label: 'Delete', class: 'text-red-400', action: () => emit('delete', props.note.id) })
   return items
@@ -331,9 +343,22 @@ const ownItemClass = computed(() => props.getItemClass(props.note.id))
 
 const isExpanded = computed(() => props.expandedNodeIds.includes(props.note.id))
 
-const children = computed(() =>
+const allChildren = computed(() =>
   props.allNotes
     .filter(n => n.parentId === props.note.id)
     .sort((a, b) => a.displayOrder - b.displayOrder)
 )
+
+const isHidingCompleted = computed(() => props.hideCompletedChildrenIds.includes(props.note.id))
+
+const hasCompletedChildren = computed(() =>
+  props.taskMode && allChildren.value.some(c => c.completed)
+)
+
+const children = computed(() => {
+  if (props.taskMode && isHidingCompleted.value) {
+    return allChildren.value.filter(c => !c.completed)
+  }
+  return allChildren.value
+})
 </script>
