@@ -143,7 +143,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal } from 'lucide-vue-next'
+import { Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -182,6 +182,7 @@ const emit = defineEmits<{
   (e: 'create-subnote', parentId: string): void
   (e: 'open-note', noteId: string): void
   (e: 'toggle-hide-completed', nodeId: string): void
+  (e: 'delete-tasklist'): void
 }>()
 
 const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, cancelDragLeave, getItemClass, dropIndicator } =
@@ -210,6 +211,7 @@ const headerMenuItems = computed<MenuItem[]>(() => {
     class: 'text-neutral-300',
     action: () => emit('toggle-show-completed'),
   })
+  items.push({ label: 'Delete', icon: Trash2, class: 'text-red-400', iconClass: 'text-red-400', action: () => emit('delete-tasklist') })
   return items
 })
 

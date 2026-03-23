@@ -134,6 +134,7 @@
         @move-task="(noteIds: string[], newParentId: string | null) => actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })"
         @reorder-task="(noteId: string, newParentId: string | null, newIndex: number) => actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })"
         @open-note="(noteId: string) => actor.send({ type: 'NOTE.OPEN', noteId })"
+        @delete-tasklist="actor.send({ type: 'NOTE.DELETE', noteId: currentNote.id })"
       />
 
       <!-- Editor area -->
