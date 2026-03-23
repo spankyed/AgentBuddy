@@ -218,7 +218,7 @@ const taskChildren = computed(() =>
 const taskDescendants = computed(() => {
   if (!currentNote.value) return []
   const rootId = currentNote.value.id
-  const result: NoteDTO[] = []
+  const result: NoteDTO[] = [currentNote.value]
   const queue = [rootId]
   while (queue.length > 0) {
     const parentId = queue.shift()!
