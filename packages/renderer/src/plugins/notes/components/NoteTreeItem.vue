@@ -94,10 +94,11 @@
                 <DropdownMenuItem
                   v-for="item in menuItems"
                   :key="item.label"
-                  class="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                  class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
                   :class="item.class"
                   @select="item.action"
                 >
+                  <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
                   {{ item.label }}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -174,10 +175,11 @@
         <button
           v-for="item in menuItems"
           :key="item.label"
-          class="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
+          class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
           :class="item.class"
           @click="item.action(); showContextMenu = false"
         >
+          <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
           {{ item.label }}
         </button>
       </div>
@@ -229,7 +231,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Check, ChevronRight, CircleCheck, FileText, ListChecks, MoreHorizontal, Plus } from 'lucide-vue-next'
+import type { Component } from 'vue'
+import { Check, ChevronRight, CircleCheck, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -295,18 +298,19 @@ function handleClick(e: MouseEvent) {
 const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props.note.noteType === 'task')
 
 const menuItems = computed(() => {
-  const items: { label: string; class: string; action: () => void }[] = []
+  const items: { label: string; icon: Component; class: string; iconClass?: string; action: () => void }[] = []
   if (isTaskRelated.value) {
-    items.push({ label: 'Add Sub-Note', class: 'text-neutral-300', action: () => emit('create', props.note.id) })
+    items.push({ label: 'Add Sub-Note', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create', props.note.id) })
   }
   if (hasCompletedChildren.value) {
     items.push({
       label: isHidingCompleted.value ? 'Show Completed' : 'Hide Completed',
+      icon: isHidingCompleted.value ? Eye : EyeOff,
       class: 'text-neutral-300',
       action: () => emit('toggle-hide-completed', props.note.id),
     })
   }
-  items.push({ label: 'Delete', class: 'text-red-400', action: () => emit('delete', props.note.id) })
+  items.push({ label: 'Delete', icon: Trash2, class: 'text-red-400', iconClass: 'text-red-400', action: () => emit('delete', props.note.id) })
   return items
 })
 
