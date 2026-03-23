@@ -75,7 +75,7 @@
       <!-- Task checkbox (taskMode only, before action pill) -->
       <template v-if="taskMode && note.noteType === 'task'">
         <!-- Grouped action pill (visible on hover) -->
-        <div class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'">
+        <div class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'" @dblclick.stop>
           <DropdownMenuRoot v-model:open="dropdownOpen">
             <DropdownMenuTrigger as-child>
               <button
@@ -125,7 +125,7 @@
       </template>
 
       <!-- Actions (on hover, normal mode) -->
-      <div v-else class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'">
+      <div v-else class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'" @dblclick.stop>
         <DropdownMenuRoot v-model:open="dropdownOpen">
           <DropdownMenuTrigger as-child>
             <button
