@@ -158,7 +158,7 @@ const notesState = setup({
     }),
 
     sendViewNote: ({ context }) => {
-      if (context.currentNoteId) {
+      if (context.currentNoteId && context.notes.some(n => n.id === context.currentNoteId)) {
         trpc.bus.send.mutate({
           systemId: id,
           type: 'VIEW_NOTE',

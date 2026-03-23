@@ -142,6 +142,7 @@ export const notesSystem = setup({
     updateNote: ({ system, event }) => {
       const ev = typeOf('UPDATE_NOTE', event);
       const noteBeforeUpdate = repository.noteQueries.byId(ev.id as EARS.EntityId) as NoteEntity | undefined;
+      if (!noteBeforeUpdate) return;
       const updates: Record<string, any> = {};
 
       if (ev.title !== undefined) updates.title = ev.title;
@@ -410,6 +411,7 @@ export const notesSystem = setup({
 
     viewNote: ({ system, event }) => {
       const ev = typeOf('VIEW_NOTE', event);
+      if (!repository.noteQueries.byId(ev.id as EARS.EntityId)) return;
       repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       if (updatedNote) {
