@@ -72,7 +72,7 @@
       <!-- Title -->
       <span class="truncate flex-1 ml-0.5" :class="note.completed ? 'line-through' : ''">{{ note.title || 'Untitled' }}</span>
 
-      <!-- Task actions + checkbox (taskMode only) -->
+      <!-- Task checkbox (taskMode only, before action pill) -->
       <template v-if="taskMode && note.noteType === 'task'">
         <!-- Grouped action pill (visible on hover) -->
         <div class="items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1" :class="dropdownOpen ? 'flex' : 'hidden group-hover:flex'">
@@ -144,10 +144,11 @@
               <DropdownMenuItem
                 v-for="item in menuItems"
                 :key="item.label"
-                class="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
                 :class="item.class"
                 @select="item.action"
               >
+                <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
                 {{ item.label }}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -165,25 +166,12 @@
     </div>
 
     <!-- Context menu (positioned at cursor) -->
-    <Teleport to="body">
-      <div
-        v-if="showContextMenu"
-        ref="contextMenuRef"
-        class="fixed z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
-        :style="{ left: `${contextMenuPos.x}px`, top: `${contextMenuPos.y}px` }"
-      >
-        <button
-          v-for="item in menuItems"
-          :key="item.label"
-          class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
-          :class="item.class"
-          @click="item.action(); showContextMenu = false"
-        >
-          <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
-          {{ item.label }}
-        </button>
-      </div>
-    </Teleport>
+    <ContextMenuPopup
+      :show="showContextMenu"
+      :pos="contextMenuPos"
+      :items="menuItems"
+      @close="showContextMenu = false"
+    />
 
     <!-- Drop indicator: after (only when not expanded, to avoid ambiguity) -->
     <div
@@ -229,9 +217,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
-import type { Component } from 'vue'
 import { Check, ChevronRight, CircleCheck, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
@@ -241,7 +228,8 @@ import {
   DropdownMenuItem,
 } from 'reka-ui'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8
@@ -297,8 +285,8 @@ function handleClick(e: MouseEvent) {
 
 const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props.note.noteType === 'task')
 
-const menuItems = computed(() => {
-  const items: { label: string; icon: Component; class: string; iconClass?: string; action: () => void }[] = []
+const menuItems = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = []
   if (isTaskRelated.value) {
     items.push({ label: 'Add Sub-Note', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create', props.note.id) })
   }
@@ -315,30 +303,12 @@ const menuItems = computed(() => {
 })
 
 const dropdownOpen = ref(false)
-const showContextMenu = ref(false)
-const contextMenuRef = ref<HTMLDivElement | null>(null)
-const contextMenuPos = ref({ x: 0, y: 0 })
+const { showMenu: showContextMenu, menuPos: contextMenuPos, open: openContextMenu } = useContextMenu()
 
 function handleContextMenu(e: MouseEvent) {
   e.preventDefault()
-  const menuWidth = 160
-  const menuHeight = isTaskRelated.value ? 72 : 36
-  const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8)
-  const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8)
-  contextMenuPos.value = { x, y }
-  showContextMenu.value = true
+  openContextMenu(e, menuItems.value.length)
 }
-
-function handleClickOutsideContextMenu(e: MouseEvent) {
-  if (contextMenuRef.value && !contextMenuRef.value.contains(e.target as Node)) {
-    showContextMenu.value = false
-  }
-}
-
-onMounted(() => document.addEventListener('mousedown', handleClickOutsideContextMenu))
-onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideContextMenu))
-
-watch(showContextMenu, (val) => onMenuOpenChange(val))
 
 const showDropBefore = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'before')
 const showDropAfter = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'after')

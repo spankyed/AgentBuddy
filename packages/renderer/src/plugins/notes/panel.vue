@@ -6,34 +6,20 @@
       @drop="handleRootDrop"
     >
       <span class="text-sm font-medium text-neutral-300">Notes</span>
-      <div class="relative">
-        <button
-          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-          title="New Note (right-click for options)"
-          @click="handleCreateNote()"
-          @contextmenu.prevent="showCreateMenu = true"
-        >
-          <Plus :size="16" />
-        </button>
-        <div
-          v-if="showCreateMenu"
-          ref="createMenuRef"
-          class="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
-        >
-          <button
-            class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
-            @click="handleCreateNote(); showCreateMenu = false"
-          >
-            New Note
-          </button>
-          <button
-            class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
-            @click="handleCreateTaskList(); showCreateMenu = false"
-          >
-            New Task List
-          </button>
-        </div>
-      </div>
+      <button
+        class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+        title="New Note (right-click for options)"
+        @click="handleCreateNote()"
+        @contextmenu.prevent="openCreateMenu($event, createMenuItems.length)"
+      >
+        <Plus :size="16" />
+      </button>
+      <ContextMenuPopup
+        :show="showCreateMenu"
+        :pos="createMenuPos"
+        :items="createMenuItems"
+        @close="showCreateMenu = false"
+      />
     </div>
 
     <!-- Tree -->
@@ -82,13 +68,19 @@ import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
-import { Plus } from 'lucide-vue-next'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import { Plus, FilePlus, ListChecks } from 'lucide-vue-next'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
-import { useContextMenu } from '@/core/composables/useContextMenu'
+import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
 
 const actor: NotesState = applicationState.system.get(id)
 
-const { showMenu: showCreateMenu, menuRef: createMenuRef } = useContextMenu()
+const { showMenu: showCreateMenu, menuRef: createMenuRef, menuPos: createMenuPos, open: openCreateMenu } = useContextMenu()
+
+const createMenuItems = computed<MenuItem[]>(() => [
+  { label: 'New Note', icon: FilePlus, class: 'text-neutral-300', action: () => handleCreateNote() },
+  { label: 'New Task List', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
+])
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)

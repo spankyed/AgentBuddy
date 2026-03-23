@@ -4,6 +4,7 @@
     <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800 cursor-pointer transition-colors"
       :class="!selectedTaskId ? 'bg-neutral-700' : 'hover:bg-neutral-800'"
       @click="$emit('deselect-task')"
+      @contextmenu.prevent="handleHeaderContextMenu"
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
@@ -15,40 +16,22 @@
         <ListChecks v-else :size="16" class="text-neutral-500 shrink-0" />
         <span class="truncate">{{ currentNoteTitle || 'Untitled' }}</span>
       </div>
-      <div class="flex items-center gap-1">
-        <button
-          class="flex items-center justify-center w-6 h-6 rounded transition-colors"
-          :class="showCompleted ? 'text-neutral-400 hover:text-neutral-200' : 'text-neutral-600 hover:text-neutral-400'"
-          :title="showCompleted ? 'Hide completed' : 'Show completed'"
-          @click.stop="$emit('toggle-show-completed')"
-        >
-          <Eye v-if="showCompleted" :size="16" />
-          <EyeOff v-else :size="16" />
-        </button>
-        <div class="relative">
-          <button
-            class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-            title="Add task (right-click for options)"
-            @click.stop="$emit('create-task')"
-            @contextmenu.prevent="showCreateMenu = true"
-          >
-            <Plus :size="16" />
-          </button>
-          <div
-            v-if="showCreateMenu"
-            ref="createMenuRef"
-            class="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
-          >
-            <button
-              class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
-              @click="$emit('create-subnote', currentNoteId!); showCreateMenu = false"
-            >
-              Add Note
-            </button>
-          </div>
-        </div>
-      </div>
+      <button
+        class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+        title="Add task"
+        @click.stop="$emit('create-task')"
+      >
+        <Plus :size="16" />
+      </button>
     </div>
+
+    <!-- Header context menu -->
+    <ContextMenuPopup
+      :show="showHeaderMenu"
+      :pos="headerMenuPos"
+      :items="headerMenuItems"
+      @close="showHeaderMenu = false"
+    />
 
     <!-- Task list -->
     <div
@@ -130,10 +113,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Plus, ListChecks, Eye, EyeOff } from 'lucide-vue-next'
+import { Plus, ListChecks, Eye, EyeOff, FilePlus } from 'lucide-vue-next'
 import NoteTreeItem from './NoteTreeItem.vue'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
 import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
-import { useContextMenu } from '@/core/composables/useContextMenu'
+import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
 
 const props = defineProps<{
   tasks: NoteDTO[]
@@ -172,7 +156,23 @@ const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDrag
     onReorder: (noteId, newParentId, newIndex) => emit('reorder-task', noteId, newParentId, newIndex),
   })
 
-const { showMenu: showCreateMenu, menuRef: createMenuRef } = useContextMenu()
+const { showMenu: showHeaderMenu, menuPos: headerMenuPos, open: openHeaderMenu } = useContextMenu()
+
+function handleHeaderContextMenu(e: MouseEvent) {
+  openHeaderMenu(e, headerMenuItems.value.length)
+}
+
+const headerMenuItems = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = []
+  items.push({ label: 'Add Note', icon: FilePlus, class: 'text-neutral-300', action: () => emit('create-subnote', props.currentNoteId!) })
+  items.push({
+    label: props.showCompleted ? 'Hide Completed' : 'Show Completed',
+    icon: props.showCompleted ? EyeOff : Eye,
+    class: 'text-neutral-300',
+    action: () => emit('toggle-show-completed'),
+  })
+  return items
+})
 
 function handleRootDragOver(e: DragEvent) {
   cancelDragLeave()
