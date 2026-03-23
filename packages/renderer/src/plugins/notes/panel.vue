@@ -6,20 +6,43 @@
       @drop="handleRootDrop"
     >
       <span class="text-sm font-medium text-neutral-300">Notes</span>
-      <button
-        class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-        title="New Note (right-click for options)"
-        @click="handleCreateNote()"
-        @contextmenu.prevent="openCreateMenu($event, createMenuItems.length)"
-      >
-        <Plus :size="16" />
-      </button>
-      <ContextMenuPopup
-        :show="showCreateMenu"
-        :pos="createMenuPos"
-        :items="createMenuItems"
-        @close="showCreateMenu = false"
-      />
+      <div class="flex items-center gap-0.5">
+        <DropdownMenuRoot v-model:open="dropdownOpen">
+          <DropdownMenuTrigger as-child>
+            <button
+              class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+              title="More actions"
+              @click.stop
+            >
+              <MoreHorizontal :size="16" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              class="bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px] z-50"
+              :side-offset="4"
+            >
+              <DropdownMenuItem
+                v-for="item in createMenuItems"
+                :key="item.label"
+                class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                :class="item.class"
+                @select="item.action"
+              >
+                <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
+                {{ item.label }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
+        <button
+          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+          title="New Note"
+          @click="handleCreateNote()"
+        >
+          <Plus :size="16" />
+        </button>
+      </div>
     </div>
 
     <!-- Tree -->
@@ -68,17 +91,22 @@ import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
-import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
-import { Plus, FilePlus, ListChecks } from 'lucide-vue-next'
+import { Plus, ListChecks, MoreHorizontal } from 'lucide-vue-next'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
-import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
+import type { MenuItem } from '@/core/composables/useContextMenu'
 
 const actor: NotesState = applicationState.system.get(id)
 
-const { showMenu: showCreateMenu, menuRef: createMenuRef, menuPos: createMenuPos, open: openCreateMenu } = useContextMenu()
+const dropdownOpen = ref(false)
 
 const createMenuItems = computed<MenuItem[]>(() => [
-  { label: 'New Note', icon: FilePlus, class: 'text-neutral-300', action: () => handleCreateNote() },
   { label: 'New Task List', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
 ])
 const notes = useSelector(actor, (s) => s.context.notes)

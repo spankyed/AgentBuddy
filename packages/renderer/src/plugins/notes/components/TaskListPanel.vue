@@ -16,13 +16,43 @@
         <ListChecks v-else :size="16" class="text-neutral-500 shrink-0" />
         <span class="truncate">{{ currentNoteTitle || 'Untitled' }}</span>
       </div>
-      <button
-        class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-        title="Add task"
-        @click.stop="$emit('create-task')"
-      >
-        <Plus :size="16" />
-      </button>
+      <div class="flex items-center gap-0.5">
+        <DropdownMenuRoot v-model:open="dropdownOpen">
+          <DropdownMenuTrigger as-child>
+            <button
+              class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+              title="More actions"
+              @click.stop
+            >
+              <MoreHorizontal :size="16" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              class="bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px] z-50"
+              :side-offset="4"
+            >
+              <DropdownMenuItem
+                v-for="item in headerMenuItems"
+                :key="item.label"
+                class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                :class="item.class"
+                @select="item.action"
+              >
+                <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
+                {{ item.label }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
+        <button
+          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+          title="Add task"
+          @click.stop="$emit('create-task')"
+        >
+          <Plus :size="16" />
+        </button>
+      </div>
     </div>
 
     <!-- Header context menu -->
@@ -113,7 +143,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Plus, ListChecks, Eye, EyeOff, FilePlus } from 'lucide-vue-next'
+import { Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal } from 'lucide-vue-next'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from 'reka-ui'
 import NoteTreeItem from './NoteTreeItem.vue'
 import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
 import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
@@ -156,6 +193,7 @@ const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDrag
     onReorder: (noteId, newParentId, newIndex) => emit('reorder-task', noteId, newParentId, newIndex),
   })
 
+const dropdownOpen = ref(false)
 const { showMenu: showHeaderMenu, menuPos: headerMenuPos, open: openHeaderMenu } = useContextMenu()
 
 function handleHeaderContextMenu(e: MouseEvent) {
