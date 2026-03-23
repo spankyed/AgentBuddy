@@ -117,6 +117,7 @@ export const noteCommands = {
     savedDisplayOrder?: number | null;
     lastSeen?: number;
     completed?: boolean;
+    hideCompletedChildren?: boolean;
   }, skipTimestamp?: boolean): void => {
     if (!findById<NoteEntity>(id)) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
@@ -130,6 +131,7 @@ export const noteCommands = {
     if (updates.savedDisplayOrder !== undefined) filteredUpdates.savedDisplayOrder = updates.savedDisplayOrder === null ? undefined : updates.savedDisplayOrder;
     if (updates.lastSeen !== undefined) filteredUpdates.lastSeen = updates.lastSeen;
     if (updates.completed !== undefined) filteredUpdates.completed = updates.completed;
+    if (updates.hideCompletedChildren !== undefined) filteredUpdates.hideCompletedChildren = updates.hideCompletedChildren;
 
     if (Object.keys(filteredUpdates).length > 0) {
       updateEntity(id, filteredUpdates, skipTimestamp);

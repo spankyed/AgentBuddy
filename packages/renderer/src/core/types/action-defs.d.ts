@@ -168,6 +168,7 @@ interface NoteEntity extends BaseEntity {
     icon: string | null;
     noteType: 'note' | 'tasklist' | 'task';
     completed: boolean;
+    hideCompletedChildren: boolean;
     displayOrder: number;
     savedDisplayOrder?: number;
     createdAt: number;
@@ -183,6 +184,7 @@ interface NoteDTO {
     icon: string | null;
     noteType: 'note' | 'tasklist' | 'task';
     completed: boolean;
+    hideCompletedChildren: boolean;
     parentId: string | null;
     displayOrder: number;
     savedDisplayOrder: number | null;
@@ -2816,6 +2818,7 @@ declare const events: {
         content: zod.ZodOptional<zod.ZodString>;
         icon: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         completed: zod.ZodOptional<zod.ZodBoolean>;
+        hideCompletedChildren: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         id: string;
         type: "UPDATE_NOTE";
@@ -2824,6 +2827,7 @@ declare const events: {
         title?: string | undefined;
         content?: string | undefined;
         icon?: string | null | undefined;
+        hideCompletedChildren?: boolean | undefined;
     }, {
         id: string;
         type: "UPDATE_NOTE";
@@ -2832,6 +2836,7 @@ declare const events: {
         title?: string | undefined;
         content?: string | undefined;
         icon?: string | null | undefined;
+        hideCompletedChildren?: boolean | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_NOTE">;
         systemId: zod.ZodLiteral<"notes">;
@@ -5398,6 +5403,7 @@ declare const services: {
                 savedDisplayOrder?: number | null;
                 lastSeen?: number;
                 completed?: boolean;
+                hideCompletedChildren?: boolean;
             }, skipTimestamp?: boolean) => void;
             readonly softDelete: (id: EARS.EntityId) => string[];
             readonly restore: (id: EARS.EntityId) => string[];

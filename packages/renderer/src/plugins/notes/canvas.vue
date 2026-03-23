@@ -121,7 +121,6 @@
         :current-note-title="currentNote.title"
         :current-note-icon="currentNote.icon"
         :show-completed="showCompletedTasks"
-        :hide-completed-children-ids="hideCompletedChildrenIds"
         @toggle-hide-completed="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN', nodeId })"
         @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
         @deselect-task="actor.send({ type: 'TASK.DESELECT' })"
@@ -210,8 +209,6 @@ const notes = useSelector(actor, (s) => s.context.notes)
 const selectedTaskId = useSelector(actor, (s) => s.context.selectedTaskId)
 const selectedTask = useSelector(actor, (s) => s.context.selectedTask)
 const showCompletedTasks = useSelector(actor, (s) => s.context.showCompletedTasks)
-const hideCompletedChildrenIds = useSelector(actor, (s) => s.context.hideCompletedChildrenIds)
-
 const isTaskList = computed(() => currentNote.value?.noteType === 'tasklist')
 const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
 const taskExpandedNodeIds = useSelector(actor, (s) => s.context.taskExpandedNodeIds)

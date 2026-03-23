@@ -192,7 +192,6 @@
         :get-item-class="getItemClass"
         :task-mode="taskMode"
         :muted="false"
-        :hide-completed-children-ids="hideCompletedChildrenIds"
         :drop-indicator-note-id="dropIndicatorNoteId"
         :drop-indicator-position="dropIndicatorPosition"
         @select="$emit('select', $event)"
@@ -243,13 +242,11 @@ const props = withDefaults(defineProps<{
   getItemClass: (noteId: string) => string
   taskMode?: boolean
   muted?: boolean
-  hideCompletedChildrenIds?: string[]
   dropIndicatorNoteId?: string | null
   dropIndicatorPosition?: 'before' | 'after' | null
 }>(), {
   taskMode: false,
   muted: false,
-  hideCompletedChildrenIds: () => [],
   dropIndicatorNoteId: null,
   dropIndicatorPosition: null,
 })
@@ -323,7 +320,7 @@ const allChildren = computed(() =>
     .sort((a, b) => a.displayOrder - b.displayOrder)
 )
 
-const isHidingCompleted = computed(() => props.hideCompletedChildrenIds.includes(props.note.id))
+const isHidingCompleted = computed(() => props.note.hideCompletedChildren)
 
 const hasCompletedChildren = computed(() =>
   props.taskMode && allChildren.value.some(c => c.completed)

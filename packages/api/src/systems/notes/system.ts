@@ -42,6 +42,7 @@ export const IncomingNoteEvents = [
     content: z.string().optional(),
     icon: z.string().nullable().optional(),
     completed: z.boolean().optional(),
+    hideCompletedChildren: z.boolean().optional(),
   }),
   busEvent('DELETE_NOTE', {
     id: z.string(),
@@ -149,6 +150,7 @@ export const notesSystem = setup({
       if (ev.title !== undefined) updates.title = ev.title;
       if (ev.content !== undefined) updates.content = ev.content;
       if (ev.icon !== undefined) updates.icon = ev.icon;
+      if (ev.hideCompletedChildren !== undefined) updates.hideCompletedChildren = ev.hideCompletedChildren;
       if (ev.completed !== undefined) {
         updates.completed = ev.completed;
         // When completing: save current displayOrder

@@ -9,6 +9,7 @@ export interface NoteEntity extends BaseEntity {
   icon: string | null;
   noteType: 'note' | 'tasklist' | 'task';
   completed: boolean;
+  hideCompletedChildren: boolean;
   displayOrder: number;
   savedDisplayOrder?: number;
   createdAt: number;
@@ -25,6 +26,7 @@ export interface NoteDTO {
   icon: string | null;
   noteType: 'note' | 'tasklist' | 'task';
   completed: boolean;
+  hideCompletedChildren: boolean;
   parentId: string | null;
   displayOrder: number;
   savedDisplayOrder: number | null;

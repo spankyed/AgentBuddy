@@ -19,6 +19,7 @@ function toDTO(note: NoteEntity): NoteDTO {
     icon: note.icon ?? null,
     noteType: note.noteType ?? 'note',
     completed: note.completed ?? false,
+    hideCompletedChildren: note.hideCompletedChildren ?? false,
     parentId,
     displayOrder: note.displayOrder,
     savedDisplayOrder: note.savedDisplayOrder ?? null,

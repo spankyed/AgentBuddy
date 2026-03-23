@@ -81,7 +81,7 @@
         :depth="0"
         :get-item-class="getItemClass"
         :task-mode="true"
-        :hide-completed-children-ids="hideCompletedChildrenIds"
+
         :drop-indicator-note-id="dropIndicator?.noteId ?? null"
         :drop-indicator-position="dropIndicator?.position ?? null"
         @select="(id: string) => $emit('select-task', id)"
@@ -113,7 +113,7 @@
           :get-item-class="getItemClass"
           :task-mode="true"
           :muted="true"
-          :hide-completed-children-ids="hideCompletedChildrenIds"
+  
           :drop-indicator-note-id="dropIndicator?.noteId ?? null"
           :drop-indicator-position="dropIndicator?.position ?? null"
           @select="(id: string) => $emit('select-task', id)"
@@ -165,7 +165,6 @@ const props = defineProps<{
   currentNoteTitle: string
   currentNoteIcon: string | null
   showCompleted: boolean
-  hideCompletedChildrenIds?: string[]
 }>()
 
 const emit = defineEmits<{
