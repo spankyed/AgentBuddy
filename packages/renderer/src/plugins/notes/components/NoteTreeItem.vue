@@ -17,7 +17,7 @@
         ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
-      :draggable="!(taskMode && (note.completed || muted))"
+      :draggable="!(taskMode && (note.completed || muted) && depth === 0)"
       @click="handleClick"
       @contextmenu="handleContextMenu"
       @dragstart="$emit('drag-start', $event, note.id)"
@@ -164,7 +164,7 @@
         :depth="depth + 1"
         :get-item-class="getItemClass"
         :task-mode="taskMode"
-        :muted="muted"
+        :muted="false"
         :drop-indicator-note-id="dropIndicatorNoteId"
         :drop-indicator-position="dropIndicatorPosition"
         @select="$emit('select', $event)"
