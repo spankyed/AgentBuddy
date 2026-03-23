@@ -132,7 +132,7 @@
         @toggle-expand="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_EXPAND', nodeId })"
         @move-task="(noteIds: string[], newParentId: string | null) => actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })"
         @reorder-task="(noteId: string, newParentId: string | null, newIndex: number) => actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })"
-        @open-tasklist="(noteId: string) => actor.send({ type: 'NOTE.SELECT', noteId })"
+        @open-note="(noteId: string) => actor.send({ type: 'NOTE.OPEN', noteId })"
       />
 
       <!-- Editor area -->

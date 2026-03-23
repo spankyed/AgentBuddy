@@ -34,6 +34,7 @@ type SystemEvent = OutgoingNotesEvents
 
 type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
+  | { type: 'NOTE.OPEN'; noteId: string }
   | { type: 'NOTE.CREATE'; parentId?: string }
   | { type: 'NOTE.CREATE_TASKLIST' }
   | { type: 'NOTE.DELETE'; noteId: string }
@@ -127,6 +128,20 @@ const notesState = setup({
         }
       }
 
+      const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
+      return {
+        currentNoteId: noteId,
+        currentNote: note,
+        selectedNoteIds: [],
+        selectedTaskId: null,
+        selectedTask: null,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, noteId])],
+      }
+    }),
+
+    openNote: assign(({ event, context }) => {
+      const noteId = (event as { noteId: string }).noteId
+      const note = context.notes.find(n => n.id === noteId) || null
       const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
       return {
         currentNoteId: noteId,
@@ -639,6 +654,10 @@ const notesState = setup({
           actions: ['selectNote', 'sendViewNote'],
           target: 'editor',
         },
+        'NOTE.OPEN': {
+          actions: ['openNote', 'sendViewNote'],
+          target: 'editor',
+        },
         'NOTE.DELETE': {
           actions: 'sendDeleteNote',
         },
@@ -691,6 +710,9 @@ const notesState = setup({
       on: {
         'NOTE.SELECT': {
           actions: ['selectNote', 'sendViewNote'],
+        },
+        'NOTE.OPEN': {
+          actions: ['openNote', 'sendViewNote'],
         },
         'NOTE.CREATE': {
           actions: 'sendCreateNote',

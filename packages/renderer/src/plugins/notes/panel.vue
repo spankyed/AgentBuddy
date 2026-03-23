@@ -70,6 +70,7 @@
         @drop="(e: DragEvent, id: string) => handleDrop(e, id)"
         @drag-end="handleDragEnd"
         @create-task="handleCreateTask"
+        @open="handleOpenNote"
       />
     </div>
   </div>
@@ -158,6 +159,10 @@ function handleShiftSelect(noteId: string) {
 
 function handleSelectNote(noteId: string) {
   actor.send({ type: 'NOTE.SELECT', noteId })
+}
+
+function handleOpenNote(noteId: string) {
+  actor.send({ type: 'NOTE.OPEN', noteId })
 }
 
 function handleToggleSelect(noteId: string) {
