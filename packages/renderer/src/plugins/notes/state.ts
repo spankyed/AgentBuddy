@@ -28,6 +28,7 @@ export interface NotesContext {
   selectedNoteIds: string[]
   selectedTaskId: string | null
   selectedTask: NoteDTO | null
+  settings: { tasklistPanelPosition: 'left' | 'right' }
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -64,7 +65,10 @@ type UIEvent =
   | { type: 'TASK.TOGGLE_EXPAND'; nodeId: string }
   | { type: 'VIEW_WELCOME' }
 
-export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
+type SettingsEvent =
+  | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
+
+export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent | SettingsEvent
 const typeOf = safeEvents<NotesEvents>()
 
 function findNearestTaskList(notes: NoteDTO[], noteId: string): NoteDTO | null {
@@ -568,6 +572,11 @@ const notesState = setup({
       currentNoteId: null,
       currentNote: null,
     }),
+
+    handleSettingsUpdate: assign(({ event }) => {
+      const ev = typeOf('NOTES_SETTINGS_UPDATED', event)
+      return { settings: ev.settings }
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -585,9 +594,11 @@ const notesState = setup({
     selectedNoteIds: [],
     selectedTaskId: null,
     selectedTask: null,
+    settings: { tasklistPanelPosition: 'left' as const },
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
+    NOTES_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     NOTE_UPDATED: { actions: 'updateNoteInList' },
     NOTE_RESTORED: { actions: 'addRestoredNote' },
     'NOTE.SOFT_DELETE': { actions: 'sendSoftDeleteNote' },

@@ -108,7 +108,7 @@
     <!-- Editor State -->
     <div
       v-else-if="state.hasTag('editor') && currentNote"
-      class="flex h-full"
+      :class="['flex h-full', notesSettings.tasklistPanelPosition === 'right' && 'flex-row-reverse']"
     >
       <!-- Task List Panel (left side for tasklists) -->
       <TaskListPanel
@@ -121,6 +121,7 @@
         :current-note-title="currentNote.title"
         :current-note-icon="currentNote.icon"
         :show-completed="!(currentNote?.hideCompletedChildren ?? false)"
+        :panel-position="notesSettings.tasklistPanelPosition"
         @toggle-hide-completed="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN', nodeId })"
         @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
         @deselect-task="actor.send({ type: 'TASK.DESELECT' })"
@@ -209,6 +210,7 @@ const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)
 const selectedTaskId = useSelector(actor, (s) => s.context.selectedTaskId)
 const selectedTask = useSelector(actor, (s) => s.context.selectedTask)
+const notesSettings = useSelector(actor, (s) => s.context.settings)
 const isTaskList = computed(() => currentNote.value?.noteType === 'tasklist')
 const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
 

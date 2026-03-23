@@ -154,6 +154,9 @@ export const defaultSettings: SettingsData = {
       runningRootFlowId: undefined, // No flow running initially
       inspectEnabled: false, // Inspection panel disabled by default
     },
+    notes: {
+      tasklistPanelPosition: 'left'
+    },
     logs: {
       maxLogs: 1000, // Default to 1000 logs
       excludedSources: [] // No sources excluded by default

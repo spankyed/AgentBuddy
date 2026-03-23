@@ -142,6 +142,11 @@ export interface BrainSettings {
   inspectEnabled?: boolean; // Whether the brain inspection panel is enabled
 }
 
+// Notes plugin settings
+export interface NotesSettings {
+  tasklistPanelPosition: 'left' | 'right'
+}
+
 // Logs plugin settings
 export interface LogsSettings {
   maxLogs: number; // Maximum number of logs to keep in memory

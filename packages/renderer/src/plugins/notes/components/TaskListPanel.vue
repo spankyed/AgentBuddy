@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full w-[250px] min-w-[250px] border-r border-neutral-800">
+  <div :class="['flex flex-col h-full w-[250px] min-w-[250px] border-neutral-800', panelPosition === 'right' ? 'border-l' : 'border-r']">
     <!-- Header -->
     <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800 cursor-pointer transition-colors"
       :class="!selectedTaskId ? 'bg-neutral-700' : 'hover:bg-neutral-800'"
@@ -166,6 +166,7 @@ const props = defineProps<{
   currentNoteTitle: string
   currentNoteIcon: string | null
   showCompleted: boolean
+  panelPosition?: 'left' | 'right'
 }>()
 
 const emit = defineEmits<{
