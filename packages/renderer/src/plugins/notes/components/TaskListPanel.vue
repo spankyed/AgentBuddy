@@ -190,6 +190,7 @@ const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDrag
     notes: computed(() => props.allNotes),
     selectedNoteIds: ref([]),
     currentNoteId: computed(() => props.selectedTaskId),
+    expandedNodeIds: computed(() => props.expandedNodeIds),
     onMove: (noteIds, newParentId) => emit('move-task', noteIds, newParentId),
     onReorder: (noteId, newParentId, newIndex) => emit('reorder-task', noteId, newParentId, newIndex),
   })

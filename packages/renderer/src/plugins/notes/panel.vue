@@ -136,6 +136,7 @@ const {
   notes,
   selectedNoteIds,
   currentNoteId,
+  expandedNodeIds,
   onMove: (noteIds, newParentId) => {
     actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })
   },

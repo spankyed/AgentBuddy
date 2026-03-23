@@ -14,6 +14,7 @@ interface NoteTreeDragDropOptions {
   currentNoteId: Ref<string | null>
   onMove: (noteIds: string[], newParentId: string | null) => void
   onReorder?: (noteId: string, newParentId: string | null, newIndex: number) => void
+  expandedNodeIds?: Ref<string[]>
 }
 
 export function useNoteTreeDragDrop({
@@ -22,6 +23,7 @@ export function useNoteTreeDragDrop({
   currentNoteId,
   onMove,
   onReorder,
+  expandedNodeIds,
 }: NoteTreeDragDropOptions) {
   const draggedNoteIds = ref<string[]>([])
   const dropTarget = ref<DropTarget | null>(null)
@@ -49,6 +51,11 @@ export function useNoteTreeDragDrop({
   function getCurrentParentId(noteId: string): string | null {
     const note = notes.value.find(n => n.id === noteId)
     return note?.parentId ?? null
+  }
+
+  function isExpandedWithChildren(noteId: string): boolean {
+    if (!expandedNodeIds?.value?.includes(noteId)) return false
+    return notes.value.some(n => n.parentId === noteId)
   }
 
   function hasDraggedTask(): boolean {
@@ -159,14 +166,26 @@ export function useNoteTreeDragDrop({
     const currentPosition = dropTarget.value?.noteId === noteId ? dropTarget.value.position : null
 
     let position: DropPosition
-    if (currentPosition === 'before') {
-      position = relativeY < 0.40 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
-    } else if (currentPosition === 'after') {
-      position = relativeY > 0.60 ? 'after' : relativeY < 0.30 ? 'before' : 'on'
-    } else if (currentPosition === 'on') {
-      position = relativeY < 0.20 ? 'before' : relativeY > 0.80 ? 'after' : 'on'
+    if (isExpandedWithChildren(noteId)) {
+      // 2-zone: no 'after' for expanded parents (children are rendered below)
+      if (currentPosition === 'before') {
+        position = relativeY < 0.60 ? 'before' : 'on'
+      } else if (currentPosition === 'on') {
+        position = relativeY < 0.40 ? 'before' : 'on'
+      } else {
+        position = relativeY < 0.50 ? 'before' : 'on'
+      }
     } else {
-      position = relativeY < 0.30 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+      // Original 3-zone logic (unchanged)
+      if (currentPosition === 'before') {
+        position = relativeY < 0.40 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+      } else if (currentPosition === 'after') {
+        position = relativeY > 0.60 ? 'after' : relativeY < 0.30 ? 'before' : 'on'
+      } else if (currentPosition === 'on') {
+        position = relativeY < 0.20 ? 'before' : relativeY > 0.80 ? 'after' : 'on'
+      } else {
+        position = relativeY < 0.30 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+      }
     }
 
     if (!isValidDrop(noteId, position)) {
