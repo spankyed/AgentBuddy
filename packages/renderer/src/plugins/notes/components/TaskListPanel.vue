@@ -86,7 +86,7 @@
 
       <!-- Completed section -->
       <template v-if="showCompleted && completedTasks.length > 0">
-        <div v-if="incompleteTasks.length > 0" class="border-b border-neutral-800/50 mx-3 my-1" />
+        <div v-if="incompleteTasks.length > 0" class="border-b border-neutral-800 mx-3 my-1" />
         <NoteTreeItem
           v-for="task in completedTasks"
           :key="task.id"
