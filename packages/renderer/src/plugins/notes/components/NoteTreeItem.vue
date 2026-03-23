@@ -9,7 +9,7 @@
     <!-- Node row -->
     <div
       data-note-tree-item
-      class="relative flex items-center gap-1 px-2 py-2 rounded-md cursor-pointer text-sm transition-colors group"
+      class="mx-1 relative flex items-center gap-1 px-2 py-2 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
           ? taskMode && (note.completed || muted) ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
