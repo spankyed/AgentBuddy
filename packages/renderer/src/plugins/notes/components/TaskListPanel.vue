@@ -24,13 +24,28 @@
           <Eye v-if="showCompleted" :size="16" />
           <EyeOff v-else :size="16" />
         </button>
-        <button
-          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-          title="Add task"
-          @click="$emit('create-task')"
-        >
-          <Plus :size="16" />
-        </button>
+        <div class="relative">
+          <button
+            class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+            title="Add task (right-click for options)"
+            @click="$emit('create-task')"
+            @contextmenu.prevent="showCreateMenu = true"
+          >
+            <Plus :size="16" />
+          </button>
+          <div
+            v-if="showCreateMenu"
+            ref="createMenuRef"
+            class="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+          >
+            <button
+              class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+              @click="$emit('create-subnote', currentNoteId!); showCreateMenu = false"
+            >
+              Add Note
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -111,6 +126,7 @@ import type { NoteDTO } from '@app/api'
 import { Plus, ListChecks, Eye, EyeOff } from 'lucide-vue-next'
 import NoteTreeItem from './NoteTreeItem.vue'
 import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
+import { useContextMenu } from '@/core/composables/useContextMenu'
 
 const props = defineProps<{
   tasks: NoteDTO[]
@@ -145,6 +161,8 @@ const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDrag
     onMove: (noteIds, newParentId) => emit('move-task', noteIds, newParentId),
     onReorder: (noteId, newParentId, newIndex) => emit('reorder-task', noteId, newParentId, newIndex),
   })
+
+const { showMenu: showCreateMenu, menuRef: createMenuRef } = useContextMenu()
 
 function handleRootDragOver(e: DragEvent) {
   cancelDragLeave()

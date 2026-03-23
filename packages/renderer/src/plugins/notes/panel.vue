@@ -76,30 +76,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus } from 'lucide-vue-next'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useContextMenu } from '@/core/composables/useContextMenu'
 
 const actor: NotesState = applicationState.system.get(id)
 
-const showCreateMenu = ref(false)
-const createMenuRef = ref<HTMLDivElement | null>(null)
-
-function handleClickOutsideMenu(e: MouseEvent) {
-  if (createMenuRef.value && !createMenuRef.value.contains(e.target as Node)) {
-    showCreateMenu.value = false
-  }
-}
-
-onMounted(() => document.addEventListener('mousedown', handleClickOutsideMenu))
-onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideMenu))
-
-watch(showCreateMenu, (val) => onMenuOpenChange(val))
+const { showMenu: showCreateMenu, menuRef: createMenuRef } = useContextMenu()
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
