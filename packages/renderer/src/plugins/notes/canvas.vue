@@ -156,7 +156,7 @@
           </EmojiPicker>
           <input
             ref="titleRef"
-            :value="editingNote.title"
+            v-model="localTitle"
             class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
             placeholder="Untitled"
             @input="handleTitleInput"
@@ -211,6 +211,12 @@ const selectedTaskId = useSelector(actor, (s) => s.context.selectedTaskId)
 const selectedTask = useSelector(actor, (s) => s.context.selectedTask)
 const isTaskList = computed(() => currentNote.value?.noteType === 'tasklist')
 const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
+
+const localTitle = ref(editingNote.value?.title ?? '')
+
+watch(() => editingNote.value?.id, () => {
+  localTitle.value = editingNote.value?.title ?? ''
+})
 const taskExpandedNodeIds = useSelector(actor, (s) => s.context.taskExpandedNodeIds)
 const taskChildren = computed(() =>
   notes.value
@@ -324,8 +330,6 @@ const { debounced: debouncedUpdateTaskTitle, cancel: cancelTaskTitleUpdate } = u
 watch(editingNote, () => {
   cancelContentUpdate()
   cancelTitleUpdate()
-})
-watch(selectedTask, () => {
   cancelTaskContentUpdate()
   cancelTaskTitleUpdate()
 })
@@ -374,8 +378,8 @@ function handleContentUpdate(content: string) {
   }
 }
 
-function handleTitleInput(event: Event) {
-  const title = (event.target as HTMLInputElement).value
+function handleTitleInput() {
+  const title = localTitle.value
   if (selectedTask.value) {
     debouncedUpdateTaskTitle(selectedTask.value.id, title)
   } else if (currentNote.value) {
