@@ -307,18 +307,28 @@ usePageInsert(actor, editorRef, editingNote)
 
 // Debounced handlers
 const SAVE_DEBOUNCE_MS = 150
-const { debounced: debouncedUpdateContent } = useDebounce((noteId: string, content: string) => {
+const { debounced: debouncedUpdateContent, cancel: cancelContentUpdate } = useDebounce((noteId: string, content: string) => {
   actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTitle } = useDebounce((noteId: string, title: string) => {
+const { debounced: debouncedUpdateTitle, cancel: cancelTitleUpdate } = useDebounce((noteId: string, title: string) => {
   actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTaskContent } = useDebounce((taskId: string, content: string) => {
+const { debounced: debouncedUpdateTaskContent, cancel: cancelTaskContentUpdate } = useDebounce((taskId: string, content: string) => {
   actor.send({ type: 'TASK.UPDATE_CONTENT', taskId, content })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTaskTitle } = useDebounce((taskId: string, title: string) => {
+const { debounced: debouncedUpdateTaskTitle, cancel: cancelTaskTitleUpdate } = useDebounce((taskId: string, title: string) => {
   actor.send({ type: 'TASK.UPDATE_TITLE', taskId, title })
 }, SAVE_DEBOUNCE_MS)
+
+// Cancel pending debounced updates when the edited note/task changes (covers deletion, switching, deselection)
+watch(editingNote, () => {
+  cancelContentUpdate()
+  cancelTitleUpdate()
+})
+watch(selectedTask, () => {
+  cancelTaskContentUpdate()
+  cancelTaskTitleUpdate()
+})
 
 // Provide extra block items for the "Page" action
 const pageBlockItem: BlockItem[] = [
