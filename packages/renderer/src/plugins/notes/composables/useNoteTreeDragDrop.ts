@@ -218,6 +218,15 @@ export function useNoteTreeDragDrop({
     if (!draggedNoteIds.value.length) return
 
     const currentTarget = dropTarget.value
+
+    // If dropTarget points to a valid 'on' target that differs from the root targetId,
+    // honor the dropTarget — the user saw a highlight on that node.
+    if (currentTarget && currentTarget.noteId !== targetId && currentTarget.position === 'on') {
+      if (isValidDrop(currentTarget.noteId, 'on')) {
+        targetId = currentTarget.noteId
+      }
+    }
+
     const isEmptySpaceDrop = !currentTarget || currentTarget.noteId !== targetId
     const position = isEmptySpaceDrop ? 'on' : currentTarget.position
 
