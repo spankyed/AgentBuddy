@@ -110,6 +110,7 @@ const notesState = setup({
       const ev = typeOf('NOTES_CONNECTED', event)
       return {
         notes: ev.data.notes,
+        settings: ev.data.settings,
       }
     }),
 

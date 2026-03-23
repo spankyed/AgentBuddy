@@ -93,9 +93,10 @@ export const notesSystem = setup({
   actions: {
     sendNotesConnectedData: ({ system }) => {
       const connectedData = repository.noteQueries.connectedData();
+      const settings = repository.settingsQueries.getPluginSettings('notes');
       system.get(bus).send(emit(notes, {
         type: 'NOTES_CONNECTED',
-        data: connectedData,
+        data: { ...connectedData, settings },
       }));
     },
 

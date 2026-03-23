@@ -195,6 +195,7 @@ interface NoteDTO {
 }
 interface NotesConnectedData {
     notes: NoteDTO[];
+    settings?: NotesSettings;
 }
 
 /**
@@ -4118,6 +4119,9 @@ interface ThreadsSettings {
     tags: ThreadTagOption[];
     showOnlyRootThreads: boolean;
     clickToChat: boolean;
+}
+interface NotesSettings {
+    tasklistPanelPosition: 'left' | 'right';
 }
 interface LogsSettings {
     maxLogs: number;

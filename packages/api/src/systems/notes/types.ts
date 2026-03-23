@@ -40,4 +40,5 @@ export type OutgoingNotesSearchEvent = { type: 'NOTES_SEARCH_RESULTS'; results: 
 
 export interface NotesConnectedData {
   notes: NoteDTO[];
+  settings?: import('@/systems/settings/types').NotesSettings;
 }
