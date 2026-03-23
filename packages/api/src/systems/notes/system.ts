@@ -116,17 +116,8 @@ export const notesSystem = setup({
           note: noteDTO,
         }));
 
-        // Check if parent is a tasklist - skip content sync for tasklist children
-        let parentIsTaskList = false;
-        if (ev.parentId) {
-          const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
-          if (parentNote && (parentNote as NoteEntity).noteType === 'tasklist') {
-            parentIsTaskList = true;
-          }
-        }
-
-        // If this note has a parent, append sub-page link to parent content (unless skipped)
-        if (ev.parentId && !ev.skipContentSync && !parentIsTaskList) {
+        // If this note has a parent, append sub-page link to parent content
+        if (ev.parentId && !ev.skipContentSync) {
           const parentNote = repository.noteQueries.byId(ev.parentId as EARS.EntityId);
           if (parentNote) {
             const linkMarkdown = `\n\n[${ev.title}](page://${note.id})`;
