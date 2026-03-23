@@ -107,11 +107,6 @@ export function useNoteTreeDragDrop({
         if (isDescendant(targetId, id)) return false
       }
     }
-    // Can't drop on current parent (all items must share same parent for this to be a no-op)
-    const allSameParent = draggedNoteIds.value.every(
-      id => getCurrentParentId(id) === targetId
-    )
-    if (allSameParent) return false
 
     // Tasks can only be dropped on tasks or tasklists
     if (hasDraggedTask()) {
