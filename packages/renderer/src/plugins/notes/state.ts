@@ -237,6 +237,20 @@ const notesState = setup({
       })
     },
 
+    updateLocalTitle: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.UPDATE_TITLE', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.noteId ? { ...n, title: ev.title } : n
+      )
+      return {
+        notes: updatedNotes,
+        currentNote:
+          context.currentNoteId === ev.noteId && context.currentNote
+            ? { ...context.currentNote, title: ev.title }
+            : context.currentNote,
+      }
+    }),
+
     sendUpdateTitle: ({ event }) => {
       const ev = typeOf('NOTE.UPDATE_TITLE', event)
       trpc.bus.send.mutate({
@@ -489,6 +503,20 @@ const notesState = setup({
       }
     }),
 
+    updateLocalTaskTitle: assign(({ context, event }) => {
+      const ev = typeOf('TASK.UPDATE_TITLE', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.taskId ? { ...n, title: ev.title } : n
+      )
+      return {
+        notes: updatedNotes,
+        selectedTask:
+          context.selectedTaskId === ev.taskId && context.selectedTask
+            ? { ...context.selectedTask, title: ev.title }
+            : context.selectedTask,
+      }
+    }),
+
     sendTaskUpdateTitle: ({ event }) => {
       const ev = typeOf('TASK.UPDATE_TITLE', event)
       trpc.bus.send.mutate({
@@ -561,13 +589,13 @@ const notesState = setup({
     'NOTE.MOVE': { actions: ['sendMoveNotes', 'clearSelection'] },
     'NOTE.REORDER': { actions: ['sendReorderNote', 'clearSelection'] },
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
-    'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
+    'NOTE.UPDATE_TITLE': { actions: ['updateLocalTitle', 'sendUpdateTitle'] },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },
     'TASK.SELECT': { actions: 'selectTask' },
     'TASK.DESELECT': { actions: 'deselectTask' },
     'TASK.TOGGLE_COMPLETE': { actions: 'sendToggleComplete' },
     'TASK.UPDATE_CONTENT': { actions: ['updateLocalTaskContent', 'sendTaskUpdateContent'] },
-    'TASK.UPDATE_TITLE': { actions: 'sendTaskUpdateTitle' },
+    'TASK.UPDATE_TITLE': { actions: ['updateLocalTaskTitle', 'sendTaskUpdateTitle'] },
     'TASK.DELETE': { actions: 'sendDeleteTask' },
     'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'toggleShowCompleted' },
     TRAIL_CLICK: [
