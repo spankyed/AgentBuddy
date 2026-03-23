@@ -108,48 +108,79 @@
     <!-- Editor State -->
     <div
       v-else-if="state.hasTag('editor') && currentNote"
-      class="flex flex-col h-full"
+      class="flex h-full"
     >
-      <!-- Title row -->
-      <div class="flex items-center gap-1 px-4 py-3">
-        <EmojiPicker :model-value="currentNote.icon" @update:model-value="handleIconUpdate">
-          <template #default="{ toggle }">
-            <button
-              class="flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-800 transition-colors shrink-0"
-              @click="toggle"
-            >
-              <span v-if="currentNote.icon" class="text-xl leading-none">{{ currentNote.icon }}</span>
-              <FileText v-else :size="20" class="text-neutral-500" />
-            </button>
-          </template>
-        </EmojiPicker>
-        <input
-          ref="titleRef"
-          :value="currentNote.title"
-          class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
-          placeholder="Untitled"
-          @input="handleTitleInput"
-          @keydown.enter.prevent="handleTitleEnter"
-          @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
-          @keydown.right="handleTitleRight"
-        />
-      </div>
+      <!-- Task List Panel (left side for tasklists) -->
+      <TaskListPanel
+        v-if="isTaskList"
+        :tasks="taskChildren"
+        :all-notes="taskDescendants"
+        :selected-task-id="selectedTaskId"
+        :expanded-node-ids="taskExpandedNodeIds"
+        :current-note-id="currentNote.id"
+        :current-note-title="currentNote.title"
+        :current-note-icon="currentNote.icon"
+        :show-completed="showCompletedTasks"
+        @select-task="(taskId: string) => actor.send({ type: 'TASK.SELECT', taskId })"
+        @deselect-task="actor.send({ type: 'TASK.DESELECT' })"
+        @create-task="actor.send({ type: 'TASK.CREATE', parentId: currentNote.id })"
+        @create-task-child="(parentId: string) => actor.send({ type: 'TASK.CREATE', parentId })"
+        @create-subnote="(parentId: string) => actor.send({ type: 'NOTE.CREATE', parentId })"
+        @delete-task="(taskId: string) => actor.send({ type: 'TASK.DELETE', taskId })"
+        @toggle-complete="(taskId: string) => actor.send({ type: 'TASK.TOGGLE_COMPLETE', taskId })"
+        @toggle-show-completed="actor.send({ type: 'TASK.TOGGLE_SHOW_COMPLETED' })"
+        @toggle-expand="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_EXPAND', nodeId })"
+        @move-task="(noteIds: string[], newParentId: string | null) => actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })"
+        @reorder-task="(noteId: string, newParentId: string | null, newIndex: number) => actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })"
+        @open-note="(noteId: string) => actor.send({ type: 'NOTE.OPEN', noteId })"
+      />
 
-      <!-- Editor -->
-      <div class="flex-1 overflow-y-auto pl-1 pr-4">
-        <TiptapEditor
-          ref="editorRef"
-          mode="editor"
-          :model-value="currentNote.content"
-          :entity-id="currentNote.id"
-          placeholder="Start writing..."
-          class="h-full"
-          @update:model-value="handleContentUpdate"
-          @note-link-click="handleNoteLinkClick"
-          @sub-page-link-deleted="handleSubPageLinkDeleted"
-          @sub-page-link-restored="handleSubPageLinkRestored"
-          @focus-title="focusTitleEnd()"
-        />
+      <!-- Editor area -->
+      <div class="flex flex-col flex-1 h-full min-w-0">
+        <!-- Title row -->
+        <div class="flex items-center gap-1 px-4 py-3">
+          <EmojiPicker :model-value="editingNote.icon" @update:model-value="handleIconUpdate">
+            <template #default="{ toggle }">
+              <button
+                class="flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-800 transition-colors shrink-0"
+                @click="toggle"
+              >
+                <span v-if="editingNote.icon" class="text-xl leading-none">{{ editingNote.icon }}</span>
+                <ListChecks v-else-if="editingNote.noteType === 'tasklist'" :size="20" class="text-neutral-500" />
+                <CircleCheck v-else-if="editingNote.noteType === 'task'" :size="20" class="text-neutral-500" />
+                <FileText v-else :size="20" class="text-neutral-500" />
+              </button>
+            </template>
+          </EmojiPicker>
+          <input
+            ref="titleRef"
+            :value="editingNote.title"
+            class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
+            placeholder="Untitled"
+            @input="handleTitleInput"
+            @keydown.enter.prevent="handleTitleEnter"
+            @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
+            @keydown.right="handleTitleRight"
+          />
+        </div>
+
+        <!-- Editor -->
+        <div class="flex-1 overflow-y-auto pl-1 pr-4">
+          <TiptapEditor
+            ref="editorRef"
+            :key="editingNote.id"
+            mode="editor"
+            :model-value="editingNote.content"
+            :entity-id="editingNote.id"
+            placeholder="Start writing..."
+            class="h-full"
+            @update:model-value="handleContentUpdate"
+            @note-link-click="handleNoteLinkClick"
+            @sub-page-link-deleted="handleSubPageLinkDeleted"
+            @sub-page-link-restored="handleSubPageLinkRestored"
+            @focus-title="focusTitleEnd()"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -158,20 +189,49 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
+import type { NoteDTO } from '@app/api'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
-import { NotebookText, FileText, Search, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
 import { usePageInsert } from './composables/usePageInsert'
+import TaskListPanel from './components/TaskListPanel.vue'
 
 const actor: NotesState = applicationState.system.get(id)
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)
+const selectedTaskId = useSelector(actor, (s) => s.context.selectedTaskId)
+const selectedTask = useSelector(actor, (s) => s.context.selectedTask)
+const showCompletedTasks = useSelector(actor, (s) => s.context.showCompletedTasks)
+
+const isTaskList = computed(() => currentNote.value?.noteType === 'tasklist')
+const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
+const taskExpandedNodeIds = useSelector(actor, (s) => s.context.taskExpandedNodeIds)
+const taskChildren = computed(() =>
+  notes.value
+    .filter(n => n.parentId === currentNote.value?.id)
+)
+const taskDescendants = computed(() => {
+  if (!currentNote.value) return []
+  const rootId = currentNote.value.id
+  const result: NoteDTO[] = [currentNote.value]
+  const queue = [rootId]
+  while (queue.length > 0) {
+    const parentId = queue.shift()!
+    for (const n of notes.value) {
+      if (n.parentId === parentId) {
+        result.push(n)
+        queue.push(n.id)
+      }
+    }
+  }
+  return result
+})
 
 const searchQuery = ref('')
 const searchResults = useSelector(actor, (s) => s.context.searchResults)
@@ -243,16 +303,32 @@ onMounted(() => nextTick(updateScrollState))
 
 // Composables
 useNoteFocus(actor, titleRef, editorRef)
-usePageInsert(actor, editorRef, currentNote)
+usePageInsert(actor, editorRef, editingNote)
 
 // Debounced handlers
 const SAVE_DEBOUNCE_MS = 150
-const { debounced: debouncedUpdateContent } = useDebounce((noteId: string, content: string) => {
+const { debounced: debouncedUpdateContent, cancel: cancelContentUpdate } = useDebounce((noteId: string, content: string) => {
   actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTitle } = useDebounce((noteId: string, title: string) => {
+const { debounced: debouncedUpdateTitle, cancel: cancelTitleUpdate } = useDebounce((noteId: string, title: string) => {
   actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
 }, SAVE_DEBOUNCE_MS)
+const { debounced: debouncedUpdateTaskContent, cancel: cancelTaskContentUpdate } = useDebounce((taskId: string, content: string) => {
+  actor.send({ type: 'TASK.UPDATE_CONTENT', taskId, content })
+}, SAVE_DEBOUNCE_MS)
+const { debounced: debouncedUpdateTaskTitle, cancel: cancelTaskTitleUpdate } = useDebounce((taskId: string, title: string) => {
+  actor.send({ type: 'TASK.UPDATE_TITLE', taskId, title })
+}, SAVE_DEBOUNCE_MS)
+
+// Cancel pending debounced updates when the edited note/task changes (covers deletion, switching, deselection)
+watch(editingNote, () => {
+  cancelContentUpdate()
+  cancelTitleUpdate()
+})
+watch(selectedTask, () => {
+  cancelTaskContentUpdate()
+  cancelTaskTitleUpdate()
+})
 
 // Provide extra block items for the "Page" action
 const pageBlockItem: BlockItem[] = [
@@ -260,7 +336,7 @@ const pageBlockItem: BlockItem[] = [
     label: 'Page',
     icon: FileText,
     command: (editor) => {
-      const noteId = currentNote.value?.id
+      const noteId = editingNote.value?.id
       if (!noteId) return
       const cursorPos = editor.state.selection.from
       actor.send({ type: 'NOTE.REQUEST_PAGE_INSERT', parentId: noteId, cursorPos })
@@ -287,16 +363,24 @@ function handleCreateNote(parentId?: string) {
 const isSyncingSubPageLinks = ref(false)
 
 function handleContentUpdate(content: string) {
-  if (!currentNote.value) return
-  if (content === currentNote.value.content) return
+  const note = editingNote.value
+  if (!note) return
+  if (content === note.content) return
   if (isSyncingSubPageLinks.value) return
-  debouncedUpdateContent(currentNote.value.id, content)
+  if (selectedTask.value) {
+    debouncedUpdateTaskContent(selectedTask.value.id, content)
+  } else {
+    debouncedUpdateContent(note.id, content)
+  }
 }
 
 function handleTitleInput(event: Event) {
   const title = (event.target as HTMLInputElement).value
-  if (!currentNote.value) return
-  debouncedUpdateTitle(currentNote.value.id, title)
+  if (selectedTask.value) {
+    debouncedUpdateTaskTitle(selectedTask.value.id, title)
+  } else if (currentNote.value) {
+    debouncedUpdateTitle(currentNote.value.id, title)
+  }
 }
 
 function handleNoteLinkClick(noteId: string) {
@@ -326,8 +410,9 @@ function handleTitleEnter() {
 }
 
 function handleIconUpdate(icon: string | null) {
-  if (!currentNote.value) return
-  actor.send({ type: 'NOTE.UPDATE_ICON', noteId: currentNote.value.id, icon })
+  const note = editingNote.value
+  if (!note) return
+  actor.send({ type: 'NOTE.UPDATE_ICON', noteId: note.id, icon })
 }
 
 // Clear search when leaving welcome state

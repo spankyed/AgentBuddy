@@ -1,15 +1,39 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700"
+      @dragover.prevent="handleRootDragOver"
+      @drop="handleRootDrop"
+    >
       <span class="text-sm font-medium text-neutral-300">Notes</span>
-      <button
-        class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-        title="New Note"
-        @click="handleCreateNote()"
-      >
-        <Plus :size="16" />
-      </button>
+      <div class="relative">
+        <button
+          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+          title="New Note (right-click for options)"
+          @click="handleCreateNote()"
+          @contextmenu.prevent="showCreateMenu = true"
+        >
+          <Plus :size="16" />
+        </button>
+        <div
+          v-if="showCreateMenu"
+          ref="createMenuRef"
+          class="absolute right-0 top-full mt-1 z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+        >
+          <button
+            class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+            @click="handleCreateNote(); showCreateMenu = false"
+          >
+            New Note
+          </button>
+          <button
+            class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+            @click="handleCreateTaskList(); showCreateMenu = false"
+          >
+            New Task List
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Tree -->
@@ -31,6 +55,8 @@
         :expanded-node-ids="expandedNodeIds"
         :depth="0"
         :get-item-class="getItemClass"
+        :drop-indicator-note-id="dropIndicator?.noteId ?? null"
+        :drop-indicator-position="dropIndicator?.position ?? null"
         @select="handleSelectNote"
         @toggle-expand="handleToggleExpand"
         @create="handleCreateNote"
@@ -43,21 +69,26 @@
         @drag-leave="handleDragLeave"
         @drop="(e: DragEvent, id: string) => handleDrop(e, id)"
         @drag-end="handleDragEnd"
+        @create-task="handleCreateTask"
+        @open="handleOpenNote"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
 import { Plus } from 'lucide-vue-next'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
+import { useContextMenu } from '@/core/composables/useContextMenu'
 
 const actor: NotesState = applicationState.system.get(id)
+
+const { showMenu: showCreateMenu, menuRef: createMenuRef } = useContextMenu()
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
@@ -75,13 +106,18 @@ const {
   handleDragLeave,
   handleDrop,
   handleDragEnd,
+  cancelDragLeave,
   getItemClass,
+  dropIndicator,
 } = useNoteTreeDragDrop({
   notes,
   selectedNoteIds,
   currentNoteId,
   onMove: (noteIds, newParentId) => {
     actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })
+  },
+  onReorder: (noteId, newParentId, newIndex) => {
+    actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })
   },
 })
 
@@ -125,6 +161,10 @@ function handleSelectNote(noteId: string) {
   actor.send({ type: 'NOTE.SELECT', noteId })
 }
 
+function handleOpenNote(noteId: string) {
+  actor.send({ type: 'NOTE.OPEN', noteId })
+}
+
 function handleToggleSelect(noteId: string) {
   actor.send({ type: 'NOTE.TOGGLE_SELECT', noteId })
 }
@@ -135,6 +175,14 @@ function handleToggleExpand(nodeId: string) {
 
 function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
+}
+
+function handleCreateTaskList() {
+  actor.send({ type: 'NOTE.CREATE_TASKLIST' })
+}
+
+function handleCreateTask(parentId: string) {
+  actor.send({ type: 'TASK.CREATE', parentId })
 }
 
 function handleDeleteNote(noteId: string) {
@@ -153,6 +201,7 @@ function handleOutsideClick(e: MouseEvent) {
 }
 
 function handleRootDragOver(e: DragEvent) {
+  cancelDragLeave()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 

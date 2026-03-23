@@ -21,16 +21,23 @@ export interface NotesContext {
   currentNoteId: string | null
   currentNote: NoteDTO | null
   expandedNodeIds: string[]
+  taskExpandedNodeIds: string[]
   pendingPageInsert: { cursorPos: number } | null
+  lastPageInsertChildId: string | null
   searchResults: NoteDTO[]
   selectedNoteIds: string[]
+  selectedTaskId: string | null
+  selectedTask: NoteDTO | null
+  showCompletedTasks: boolean
 }
 
 type SystemEvent = OutgoingNotesEvents
 
 type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
+  | { type: 'NOTE.OPEN'; noteId: string }
   | { type: 'NOTE.CREATE'; parentId?: string }
+  | { type: 'NOTE.CREATE_TASKLIST' }
   | { type: 'NOTE.DELETE'; noteId: string }
   | { type: 'NOTE.SOFT_DELETE'; noteId: string }
   | { type: 'NOTE.RESTORE'; noteId: string }
@@ -45,10 +52,33 @@ type UIEvent =
   | { type: 'NOTE.RANGE_SELECT'; noteIds: string[] }
   | { type: 'NOTE.CLEAR_SELECTION' }
   | { type: 'NOTE.MOVE'; noteIds: string[]; newParentId: string | null }
+  | { type: 'NOTE.REORDER'; noteId: string; newParentId: string | null; newIndex: number }
+  | { type: 'TASK.SELECT'; taskId: string }
+  | { type: 'TASK.DESELECT' }
+  | { type: 'TASK.CREATE'; parentId: string }
+  | { type: 'TASK.DELETE'; taskId: string }
+  | { type: 'TASK.TOGGLE_COMPLETE'; taskId: string }
+  | { type: 'TASK.UPDATE_CONTENT'; taskId: string; content: string }
+  | { type: 'TASK.UPDATE_TITLE'; taskId: string; title: string }
+  | { type: 'TASK.TOGGLE_SHOW_COMPLETED' }
+  | { type: 'TASK.TOGGLE_EXPAND'; nodeId: string }
   | { type: 'VIEW_WELCOME' }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<NotesEvents>()
+
+function findNearestTaskList(notes: NoteDTO[], noteId: string): NoteDTO | null {
+  let currentId: string | null = noteId
+  while (currentId) {
+    const note = notes.find(n => n.id === currentId)
+    if (!note || !note.parentId) return null
+    const parent = notes.find(n => n.id === note.parentId)
+    if (!parent) return null
+    if (parent.noteType === 'tasklist') return parent
+    currentId = parent.id
+  }
+  return null
+}
 
 function getAncestorChain(notes: NoteDTO[], noteId: string): NoteDTO[] {
   const chain: NoteDTO[] = []
@@ -82,12 +112,49 @@ const notesState = setup({
     selectNote: assign(({ event, context }) => {
       const noteId = (event as { noteId: string }).noteId
       const note = context.notes.find(n => n.id === noteId) || null
+
+      // If selecting a note inside a tasklist, open the tasklist with this note selected
+      if (note && note.noteType !== 'tasklist') {
+        const taskList = findNearestTaskList(context.notes, noteId)
+        if (taskList) {
+          const ancestorIds = getAncestorChain(context.notes, taskList.id).map(n => n.id)
+          const taskAncestors = getAncestorChain(context.notes, noteId)
+          const taskListIndex = taskAncestors.findIndex(a => a.id === taskList.id)
+          const intermediateIds = taskAncestors.slice(taskListIndex + 1).map(a => a.id)
+          return {
+            currentNoteId: taskList.id,
+            currentNote: taskList,
+            selectedNoteIds: [],
+            selectedTaskId: noteId,
+            selectedTask: note,
+            expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+            taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...intermediateIds, taskList.id])],
+          }
+        }
+      }
+
       const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
       return {
         currentNoteId: noteId,
         currentNote: note,
         selectedNoteIds: [],
-        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
+        selectedTaskId: null,
+        selectedTask: null,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, noteId])],
+      }
+    }),
+
+    openNote: assign(({ event, context }) => {
+      const noteId = (event as { noteId: string }).noteId
+      const note = context.notes.find(n => n.id === noteId) || null
+      const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
+      return {
+        currentNoteId: noteId,
+        currentNote: note,
+        selectedNoteIds: [],
+        selectedTaskId: null,
+        selectedTask: null,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds, noteId])],
       }
     }),
 
@@ -171,6 +238,20 @@ const notesState = setup({
       })
     },
 
+    updateLocalTitle: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.UPDATE_TITLE', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.noteId ? { ...n, title: ev.title } : n
+      )
+      return {
+        notes: updatedNotes,
+        currentNote:
+          context.currentNoteId === ev.noteId && context.currentNote
+            ? { ...context.currentNote, title: ev.title }
+            : context.currentNote,
+      }
+    }),
+
     sendUpdateTitle: ({ event }) => {
       const ev = typeOf('NOTE.UPDATE_TITLE', event)
       trpc.bus.send.mutate({
@@ -207,10 +288,15 @@ const notesState = setup({
 
     addCreatedNote: assign(({ context, event }) => {
       const ev = typeOf('NOTE_CREATED', event)
+      const updatedNotes = [...context.notes, ev.note]
+      const ancestorIds = getAncestorChain(updatedNotes, ev.note.id).map(n => n.id)
       return {
-        notes: [...context.notes, ev.note],
+        notes: updatedNotes,
         currentNoteId: ev.note.id,
         currentNote: ev.note,
+        selectedTaskId: null,
+        selectedTask: null,
+        expandedNodeIds: [...new Set([...context.expandedNodeIds, ...ancestorIds])],
       }
     }),
 
@@ -218,13 +304,15 @@ const notesState = setup({
       const ev = typeOf('NOTE_CREATED', event)
       // Only handle if there's a pending page insert and the new note has a parent
       if (!context.pendingPageInsert || !ev.note.parentId) return {}
-      if (ev.note.parentId !== context.currentNoteId) return {}
+      const validParentId = context.selectedTaskId ?? context.currentNoteId
+      if (ev.note.parentId !== validParentId) return {}
 
-      // Clear pending flag - the canvas component will detect this via the note
-      // and insert the link using the editor ref
+      // Clear pending flag and store the created child's ID so the canvas
+      // component can insert the link without guessing by timestamp
       return {
         notes: [...context.notes, ev.note],
         pendingPageInsert: null,
+        lastPageInsertChildId: ev.note.id,
       }
     }),
 
@@ -236,6 +324,7 @@ const notesState = setup({
       return {
         notes: updatedNotes,
         currentNote: context.currentNoteId === ev.note.id ? ev.note : context.currentNote,
+        selectedTask: context.selectedTaskId === ev.note.id ? ev.note : context.selectedTask,
       }
     }),
 
@@ -243,11 +332,14 @@ const notesState = setup({
       const ev = typeOf('NOTE_DELETED', event)
       const updatedNotes = context.notes.filter(n => n.id !== ev.noteId)
       const wasCurrentNote = context.currentNoteId === ev.noteId
+      const wasSelectedTask = context.selectedTaskId === ev.noteId
       return {
         notes: updatedNotes,
         currentNoteId: wasCurrentNote ? null : context.currentNoteId,
         currentNote: wasCurrentNote ? null : context.currentNote,
         selectedNoteIds: context.selectedNoteIds.filter(id => id !== ev.noteId),
+        selectedTaskId: wasSelectedTask ? null : context.selectedTaskId,
+        selectedTask: wasSelectedTask ? null : context.selectedTask,
       }
     }),
 
@@ -258,6 +350,16 @@ const notesState = setup({
         expandedNodeIds: isExpanded
           ? context.expandedNodeIds.filter(id => id !== ev.nodeId)
           : [...context.expandedNodeIds, ev.nodeId],
+      }
+    }),
+
+    toggleExpandTask: assign(({ context, event }) => {
+      const ev = typeOf('TASK.TOGGLE_EXPAND', event)
+      const isExpanded = context.taskExpandedNodeIds.includes(ev.nodeId)
+      return {
+        taskExpandedNodeIds: isExpanded
+          ? context.taskExpandedNodeIds.filter(id => id !== ev.nodeId)
+          : [...context.taskExpandedNodeIds, ev.nodeId],
       }
     }),
 
@@ -321,6 +423,125 @@ const notesState = setup({
       })
     },
 
+    sendReorderNote: ({ event }) => {
+      const ev = typeOf('NOTE.REORDER', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REORDER_NOTE',
+        id: ev.noteId,
+        newParentId: ev.newParentId,
+        newIndex: ev.newIndex,
+      })
+    },
+
+    sendCreateTaskList: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NOTE',
+        title: 'Untitled',
+        noteType: 'tasklist',
+      })
+    },
+
+    selectTask: assign(({ event, context }) => {
+      const ev = typeOf('TASK.SELECT', event)
+      const task = context.notes.find(n => n.id === ev.taskId) || null
+      return {
+        selectedTaskId: ev.taskId,
+        selectedTask: task,
+      }
+    }),
+
+    deselectTask: assign({
+      selectedTaskId: null,
+      selectedTask: null,
+    }),
+
+    sendCreateTask: ({ event }) => {
+      const ev = typeOf('TASK.CREATE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CREATE_NOTE',
+        title: 'Untitled',
+        parentId: ev.parentId,
+        skipContentSync: true,
+        noteType: 'task',
+      })
+    },
+
+    sendToggleComplete: ({ event, context }) => {
+      const ev = typeOf('TASK.TOGGLE_COMPLETE', event)
+      const task = context.notes.find(n => n.id === ev.taskId)
+      if (!task) return
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.taskId,
+        completed: !task.completed,
+      })
+    },
+
+    sendTaskUpdateContent: ({ event }) => {
+      const ev = typeOf('TASK.UPDATE_CONTENT', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.taskId,
+        content: ev.content,
+      })
+    },
+
+    updateLocalTaskContent: assign(({ context, event }) => {
+      const ev = typeOf('TASK.UPDATE_CONTENT', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.taskId ? { ...n, content: ev.content } : n
+      )
+      return {
+        notes: updatedNotes,
+        selectedTask:
+          context.selectedTaskId === ev.taskId && context.selectedTask
+            ? { ...context.selectedTask, content: ev.content }
+            : context.selectedTask,
+      }
+    }),
+
+    updateLocalTaskTitle: assign(({ context, event }) => {
+      const ev = typeOf('TASK.UPDATE_TITLE', event)
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.taskId ? { ...n, title: ev.title } : n
+      )
+      return {
+        notes: updatedNotes,
+        selectedTask:
+          context.selectedTaskId === ev.taskId && context.selectedTask
+            ? { ...context.selectedTask, title: ev.title }
+            : context.selectedTask,
+      }
+    }),
+
+    sendTaskUpdateTitle: ({ event }) => {
+      const ev = typeOf('TASK.UPDATE_TITLE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.taskId,
+        title: ev.title,
+      })
+    },
+
+    sendDeleteTask: ({ event }) => {
+      const ev = typeOf('TASK.DELETE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_NOTE',
+        id: ev.taskId,
+      })
+    },
+
+    toggleShowCompleted: assign(({ context }) => ({
+      showCompletedTasks: !context.showCompletedTasks,
+    })),
+
     clearCurrentNote: assign({
       currentNoteId: null,
       currentNote: null,
@@ -335,9 +556,14 @@ const notesState = setup({
     currentNoteId: null,
     currentNote: null,
     expandedNodeIds: [],
+    taskExpandedNodeIds: [],
     pendingPageInsert: null,
+    lastPageInsertChildId: null,
     searchResults: [],
     selectedNoteIds: [],
+    selectedTaskId: null,
+    selectedTask: null,
+    showCompletedTasks: true,
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -359,13 +585,22 @@ const notesState = setup({
       },
     ],
     'NOTE.TOGGLE_EXPAND': { actions: 'toggleExpand' },
+    'TASK.TOGGLE_EXPAND': { actions: 'toggleExpandTask' },
     'NOTE.TOGGLE_SELECT': { actions: 'toggleSelect' },
     'NOTE.RANGE_SELECT': { actions: 'rangeSelect' },
     'NOTE.CLEAR_SELECTION': { actions: 'clearSelection' },
     'NOTE.MOVE': { actions: ['sendMoveNotes', 'clearSelection'] },
+    'NOTE.REORDER': { actions: ['sendReorderNote', 'clearSelection'] },
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
-    'NOTE.UPDATE_TITLE': { actions: 'sendUpdateTitle' },
+    'NOTE.UPDATE_TITLE': { actions: ['updateLocalTitle', 'sendUpdateTitle'] },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },
+    'TASK.SELECT': { actions: 'selectTask' },
+    'TASK.DESELECT': { actions: 'deselectTask' },
+    'TASK.TOGGLE_COMPLETE': { actions: 'sendToggleComplete' },
+    'TASK.UPDATE_CONTENT': { actions: ['updateLocalTaskContent', 'sendTaskUpdateContent'] },
+    'TASK.UPDATE_TITLE': { actions: ['updateLocalTaskTitle', 'sendTaskUpdateTitle'] },
+    'TASK.DELETE': { actions: 'sendDeleteTask' },
+    'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'toggleShowCompleted' },
     TRAIL_CLICK: [
       {
         guard: { type: 'targetIs', params: { view: 'welcome' } },
@@ -380,9 +615,26 @@ const notesState = setup({
             const noteId = (event as TrailClickEvent).info
             if (!noteId) return {}
             const note = context.notes.find(n => n.id === noteId) || null
+
+            // If clicking a task segment, navigate to its parent tasklist and select the task
+            if (note?.noteType === 'task') {
+              const taskList = findNearestTaskList(context.notes, noteId)
+              if (taskList) {
+                return {
+                  currentNoteId: taskList.id,
+                  currentNote: taskList,
+                  selectedTaskId: noteId,
+                  selectedTask: note,
+                }
+              }
+            }
+
+            // Regular note or tasklist — navigate directly, clear task selection
             return {
               currentNoteId: noteId,
               currentNote: note,
+              selectedTaskId: null,
+              selectedTask: null,
             }
           }),
           'sendViewNote',
@@ -399,12 +651,49 @@ const notesState = setup({
         'NOTE.CREATE': {
           actions: 'sendCreateNote',
         },
-        NOTE_CREATED: {
-          actions: 'addCreatedNote',
-          target: 'editor',
+        'NOTE.CREATE_TASKLIST': {
+          actions: 'sendCreateTaskList',
         },
+        'TASK.CREATE': {
+          actions: 'sendCreateTask',
+        },
+        NOTE_CREATED: [
+          {
+            guard: ({ event, context }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              const updatedNotes = [...context.notes, ev.note]
+              return findNearestTaskList(updatedNotes, ev.note.id) !== null
+            },
+            actions: [
+              assign(({ context, event }) => {
+                const ev = typeOf('NOTE_CREATED', event)
+                const taskList = findNearestTaskList([...context.notes, ev.note], ev.note.id)
+                if (!taskList) return { notes: [...context.notes, ev.note] }
+                const ancestorIds = getAncestorChain([...context.notes, ev.note], taskList.id).map(n => n.id)
+                return {
+                  notes: [...context.notes, ev.note],
+                  currentNoteId: taskList.id,
+                  currentNote: taskList,
+                  selectedTaskId: ev.note.id,
+                  selectedTask: ev.note,
+                  taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, taskList.id])],
+                }
+              }),
+              'sendViewNote',
+            ],
+            target: 'editor',
+          },
+          {
+            actions: 'addCreatedNote',
+            target: 'editor',
+          },
+        ],
         'NOTE.SELECT': {
           actions: ['selectNote', 'sendViewNote'],
+          target: 'editor',
+        },
+        'NOTE.OPEN': {
+          actions: ['openNote', 'sendViewNote'],
           target: 'editor',
         },
         'NOTE.DELETE': {
@@ -426,10 +715,25 @@ const notesState = setup({
             return []
           }
           const ancestors = getAncestorChain(ctx.notes, ctx.currentNoteId)
-          return [
+          const crumbs = [
             ...ancestors.map(a => ({ label: (a.icon ? a.icon + ' ' : '') + a.title, target: 'editor', info: a.id })),
             { label: (ctx.currentNote.icon ? ctx.currentNote.icon + ' ' : '') + ctx.currentNote.title, target: 'editor', info: ctx.currentNoteId },
           ]
+          if (ctx.selectedTask) {
+            // Build full path from tasklist to selected task (including intermediate parent tasks)
+            const taskAncestors = getAncestorChain(ctx.notes, ctx.selectedTask.id)
+            const taskListIndex = taskAncestors.findIndex(a => a.id === ctx.currentNoteId)
+            const intermediates = taskAncestors.slice(taskListIndex + 1)
+            for (const t of intermediates) {
+              crumbs.push({ label: (t.icon ? t.icon + ' ' : '') + t.title, target: 'editor', info: t.id })
+            }
+            crumbs.push({
+              label: (ctx.selectedTask.icon ? ctx.selectedTask.icon + ' ' : '') + ctx.selectedTask.title,
+              target: 'editor',
+              info: ctx.selectedTask.id,
+            })
+          }
+          return crumbs
         }),
         ...contextMenuFn<NotesContext>((ctx) => [
           {
@@ -445,13 +749,73 @@ const notesState = setup({
         'NOTE.SELECT': {
           actions: ['selectNote', 'sendViewNote'],
         },
+        'NOTE.OPEN': {
+          actions: ['openNote', 'sendViewNote'],
+        },
         'NOTE.CREATE': {
           actions: 'sendCreateNote',
+        },
+        'NOTE.CREATE_TASKLIST': {
+          actions: 'sendCreateTaskList',
+        },
+        'TASK.CREATE': {
+          actions: 'sendCreateTask',
         },
         NOTE_CREATED: [
           {
             guard: ({ context }) => context.pendingPageInsert !== null,
             actions: 'handlePageInsertCreated',
+          },
+          {
+            // If the new note's parent is the current tasklist, add to list but don't navigate
+            guard: ({ context, event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              const updatedNotes = [...context.notes, ev.note]
+              return context.currentNote?.noteType === 'tasklist'
+                && findNearestTaskList(updatedNotes, ev.note.id)?.id === context.currentNoteId
+            },
+            actions: assign(({ context, event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              const updatedNotes = [...context.notes, ev.note]
+              const taskAncestors = getAncestorChain(updatedNotes, ev.note.id)
+              const taskListIndex = taskAncestors.findIndex(a => a.id === context.currentNoteId)
+              const intermediateIds = taskAncestors.slice(taskListIndex + 1).map(a => a.id)
+              return {
+                notes: updatedNotes,
+                selectedTaskId: ev.note.id,
+                selectedTask: ev.note,
+                taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...intermediateIds, ...(context.currentNoteId ? [context.currentNoteId] : [])])],
+              }
+            }),
+          },
+          {
+            // Note created for a tasklist that isn't currently viewed — navigate to it
+            guard: ({ context, event }) => {
+              const ev = typeOf('NOTE_CREATED', event)
+              const updatedNotes = [...context.notes, ev.note]
+              return findNearestTaskList(updatedNotes, ev.note.id) !== null
+            },
+            actions: [
+              assign(({ context, event }) => {
+                const ev = typeOf('NOTE_CREATED', event)
+                const updatedNotes = [...context.notes, ev.note]
+                const taskList = findNearestTaskList(updatedNotes, ev.note.id)
+                if (!taskList) return { notes: updatedNotes }
+                const ancestorIds = getAncestorChain(updatedNotes, taskList.id).map(n => n.id)
+                const taskAncestors = getAncestorChain(updatedNotes, ev.note.id)
+                const taskListIndex = taskAncestors.findIndex(a => a.id === taskList.id)
+                const intermediateIds = taskAncestors.slice(taskListIndex + 1).map(a => a.id)
+                return {
+                  notes: updatedNotes,
+                  currentNoteId: taskList.id,
+                  currentNote: taskList,
+                  selectedTaskId: ev.note.id,
+                  selectedTask: ev.note,
+                  taskExpandedNodeIds: [...new Set([...context.taskExpandedNodeIds, ...ancestorIds, ...intermediateIds, taskList.id])],
+                }
+              }),
+              'sendViewNote',
+            ],
           },
           {
             actions: 'addCreatedNote',

@@ -1,18 +1,26 @@
 <template>
   <div>
+    <!-- Drop indicator: before -->
+    <div
+      v-if="showDropBefore"
+      class="h-0.5 bg-blue-500 mx-2 rounded-full pointer-events-none"
+      :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
+    />
     <!-- Node row -->
     <div
       data-note-tree-item
-      class="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors group"
+      class="mx-1 relative flex items-center gap-1 px-2 py-2 rounded-md cursor-pointer text-sm transition-colors group"
       :class="[
         note.id === currentNoteId
-          ? 'bg-neutral-700 text-neutral-100'
-          : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+          ? taskMode && (note.completed || muted) ? 'bg-neutral-700 text-neutral-400' : 'bg-neutral-700 text-neutral-100'
+          : taskMode && (note.completed || muted) ? 'text-neutral-600 hover:bg-neutral-800' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
         ownItemClass,
       ]"
       :style="{ paddingLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
-      :draggable="true"
+      :draggable="!(taskMode && (note.completed || muted) && depth === 0)"
       @click="handleClick"
+      @dblclick="$emit('open', note.id)"
+      @contextmenu="handleContextMenu"
       @dragstart="$emit('drag-start', $event, note.id)"
       @dragover="$emit('drag-over', $event, note.id)"
       @dragleave="$emit('drag-leave', $event)"
@@ -23,13 +31,13 @@
       <EmojiPicker :model-value="note.icon" @update:model-value="(icon: string | null) => $emit('update-icon', note.id, icon)">
         <template #default="{ toggle }">
           <button
-            class="flex items-center justify-center w-4 h-4 shrink-0"
+            class="flex items-center justify-center w-5 h-5 shrink-0"
             @click.stop="children.length > 0 ? $emit('toggle-expand', note.id) : toggle()"
           >
             <!-- Chevron shown on hover when item has children -->
             <ChevronRight
               v-if="children.length > 0"
-              :size="14"
+              :size="16"
               class="transition-transform hidden group-hover:block text-neutral-500"
               :class="isExpanded ? 'rotate-90' : ''"
             />
@@ -39,9 +47,21 @@
               class="text-sm leading-none"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             >{{ note.icon }}</span>
+            <ListChecks
+              v-else-if="note.noteType === 'tasklist'"
+              :size="16"
+              class="text-neutral-500"
+              :class="children.length > 0 ? 'group-hover:hidden' : ''"
+            />
+            <CircleCheck
+              v-else-if="note.noteType === 'task'"
+              :size="16"
+              class="text-neutral-500"
+              :class="children.length > 0 ? 'group-hover:hidden' : ''"
+            />
             <FileText
               v-else
-              :size="14"
+              :size="16"
               class="text-neutral-500"
               :class="children.length > 0 ? 'group-hover:hidden' : ''"
             />
@@ -50,27 +70,89 @@
       </EmojiPicker>
 
       <!-- Title -->
-      <span class="truncate flex-1 ml-0.5">{{ note.title || 'Untitled' }}</span>
+      <span class="truncate flex-1 ml-0.5" :class="note.completed ? 'line-through' : ''">{{ note.title || 'Untitled' }}</span>
 
-      <!-- Actions (on hover) -->
-      <div class="hidden group-hover:flex items-center gap-0.5">
+      <!-- Task actions + checkbox (taskMode only) -->
+      <template v-if="taskMode && note.noteType === 'task'">
+        <!-- Grouped action pill (visible on hover) -->
+        <div class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1 shrink-0 mr-1">
+          <button
+            class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
+            title="Add sub-task"
+            @click.stop="$emit('create-task', note.id)"
+          >
+            <Plus :size="13" />
+          </button>
+          <button
+            class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+            title="Delete task"
+            @click.stop="$emit('delete', note.id)"
+          >
+            <Trash2 :size="13" />
+          </button>
+        </div>
+        <!-- Checkbox (always visible) -->
         <button
-          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-300 rounded transition-colors"
-          title="Add child note"
-          @click.stop="$emit('create', note.id)"
+          class="flex items-center justify-center w-4 h-4 shrink-0 rounded border transition-colors"
+          :class="note.completed
+            ? 'border-neutral-600 bg-neutral-700'
+            : 'border-neutral-500 hover:border-neutral-300'"
+          @click.stop="$emit('toggle-complete', note.id)"
         >
-          <Plus :size="12" />
+          <Check v-if="note.completed" :size="10" class="text-neutral-400" />
+        </button>
+      </template>
+
+      <!-- Actions (on hover, normal mode) -->
+      <div v-else class="hidden group-hover:flex items-center gap-0.5 bg-neutral-700/50 rounded-md px-1">
+        <button
+          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600/50 rounded transition-colors"
+          :title="isTaskRelated ? 'Add task' : 'Add sub-note'"
+          @click.stop="isTaskRelated ? $emit('create-task', note.id) : $emit('create', note.id)"
+        >
+          <Plus :size="13" />
         </button>
         <button
-          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded transition-colors"
+          class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
           title="Delete note"
           @click.stop="$emit('delete', note.id)"
         >
-          <Trash2 :size="12" />
+          <Trash2 :size="13" />
         </button>
       </div>
+
     </div>
 
+    <!-- Context menu (positioned at cursor) -->
+    <Teleport to="body">
+      <div
+        v-if="showContextMenu"
+        ref="contextMenuRef"
+        class="fixed z-50 bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+        :style="{ left: `${contextMenuPos.x}px`, top: `${contextMenuPos.y}px` }"
+      >
+        <button
+          v-if="isTaskRelated"
+          class="w-full text-left px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors"
+          @click="$emit('create', note.id); showContextMenu = false"
+        >
+          Add Sub-Note
+        </button>
+        <button
+          class="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-neutral-700 transition-colors"
+          @click="$emit('delete', note.id); showContextMenu = false"
+        >
+          Delete
+        </button>
+      </div>
+    </Teleport>
+
+    <!-- Drop indicator: after (only when not expanded, to avoid ambiguity) -->
+    <div
+      v-if="showDropAfter && !isExpanded"
+      class="h-0.5 bg-blue-500 mx-2 rounded-full pointer-events-none"
+      :style="{ marginLeft: `${depth * INDENT_PX + BASE_PADDING_PX}px` }"
+    />
     <!-- Children (recursive) -->
     <template v-if="isExpanded && children.length > 0">
       <NoteTreeItem
@@ -82,6 +164,10 @@
         :expanded-node-ids="expandedNodeIds"
         :depth="depth + 1"
         :get-item-class="getItemClass"
+        :task-mode="taskMode"
+        :muted="false"
+        :drop-indicator-note-id="dropIndicatorNoteId"
+        :drop-indicator-position="dropIndicatorPosition"
         @select="$emit('select', $event)"
         @toggle-expand="$emit('toggle-expand', $event)"
         @create="$emit('create', $event)"
@@ -89,33 +175,46 @@
         @update-icon="(noteId: string, icon: string | null) => $emit('update-icon', noteId, icon)"
         @toggle-select="$emit('toggle-select', $event)"
         @shift-select="$emit('shift-select', $event)"
+        @toggle-complete="$emit('toggle-complete', $event)"
+        @create-task="$emit('create-task', $event)"
         @drag-start="(e: DragEvent, id: string) => $emit('drag-start', e, id)"
         @drag-over="(e: DragEvent, id: string) => $emit('drag-over', e, id)"
         @drag-leave="(e: DragEvent) => $emit('drag-leave', e)"
         @drop="(e: DragEvent, id: string) => $emit('drop', e, id)"
         @drag-end="$emit('drag-end')"
+        @open="$emit('open', $event)"
       />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { ChevronRight, FileText, Plus, Trash2 } from 'lucide-vue-next'
+import { Check, ChevronRight, CircleCheck, FileText, ListChecks, Plus, Trash2 } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   note: NoteDTO
   allNotes: NoteDTO[]
   currentNoteId: string | null
   expandedNodeIds: string[]
   depth: number
   getItemClass: (noteId: string) => string
-}>()
+  taskMode?: boolean
+  muted?: boolean
+  dropIndicatorNoteId?: string | null
+  dropIndicatorPosition?: 'before' | 'after' | null
+}>(), {
+  taskMode: false,
+  muted: false,
+  dropIndicatorNoteId: null,
+  dropIndicatorPosition: null,
+})
 
 const emit = defineEmits<{
   (e: 'select', noteId: string): void
@@ -130,6 +229,9 @@ const emit = defineEmits<{
   (e: 'drop', event: DragEvent, noteId: string): void
   (e: 'drag-end'): void
   (e: 'shift-select', noteId: string): void
+  (e: 'toggle-complete', noteId: string): void
+  (e: 'create-task', parentId: string): void
+  (e: 'open', noteId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
@@ -141,6 +243,35 @@ function handleClick(e: MouseEvent) {
     emit('select', props.note.id)
   }
 }
+
+const isTaskRelated = computed(() => props.note.noteType === 'tasklist' || props.note.noteType === 'task')
+const showContextMenu = ref(false)
+const contextMenuRef = ref<HTMLDivElement | null>(null)
+const contextMenuPos = ref({ x: 0, y: 0 })
+
+function handleContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  const menuWidth = 160
+  const menuHeight = isTaskRelated.value ? 72 : 36
+  const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8)
+  const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8)
+  contextMenuPos.value = { x, y }
+  showContextMenu.value = true
+}
+
+function handleClickOutsideContextMenu(e: MouseEvent) {
+  if (contextMenuRef.value && !contextMenuRef.value.contains(e.target as Node)) {
+    showContextMenu.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('mousedown', handleClickOutsideContextMenu))
+onUnmounted(() => document.removeEventListener('mousedown', handleClickOutsideContextMenu))
+
+watch(showContextMenu, (val) => onMenuOpenChange(val))
+
+const showDropBefore = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'before')
+const showDropAfter = computed(() => props.dropIndicatorNoteId === props.note.id && props.dropIndicatorPosition === 'after')
 
 const ownItemClass = computed(() => props.getItemClass(props.note.id))
 

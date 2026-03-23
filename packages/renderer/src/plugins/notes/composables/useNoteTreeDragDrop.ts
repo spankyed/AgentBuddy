@@ -1,11 +1,19 @@
-import { ref, type Ref } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import type { NoteDTO } from '@app/api'
+
+type DropPosition = 'before' | 'after' | 'on'
+
+interface DropTarget {
+  noteId: string
+  position: DropPosition
+}
 
 interface NoteTreeDragDropOptions {
   notes: Ref<NoteDTO[]>
   selectedNoteIds: Ref<string[]>
   currentNoteId: Ref<string | null>
   onMove: (noteIds: string[], newParentId: string | null) => void
+  onReorder?: (noteId: string, newParentId: string | null, newIndex: number) => void
 }
 
 export function useNoteTreeDragDrop({
@@ -13,10 +21,12 @@ export function useNoteTreeDragDrop({
   selectedNoteIds,
   currentNoteId,
   onMove,
+  onReorder,
 }: NoteTreeDragDropOptions) {
   const draggedNoteIds = ref<string[]>([])
-  const draggedOverId = ref<string | null>(null)
+  const dropTarget = ref<DropTarget | null>(null)
   const isDragging = ref(false)
+  let dragLeaveTimer: ReturnType<typeof setTimeout> | null = null
 
   function getDraggedItems(noteId: string): string[] {
     const effective = new Set(selectedNoteIds.value)
@@ -41,21 +51,69 @@ export function useNoteTreeDragDrop({
     return note?.parentId ?? null
   }
 
-  function isValidDrop(targetId: string | null): boolean {
+  function hasDraggedTask(): boolean {
+    return draggedNoteIds.value.some(id => {
+      const note = notes.value.find(n => n.id === id)
+      return note?.noteType === 'task'
+    })
+  }
+
+  function isValidDrop(targetId: string | null, position: DropPosition): boolean {
     if (!draggedNoteIds.value.length) return false
-    // Can't drop on self
+
+    if (position === 'before' || position === 'after') {
+      // Reorder mode: only single-item
+      if (draggedNoteIds.value.length > 1) return false
+      const draggedId = draggedNoteIds.value[0]
+
+      // Can't drop on self
+      if (targetId === draggedId) return false
+
+      // Can't drop on own descendant
+      if (targetId && isDescendant(targetId, draggedId)) return false
+
+      // Block if target is completed
+      if (targetId) {
+        const target = notes.value.find(n => n.id === targetId)
+        if (target?.completed) return false
+      }
+
+      // Tasks can only be reordered within task/tasklist containers
+      if (hasDraggedTask() && targetId) {
+        const target = notes.value.find(n => n.id === targetId)
+        // Check that the target's parent is a valid task container
+        // (dropping before/after places the item at the target's parent level)
+        if (target?.parentId) {
+          const parent = notes.value.find(n => n.id === target.parentId)
+          if (parent?.noteType !== 'task' && parent?.noteType !== 'tasklist') {
+            return false
+          }
+        } else {
+          // Target is at root level — tasks can't go to root
+          return false
+        }
+      }
+
+      return true
+    }
+
+    // 'on' mode — reparent
     if (targetId && draggedNoteIds.value.includes(targetId)) return false
-    // Can't drop on own descendant
     if (targetId) {
       for (const id of draggedNoteIds.value) {
         if (isDescendant(targetId, id)) return false
       }
     }
-    // Can't drop on current parent (all items must share same parent for this to be a no-op)
-    const allSameParent = draggedNoteIds.value.every(
-      id => getCurrentParentId(id) === targetId
-    )
-    if (allSameParent) return false
+
+    // Tasks can only be dropped on tasks or tasklists
+    if (hasDraggedTask()) {
+      if (!targetId) return false
+      const target = notes.value.find(n => n.id === targetId)
+      if (target?.noteType !== 'task' && target?.noteType !== 'tasklist') {
+        return false
+      }
+    }
+
     return true
   }
 
@@ -87,39 +145,144 @@ export function useNoteTreeDragDrop({
     e.preventDefault()
     if (!e.dataTransfer) return
 
-    if (!isValidDrop(noteId)) {
-      e.dataTransfer.dropEffect = 'none'
-      draggedOverId.value = null
-      return
+    // Cancel any pending drag-leave clear
+    if (dragLeaveTimer) {
+      clearTimeout(dragLeaveTimer)
+      dragLeaveTimer = null
     }
+
+    const target = e.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const relativeY = (e.clientY - rect.top) / rect.height
+
+    // Hysteresis: use biased thresholds based on current position to prevent flickering
+    const currentPosition = dropTarget.value?.noteId === noteId ? dropTarget.value.position : null
+
+    let position: DropPosition
+    if (currentPosition === 'before') {
+      position = relativeY < 0.40 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+    } else if (currentPosition === 'after') {
+      position = relativeY > 0.60 ? 'after' : relativeY < 0.30 ? 'before' : 'on'
+    } else if (currentPosition === 'on') {
+      position = relativeY < 0.20 ? 'before' : relativeY > 0.80 ? 'after' : 'on'
+    } else {
+      position = relativeY < 0.30 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+    }
+
+    if (!isValidDrop(noteId, position)) {
+      // Try falling back to 'on' if before/after isn't valid
+      if (position !== 'on' && isValidDrop(noteId, 'on')) {
+        position = 'on'
+      } else {
+        e.dataTransfer.dropEffect = 'none'
+        dropTarget.value = null
+        return
+      }
+    }
+
+    // Skip update if nothing changed
+    if (dropTarget.value?.noteId === noteId && dropTarget.value?.position === position) return
+
     e.dataTransfer.dropEffect = 'move'
-    if (draggedOverId.value !== noteId) {
-      draggedOverId.value = noteId
-    }
+    dropTarget.value = { noteId, position }
   }
 
-  function handleDragLeave(e: DragEvent) {
-    const related = e.relatedTarget as HTMLElement
-    if (!related || !related.closest('[data-note-tree-item]')) {
-      draggedOverId.value = null
-    }
+  function handleDragLeave(_e: DragEvent) {
+    // Defer clearing so the next dragover (on an adjacent item) can cancel it.
+    // This prevents flicker when the cursor crosses gaps between items.
+    if (dragLeaveTimer) clearTimeout(dragLeaveTimer)
+    dragLeaveTimer = setTimeout(() => {
+      dropTarget.value = null
+      dragLeaveTimer = null
+    }, 50)
   }
 
   function handleDrop(e: DragEvent, targetId: string | null) {
     e.preventDefault()
     e.stopPropagation()
     if (!draggedNoteIds.value.length) return
-    if (!isValidDrop(targetId)) {
+
+    const currentTarget = dropTarget.value
+    const position = (currentTarget && currentTarget.noteId === targetId) ? currentTarget.position : 'on'
+
+    // For root drop or 'on' position: reparent (or reorder to top)
+    if (!targetId || position === 'on') {
+      // Single-item drag onto its own parent → reorder to index 0 (move to top)
+      if (onReorder && draggedNoteIds.value.length === 1) {
+        const draggedId = draggedNoteIds.value[0]
+        const draggedParent = getCurrentParentId(draggedId)
+        if (draggedParent === targetId) {
+          onReorder(draggedId, targetId, 0)
+          handleDragEnd()
+          return
+        }
+      }
+
+      if (!isValidDrop(targetId, 'on')) {
+        handleDragEnd()
+        return
+      }
+      // Single-item: use onReorder for proper displayOrder indexing
+      if (onReorder && draggedNoteIds.value.length === 1) {
+        onReorder(draggedNoteIds.value[0], targetId, 0)
+      } else {
+        onMove(draggedNoteIds.value, targetId)
+      }
       handleDragEnd()
       return
     }
-    onMove(draggedNoteIds.value, targetId)
+
+    // For before/after: reorder
+    if ((position === 'before' || position === 'after') && onReorder) {
+      if (!isValidDrop(targetId, position)) {
+        handleDragEnd()
+        return
+      }
+
+      const targetNote = notes.value.find(n => n.id === targetId)
+      if (!targetNote) {
+        handleDragEnd()
+        return
+      }
+
+      const parentId = targetNote.parentId
+      const siblings = notes.value
+        .filter(n => (n.parentId ?? null) === (parentId ?? null))
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+
+      const targetIndex = siblings.findIndex(s => s.id === targetId)
+      let newIndex = position === 'before' ? targetIndex : targetIndex + 1
+
+      // Adjust if dragged note is in same parent and before the target
+      const draggedId = draggedNoteIds.value[0]
+      const draggedNote = notes.value.find(n => n.id === draggedId)
+      if (draggedNote && (draggedNote.parentId ?? null) === (parentId ?? null)) {
+        const draggedIndex = siblings.findIndex(s => s.id === draggedId)
+        if (draggedIndex < newIndex) {
+          newIndex -= 1
+        }
+      }
+
+      onReorder(draggedId, parentId, newIndex)
+    }
+
     handleDragEnd()
   }
 
+  function cancelDragLeave() {
+    if (dragLeaveTimer) {
+      clearTimeout(dragLeaveTimer)
+      dragLeaveTimer = null
+    }
+  }
+
   function handleDragEnd() {
+    if (dragLeaveTimer) {
+      clearTimeout(dragLeaveTimer)
+      dragLeaveTimer = null
+    }
     draggedNoteIds.value = []
-    draggedOverId.value = null
+    dropTarget.value = null
     isDragging.value = false
   }
 
@@ -128,7 +291,7 @@ export function useNoteTreeDragDrop({
     if (isDragging.value && draggedNoteIds.value.includes(noteId)) {
       classes.push('opacity-50')
     }
-    if (draggedOverId.value === noteId && isValidDrop(noteId)) {
+    if (dropTarget.value?.noteId === noteId && dropTarget.value.position === 'on' && isValidDrop(noteId, 'on')) {
       classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
     }
     if (selectedNoteIds.value.includes(noteId) && noteId !== currentNoteId.value) {
@@ -137,15 +300,26 @@ export function useNoteTreeDragDrop({
     return classes.join(' ')
   }
 
+  const dropIndicator = computed(() => {
+    if (!dropTarget.value) return null
+    if (dropTarget.value.position === 'on') return null
+    return {
+      noteId: dropTarget.value.noteId,
+      position: dropTarget.value.position,
+    }
+  })
+
   return {
     isDragging,
     draggedNoteIds,
-    draggedOverId,
+    dropTarget,
+    dropIndicator,
     handleDragStart,
     handleDragOver,
     handleDragLeave,
     handleDrop,
     handleDragEnd,
+    cancelDragLeave,
     getItemClass,
   }
 }
