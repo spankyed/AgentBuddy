@@ -29,9 +29,15 @@ export interface NotesContext {
   selectedTaskId: string | null
   selectedTask: NoteDTO | null
   settings: { tasklistPanelPosition: 'left' | 'right' }
+  notesImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
+  notesExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
 }
 
 type SystemEvent = OutgoingNotesEvents
+  | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'NOTES_IMPORT_FAILED'; errors: string[] }
+  | { type: 'NOTES_EXPORTED'; filePath: string; itemCount: number }
+  | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
@@ -65,6 +71,10 @@ type UIEvent =
   | { type: 'TASK.TOGGLE_EXPAND'; nodeId: string }
   | { type: 'NOTE.TOGGLE_FAVORITE'; noteId: string }
   | { type: 'VIEW_WELCOME' }
+  | { type: 'NOTES.IMPORT'; directory: string }
+  | { type: 'NOTES.RESET_IMPORT_STATUS' }
+  | { type: 'NOTES.EXPORT'; directory: string; format: 'markdown' | 'json' }
+  | { type: 'NOTES.RESET_EXPORT_STATUS' }
 
 type SettingsEvent =
   | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
@@ -606,6 +616,105 @@ const notesState = setup({
       currentNote: null,
     }),
 
+    /* ── Notes Import actions ────────────────────────────── */
+    setImportingNotes: assign(({ context }) => ({
+      notesImport: {
+        ...context.notesImport,
+        status: 'importing' as const,
+      },
+    })),
+
+    sendImportNotes: ({ event }) => {
+      if (event.type === 'NOTES.IMPORT') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'IMPORT_NOTES',
+          directory: event.directory,
+        } as any)
+      }
+    },
+
+    handleNotesImported: assign(({ event }) => {
+      if (event.type === 'NOTES_IMPORTED') {
+        return {
+          notesImport: {
+            status: 'success' as const,
+            errors: event.errors || [],
+            importedCount: event.count,
+          },
+        }
+      }
+      return {}
+    }),
+
+    handleNotesImportFailed: assign(({ event }) => {
+      if (event.type === 'NOTES_IMPORT_FAILED') {
+        return {
+          notesImport: {
+            status: 'error' as const,
+            errors: event.errors,
+            importedCount: 0,
+          },
+        }
+      }
+      return {}
+    }),
+
+    resetImportNotesStatus: assign({
+      notesImport: { status: 'idle' as const, errors: [] as string[], importedCount: 0 },
+    }),
+
+    /* ── Notes Export actions ────────────────────────────── */
+    setExportingNotes: assign(({ context }) => ({
+      notesExport: {
+        ...context.notesExport,
+        status: 'exporting' as const,
+      },
+    })),
+
+    sendExportNotes: ({ event }) => {
+      if (event.type === 'NOTES.EXPORT') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'EXPORT_NOTES',
+          directory: event.directory,
+          format: event.format,
+        } as any)
+      }
+    },
+
+    handleNotesExported: assign(({ event }) => {
+      if (event.type === 'NOTES_EXPORTED') {
+        return {
+          notesExport: {
+            status: 'success' as const,
+            errors: [] as string[],
+            filePath: event.filePath,
+            itemCount: event.itemCount,
+          },
+        }
+      }
+      return {}
+    }),
+
+    handleNotesExportFailed: assign(({ event }) => {
+      if (event.type === 'NOTES_EXPORT_FAILED') {
+        return {
+          notesExport: {
+            status: 'error' as const,
+            errors: event.errors,
+            filePath: '',
+            itemCount: 0,
+          },
+        }
+      }
+      return {}
+    }),
+
+    resetExportNotesStatus: assign({
+      notesExport: { status: 'idle' as const, errors: [] as string[], filePath: '', itemCount: 0 },
+    }),
+
     handleSettingsUpdate: assign(({ event }) => {
       const ev = typeOf('NOTES_SETTINGS_UPDATED', event)
       return { settings: ev.settings }
@@ -628,6 +737,8 @@ const notesState = setup({
     selectedTaskId: null,
     selectedTask: null,
     settings: { tasklistPanelPosition: 'left' as const },
+    notesImport: { status: 'idle' as const, errors: [], importedCount: 0 },
+    notesExport: { status: 'idle' as const, errors: [], filePath: '', itemCount: 0 },
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -668,6 +779,14 @@ const notesState = setup({
     'TASK.DELETE': { actions: 'sendDeleteTask' },
     'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'sendToggleShowCompleted' },
     'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN': { actions: 'sendToggleHideCompletedChildren' },
+    'NOTES.IMPORT': { actions: ['setImportingNotes', 'sendImportNotes'] },
+    'NOTES.RESET_IMPORT_STATUS': { actions: 'resetImportNotesStatus' },
+    NOTES_IMPORTED: { actions: 'handleNotesImported' },
+    NOTES_IMPORT_FAILED: { actions: 'handleNotesImportFailed' },
+    'NOTES.EXPORT': { actions: ['setExportingNotes', 'sendExportNotes'] },
+    'NOTES.RESET_EXPORT_STATUS': { actions: 'resetExportNotesStatus' },
+    NOTES_EXPORTED: { actions: 'handleNotesExported' },
+    NOTES_EXPORT_FAILED: { actions: 'handleNotesExportFailed' },
     TRAIL_CLICK: [
       {
         guard: { type: 'targetIs', params: { view: 'welcome' } },

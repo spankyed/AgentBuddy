@@ -8,6 +8,8 @@ import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent 
 import { repository } from '@/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { syncReferences } from './repository/link-utils';
+import { exportNotes } from './export-notes';
+import { importNotes } from './import-notes';
 import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
 
@@ -69,6 +71,8 @@ export const IncomingNoteEvents = [
   busEvent('SEARCH_NOTES', {
     query: z.string(),
   }),
+  busEvent('IMPORT_NOTES', { directory: z.string() }),
+  busEvent('EXPORT_NOTES', { directory: z.string(), format: z.enum(['markdown', 'json']) }),
 ] as const;
 
 export type NotesInternalEvents = SystemEvents;
@@ -80,6 +84,10 @@ export type OutgoingNotesEvents =
   | { type: 'NOTE_DELETED'; noteId: string }
   | { type: 'NOTE_RESTORED'; note: NoteDTO }
   | OutgoingNotesSearchEvent
+  | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'NOTES_IMPORT_FAILED'; errors: string[] }
+  | { type: 'NOTES_EXPORTED'; filePath: string; itemCount: number }
+  | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
 
 export const NotesSystemEvents = fromSystem(IncomingNoteEvents)<OutgoingNotesEvents, typeof notes>();
 type ReceivableEvents = MergeReceivable<typeof IncomingNoteEvents, NotesInternalEvents>;
@@ -415,6 +423,60 @@ export const notesSystem = setup({
       }));
     },
 
+    importNotesItems: ({ system, event }) => {
+      const ev = event as { type: 'IMPORT_NOTES'; directory: string };
+      try {
+        const result = importNotes(ev.directory);
+
+        if (result.created === 0 && result.errors.length > 0) {
+          system.get(bus).send(emit(notes, {
+            type: 'NOTES_IMPORT_FAILED',
+            errors: result.errors,
+          }));
+          return;
+        }
+
+        system.get(bus).send(emit(notes, {
+          type: 'NOTES_IMPORTED',
+          count: result.created,
+          ...(result.errors.length > 0 ? { errors: result.errors } : {}),
+        }));
+
+        // Refresh notes data
+        const connectedData = repository.noteQueries.connectedData();
+        const settings = repository.settingsQueries.getPluginSettings('notes');
+        system.get(bus).send(emit(notes, {
+          type: 'NOTES_CONNECTED',
+          data: { ...connectedData, settings },
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(notes, {
+          type: 'NOTES_IMPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
+
+    exportNotesToFile: ({ system, event }) => {
+      const ev = event as { type: 'EXPORT_NOTES'; directory: string; format: 'markdown' | 'json' };
+      try {
+        const { filePath, itemCount } = exportNotes(ev.directory, ev.format);
+
+        system.get(bus).send(emit(notes, {
+          type: 'NOTES_EXPORTED',
+          filePath,
+          itemCount,
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(notes, {
+          type: 'NOTES_EXPORT_FAILED',
+          errors: [message],
+        }));
+      }
+    },
+
     viewNote: ({ system, event }) => {
       const ev = typeOf('VIEW_NOTE', event);
       if (!repository.noteQueries.byId(ev.id as EARS.EntityId)) return;
@@ -557,6 +619,12 @@ export const notesSystem = setup({
     },
     SEARCH_NOTES: {
       actions: 'searchNotes',
+    },
+    IMPORT_NOTES: {
+      actions: 'importNotesItems',
+    },
+    EXPORT_NOTES: {
+      actions: 'exportNotesToFile',
     },
   },
   states: {
