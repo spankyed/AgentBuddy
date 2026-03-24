@@ -5,9 +5,8 @@
  * Safe to import from the running server (no CLI side effects).
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { createExportDir, ensureDirectoryExists } from '@/core/helpers/paths';
+import { writeExportJson } from '@/core/helpers/export';
 import { qx } from '@/core/ears/helpers/query';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { EARS } from '@/core/types';
@@ -689,9 +688,7 @@ export function exportFlowsDSL(outputDir: string, versioned = true): { filePath:
   } else {
     ensureDirectoryExists(outputDir);
   }
-  const filePath = path.join(outputDir, 'exported-flows.json');
-
-  fs.writeFileSync(filePath, JSON.stringify(dsl, null, 2));
+  const filePath = writeExportJson(outputDir, 'exported-flows.json', dsl);
 
   return { filePath, flowCount: exported };
 }

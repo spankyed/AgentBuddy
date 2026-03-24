@@ -5,7 +5,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/helpers/media'
-import { toSlug, uniqueFilename } from '@/core/helpers/export'
+import { toSlug, uniqueFilename, writeExportJson } from '@/core/helpers/export'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
 
@@ -77,8 +77,7 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
     notes,
   }
 
-  const filePath = path.join(outputDir, 'exported-notes.json')
-  fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
+  const filePath = writeExportJson(outputDir, 'exported-notes.json', exportData)
 
   // Copy referenced media files into outputDir/media/{entityId}/
   const mediaCopied = copyMediaByRef(collectNoteMediaRefs(notes), outputDir)

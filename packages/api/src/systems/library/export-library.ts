@@ -5,8 +5,6 @@
  * Supports JSON (full-fidelity) and Markdown (flat, human-readable) formats.
  */
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
@@ -17,6 +15,7 @@ import type { ExportedItem } from './export-types'
 import type { ExportFormat } from './export-types'
 import { exportLibraryMarkdown } from './export-markdown'
 import { countExportedItems } from './utils'
+import { writeExportJson } from '@/core/helpers/export'
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]
@@ -108,9 +107,7 @@ function exportLibraryJson(outputDir: string): { filePath: string; itemCount: nu
     items,
   }
 
-  const filePath = path.join(outputDir, 'exported-library.json')
-
-  fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
+  const filePath = writeExportJson(outputDir, 'exported-library.json', exportData)
 
   // Copy referenced media files into outputDir/media/{entityId}/
   const mediaCopied = copyMediaByRef(collectMediaRefs(items), outputDir)

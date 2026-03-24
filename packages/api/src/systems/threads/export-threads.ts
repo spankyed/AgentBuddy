@@ -4,11 +4,10 @@
  * Exports all threads with their messages and linked thread references.
  */
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { EARS } from '@/core/types'
 import { createExportDir } from '@/core/helpers/paths'
 import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
+import { writeExportJson } from '@/core/helpers/export'
 import type { MediaRef } from '@/core/helpers/media'
 import { repository } from '@/repository'
 import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThreadLink } from './export-types'
@@ -68,8 +67,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
     threads: exportedThreads,
   }
 
-  const filePath = path.join(outputDir, 'exported-threads.json')
-  fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
+  const filePath = writeExportJson(outputDir, 'exported-threads.json', exportData)
 
   const mediaCopied = copyMediaByRef(allRefs, outputDir)
 

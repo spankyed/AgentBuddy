@@ -5,11 +5,9 @@
  * stripping internal fields (id, entityType, timestamps, etc.).
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { repository } from '@/repository';
 import { createExportDir } from '@/core/helpers/paths';
-import { stripInternalFields } from '@/core/helpers/export';
+import { stripInternalFields, writeExportJson } from '@/core/helpers/export';
 
 export function exportActions(outputDir: string): { filePath: string; actionCount: number } {
   outputDir = createExportDir(outputDir, 'actions');
@@ -17,9 +15,7 @@ export function exportActions(outputDir: string): { filePath: string; actionCoun
 
   const portable = stripInternalFields(actions);
 
-  const filePath = path.join(outputDir, 'exported-actions.json');
-
-  fs.writeFileSync(filePath, JSON.stringify(portable, null, 2));
+  const filePath = writeExportJson(outputDir, 'exported-actions.json', portable);
 
   return { filePath, actionCount: portable.length };
 }

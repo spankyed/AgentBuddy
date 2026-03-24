@@ -4,6 +4,7 @@
  * Common functions used across multiple system export files.
  */
 
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 
 const INTERNAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt'] as const
@@ -23,6 +24,12 @@ export function toSlug(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+export function writeExportJson(outputDir: string, filename: string, data: unknown): string {
+  const filePath = path.join(outputDir, filename)
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
+  return filePath
 }
 
 export function uniqueFilename(name: string, existingNames: Set<string>): string {
