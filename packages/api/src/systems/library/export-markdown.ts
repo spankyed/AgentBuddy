@@ -12,6 +12,7 @@ import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
 import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
+import { writeExportFile } from '@/core/helpers/export'
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   outputDir = createExportDir(outputDir, 'library')
@@ -75,7 +76,7 @@ function writeItems(
       let body = serializeContentToMarkdown(item.content)
       body = rewriteMediaUrls(body, mediaFilenameMap)
 
-      fs.writeFileSync(path.join(dir, filename), frontmatter + body)
+      writeExportFile(dir, filename, frontmatter + body)
     } else if (item.type === 'collection') {
       const slug = toSlug(item.name)
       const dirName = uniqueFilename(slug, usedNames)

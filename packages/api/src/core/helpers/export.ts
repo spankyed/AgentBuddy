@@ -32,6 +32,12 @@ export function writeExportJson(outputDir: string, filename: string, data: unkno
   return filePath
 }
 
+export function writeExportFile(dir: string, filename: string, content: string): string {
+  const filePath = path.join(dir, filename)
+  fs.writeFileSync(filePath, content)
+  return filePath
+}
+
 export function uniqueFilename(name: string, existingNames: Set<string>): string {
   if (!existingNames.has(name)) return name
   const ext = path.extname(name)

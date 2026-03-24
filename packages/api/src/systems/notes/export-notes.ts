@@ -5,7 +5,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/helpers/media'
-import { toSlug, uniqueFilename, writeExportJson } from '@/core/helpers/export'
+import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@/core/helpers/export'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
 
@@ -134,7 +134,7 @@ function writeNoteMarkdown(
 
     // Write the parent note as index.md
     const frontmatter = buildNoteFrontmatter(note)
-    fs.writeFileSync(path.join(subDir, 'index.md'), frontmatter + content)
+    writeExportFile(subDir, 'index.md', frontmatter + content)
 
     // Write children
     const childUsedNames = new Set<string>(['index.md'])
@@ -145,7 +145,7 @@ function writeNoteMarkdown(
     const filename = uniqueFilename(`${slug}.md`, usedNames)
     usedNames.add(filename)
     const frontmatter = buildNoteFrontmatter(note)
-    fs.writeFileSync(path.join(dir, filename), frontmatter + content)
+    writeExportFile(dir, filename, frontmatter + content)
   }
 }
 
