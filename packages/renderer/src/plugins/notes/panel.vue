@@ -45,6 +45,25 @@
       </div>
     </div>
 
+    <!-- Favorites -->
+    <div v-if="favoriteNotes.length > 0" class="px-2 pt-2 pb-1 border-b border-neutral-700">
+      <div class="flex items-center gap-1.5 px-2 mb-1">
+        <Star :size="12" class="text-yellow-400" />
+        <span class="text-xs font-medium text-neutral-500">Favorites</span>
+      </div>
+      <button
+        v-for="fav in favoriteNotes"
+        :key="fav.id"
+        class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm transition-colors"
+        :class="fav.id === currentNoteId ? 'bg-neutral-700 text-neutral-100' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'"
+        @click="handleSelectNote(fav.id)"
+      >
+        <span v-if="fav.icon" class="text-sm leading-none shrink-0">{{ fav.icon }}</span>
+        <FileText v-else :size="14" class="text-neutral-500 shrink-0" />
+        <span class="truncate">{{ fav.title || 'Untitled' }}</span>
+      </button>
+    </div>
+
     <!-- Tree -->
     <div
       class="flex-1 overflow-y-auto p-3 px-2"
@@ -81,6 +100,7 @@
         @create-task="handleCreateTask"
         @open="handleOpenNote"
         @create-tasklist="handleCreateTaskList"
+        @toggle-favorite="handleToggleFavorite"
       />
     </div>
   </div>
@@ -92,7 +112,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
-import { Plus, ListChecks, MoreHorizontal } from 'lucide-vue-next'
+import { Plus, ListChecks, MoreHorizontal, Star, FileText } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -122,6 +142,12 @@ const rootNotes = computed(() =>
     .filter(n => !n.parentId)
     .sort((a, b) => a.displayOrder - b.displayOrder)
 )
+
+const favoriteNotes = computed(() => notes.value.filter(n => n.favorite))
+
+function handleToggleFavorite(noteId: string) {
+  actor.send({ type: 'NOTE.TOGGLE_FAVORITE', noteId })
+}
 
 const {
   handleDragStart,

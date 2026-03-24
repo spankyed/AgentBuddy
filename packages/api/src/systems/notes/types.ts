@@ -1,4 +1,5 @@
 import { BaseEntity, EARS } from '@/core/types';
+import type { NotesSettings } from '@/systems/settings/types';
 
 export const REFERENCES = EARS.RelKind.Custom('references');
 
@@ -15,6 +16,7 @@ export interface NoteEntity extends BaseEntity {
   createdAt: number;
   updatedAt: number;
   lastSeen: number;
+  favorite?: boolean;
   deleted?: boolean;
   deletedAt?: number;
 }
@@ -34,11 +36,12 @@ export interface NoteDTO {
   createdAt: number;
   updatedAt: number;
   lastSeen: number;
+  favorite: boolean;
 }
 
 export type OutgoingNotesSearchEvent = { type: 'NOTES_SEARCH_RESULTS'; results: NoteDTO[] }
 
 export interface NotesConnectedData {
   notes: NoteDTO[];
-  settings?: import('@/systems/settings/types').NotesSettings;
+  settings?: NotesSettings;
 }

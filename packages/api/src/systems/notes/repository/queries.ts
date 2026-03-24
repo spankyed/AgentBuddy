@@ -27,6 +27,7 @@ function toDTO(note: NoteEntity): NoteDTO {
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
     lastSeen: note.lastSeen ?? 0,
+    favorite: note.favorite ?? false,
   };
 }
 

@@ -211,6 +211,7 @@
         @open="$emit('open', $event)"
         @toggle-hide-completed="$emit('toggle-hide-completed', $event)"
         @create-tasklist="$emit('create-tasklist', $event)"
+        @toggle-favorite="$emit('toggle-favorite', $event)"
       />
     </template>
   </div>
@@ -219,7 +220,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Check, ChevronRight, CircleCheck, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Trash2 } from 'lucide-vue-next'
+import { Check, ChevronRight, CircleCheck, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -271,6 +272,7 @@ const emit = defineEmits<{
   (e: 'open', noteId: string): void
   (e: 'toggle-hide-completed', nodeId: string): void
   (e: 'create-tasklist', parentId: string): void
+  (e: 'toggle-favorite', noteId: string): void
 }>()
 
 function handleClick(e: MouseEvent) {
@@ -301,6 +303,13 @@ const menuItems = computed<MenuItem[]>(() => {
       action: () => emit('toggle-hide-completed', props.note.id),
     })
   }
+  items.push({
+    label: props.note.favorite ? 'Remove from Favorites' : 'Add to Favorites',
+    icon: Star,
+    class: 'text-neutral-300',
+    iconClass: props.note.favorite ? 'text-yellow-400' : undefined,
+    action: () => emit('toggle-favorite', props.note.id),
+  })
   items.push({ label: 'Delete', icon: Trash2, class: 'text-red-400', iconClass: 'text-red-400', action: () => emit('delete', props.note.id) })
   return items
 })

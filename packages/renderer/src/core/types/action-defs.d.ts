@@ -174,6 +174,7 @@ interface NoteEntity extends BaseEntity {
     createdAt: number;
     updatedAt: number;
     lastSeen: number;
+    favorite?: boolean;
     deleted?: boolean;
     deletedAt?: number;
 }
@@ -192,6 +193,7 @@ interface NoteDTO {
     createdAt: number;
     updatedAt: number;
     lastSeen: number;
+    favorite: boolean;
 }
 interface NotesConnectedData {
     notes: NoteDTO[];
@@ -2820,6 +2822,7 @@ declare const events: {
         icon: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         completed: zod.ZodOptional<zod.ZodBoolean>;
         hideCompletedChildren: zod.ZodOptional<zod.ZodBoolean>;
+        favorite: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         id: string;
         type: "UPDATE_NOTE";
@@ -2829,6 +2832,7 @@ declare const events: {
         content?: string | undefined;
         icon?: string | null | undefined;
         hideCompletedChildren?: boolean | undefined;
+        favorite?: boolean | undefined;
     }, {
         id: string;
         type: "UPDATE_NOTE";
@@ -2838,6 +2842,7 @@ declare const events: {
         content?: string | undefined;
         icon?: string | null | undefined;
         hideCompletedChildren?: boolean | undefined;
+        favorite?: boolean | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_NOTE">;
         systemId: zod.ZodLiteral<"notes">;
@@ -5408,6 +5413,7 @@ declare const services: {
                 lastSeen?: number;
                 completed?: boolean;
                 hideCompletedChildren?: boolean;
+                favorite?: boolean;
             }, skipTimestamp?: boolean) => void;
             readonly softDelete: (id: EARS.EntityId) => string[];
             readonly restore: (id: EARS.EntityId) => string[];

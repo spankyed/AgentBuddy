@@ -63,6 +63,7 @@ type UIEvent =
   | { type: 'TASK.TOGGLE_SHOW_COMPLETED' }
   | { type: 'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN'; nodeId: string }
   | { type: 'TASK.TOGGLE_EXPAND'; nodeId: string }
+  | { type: 'NOTE.TOGGLE_FAVORITE'; noteId: string }
   | { type: 'VIEW_WELCOME' }
 
 type SettingsEvent =
@@ -288,6 +289,37 @@ const notesState = setup({
         type: 'UPDATE_NOTE',
         id: ev.noteId,
         icon: ev.icon,
+      })
+    },
+
+    toggleFavoriteLocal: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.TOGGLE_FAVORITE', event)
+      const newFavorite = !context.notes.find(n => n.id === ev.noteId)?.favorite
+      const updatedNotes = context.notes.map(n =>
+        n.id === ev.noteId ? { ...n, favorite: newFavorite } : n
+      )
+      return {
+        notes: updatedNotes,
+        currentNote:
+          context.currentNoteId === ev.noteId && context.currentNote
+            ? { ...context.currentNote, favorite: newFavorite }
+            : context.currentNote,
+        selectedTask:
+          context.selectedTaskId === ev.noteId && context.selectedTask
+            ? { ...context.selectedTask, favorite: newFavorite }
+            : context.selectedTask,
+      }
+    }),
+
+    sendToggleFavorite: ({ event, context }) => {
+      const ev = typeOf('NOTE.TOGGLE_FAVORITE', event)
+      const note = context.notes.find(n => n.id === ev.noteId)
+      if (!note) return
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_NOTE',
+        id: ev.noteId,
+        favorite: note.favorite,
       })
     },
 
@@ -627,6 +659,7 @@ const notesState = setup({
     'NOTE.UPDATE_CONTENT': { actions: ['updateLocalContent', 'sendUpdateContent'] },
     'NOTE.UPDATE_TITLE': { actions: ['updateLocalTitle', 'sendUpdateTitle'] },
     'NOTE.UPDATE_ICON': { actions: ['updateLocalIcon', 'sendUpdateIcon'] },
+    'NOTE.TOGGLE_FAVORITE': { actions: ['toggleFavoriteLocal', 'sendToggleFavorite'] },
     'TASK.SELECT': { actions: 'selectTask' },
     'TASK.DESELECT': { actions: 'deselectTask' },
     'TASK.TOGGLE_COMPLETE': { actions: 'sendToggleComplete' },

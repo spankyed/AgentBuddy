@@ -48,8 +48,61 @@
             </button>
           </div>
 
-          <!-- Recently visited cards -->
+          <!-- Favorites + Recently visited (when not searching) -->
           <div v-else class="pb-6">
+
+          <!-- Favorites carousel -->
+          <div v-if="favoriteNotes.length > 0" class="mb-6">
+          <div class="flex items-center gap-2 mb-3">
+            <Star :size="16" class="text-yellow-400" />
+            <p class="text-sm font-medium text-neutral-400">Favorites</p>
+          </div>
+          <div class="relative">
+            <!-- Left edge shadow + arrow -->
+            <div
+              v-show="favCanScrollLeft"
+              class="absolute left-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-r from-neutral-900/80 to-transparent group/left cursor-pointer"
+              @click="scrollFavCarousel(-1)"
+            >
+              <button class="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/left:opacity-100">
+                <ChevronLeft :size="16" class="text-neutral-200" />
+              </button>
+            </div>
+            <div
+              ref="favCarouselRef"
+              class="flex gap-3 pb-2 overflow-x-auto scroll-smooth carousel-hide-scrollbar"
+              @scroll="updateFavScrollState"
+            >
+              <button
+                v-for="note in favoriteNotes" :key="note.id"
+                class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-yellow-600/30 hover:border-yellow-500/40"
+                style="min-height: 140px"
+                @click="handleSelectNote(note.id)"
+              >
+                <div>
+                  <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
+                  <FileText v-else :size="28" class="text-neutral-600" />
+                </div>
+                <div class="mt-3">
+                  <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
+                  <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
+                </div>
+              </button>
+            </div>
+            <!-- Right edge shadow + arrow -->
+            <div
+              v-show="favCanScrollRight"
+              class="absolute right-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-l from-neutral-900/80 to-transparent group/right cursor-pointer"
+              @click="scrollFavCarousel(1)"
+            >
+              <button class="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/right:opacity-100">
+                <ChevronRight :size="16" class="text-neutral-200" />
+              </button>
+            </div>
+          </div>
+          </div>
+
+          <!-- Recently visited cards -->
           <div class="flex items-center gap-2 mb-3">
             <Clock :size="16" class="text-neutral-500" />
             <p class="text-sm font-medium text-neutral-400">Recently visited</p>
@@ -197,7 +250,7 @@ import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
-import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
@@ -271,6 +324,8 @@ const recentNotes = computed(() =>
     .slice(0, 20)
 )
 
+const favoriteNotes = computed(() => notes.value.filter(n => n.favorite))
+
 const SEARCH_DEBOUNCE_MS = 50
 const { debounced: debouncedSearch } = useDebounce((query: string) => {
   actor.send({ type: 'NOTE.SEARCH', query })
@@ -289,6 +344,9 @@ const titleRef = ref<HTMLInputElement | null>(null)
 const carouselRef = ref<HTMLDivElement | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
+const favCarouselRef = ref<HTMLDivElement | null>(null)
+const favCanScrollLeft = ref(false)
+const favCanScrollRight = ref(false)
 
 function updateScrollState() {
   const el = carouselRef.value
@@ -303,11 +361,25 @@ function scrollCarousel(direction: -1 | 1) {
   el.scrollBy({ left: direction * 320, behavior: 'smooth' })
 }
 
+function updateFavScrollState() {
+  const el = favCarouselRef.value
+  if (!el) return
+  favCanScrollLeft.value = el.scrollLeft > 0
+  favCanScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+function scrollFavCarousel(direction: -1 | 1) {
+  const el = favCarouselRef.value
+  if (!el) return
+  el.scrollBy({ left: direction * 320, behavior: 'smooth' })
+}
+
 watch(recentNotes, () => nextTick(updateScrollState))
+watch(favoriteNotes, () => nextTick(updateFavScrollState))
 watch(() => state.value.hasTag('welcome'), (isWelcome) => {
-  if (isWelcome) nextTick(updateScrollState)
+  if (isWelcome) nextTick(() => { updateScrollState(); updateFavScrollState() })
 })
-onMounted(() => nextTick(updateScrollState))
+onMounted(() => nextTick(() => { updateScrollState(); updateFavScrollState() }))
 
 // Composables
 useNoteFocus(actor, titleRef, editorRef)
