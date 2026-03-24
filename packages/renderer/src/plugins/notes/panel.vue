@@ -46,22 +46,44 @@
     </div>
 
     <!-- Favorites -->
-    <div v-if="favoriteNotes.length > 0" class="px-2 pt-2 pb-1 border-b border-neutral-700">
-      <div class="flex items-center gap-1.5 px-2 mb-1">
-        <Star :size="12" class="text-yellow-400" />
-        <span class="text-xs font-medium text-neutral-500">Favorites</span>
-      </div>
+    <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-700 px-2 pt-2 pb-2">
       <button
-        v-for="fav in favoriteNotes"
-        :key="fav.id"
-        class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm transition-colors"
-        :class="fav.id === currentNoteId ? 'bg-neutral-700 text-neutral-100' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'"
-        @click="handleSelectNote(fav.id)"
+        class="flex items-center gap-1 px-1.5 mb-1 w-full text-left"
+        @click="favoritesExpanded = !favoritesExpanded"
       >
-        <span v-if="fav.icon" class="text-sm leading-none shrink-0">{{ fav.icon }}</span>
-        <FileText v-else :size="14" class="text-neutral-500 shrink-0" />
-        <span class="truncate">{{ fav.title || 'Untitled' }}</span>
+        <ChevronRight
+          :size="10"
+          class="shrink-0 text-neutral-500 transition-transform duration-150"
+          :class="favoritesExpanded && 'rotate-90'"
+        />
+        <Star :size="10" class="shrink-0 text-yellow-500/60" />
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
       </button>
+      <template v-if="favoritesExpanded">
+        <NoteTreeItem
+          v-for="fav in favoriteNotes"
+          :key="fav.id"
+          :note="fav"
+          :all-notes="notes"
+          :current-note-id="currentNoteId"
+          :expanded-node-ids="expandedNodeIds"
+          :depth="0"
+          :get-item-class="getItemClass"
+          :drop-indicator-note-id="null"
+          :drop-indicator-position="null"
+          @select="handleSelectNote"
+          @toggle-expand="handleToggleExpand"
+          @create="handleCreateNote"
+          @delete="handleDeleteNote"
+          @update-icon="handleUpdateIcon"
+          @toggle-select="handleToggleSelect"
+          @shift-select="handleShiftSelect"
+          @create-task="handleCreateTask"
+          @open="handleOpenNote"
+          @create-tasklist="handleCreateTaskList"
+          @toggle-favorite="handleToggleFavorite"
+        />
+      </template>
     </div>
 
     <!-- Tree -->
@@ -112,7 +134,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
-import { Plus, ListChecks, MoreHorizontal, Star, FileText } from 'lucide-vue-next'
+import { Plus, ListChecks, MoreHorizontal, Star, ChevronRight } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -127,6 +149,7 @@ import { onMenuOpenChange } from '@/core/composables/useMenuState'
 const actor: NotesState = applicationState.system.get(id)
 
 const dropdownOpen = ref(false)
+const favoritesExpanded = ref(true)
 watch(dropdownOpen, onMenuOpenChange)
 
 const createMenuItems = computed<MenuItem[]>(() => [
@@ -259,3 +282,4 @@ function handleRootDrop(e: DragEvent) {
   handleDrop(e, null)
 }
 </script>
+
