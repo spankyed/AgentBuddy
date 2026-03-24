@@ -48,16 +48,18 @@
     <!-- Favorites -->
     <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 pt-2 pb-2">
       <button
-        class="flex items-center gap-1 px-1.5 w-full text-left"
+        class="group flex items-center gap-2 px-1.5 w-full text-left ml-2.5"
         :class="favoritesExpanded && 'mb-1'"
         @click="favoritesExpanded = !favoritesExpanded"
       >
-        <ChevronRight
-          :size="10"
-          class="shrink-0 text-neutral-500 transition-transform duration-150"
-          :class="favoritesExpanded && 'rotate-90'"
-        />
-        <Star :size="10" class="shrink-0 text-yellow-500/60" />
+        <span class="relative shrink-0 w-[10px] h-[10px]">
+          <Star :size="10" class="absolute inset-0 text-yellow-500/60 transition-opacity group-hover:opacity-0" />
+          <ChevronRight
+            :size="10"
+            class="absolute inset-0 text-neutral-500 opacity-0 transition-all duration-150 group-hover:opacity-100"
+            :class="favoritesExpanded && 'rotate-90'"
+          />
+        </span>
         <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
       </button>
       <template v-if="favoritesExpanded">
