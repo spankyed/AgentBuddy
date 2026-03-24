@@ -10,7 +10,7 @@ import * as path from 'node:path'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
-import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
+import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
 import { ensureDirectoryExists } from '@/core/helpers/paths'
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
@@ -114,16 +114,7 @@ function exportLibraryJson(outputDir: string): { filePath: string; itemCount: nu
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
   // Copy referenced media files into outputDir/media/{entityId}/
-  const mediaRefs = collectMediaRefs(items)
-  let mediaCopied = 0
-  for (const ref of mediaRefs) {
-    const resolved = resolveMedia(ref)
-    if (!resolved) continue
-    const destDir = path.join(outputDir, 'media', ref.entityId)
-    ensureDirectoryExists(destDir)
-    fs.copyFileSync(resolved.filePath, path.join(destDir, ref.filename))
-    mediaCopied++
-  }
+  const mediaCopied = copyMediaByRef(collectMediaRefs(items), outputDir)
 
   return { filePath, itemCount, mediaCopied }
 }
