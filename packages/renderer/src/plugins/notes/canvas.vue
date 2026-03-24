@@ -43,6 +43,8 @@
               @click="handleSelectNote(note.id)"
             >
               <span v-if="note.icon" class="text-base">{{ note.icon }}</span>
+              <ListChecks v-else-if="note.noteType === 'tasklist'" :size="16" class="text-neutral-500 shrink-0" />
+              <CircleCheck v-else-if="note.noteType === 'task'" :size="16" class="text-neutral-500 shrink-0" />
               <FileText v-else :size="16" class="text-neutral-500 shrink-0" />
               <span class="truncate">{{ note.title || 'Untitled' }}</span>
             </button>
@@ -83,6 +85,8 @@
               >
                 <div>
                   <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
+                  <ListChecks v-else-if="note.noteType === 'tasklist'" :size="28" class="text-neutral-600" />
+                  <CircleCheck v-else-if="note.noteType === 'task'" :size="28" class="text-neutral-600" />
                   <FileText v-else :size="28" class="text-neutral-600" />
                 </div>
                 <div class="mt-3">
@@ -133,6 +137,8 @@
               >
                 <div>
                   <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
+                  <ListChecks v-else-if="note.noteType === 'tasklist'" :size="28" class="text-neutral-600" />
+                  <CircleCheck v-else-if="note.noteType === 'task'" :size="28" class="text-neutral-600" />
                   <FileText v-else :size="28" class="text-neutral-600" />
                 </div>
                 <div class="mt-3">
