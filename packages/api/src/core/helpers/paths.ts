@@ -60,3 +60,19 @@ export function resolvePath(key: keyof typeof SUBDIRS): string {
   const { prod, dev } = SUBDIRS[key]
   return isProd ? path.join(userDataPath, prod) : path.join(cwd, dev)
 }
+
+export function createExportDir(parentDir: string, systemName: string): string {
+  const now = new Date()
+  const ts = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    '-',
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
+  ].join('')
+  const fullPath = path.join(parentDir, `${systemName}-${ts}`)
+  ensureDirectoryExists(fullPath)
+  return fullPath
+}

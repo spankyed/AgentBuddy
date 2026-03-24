@@ -8,10 +8,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { repository } from '@/repository';
+import { createExportDir } from '@/core/helpers/paths';
 
 const INTERNAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt'] as const;
 
 export function exportActions(outputDir: string): { filePath: string; actionCount: number } {
+  outputDir = createExportDir(outputDir, 'actions');
   const actions = repository.actionQueries.all();
 
   const portable = actions.map(action => {
@@ -23,10 +25,6 @@ export function exportActions(outputDir: string): { filePath: string; actionCoun
   });
 
   const filePath = path.join(outputDir, 'exported-actions.json');
-
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
 
   fs.writeFileSync(filePath, JSON.stringify(portable, null, 2));
 

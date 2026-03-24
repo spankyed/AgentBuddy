@@ -11,7 +11,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
 import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
-import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
 import type { ExportFormat } from './export-types'
@@ -100,6 +100,7 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
 }
 
 function exportLibraryJson(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
+  outputDir = createExportDir(outputDir, 'library')
   const { items, itemCount } = buildExportTree()
 
   const exportData = {
@@ -108,8 +109,6 @@ function exportLibraryJson(outputDir: string): { filePath: string; itemCount: nu
   }
 
   const filePath = path.join(outputDir, 'exported-library.json')
-
-  ensureDirectoryExists(outputDir)
 
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 

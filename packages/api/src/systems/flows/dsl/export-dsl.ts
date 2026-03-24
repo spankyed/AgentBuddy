@@ -7,6 +7,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createExportDir, ensureDirectoryExists } from '@/core/helpers/paths';
 import { qx } from '@/core/ears/helpers/query';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { EARS } from '@/core/types';
@@ -639,7 +640,7 @@ function decompileFlow(
  * Main Export Function
  *─────────────────────────────────────────────────────────────────*/
 
-export function exportFlowsDSL(outputDir: string): { filePath: string; flowCount: number } {
+export function exportFlowsDSL(outputDir: string, versioned = true): { filePath: string; flowCount: number } {
   // Build lookup maps
   const actions = qx(EARS.Entity.Action).pickAll() as unknown as ActionEntity[];
   const prompts = qx(EARS.Entity.Prompt).pickAll() as unknown as PromptEntity[];
@@ -683,11 +684,12 @@ export function exportFlowsDSL(outputDir: string): { filePath: string; flowCount
   }
 
   // Write output
-  const filePath = path.join(outputDir, 'exported-flows.json');
-
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
+  if (versioned) {
+    outputDir = createExportDir(outputDir, 'flows');
+  } else {
+    ensureDirectoryExists(outputDir);
   }
+  const filePath = path.join(outputDir, 'exported-flows.json');
 
   fs.writeFileSync(filePath, JSON.stringify(dsl, null, 2));
 

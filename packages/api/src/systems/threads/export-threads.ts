@@ -7,7 +7,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/core/types'
-import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { createExportDir } from '@/core/helpers/paths'
 import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
 import type { MediaRef } from '@/core/helpers/media'
 import { repository } from '@/repository'
@@ -15,6 +15,7 @@ import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThre
 import type { ThreadEntity } from './types'
 
 export function exportThreads(outputDir: string): { filePath: string; threadCount: number; mediaCopied: number } {
+  outputDir = createExportDir(outputDir, 'threads')
   const threads = repository.threadQueries.all()
 
   const exportedThreads: ExportedThread[] = []
@@ -66,8 +67,6 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
     version: 1,
     threads: exportedThreads,
   }
-
-  ensureDirectoryExists(outputDir)
 
   const filePath = path.join(outputDir, 'exported-threads.json')
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))

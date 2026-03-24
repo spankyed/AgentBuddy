@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { repository } from '@/repository'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
-import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/helpers/media'
 import { toSlug, uniqueFilename } from '@/systems/library/utils'
 import type { NoteEntity } from './types'
@@ -69,6 +69,7 @@ function collectNoteMediaRefs(notes: ExportedNote[]): ReturnType<typeof extractM
 }
 
 function exportNotesJson(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
+  outputDir = createExportDir(outputDir, 'notes')
   const { notes, itemCount } = buildNoteTree()
 
   const exportData = {
@@ -77,7 +78,6 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
   }
 
   const filePath = path.join(outputDir, 'exported-notes.json')
-  ensureDirectoryExists(outputDir)
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
   // Copy referenced media files into outputDir/media/{entityId}/
@@ -151,9 +151,8 @@ function writeNoteMarkdown(
 }
 
 function exportNotesMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
+  outputDir = createExportDir(outputDir, 'notes')
   const { notes, itemCount } = buildNoteTree()
-
-  ensureDirectoryExists(outputDir)
 
   // First pass: collect all media refs and build a flat filename map
   const mediaFilenameMap = new Map<string, string>()

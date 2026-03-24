@@ -28,7 +28,7 @@ async function exportAllFlows() {
   console.log('✅ Database initialized\n');
 
   const outputDir = path.join(DSL_DIR, 'examples');
-  const { filePath, flowCount } = exportFlowsDSL(outputDir);
+  const { filePath, flowCount } = exportFlowsDSL(outputDir, false);
 
   console.log(`\n✅ Exported ${flowCount} flows to ${filePath}`);
 

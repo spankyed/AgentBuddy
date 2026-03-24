@@ -8,15 +8,14 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia } from '@/core/helpers/media'
-import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
 import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
+  outputDir = createExportDir(outputDir, 'library')
   const { items, itemCount } = buildExportTree()
-
-  ensureDirectoryExists(outputDir)
 
   // First pass: collect all media refs and build a flat filename map
   const mediaFilenameMap = new Map<string, string>() // "entityId/filename" → flat filename

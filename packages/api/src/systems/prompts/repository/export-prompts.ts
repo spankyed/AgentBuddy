@@ -8,10 +8,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { repository } from '@/repository';
+import { createExportDir } from '@/core/helpers/paths';
 
 const INTERNAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt'] as const;
 
 export function exportPrompts(outputDir: string): { filePath: string; promptCount: number } {
+  outputDir = createExportDir(outputDir, 'prompts');
   const prompts = repository.promptQueries.all();
 
   const portable = prompts.map(prompt => {
@@ -23,10 +25,6 @@ export function exportPrompts(outputDir: string): { filePath: string; promptCoun
   });
 
   const filePath = path.join(outputDir, 'exported-prompts.json');
-
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
 
   fs.writeFileSync(filePath, JSON.stringify(portable, null, 2));
 
