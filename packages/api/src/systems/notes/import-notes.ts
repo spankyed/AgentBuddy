@@ -14,6 +14,43 @@ interface ImportResult {
   errors: string[]
 }
 
+function applyNoteUpdates(
+  noteId: string,
+  opts: { favorite?: boolean; hideCompletedChildren?: boolean; content?: string },
+): void {
+  const updates: Record<string, any> = {}
+  if (opts.favorite) updates.favorite = true
+  if (opts.hideCompletedChildren) updates.hideCompletedChildren = true
+  if (opts.content !== undefined) updates.content = opts.content
+  if (Object.keys(updates).length > 0) {
+    repository.noteCommands.update(noteId as EARS.EntityId, updates)
+  }
+}
+
+function restoreJsonMedia(
+  content: string,
+  noteId: string,
+  importDir: string,
+  result: ImportResult,
+): string {
+  const refs = extractMediaRefs(content)
+  if (refs.length === 0) return content
+
+  let rewritten = content
+  for (const ref of refs) {
+    const srcFile = path.join(importDir, 'media', ref.entityId, ref.filename)
+    if (!fs.existsSync(srcFile)) continue
+
+    const destDir = path.join(getMediaPath(), noteId)
+    ensureDirectoryExists(destDir)
+    fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
+    result.mediaRestored++
+
+    rewritten = rewritten.split(`media://${ref.entityId}/`).join(`media://${noteId}/`)
+  }
+  return rewritten
+}
+
 export function importNotes(importDir: string): ImportResult {
   const jsonPath = path.join(importDir, 'exported-notes.json')
 
@@ -80,36 +117,15 @@ function importNoteNodes(
       })
       result.created++
 
-      // Update fields not settable via create
-      const updates: Record<string, any> = {}
-      if (node.hideCompletedChildren) updates.hideCompletedChildren = true
-      if (node.favorite) updates.favorite = true
-
-      // Restore media: copy files and rewrite URLs
-      if (hasMedia && note.id) {
-        const refs = extractMediaRefs(node.content || '')
-        if (refs.length > 0) {
-          let content = node.content || ''
-          for (const ref of refs) {
-            const srcFile = path.join(importDir, 'media', ref.entityId, ref.filename)
-            if (!fs.existsSync(srcFile)) continue
-
-            const destDir = path.join(getMediaPath(), note.id)
-            ensureDirectoryExists(destDir)
-            fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
-            result.mediaRestored++
-
-            content = content.split(`media://${ref.entityId}/`).join(`media://${note.id}/`)
-          }
-          if (content !== (node.content || '')) {
-            updates.content = content
-          }
-        }
-      }
-
-      if (Object.keys(updates).length > 0) {
-        repository.noteCommands.update(note.id as EARS.EntityId, updates)
-      }
+      // Restore media and apply fields not settable via create
+      const restoredContent = hasMedia && note.id
+        ? restoreJsonMedia(node.content || '', note.id, importDir, result)
+        : undefined
+      applyNoteUpdates(note.id, {
+        favorite: node.favorite,
+        hideCompletedChildren: node.hideCompletedChildren,
+        content: restoredContent !== (node.content || '') ? restoredContent : undefined,
+      })
 
       // Recurse for children
       if (node.children && node.children.length > 0) {
@@ -275,21 +291,14 @@ function importMarkdownDir(
         })
         result.created++
 
-        const updates: Record<string, any> = {}
-        if (favorite) updates.favorite = true
-        if (hideCompletedChildren) updates.hideCompletedChildren = true
-
-        // Restore media for index content
-        if (hasMedia && content) {
-          const rewritten = restoreMarkdownMedia(content, note.id, rootImportDir, result)
-          if (rewritten !== content) {
-            updates.content = rewritten
-          }
-        }
-
-        if (Object.keys(updates).length > 0) {
-          repository.noteCommands.update(note.id as EARS.EntityId, updates)
-        }
+        const rewritten = hasMedia && content
+          ? restoreMarkdownMedia(content, note.id, rootImportDir, result)
+          : undefined
+        applyNoteUpdates(note.id, {
+          favorite,
+          hideCompletedChildren,
+          content: rewritten !== content ? rewritten : undefined,
+        })
 
         // Recurse for children (skip index.md)
         importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia)
@@ -316,12 +325,10 @@ function importMarkdownDir(
           })
           result.created++
 
-          const updates: Record<string, any> = {}
-          if (parsed.favorite) updates.favorite = true
-          if (parsed.hideCompletedChildren) updates.hideCompletedChildren = true
-          if (Object.keys(updates).length > 0) {
-            repository.noteCommands.update(note.id as EARS.EntityId, updates)
-          }
+          applyNoteUpdates(note.id, {
+            favorite: parsed.favorite,
+            hideCompletedChildren: parsed.hideCompletedChildren,
+          })
 
           // Parse tasks from body
           parseTaskList(parsed.body, note.id, result)
@@ -335,21 +342,14 @@ function importMarkdownDir(
           })
           result.created++
 
-          const updates: Record<string, any> = {}
-          if (parsed.favorite) updates.favorite = true
-          if (parsed.hideCompletedChildren) updates.hideCompletedChildren = true
-
-          // Restore media for document content
-          if (hasMedia && parsed.body) {
-            const rewritten = restoreMarkdownMedia(parsed.body, note.id, rootImportDir, result)
-            if (rewritten !== parsed.body) {
-              updates.content = rewritten
-            }
-          }
-
-          if (Object.keys(updates).length > 0) {
-            repository.noteCommands.update(note.id as EARS.EntityId, updates)
-          }
+          const rewritten = hasMedia && parsed.body
+            ? restoreMarkdownMedia(parsed.body, note.id, rootImportDir, result)
+            : undefined
+          applyNoteUpdates(note.id, {
+            favorite: parsed.favorite,
+            hideCompletedChildren: parsed.hideCompletedChildren,
+            content: rewritten !== parsed.body ? rewritten : undefined,
+          })
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

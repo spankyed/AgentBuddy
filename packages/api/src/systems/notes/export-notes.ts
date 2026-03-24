@@ -4,7 +4,7 @@ import { repository } from '@/repository'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { ensureDirectoryExists, getMediaPath } from '@/core/helpers/paths'
-import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
+import { extractMediaRefs, resolveMedia, rewriteMediaUrls } from '@/core/helpers/media'
 import { toSlug, uniqueFilename } from '@/systems/library/utils'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
@@ -126,20 +126,6 @@ function buildNoteFrontmatter(note: ExportedNote): string {
   return `---\n${fields.join('\n')}\n---\n\n`
 }
 
-function rewriteNoteMediaUrls(
-  markdown: string,
-  mediaFilenameMap: Map<string, string>,
-): string {
-  return markdown.replace(
-    /media:\/\/([^/]+)\/([^)\s]+)/g,
-    (_match, entityId, filename) => {
-      const key = `${entityId}/${filename}`
-      const mapped = mediaFilenameMap.get(key) || filename
-      return `media/${mapped}`
-    },
-  )
-}
-
 function collectAndMapNoteMedia(
   notes: ExportedNote[],
   mediaFilenameMap: Map<string, string>,
@@ -176,7 +162,7 @@ function writeNoteMarkdown(
     fs.writeFileSync(path.join(dir, filename), frontmatter + body)
   } else {
     // Document
-    const content = rewriteNoteMediaUrls(note.content, mediaFilenameMap)
+    const content = rewriteMediaUrls(note.content, mediaFilenameMap)
 
     if (note.children.length > 0) {
       // Has children → create subdirectory

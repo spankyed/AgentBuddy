@@ -7,26 +7,11 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
+import { extractMediaRefs, resolveMedia, rewriteMediaUrls } from '@/core/helpers/media'
 import { ensureDirectoryExists } from '@/core/helpers/paths'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
 import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
-
-function rewriteMediaUrls(
-  markdown: string,
-  mediaFilenameMap: Map<string, string>,
-): string {
-  // Replace media://{entityId}/{filename} with media/{mapped-filename}
-  return markdown.replace(
-    /media:\/\/([^/]+)\/([^)\s]+)/g,
-    (_match, entityId, filename) => {
-      const key = `${entityId}/${filename}`
-      const mapped = mediaFilenameMap.get(key) || filename
-      return `media/${mapped}`
-    },
-  )
-}
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   const { items, itemCount } = buildExportTree()

@@ -87,6 +87,21 @@ export function extractAndResolveImages(markdown: string): ResolvedMedia[] {
     .filter((img): img is ResolvedMedia => img !== null)
 }
 
+/** Rewrite media:// URLs to flat relative paths using a filename map. */
+export function rewriteMediaUrls(
+  markdown: string,
+  mediaFilenameMap: Map<string, string>,
+): string {
+  return markdown.replace(
+    /media:\/\/([^/]+)\/([^)\s]+)/g,
+    (_match, entityId, filename) => {
+      const key = `${entityId}/${filename}`
+      const mapped = mediaFilenameMap.get(key) || filename
+      return `media/${mapped}`
+    },
+  )
+}
+
 /** Remove ![](media://...) image syntax from markdown, returning clean text. */
 export function stripMediaRefs(markdown: string): string {
   return markdown.replace(MEDIA_RE, '').replace(/\n{3,}/g, '\n\n').trim()
