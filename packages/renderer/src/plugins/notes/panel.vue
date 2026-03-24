@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700"
+    <div class="flex items-center justify-between px-4 py-[0.65rem] border-b border-neutral-800"
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
@@ -46,9 +46,10 @@
     </div>
 
     <!-- Favorites -->
-    <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-700 px-2 pt-2 pb-2">
+    <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 pt-2 pb-2">
       <button
-        class="flex items-center gap-1 px-1.5 mb-1 w-full text-left"
+        class="flex items-center gap-1 px-1.5 w-full text-left"
+        :class="favoritesExpanded && 'mb-1'"
         @click="favoritesExpanded = !favoritesExpanded"
       >
         <ChevronRight
