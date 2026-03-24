@@ -86,34 +86,13 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
   return { filePath, itemCount, mediaCopied }
 }
 
-function renderTasksMarkdown(children: ExportedNote[], indent: number): string {
-  const lines: string[] = []
-  const prefix = '  '.repeat(indent)
-
-  for (const child of children) {
-    if (child.type === 'task') {
-      const checkbox = child.completed ? '[x]' : '[ ]'
-      lines.push(`${prefix}- ${checkbox} ${child.title}`)
-      if (child.content.trim()) {
-        for (const line of child.content.split('\n')) {
-          lines.push(`${prefix}  ${line}`)
-        }
-      }
-      if (child.children.length > 0) {
-        lines.push(renderTasksMarkdown(child.children, indent + 1))
-      }
-    }
-  }
-
-  return lines.join('\n')
-}
-
 function buildNoteFrontmatter(note: ExportedNote): string {
   const fields: string[] = []
   fields.push(`type: ${note.type}`)
   if (note.icon) fields.push(`icon: "${note.icon}"`)
   if (note.favorite) fields.push(`favorite: true`)
   if (note.hideCompletedChildren) fields.push(`hideCompletedChildren: true`)
+  if (note.completed) fields.push(`completed: true`)
   return `---\n${fields.join('\n')}\n---\n\n`
 }
 
@@ -145,38 +124,29 @@ function writeNoteMarkdown(
 ): void {
   const slug = toSlug(note.title || 'untitled')
 
-  if (note.type === 'tasklist') {
+  const content = rewriteMediaUrls(note.content, mediaFilenameMap)
+
+  if (note.children.length > 0) {
+    // Has children → create subdirectory
+    const dirName = uniqueFilename(slug, usedNames)
+    usedNames.add(dirName)
+    const subDir = path.join(dir, dirName)
+    ensureDirectoryExists(subDir)
+
+    // Write the parent note as index.md
+    const frontmatter = buildNoteFrontmatter(note)
+    fs.writeFileSync(path.join(subDir, 'index.md'), frontmatter + content)
+
+    // Write children
+    const childUsedNames = new Set<string>(['index.md'])
+    for (const child of note.children) {
+      writeNoteMarkdown(child, subDir, childUsedNames, mediaFilenameMap)
+    }
+  } else {
     const filename = uniqueFilename(`${slug}.md`, usedNames)
     usedNames.add(filename)
     const frontmatter = buildNoteFrontmatter(note)
-    const body = renderTasksMarkdown(note.children, 0)
-    fs.writeFileSync(path.join(dir, filename), frontmatter + body)
-  } else {
-    // Document
-    const content = rewriteMediaUrls(note.content, mediaFilenameMap)
-
-    if (note.children.length > 0) {
-      // Has children → create subdirectory
-      const dirName = uniqueFilename(slug, usedNames)
-      usedNames.add(dirName)
-      const subDir = path.join(dir, dirName)
-      ensureDirectoryExists(subDir)
-
-      // Write the parent document as index.md
-      const frontmatter = buildNoteFrontmatter(note)
-      fs.writeFileSync(path.join(subDir, 'index.md'), frontmatter + content)
-
-      // Write children
-      const childUsedNames = new Set<string>(['index.md'])
-      for (const child of note.children) {
-        writeNoteMarkdown(child, subDir, childUsedNames, mediaFilenameMap)
-      }
-    } else {
-      const filename = uniqueFilename(`${slug}.md`, usedNames)
-      usedNames.add(filename)
-      const frontmatter = buildNoteFrontmatter(note)
-      fs.writeFileSync(path.join(dir, filename), frontmatter + content)
-    }
+    fs.writeFileSync(path.join(dir, filename), frontmatter + content)
   }
 }
 

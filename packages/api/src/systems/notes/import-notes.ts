@@ -124,9 +124,10 @@ function parseFrontmatter(content: string): {
   icon: string | null
   favorite: boolean
   hideCompletedChildren: boolean
+  completed: boolean
   body: string
 } {
-  const defaults = { type: 'document' as const, icon: null as string | null, favorite: false, hideCompletedChildren: false }
+  const defaults = { type: 'document' as const, icon: null as string | null, favorite: false, hideCompletedChildren: false, completed: false }
 
   const match = content.match(/^---\n([\s\S]*?)\n---\n\n?/)
   if (!match) return { ...defaults, body: content }
@@ -138,54 +139,15 @@ function parseFrontmatter(content: string): {
   const iconMatch = frontmatter.match(/icon:\s*"([^"]*)"/)
   const favoriteMatch = frontmatter.match(/favorite:\s*true/)
   const hideMatch = frontmatter.match(/hideCompletedChildren:\s*true/)
+  const completedMatch = frontmatter.match(/completed:\s*true/)
 
   return {
     type: (typeMatch?.[1] as 'document' | 'tasklist' | 'task') ?? 'document',
     icon: iconMatch?.[1] ?? null,
     favorite: !!favoriteMatch,
     hideCompletedChildren: !!hideMatch,
+    completed: !!completedMatch,
     body,
-  }
-}
-
-function parseTaskList(body: string, parentId: string, result: ImportResult): void {
-  const lines = body.split('\n')
-
-  // Stack tracks parent at each indent level: [{id, indent}]
-  const parentStack: { id: string; indent: number }[] = [{ id: parentId, indent: -1 }]
-
-  for (const line of lines) {
-    const taskMatch = line.match(/^(\s*)- \[([ x])\] (.+)/)
-    if (!taskMatch) continue
-
-    const indent = taskMatch[1].length
-    const completed = taskMatch[2] === 'x'
-    const title = taskMatch[3].trim()
-
-    // Pop stack until we find the right parent for this indent level
-    while (parentStack.length > 1 && parentStack[parentStack.length - 1].indent >= indent) {
-      parentStack.pop()
-    }
-
-    const currentParentId = parentStack[parentStack.length - 1].id
-
-    try {
-      const note = repository.noteCommands.create({
-        title,
-        content: '',
-        parentId: currentParentId,
-        noteType: 'task',
-        completed,
-      })
-      result.created++
-
-      // Push this task as potential parent for sub-tasks
-      parentStack.push({ id: note.id, indent })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      result.errors.push(`Failed to create task "${title}": ${message}`)
-      result.skipped++
-    }
   }
 }
 
@@ -220,6 +182,8 @@ function importMarkdownDir(
         let icon: string | null = null
         let favorite = false
         let hideCompletedChildren = false
+        let noteType: 'document' | 'tasklist' | 'task' = 'document'
+        let completed = false
 
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
@@ -228,6 +192,8 @@ function importMarkdownDir(
           icon = parsed.icon
           favorite = parsed.favorite
           hideCompletedChildren = parsed.hideCompletedChildren
+          noteType = parsed.type
+          completed = parsed.completed
         }
 
         const note = repository.noteCommands.create({
@@ -235,7 +201,8 @@ function importMarkdownDir(
           content,
           icon,
           parentId,
-          noteType: 'document',
+          noteType,
+          completed,
         })
         result.created++
 
@@ -266,45 +233,27 @@ function importMarkdownDir(
         const raw = fs.readFileSync(fullPath, 'utf-8')
         const parsed = parseFrontmatter(raw)
 
-        if (parsed.type === 'tasklist') {
-          const note = repository.noteCommands.create({
-            title: name,
-            content: '',
-            icon: parsed.icon,
-            parentId,
-            noteType: 'tasklist',
-          })
-          result.created++
+        const note = repository.noteCommands.create({
+          title: name,
+          content: parsed.body,
+          icon: parsed.icon,
+          parentId,
+          noteType: parsed.type,
+          completed: parsed.completed,
+        })
+        result.created++
 
-          applyNoteUpdates(note.id, {
-            favorite: parsed.favorite,
-            hideCompletedChildren: parsed.hideCompletedChildren,
-          })
-
-          // Parse tasks from body
-          parseTaskList(parsed.body, note.id, result)
-        } else {
-          const note = repository.noteCommands.create({
-            title: name,
-            content: parsed.body,
-            icon: parsed.icon,
-            parentId,
-            noteType: parsed.type,
-          })
-          result.created++
-
-          let restoredContent: string | undefined
-          if (hasMedia && parsed.body) {
-            const restored = restoreMarkdownMediaRefs(parsed.body, note.id, rootImportDir)
-            result.mediaRestored += restored.mediaRestored
-            restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
-          }
-          applyNoteUpdates(note.id, {
-            favorite: parsed.favorite,
-            hideCompletedChildren: parsed.hideCompletedChildren,
-            content: restoredContent,
-          })
+        let restoredContent: string | undefined
+        if (hasMedia && parsed.body) {
+          const restored = restoreMarkdownMediaRefs(parsed.body, note.id, rootImportDir)
+          result.mediaRestored += restored.mediaRestored
+          restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
         }
+        applyNoteUpdates(note.id, {
+          favorite: parsed.favorite,
+          hideCompletedChildren: parsed.hideCompletedChildren,
+          content: restoredContent,
+        })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         result.errors.push(`Failed to import "${name}": ${message}`)
