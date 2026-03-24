@@ -8,11 +8,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/core/types'
 import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
+import type { MediaRef } from '@/core/helpers/media'
 import { repository } from '@/repository'
 import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThreadLink } from './export-types'
 import type { ThreadEntity } from './types'
 
-export function exportThreads(outputDir: string): { filePath: string; threadCount: number } {
+export function exportThreads(outputDir: string): { filePath: string; threadCount: number; mediaCopied: number } {
   const threads = repository.threadQueries.all()
 
   const exportedThreads: ExportedThread[] = []
@@ -54,6 +56,12 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
     exportedThreads.push(exported)
   }
 
+  // Collect media refs from all thread instructions
+  const allRefs: MediaRef[] = []
+  for (const thread of exportedThreads) {
+    allRefs.push(...extractMediaRefs(thread.instructions))
+  }
+
   const exportData: ExportedThreadsData = {
     version: 1,
     threads: exportedThreads,
@@ -64,5 +72,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
   const filePath = path.join(outputDir, 'exported-threads.json')
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
-  return { filePath, threadCount: exportedThreads.length }
+  const mediaCopied = copyMediaByRef(allRefs, outputDir)
+
+  return { filePath, threadCount: exportedThreads.length, mediaCopied }
 }

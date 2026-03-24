@@ -9,6 +9,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/core/types'
 import { tx } from '@/core/ears/helpers/transaction'
+import { restoreJsonMediaRefs } from '@/core/helpers/media'
 import { repository } from '@/repository'
 import type { ExportedThreadsData, ExportedThread } from './export-types'
 
@@ -17,11 +18,12 @@ interface ImportResult {
   skipped: number
   messagesCreated: number
   relationsCreated: number
+  mediaRestored: number
   errors: string[]
 }
 
 export function importThreads(importDir: string): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, messagesCreated: 0, relationsCreated: 0, errors: [] }
+  const result: ImportResult = { created: 0, skipped: 0, messagesCreated: 0, relationsCreated: 0, mediaRestored: 0, errors: [] }
 
   const jsonPath = path.join(importDir, 'exported-threads.json')
   if (!fs.existsSync(jsonPath)) {
@@ -48,6 +50,9 @@ export function importThreads(importDir: string): ImportResult {
   const validTags = new Set(threadsSettings?.tags?.map((t: any) => t.name) || [])
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'
 
+  // Check if imported data includes media
+  const hasMedia = fs.existsSync(path.join(importDir, 'media'))
+
   // Pass 1: Create threads + messages, build shortCode mapping
   const shortCodeMap = new Map<string, EARS.EntityId>() // oldShortCode → newEntityId
 
@@ -64,6 +69,17 @@ export function importThreads(importDir: string): ImportResult {
         instructions: thread.instructions,
         tags,
       })
+
+      // Restore media from instructions
+      if (hasMedia) {
+        const { content: restoredInstructions, mediaRestored } = restoreJsonMediaRefs(
+          thread.instructions, newThreadId, importDir
+        )
+        if (mediaRestored > 0) {
+          repository.threadCommands.update(newThreadId, { instructions: restoredInstructions })
+          result.mediaRestored += mediaRestored
+        }
+      }
 
       // Update status if different from default
       if (status !== fallbackStatus) {
