@@ -2,12 +2,15 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
+import { ensureDirectoryExists, getMediaPath } from '@/core/helpers/paths'
+import { extractMediaRefs } from '@/core/helpers/media'
 import { toTitleCase } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
 
 interface ImportResult {
   created: number
   skipped: number
+  mediaRestored: number
   errors: string[]
 }
 
@@ -24,13 +27,15 @@ export function importNotes(importDir: string): ImportResult {
     return importNotesMarkdown(importDir)
   }
 
-  return { created: 0, skipped: 0, errors: [`No exported-notes.json or .md files found in ${importDir}`] }
+  return { created: 0, skipped: 0, mediaRestored: 0, errors: [`No exported-notes.json or .md files found in ${importDir}`] }
 }
 
 // ── JSON Import ──────────────────────────────────────────
 
 function importNotesJson(jsonPath: string): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, errors: [] }
+  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  const importDir = path.dirname(jsonPath)
+  const hasMedia = fs.existsSync(path.join(importDir, 'media'))
 
   let parsed: any
   try {
@@ -45,7 +50,7 @@ function importNotesJson(jsonPath: string): ImportResult {
     return result
   }
 
-  importNoteNodes(parsed.notes as ExportedNote[], undefined, result)
+  importNoteNodes(parsed.notes as ExportedNote[], undefined, result, importDir, hasMedia)
   return result
 }
 
@@ -53,6 +58,8 @@ function importNoteNodes(
   nodes: ExportedNote[],
   parentId: string | undefined,
   result: ImportResult,
+  importDir: string,
+  hasMedia: boolean,
 ): void {
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i]
@@ -77,13 +84,36 @@ function importNoteNodes(
       const updates: Record<string, any> = {}
       if (node.hideCompletedChildren) updates.hideCompletedChildren = true
       if (node.favorite) updates.favorite = true
+
+      // Restore media: copy files and rewrite URLs
+      if (hasMedia && note.id) {
+        const refs = extractMediaRefs(node.content || '')
+        if (refs.length > 0) {
+          let content = node.content || ''
+          for (const ref of refs) {
+            const srcFile = path.join(importDir, 'media', ref.entityId, ref.filename)
+            if (!fs.existsSync(srcFile)) continue
+
+            const destDir = path.join(getMediaPath(), note.id)
+            ensureDirectoryExists(destDir)
+            fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
+            result.mediaRestored++
+
+            content = content.split(`media://${ref.entityId}/`).join(`media://${note.id}/`)
+          }
+          if (content !== (node.content || '')) {
+            updates.content = content
+          }
+        }
+      }
+
       if (Object.keys(updates).length > 0) {
         repository.noteCommands.update(note.id as EARS.EntityId, updates)
       }
 
       // Recurse for children
       if (node.children && node.children.length > 0) {
-        importNoteNodes(node.children, note.id, result)
+        importNoteNodes(node.children, note.id, result, importDir, hasMedia)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -166,19 +196,53 @@ function parseTaskList(body: string, parentId: string, result: ImportResult): vo
 }
 
 function importNotesMarkdown(importDir: string): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, errors: [] }
-  importMarkdownDir(importDir, undefined, result)
+  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  const hasMedia = fs.existsSync(path.join(importDir, 'media'))
+  importMarkdownDir(importDir, undefined, result, importDir, hasMedia)
   return result
+}
+
+function restoreMarkdownMedia(
+  content: string,
+  noteId: string,
+  rootImportDir: string,
+  result: ImportResult,
+): string {
+  const mediaRefPattern = /media\/([^)\s]+)/g
+  let match: RegExpExecArray | null
+  const processedFiles = new Set<string>()
+  let rewritten = content
+
+  while ((match = mediaRefPattern.exec(content)) !== null) {
+    const filename = match[1]
+    if (processedFiles.has(filename)) continue
+    processedFiles.add(filename)
+
+    const srcFile = path.join(rootImportDir, 'media', filename)
+    if (!fs.existsSync(srcFile)) continue
+
+    const destDir = path.join(getMediaPath(), noteId)
+    ensureDirectoryExists(destDir)
+    fs.copyFileSync(srcFile, path.join(destDir, filename))
+    result.mediaRestored++
+
+    rewritten = rewritten.split(`media/${filename}`).join(`media://${noteId}/${filename}`)
+  }
+
+  return rewritten
 }
 
 function importMarkdownDir(
   dir: string,
   parentId: string | undefined,
   result: ImportResult,
+  rootImportDir: string,
+  hasMedia: boolean,
 ): void {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
 
   for (const entry of entries) {
+    if (entry.name === 'media') continue
     const fullPath = path.join(dir, entry.name)
 
     if (entry.isDirectory()) {
@@ -214,12 +278,21 @@ function importMarkdownDir(
         const updates: Record<string, any> = {}
         if (favorite) updates.favorite = true
         if (hideCompletedChildren) updates.hideCompletedChildren = true
+
+        // Restore media for index content
+        if (hasMedia && content) {
+          const rewritten = restoreMarkdownMedia(content, note.id, rootImportDir, result)
+          if (rewritten !== content) {
+            updates.content = rewritten
+          }
+        }
+
         if (Object.keys(updates).length > 0) {
           repository.noteCommands.update(note.id as EARS.EntityId, updates)
         }
 
         // Recurse for children (skip index.md)
-        importMarkdownDir(fullPath, note.id, result)
+        importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         result.errors.push(`Failed to create note "${name}": ${message}`)
@@ -265,6 +338,15 @@ function importMarkdownDir(
           const updates: Record<string, any> = {}
           if (parsed.favorite) updates.favorite = true
           if (parsed.hideCompletedChildren) updates.hideCompletedChildren = true
+
+          // Restore media for document content
+          if (hasMedia && parsed.body) {
+            const rewritten = restoreMarkdownMedia(parsed.body, note.id, rootImportDir, result)
+            if (rewritten !== parsed.body) {
+              updates.content = rewritten
+            }
+          }
+
           if (Object.keys(updates).length > 0) {
             repository.noteCommands.update(note.id as EARS.EntityId, updates)
           }

@@ -3,7 +3,8 @@ import * as path from 'node:path'
 import { repository } from '@/repository'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
-import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { ensureDirectoryExists, getMediaPath } from '@/core/helpers/paths'
+import { extractMediaRefs, resolveMedia } from '@/core/helpers/media'
 import { toSlug, uniqueFilename } from '@/systems/library/utils'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
@@ -56,7 +57,18 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
   return { notes, itemCount }
 }
 
-function exportNotesJson(outputDir: string): { filePath: string; itemCount: number } {
+function collectNoteMediaRefs(notes: ExportedNote[]): ReturnType<typeof extractMediaRefs> {
+  const refs: ReturnType<typeof extractMediaRefs> = []
+  for (const note of notes) {
+    refs.push(...extractMediaRefs(note.content))
+    if (note.children.length > 0) {
+      refs.push(...collectNoteMediaRefs(note.children))
+    }
+  }
+  return refs
+}
+
+function exportNotesJson(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   const { notes, itemCount } = buildNoteTree()
 
   const exportData = {
@@ -68,7 +80,19 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
   ensureDirectoryExists(outputDir)
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
-  return { filePath, itemCount }
+  // Copy referenced media files into outputDir/media/{entityId}/
+  const mediaRefs = collectNoteMediaRefs(notes)
+  let mediaCopied = 0
+  for (const ref of mediaRefs) {
+    const resolved = resolveMedia(ref)
+    if (!resolved) continue
+    const destDir = path.join(outputDir, 'media', ref.entityId)
+    ensureDirectoryExists(destDir)
+    fs.copyFileSync(resolved.filePath, path.join(destDir, ref.filename))
+    mediaCopied++
+  }
+
+  return { filePath, itemCount, mediaCopied }
 }
 
 function renderTasksMarkdown(children: ExportedNote[], indent: number): string {
@@ -102,10 +126,45 @@ function buildNoteFrontmatter(note: ExportedNote): string {
   return `---\n${fields.join('\n')}\n---\n\n`
 }
 
+function rewriteNoteMediaUrls(
+  markdown: string,
+  mediaFilenameMap: Map<string, string>,
+): string {
+  return markdown.replace(
+    /media:\/\/([^/]+)\/([^)\s]+)/g,
+    (_match, entityId, filename) => {
+      const key = `${entityId}/${filename}`
+      const mapped = mediaFilenameMap.get(key) || filename
+      return `media/${mapped}`
+    },
+  )
+}
+
+function collectAndMapNoteMedia(
+  notes: ExportedNote[],
+  mediaFilenameMap: Map<string, string>,
+  usedMediaNames: Set<string>,
+): void {
+  for (const note of notes) {
+    const refs = extractMediaRefs(note.content)
+    for (const ref of refs) {
+      const key = `${ref.entityId}/${ref.filename}`
+      if (mediaFilenameMap.has(key)) continue
+      const flat = uniqueFilename(ref.filename, usedMediaNames)
+      usedMediaNames.add(flat)
+      mediaFilenameMap.set(key, flat)
+    }
+    if (note.children.length > 0) {
+      collectAndMapNoteMedia(note.children, mediaFilenameMap, usedMediaNames)
+    }
+  }
+}
+
 function writeNoteMarkdown(
   note: ExportedNote,
   dir: string,
   usedNames: Set<string>,
+  mediaFilenameMap: Map<string, string>,
 ): void {
   const slug = toSlug(note.title || 'untitled')
 
@@ -117,6 +176,8 @@ function writeNoteMarkdown(
     fs.writeFileSync(path.join(dir, filename), frontmatter + body)
   } else {
     // Document
+    const content = rewriteNoteMediaUrls(note.content, mediaFilenameMap)
+
     if (note.children.length > 0) {
       // Has children → create subdirectory
       const dirName = uniqueFilename(slug, usedNames)
@@ -126,35 +187,55 @@ function writeNoteMarkdown(
 
       // Write the parent document as index.md
       const frontmatter = buildNoteFrontmatter(note)
-      fs.writeFileSync(path.join(subDir, 'index.md'), frontmatter + note.content)
+      fs.writeFileSync(path.join(subDir, 'index.md'), frontmatter + content)
 
       // Write children
       const childUsedNames = new Set<string>(['index.md'])
       for (const child of note.children) {
-        writeNoteMarkdown(child, subDir, childUsedNames)
+        writeNoteMarkdown(child, subDir, childUsedNames, mediaFilenameMap)
       }
     } else {
       const filename = uniqueFilename(`${slug}.md`, usedNames)
       usedNames.add(filename)
       const frontmatter = buildNoteFrontmatter(note)
-      fs.writeFileSync(path.join(dir, filename), frontmatter + note.content)
+      fs.writeFileSync(path.join(dir, filename), frontmatter + content)
     }
   }
 }
 
-function exportNotesMarkdown(outputDir: string): { filePath: string; itemCount: number } {
+function exportNotesMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   const { notes, itemCount } = buildNoteTree()
 
   ensureDirectoryExists(outputDir)
 
+  // First pass: collect all media refs and build a flat filename map
+  const mediaFilenameMap = new Map<string, string>()
+  const usedMediaNames = new Set<string>()
+  collectAndMapNoteMedia(notes, mediaFilenameMap, usedMediaNames)
+
+  // Second pass: write files with rewritten media URLs
   const usedNames = new Set<string>()
   for (const note of notes) {
-    writeNoteMarkdown(note, outputDir, usedNames)
+    writeNoteMarkdown(note, outputDir, usedNames, mediaFilenameMap)
   }
 
-  return { filePath: outputDir, itemCount }
+  // Copy media files to flat media/ folder
+  let mediaCopied = 0
+  const mediaDir = path.join(outputDir, 'media')
+
+  for (const [refKey, flatName] of mediaFilenameMap) {
+    const [entityId, filename] = refKey.split('/')
+    const resolved = resolveMedia({ alt: '', originalUrl: '', entityId, filename })
+    if (!resolved) continue
+
+    ensureDirectoryExists(mediaDir)
+    fs.copyFileSync(resolved.filePath, path.join(mediaDir, flatName))
+    mediaCopied++
+  }
+
+  return { filePath: outputDir, itemCount, mediaCopied }
 }
 
-export function exportNotes(outputDir: string, format: NotesExportFormat): { filePath: string; itemCount: number } {
+export function exportNotes(outputDir: string, format: NotesExportFormat): { filePath: string; itemCount: number; mediaCopied: number } {
   return format === 'json' ? exportNotesJson(outputDir) : exportNotesMarkdown(outputDir)
 }
