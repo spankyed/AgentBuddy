@@ -48,11 +48,63 @@
             </button>
           </div>
 
-          <!-- Favorites + Recently visited (when not searching) -->
+          <!-- Recently visited + Favorites (when not searching) -->
           <div v-else class="pb-6">
 
+          <!-- Recently visited cards -->
+          <div class="flex items-center gap-2 mb-3">
+            <Clock :size="16" class="text-neutral-500" />
+            <p class="text-sm font-medium text-neutral-400">Recently visited</p>
+          </div>
+          <div v-if="recentNotes.length === 0" class="text-sm text-neutral-500 text-center py-8">
+            No recently viewed notes
+          </div>
+          <div v-else class="relative mb-6">
+            <!-- Left edge shadow + arrow -->
+            <div
+              v-show="canScrollLeft"
+              class="absolute left-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-r from-neutral-900/80 to-transparent group/left cursor-pointer"
+              @click="scrollCarousel(-1)"
+            >
+              <button class="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/left:opacity-100">
+                <ChevronLeft :size="16" class="text-neutral-200" />
+              </button>
+            </div>
+            <div
+              ref="carouselRef"
+              class="flex gap-3 pb-2 overflow-x-auto scroll-smooth carousel-hide-scrollbar"
+              @scroll="updateScrollState"
+            >
+              <button
+                v-for="note in recentNotes" :key="note.id"
+                class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-neutral-700/50 hover:border-neutral-600/50"
+                style="min-height: 140px"
+                @click="handleSelectNote(note.id)"
+              >
+                <div>
+                  <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
+                  <FileText v-else :size="28" class="text-neutral-600" />
+                </div>
+                <div class="mt-3">
+                  <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
+                  <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
+                </div>
+              </button>
+            </div>
+            <!-- Right edge shadow + arrow -->
+            <div
+              v-show="canScrollRight"
+              class="absolute right-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-l from-neutral-900/80 to-transparent group/right cursor-pointer"
+              @click="scrollCarousel(1)"
+            >
+              <button class="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/right:opacity-100">
+                <ChevronRight :size="16" class="text-neutral-200" />
+              </button>
+            </div>
+          </div>
+
           <!-- Favorites carousel -->
-          <div v-if="favoriteNotes.length > 0" class="mb-6">
+          <div v-if="favoriteNotes.length > 0">
           <div class="flex items-center gap-2 mb-3">
             <Star :size="16" class="text-yellow-400" />
             <p class="text-sm font-medium text-neutral-400">Favorites</p>
@@ -100,58 +152,6 @@
               </button>
             </div>
           </div>
-          </div>
-
-          <!-- Recently visited cards -->
-          <div class="flex items-center gap-2 mb-3">
-            <Clock :size="16" class="text-neutral-500" />
-            <p class="text-sm font-medium text-neutral-400">Recently visited</p>
-          </div>
-          <div v-if="recentNotes.length === 0" class="text-sm text-neutral-500 text-center py-8">
-            No recently viewed notes
-          </div>
-          <div v-else class="relative">
-            <!-- Left edge shadow + arrow -->
-            <div
-              v-show="canScrollLeft"
-              class="absolute left-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-r from-neutral-900/80 to-transparent group/left cursor-pointer"
-              @click="scrollCarousel(-1)"
-            >
-              <button class="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/left:opacity-100">
-                <ChevronLeft :size="16" class="text-neutral-200" />
-              </button>
-            </div>
-            <div
-              ref="carouselRef"
-              class="flex gap-3 pb-2 overflow-x-auto scroll-smooth carousel-hide-scrollbar"
-              @scroll="updateScrollState"
-            >
-              <button
-                v-for="note in recentNotes" :key="note.id"
-                class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-neutral-700/50 hover:border-neutral-600/50"
-                style="min-height: 140px"
-                @click="handleSelectNote(note.id)"
-              >
-                <div>
-                  <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
-                  <FileText v-else :size="28" class="text-neutral-600" />
-                </div>
-                <div class="mt-3">
-                  <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
-                  <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
-                </div>
-              </button>
-            </div>
-            <!-- Right edge shadow + arrow -->
-            <div
-              v-show="canScrollRight"
-              class="absolute right-0 top-0 bottom-2 z-10 w-12 bg-gradient-to-l from-neutral-900/80 to-transparent group/right cursor-pointer"
-              @click="scrollCarousel(1)"
-            >
-              <button class="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 shadow-lg hover:bg-neutral-600 transition-all opacity-0 group-hover/right:opacity-100">
-                <ChevronRight :size="16" class="text-neutral-200" />
-              </button>
-            </div>
           </div>
         </div>
         </div>
