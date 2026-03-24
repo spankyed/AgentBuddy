@@ -53,7 +53,7 @@ export function extractMediaRefs(markdown: string): MediaRef[] {
       alt: match[1],
       originalUrl: match[2],
       entityId: match[3],
-      filename: match[4],
+      filename: match[4].split('?')[0],
     })
   }
   return refs
@@ -95,8 +95,9 @@ export function rewriteMediaUrls(
   return markdown.replace(
     /media:\/\/([^/]+)\/([^)\s]+)/g,
     (_match, entityId, filename) => {
-      const key = `${entityId}/${filename}`
-      const mapped = mediaFilenameMap.get(key) || filename
+      const cleanFilename = filename.split('?')[0]
+      const key = `${entityId}/${cleanFilename}`
+      const mapped = mediaFilenameMap.get(key) || cleanFilename
       return `media/${mapped}`
     },
   )
