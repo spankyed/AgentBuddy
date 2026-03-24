@@ -95,10 +95,12 @@ export function rewriteMediaUrls(
   return markdown.replace(
     /media:\/\/([^/]+)\/([^)\s]+)/g,
     (_match, entityId, filename) => {
-      const cleanFilename = filename.split('?')[0]
+      const qIdx = filename.indexOf('?')
+      const cleanFilename = qIdx >= 0 ? filename.substring(0, qIdx) : filename
+      const queryString = qIdx >= 0 ? filename.substring(qIdx) : ''
       const key = `${entityId}/${cleanFilename}`
       const mapped = mediaFilenameMap.get(key) || cleanFilename
-      return `media/${mapped}`
+      return `media/${mapped}${queryString}`
     },
   )
 }
@@ -177,16 +179,17 @@ export function restoreMarkdownMediaRefs(
   let mediaRestored = 0
 
   while ((match = mediaRefPattern.exec(content)) !== null) {
-    const filename = match[1]
-    if (processedFiles.has(filename)) continue
-    processedFiles.add(filename)
-    const srcFile = path.join(rootImportDir, 'media', filename)
+    const rawFilename = match[1]
+    const cleanFilename = rawFilename.split('?')[0]
+    if (processedFiles.has(cleanFilename)) continue
+    processedFiles.add(cleanFilename)
+    const srcFile = path.join(rootImportDir, 'media', cleanFilename)
     if (!fs.existsSync(srcFile)) continue
     const destDir = path.join(getMediaPath(), newEntityId)
     ensureDirectoryExists(destDir)
-    fs.copyFileSync(srcFile, path.join(destDir, filename))
+    fs.copyFileSync(srcFile, path.join(destDir, cleanFilename))
     mediaRestored++
-    rewritten = rewritten.split(`media/${filename}`).join(`media://${newEntityId}/${filename}`)
+    rewritten = rewritten.split(`media/${rawFilename}`).join(`media://${newEntityId}/${rawFilename}`)
   }
   return { content: rewritten, mediaRestored }
 }
