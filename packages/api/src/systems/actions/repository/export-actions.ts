@@ -9,20 +9,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { repository } from '@/repository';
 import { createExportDir } from '@/core/helpers/paths';
-
-const INTERNAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt'] as const;
+import { stripInternalFields } from '@/core/helpers/export';
 
 export function exportActions(outputDir: string): { filePath: string; actionCount: number } {
   outputDir = createExportDir(outputDir, 'actions');
   const actions = repository.actionQueries.all();
 
-  const portable = actions.map(action => {
-    const copy = { ...action } as Record<string, unknown>;
-    for (const field of INTERNAL_FIELDS) {
-      delete copy[field];
-    }
-    return copy;
-  });
+  const portable = stripInternalFields(actions);
 
   const filePath = path.join(outputDir, 'exported-actions.json');
 

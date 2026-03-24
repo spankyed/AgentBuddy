@@ -4,30 +4,15 @@
  * Common functions used across library export, import, and scratchpad compilation.
  */
 
-import * as path from 'node:path'
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
+
+export { toSlug, uniqueFilename } from '@/core/helpers/export'
 
 export function toTitleCase(str: string): string {
   return str
     .replace(/-/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
-}
-
-export function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-export function uniqueFilename(name: string, existingNames: Set<string>): string {
-  if (!existingNames.has(name)) return name
-  const ext = path.extname(name)
-  const base = name.slice(0, name.length - ext.length)
-  let counter = 2
-  while (existingNames.has(`${base}-${counter}${ext}`)) counter++
-  return `${base}-${counter}${ext}`
 }
 
 export function buildFrontmatter(tags: string[]): string {

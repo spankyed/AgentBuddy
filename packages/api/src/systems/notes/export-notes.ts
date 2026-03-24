@@ -5,7 +5,7 @@ import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/helpers/media'
-import { toSlug, uniqueFilename } from '@/systems/library/utils'
+import { toSlug, uniqueFilename } from '@/core/helpers/export'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
 
