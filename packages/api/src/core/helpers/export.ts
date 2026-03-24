@@ -27,9 +27,7 @@ export function toSlug(name: string): string {
 }
 
 export function writeExportJson(outputDir: string, filename: string, data: unknown): string {
-  const filePath = path.join(outputDir, filename)
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
-  return filePath
+  return writeExportFile(outputDir, filename, JSON.stringify(data, null, 2))
 }
 
 export function writeExportFile(dir: string, filename: string, content: string): string {
