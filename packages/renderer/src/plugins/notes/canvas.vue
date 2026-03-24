@@ -80,16 +80,16 @@
               <button
                 v-for="note in recentNotes" :key="note.id"
                 class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-neutral-700/50 hover:border-neutral-600/50"
-                style="min-height: 140px"
+                style="min-height: 110px"
                 @click="handleSelectNote(note.id)"
               >
-                <div>
+                <div class="-ml-0.5">
                   <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
                   <ListChecks v-else-if="note.noteType === 'tasklist'" :size="28" class="text-neutral-600" />
                   <CircleCheck v-else-if="note.noteType === 'task'" :size="28" class="text-neutral-600" />
                   <FileText v-else :size="28" class="text-neutral-600" />
                 </div>
-                <div class="mt-3">
+                <div class="mt-1">
                   <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
                   <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
                 </div>
@@ -132,16 +132,16 @@
               <button
                 v-for="note in favoriteNotes" :key="note.id"
                 class="flex-shrink-0 w-40 bg-neutral-800 hover:bg-neutral-750 rounded-xl p-4 flex flex-col justify-between text-left transition-colors border border-yellow-600/30 hover:border-yellow-500/40"
-                style="min-height: 140px"
+                style="min-height: 110px"
                 @click="handleSelectNote(note.id)"
               >
-                <div>
+                <div class="-ml-0.5">
                   <span v-if="note.icon" class="text-3xl leading-none">{{ note.icon }}</span>
                   <ListChecks v-else-if="note.noteType === 'tasklist'" :size="28" class="text-neutral-600" />
                   <CircleCheck v-else-if="note.noteType === 'task'" :size="28" class="text-neutral-600" />
                   <FileText v-else :size="28" class="text-neutral-600" />
                 </div>
-                <div class="mt-3">
+                <div class="mt-1">
                   <p class="text-sm font-medium text-neutral-200 line-clamp-2 leading-snug">{{ note.title || 'Untitled' }}</p>
                   <p class="text-xs text-neutral-500 mt-1.5">{{ formatRelativeTime(note.updatedAt) }}</p>
                 </div>
