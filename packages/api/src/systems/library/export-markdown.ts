@@ -7,7 +7,7 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { extractMediaRefs, resolveMedia, rewriteMediaUrls } from '@/core/helpers/media'
+import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia } from '@/core/helpers/media'
 import { ensureDirectoryExists } from '@/core/helpers/paths'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
@@ -28,18 +28,7 @@ export function exportLibraryMarkdown(outputDir: string): { filePath: string; it
   writeItems(items, outputDir, mediaFilenameMap, usedDocNames)
 
   // Copy media files to flat media/ folder
-  let mediaCopied = 0
-  const mediaDir = path.join(outputDir, 'media')
-
-  for (const [refKey, flatName] of mediaFilenameMap) {
-    const [entityId, filename] = refKey.split('/')
-    const resolved = resolveMedia({ alt: '', originalUrl: '', entityId, filename })
-    if (!resolved) continue
-
-    ensureDirectoryExists(mediaDir)
-    fs.copyFileSync(resolved.filePath, path.join(mediaDir, flatName))
-    mediaCopied++
-  }
+  const mediaCopied = copyFlatMedia(mediaFilenameMap, outputDir)
 
   return { filePath: outputDir, itemCount, mediaCopied }
 }

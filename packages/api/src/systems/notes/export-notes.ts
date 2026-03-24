@@ -3,8 +3,8 @@ import * as path from 'node:path'
 import { repository } from '@/repository'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
-import { ensureDirectoryExists, getMediaPath } from '@/core/helpers/paths'
-import { extractMediaRefs, resolveMedia, rewriteMediaUrls } from '@/core/helpers/media'
+import { ensureDirectoryExists } from '@/core/helpers/paths'
+import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/helpers/media'
 import { toSlug, uniqueFilename } from '@/systems/library/utils'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
@@ -81,16 +81,7 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
   fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2))
 
   // Copy referenced media files into outputDir/media/{entityId}/
-  const mediaRefs = collectNoteMediaRefs(notes)
-  let mediaCopied = 0
-  for (const ref of mediaRefs) {
-    const resolved = resolveMedia(ref)
-    if (!resolved) continue
-    const destDir = path.join(outputDir, 'media', ref.entityId)
-    ensureDirectoryExists(destDir)
-    fs.copyFileSync(resolved.filePath, path.join(destDir, ref.filename))
-    mediaCopied++
-  }
+  const mediaCopied = copyMediaByRef(collectNoteMediaRefs(notes), outputDir)
 
   return { filePath, itemCount, mediaCopied }
 }
@@ -206,18 +197,7 @@ function exportNotesMarkdown(outputDir: string): { filePath: string; itemCount: 
   }
 
   // Copy media files to flat media/ folder
-  let mediaCopied = 0
-  const mediaDir = path.join(outputDir, 'media')
-
-  for (const [refKey, flatName] of mediaFilenameMap) {
-    const [entityId, filename] = refKey.split('/')
-    const resolved = resolveMedia({ alt: '', originalUrl: '', entityId, filename })
-    if (!resolved) continue
-
-    ensureDirectoryExists(mediaDir)
-    fs.copyFileSync(resolved.filePath, path.join(mediaDir, flatName))
-    mediaCopied++
-  }
+  const mediaCopied = copyFlatMedia(mediaFilenameMap, outputDir)
 
   return { filePath: outputDir, itemCount, mediaCopied }
 }

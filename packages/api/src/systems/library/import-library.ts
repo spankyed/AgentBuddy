@@ -12,8 +12,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import type { EARS } from '@/core/types'
-import { extractMediaRefs } from '@/core/helpers/media'
-import { getMediaPath, ensureDirectoryExists } from '@/core/helpers/paths'
+import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import type { ContentSection } from './types'
 import type { ExportedLibrary } from './export-types'
 import { toTitleCase, parseFrontmatter } from './utils'
@@ -180,19 +179,11 @@ function importDocument(
 
     for (const section of content) {
       if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
-        const refs = extractMediaRefs(section.text)
-        for (const ref of refs) {
-          const srcFile = path.join(importDir, 'media', ref.entityId, ref.filename)
-          if (!fs.existsSync(srcFile)) continue
-
-          const destDir = path.join(getMediaPath(), newId)
-          ensureDirectoryExists(destDir)
-          fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
-          result.mediaRestored++
-
-          // Rewrite media URL from old entity ID to new ID
-          section.text = section.text.split(`media://${ref.entityId}/`).join(`media://${newId}/`)
+        const restored = restoreJsonMediaRefs(section.text, newId, importDir)
+        if (restored.mediaRestored > 0) {
+          section.text = restored.content
           contentChanged = true
+          result.mediaRestored += restored.mediaRestored
         }
       }
     }
@@ -271,27 +262,11 @@ function importMarkdownDir(
         let contentChanged = false
         const section = content[0] as { type: 'markdown'; text: string }
 
-        // Match media/filename patterns in markdown images
-        const mediaRefPattern = /media\/([^)\s]+)/g
-        let match: RegExpExecArray | null
-        const processedFiles = new Set<string>()
-
-        while ((match = mediaRefPattern.exec(section.text)) !== null) {
-          const filename = match[1]
-          if (processedFiles.has(filename)) continue
-          processedFiles.add(filename)
-
-          const srcFile = path.join(rootImportDir, 'media', filename)
-          if (!fs.existsSync(srcFile)) continue
-
-          const destDir = path.join(getMediaPath(), newId)
-          ensureDirectoryExists(destDir)
-          fs.copyFileSync(srcFile, path.join(destDir, filename))
-          result.mediaRestored++
-
-          // Rewrite media/filename → media://{newId}/filename
-          section.text = section.text.split(`media/${filename}`).join(`media://${newId}/${filename}`)
+        const restored = restoreMarkdownMediaRefs(section.text, newId, rootImportDir)
+        if (restored.mediaRestored > 0) {
+          section.text = restored.content
           contentChanged = true
+          result.mediaRestored += restored.mediaRestored
         }
 
         if (contentChanged) {

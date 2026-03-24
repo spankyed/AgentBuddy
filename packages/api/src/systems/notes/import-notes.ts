@@ -2,8 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
-import { ensureDirectoryExists, getMediaPath } from '@/core/helpers/paths'
-import { extractMediaRefs } from '@/core/helpers/media'
+import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import { toTitleCase } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
 
@@ -25,30 +24,6 @@ function applyNoteUpdates(
   if (Object.keys(updates).length > 0) {
     repository.noteCommands.update(noteId as EARS.EntityId, updates)
   }
-}
-
-function restoreJsonMedia(
-  content: string,
-  noteId: string,
-  importDir: string,
-  result: ImportResult,
-): string {
-  const refs = extractMediaRefs(content)
-  if (refs.length === 0) return content
-
-  let rewritten = content
-  for (const ref of refs) {
-    const srcFile = path.join(importDir, 'media', ref.entityId, ref.filename)
-    if (!fs.existsSync(srcFile)) continue
-
-    const destDir = path.join(getMediaPath(), noteId)
-    ensureDirectoryExists(destDir)
-    fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
-    result.mediaRestored++
-
-    rewritten = rewritten.split(`media://${ref.entityId}/`).join(`media://${noteId}/`)
-  }
-  return rewritten
 }
 
 export function importNotes(importDir: string): ImportResult {
@@ -118,13 +93,16 @@ function importNoteNodes(
       result.created++
 
       // Restore media and apply fields not settable via create
-      const restoredContent = hasMedia && note.id
-        ? restoreJsonMedia(node.content || '', note.id, importDir, result)
-        : undefined
+      let restoredContent: string | undefined
+      if (hasMedia && note.id) {
+        const restored = restoreJsonMediaRefs(node.content || '', note.id, importDir)
+        result.mediaRestored += restored.mediaRestored
+        restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
+      }
       applyNoteUpdates(note.id, {
         favorite: node.favorite,
         hideCompletedChildren: node.hideCompletedChildren,
-        content: restoredContent !== (node.content || '') ? restoredContent : undefined,
+        content: restoredContent,
       })
 
       // Recurse for children
@@ -218,36 +196,6 @@ function importNotesMarkdown(importDir: string): ImportResult {
   return result
 }
 
-function restoreMarkdownMedia(
-  content: string,
-  noteId: string,
-  rootImportDir: string,
-  result: ImportResult,
-): string {
-  const mediaRefPattern = /media\/([^)\s]+)/g
-  let match: RegExpExecArray | null
-  const processedFiles = new Set<string>()
-  let rewritten = content
-
-  while ((match = mediaRefPattern.exec(content)) !== null) {
-    const filename = match[1]
-    if (processedFiles.has(filename)) continue
-    processedFiles.add(filename)
-
-    const srcFile = path.join(rootImportDir, 'media', filename)
-    if (!fs.existsSync(srcFile)) continue
-
-    const destDir = path.join(getMediaPath(), noteId)
-    ensureDirectoryExists(destDir)
-    fs.copyFileSync(srcFile, path.join(destDir, filename))
-    result.mediaRestored++
-
-    rewritten = rewritten.split(`media/${filename}`).join(`media://${noteId}/${filename}`)
-  }
-
-  return rewritten
-}
-
 function importMarkdownDir(
   dir: string,
   parentId: string | undefined,
@@ -291,13 +239,16 @@ function importMarkdownDir(
         })
         result.created++
 
-        const rewritten = hasMedia && content
-          ? restoreMarkdownMedia(content, note.id, rootImportDir, result)
-          : undefined
+        let restoredContent: string | undefined
+        if (hasMedia && content) {
+          const restored = restoreMarkdownMediaRefs(content, note.id, rootImportDir)
+          result.mediaRestored += restored.mediaRestored
+          restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
+        }
         applyNoteUpdates(note.id, {
           favorite,
           hideCompletedChildren,
-          content: rewritten !== content ? rewritten : undefined,
+          content: restoredContent,
         })
 
         // Recurse for children (skip index.md)
@@ -342,13 +293,16 @@ function importMarkdownDir(
           })
           result.created++
 
-          const rewritten = hasMedia && parsed.body
-            ? restoreMarkdownMedia(parsed.body, note.id, rootImportDir, result)
-            : undefined
+          let restoredContent: string | undefined
+          if (hasMedia && parsed.body) {
+            const restored = restoreMarkdownMediaRefs(parsed.body, note.id, rootImportDir)
+            result.mediaRestored += restored.mediaRestored
+            restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
+          }
           applyNoteUpdates(note.id, {
             favorite: parsed.favorite,
             hideCompletedChildren: parsed.hideCompletedChildren,
-            content: rewritten !== parsed.body ? rewritten : undefined,
+            content: restoredContent,
           })
         }
       } catch (err) {
