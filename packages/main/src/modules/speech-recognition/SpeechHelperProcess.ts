@@ -66,25 +66,51 @@ export class SpeechHelperProcess {
         return;
       }
 
+      const originalOnEvent = this.onEvent;
+      let settled = false;
+      let readyTimeout: ReturnType<typeof setTimeout>;
+
+      const cleanup = () => {
+        clearTimeout(readyTimeout);
+        this.onEvent = originalOnEvent;
+        this.process?.removeListener('exit', onEarlyExit);
+      };
+
+      const fail = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        this.kill();
+        reject(err);
+      };
+
+      const onEarlyExit = () => fail(new Error('Speech helper exited before becoming ready'));
+
       this.process.on('error', (err) => {
         console.error('[SpeechHelper] Process error:', err);
-        this.process = null;
+        if (!settled) {
+          fail(err);
+        } else {
+          this.process = null;
+        }
       });
 
       this.process.on('exit', (code, signal) => {
         console.log(`[SpeechHelper] Exited with code ${code}, signal ${signal}`);
-        this.process = null;
+        if (!settled) {
+          onEarlyExit();
+        } else {
+          this.process = null;
+        }
       });
 
       this.process.stderr?.on('data', (data) => {
         console.error(`[SpeechHelper] stderr: ${data.toString().trim()}`);
       });
 
-      // Buffer stdout by newline and parse JSON events
       this.process.stdout?.on('data', (data) => {
         this.stdoutBuffer += data.toString();
         const lines = this.stdoutBuffer.split('\n');
-        // Keep the last incomplete line in the buffer
         this.stdoutBuffer = lines.pop() || '';
 
         for (const line of lines) {
@@ -99,17 +125,14 @@ export class SpeechHelperProcess {
         }
       });
 
-      // Wait for the 'ready' event before resolving
-      const readyTimeout = setTimeout(() => {
-        reject(new Error('Speech helper did not become ready in time'));
-      }, 10000);
+      readyTimeout = setTimeout(() => fail(new Error('Speech helper did not become ready in time')), 10000);
 
-      const originalOnEvent = this.onEvent;
       this.onEvent = (event) => {
         if (event.event === 'ready') {
-          clearTimeout(readyTimeout);
-          this.onEvent = originalOnEvent;
-          this.onEvent(event);
+          if (settled) return;
+          settled = true;
+          cleanup();
+          this.onEvent(event); // forward the ready event via restored handler
           resolve();
         } else {
           originalOnEvent(event);
