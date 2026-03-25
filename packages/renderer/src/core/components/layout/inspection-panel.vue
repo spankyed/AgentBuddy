@@ -26,7 +26,7 @@
       </button>
     </div> -->
     
-    <div class="flex-grow overflow-y-auto">
+    <div class="flex-grow overflow-y-auto overflow-x-hidden">
       <slot />
     </div>
   </div>
