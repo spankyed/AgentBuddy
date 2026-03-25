@@ -77,7 +77,7 @@ const toolbarZoomStyle = computed(() =>
   zoomFactor.value === 1 ? {} : { zoom: 1 / zoomFactor.value },
 );
 const controlsAreaStyle = computed(() => ({
-  height: `${43 * zoomFactor.value}px`,
+  height: `${42 * zoomFactor.value}px`,
 }));
 
 onMounted(() => {
