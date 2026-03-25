@@ -86,6 +86,8 @@ export class SpeechHelperProcess {
 
       const onEarlyExit = () => fail(new Error('Speech helper exited before becoming ready'));
 
+      readyTimeout = setTimeout(() => fail(new Error('Speech helper did not become ready in time')), 10000);
+
       this.process.on('error', (err) => {
         console.error('[SpeechHelper] Process error:', err);
         if (!settled) {
@@ -124,8 +126,6 @@ export class SpeechHelperProcess {
           }
         }
       });
-
-      readyTimeout = setTimeout(() => fail(new Error('Speech helper did not become ready in time')), 10000);
 
       this.onEvent = (event) => {
         if (event.event === 'ready') {
