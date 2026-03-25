@@ -8,6 +8,14 @@ function Write-Event($obj) {
 
 $recognizer = $null
 
+function Remove-Recognizer {
+    if ($script:recognizer) {
+        try { $script:recognizer.RecognizeAsyncCancel() } catch {}
+        try { $script:recognizer.Dispose() } catch {}
+        $script:recognizer = $null
+    }
+}
+
 function New-Recognizer($lang) {
     $culture = [System.Globalization.CultureInfo]::new($lang)
     $rec = New-Object System.Speech.Recognition.SpeechRecognitionEngine($culture)
@@ -47,14 +55,12 @@ while ($line = [Console]::In.ReadLine()) {
                 $lang = if ($cmd.lang) { $cmd.lang } else { "en-US" }
 
                 try {
-                    if ($recognizer) {
-                        try { $recognizer.RecognizeAsyncCancel() } catch {}
-                        $recognizer.Dispose()
-                    }
+                    Remove-Recognizer
                     $recognizer = New-Recognizer $lang
                     $recognizer.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
                     Write-Event @{ event = "started" }
                 } catch {
+                    Remove-Recognizer
                     Write-Event @{ event = "error"; code = "not_available"; message = "Speech recognizer not available for language: $lang" }
                 }
             }
@@ -69,4 +75,4 @@ while ($line = [Console]::In.ReadLine()) {
     }
 }
 
-if ($recognizer) { $recognizer.Dispose() }
+Remove-Recognizer
