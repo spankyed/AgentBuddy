@@ -2,7 +2,7 @@
   <div class="flex flex-col w-full">
     <form
       @submit.prevent="handleSubmit"
-      class="pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
+      class="@container pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
       <div
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
@@ -29,11 +29,44 @@
         <div class="relative flex items-center justify-between px-3 py-3 text-neutral-500">
           <!-- Left side buttons -->
           <div class="flex items-center">
+            <!-- Collapsed: ... dropdown menu (narrow) -->
+            <DropdownMenuRoot>
+              <DropdownMenuTrigger as-child>
+                <button
+                  type="button"
+                  class="p-2 transition-colors text-neutral-500 @md:hidden"
+                  :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
+                  aria-label="More actions"
+                  :disabled="disabled"
+                >
+                  <EllipsisVertical :size="20" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent
+                  align="start"
+                  :side-offset="8"
+                  class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl py-1 z-50"
+                >
+                  <DropdownMenuItem
+                    v-for="btn in leftButtons"
+                    :key="btn.action"
+                    @select="handleButtonClick(btn.action)"
+                    class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                  >
+                    <component :is="btn.icon" :size="16" />
+                    <span>{{ btn.label }}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenuRoot>
+
+            <!-- Expanded: full action buttons (wide) -->
             <button
               v-for="btn in leftButtons"
               :key="btn.action"
               type="button"
-              class="p-2 transition-colors text-neutral-500"
+              class="hidden @md:block p-2 transition-colors text-neutral-500"
               :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
               :aria-label="btn.label"
               :disabled="disabled"
@@ -41,6 +74,19 @@
             >
               <component :is="btn.icon" :size="20" />
             </button>
+          </div>
+
+          <!-- Mode/Phase Selector -->
+          <div>
+            <ModePhaseSelector
+              :modes="modes"
+              :current-mode="currentMode"
+              :current-phase="currentPhase"
+              :forced-mode="currentThread?.forcedMode"
+              :disabled="disabled"
+              @mode-change="handleModeChange"
+              @phase-change="handlePhaseChange"
+            />
           </div>
 
           <!-- Right side buttons -->
@@ -52,30 +98,17 @@
               :disabled="!messageContent || disabled"
               variant="secondary"
             >
-              Stop Agent
+              <span class="hidden @md:inline">Stop</span>
               <Square :size="22" />
             </Button>
             <Button
               type="submit"
               :disabled="!messageContent || disabled"
             >
-              Send
+              <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
             </Button>
 
-          </div>
-
-          <!-- Mode/Phase Selector -->
-          <div class="absolute bottom-0 mb-2 transform -translate-x-1/2 left-1/2">
-            <ModePhaseSelector
-              :modes="modes"
-              :current-mode="currentMode"
-              :current-phase="currentPhase"
-              :forced-mode="currentThread?.forcedMode"
-              :disabled="disabled"
-              @mode-change="handleModeChange"
-              @phase-change="handlePhaseChange"
-            />
           </div>
         </div>
       </div>
@@ -85,7 +118,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft } from 'lucide-vue-next'
+import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical } from 'lucide-vue-next'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from 'reka-ui'
 import Square from './square-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
@@ -149,10 +189,6 @@ const messageContent = ref('')
 
 // Computed properties for cleaner template
 const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
-const currentModePhases = computed(() => {
-  const mode = props.modes.find(m => m.id === props.currentMode)
-  return mode?.phases || []
-})
 
 // Reset to first visible mode when switching from forced-mode thread
 watch(() => props.currentThread?.id, () => {

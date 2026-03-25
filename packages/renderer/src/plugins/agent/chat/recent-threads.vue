@@ -1,5 +1,5 @@
 <template>
-  <div class="relative max-w-[80%] mx-auto pb-2" ref="containerRef">
+  <div class="@container relative max-w-[80%] mx-auto pb-2" ref="containerRef">
     <div
       v-if="isOpen"
       class="absolute bottom-full mb-2 left-0 right-0 px-2 pt-1 border border-neutral-800 bg-neutral-900 rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-slide-down z-50"
@@ -45,17 +45,12 @@
         <History v-if="!isOpen" :size="16" class="mr-2" />
         <ChevronUp v-else :size="16" class="mr-2" />
 
-        Recent Threads
+        Recent<span class="hidden @md:inline">&nbsp;Threads</span>
       </button>
 
-      <div class="flex-grow px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
-        <!-- <span
-          @click.stop="handleViewThread(currentThread?.id)"
-          class="text-center hover:text-neutral-200">
-          {{ currentThread?.topic }} -->
-        <span
-          class="text-center">
-          {{ currentThread?.topic }}
+      <div class="flex-grow px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
+        <span class="text-center">
+          <span class="hidden @md:inline">{{ currentThread?.topic }}</span>
           <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
             {{ currentThread?.shortCode }}
           </span>
@@ -70,7 +65,7 @@
             @click.stop="handleNewThread"
           >
             <Plus :size="16" class="mr-2" />
-            New thread
+            New<span class="hidden @md:inline">&nbsp;thread</span>
           </button>
         </ContextMenuTrigger>
 
