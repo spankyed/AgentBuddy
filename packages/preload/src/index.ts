@@ -52,6 +52,18 @@ const media = {
     ipcRenderer.invoke('media:delete-all', entityId) as Promise<void>,
 };
 
+// Speech recognition
+const speechRecognition = {
+  start: (lang?: string) => ipcRenderer.invoke('speech:start', lang),
+  stop: () => ipcRenderer.invoke('speech:stop'),
+  isAvailable: () => ipcRenderer.invoke('speech:isAvailable') as Promise<{ available: boolean }>,
+  onEvent: (callback: (event: any) => void) => {
+    const handler = (_: any, event: any) => callback(event);
+    ipcRenderer.on('speech:event', handler);
+    return () => { ipcRenderer.removeListener('speech:event', handler); };
+  },
+};
+
 // Zoom utilities
 const zoom = {
   getZoomFactor: () => webFrame.getZoomFactor(),
@@ -64,6 +76,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fileUtils,
   shell,
   media,
+  speechRecognition,
   zoom,
   apiPort,
 });

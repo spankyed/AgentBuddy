@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 interface SpeechRecognitionOptions {
   lang?: string
@@ -7,56 +7,56 @@ interface SpeechRecognitionOptions {
 }
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
-  const SpeechRecognitionCtor =
-    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-  const isSupported = !!SpeechRecognitionCtor
+  const isSupported = ref(false)
   const isListening = ref(false)
+  let removeListener: (() => void) | null = null
 
-  let recognition: any = null
+  const api = window.electronAPI?.speechRecognition
 
-  if (isSupported) {
-    recognition = new SpeechRecognitionCtor()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = options.lang || 'en-US'
+  onMounted(async () => {
+    if (!api) return
+    const result = await api.isAvailable()
+    isSupported.value = result.available
 
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          options.onResult?.(event.results[i][0].transcript)
+    if (result.available) {
+      removeListener = api.onEvent((event) => {
+        switch (event.event) {
+          case 'final':
+            if (event.text) options.onResult?.(event.text)
+            break
+          case 'started':
+            isListening.value = true
+            break
+          case 'stopped':
+            isListening.value = false
+            break
+          case 'error':
+            options.onError?.(event.message || event.code || 'Unknown error')
+            isListening.value = false
+            break
         }
-      }
+      })
     }
-
-    recognition.onerror = (event: any) => {
-      options.onError?.(event.error)
-      isListening.value = false
-    }
-
-    recognition.onend = () => {
-      isListening.value = false
-    }
-  }
+  })
 
   function toggle() {
-    if (!recognition) return
+    if (!api || !isSupported.value) return
     if (isListening.value) {
-      recognition.stop()
+      api.stop()
     } else {
-      recognition.start()
-      isListening.value = true
+      api.start(options.lang || 'en-US')
     }
   }
 
   function stop() {
-    if (recognition && isListening.value) {
-      recognition.stop()
+    if (api && isListening.value) {
+      api.stop()
     }
   }
 
   onUnmounted(() => {
     stop()
+    removeListener?.()
   })
 
   return { isSupported, isListening, toggle, stop }

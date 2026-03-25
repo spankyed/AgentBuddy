@@ -193,7 +193,7 @@ const leftButtons = computed<ActionButton[]>(() => {
       action: 'quick-message'
     },
   ]
-  if (speechSupported) {
+  if (speechSupported.value) {
     buttons.push({
       icon: isListening.value ? MicOff : Mic,
       label: isListening.value ? 'Stop listening' : 'Voice input',

@@ -10,6 +10,7 @@ import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createApiServer} from './modules/api-server/ApiServer.js';
 import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
+import {createSpeechRecognition} from './modules/speech-recognition/index.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -23,6 +24,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(createMediaProtocol())  // Must register protocol schemes before app ready
     .init(splashScreen)  // Show splash screen early
     .init(apiServer)
+    .init(createSpeechRecognition())
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
     .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer, splashScreen}))
     .init(terminateAppOnLastWindowClose())

@@ -22,6 +22,14 @@ declare global {
         delete: (entityId: string, filename: string) => Promise<void>;
         deleteAll: (entityId: string) => Promise<void>;
       };
+      speechRecognition: {
+        start: (lang?: string) => Promise<void>;
+        stop: () => Promise<void>;
+        isAvailable: () => Promise<{ available: boolean }>;
+        onEvent: (callback: (event: {
+          event: string; text?: string; code?: string; message?: string;
+        }) => void) => () => void;
+      };
       zoom: {
         getZoomFactor: () => number;
         notifyZoomChanged: (factor: number) => void;
