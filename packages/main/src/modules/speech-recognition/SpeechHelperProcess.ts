@@ -58,7 +58,7 @@ export class SpeechHelperProcess {
       if (platform === 'darwin') {
         this.process = spawn(helperPath, [], { stdio: ['pipe', 'pipe', 'pipe'] });
       } else if (platform === 'win32') {
-        this.process = spawn('powershell.exe', ['-ExecutionPolicy', 'Bypass', '-File', helperPath], {
+        this.process = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helperPath], {
           stdio: ['pipe', 'pipe', 'pipe'],
         });
       } else {
