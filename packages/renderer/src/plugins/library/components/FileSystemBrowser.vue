@@ -217,8 +217,8 @@
 
     <!-- File Table -->
     <div class="flex-1 overflow-hidden" @click="handleTableContainerClick">
-      <div class="h-full overflow-y-auto overflow-x-hidden custom-scrollbar" @click="handleScrollAreaClick">
-        <table class="w-full"  data-onboarding-id="library-table">
+      <div class="h-full overflow-y-auto overflow-x-auto custom-scrollbar" @click="handleScrollAreaClick">
+        <table class="w-full min-w-[480px]"  data-onboarding-id="library-table">
           <thead class="sticky top-0 z-10 bg-neutral-900 shadow-[inset_0_-1px_0_0_theme(colors.neutral.800)]">
             <tr class="text-xs font-medium text-left text-neutral-500">
               <TableHeader @click="sort('name')" class="!pl-6 w-[60%]">Name</TableHeader>
