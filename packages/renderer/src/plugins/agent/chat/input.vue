@@ -74,10 +74,23 @@
             >
               <component :is="btn.icon" :size="20" />
             </button>
+
+            <!-- Mode/Phase Selector (narrow) -->
+            <div class="@md:hidden">
+              <ModePhaseSelector
+                :modes="modes"
+                :current-mode="currentMode"
+                :current-phase="currentPhase"
+                :forced-mode="currentThread?.forcedMode"
+                :disabled="disabled"
+                @mode-change="handleModeChange"
+                @phase-change="handlePhaseChange"
+              />
+            </div>
           </div>
 
           <!-- Mode/Phase Selector -->
-          <div>
+          <div class="hidden @md:block">
             <ModePhaseSelector
               :modes="modes"
               :current-mode="currentMode"

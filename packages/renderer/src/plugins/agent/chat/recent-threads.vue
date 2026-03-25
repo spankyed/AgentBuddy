@@ -48,10 +48,10 @@
         Recent<span class="hidden @md:inline">&nbsp;Threads</span>
       </button>
 
-      <div class="flex-grow px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
-        <span class="text-center">
-          <span class="hidden @md:inline">{{ currentThread?.topic }}</span>
-          <span class="w-24 px-2 py-1 text-xs font-semibold text-neutral-200/30">
+      <div class="flex-grow min-w-0 px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
+        <span class="inline-flex items-center justify-center gap-1 max-w-full">
+          <span class="hidden @md:inline truncate">{{ currentThread?.topic }}</span>
+          <span class="shrink-0 px-2 py-1 text-xs font-semibold text-neutral-200/30">
             {{ currentThread?.shortCode }}
           </span>
         </span>
