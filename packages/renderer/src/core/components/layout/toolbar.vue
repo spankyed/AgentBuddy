@@ -1,7 +1,7 @@
 <template>
   <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar" :style="toolbarZoomStyle">
     <!-- Window controls area (macOS traffic lights) -->
-    <div class="window-controls-area h-[45px] flex-shrink-0 flex items-center justify-center border-b border-neutral-800">
+    <div class="window-controls-area flex-shrink-0 flex items-center justify-center border-b border-neutral-800" :style="controlsAreaStyle">
       <WindowControls v-if="!isMac" />
     </div>
 
@@ -76,6 +76,9 @@ const updateZoomFactor = () => {
 const toolbarZoomStyle = computed(() =>
   zoomFactor.value === 1 ? {} : { zoom: 1 / zoomFactor.value },
 );
+const controlsAreaStyle = computed(() => ({
+  height: `${43 * zoomFactor.value}px`,
+}));
 
 onMounted(() => {
   updateZoomFactor();
