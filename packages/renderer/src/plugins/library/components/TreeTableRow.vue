@@ -45,7 +45,7 @@
             <div class="min-w-0 relative">
               <span
                 @click.stop="handleClick($event)"
-                class="text-sm"
+                class="text-sm truncate block"
                 :class="[
                   item.type === 'folder' ? 'font-medium' : 'font-normal',
                   isEditing ? 'invisible' : 'cursor-pointer',
@@ -77,7 +77,7 @@
         <td class="px-6 py-1 whitespace-nowrap">
           <span class="text-sm text-neutral-400">{{ item.size }}</span>
         </td>
-        <td class="px-6 py-1">
+        <td class="px-6 py-1 hidden @lg:table-cell">
           <span class="text-sm text-neutral-400">{{ item.kind }}</span>
         </td>
       </tr>

@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="flex flex-col h-full bg-neutral-900" tabindex="-1">
+  <div ref="containerRef" class="@container flex flex-col h-full bg-neutral-900" tabindex="-1">
 
     <ConfirmDialog
       v-model="deleteDialog.show"
@@ -166,7 +166,7 @@
                 class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
               >
                 <FolderPlus class="w-4 h-4" />
-                <span>New Folder</span>
+                <span class="hidden @lg:inline">New Folder</span>
               </Button>
             </ContextMenuTrigger>
             <ContextMenuPortal>
@@ -190,7 +190,7 @@
           </ContextMenuRoot>
           <Button @click="createDocument" variant="primary" size="sm" data-onboarding-id="library-create-button">
             <FileText class="w-4 h-4" />
-            <span>{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>
+            <span class="hidden @lg:inline">{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>
           </Button>
           <div
             v-if="symlinkInput.show"
@@ -222,9 +222,12 @@
           <thead class="sticky top-0 z-10 bg-neutral-900 shadow-[inset_0_-1px_0_0_theme(colors.neutral.800)]">
             <tr class="text-xs font-medium text-left text-neutral-500">
               <TableHeader @click="sort('name')" class="!pl-6 w-[60%]">Name</TableHeader>
-              <TableHeader @click="sort('modified')" class="w-[18%]">Date Modified</TableHeader>
+              <TableHeader @click="sort('modified')" class="w-[18%]">
+                <span class="@lg:hidden">Modified</span>
+                <span class="hidden @lg:inline">Date Modified</span>
+              </TableHeader>
               <TableHeader @click="sort('size')" class="w-[10%]">Size</TableHeader>
-              <TableHeader @click="sort('kind')" class="w-[12%]">Kind</TableHeader>
+              <TableHeader @click="sort('kind')" class="w-[12%] hidden @lg:table-cell">Kind</TableHeader>
             </tr>
           </thead>
           <tbody>
