@@ -15,42 +15,55 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
 
   onMounted(async () => {
     if (!api) return
-    const result = await api.isAvailable()
-    isSupported.value = result.available
+    try {
+      const result = await api.isAvailable()
+      isSupported.value = result.available
 
-    if (result.available) {
-      removeListener = api.onEvent((event) => {
-        switch (event.event) {
-          case 'final':
-            if (event.text) options.onResult?.(event.text)
-            break
-          case 'started':
-            isListening.value = true
-            break
-          case 'stopped':
-            isListening.value = false
-            break
-          case 'error':
-            options.onError?.(event.message || event.code || 'Unknown error')
-            isListening.value = false
-            break
-        }
-      })
+      if (result.available) {
+        removeListener = api.onEvent((event) => {
+          switch (event.event) {
+            case 'final':
+              if (event.text) options.onResult?.(event.text)
+              break
+            case 'started':
+              isListening.value = true
+              break
+            case 'stopped':
+              isListening.value = false
+              break
+            case 'error':
+              options.onError?.(event.message || event.code || 'Unknown error')
+              isListening.value = false
+              break
+          }
+        })
+      }
+    } catch (err) {
+      options.onError?.(err instanceof Error ? err.message : 'Speech recognition unavailable')
     }
   })
 
-  function toggle() {
+  async function toggle() {
     if (!api || !isSupported.value) return
-    if (isListening.value) {
-      api.stop()
-    } else {
-      api.start(options.lang || 'en-US')
+    try {
+      if (isListening.value) {
+        await api.stop()
+      } else {
+        await api.start(options.lang || 'en-US')
+      }
+    } catch (err) {
+      isListening.value = false
+      options.onError?.(err instanceof Error ? err.message : 'Speech recognition error')
     }
   }
 
-  function stop() {
-    if (api && isListening.value) {
-      api.stop()
+  async function stop() {
+    if (!api || !isListening.value) return
+    try {
+      await api.stop()
+    } catch (err) {
+      isListening.value = false
+      options.onError?.(err instanceof Error ? err.message : 'Failed to stop speech recognition')
     }
   }
 
