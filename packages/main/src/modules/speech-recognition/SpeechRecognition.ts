@@ -19,6 +19,11 @@ export function createSpeechRecognition(): AppModule {
       });
 
       ipcMain.handle('speech:start', async (_event, lang?: string) => {
+        // Re-spawn if helper died since last use
+        if (helper && !helper.isRunning()) {
+          helper = null;
+        }
+
         // Lazy spawn: only start helper on first use
         if (!helper) {
           helper = new SpeechHelperProcess(broadcastSpeechEvent);
