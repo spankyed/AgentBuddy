@@ -1,13 +1,13 @@
 <template>
   <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar" :style="toolbarZoomStyle">
     <!-- Window controls area (macOS traffic lights) -->
-    <div class="window-controls-area h-[50px] flex items-center justify-center">
+    <div class="window-controls-area h-[45px] flex-shrink-0 flex items-center justify-center border-b border-neutral-800">
       <WindowControls v-if="!isMac" />
     </div>
-    
-    <div class="flex flex-col h-full">
+
+    <div class="flex flex-col min-h-0 flex-1">
       <!-- Scrollable section -->
-      <div class="flex-1 overflow-y-auto scrollbar-hide">
+      <div class="flex-1 overflow-y-auto scrollbar-hide my-2">
         <div class="flex flex-col items-center space-y-6">
           <button
             v-for="item in pluginItems"
@@ -110,4 +110,4 @@ button {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
-</style> 
+</style>
