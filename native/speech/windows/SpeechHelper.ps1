@@ -6,27 +6,34 @@ function Write-Event($obj) {
     [Console]::Out.Flush()
 }
 
-$recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine
-$recognizer.SetInputToDefaultAudioDevice()
-$recognizer.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
+$recognizer = $null
 
-$recognizer.Add_SpeechHypothesized({
-    param($sender, $e)
-    Write-Event @{ event = "partial"; text = $e.Result.Text }
-})
+function New-Recognizer($lang) {
+    $culture = [System.Globalization.CultureInfo]::new($lang)
+    $rec = New-Object System.Speech.Recognition.SpeechRecognitionEngine($culture)
+    $rec.SetInputToDefaultAudioDevice()
+    $rec.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
 
-$recognizer.Add_SpeechRecognized({
-    param($sender, $e)
-    Write-Event @{ event = "final"; text = $e.Result.Text }
-})
+    $rec.Add_SpeechHypothesized({
+        param($sender, $e)
+        Write-Event @{ event = "partial"; text = $e.Result.Text }
+    })
 
-$recognizer.Add_RecognizeCompleted({
-    param($sender, $e)
-    if ($e.Error) {
-        Write-Event @{ event = "error"; code = "recognition_error"; message = $e.Error.Message }
-    }
-    Write-Event @{ event = "stopped" }
-})
+    $rec.Add_SpeechRecognized({
+        param($sender, $e)
+        Write-Event @{ event = "final"; text = $e.Result.Text }
+    })
+
+    $rec.Add_RecognizeCompleted({
+        param($sender, $e)
+        if ($e.Error) {
+            Write-Event @{ event = "error"; code = "recognition_error"; message = $e.Error.Message }
+        }
+        Write-Event @{ event = "stopped" }
+    })
+
+    return $rec
+}
 
 Write-Event @{ event = "ready" }
 
@@ -37,11 +44,24 @@ while ($line = [Console]::In.ReadLine()) {
         $cmd = $line | ConvertFrom-Json
         switch ($cmd.command) {
             "start" {
-                $recognizer.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
-                Write-Event @{ event = "started" }
+                $lang = if ($cmd.lang) { $cmd.lang } else { "en-US" }
+
+                try {
+                    if ($recognizer) {
+                        try { $recognizer.RecognizeAsyncCancel() } catch {}
+                        $recognizer.Dispose()
+                    }
+                    $recognizer = New-Recognizer $lang
+                    $recognizer.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
+                    Write-Event @{ event = "started" }
+                } catch {
+                    Write-Event @{ event = "error"; code = "not_available"; message = "Speech recognizer not available for language: $lang" }
+                }
             }
             "stop" {
-                $recognizer.RecognizeAsyncStop()
+                if ($recognizer) {
+                    $recognizer.RecognizeAsyncStop()
+                }
             }
         }
     } catch {
@@ -49,4 +69,4 @@ while ($line = [Console]::In.ReadLine()) {
     }
 }
 
-$recognizer.Dispose()
+if ($recognizer) { $recognizer.Dispose() }
