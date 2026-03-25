@@ -1,3 +1,5 @@
+import type {SpeechEvent} from '../../../types/speech.js';
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -26,9 +28,7 @@ declare global {
         start: (lang?: string) => Promise<void>;
         stop: () => Promise<void>;
         isAvailable: () => Promise<{ available: boolean }>;
-        onEvent: (callback: (event: {
-          event: string; text?: string; code?: string; message?: string;
-        }) => void) => () => void;
+        onEvent: (callback: (event: SpeechEvent) => void) => () => void;
       };
       zoom: {
         getZoomFactor: () => number;

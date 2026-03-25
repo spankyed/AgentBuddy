@@ -4,10 +4,4 @@ export type SpeechCommand =
   | { command: 'stop' }
 
 // Events sent from native helper to main process via stdout
-export type SpeechEvent =
-  | { event: 'ready' }
-  | { event: 'started' }
-  | { event: 'stopped' }
-  | { event: 'partial'; text: string }
-  | { event: 'final'; text: string }
-  | { event: 'error'; code: string; message: string }
+export type { SpeechEvent } from '../../../../../types/speech.js';

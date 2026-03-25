@@ -1,6 +1,7 @@
 import {sha256sum} from './nodeCrypto.js';
 import {versions} from './versions.js';
 import {ipcRenderer, contextBridge, webFrame} from 'electron';
+import type {SpeechEvent} from '../../../types/speech.js';
 
 function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
@@ -57,8 +58,8 @@ const speechRecognition = {
   start: (lang?: string) => ipcRenderer.invoke('speech:start', lang),
   stop: () => ipcRenderer.invoke('speech:stop'),
   isAvailable: () => ipcRenderer.invoke('speech:isAvailable') as Promise<{ available: boolean }>,
-  onEvent: (callback: (event: any) => void) => {
-    const handler = (_: any, event: any) => callback(event);
+  onEvent: (callback: (event: SpeechEvent) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, event: SpeechEvent) => callback(event);
     ipcRenderer.on('speech:event', handler);
     return () => { ipcRenderer.removeListener('speech:event', handler); };
   },
