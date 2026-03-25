@@ -21,7 +21,7 @@ export class SpeechHelperProcess {
       if (platform === 'win32') return path.join(process.resourcesPath, 'native/speech/SpeechHelper.ps1');
     } else {
       // Development: project root
-      const root = path.resolve(app.getAppPath(), '..', '..');
+      const root = app.getAppPath();
       if (platform === 'darwin') return path.join(root, 'native/speech/macos/SpeechHelper');
       if (platform === 'win32') return path.join(root, 'native/speech/windows/SpeechHelper.ps1');
     }
