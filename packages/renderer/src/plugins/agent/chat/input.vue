@@ -53,6 +53,7 @@
                     :key="btn.action"
                     @select="handleButtonClick(btn.action)"
                     class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                    :class="btn.class"
                   >
                     <component :is="btn.icon" :size="16" />
                     <span>{{ btn.label }}</span>
@@ -67,7 +68,7 @@
               :key="btn.action"
               type="button"
               class="hidden @md:block p-2 transition-colors text-neutral-500"
-              :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
+              :class="[disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200', btn.class]"
               :aria-label="btn.label"
               :disabled="disabled"
               @click="handleButtonClick(btn.action)"
@@ -131,7 +132,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { Mic, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical } from 'lucide-vue-next'
+import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical } from 'lucide-vue-next'
+import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -173,32 +175,51 @@ interface ActionButton {
   class?: string
 }
 
-const leftButtons: ActionButton[] = [
-  {
-    icon: AtSign,
-    label: 'Add context',
-    action: 'add-context'
-  },
-  {
-    icon: PaperclipIcon,
-    label: 'Attach file',
-    action: 'attach-file'
-  },
-  {
-    icon: Sparkle,
-    label: 'Quick message',
-    action: 'quick-message'
-  },
-  {
-    icon: Mic,
-    label: 'Voice input',
-    action: 'voice-input'
-  },
-]
+const leftButtons = computed<ActionButton[]>(() => {
+  const buttons: ActionButton[] = [
+    {
+      icon: AtSign,
+      label: 'Add context',
+      action: 'add-context'
+    },
+    {
+      icon: PaperclipIcon,
+      label: 'Attach file',
+      action: 'attach-file'
+    },
+    {
+      icon: Sparkle,
+      label: 'Quick message',
+      action: 'quick-message'
+    },
+  ]
+  if (speechSupported) {
+    buttons.push({
+      icon: isListening.value ? MicOff : Mic,
+      label: isListening.value ? 'Stop listening' : 'Voice input',
+      action: 'voice-input',
+      class: isListening.value ? 'text-red-400 animate-pulse' : undefined,
+    })
+  }
+  return buttons
+})
 
 
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')
+
+const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
+  onResult(transcript) {
+    const editor = editorRef.value
+    if (!editor) return
+    const trimmed = transcript.trim()
+    if (!trimmed) return
+    const current = editor.innerText
+    editor.innerText = current ? current + ' ' + trimmed : trimmed
+    messageContent.value = editor.innerText
+    editor.classList.remove('empty')
+  },
+})
 
 // Computed properties for cleaner template
 const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
@@ -248,6 +269,10 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 const handleButtonClick = (action: string) => {
   if (props.disabled) return
+  if (action === 'voice-input') {
+    toggleSpeech()
+    return
+  }
   // @ts-expect-error - dynamic event emission
   emit(action)
 }
