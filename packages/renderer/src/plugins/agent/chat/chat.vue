@@ -35,7 +35,7 @@
         :recent-threads="recentThreads"
         @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
         @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
-        @new-thread="actor.send({ type: 'CLEAR_THREAD' })"
+        @new-thread="() => { rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
         @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
       />
     </div>
@@ -87,15 +87,12 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const messagesContainer = ref<HTMLElement | null>(null)
 
-watch(messages, async (newMessages) => {
-  if (newMessages.length === 0) {
-    rotateQuote();
-  }
+watch(messages, async () => {
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
   }
-}, { deep: true })
+})
 </script>
 
 <style lang="scss" module>
