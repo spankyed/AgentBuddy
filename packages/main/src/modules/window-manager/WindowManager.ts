@@ -265,6 +265,7 @@ class WindowManager implements AppModule {
       height: WINDOW_CONFIG.HEIGHT,
       minWidth: WINDOW_CONFIG.MIN_WIDTH,
       minHeight: WINDOW_CONFIG.MIN_HEIGHT,
+      center: true,
       title: WINDOW_CONFIG.MAIN_TITLE, // Used for window identification
       icon: iconPath, // Set the window icon
       titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
