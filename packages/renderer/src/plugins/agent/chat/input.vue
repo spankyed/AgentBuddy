@@ -161,7 +161,6 @@ const emit = defineEmits<{
   (e: 'send-message', message: string): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
-  (e: 'voice-input'): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
