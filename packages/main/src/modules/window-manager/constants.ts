@@ -1,9 +1,9 @@
 export const WINDOW_CONFIG = {
   // Main window dimensions
-  WIDTH: 1800,
-  HEIGHT: 1200,
-  MIN_WIDTH: 1200,
-  MIN_HEIGHT: 800,
+  WIDTH: 1400,
+  HEIGHT: 900,
+  MIN_WIDTH: 900,
+  MIN_HEIGHT: 600,
   
   // Window identification
   MAIN_TITLE: 'AgentBuddy-Main',
