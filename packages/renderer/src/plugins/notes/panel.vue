@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-[0.65rem] border-b border-neutral-800"
+    <div class="flex items-center justify-between px-4 py-[9px] border-b border-neutral-800"
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
@@ -46,7 +46,7 @@
     </div>
 
     <!-- Favorites -->
-    <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 pt-2 pb-2">
+    <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
       <button
         class="group flex items-center gap-2 px-1.5 w-full text-left ml-2.5"
         :class="favoritesExpanded && 'mb-1'"

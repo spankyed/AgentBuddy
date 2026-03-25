@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex items-center justify-between px-4 pt-3 pb-3 border-b border-neutral-800 panel-header">
+    <div class="flex items-center justify-between px-4 py-[11px] border-b border-neutral-800 panel-header">
       <div class="flex items-center gap-2">
         <component :is="icon" :size="16" class="text-neutral-400" />
         <div class="flex items-center gap-1.5 text-sm">
