@@ -125,6 +125,14 @@ class WindowManager implements AppModule {
       window?.close();
     });
 
+    ipcMain.on('zoom:changed', (event, zoomFactor: number) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        const y = Math.round((42 * zoomFactor - 12) / 2);
+        win.setWindowButtonPosition({x: 10, y});
+      }
+    });
+
     // Handle directory selection dialog
     ipcMain.handle('dialog:select-directory', async () => {
       const window = BrowserWindow.getFocusedWindow();
@@ -260,6 +268,7 @@ class WindowManager implements AppModule {
       title: WINDOW_CONFIG.MAIN_TITLE, // Used for window identification
       icon: iconPath, // Set the window icon
       titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
+      trafficLightPosition: {x: 10, y: 15},
       frame: process.platform !== 'darwin', // Windows/Linux: completely frameless
       transparent: false,
       vibrancy: 'under-window', // macOS: window vibrancy effect

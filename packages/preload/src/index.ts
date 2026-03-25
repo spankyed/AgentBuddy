@@ -55,6 +55,7 @@ const media = {
 // Zoom utilities
 const zoom = {
   getZoomFactor: () => webFrame.getZoomFactor(),
+  notifyZoomChanged: (factor: number) => ipcRenderer.send('zoom:changed', factor),
 };
 
 // Expose APIs to renderer

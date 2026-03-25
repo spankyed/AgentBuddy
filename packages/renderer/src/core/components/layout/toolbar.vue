@@ -72,6 +72,7 @@ const isMac = computed(() => {
 const zoomFactor = ref(1);
 const updateZoomFactor = () => {
   zoomFactor.value = window.electronAPI?.zoom?.getZoomFactor() ?? 1;
+  window.electronAPI?.zoom?.notifyZoomChanged?.(zoomFactor.value);
 };
 const toolbarZoomStyle = computed(() =>
   zoomFactor.value === 1 ? {} : { zoom: 1 / zoomFactor.value },

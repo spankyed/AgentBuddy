@@ -24,6 +24,7 @@ declare global {
       };
       zoom: {
         getZoomFactor: () => number;
+        notifyZoomChanged: (factor: number) => void;
       };
       apiPort: number;
     };
