@@ -750,7 +750,4 @@ onUnmounted(() => {
   background-color: rgba(59, 130, 246, 0.1);
 }
 
-.custom-scrollbar::-webkit-scrollbar-corner {
-  background-color: transparent;
-}
 </style>
