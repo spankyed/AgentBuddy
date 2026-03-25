@@ -5,6 +5,7 @@ import { SpeechHelperProcess } from './SpeechHelperProcess.js';
 
 export function createSpeechRecognition(): AppModule {
   let helper: SpeechHelperProcess | null = null;
+  let spawnPromise: Promise<SpeechHelperProcess> | null = null;
   let activeWebContents: WebContents | null = null;
 
   const emit = (event: SpeechEvent) => {
@@ -13,11 +14,18 @@ export function createSpeechRecognition(): AppModule {
     }
   };
 
+  // Dedup concurrent calls: all callers share the same spawn promise until the helper is ready.
   async function ensureHelper(): Promise<SpeechHelperProcess> {
     if (helper?.isRunning()) return helper;
-    helper = new SpeechHelperProcess(emit);
-    await helper.spawn();
-    return helper;
+    if (spawnPromise) return spawnPromise;
+    const h = new SpeechHelperProcess(emit);
+    spawnPromise = h.spawn().then(() => {
+      helper = h;
+      return h;
+    }).finally(() => {
+      spawnPromise = null;
+    });
+    return spawnPromise;
   }
 
   return {
