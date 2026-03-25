@@ -6,6 +6,7 @@ import { EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { safeEvents } from '@/core/helpers/actor-helpers';
 import { brain, brainBus } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
+import { isBrainPaused } from './utils/brain-pause';
 
 /**
  * Flow Actor Registry
@@ -53,6 +54,12 @@ type TNodeFlowMachineContext = {
   // Flow hierarchy tracking
   hasParent: boolean; // Whether this flow has a parent flow
   isRootFlow: boolean; // Flag to identify root flow
+  // Deferred next-steps when brain is paused
+  pendingNextSteps: Array<{
+    nextNode: NodeEntity;
+    eventTNodeId: EARS.EntityId;
+    executionContext: ExecutionContext;
+  }>;
 };
 
 type ChildCompletedEvent =
@@ -67,6 +74,7 @@ type ChildCompletedEvent =
     isFlow?: boolean; // Simple flag to indicate if completing child was a flow
   }
   | { type: 'CANCEL_FLOW' }
+  | { type: 'RESUME_FLOW' }
   | { type: 'TNODE_UPDATED'; data: { tNodeId: EARS.EntityId; status: string; eventTNodeId?: EARS.EntityId } }
   | { type: 'FIRE_LOCAL_EVENT'; eventType: string; payload?: any };
 
@@ -338,6 +346,18 @@ export function createFlowNodeSystem(
 
           if (shouldComplete) {
             enqueue.raise({ type: 'FLOW_COMPLETE' });
+          } else if (nextNode && isBrainPaused()) {
+            // Brain is paused — defer spawning the next step
+            enqueue.assign({
+              pendingNextSteps: ({ context }) => [
+                ...context.pendingNextSteps,
+                {
+                  nextNode,
+                  eventTNodeId: typedEv.eventTNodeId!,
+                  executionContext: updatedContext,
+                },
+              ],
+            });
           } else if (nextNode) {
             // Spawn next node - already computed above, no duplicate query needed
             const [nextMachine, nextSystemId, nextTNode] = createChildNode(
@@ -396,6 +416,30 @@ export function createFlowNodeSystem(
           ...(context.entryData !== undefined && { data: context.entryData })
         })),
         forwardTNodeUpdate: sendParent(({ event }) => event),
+        resumeFlowSteps: enqueueActions(({ context, enqueue, system }) => {
+          for (const pending of context.pendingNextSteps) {
+            const [machine, systemId, tNode] = createChildNode(
+              pending.nextNode,
+              pending.eventTNodeId,
+              pending.executionContext
+            );
+
+            enqueue.spawnChild(machine, {
+              systemId,
+              input: {}
+            });
+
+            system.get(brain).send({
+              type: 'TNODE_SPAWNED',
+              tNode,
+              parentId: pending.eventTNodeId,
+              eventTNodeId: pending.eventTNodeId,
+              flowTNodeId: flowTNodeId
+            });
+          }
+
+          enqueue.assign({ pendingNextSteps: [] });
+        }),
       },
       guards: {},
     }).createMachine({
@@ -415,6 +459,7 @@ export function createFlowNodeSystem(
         isFinalStep: flowTNode?.final || false,
         hasParent: hasParent,
         isRootFlow: isRootFlow,
+        pendingNextSteps: [],
       }),
       on: {
         ...eventHandlers,
@@ -426,6 +471,9 @@ export function createFlowNodeSystem(
         },
         FLOW_COMPLETE: {
           target: '.completed',
+        },
+        RESUME_FLOW: {
+          actions: ['resumeFlowSteps'],
         },
         // Handle local events that are fired within this flow
         FIRE_LOCAL_EVENT: {

@@ -2,7 +2,7 @@ import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@/core/types/safe-events';
 import breadcrumb, { breadcrumbList } from '@/core/breadcrumb';
 import { contextMenuFn } from '@/core/context-menu';
-import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle } from 'lucide-vue-next';
+import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import type {
   OutgoingBrainEvents,
@@ -33,6 +33,7 @@ export interface BrainContext {
   inspectEnabled: boolean;
   animationsEnabled: boolean;
   brainIsDead: boolean;
+  brainIsPaused: boolean;
   // Settings
   settings?: any; // BrainSettings
 }
@@ -43,6 +44,8 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
   | { type: 'BRAIN_KILLED' }
   | { type: 'BRAIN_STARTED' }
+  | { type: 'BRAIN_PAUSED' }
+  | { type: 'BRAIN_RESUMED' }
 
 type UIEvent =
   | { type: 'NODE.CLICK'; nodeId: string }
@@ -56,6 +59,8 @@ type UIEvent =
   | { type: 'TOGGLE_ANIMATIONS' }
   | { type: 'RESTART_BRAIN' }
   | { type: 'KILL_BRAIN' }
+  | { type: 'PAUSE_BRAIN' }
+  | { type: 'RESUME_BRAIN' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -351,11 +356,31 @@ const brainState = setup({
       };
     }),
     setBrainKilled: assign({
-      brainIsDead: true
+      brainIsDead: true,
+      brainIsPaused: false,
     }),
     setBrainStarted: assign({
-      brainIsDead: false
+      brainIsDead: false,
+      brainIsPaused: false,
     }),
+    setBrainPaused: assign({
+      brainIsPaused: true,
+    }),
+    setBrainResumed: assign({
+      brainIsPaused: false,
+    }),
+    pauseBrain: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'PAUSE_BRAIN'
+      });
+    },
+    resumeBrain: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'RESUME_BRAIN'
+      });
+    },
     restartBrain: ({ context }) => {
       trpc.bus.send.mutate({
         systemId: id,
@@ -397,6 +422,7 @@ const brainState = setup({
     animationsEnabled: true,
     selectedStepNode: undefined,
     brainIsDead: false, // Start as running to prevent flash of dead UI
+    brainIsPaused: false,
   },
   initial: 'loading',
   states: {
@@ -424,7 +450,11 @@ const brainState = setup({
           ...(ctx.brainIsDead
             ? [{ separator: true, label: 'Start Brain', icon: PlayCircle, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-green-400' }]
             : [
-                { separator: true, label: 'Restart Brain', icon: RefreshCw, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-amber-400' },
+                ...(ctx.brainIsPaused
+                  ? [{ separator: true, label: 'Resume Brain', icon: PlayCircle, event: { type: 'RESUME_BRAIN' as const }, iconColor: 'text-green-400' }]
+                  : [{ separator: true, label: 'Pause Brain', icon: Pause, event: { type: 'PAUSE_BRAIN' as const }, iconColor: 'text-yellow-400' }]
+                ),
+                { label: 'Restart Brain', icon: RefreshCw, event: { type: 'RESTART_BRAIN' as const }, iconColor: 'text-amber-400' },
                 { label: 'Kill Brain', icon: Power, event: { type: 'KILL_BRAIN' as const }, iconColor: 'text-red-400' },
               ]
           ),
@@ -516,6 +546,18 @@ const brainState = setup({
         },
         BRAIN_STARTED: {
           actions: 'setBrainStarted'
+        },
+        PAUSE_BRAIN: {
+          actions: 'pauseBrain'
+        },
+        RESUME_BRAIN: {
+          actions: 'resumeBrain'
+        },
+        BRAIN_PAUSED: {
+          actions: 'setBrainPaused'
+        },
+        BRAIN_RESUMED: {
+          actions: 'setBrainResumed'
         },
         TRAIL_CLICK: {
           actions: 'handleBreadcrumbClick'

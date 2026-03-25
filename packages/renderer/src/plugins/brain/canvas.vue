@@ -28,6 +28,26 @@
       </div>
     </Transition>
 
+    <!-- Paused Banner -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="-translate-y-full opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="-translate-y-full opacity-0"
+    >
+      <div v-if="brainIsPaused" class="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-3 px-4 py-1.5 bg-amber-900/80 border-b border-amber-700/50 text-amber-200 text-xs">
+        <span>Brain Paused — Events Queued</span>
+        <button
+          class="px-2 py-0.5 text-xs font-medium rounded bg-amber-700/60 hover:bg-amber-600/60 text-amber-100 transition-colors"
+          @click.stop="handleResume"
+        >
+          Resume
+        </button>
+      </div>
+    </Transition>
+
     <!-- Center: TNode Graph (Always visible) -->
     <div class="relative flex-1 overflow-hidden bg-neutral-900" @click="handleCanvasClick">
       <TNodeGraph
@@ -67,6 +87,7 @@ const possibleEvents = useSelector(actor, (state) => state.context.possibleEvent
 const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
 const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEventType);
 const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'TNode-Root');
+const brainIsPaused = useSelector(actor, (state) => state.context.brainIsPaused);
 
 // UI state selectors
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
@@ -93,6 +114,10 @@ const handleEventClick = (eventType: string) => {
 
 const handleCloseDetails = () => {
   actor.send({ type: 'CLOSE_DETAILS' });
+};
+
+const handleResume = () => {
+  actor.send({ type: 'RESUME_BRAIN' });
 };
 
 const handleCanvasClick = (event: MouseEvent) => {
