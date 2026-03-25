@@ -86,7 +86,9 @@ export class SpeechHelperProcess {
 
       const onEarlyExit = () => fail(new Error('Speech helper exited before becoming ready'));
 
-      readyTimeout = setTimeout(() => fail(new Error('Speech helper did not become ready in time')), 10000);
+      // macOS waits for user-interactive permission dialogs (speech + microphone) before emitting ready
+      const readyTimeoutMs = process.platform === 'darwin' ? 60_000 : 10_000;
+      readyTimeout = setTimeout(() => fail(new Error('Speech helper did not become ready in time')), readyTimeoutMs);
 
       this.process.on('error', (err) => {
         console.error('[SpeechHelper] Process error:', err);
