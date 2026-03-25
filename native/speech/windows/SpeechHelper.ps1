@@ -41,7 +41,7 @@ while ($line = [Console]::In.ReadLine()) {
                 Write-Event @{ event = "started" }
             }
             "stop" {
-                $recognizer.RecognizeAsyncCancel()
+                $recognizer.RecognizeAsyncStop()
             }
         }
     } catch {
