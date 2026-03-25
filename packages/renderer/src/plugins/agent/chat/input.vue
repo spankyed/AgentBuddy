@@ -68,7 +68,7 @@
               :key="btn.action"
               type="button"
               class="hidden @md:block p-2 transition-colors text-neutral-500"
-              :class="[disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200', btn.class]"
+              :class="[disabled ? 'cursor-not-allowed opacity-50' : (!btn.class && 'hover:text-neutral-200'), btn.class]"
               :aria-label="btn.label"
               :disabled="disabled"
               @click="handleButtonClick(btn.action)"
