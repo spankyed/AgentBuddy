@@ -64,48 +64,44 @@
         
         <!-- Custom hotkeys list -->
         <div v-if="customHotkeys.length > 0" class="space-y-3 mb-4">
-          <div v-for="(hotkey, index) in customHotkeys" :key="hotkey.id" class="flex items-center gap-3">
-            <!-- Event Name Input -->
-            <input
-              v-model="hotkey.eventName"
-              type="text"
-              placeholder="EVENT_NAME"
-              class="flex-1 max-w-xs px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-              @input="() => debouncedSave(saveCustomHotkeys)"
-            />
-            
-            <!-- Keyboard Shortcut Input -->
-            <KeyboardShortcutInput
-              v-model="hotkey.shortcut"
-              @change="updateCustomHotkey(index)"
-              container-class="flex-1"
-              placeholder="Click to set shortcut"
-              :show-reset-button="false"
-            />
-            
-            <!-- Remove Button -->
-            <button
-              @click="removeCustomHotkey(index)"
-              class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
-              title="Remove shortcut"
-            >
-              <X class="w-4 h-4" />
-            </button>
+          <div v-for="(hotkey, index) in customHotkeys" :key="hotkey.id" class="border rounded-md bg-neutral-800/50 border-neutral-700">
+            <div class="flex items-center gap-2 p-2">
+              <!-- Event Name Input -->
+              <input
+                v-model="hotkey.eventName"
+                type="text"
+                placeholder="EVENT_NAME"
+                class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-600 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+                @input="() => debouncedSave(saveCustomHotkeys)"
+              />
+
+              <!-- Keyboard Shortcut Input -->
+              <KeyboardShortcutInput
+                v-model="hotkey.shortcut"
+                @change="updateCustomHotkey(index)"
+                container-class="flex-1"
+                placeholder="Click to set shortcut"
+                :show-reset-button="false"
+              />
+
+              <!-- Remove Button -->
+              <button
+                @click="removeCustomHotkey(index)"
+                class="p-1 rounded-md hover:bg-neutral-700 hover:text-red-400 transition-all"
+                title="Remove shortcut"
+              >
+                <X class="w-4 h-4 text-neutral-400" />
+              </button>
+            </div>
           </div>
         </div>
-        
-        <!-- Empty state -->
-        <div v-else class="py-6 text-center bg-neutral-900/30 border border-dashed border-neutral-700/50 rounded-lg mb-4">
-          <Keyboard class="w-8 h-8 mx-auto mb-2 text-neutral-600" />
-          <p class="text-sm text-neutral-500">No custom shortcuts defined</p>
-        </div>
-        
+
         <!-- Add button -->
         <button
           @click="addCustomHotkey"
-          class="px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all flex items-center gap-1.5"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
         >
-          <Plus class="w-3.5 h-3.5" />
+          <Plus class="w-4 h-4" />
           Add Custom Shortcut
         </button>
       </div>
@@ -117,7 +113,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { Keyboard, X, Plus } from 'lucide-vue-next'
+import { X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import { useDebounceFn } from '@/core/composables/useDebounce'
 import type { KeyboardShortcut } from '@app/api'
