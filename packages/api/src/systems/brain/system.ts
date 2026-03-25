@@ -51,6 +51,7 @@ export type BrainInternalEvents =
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
+  | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
@@ -396,7 +397,7 @@ export const brainSystem = setup({
           eventType: queuedEvent.eventType,
           payload: queuedEvent.payload,
           targetFlowId: queuedEvent.targetFlowId,
-        } as any, { delay: 0 });
+        }, { delay: 0 });
       }
       enqueue.assign({ eventQueue: [] });
     }),

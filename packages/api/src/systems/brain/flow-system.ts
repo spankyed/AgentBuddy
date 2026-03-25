@@ -60,6 +60,8 @@ type TNodeFlowMachineContext = {
     eventTNodeId: EARS.EntityId;
     executionContext: ExecutionContext;
   }>;
+  // Deferred events when brain is paused (replayed on resume)
+  pendingEvents: Array<Record<string, any>>;
 };
 
 type ChildCompletedEvent =
@@ -184,6 +186,15 @@ export function createFlowNodeSystem(
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
           const typedEv = event as { type: string; [key: string]: any };
           const eventType = typedEv.type;
+
+          // Brain is paused — defer the raw event for replay on resume
+          if (isBrainPaused()) {
+            enqueue.assign({
+              pendingEvents: ({ context }) => [...context.pendingEvents, { ...typedEv }],
+            });
+            brainInspect(`Flow ${flowTNodeId} deferring event "${eventType}" (brain paused)`);
+            return;
+          }
 
           // Get ALL event nodes matching this event type (not just the first)
           const matchingEventNodes = context.eventNodes.filter(
@@ -348,6 +359,7 @@ export function createFlowNodeSystem(
             enqueue.raise({ type: 'FLOW_COMPLETE' });
           } else if (nextNode && isBrainPaused()) {
             // Brain is paused — defer spawning the next step
+            brainInspect(`Flow ${flowTNodeId} deferring next step (brain paused)`, { nextNodeId: nextNode.id });
             enqueue.assign({
               pendingNextSteps: ({ context }) => [
                 ...context.pendingNextSteps,
@@ -417,6 +429,9 @@ export function createFlowNodeSystem(
         })),
         forwardTNodeUpdate: sendParent(({ event }) => event),
         resumeFlowSteps: enqueueActions(({ context, enqueue, system }) => {
+          brainInspect(`Flow ${flowTNodeId} resuming ${context.pendingNextSteps.length} deferred steps, ${context.pendingEvents.length} deferred events`);
+
+          // Resume deferred next-steps
           for (const pending of context.pendingNextSteps) {
             const [machine, systemId, tNode] = createChildNode(
               pending.nextNode,
@@ -438,7 +453,12 @@ export function createFlowNodeSystem(
             });
           }
 
-          enqueue.assign({ pendingNextSteps: [] });
+          // Replay deferred events — handleTrackEvent processes them normally since brain is unpaused
+          for (const pendingEvent of context.pendingEvents) {
+            enqueue.raise(pendingEvent as any);
+          }
+
+          enqueue.assign({ pendingNextSteps: [], pendingEvents: [] });
         }),
       },
       guards: {},
@@ -460,6 +480,7 @@ export function createFlowNodeSystem(
         hasParent: hasParent,
         isRootFlow: isRootFlow,
         pendingNextSteps: [],
+        pendingEvents: [],
       }),
       on: {
         ...eventHandlers,
