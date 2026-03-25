@@ -161,6 +161,7 @@ const emit = defineEmits<{
   (e: 'send-message', message: string): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
+  (e: 'voice-input'): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
@@ -270,6 +271,7 @@ const handleButtonClick = (action: string) => {
   if (props.disabled) return
   if (action === 'voice-input') {
     toggleSpeech()
+    emit('voice-input')
     return
   }
   // @ts-expect-error - dynamic event emission
