@@ -101,12 +101,10 @@ export class SpeechHelperProcess {
 
       this.process.on('exit', (code, signal) => {
         console.log(`[SpeechHelper] Exited with code ${code}, signal ${signal}`);
-        if (!settled) {
-          onEarlyExit();
-        } else {
-          this.process = null;
-        }
+        this.process = null;
       });
+
+      this.process.on('exit', onEarlyExit);
 
       this.process.stderr?.on('data', (data) => {
         console.error(`[SpeechHelper] stderr: ${data.toString().trim()}`);
