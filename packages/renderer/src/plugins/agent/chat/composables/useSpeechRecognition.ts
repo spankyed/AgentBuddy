@@ -13,6 +13,11 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
 
   const api = window.electronAPI?.speechRecognition
 
+  function handleError(err: unknown, fallback: string) {
+    isListening.value = false
+    options.onError?.(err instanceof Error ? err.message : fallback)
+  }
+
   onMounted(async () => {
     if (!api) return
     try {
@@ -35,11 +40,18 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
               options.onError?.(event.message || event.code || 'Unknown error')
               isListening.value = false
               break
+            case 'ready':
+            case 'partial':
+              break
+            default: {
+              const _exhaustive: never = event
+              break
+            }
           }
         })
       }
     } catch (err) {
-      options.onError?.(err instanceof Error ? err.message : 'Speech recognition unavailable')
+      handleError(err, 'Speech recognition unavailable')
     }
   })
 
@@ -52,8 +64,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
         await api.start(options.lang || 'en-US')
       }
     } catch (err) {
-      isListening.value = false
-      options.onError?.(err instanceof Error ? err.message : 'Speech recognition error')
+      handleError(err, 'Speech recognition error')
     }
   }
 
@@ -62,13 +73,14 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
     try {
       await api.stop()
     } catch (err) {
-      isListening.value = false
-      options.onError?.(err instanceof Error ? err.message : 'Failed to stop speech recognition')
+      handleError(err, 'Failed to stop speech recognition')
     }
   }
 
   onUnmounted(() => {
-    stop()
+    if (api && isListening.value) {
+      api.stop().catch(() => {})
+    }
     removeListener?.()
   })
 
