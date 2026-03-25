@@ -7,6 +7,7 @@ import {hardwareAccelerationMode} from './modules/HardwareAccelerationModule.js'
 // import {autoUpdater} from './modules/AutoUpdater.js';
 import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
 import {allowExternalUrls} from './modules/ExternalUrls.js';
+import {grantMicrophonePermission} from './modules/MicrophonePermission.js';
 import {createApiServer} from './modules/api-server/ApiServer.js';
 import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
@@ -33,6 +34,7 @@ export async function initApp(initConfig: AppInitConfig) {
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))
 
     // Security
+    .init(grantMicrophonePermission())
     .init(allowInternalOrigins(
       new Set(initConfig.renderer instanceof URL ? [initConfig.renderer.origin] : []),
     ))

@@ -14,6 +14,7 @@ import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/s
 import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/system';
 import { id as code, systemMachine as codeSystem, incomingSystemEvents as CodeSystemEvents } from '@/systems/code/system';
 import { notes, notesSystem, NotesSystemEvents } from '@/systems/notes/system';
+import { transcription, transcriptionSystem, TranscriptionSystemEvents } from '@/systems/transcription/system';
 
 export default {
   [settings]: settingsSystem,
@@ -27,6 +28,7 @@ export default {
   [library]: librarySystem,
   [code]: codeSystem,
   [notes]: notesSystem,
+  [transcription]: transcriptionSystem,
   // [logs]: logsSystem,
 } as const;
 
@@ -42,7 +44,8 @@ export const events = mergeSystems(
   ActionsSystemEvents,
   LibrarySystemEvents,
   CodeSystemEvents,
-  NotesSystemEvents
+  NotesSystemEvents,
+  TranscriptionSystemEvents
 );
 
 export { backendSystem } from "@/systems/backend";

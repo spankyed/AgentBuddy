@@ -2981,6 +2981,21 @@ declare const events: {
         systemId: "notes";
         directory: string;
         format: "json" | "markdown";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"TRANSCRIBE">;
+        systemId: zod.ZodLiteral<"transcription">;
+        audio: zod.ZodString;
+        mimeType: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TRANSCRIBE";
+        systemId: "transcription";
+        audio: string;
+        mimeType: string;
+    }, {
+        type: "TRANSCRIBE";
+        systemId: "transcription";
+        audio: string;
+        mimeType: string;
     }>];
     readonly outgoing: {
         type: "SETTINGS_LOADED";
@@ -3897,6 +3912,14 @@ declare const events: {
         type: "NOTES_EXPORT_FAILED";
         errors: string[];
         pluginId: "notes";
+    } | {
+        type: "TRANSCRIPTION_RESULT";
+        text: string;
+        pluginId: "transcription";
+    } | {
+        type: "TRANSCRIPTION_ERROR";
+        error: string;
+        pluginId: "transcription";
     };
 };
 
@@ -4382,6 +4405,11 @@ type ModelConfig = {
     model: string;
     apiKey?: string;
 };
+/**
+ * Get API key for a provider
+ * Priority: explicitApiKey > production settings > env vars
+ */
+declare function getApiKey(providerName: string, explicitApiKey?: string): string;
 declare function streamText(params: {
     model: ModelConfig;
     prompt?: string;
@@ -4425,6 +4453,7 @@ const llm = /*#__PURE__*/Object.freeze({
   ProviderName: ProviderName,
   generateObject: generateObject,
   generateText: generateText,
+  getApiKey: getApiKey,
   streamObject: streamObject,
   streamText: streamText
 });

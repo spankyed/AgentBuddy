@@ -1,63 +1,116 @@
 import { ref, onUnmounted } from 'vue'
+import { trpc } from '@/core/trpc'
 
 interface SpeechRecognitionOptions {
-  lang?: string
   onResult?: (transcript: string) => void
   onError?: (error: string) => void
 }
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
-  const SpeechRecognitionCtor =
-    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-  const isSupported = !!SpeechRecognitionCtor
+  const isSupported = !!navigator.mediaDevices?.getUserMedia
   const isListening = ref(false)
+  const isTranscribing = ref(false)
 
-  let recognition: any = null
+  let mediaRecorder: MediaRecorder | null = null
+  let audioChunks: Blob[] = []
+  let stream: MediaStream | null = null
+  let busUnsubscribe: (() => void) | null = null
 
-  if (isSupported) {
-    recognition = new SpeechRecognitionCtor()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = options.lang || 'en-US'
+  // Subscribe to backend transcription events
+  function setupBusSubscription() {
+    if (busUnsubscribe) return
 
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          options.onResult?.(event.results[i][0].transcript)
+    const subscription = trpc.bus.sub.subscribe(undefined, {
+      onData: (event: any) => {
+        if (event.type === 'TRANSCRIPTION_RESULT' && event.pluginId === 'transcription') {
+          isTranscribing.value = false
+          options.onResult?.(event.text)
+        } else if (event.type === 'TRANSCRIPTION_ERROR' && event.pluginId === 'transcription') {
+          isTranscribing.value = false
+          options.onError?.(event.error)
+        }
+      },
+      onError: (error: any) => {
+        console.error('Transcription subscription error:', error)
+      },
+    })
+
+    busUnsubscribe = () => subscription.unsubscribe()
+  }
+
+  async function startRecording() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioChunks = []
+
+      mediaRecorder = new MediaRecorder(stream)
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data)
         }
       }
-    }
 
-    recognition.onerror = (event: any) => {
-      options.onError?.(event.error)
-      isListening.value = false
-    }
+      mediaRecorder.onstop = async () => {
+        // Release mic
+        stream?.getTracks().forEach(track => track.stop())
+        stream = null
 
-    recognition.onend = () => {
-      isListening.value = false
+        if (audioChunks.length === 0) return
+
+        const mimeType = mediaRecorder?.mimeType || 'audio/webm'
+        const audioBlob = new Blob(audioChunks, { type: mimeType })
+        audioChunks = []
+
+        // Convert to base64
+        const arrayBuffer = await audioBlob.arrayBuffer()
+        const base64 = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        )
+
+        isTranscribing.value = true
+
+        // Send to backend transcription system
+        trpc.bus.send.mutate({
+          systemId: 'transcription',
+          type: 'TRANSCRIBE',
+          audio: base64,
+          mimeType,
+        } as any)
+      }
+
+      setupBusSubscription()
+      mediaRecorder.start()
+      isListening.value = true
+    } catch (err: any) {
+      options.onError?.(err.message || 'Failed to access microphone')
     }
   }
 
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop()
+    }
+    isListening.value = false
+  }
+
   function toggle() {
-    if (!recognition) return
     if (isListening.value) {
-      recognition.stop()
+      stopRecording()
     } else {
-      recognition.start()
-      isListening.value = true
+      startRecording()
     }
   }
 
   function stop() {
-    if (recognition && isListening.value) {
-      recognition.stop()
-    }
+    stopRecording()
   }
 
   onUnmounted(() => {
     stop()
+    stream?.getTracks().forEach(track => track.stop())
+    busUnsubscribe?.()
   })
 
-  return { isSupported, isListening, toggle, stop }
+  return { isSupported, isListening, isTranscribing, toggle, stop }
 }

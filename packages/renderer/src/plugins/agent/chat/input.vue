@@ -194,11 +194,12 @@ const leftButtons = computed<ActionButton[]>(() => {
     },
   ]
   if (speechSupported) {
+    const active = isListening.value || isTranscribing.value
     buttons.push({
-      icon: isListening.value ? MicOff : Mic,
-      label: isListening.value ? 'Stop listening' : 'Voice input',
+      icon: active ? MicOff : Mic,
+      label: active ? 'Stop listening' : 'Voice input',
       action: 'voice-input',
-      class: isListening.value ? 'text-red-400 animate-pulse' : undefined,
+      class: active ? 'text-red-400 animate-pulse' : undefined,
     })
   }
   return buttons
@@ -208,7 +209,7 @@ const leftButtons = computed<ActionButton[]>(() => {
 const editorRef = ref<HTMLDivElement | null>(null)
 const messageContent = ref('')
 
-const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
+const { isSupported: speechSupported, isListening, isTranscribing, toggle: toggleSpeech } = useSpeechRecognition({
   onResult(transcript) {
     const editor = editorRef.value
     if (!editor) return

@@ -52,7 +52,7 @@ const PROVIDER_CONFIGS = {
  * Get API key for a provider
  * Priority: explicitApiKey > production settings > env vars
  */
-function getApiKey(providerName: string, explicitApiKey?: string): string {
+export function getApiKey(providerName: string, explicitApiKey?: string): string {
   const baseProvider = (ALIASES[providerName] || providerName) as ProviderName;
   // Use explicit API key if provided
   if (explicitApiKey) return explicitApiKey;
