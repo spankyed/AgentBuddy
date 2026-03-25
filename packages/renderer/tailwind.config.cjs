@@ -42,6 +42,9 @@ module.exports = {
       },
       animation: {
         'slide-down': 'slide-down 0.2s ease-out'
+      },
+      height: {
+        header: '42px',
       }
     }
   },

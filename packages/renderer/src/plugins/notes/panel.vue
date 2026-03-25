@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-[9px] border-b border-neutral-800"
+    <div class="flex items-center justify-between h-header px-4 border-b border-neutral-800"
       @dragover.prevent="handleRootDragOver"
       @drop="handleRootDrop"
     >
