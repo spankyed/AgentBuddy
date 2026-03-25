@@ -3,47 +3,43 @@ import type { AppModule } from '../../AppModule.js';
 import type { SpeechEvent } from './protocol.js';
 import { SpeechHelperProcess } from './SpeechHelperProcess.js';
 
-function sendSpeechEvent(sender: WebContents | null, event: SpeechEvent): void {
-  if (sender && !sender.isDestroyed()) {
-    sender.send('speech:event', event);
-  }
-}
-
 export function createSpeechRecognition(): AppModule {
   let helper: SpeechHelperProcess | null = null;
   let activeWebContents: WebContents | null = null;
 
+  const emit = (event: SpeechEvent) => {
+    if (activeWebContents && !activeWebContents.isDestroyed()) {
+      activeWebContents.send('speech:event', event);
+    }
+  };
+
+  async function ensureHelper(): Promise<SpeechHelperProcess> {
+    if (helper?.isRunning()) return helper;
+    helper = new SpeechHelperProcess(emit);
+    await helper.spawn();
+    return helper;
+  }
+
   return {
     enable() {
-      ipcMain.handle('speech:isAvailable', () => {
-        return { available: SpeechHelperProcess.isAvailable() };
-      });
+      ipcMain.handle('speech:isAvailable', () => ({
+        available: SpeechHelperProcess.isAvailable(),
+      }));
 
       ipcMain.handle('speech:start', async (_event, lang?: string) => {
         activeWebContents = _event.sender;
-
-        // Re-spawn if helper died since last use
-        if (helper && !helper.isRunning()) {
+        try {
+          helper = await ensureHelper();
+        } catch (err) {
+          console.error('[SpeechRecognition] Failed to spawn helper:', err);
           helper = null;
+          emit({
+            event: 'error',
+            code: 'spawn_failed',
+            message: err instanceof Error ? err.message : 'Failed to start speech helper',
+          });
+          return;
         }
-
-        // Lazy spawn: only start helper on first use
-        if (!helper) {
-          helper = new SpeechHelperProcess((evt) => sendSpeechEvent(activeWebContents, evt));
-          try {
-            await helper.spawn();
-          } catch (err) {
-            console.error('[SpeechRecognition] Failed to spawn helper:', err);
-            helper = null;
-            sendSpeechEvent(activeWebContents, {
-              event: 'error',
-              code: 'spawn_failed',
-              message: err instanceof Error ? err.message : 'Failed to start speech helper',
-            });
-            return;
-          }
-        }
-
         helper.sendCommand({ command: 'start', lang });
       });
 
