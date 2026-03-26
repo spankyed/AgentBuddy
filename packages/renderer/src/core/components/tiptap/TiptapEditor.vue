@@ -3,10 +3,12 @@
     class="tiptap-wrapper"
     :class="[`tiptap-${mode}`, $attrs.class]"
   >
-    <template v-if="mode === 'editor' && editor">
-      <TiptapBlockMenu :editor="editor" />
-      <TiptapBubbleMenu :editor="editor" />
-      <TiptapImageBubbleMenu :editor="editor" />
+    <template v-if="editor">
+      <template v-if="mode === 'editor' && variant === 'full'">
+        <TiptapBlockMenu :editor="editor" />
+        <TiptapImageBubbleMenu :editor="editor" />
+      </template>
+      <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" :variant="variant" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
   </div>
@@ -16,7 +18,7 @@
 import { ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
-import { createExtensions, type TiptapMode } from './extensions'
+import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
@@ -24,12 +26,14 @@ import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
   mode: TiptapMode
+  variant?: TiptapVariant
   modelValue?: string
   placeholder?: string
   disabled?: boolean
   editorClass?: string
   entityId?: string
 }>(), {
+  variant: 'full',
   modelValue: '',
   placeholder: '',
   disabled: false,
@@ -122,6 +126,7 @@ async function uploadAndInsertImage(file: File, editorInstance: ReturnType<typeo
 const editor = useEditor({
   extensions: createExtensions({
     mode: props.mode,
+    variant: props.variant,
     placeholder: props.placeholder,
   }),
   content: props.modelValue,

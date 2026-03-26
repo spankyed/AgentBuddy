@@ -61,7 +61,7 @@
 
       <!-- Message content -->
       <div class="leading-relaxed text-[15px]">
-        <TiptapEditor mode="viewer" :model-value="message.text" />
+        <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" />
       </div>
 
       <!-- Block-based interactions -->

@@ -12,17 +12,16 @@
 
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
-          <!-- Contenteditable div -->
-          <div
-            ref="editorRef"
-            :contenteditable="!disabled"
-            translate="no"
-            class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
-            :class="{ 'cursor-not-allowed': disabled }"
-            @input="handleInput"
-            @keydown="handleKeydown"
-            :data-placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
-          ></div>
+          <TiptapEditor
+            ref="tiptapRef"
+            mode="input"
+            variant="chat"
+            :placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
+            :disabled="disabled"
+            editor-class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
+            @submit="handleSubmit"
+            @update:model-value="onContentUpdate"
+          />
         </div>
 
         <!-- Buttons row -->
@@ -131,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical } from 'lucide-vue-next'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import {
@@ -145,6 +144,7 @@ import Square from './square-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode } from '@app/api'
 
@@ -175,19 +175,20 @@ interface ActionButton {
   class?: string
 }
 
-const editorRef = ref<HTMLDivElement | null>(null)
+const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
+
+const onContentUpdate = (md: string) => {
+  messageContent.value = md
+}
 
 const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
   onResult(transcript) {
-    const editor = editorRef.value
+    const editor = tiptapRef.value?.editor
     if (!editor) return
     const trimmed = transcript.trim()
     if (!trimmed) return
-    const current = editor.innerText
-    editor.innerText = current ? current + ' ' + trimmed : trimmed
-    messageContent.value = editor.innerText
-    editor.classList.remove('empty')
+    editor.commands.insertContent(trimmed + ' ')
   },
 })
 
@@ -231,42 +232,6 @@ watch(() => props.currentThread?.id, () => {
   }
 })
 
-onMounted(() => {
-  // Set up placeholder behavior
-  const editor = editorRef.value
-  if (editor) {
-    editor.addEventListener('focus', () => {
-      if (editor.textContent === '') {
-        editor.classList.remove('empty')
-      }
-    })
-
-    editor.addEventListener('blur', () => {
-      if (editor.textContent === '') {
-        editor.classList.add('empty')
-      }
-    })
-
-    // Initialize as empty
-    editor.classList.add('empty')
-  }
-})
-
-const handleInput = (e: Event) => {
-  if (props.disabled) return
-  const target = e.target as HTMLDivElement
-  messageContent.value = target.innerText || ''
-}
-
-const handleKeydown = (e: KeyboardEvent) => {
-  if (props.disabled) return
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    handleSubmit()
-  }
-}
-
-
 const handleButtonClick = (action: string) => {
   if (props.disabled) return
   if (action === 'voice-input') {
@@ -290,12 +255,12 @@ const handlePhaseChange = (newPhase: string) => {
 
 const handleSubmit = () => {
   if (props.disabled) return
-  if (messageContent.value.trim()) {
-    emit('send-message', messageContent.value)
-    if (editorRef.value) {
-      editorRef.value.innerText = ''
-      editorRef.value.classList.add('empty')
-    }
+  const editor = tiptapRef.value?.editor
+  if (!editor) return
+  const md = (editor.storage as any).markdown.getMarkdown() as string
+  if (md.trim()) {
+    emit('send-message', md)
+    editor.commands.clearContent(true)
     messageContent.value = ''
   }
 }
@@ -304,17 +269,5 @@ const handleSubmit = () => {
 <style lang="scss" module>
 .input {
   border-color: rgb(60 60 60);;
-}
-
-[contenteditable].empty:before {
-  content: attr(data-placeholder);
-  color: #666;
-  cursor: text;
-  pointer-events: none;
-}
-
-/* Hide the placeholder when focused and empty */
-[contenteditable]:focus.empty:before {
-  content: '';
 }
 </style>
