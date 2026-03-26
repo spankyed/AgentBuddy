@@ -224,7 +224,7 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
       codeBlock: false,
       link: false,
       blockquote: false,
-      ...(isChat && {
+      ...(isChat && mode !== 'viewer' && {
         heading: false,
         bold: false,
         italic: false,
