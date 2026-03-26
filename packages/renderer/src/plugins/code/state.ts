@@ -209,6 +209,14 @@ const codeState = setup({
         enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
     }),
 
+    notifyDirectoryChange: ({ event, context, system }) => {
+      const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
+      if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
+        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
+        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+        system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
+      }
+    },
     saveTabsAction: ({ context }) => {
       // Don't save tabs until they've been restored (to avoid overwriting with empty array)
       if (!context.tabsRestored) {
@@ -255,13 +263,6 @@ const codeState = setup({
           updates.openFiles = reorderedFiles
           updates.pendingTabOrder = undefined // Clear pending order after applying
         }
-      }
-
-      // If base directory changed, notify commit, PR, and search panels to refresh
-      if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
-        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
-        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
-        system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
       }
 
       return updates
@@ -866,7 +867,7 @@ const codeState = setup({
         },
         // Simple state update from child machines
         UPDATE_STATE: {
-          actions: ['updateState', 'saveTabsAction']
+          actions: ['notifyDirectoryChange', 'updateState', 'saveTabsAction']
         },
         // Plugin initialization
         PLUGIN_ACTIVATED: {
