@@ -44,7 +44,7 @@
     </div>
 
     <!-- Show error if no directory selected -->
-    <NoDirectoryState v-else-if="isNoDirectoryError" />
+    <NoDirectoryState v-else-if="isNoDirectoryError || !baseDirectory" />
 
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
@@ -342,6 +342,7 @@ const commitsBehind = useSelector(commitActor, (state: any) => state.context.com
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
 const isPulling = useSelector(commitActor, (state: any) => state.context.isPulling)
 const isGeneratingMessage = useSelector(commitActor, (state: any) => state.context.isGeneratingMessage)
+const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 // Local state
 const showDiscardAllDialog = ref(false)

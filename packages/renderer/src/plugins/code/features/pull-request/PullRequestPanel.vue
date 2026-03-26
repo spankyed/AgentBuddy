@@ -27,7 +27,7 @@
     </div>
 
     <!-- Show error if no directory selected -->
-    <NoDirectoryState v-else-if="isNoDirectoryError" />
+    <NoDirectoryState v-else-if="isNoDirectoryError || !baseDirectory" />
 
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
@@ -119,6 +119,7 @@ const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
 const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
 const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
+const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 // Computed
 const isNoDirectoryError = computed(() =>
