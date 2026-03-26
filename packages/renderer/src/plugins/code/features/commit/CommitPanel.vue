@@ -44,9 +44,7 @@
     </div>
 
     <!-- Show error if no directory selected -->
-    <div v-else-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
-      <div class="text-sm text-red-400">{{ gitError }}</div>
-    </div>
+    <NoDirectoryState v-else-if="isNoDirectoryError" />
 
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
@@ -320,12 +318,12 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
+import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const commitActor = codeActor.system.get('commit')!
-
 
 // State selectors from commit actor
 const gitStatus = useSelector(commitActor, (state: any) => state.context.gitStatus)

@@ -13,9 +13,7 @@
     </CodePanelHeader>
 
     <!-- Show only error if no directory selected -->
-    <div v-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
-      <div class="text-sm text-red-400">{{ searchError }}</div>
-    </div>
+    <NoDirectoryState v-if="isNoDirectoryError" />
 
     <!-- Show normal UI only when directory is selected -->
     <template v-else>
@@ -182,6 +180,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { ChevronRight, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
+import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)

@@ -27,9 +27,7 @@
     </div>
 
     <!-- Show error if no directory selected -->
-    <div v-else-if="isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
-      <div class="text-sm text-red-400">{{ prError }}</div>
-    </div>
+    <NoDirectoryState v-else-if="isNoDirectoryError" />
 
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
@@ -104,6 +102,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { AlertCircle, Loader2, GitBranch, GitPullRequest, RefreshCw, UnfoldVertical, FoldVertical } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
+import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
