@@ -43,18 +43,20 @@
 
 /* Inline code */
 .tiptap-wrapper .ProseMirror code {
-  background: rgb(38 38 38); /* bg-neutral-800 */
+  background: rgb(45 42 40);
+  border: 1px solid rgb(80 80 80);
   border-radius: 0.25rem;
   padding: 0.15em 0.35em;
   font-size: 0.875em;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  color: rgb(235 137 100);
 }
 
 /* Code blocks */
 .tiptap-wrapper .ProseMirror pre {
-  background: rgb(38 38 38); /* bg-neutral-800 */
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
+  background: rgb(30 30 30);
+  border-radius: 0.25rem;
+  padding: 0.15em 0.5em;
   margin: 0.5em 0;
   overflow-x: auto;
 }
@@ -63,8 +65,9 @@
   background: none;
   padding: 0;
   border-radius: 0;
+  border: none;
   font-size: 0.85em;
-  color: rgb(212 212 212);
+  color: rgb(180 185 190);
 }
 
 /* Blockquote */
