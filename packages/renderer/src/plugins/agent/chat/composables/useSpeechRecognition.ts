@@ -9,6 +9,7 @@ interface SpeechRecognitionOptions {
 export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
   const isSupported = ref(false)
   const isListening = ref(false)
+  const pending = ref(false)
   let removeListener: (() => void) | null = null
 
   const api = window.electronAPI?.speechRecognition
@@ -32,13 +33,16 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
               break
             case 'started':
               isListening.value = true
+              pending.value = false
               break
             case 'stopped':
               isListening.value = false
+              pending.value = false
               break
             case 'error':
               options.onError?.(event.message || event.code || 'Unknown error')
               isListening.value = false
+              pending.value = false
               break
             case 'ready':
             case 'partial':
@@ -61,9 +65,11 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
       if (isListening.value) {
         await api.stop()
       } else {
+        pending.value = true
         await api.start(options.lang || 'en-US')
       }
     } catch (err) {
+      pending.value = false
       handleError(err, 'Speech recognition error')
     }
   }
@@ -78,7 +84,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
   }
 
   onUnmounted(() => {
-    if (api && isListening.value) {
+    if (api && (isListening.value || pending.value)) {
       api.stop().catch(() => {})
     }
     removeListener?.()
