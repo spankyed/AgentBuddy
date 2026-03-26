@@ -123,6 +123,86 @@ async function uploadAndInsertImage(file: File, editorInstance: ReturnType<typeo
   }
 }
 
+const editorOnlyProps = props.mode === 'editor' ? {
+  handleClick: (_view: any, _pos: any, event: MouseEvent) => {
+    // Sub-document links open on regular click (no modifier needed)
+    const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
+    if (subDocumentEl) {
+      const noteId = subDocumentEl.getAttribute('data-note-id')
+      if (noteId) {
+        emit('noteLinkClick', noteId)
+        return true
+      }
+    }
+    // document:// inline links also open on regular click (no modifier needed)
+    const anchor = (event.target as HTMLElement).closest('a')
+    const href = anchor?.getAttribute('href')
+    if (href?.startsWith('document://')) {
+      emit('noteLinkClick', href.slice('document://'.length))
+      return true
+    }
+    // Other links require ctrl/cmd+click in editor mode
+    if (!(event.ctrlKey || event.metaKey)) return false
+    if (!href) return false
+    if (href.startsWith('note://')) {
+      emit('noteLinkClick', href.slice('note://'.length))
+      return true
+    }
+    const url = /^https?:\/\//.test(href) ? href : `https://${href}`
+    window.electronAPI?.shell?.openExternal(url)
+    return true
+  },
+  handlePaste: (_view: any, event: ClipboardEvent) => {
+    if (!props.entityId) return false
+    const items = event.clipboardData?.items
+    if (!items) return false
+
+    let handled = false
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (!file) continue
+        if (!handled) { event.preventDefault(); handled = true }
+        uploadAndInsertImage(file, editor.value)
+      }
+    }
+    return handled
+  },
+  handleDrop: (view: any, event: DragEvent) => {
+    if (!props.entityId) return false
+    const files = event.dataTransfer?.files
+    if (!files?.length) return false
+
+    let handled = false
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        if (!handled) { event.preventDefault(); handled = true }
+        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        uploadAndInsertImage(file, editor.value, coords?.pos)
+      }
+    }
+    return handled
+  },
+} : {}
+
+const editorOnlyTransaction = props.mode === 'editor' ? {
+  onTransaction: ({ transaction }: { transaction: any }) => {
+    if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
+    const oldIds = collectSubDocumentLinkIds(transaction.before)
+    const newIds = collectSubDocumentLinkIds(transaction.doc)
+    for (const id of oldIds) {
+      if (!newIds.has(id)) {
+        emit('subDocumentLinkDeleted', id)
+      }
+    }
+    for (const id of newIds) {
+      if (!oldIds.has(id)) {
+        emit('subDocumentLinkRestored', id)
+      }
+    }
+  },
+} : {}
+
 const editor = useEditor({
   extensions: createExtensions({
     mode: props.mode,
@@ -144,65 +224,7 @@ const editor = useEditor({
       }
       return false
     },
-    handleClick: (_view, _pos, event) => {
-      // Sub-document links open on regular click (no modifier needed)
-      const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
-      if (subDocumentEl) {
-        const noteId = subDocumentEl.getAttribute('data-note-id')
-        if (noteId) {
-          emit('noteLinkClick', noteId)
-          return true
-        }
-      }
-      // document:// inline links also open on regular click (no modifier needed)
-      const anchor = (event.target as HTMLElement).closest('a')
-      const href = anchor?.getAttribute('href')
-      if (href?.startsWith('document://')) {
-        emit('noteLinkClick', href.slice('document://'.length))
-        return true
-      }
-      // Other links require ctrl/cmd+click in editor mode
-      if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
-      if (!href) return false
-      if (href.startsWith('note://')) {
-        emit('noteLinkClick', href.slice('note://'.length))
-        return true
-      }
-      const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-      window.electronAPI?.shell?.openExternal(url)
-      return true
-    },
-    handlePaste: (_view, event) => {
-      if (props.mode !== 'editor' || !props.entityId) return false
-      const items = event.clipboardData?.items
-      if (!items) return false
-
-      let handled = false
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile()
-          if (!file) continue
-          if (!handled) { event.preventDefault(); handled = true }
-          uploadAndInsertImage(file, editor.value)
-        }
-      }
-      return handled
-    },
-    handleDrop: (view, event) => {
-      if (props.mode !== 'editor' || !props.entityId) return false
-      const files = event.dataTransfer?.files
-      if (!files?.length) return false
-
-      let handled = false
-      for (const file of files) {
-        if (file.type.startsWith('image/')) {
-          if (!handled) { event.preventDefault(); handled = true }
-          const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
-          uploadAndInsertImage(file, editor.value, coords?.pos)
-        }
-      }
-      return handled
-    },
+    ...editorOnlyProps,
   },
   onCreate: ({ editor: e }) => {
     selectStart(e)
@@ -214,21 +236,7 @@ const editor = useEditor({
     lastResetMarkdown.value = null
     emit('update:modelValue', md)
   },
-  onTransaction: ({ transaction }) => {
-    if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
-    const oldIds = collectSubDocumentLinkIds(transaction.before)
-    const newIds = collectSubDocumentLinkIds(transaction.doc)
-    for (const id of oldIds) {
-      if (!newIds.has(id)) {
-        emit('subDocumentLinkDeleted', id)
-      }
-    }
-    for (const id of newIds) {
-      if (!oldIds.has(id)) {
-        emit('subDocumentLinkRestored', id)
-      }
-    }
-  },
+  ...editorOnlyTransaction,
 })
 
 // Sync modelValue changes from parent into the editor
