@@ -44,7 +44,7 @@
     </div>
 
     <!-- Show error if no directory selected -->
-    <NoDirectoryState v-else-if="isNoDirectoryError || !baseDirectory" />
+    <NoDirectoryState v-else-if="!baseDirectory" />
 
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>

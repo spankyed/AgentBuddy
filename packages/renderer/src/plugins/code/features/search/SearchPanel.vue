@@ -13,7 +13,7 @@
     </CodePanelHeader>
 
     <!-- Show only error if no directory selected -->
-    <NoDirectoryState v-if="isNoDirectoryError || !baseDirectory" />
+    <NoDirectoryState v-if="!baseDirectory" />
 
     <!-- Show normal UI only when directory is selected -->
     <template v-else>
