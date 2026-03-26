@@ -104,7 +104,7 @@
       <!-- Add Project Button -->
       <button
         @click="addProject"
-        class="px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all flex items-center gap-1.5"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
       >
         <Plus class="w-3.5 h-3.5" />
         Add Project
