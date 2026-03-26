@@ -80,13 +80,14 @@
       </div>
 
       <!-- Phases list for selected mode -->
-      <div v-if="selectedMode" class="space-y-4">
+      <div v-if="selectedMode">
+        <div v-if="(selectedMode.phases || []).length > 0" class="space-y-3 mb-4">
         <div
           v-for="(phase, index) in (selectedMode.phases || [])"
           :key="phase.id"
-          class="group"
+          class="border rounded-md bg-neutral-800/50 border-neutral-700"
         >
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 p-2">
             <input
               v-model="phase.name"
               type="text"
@@ -103,7 +104,7 @@
             />
             <button
               @click="removePhase(index)"
-              class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+              class="p-1 rounded-md hover:bg-neutral-700 hover:text-red-400 transition-all text-neutral-400"
               title="Remove phase"
             >
               <X class="w-4 h-4" />
@@ -111,15 +112,12 @@
           </div>
         </div>
 
-        <!-- No phases message -->
-        <div v-if="!selectedMode.phases || selectedMode.phases.length === 0" class="text-center py-4 text-neutral-500">
-          No phases configured for this mode
         </div>
 
         <!-- Add phase button -->
         <button
           @click="addPhase"
-          class="px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all flex items-center gap-1.5"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
         >
           <Plus class="w-3.5 h-3.5" />
           Add Phase
