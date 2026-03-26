@@ -27,6 +27,10 @@ export default /** @type import('electron-builder').Configuration */
     gatekeeperAssess: false,
     entitlements: 'buildResources/entitlements.mac.plist',
     entitlementsInherit: 'buildResources/entitlements.mac.plist',
+    extendInfo: {
+      NSMicrophoneUsageDescription: 'AgentBuddy needs microphone access for voice input.',
+      NSSpeechRecognitionUsageDescription: 'AgentBuddy uses speech recognition to convert voice to text.',
+    },
     target: [
       {
         target: 'dmg',
@@ -117,6 +121,16 @@ export default /** @type import('electron-builder').Configuration */
     //   to: 'api/local_cache',
     //   filter: ['**/*']
     // }
+    {
+      from: 'native/speech/macos/SpeechHelper',
+      to: 'native/speech/SpeechHelper',
+      filter: ['**/*'],
+    },
+    {
+      from: 'native/speech/windows/SpeechHelper.ps1',
+      to: 'native/speech/SpeechHelper.ps1',
+      filter: ['**/*'],
+    },
   ],
   
   // Disable publishing and auto-updater

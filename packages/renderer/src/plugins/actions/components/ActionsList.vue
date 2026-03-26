@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div class="@container flex flex-col h-full bg-neutral-900">
     <!-- Header -->
     <div class="flex items-center justify-between gap-4 px-6 py-3 border-b border-neutral-800">
       <div class="flex items-center gap-2">
@@ -27,7 +27,7 @@
                   @clear-filters="$emit('clear-filters')"
                 />
               </th>
-              <th class="px-6 py-3">Inputs</th>
+              <th class="px-6 py-3 hidden @3xl:table-cell">Inputs</th>
               <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -38,10 +38,10 @@
               class="transition-all duration-200 cursor-pointer group hover:bg-neutral-800"
               @click="$emit('select', action.id)"
             >
-              <td class="px-6 py-1.5">
+              <td class="px-6 py-1.5 whitespace-nowrap">
                 <span class="text-sm font-medium text-neutral-100">{{ action.label }}</span>
               </td>
-              <td class="px-6 py-1.5">
+              <td class="px-6 py-1.5 min-w-[200px]">
                 <span class="text-sm text-neutral-400 line-clamp-1" :title="action.description">
                   {{ action.description || 'No description' }}
                 </span>
@@ -55,7 +55,7 @@
                   {{ getCategoryName(action.category) }}
                 </span>
               </td>
-              <td class="px-6 py-1.5">
+              <td class="px-6 py-1.5 hidden @3xl:table-cell">
                 <div class="flex items-center gap-1.5 overflow-hidden">
                   <template v-if="Object.keys(action.input || {}).length > 0">
                     <span

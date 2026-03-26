@@ -39,7 +39,8 @@
     "compile:actions": "npm run compile:actions --workspace @app/api",
     "compile:prompts": "npm run compile:prompts --workspace @app/api",
     "compile:flows": "npm run compile:flows --workspace @app/api",
-    "compile:library": "npm run compile:library --workspace @app/api"
+    "compile:library": "npm run compile:library --workspace @app/api",
+    "build:speech-macos": "cd native/speech/macos && bash build.sh"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",

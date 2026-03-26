@@ -6,3 +6,6 @@ search-indices
 untracked
 .serena
 .DS_Store
+
+# Compiled native helpers (built via build scripts)
+native/speech/macos/SpeechHelper
