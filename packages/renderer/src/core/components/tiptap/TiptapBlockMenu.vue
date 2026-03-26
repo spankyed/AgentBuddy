@@ -228,6 +228,7 @@ function onPlusClick() {
 
 function onEditorMouseMove(event: MouseEvent) {
   if (open.value) return
+  if (!props.editor.state.selection.empty) return
 
   const editorDom = props.editor.view.dom as HTMLElement
   const block = walkToDirectChild(event.target as HTMLElement, editorDom) ?? findBlockFromGutter(editorDom, event)
