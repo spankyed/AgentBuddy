@@ -175,6 +175,22 @@ interface ActionButton {
   class?: string
 }
 
+const editorRef = ref<HTMLDivElement | null>(null)
+const messageContent = ref('')
+
+const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
+  onResult(transcript) {
+    const editor = editorRef.value
+    if (!editor) return
+    const trimmed = transcript.trim()
+    if (!trimmed) return
+    const current = editor.innerText
+    editor.innerText = current ? current + ' ' + trimmed : trimmed
+    messageContent.value = editor.innerText
+    editor.classList.remove('empty')
+  },
+})
+
 const leftButtons = computed<ActionButton[]>(() => {
   const buttons: ActionButton[] = [
     {
@@ -204,22 +220,6 @@ const leftButtons = computed<ActionButton[]>(() => {
   return buttons
 })
 
-
-const editorRef = ref<HTMLDivElement | null>(null)
-const messageContent = ref('')
-
-const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
-  onResult(transcript) {
-    const editor = editorRef.value
-    if (!editor) return
-    const trimmed = transcript.trim()
-    if (!trimmed) return
-    const current = editor.innerText
-    editor.innerText = current ? current + ' ' + trimmed : trimmed
-    messageContent.value = editor.innerText
-    editor.classList.remove('empty')
-  },
-})
 
 // Computed properties for cleaner template
 const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
