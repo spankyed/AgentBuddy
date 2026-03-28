@@ -213,11 +213,6 @@ const editor = useEditor({
   editable: props.mode !== 'viewer' && !props.disabled,
   editorProps: {
     handleKeyDown: (view, event) => {
-      if (props.mode === 'input' && event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault()
-        emit('submit')
-        return true
-      }
       if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
         emit('focusTitle')
         return true
