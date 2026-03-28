@@ -214,10 +214,6 @@ const editor = useEditor({
   editorProps: {
     handleKeyDown: (view, event) => {
       if (props.mode === 'input' && event.key === 'Enter' && !event.shiftKey) {
-        const { $head } = view.state.selection
-        if ($head.parent.type.name === 'codeBlock') {
-          return false // let CodeBlock handle Enter (new line / exit)
-        }
         event.preventDefault()
         emit('submit')
         return true
