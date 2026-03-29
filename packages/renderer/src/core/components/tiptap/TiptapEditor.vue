@@ -18,6 +18,7 @@
 import { ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
+import { splitBlock } from '@tiptap/pm/commands'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
@@ -217,6 +218,57 @@ const editor = useEditor({
         emit('focusTitle')
         return true
       }
+
+      // Shift+Enter → new paragraph (not hard break) so markdown input rules work on every line
+      if (props.mode === 'input' && event.key === 'Enter' && event.shiftKey) {
+        const { $head } = view.state.selection
+
+        // Inside a code block → default newline behavior
+        if ($head.parent.type.name === 'codeBlock') {
+          return false
+        }
+
+        // Inside a list item → default list behavior
+        for (let d = $head.depth; d > 0; d--) {
+          if ($head.node(d).type.name === 'listItem') {
+            return false
+          }
+        }
+
+        // Current text looks like a code fence trigger → let input rule fire
+        const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
+        if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) {
+          return false
+        }
+
+        return splitBlock(view.state, view.dispatch)
+      }
+
+      if (props.mode === 'input' && event.key === 'Enter' && !event.shiftKey) {
+        const { $head } = view.state.selection
+
+        // Inside a code block → newline, not submit
+        if ($head.parent.type.name === 'codeBlock') {
+          return false
+        }
+
+        // Inside a list item → let default list behavior handle it
+        for (let d = $head.depth; d > 0; d--) {
+          if ($head.node(d).type.name === 'listItem') {
+            return false
+          }
+        }
+
+        // Current text looks like a code fence trigger → let input rule fire
+        const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
+        if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) {
+          return false
+        }
+
+        emit('submit')
+        return true
+      }
+
       return false
     },
     ...editorOnlyProps,
