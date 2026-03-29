@@ -204,6 +204,22 @@ const editorOnlyTransaction = props.mode === 'editor' ? {
   },
 } : {}
 
+/** Returns true when ProseMirror's default Enter behavior should take over. */
+function shouldDeferEnter(view: import('@tiptap/pm/view').EditorView): boolean {
+  const { $head } = view.state.selection
+
+  if ($head.parent.type.name === 'codeBlock') return true
+
+  for (let d = $head.depth; d > 0; d--) {
+    if ($head.node(d).type.name === 'listItem') return true
+  }
+
+  const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
+  if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) return true
+
+  return false
+}
+
 const editor = useEditor({
   extensions: createExtensions({
     mode: props.mode,
@@ -219,50 +235,11 @@ const editor = useEditor({
         return true
       }
 
-      // Shift+Enter → new paragraph (not hard break) so markdown input rules work on every line
-      if (props.mode === 'input' && event.key === 'Enter' && event.shiftKey) {
-        const { $head } = view.state.selection
+      if (props.mode === 'input' && event.key === 'Enter') {
+        if (shouldDeferEnter(view)) return false
 
-        // Inside a code block → default newline behavior
-        if ($head.parent.type.name === 'codeBlock') {
-          return false
-        }
-
-        // Inside a list item → default list behavior
-        for (let d = $head.depth; d > 0; d--) {
-          if ($head.node(d).type.name === 'listItem') {
-            return false
-          }
-        }
-
-        // Current text looks like a code fence trigger → let input rule fire
-        const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
-        if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) {
-          return false
-        }
-
-        return splitBlock(view.state, view.dispatch)
-      }
-
-      if (props.mode === 'input' && event.key === 'Enter' && !event.shiftKey) {
-        const { $head } = view.state.selection
-
-        // Inside a code block → newline, not submit
-        if ($head.parent.type.name === 'codeBlock') {
-          return false
-        }
-
-        // Inside a list item → let default list behavior handle it
-        for (let d = $head.depth; d > 0; d--) {
-          if ($head.node(d).type.name === 'listItem') {
-            return false
-          }
-        }
-
-        // Current text looks like a code fence trigger → let input rule fire
-        const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
-        if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) {
-          return false
+        if (event.shiftKey) {
+          return splitBlock(view.state, view.dispatch)
         }
 
         emit('submit')
