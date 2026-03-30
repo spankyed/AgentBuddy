@@ -228,6 +228,7 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
         heading: false,
         strike: false,
         horizontalRule: false,
+        trailingNode: false,
       }),
     }),
     Markdown.configure({
