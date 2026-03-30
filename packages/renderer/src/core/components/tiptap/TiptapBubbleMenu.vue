@@ -109,7 +109,7 @@ function cancelLink() {
   props.editor.chain().focus().run()
 }
 
-const CHAT_ACTIONS = new Set(['code', 'link'])
+const CHAT_ACTIONS = new Set(['bold', 'italic', 'code', 'link'])
 
 const items = computed(() => {
   const e = props.editor

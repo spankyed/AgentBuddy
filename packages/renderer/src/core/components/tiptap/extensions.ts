@@ -226,8 +226,6 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
       blockquote: false,
       ...(isChat && mode !== 'viewer' && {
         heading: false,
-        bold: false,
-        italic: false,
         strike: false,
         horizontalRule: false,
       }),
