@@ -98,8 +98,12 @@
   margin: 0.25em 0;
 }
 
-.tiptap-wrapper .ProseMirror li {
-  margin: 0.15em 0;
+.tiptap-wrapper .ProseMirror li + li {
+  margin-top: 0.15em;
+}
+
+.tiptap-wrapper .ProseMirror li p {
+  margin: 0;
 }
 
 /* Task list */
