@@ -25,7 +25,7 @@
         </div>
 
         <!-- Buttons row -->
-        <div class="relative flex items-center justify-between px-3 py-3 text-neutral-500">
+        <div class="relative flex items-center justify-between px-3 pb-3 text-neutral-500">
           <!-- Left side buttons -->
           <div class="flex items-center">
             <!-- Collapsed: ... dropdown menu (narrow) -->
