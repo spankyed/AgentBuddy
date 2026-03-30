@@ -8,7 +8,7 @@
         <TiptapBlockMenu :editor="editor" />
         <TiptapImageBubbleMenu :editor="editor" />
       </template>
-      <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" :variant="variant" />
+      <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
   </div>

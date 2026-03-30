@@ -43,7 +43,6 @@
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
-import type { TiptapVariant } from './extensions'
 import {
   Bold,
   Italic,
@@ -53,9 +52,7 @@ import {
   X,
 } from 'lucide-vue-next'
 
-const props = withDefaults(defineProps<{ editor: Editor; variant?: TiptapVariant }>(), {
-  variant: 'full',
-})
+const props = defineProps<{ editor: Editor }>()
 
 const linkInputVisible = ref(false)
 const linkUrl = ref('')
@@ -109,8 +106,6 @@ function cancelLink() {
   props.editor.chain().focus().run()
 }
 
-const CHAT_ACTIONS = new Set(['bold', 'italic', 'code', 'link'])
-
 const items = computed(() => {
   const e = props.editor
   if (!e) return []
@@ -153,6 +148,7 @@ const items = computed(() => {
     },
   ]
 
-  return props.variant === 'chat' ? allItems.filter(i => CHAT_ACTIONS.has(i.action)) : allItems
+  const loaded = new Set(e.extensionManager.extensions.map(ext => ext.name))
+  return allItems.filter(i => loaded.has(i.action))
 })
 </script>
