@@ -18,14 +18,14 @@
             variant="chat"
             :placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
             :disabled="disabled"
-            editor-class="w-full px-2 py-3 rounded-lg min-h-12 focus:outline-none"
+            editor-class="w-full px-1.5 pr-2 py-2 rounded-lg min-h-12 focus:outline-none"
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
           />
         </div>
 
         <!-- Buttons row -->
-        <div class="relative flex items-center justify-between px-3 pb-3 text-neutral-500">
+        <div class="relative flex items-center justify-between px-3 pb-2 text-neutral-500">
           <!-- Left side buttons -->
           <div class="flex items-center">
             <!-- Collapsed: ... dropdown menu (narrow) -->
