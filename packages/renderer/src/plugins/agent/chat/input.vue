@@ -18,7 +18,7 @@
             variant="chat"
             :placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
             :disabled="disabled"
-            editor-class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
+            editor-class="w-full px-4 py-3 rounded-lg min-h-12 focus:outline-none"
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
           />
