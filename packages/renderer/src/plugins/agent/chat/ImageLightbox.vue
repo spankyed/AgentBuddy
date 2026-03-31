@@ -13,7 +13,7 @@
 
       </DialogContent>
 
-      <button class="lightbox-close" @click="isOpen = false">
+      <button v-if="isOpen" class="lightbox-close" @click="isOpen = false">
         <X :size="20" />
       </button>
     </DialogPortal>
