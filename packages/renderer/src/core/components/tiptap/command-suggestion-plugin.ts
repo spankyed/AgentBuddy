@@ -50,42 +50,26 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
           return prev.active ? { ...defaultState } : prev
         }
 
-        const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
-
-        // Find / at start of the first paragraph
         const isFirstParagraph = $head.depth === 1 && $head.index(0) === 0
-        if (!isFirstParagraph && !prev.active) {
-          return prev
-        }
+        if (!isFirstParagraph && !prev.active) return prev
 
-        // For first paragraph, check that / is at position 0
-        const slashIndex = 0
-        const afterSlash = textBefore.slice(slashIndex + 1)
-
-        // If a command is already selected, stay active (user is typing the body)
+        // If a command is already selected, stay active while prefix is intact
         if (prev.active && prev.selectedCommand) {
           const requiredPrefix = `/${prev.selectedCommand.name} `
-          // Deactivate if the command prefix (including space separator) was broken
-          if (!docText.startsWith(requiredPrefix)) {
-            return { ...defaultState }
-          }
-          return prev
+          return docText.startsWith(requiredPrefix) ? prev : { ...defaultState }
         }
 
-        // During query phase: deactivate if space in query (no command selected yet)
-        if (afterSlash.includes(' ')) {
+        // Query phase: extract text after `/`, deactivate if it contains a space
+        const query = docText.slice(1)
+        if (query.includes(' ')) {
           return prev.active ? { ...defaultState } : prev
         }
-
-        // Calculate trigger position
-        const start = $head.start()
-        const triggerPos = start + slashIndex
 
         return {
           ...prev,
           active: true,
-          triggerPos,
-          query: afterSlash,
+          triggerPos: $head.start(),
+          query,
         }
       },
     },
