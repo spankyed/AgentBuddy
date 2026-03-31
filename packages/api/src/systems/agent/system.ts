@@ -193,6 +193,7 @@ export const agentSystem = setup({
             phase,
             threadId,
             messageId: messageResult.id,
+            ...(images?.length && { images }),
           },
         });
       // }, 0);

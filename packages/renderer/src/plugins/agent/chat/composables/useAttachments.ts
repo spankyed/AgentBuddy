@@ -1,5 +1,10 @@
 import { ref, computed } from 'vue'
 
+export interface PendingImage {
+  dataUrl: string
+  name: string
+}
+
 export interface PendingFile {
   name: string
   path: string
@@ -27,10 +32,21 @@ function isImageFile(fileName: string): boolean {
 }
 
 export function useAttachments() {
-  const pendingImages = ref<string[]>([])
+  const pendingImages = ref<PendingImage[]>([])
   const pendingFiles = ref<PendingFile[]>([])
 
   const hasAttachments = computed(() => pendingImages.value.length > 0 || pendingFiles.value.length > 0)
+
+  const getUniqueName = (proposed: string): string => {
+    const existing = new Set(pendingImages.value.map(img => img.name))
+    if (!existing.has(proposed)) return proposed
+    const dotIdx = proposed.lastIndexOf('.')
+    const base = dotIdx > 0 ? proposed.slice(0, dotIdx) : proposed
+    const ext = dotIdx > 0 ? proposed.slice(dotIdx) : ''
+    let counter = 2
+    while (existing.has(`${base} (${counter})${ext}`)) counter++
+    return `${base} (${counter})${ext}`
+  }
 
   const handlePaste = (event: ClipboardEvent) => {
     const items = event.clipboardData?.items
@@ -42,7 +58,10 @@ export function useAttachments() {
         if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
         const reader = new FileReader()
         reader.onload = () => {
-          pendingImages.value = [...pendingImages.value, reader.result as string]
+          pendingImages.value = [...pendingImages.value, {
+            dataUrl: reader.result as string,
+            name: getUniqueName(file.name || 'image.png'),
+          }]
         }
         reader.readAsDataURL(file)
       }
@@ -87,7 +106,7 @@ export function useAttachments() {
 
   const collectAttachments = (): string[] | undefined => {
     const all = [
-      ...pendingImages.value,
+      ...pendingImages.value.map(img => img.dataUrl),
       ...pendingFiles.value.map(f => f.isImage && f.previewUrl ? f.previewUrl : f.path),
     ]
     return all.length ? all : undefined
