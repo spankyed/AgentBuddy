@@ -69,7 +69,7 @@ function getThreadsWithCurrent(limit: number = 4): {
 
   const mostRecentThread = threads[0];
 
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable"] as const;
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "images"] as const;
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -173,7 +173,7 @@ export const agentQueries = {
       messages: qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "images"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],
@@ -274,6 +274,7 @@ export const agentCommands = {
     sender: 'user' | 'assistant' | 'system';
     blocks?: BlockConfig[];
     forkable?: boolean;
+    images?: string[];
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -281,7 +282,7 @@ export const agentCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable } = params;
+    const { threadId, text, sender, blocks, forkable, images } = params;
 
     // Validate thread exists
     const thread = qx(threadId).id();
@@ -315,6 +316,11 @@ export const agentCommands = {
     // Add forkable flag if explicitly set to false
     if (forkable === false) {
       messageTx.put('forkable', forkable);
+    }
+
+    // Add images if provided
+    if (images?.length) {
+      messageTx.put('images', images);
     }
 
     const messageId = messageTx

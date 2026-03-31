@@ -7,8 +7,20 @@
       <div
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
         :class="[$style.input, { 'opacity-50': disabled }]"
-        data-onboarding-id="agent-chat-input">
+        data-onboarding-id="agent-chat-input"
+        @paste="handlePaste">
         <StatusIndicator/>
+
+        <!-- Image preview strip -->
+        <div v-if="pendingImages.length" class="flex flex-wrap gap-2 px-3 pt-3">
+          <div v-for="(img, index) in pendingImages" :key="index" class="relative group">
+            <img :src="img" class="w-20 h-20 object-cover rounded-lg border border-neutral-600" />
+            <button type="button" @click="removeImage(index)"
+              class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
+              <X :size="10" />
+            </button>
+          </div>
+        </div>
 
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
@@ -108,7 +120,7 @@
             <Button
               title="Stop agent work"
               type="submit"
-              :disabled="!messageContent || disabled"
+              :disabled="(!messageContent && !pendingImages.length) || disabled"
               variant="secondary"
             >
               <span class="hidden @md:inline">Stop</span>
@@ -116,7 +128,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="!messageContent || disabled"
+              :disabled="(!messageContent && !pendingImages.length) || disabled"
             >
               <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -131,7 +143,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical } from 'lucide-vue-next'
+import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import {
   DropdownMenuRoot,
@@ -158,7 +170,7 @@ const props = defineProps<{
 
 // Define emits including new button actions
 const emit = defineEmits<{
-  (e: 'send-message', message: string): void
+  (e: 'send-message', message: string, images?: string[]): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
@@ -177,6 +189,31 @@ interface ActionButton {
 
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
+const pendingImages = ref<string[]>([])
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+const handlePaste = (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault()
+      const file = item.getAsFile()
+      if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
+      const reader = new FileReader()
+      reader.onload = () => {
+        pendingImages.value = [...pendingImages.value, reader.result as string]
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+}
+
+const removeImage = (i: number) => {
+  pendingImages.value = pendingImages.value.filter((_, idx) => idx !== i)
+}
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md
@@ -258,10 +295,11 @@ const handleSubmit = () => {
   const editor = tiptapRef.value?.editor
   if (!editor) return
   const md = (editor.storage as any).markdown.getMarkdown() as string
-  if (md.trim()) {
-    emit('send-message', md)
+  if (md.trim() || pendingImages.value.length) {
+    emit('send-message', md, pendingImages.value.length ? [...pendingImages.value] : undefined)
     editor.commands.clearContent(true)
     messageContent.value = ''
+    pendingImages.value = []
   }
 }
 </script>

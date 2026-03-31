@@ -51,7 +51,7 @@ type Brain_FE_AgentEvents =
 type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
-  | { type: 'SEND_MESSAGE'; text: string }
+  | { type: 'SEND_MESSAGE'; text: string; images?: string[] }
   | { type: 'CLEAR_THREAD' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
@@ -151,13 +151,15 @@ const agentState = setup({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
     sendMessage: ({ context, event }) => {
+      const { text, images } = typeOf('SEND_MESSAGE', event);
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
-        text: typeOf('SEND_MESSAGE', event).text,
+        text,
         mode: context.mode,
         phase: context.phase,
         threadId: context.currentThread?.id,
+        ...(images?.length && { images }),
       });
     },
     clearThread: assign(() => ({

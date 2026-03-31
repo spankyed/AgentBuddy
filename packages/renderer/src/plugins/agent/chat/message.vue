@@ -59,6 +59,12 @@
         </div>
       </div>
 
+      <!-- Attached images -->
+      <div v-if="message.images?.length" class="flex flex-wrap gap-2 mb-2">
+        <img v-for="(img, index) in message.images" :key="index" :src="img"
+          class="w-20 h-20 object-cover rounded-lg" />
+      </div>
+
       <!-- Message content -->
       <div class="leading-relaxed text-[15px]">
         <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" />

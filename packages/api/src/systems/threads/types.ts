@@ -70,6 +70,7 @@ export interface MessageEntity extends BaseEntity {
   blocks?: BlockConfig[];
   blockResponse?: any; // Response data for block-based interactions
   forkable?: boolean;
+  images?: string[]; // base64 data URLs for attached images
 }
 
 export interface ThreadEntity extends BaseEntity {

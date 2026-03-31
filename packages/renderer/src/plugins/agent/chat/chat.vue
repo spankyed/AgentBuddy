@@ -22,7 +22,7 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :modes="modes"
-          @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
+          @send-message="(text: string, images?: string[]) => actor.send({ type: 'SEND_MESSAGE', text, images })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
         />
