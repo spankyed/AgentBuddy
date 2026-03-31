@@ -54,13 +54,10 @@
               :key="prompt.id"
               class="flex items-start gap-1 px-2 py-1"
             >
-              <textarea
-                v-model="prompt.text"
-                rows="1"
-                class="flex-1 text-sm text-neutral-300 px-1 bg-transparent border-none resize-none overflow-y-auto focus:outline-none focus:bg-neutral-800/50 rounded"
-                style="max-height: calc(1.5em * 3 + 4px)"
-                @input="autoResize($event); emitUpdate()"
-              />
+              <span
+                class="flex-1 min-w-0 text-sm text-neutral-300 px-1 truncate"
+                :title="prompt.text"
+              >{{ prompt.text }}</span>
               <button
                 type="button"
                 class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
@@ -71,10 +68,11 @@
             </div>
             <div class="flex items-start gap-1 px-2 py-1 border-t border-neutral-700/50 mt-1">
               <textarea
+                ref="addPromptRef"
                 v-model="newPromptText"
                 rows="1"
                 placeholder="Add prompt..."
-                class="flex-1 px-2 py-1.5 text-sm bg-neutral-800 border border-neutral-700/50 rounded text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-none overflow-y-auto"
+                class="flex-1 px-2 py-1.5 text-sm bg-neutral-800 border border-neutral-700/50 rounded text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-none overflow-y-hidden"
                 style="max-height: calc(1.5em * 3 + 12px)"
                 @input="autoResize($event)"
                 @keydown.enter.exact.prevent="addPrompt"
@@ -115,6 +113,7 @@ const open = defineModel<boolean>('open', { default: false })
 const editing = ref(false)
 const newPromptText = ref('')
 const localPrompts = ref<QuickPrompt[]>([...props.prompts])
+const addPromptRef = ref<HTMLTextAreaElement | null>(null)
 
 watch(() => props.prompts, (val) => {
   localPrompts.value = [...val]
@@ -143,6 +142,8 @@ function autoResize(event: Event) {
   const el = event.target as HTMLTextAreaElement
   el.style.height = 'auto'
   el.style.height = el.scrollHeight + 'px'
+  const maxHeight = parseFloat(getComputedStyle(el).maxHeight)
+  el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
 }
 
 function emitUpdate() {
@@ -159,6 +160,10 @@ function addPrompt() {
   const updated = [...localPrompts.value, newPrompt]
   localPrompts.value = updated
   newPromptText.value = ''
+  if (addPromptRef.value) {
+    addPromptRef.value.style.height = 'auto'
+    addPromptRef.value.style.overflowY = 'hidden'
+  }
   emit('update', updated)
 }
 </script>

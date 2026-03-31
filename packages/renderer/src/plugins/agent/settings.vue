@@ -140,7 +140,7 @@
             v-model="prompt.text"
             rows="1"
             placeholder="Prompt text"
-            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none overflow-y-auto"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none overflow-y-hidden"
             style="max-height: calc(1.5em * 3 + 16px)"
             @input="autoResize($event); debouncedSaveQuickPrompts()"
           />
@@ -267,6 +267,8 @@ const autoResize = (event: Event) => {
   const el = event.target as HTMLTextAreaElement
   el.style.height = 'auto'
   el.style.height = el.scrollHeight + 'px'
+  const maxHeight = parseFloat(getComputedStyle(el).maxHeight)
+  el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
 }
 
 const removeQuickPrompt = (index: number) => {
