@@ -93,6 +93,10 @@ export const createApplicationState = () => setup({
   actors: {
     hotkeyListener: fromCallback(({ system }) => {
       const handleKeyDown = (e: KeyboardEvent) => {
+        // Skip app hotkeys when typing in a tiptap editor
+        const target = e.target as HTMLElement;
+        if (target.closest?.('.ProseMirror')) return;
+
         const appActor = system.get(application);
 
         // Create hotkey event and send to be processed
