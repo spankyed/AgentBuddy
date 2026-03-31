@@ -134,14 +134,15 @@
         <div
           v-for="(prompt, index) in quickPrompts"
           :key="prompt.id"
-          class="flex items-center gap-3"
+          class="flex items-start gap-3"
         >
-          <input
+          <textarea
             v-model="prompt.text"
-            type="text"
+            rows="1"
             placeholder="Prompt text"
-            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-            @input="debouncedSaveQuickPrompts"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none overflow-y-auto"
+            style="max-height: calc(1.5em * 3 + 16px)"
+            @input="autoResize($event); debouncedSaveQuickPrompts()"
           />
           <button
             @click="removeQuickPrompt(index)"
@@ -260,6 +261,12 @@ const addQuickPrompt = () => {
     text: ''
   })
   saveQuickPrompts()
+}
+
+const autoResize = (event: Event) => {
+  const el = event.target as HTMLTextAreaElement
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
 }
 
 const removeQuickPrompt = (index: number) => {

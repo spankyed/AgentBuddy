@@ -52,9 +52,15 @@
             <div
               v-for="prompt in localPrompts"
               :key="prompt.id"
-              class="flex items-center gap-1 px-2 py-1"
+              class="flex items-start gap-1 px-2 py-1"
             >
-              <span class="flex-1 text-sm text-neutral-300 truncate px-1">{{ prompt.text }}</span>
+              <textarea
+                v-model="prompt.text"
+                rows="1"
+                class="flex-1 text-sm text-neutral-300 px-1 bg-transparent border-none resize-none overflow-y-auto focus:outline-none focus:bg-neutral-800/50 rounded"
+                style="max-height: calc(1.5em * 3 + 4px)"
+                @input="autoResize($event); emitUpdate()"
+              />
               <button
                 type="button"
                 class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
@@ -63,13 +69,15 @@
                 <X :size="14" />
               </button>
             </div>
-            <div class="flex items-center gap-1 px-2 py-1 border-t border-neutral-700/50 mt-1">
-              <input
+            <div class="flex items-start gap-1 px-2 py-1 border-t border-neutral-700/50 mt-1">
+              <textarea
                 v-model="newPromptText"
-                type="text"
+                rows="1"
                 placeholder="Add prompt..."
-                class="flex-1 px-2 py-1.5 text-sm bg-neutral-800 border border-neutral-700/50 rounded text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
-                @keydown.enter="addPrompt"
+                class="flex-1 px-2 py-1.5 text-sm bg-neutral-800 border border-neutral-700/50 rounded text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-none overflow-y-auto"
+                style="max-height: calc(1.5em * 3 + 12px)"
+                @input="autoResize($event)"
+                @keydown.enter.exact.prevent="addPrompt"
               />
               <button
                 type="button"
@@ -129,6 +137,16 @@ function deletePrompt(id: string) {
   const updated = localPrompts.value.filter(p => p.id !== id)
   localPrompts.value = updated
   emit('update', updated)
+}
+
+function autoResize(event: Event) {
+  const el = event.target as HTMLTextAreaElement
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+function emitUpdate() {
+  emit('update', [...localPrompts.value])
 }
 
 function addPrompt() {
