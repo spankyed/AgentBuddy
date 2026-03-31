@@ -17,9 +17,9 @@
         >
           <template #trigger>
             <button
-              class="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-400 rounded-md hover:bg-neutral-800 hover:text-blue-300 transition-colors"
+              class="flex items-center gap-1.5 px-2 py-1.5 text-sm font-medium text-blue-400 rounded-md hover:bg-neutral-800 hover:text-blue-300 transition-colors"
             >
-              <Plus class="w-3.5 h-3.5" />
+              <ArrowRight class="w-3.5 h-3.5" />
               <span>Next step</span>
             </button>
           </template>
@@ -59,7 +59,7 @@
 
 <script setup lang="ts">
 import { inject, type Ref, type ComputedRef } from 'vue'
-import { X, Plus } from 'lucide-vue-next'
+import { X, ArrowRight } from 'lucide-vue-next'
 import NodeTypeMenu from '../components/NodeTypeMenu.vue'
 
 interface NextStep {
