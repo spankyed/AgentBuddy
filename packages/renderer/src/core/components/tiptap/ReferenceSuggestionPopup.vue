@@ -2,7 +2,6 @@
   <Teleport to="body">
     <div
       v-if="isActive"
-      ref="popupRef"
       class="reference-suggestion-popup"
       :style="popupStyle"
     >
@@ -64,9 +63,8 @@ const props = defineProps<{
   editor: Editor
 }>()
 
-const popupRef = ref<HTMLElement | null>(null)
 const selectedIndex = ref(0)
-const popupStyle = ref<{ top: string; left: string }>({ top: '0px', left: '0px' })
+const popupStyle = ref<{ bottom: string; left: string }>({ bottom: '0px', left: '0px' })
 
 const categoryIcons: Record<ReferenceCategory, Component> = {
   threads: History,
@@ -118,7 +116,7 @@ function updatePosition() {
   try {
     const coords = props.editor.view.coordsAtPos(pluginState.value.triggerPos)
     popupStyle.value = {
-      top: `${coords.bottom + 4}px`,
+      bottom: `${window.innerHeight - coords.top + 4}px`,
       left: `${coords.left}px`,
     }
   } catch {
@@ -133,6 +131,11 @@ watch(isActive, (active) => {
 })
 
 watch(() => pluginState.value?.triggerPos, () => {
+  if (isActive.value) nextTick(updatePosition)
+})
+
+// Reposition when content changes (e.g. switching from categories to items)
+watch([level, items], () => {
   if (isActive.value) nextTick(updatePosition)
 })
 
