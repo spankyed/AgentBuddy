@@ -53,16 +53,14 @@
         </div>
       </div>
 
-      <!-- Pasted images -->
-      <div v-if="message.references?.images?.length" class="flex flex-wrap gap-2 mb-2 justify-end">
-        <img v-for="(img, index) in message.references.images" :key="index" :src="img"
-          class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
+      <!-- Attachments: files then images, horizontal scroll -->
+      <div v-if="message.references?.files?.length || message.references?.images?.length"
+        class="flex items-end gap-2 mb-2 justify-end overflow-x-auto scrollbar-thin">
+        <FileBlock v-for="(file, index) in message.references.files" :key="'f-'+index"
+          :file="file" class="flex-shrink-0" />
+        <img v-for="(img, index) in message.references.images" :key="'i-'+index" :src="img"
+          class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
           @click="$emit('open-lightbox', img)" />
-      </div>
-
-      <!-- File attachments -->
-      <div v-if="message.references?.files?.length" class="flex flex-wrap gap-2 mb-2 justify-end">
-        <FileBlock v-for="(file, index) in message.references.files" :key="index" :file="file" />
       </div>
 
       <!-- Message content -->
