@@ -245,7 +245,7 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
       autolink: true,
       protocols: ['note', 'thread', 'doc'],
     }),
-    ...(isChat ? [ReferenceNode] : createFullExtensions(mode)),
+    ...(isChat ? [ReferenceNode] : [...createFullExtensions(mode), ReferenceNode]),
   ]
 
   if (mode !== 'viewer' && placeholder) {

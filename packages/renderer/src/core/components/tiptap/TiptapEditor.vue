@@ -11,7 +11,7 @@
       <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
-    <ReferenceSuggestionPopup v-if="editor && variant === 'chat' && mode === 'input'" :editor="editor" />
+    <ReferenceSuggestionPopup v-if="editor && mode !== 'viewer'" :editor="editor" />
   </div>
 </template>
 
