@@ -42,7 +42,7 @@
         >
           <component :is="categoryIcons[categoryToId(item.type)]" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
-          <span class="reference-suggestion-code">{{ item.shortCode }}</span>
+          <span class="reference-suggestion-code" :title="item.shortCode">{{ item.shortCode.length > 12 ? item.shortCode.slice(0, 12) + '…' : item.shortCode }}</span>
         </div>
         <div v-if="items.length === 0" class="reference-suggestion-empty">
           No matching items
