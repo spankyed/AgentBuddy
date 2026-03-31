@@ -100,6 +100,30 @@ const filteredCategories = computed(() => {
   return categories.filter((c) => c.label.toLowerCase().includes(q))
 })
 
+// Auto-select category when user manually types colon (e.g. #notes:)
+watch([query, level], ([q, lvl]) => {
+  if (lvl !== 'category' || !q.endsWith(':')) return
+  const typed = q.slice(0, -1)
+  const match = categories.find(
+    (c) => c.label.toLowerCase().replace(/\s+/g, '') === typed
+  )
+  if (!match) return
+  const state = pluginState.value
+  if (!state) return
+  const { tr } = props.editor.state
+  tr.setMeta(referenceSuggestionPluginKey, {
+    active: true,
+    triggerPos: state.triggerPos,
+    query: '',
+    level: 'items',
+    selectedCategory: match.id,
+    categoryQuery: q,
+    decorationRect: null,
+  })
+  props.editor.view.dispatch(tr)
+  selectedIndex.value = 0
+})
+
 // Fetch items for selected category
 const itemQuery = computed(() => (level.value === 'items' ? query.value : ''))
 const { items } = useReferenceItems(selectedCategory, itemQuery)
