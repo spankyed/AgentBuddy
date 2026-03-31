@@ -12,6 +12,7 @@
             v-for="message in messages"
             :key="message.id"
             :message="message"
+            @open-lightbox="openLightbox"
           />
         </div>
       </div>
@@ -22,9 +23,10 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :modes="modes"
-          @send-message="(text: string) => actor.send({ type: 'SEND_MESSAGE', text })"
+          @send-message="(text: string, images?: string[]) => actor.send({ type: 'SEND_MESSAGE', text, images })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
+          @open-lightbox="openLightbox"
         />
       </div>
     </div>
@@ -39,6 +41,8 @@
         @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
       />
     </div>
+
+    <ImageLightbox v-model="lightboxOpen" :image-src="lightboxSrc" />
   </div>
 </template>
 
@@ -73,6 +77,7 @@ function rotateQuote() {
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
+import ImageLightbox from './ImageLightbox.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
@@ -86,6 +91,13 @@ const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const messagesContainer = ref<HTMLElement | null>(null)
+const lightboxOpen = ref(false)
+const lightboxSrc = ref('')
+
+function openLightbox(src: string) {
+  lightboxSrc.value = src
+  lightboxOpen.value = true
+}
 
 watch(messages, async () => {
   await nextTick()

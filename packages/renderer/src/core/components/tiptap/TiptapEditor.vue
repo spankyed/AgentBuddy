@@ -3,10 +3,12 @@
     class="tiptap-wrapper"
     :class="[`tiptap-${mode}`, $attrs.class]"
   >
-    <template v-if="mode === 'editor' && editor">
-      <TiptapBlockMenu :editor="editor" />
-      <TiptapBubbleMenu :editor="editor" />
-      <TiptapImageBubbleMenu :editor="editor" />
+    <template v-if="editor">
+      <template v-if="mode === 'editor' && variant === 'full'">
+        <TiptapBlockMenu :editor="editor" />
+        <TiptapImageBubbleMenu :editor="editor" />
+      </template>
+      <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
   </div>
@@ -16,7 +18,8 @@
 import { ref, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
-import { createExtensions, type TiptapMode } from './extensions'
+import { splitBlock } from '@tiptap/pm/commands'
+import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
@@ -24,12 +27,14 @@ import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
   mode: TiptapMode
+  variant?: TiptapVariant
   modelValue?: string
   placeholder?: string
   disabled?: boolean
   editorClass?: string
   entityId?: string
 }>(), {
+  variant: 'full',
   modelValue: '',
   placeholder: '',
   disabled: false,
@@ -119,97 +124,70 @@ async function uploadAndInsertImage(file: File, editorInstance: ReturnType<typeo
   }
 }
 
-const editor = useEditor({
-  extensions: createExtensions({
-    mode: props.mode,
-    placeholder: props.placeholder,
-  }),
-  content: props.modelValue,
-  editable: props.mode !== 'viewer' && !props.disabled,
-  editorProps: {
-    handleKeyDown: (view, event) => {
-      if (props.mode === 'input' && event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault()
-        emit('submit')
+const editorOnlyProps = props.mode === 'editor' ? {
+  handleClick: (_view: any, _pos: any, event: MouseEvent) => {
+    // Sub-document links open on regular click (no modifier needed)
+    const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
+    if (subDocumentEl) {
+      const noteId = subDocumentEl.getAttribute('data-note-id')
+      if (noteId) {
+        emit('noteLinkClick', noteId)
         return true
       }
-      if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
-        emit('focusTitle')
-        return true
-      }
-      return false
-    },
-    handleClick: (_view, _pos, event) => {
-      // Sub-document links open on regular click (no modifier needed)
-      const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
-      if (subDocumentEl) {
-        const noteId = subDocumentEl.getAttribute('data-note-id')
-        if (noteId) {
-          emit('noteLinkClick', noteId)
-          return true
-        }
-      }
-      // document:// inline links also open on regular click (no modifier needed)
-      const anchor = (event.target as HTMLElement).closest('a')
-      const href = anchor?.getAttribute('href')
-      if (href?.startsWith('document://')) {
-        emit('noteLinkClick', href.slice('document://'.length))
-        return true
-      }
-      // Other links require ctrl/cmd+click in editor mode
-      if (props.mode === 'editor' && !(event.ctrlKey || event.metaKey)) return false
-      if (!href) return false
-      if (href.startsWith('note://')) {
-        emit('noteLinkClick', href.slice('note://'.length))
-        return true
-      }
-      const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-      window.electronAPI?.shell?.openExternal(url)
+    }
+    // document:// inline links also open on regular click (no modifier needed)
+    const anchor = (event.target as HTMLElement).closest('a')
+    const href = anchor?.getAttribute('href')
+    if (href?.startsWith('document://')) {
+      emit('noteLinkClick', href.slice('document://'.length))
       return true
-    },
-    handlePaste: (_view, event) => {
-      if (props.mode !== 'editor' || !props.entityId) return false
-      const items = event.clipboardData?.items
-      if (!items) return false
+    }
+    // Other links require ctrl/cmd+click in editor mode
+    if (!(event.ctrlKey || event.metaKey)) return false
+    if (!href) return false
+    if (href.startsWith('note://')) {
+      emit('noteLinkClick', href.slice('note://'.length))
+      return true
+    }
+    const url = /^https?:\/\//.test(href) ? href : `https://${href}`
+    window.electronAPI?.shell?.openExternal(url)
+    return true
+  },
+  handlePaste: (_view: any, event: ClipboardEvent) => {
+    if (!props.entityId) return false
+    const items = event.clipboardData?.items
+    if (!items) return false
 
-      let handled = false
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile()
-          if (!file) continue
-          if (!handled) { event.preventDefault(); handled = true }
-          uploadAndInsertImage(file, editor.value)
-        }
+    let handled = false
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (!file) continue
+        if (!handled) { event.preventDefault(); handled = true }
+        uploadAndInsertImage(file, editor.value)
       }
-      return handled
-    },
-    handleDrop: (view, event) => {
-      if (props.mode !== 'editor' || !props.entityId) return false
-      const files = event.dataTransfer?.files
-      if (!files?.length) return false
+    }
+    return handled
+  },
+  handleDrop: (view: any, event: DragEvent) => {
+    if (!props.entityId) return false
+    const files = event.dataTransfer?.files
+    if (!files?.length) return false
 
-      let handled = false
-      for (const file of files) {
-        if (file.type.startsWith('image/')) {
-          if (!handled) { event.preventDefault(); handled = true }
-          const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
-          uploadAndInsertImage(file, editor.value, coords?.pos)
-        }
+    let handled = false
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        if (!handled) { event.preventDefault(); handled = true }
+        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        uploadAndInsertImage(file, editor.value, coords?.pos)
       }
-      return handled
-    },
+    }
+    return handled
   },
-  onCreate: ({ editor: e }) => {
-    selectStart(e)
-  },
-  onUpdate: ({ editor: e }) => {
-    if (suppressNodeDeletionEvents.value) return
-    const md = getMarkdown()
-    if (lastResetMarkdown.value !== null && md === lastResetMarkdown.value) return
-    lastResetMarkdown.value = null
-    emit('update:modelValue', md)
-  },
-  onTransaction: ({ transaction }) => {
+} : {}
+
+const editorOnlyTransaction = props.mode === 'editor' ? {
+  onTransaction: ({ transaction }: { transaction: any }) => {
     if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
     const oldIds = collectSubDocumentLinkIds(transaction.before)
     const newIds = collectSubDocumentLinkIds(transaction.doc)
@@ -224,6 +202,65 @@ const editor = useEditor({
       }
     }
   },
+} : {}
+
+/** Returns true when ProseMirror's default Enter behavior should take over. */
+function shouldDeferEnter(view: import('@tiptap/pm/view').EditorView): boolean {
+  const { $head } = view.state.selection
+
+  if ($head.parent.type.name === 'codeBlock') return true
+
+  for (let d = $head.depth; d > 0; d--) {
+    if ($head.node(d).type.name === 'listItem') return true
+  }
+
+  const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
+  if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) return true
+
+  return false
+}
+
+const editor = useEditor({
+  extensions: createExtensions({
+    mode: props.mode,
+    variant: props.variant,
+    placeholder: props.placeholder,
+  }),
+  content: props.modelValue,
+  editable: props.mode !== 'viewer' && !props.disabled,
+  editorProps: {
+    handleKeyDown: (view, event) => {
+      if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
+        emit('focusTitle')
+        return true
+      }
+
+      if (props.mode === 'input' && event.key === 'Enter') {
+        if (shouldDeferEnter(view)) return false
+
+        if (event.shiftKey) {
+          return splitBlock(view.state, view.dispatch)
+        }
+
+        emit('submit')
+        return true
+      }
+
+      return false
+    },
+    ...editorOnlyProps,
+  },
+  onCreate: ({ editor: e }) => {
+    selectStart(e)
+  },
+  onUpdate: ({ editor: e }) => {
+    if (suppressNodeDeletionEvents.value) return
+    const md = getMarkdown()
+    if (lastResetMarkdown.value !== null && md === lastResetMarkdown.value) return
+    lastResetMarkdown.value = null
+    emit('update:modelValue', md)
+  },
+  ...editorOnlyTransaction,
 })
 
 // Sync modelValue changes from parent into the editor

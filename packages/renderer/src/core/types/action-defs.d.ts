@@ -358,6 +358,7 @@ interface MessageEntity extends BaseEntity {
     blocks?: BlockConfig[];
     blockResponse?: any;
     forkable?: boolean;
+    images?: string[];
 }
 interface ThreadEntity extends BaseEntity {
     entityType: EARS.Entity.Thread;
@@ -845,10 +846,12 @@ declare const events: {
         mode: zod.ZodOptional<zod.ZodString>;
         phase: zod.ZodOptional<zod.ZodString>;
         threadId: zod.ZodOptional<zod.ZodString>;
+        images: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         text: string;
         type: "USER_MSG";
         systemId: "agent";
+        images?: string[] | undefined;
         mode?: string | undefined;
         phase?: string | undefined;
         threadId?: string | undefined;
@@ -856,6 +859,7 @@ declare const events: {
         text: string;
         type: "USER_MSG";
         systemId: "agent";
+        images?: string[] | undefined;
         mode?: string | undefined;
         phase?: string | undefined;
         threadId?: string | undefined;
@@ -5192,6 +5196,7 @@ declare const services: {
                 sender: "user" | "assistant" | "system";
                 blocks?: BlockConfig[];
                 forkable?: boolean;
+                images?: string[];
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

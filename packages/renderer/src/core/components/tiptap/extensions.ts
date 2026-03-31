@@ -27,19 +27,16 @@ function applyAttributes(dom: HTMLElement, ...sources: Record<string, any>[]) {
 }
 
 export type TiptapMode = 'editor' | 'input' | 'viewer'
+export type TiptapVariant = 'full' | 'chat'
 
 interface CreateExtensionsOptions {
   mode: TiptapMode
+  variant?: TiptapVariant
   placeholder?: string
 }
 
-export function createExtensions({ mode, placeholder }: CreateExtensionsOptions) {
-  const extensions: AnyExtension[] = [
-    StarterKit.configure({
-      codeBlock: false,
-      link: false,
-      blockquote: false,
-    }),
+function createFullExtensions(mode: TiptapMode): AnyExtension[] {
+  return [
     Blockquote.extend({
       addInputRules() {
         return [
@@ -49,19 +46,6 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
           }),
         ]
       },
-    }),
-    Markdown.configure({
-      html: true,
-      transformCopiedText: true,
-      transformPastedText: true,
-    }),
-    CodeBlockLowlight.configure({
-      lowlight,
-    }),
-    Link.configure({
-      openOnClick: false,
-      autolink: true,
-      protocols: ['note'],
     }),
     SubDocumentLink,
     Table.configure({
@@ -229,6 +213,38 @@ export function createExtensions({ mode, placeholder }: CreateExtensionsOptions)
       persist: true,
       HTMLAttributes: { class: 'details-block' },
     }),
+  ]
+}
+
+export function createExtensions({ mode, variant = 'full', placeholder }: CreateExtensionsOptions) {
+  const isChat = variant === 'chat'
+
+  const extensions: AnyExtension[] = [
+    StarterKit.configure({
+      codeBlock: false,
+      link: false,
+      blockquote: false,
+      ...(isChat && mode !== 'viewer' && {
+        heading: false,
+        strike: false,
+        horizontalRule: false,
+        trailingNode: false,
+      }),
+    }),
+    Markdown.configure({
+      html: !isChat,
+      transformCopiedText: true,
+      transformPastedText: true,
+    }),
+    CodeBlockLowlight.configure({
+      lowlight,
+    }),
+    Link.configure({
+      openOnClick: false,
+      autolink: true,
+      protocols: ['note'],
+    }),
+    ...(isChat ? [] : createFullExtensions(mode)),
   ]
 
   if (mode !== 'viewer' && placeholder) {

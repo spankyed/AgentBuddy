@@ -7,26 +7,38 @@
       <div
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
         :class="[$style.input, { 'opacity-50': disabled }]"
-        data-onboarding-id="agent-chat-input">
+        data-onboarding-id="agent-chat-input"
+        @paste="handlePaste">
         <StatusIndicator/>
+
+        <!-- Image preview strip -->
+        <div v-if="pendingImages.length" class="flex flex-wrap gap-2 px-3 pt-3">
+          <div v-for="(img, index) in pendingImages" :key="index" class="relative group">
+            <img :src="img" class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
+              @click="$emit('open-lightbox', img)" />
+            <button type="button" @click="removeImage(index)"
+              class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
+              <X :size="10" />
+            </button>
+          </div>
+        </div>
 
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
-          <!-- Contenteditable div -->
-          <div
-            ref="editorRef"
-            :contenteditable="!disabled"
-            translate="no"
-            class="w-full px-4 py-3 overflow-y-auto rounded-lg min-h-12 max-h-40 focus:outline-none"
-            :class="{ 'cursor-not-allowed': disabled }"
-            @input="handleInput"
-            @keydown="handleKeydown"
-            :data-placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
-          ></div>
+          <TiptapEditor
+            ref="tiptapRef"
+            mode="input"
+            variant="chat"
+            :placeholder="disabled ? 'API keys required to use chat' : 'Message Agent'"
+            :disabled="disabled"
+            editor-class="w-full px-1.5 pr-2 py-2 rounded-lg min-h-12 focus:outline-none"
+            @submit="handleSubmit"
+            @update:model-value="onContentUpdate"
+          />
         </div>
 
         <!-- Buttons row -->
-        <div class="relative flex items-center justify-between px-3 py-3 text-neutral-500">
+        <div class="relative flex items-center justify-between px-3 pb-2 text-neutral-500">
           <!-- Left side buttons -->
           <div class="flex items-center">
             <!-- Collapsed: ... dropdown menu (narrow) -->
@@ -109,7 +121,7 @@
             <Button
               title="Stop agent work"
               type="submit"
-              :disabled="!messageContent || disabled"
+              :disabled="(!messageContent && !pendingImages.length) || disabled"
               variant="secondary"
             >
               <span class="hidden @md:inline">Stop</span>
@@ -117,7 +129,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="!messageContent || disabled"
+              :disabled="(!messageContent && !pendingImages.length) || disabled"
             >
               <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -131,8 +143,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
-import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical } from 'lucide-vue-next'
+import { ref, computed, watch } from 'vue'
+import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import {
   DropdownMenuRoot,
@@ -145,6 +157,7 @@ import Square from './square-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode } from '@app/api'
 
@@ -158,13 +171,14 @@ const props = defineProps<{
 
 // Define emits including new button actions
 const emit = defineEmits<{
-  (e: 'send-message', message: string): void
+  (e: 'send-message', message: string, images?: string[]): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
+  (e: 'open-lightbox', imageSrc: string): void
 }>()
 
 
@@ -175,19 +189,45 @@ interface ActionButton {
   class?: string
 }
 
-const editorRef = ref<HTMLDivElement | null>(null)
+const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
+const pendingImages = ref<string[]>([])
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+const handlePaste = (event: ClipboardEvent) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      event.preventDefault()
+      const file = item.getAsFile()
+      if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
+      const reader = new FileReader()
+      reader.onload = () => {
+        pendingImages.value = [...pendingImages.value, reader.result as string]
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+}
+
+const removeImage = (i: number) => {
+  pendingImages.value = pendingImages.value.filter((_, idx) => idx !== i)
+}
+
+const onContentUpdate = (md: string) => {
+  messageContent.value = md
+}
 
 const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
   onResult(transcript) {
-    const editor = editorRef.value
+    const editor = tiptapRef.value?.editor
     if (!editor) return
     const trimmed = transcript.trim()
     if (!trimmed) return
-    const current = editor.innerText
-    editor.innerText = current ? current + ' ' + trimmed : trimmed
-    messageContent.value = editor.innerText
-    editor.classList.remove('empty')
+    editor.commands.insertContent(trimmed + ' ')
   },
 })
 
@@ -231,42 +271,6 @@ watch(() => props.currentThread?.id, () => {
   }
 })
 
-onMounted(() => {
-  // Set up placeholder behavior
-  const editor = editorRef.value
-  if (editor) {
-    editor.addEventListener('focus', () => {
-      if (editor.textContent === '') {
-        editor.classList.remove('empty')
-      }
-    })
-
-    editor.addEventListener('blur', () => {
-      if (editor.textContent === '') {
-        editor.classList.add('empty')
-      }
-    })
-
-    // Initialize as empty
-    editor.classList.add('empty')
-  }
-})
-
-const handleInput = (e: Event) => {
-  if (props.disabled) return
-  const target = e.target as HTMLDivElement
-  messageContent.value = target.innerText || ''
-}
-
-const handleKeydown = (e: KeyboardEvent) => {
-  if (props.disabled) return
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    handleSubmit()
-  }
-}
-
-
 const handleButtonClick = (action: string) => {
   if (props.disabled) return
   if (action === 'voice-input') {
@@ -290,13 +294,14 @@ const handlePhaseChange = (newPhase: string) => {
 
 const handleSubmit = () => {
   if (props.disabled) return
-  if (messageContent.value.trim()) {
-    emit('send-message', messageContent.value)
-    if (editorRef.value) {
-      editorRef.value.innerText = ''
-      editorRef.value.classList.add('empty')
-    }
+  const editor = tiptapRef.value?.editor
+  if (!editor) return
+  const md = (editor.storage as any).markdown.getMarkdown() as string
+  if (md.trim() || pendingImages.value.length) {
+    emit('send-message', md, pendingImages.value.length ? [...pendingImages.value] : undefined)
+    editor.commands.clearContent(true)
     messageContent.value = ''
+    pendingImages.value = []
   }
 }
 </script>
@@ -304,17 +309,5 @@ const handleSubmit = () => {
 <style lang="scss" module>
 .input {
   border-color: rgb(60 60 60);;
-}
-
-[contenteditable].empty:before {
-  content: attr(data-placeholder);
-  color: #666;
-  cursor: text;
-  pointer-events: none;
-}
-
-/* Hide the placeholder when focused and empty */
-[contenteditable]:focus.empty:before {
-  content: '';
 }
 </style>

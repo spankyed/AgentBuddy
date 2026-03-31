@@ -110,7 +110,7 @@ const items = computed(() => {
   const e = props.editor
   if (!e) return []
 
-  return [
+  const allItems = [
     {
       action: 'bold',
       title: 'Bold',
@@ -147,5 +147,8 @@ const items = computed(() => {
       command: () => showLinkInput(),
     },
   ]
+
+  const loaded = new Set(e.extensionManager.extensions.map(ext => ext.name))
+  return allItems.filter(i => loaded.has(i.action))
 })
 </script>
