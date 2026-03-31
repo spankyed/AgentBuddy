@@ -2,27 +2,17 @@ import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { ThreadExtended, DocumentDTO, NoteDTO, CollectionDTO } from '@app/api'
+import { CATEGORIES, NOTE_TYPE_TO_REF_TYPE, type ReferenceCategory, type ReferenceRefType } from './reference-config'
 
-export type ReferenceCategory = 'threads' | 'documents' | 'notes'
+export type { ReferenceCategory } from './reference-config'
+export { CATEGORIES } from './reference-config'
 
 export interface ReferenceItem {
   id: string
   shortCode: string
   label: string
-  type: 'thread' | 'document' | 'folder' | 'note' | 'task' | 'tasklist'
+  type: ReferenceRefType
 }
-
-const CATEGORY_META: Record<ReferenceCategory, { label: string; type: ReferenceItem['type'] }> = {
-  threads: { label: 'Threads', type: 'thread' },
-  documents: { label: 'Library', type: 'document' },
-  notes: { label: 'Notes', type: 'note' },
-}
-
-export const categories: { id: ReferenceCategory; label: string }[] = [
-  { id: 'threads', label: 'Threads' },
-  { id: 'documents', label: 'Library' },
-  { id: 'notes', label: 'Notes' },
-]
 
 function flattenCollections(colls: CollectionDTO[]): CollectionDTO[] {
   const result: CollectionDTO[] = []
@@ -48,7 +38,6 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
   const items = computed<ReferenceItem[]>(() => {
     if (!category.value) return []
 
-    const meta = CATEGORY_META[category.value]
     let raw: ReferenceItem[] = []
 
     switch (category.value) {
@@ -57,7 +46,7 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
           id: t.id,
           shortCode: t.shortCode || t.id,
           label: t.topic || t.shortCode || t.id,
-          type: meta.type,
+          type: 'thread' as const,
         }))
         break
       case 'documents': {
@@ -78,28 +67,16 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
         raw = [...folderItems, ...docItems]
         break
       }
-      case 'notes': {
-        const noteItems: ReferenceItem[] = (notes.value || []).filter((n: NoteDTO) => n.noteType === 'document').map((n: NoteDTO) => ({
-          id: n.id,
-          shortCode: n.id,
-          label: n.title || n.id,
-          type: 'note' as const,
-        }))
-        const taskItems: ReferenceItem[] = (notes.value || []).filter((n: NoteDTO) => n.noteType === 'task').map((n: NoteDTO) => ({
-          id: n.id,
-          shortCode: n.id,
-          label: n.title || n.id,
-          type: 'task' as const,
-        }))
-        const tasklistItems: ReferenceItem[] = (notes.value || []).filter((n: NoteDTO) => n.noteType === 'tasklist').map((n: NoteDTO) => ({
-          id: n.id,
-          shortCode: n.id,
-          label: n.title || n.id,
-          type: 'tasklist' as const,
-        }))
-        raw = [...tasklistItems, ...taskItems, ...noteItems]
+      case 'notes':
+        raw = (notes.value || [])
+          .filter((n: NoteDTO) => n.noteType in NOTE_TYPE_TO_REF_TYPE)
+          .map((n: NoteDTO) => ({
+            id: n.id,
+            shortCode: n.id,
+            label: n.title || n.id,
+            type: NOTE_TYPE_TO_REF_TYPE[n.noteType] as ReferenceRefType,
+          }))
         break
-      }
     }
 
     const q = query.value.toLowerCase()

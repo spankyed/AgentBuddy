@@ -15,7 +15,7 @@
           @mousedown.prevent="selectCategory(cat.id)"
           @mouseenter="selectedIndex = index"
         >
-          <component :is="categoryIcons[cat.id]" class="reference-suggestion-icon" :size="16" />
+          <component :is="getCategoryIcon(cat.id)" class="reference-suggestion-icon" :size="16" />
           <span>{{ cat.label }}</span>
         </div>
         <div v-if="filteredCategories.length === 0" class="reference-suggestion-empty">
@@ -40,7 +40,7 @@
           @mousedown.prevent="insertReference(item)"
           @mouseenter="selectedIndex = index"
         >
-          <component :is="itemTypeIcons[item.type]" class="reference-suggestion-icon" :size="16" />
+          <component :is="REF_TYPES[item.type].icon" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
           <span class="reference-suggestion-code" :title="item.shortCode">{{ item.shortCode.length > 12 ? item.shortCode.slice(0, 12) + '…' : item.shortCode }}</span>
         </div>
@@ -53,11 +53,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { History, Library, Folder, NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
 import { referenceSuggestionPluginKey } from './reference-suggestion-plugin'
-import { useReferenceItems, categories, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
+import { useReferenceItems, CATEGORIES, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
+import { REF_TYPES } from './reference-config'
 
 const props = defineProps<{
   editor: Editor
@@ -66,26 +66,8 @@ const props = defineProps<{
 const selectedIndex = ref(0)
 const popupStyle = ref<{ bottom: string; left: string }>({ bottom: '0px', left: '0px' })
 
-const categoryIcons: Record<ReferenceCategory, Component> = {
-  threads: History,
-  documents: Library,
-  notes: NotebookText,
-}
-
-const itemTypeIcons: Record<ReferenceItem['type'], Component> = {
-  thread: History,
-  document: Library,
-  folder: Folder,
-  note: NotebookText,
-  task: CircleCheck,
-  tasklist: ListChecks,
-}
-
-function categoryToId(type: ReferenceItem['type']): ReferenceCategory {
-  if (type === 'thread') return 'threads'
-  if (type === 'document' || type === 'folder') return 'documents'
-  if (type === 'task' || type === 'tasklist') return 'notes'
-  return 'notes'
+function getCategoryIcon(id: ReferenceCategory) {
+  return CATEGORIES.find((c) => c.id === id)?.primaryIcon
 }
 
 // Read plugin state reactively
@@ -99,22 +81,22 @@ const query = computed(() => pluginState.value?.query ?? '')
 const selectedCategory = computed(() => pluginState.value?.selectedCategory ?? null)
 
 const activeCategoryLabel = computed(() => {
-  const cat = categories.find((c) => c.id === selectedCategory.value)
+  const cat = CATEGORIES.find((c) => c.id === selectedCategory.value)
   return cat?.label ?? ''
 })
 
 // Filter categories by query
 const filteredCategories = computed(() => {
   const q = query.value.toLowerCase()
-  if (!q) return categories
-  return categories.filter((c) => c.label.toLowerCase().includes(q))
+  if (!q) return CATEGORIES
+  return CATEGORIES.filter((c) => c.label.toLowerCase().includes(q))
 })
 
 // Auto-select category when user manually types colon (e.g. #notes:)
 watch([query, level], ([q, lvl]) => {
   if (lvl !== 'category' || !q.endsWith(':')) return
   const typed = q.slice(0, -1)
-  const match = categories.find(
+  const match = CATEGORIES.find(
     (c) => c.label.toLowerCase().replace(/\s+/g, '') === typed
   )
   if (!match) return
@@ -128,7 +110,6 @@ watch([query, level], ([q, lvl]) => {
     level: 'items',
     selectedCategory: match.id,
     categoryQuery: q,
-    decorationRect: null,
   })
   props.editor.view.dispatch(tr)
   selectedIndex.value = 0
@@ -242,7 +223,7 @@ onBeforeUnmount(() => {
 })
 
 function selectCategory(id: ReferenceCategory) {
-  const cat = categories.find((c) => c.id === id)
+  const cat = CATEGORIES.find((c) => c.id === id)
   if (!cat) return
 
   const state = pluginState.value
@@ -263,7 +244,6 @@ function selectCategory(id: ReferenceCategory) {
     level: 'items',
     selectedCategory: id,
     categoryQuery: categoryPrefix,
-    decorationRect: null,
   })
 
   props.editor.view.dispatch(tr)
@@ -286,7 +266,6 @@ function goBackToCategories() {
     level: 'category',
     selectedCategory: null,
     categoryQuery: '',
-    decorationRect: null,
   })
 
   props.editor.view.dispatch(tr)

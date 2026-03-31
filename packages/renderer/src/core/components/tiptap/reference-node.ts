@@ -1,67 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
-import { referenceSuggestionPlugin, referenceSuggestionPluginKey } from './reference-suggestion-plugin'
+import { referenceSuggestionPlugin } from './reference-suggestion-plugin'
 import { applicationState } from '@/main'
-
-export type ReferenceRefType = 'thread' | 'document' | 'folder' | 'note' | 'task' | 'tasklist'
-
-const PROTOCOL_MAP: Record<ReferenceRefType, string> = {
-  thread: 'thread',
-  document: 'doc',
-  folder: 'folder',
-  note: 'note',
-  task: 'task',
-  tasklist: 'tasklist',
-}
-
-const PROTOCOL_TO_TYPE: Record<string, ReferenceRefType> = {
-  thread: 'thread',
-  doc: 'document',
-  folder: 'folder',
-  note: 'note',
-  task: 'task',
-  tasklist: 'tasklist',
-}
-
-// Lucide icon SVG elements per type (matches plugin sidebar icons)
-type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
-
-const TYPE_ICON_ELEMENTS: Record<ReferenceRefType, SvgElement[]> = {
-  thread: [ // History
-    ['path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }],
-    ['path', { d: 'M3 3v5h5' }],
-    ['path', { d: 'M12 7v5l4 2' }],
-  ],
-  document: [ // Library
-    ['path', { d: 'm16 6 4 14' }],
-    ['path', { d: 'M12 6v14' }],
-    ['path', { d: 'M8 8v12' }],
-    ['path', { d: 'M4 4v16' }],
-  ],
-  folder: [ // Folder
-    ['path', { d: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' }],
-  ],
-  note: [ // NotebookText
-    ['path', { d: 'M2 6h4' }],
-    ['path', { d: 'M2 10h4' }],
-    ['path', { d: 'M2 14h4' }],
-    ['path', { d: 'M2 18h4' }],
-    ['rect', { width: '16', height: '20', x: '4', y: '2', rx: '2' }],
-    ['path', { d: 'M9.5 8h5' }],
-    ['path', { d: 'M9.5 12H16' }],
-    ['path', { d: 'M9.5 16H14' }],
-  ],
-  task: [ // CircleCheck
-    ['circle', { cx: '12', cy: '12', r: '10' }],
-    ['path', { d: 'm9 12 2 2 4-4' }],
-  ],
-  tasklist: [ // ListChecks
-    ['path', { d: 'm3 17 2 2 4-4' }],
-    ['path', { d: 'm3 7 2 2 4-4' }],
-    ['path', { d: 'M13 6h8' }],
-    ['path', { d: 'M13 12h8' }],
-    ['path', { d: 'M13 18h8' }],
-  ],
-}
+import { REF_TYPES, ALL_PROTOCOLS, type ReferenceRefType } from './reference-config'
 
 function createIconSvg(type: ReferenceRefType): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
@@ -75,7 +15,7 @@ function createIconSvg(type: ReferenceRefType): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
 
-  for (const [tag, attrs] of TYPE_ICON_ELEMENTS[type] || TYPE_ICON_ELEMENTS.thread) {
+  for (const [tag, attrs] of REF_TYPES[type]?.svgElements || REF_TYPES.thread.svgElements) {
     const el = document.createElementNS(ns, tag)
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -102,72 +42,20 @@ export const ReferenceNode = Node.create({
   },
 
   parseHTML() {
-    return [
-      {
-        tag: 'a[href^="thread://"]',
-        priority: 60,
-        getAttrs(node) {
-          const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          const shortCode = href.slice('thread://'.length)
-          return { refType: 'thread', refId: shortCode, shortCode, label: el.textContent || '' }
-        },
+    return Object.entries(REF_TYPES).map(([refType, cfg]) => ({
+      tag: `a[href^="${cfg.protocol}://"]`,
+      priority: 60,
+      getAttrs(node: HTMLElement) {
+        const href = (node as HTMLAnchorElement).getAttribute('href') || ''
+        const id = href.slice(cfg.protocol.length + 3)
+        return { refType, refId: id, shortCode: id, label: node.textContent || '' }
       },
-      {
-        tag: 'a[href^="doc://"]',
-        priority: 60,
-        getAttrs(node) {
-          const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          const shortCode = href.slice('doc://'.length)
-          return { refType: 'document', refId: shortCode, shortCode, label: el.textContent || '' }
-        },
-      },
-      {
-        tag: 'a[href^="folder://"]',
-        priority: 60,
-        getAttrs(node) {
-          const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          const id = href.slice('folder://'.length)
-          return { refType: 'folder', refId: id, shortCode: id, label: el.textContent || '' }
-        },
-      },
-      {
-        tag: 'a[href^="note://"]',
-        priority: 60,
-        getAttrs(node) {
-          const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          const id = href.slice('note://'.length)
-          return { refType: 'note', refId: id, shortCode: id, label: el.textContent || '' }
-        },
-      },
-      {
-        tag: 'a[href^="task://"]',
-        priority: 60,
-        getAttrs(node) {
-          const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          const id = href.slice('task://'.length)
-          return { refType: 'task', refId: id, shortCode: id, label: el.textContent || '' }
-        },
-      },
-      {
-        tag: 'a[href^="tasklist://"]',
-        priority: 60,
-        getAttrs(node) {
-          const el = node as HTMLAnchorElement
-          const href = el.getAttribute('href') || ''
-          const id = href.slice('tasklist://'.length)
-          return { refType: 'tasklist', refId: id, shortCode: id, label: el.textContent || '' }
-        },
-      },
-    ]
+    }))
   },
 
   renderHTML({ node }) {
-    const protocol = PROTOCOL_MAP[node.attrs.refType as ReferenceRefType] || 'thread'
+    const cfg = REF_TYPES[node.attrs.refType as ReferenceRefType]
+    const protocol = cfg?.protocol || 'thread'
     return [
       'a',
       mergeAttributes({
@@ -201,27 +89,10 @@ export const ReferenceNode = Node.create({
         const refType = node.attrs.refType as ReferenceRefType
         const refId = node.attrs.refId as string
         const { system } = applicationState
+        const cfg = REF_TYPES[refType]
 
-        const pluginMap: Record<ReferenceRefType, string> = {
-          thread: 'threads',
-          document: 'library',
-          folder: 'library',
-          note: 'notes',
-          task: 'notes',
-          tasklist: 'notes',
-        }
-
-        system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: pluginMap[refType] })
-
-        if (refType === 'thread') {
-          system.get('threads').send({ type: 'SELECT_THREAD', id: refId })
-        } else if (refType === 'document') {
-          system.get('library').send({ type: 'EDIT_DOCUMENT', documentId: refId })
-        } else if (refType === 'folder') {
-          system.get('library').send({ type: 'NAVIGATE_TO_FOLDER', folderId: refId })
-        } else if (refType === 'note' || refType === 'task' || refType === 'tasklist') {
-          system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
-        }
+        system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: cfg.plugin })
+        cfg.navigate(system, refId)
       })
 
       return {
@@ -244,7 +115,6 @@ export const ReferenceNode = Node.create({
         const { selection } = state
         const { $from } = selection
 
-        // If selection is empty and cursor is right after a reference node, select it for deletion
         if (selection.empty && $from.nodeBefore?.type.name === 'reference') {
           const pos = $from.pos - $from.nodeBefore.nodeSize
           editor.chain().setTextSelection({ from: pos, to: $from.pos }).deleteSelection().run()
@@ -266,17 +136,14 @@ export const ReferenceNode = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          const protocol = PROTOCOL_MAP[node.attrs.refType as ReferenceRefType] || 'thread'
+          const cfg = REF_TYPES[node.attrs.refType as ReferenceRefType]
+          const protocol = cfg?.protocol || 'thread'
           state.write(`[${node.attrs.label}](${protocol}://${node.attrs.shortCode})`)
         },
         parse: {
           updateDOM(element: HTMLElement) {
-            // Convert parsed markdown links with our protocols back into <a> tags
-            // The markdown parser will create standard <a> elements from [label](protocol://code)
-            // so we just need to ensure they survive for parseHTML to pick them up
-            for (const protocol of ['thread', 'doc', 'folder', 'note', 'task', 'tasklist']) {
-              element.querySelectorAll(`a[href^="${protocol}://"]`).forEach((el) => {
-                // Ensure the link is inline (not wrapped in block-only <p> with nothing else)
+            for (const protocol of ALL_PROTOCOLS) {
+              element.querySelectorAll(`a[href^="${protocol}://"]`).forEach(() => {
                 // The default markdown parse already creates <a> elements, which parseHTML handles
               })
             }

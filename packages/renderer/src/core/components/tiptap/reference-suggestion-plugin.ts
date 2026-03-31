@@ -1,7 +1,6 @@
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import type { EditorView } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/core'
-import type { ReferenceCategory } from './useReferenceItems'
+import type { ReferenceCategory } from './reference-config'
 
 export interface ReferenceSuggestionState {
   active: boolean
@@ -10,7 +9,6 @@ export interface ReferenceSuggestionState {
   level: 'category' | 'items'
   selectedCategory: ReferenceCategory | null
   categoryQuery: string
-  decorationRect: { top: number; left: number; bottom: number } | null
 }
 
 const defaultState: ReferenceSuggestionState = {
@@ -20,7 +18,6 @@ const defaultState: ReferenceSuggestionState = {
   level: 'category',
   selectedCategory: null,
   categoryQuery: '',
-  decorationRect: null,
 }
 
 export const referenceSuggestionPluginKey = new PluginKey<ReferenceSuggestionState>('referenceSuggestion')
@@ -84,7 +81,6 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
             level: 'category',
             selectedCategory: null,
             categoryQuery: '',
-            decorationRect: null,
           }
         }
 
@@ -107,20 +103,5 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
       },
     },
 
-    props: {
-      handleKeyDown(view: EditorView, event: KeyboardEvent) {
-        const state = referenceSuggestionPluginKey.getState(view.state)
-        if (!state?.active) return false
-
-        // These keys are handled by the popup component via the editor's keydown event
-        // We just need to prevent default ProseMirror behavior for navigation keys
-        if (['ArrowUp', 'ArrowDown', 'Enter', 'Tab', 'Escape'].includes(event.key)) {
-          // Let the popup handle these - it will call event.preventDefault()
-          return false
-        }
-
-        return false
-      },
-    },
   })
 }
