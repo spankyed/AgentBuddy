@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ArtifactEntity, ThreadEntity, ThreadExtended, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig } from '@app/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, ThreadExtended, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig, MessageReferences } from '@app/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -51,7 +51,7 @@ type Brain_FE_AgentEvents =
 type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
-  | { type: 'SEND_MESSAGE'; text: string; images?: string[] }
+  | { type: 'SEND_MESSAGE'; text: string; references?: MessageReferences }
   | { type: 'CLEAR_THREAD' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
@@ -151,7 +151,7 @@ const agentState = setup({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
     sendMessage: ({ context, event }) => {
-      const { text, images } = typeOf('SEND_MESSAGE', event);
+      const { text, references } = typeOf('SEND_MESSAGE', event);
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
@@ -159,7 +159,7 @@ const agentState = setup({
         mode: context.mode,
         phase: context.phase,
         threadId: context.currentThread?.id,
-        ...(images?.length && { images }),
+        ...(references && { references }),
       });
     },
     clearThread: assign(() => ({

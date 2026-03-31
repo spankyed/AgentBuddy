@@ -11,16 +11,18 @@
         @paste="handlePaste">
         <StatusIndicator/>
 
-        <!-- Image preview strip -->
-        <div v-if="pendingImages.length" class="flex flex-wrap gap-2 px-3 pt-3">
-          <div v-for="(img, index) in pendingImages" :key="index" class="relative group">
-            <img :src="img" class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
-              @click="$emit('open-lightbox', img)" />
+        <!-- Attachment strip: files then images, horizontal scroll -->
+        <div v-if="pendingFiles.length || pendingImages.length"
+          class="flex items-end gap-2 mx-4 pt-3 overflow-x-auto scrollbar-thin">
+          <ImageThumbnail v-for="(img, index) in pendingImages" :key="'i-'+index"
+            :src="img.dataUrl" :name="img.name" class="group" @click="$emit('open-lightbox', img.dataUrl)">
             <button type="button" @click="removeImage(index)"
               class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
               <X :size="10" />
             </button>
-          </div>
+          </ImageThumbnail>
+          <FileBlock v-for="(file, index) in pendingFiles" :key="'f-'+index"
+            :file="file" removable @remove="removeFile(index)" class="flex-shrink-0" />
         </div>
 
         <!-- Editor container -->
@@ -121,7 +123,7 @@
             <Button
               title="Stop agent work"
               type="submit"
-              :disabled="(!messageContent && !pendingImages.length) || disabled"
+              :disabled="(!messageContent && !hasAttachments) || disabled"
               variant="secondary"
             >
               <span class="hidden @md:inline">Stop</span>
@@ -129,7 +131,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="(!messageContent && !pendingImages.length) || disabled"
+              :disabled="(!messageContent && !hasAttachments) || disabled"
             >
               <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -145,7 +147,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
+import FileBlock from './FileBlock.vue'
+import ImageThumbnail from './ImageThumbnail.vue'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
+import { useAttachments } from './composables/useAttachments'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -159,7 +164,7 @@ import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData, AgentMode } from '@app/api'
+import type { AgentThreadData, AgentMode, MessageReferences } from '@app/api'
 
 const props = defineProps<{
   currentThread: AgentThreadData
@@ -171,7 +176,7 @@ const props = defineProps<{
 
 // Define emits including new button actions
 const emit = defineEmits<{
-  (e: 'send-message', message: string, images?: string[]): void
+  (e: 'send-message', message: string, references?: MessageReferences): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
@@ -191,31 +196,12 @@ interface ActionButton {
 
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
-const pendingImages = ref<string[]>([])
 
-const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-
-const handlePaste = (event: ClipboardEvent) => {
-  const items = event.clipboardData?.items
-  if (!items) return
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      event.preventDefault()
-      const file = item.getAsFile()
-      if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
-      const reader = new FileReader()
-      reader.onload = () => {
-        pendingImages.value = [...pendingImages.value, reader.result as string]
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-}
-
-const removeImage = (i: number) => {
-  pendingImages.value = pendingImages.value.filter((_, idx) => idx !== i)
-}
+const {
+  pendingImages, pendingFiles, hasAttachments,
+  handlePaste, removeImage, openFilePicker, removeFile,
+  collectAttachments, clearAll,
+} = useAttachments()
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md
@@ -273,6 +259,10 @@ watch(() => props.currentThread?.id, () => {
 
 const handleButtonClick = (action: string) => {
   if (props.disabled) return
+  if (action === 'attach-file') {
+    openFilePicker()
+    return
+  }
   if (action === 'voice-input') {
     toggleSpeech()
     emit('voice-input')
@@ -292,16 +282,17 @@ const handlePhaseChange = (newPhase: string) => {
   emit('phase-change', newPhase)
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
   if (!editor) return
   const md = (editor.storage as any).markdown.getMarkdown() as string
-  if (md.trim() || pendingImages.value.length) {
-    emit('send-message', md, pendingImages.value.length ? [...pendingImages.value] : undefined)
+  if (md.trim() || hasAttachments.value) {
+    const entityId = props.currentThread?.id || 'chat-attachments'
+    emit('send-message', md, await collectAttachments(entityId))
     editor.commands.clearContent(true)
     messageContent.value = ''
-    pendingImages.value = []
+    clearAll()
   }
 }
 </script>

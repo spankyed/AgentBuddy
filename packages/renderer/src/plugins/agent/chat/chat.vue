@@ -23,7 +23,7 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :modes="modes"
-          @send-message="(text: string, images?: string[]) => actor.send({ type: 'SEND_MESSAGE', text, images })"
+          @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
           @open-lightbox="openLightbox"
@@ -81,7 +81,7 @@ import ImageLightbox from './ImageLightbox.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
-import type { AgentThreadData, MessageEntity, ThreadEntity } from '@app/api'
+import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences } from '@app/api'
 
 const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);

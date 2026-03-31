@@ -191,11 +191,22 @@ class WindowManager implements AppModule {
       return fs.readFile(filePath, 'utf-8');
     });
 
+    // Handle file reading as base64 (for binary files like images)
+    ipcMain.handle('file:read-base64', async (event, filePath: string) => {
+      const buffer = await fs.readFile(filePath);
+      return buffer.toString('base64');
+    });
+
     // Handle opening external URLs in default browser
     ipcMain.handle('shell:openExternal', async (_event, url: string) => {
       if (/^https?:\/\//.test(url)) {
         await shell.openExternal(url);
       }
+    });
+
+    // Handle revealing files in OS file explorer
+    ipcMain.handle('shell:showItemInFolder', async (_event, filePath: string) => {
+      shell.showItemInFolder(filePath);
     });
 
     // Media upload handler

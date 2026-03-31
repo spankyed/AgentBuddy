@@ -349,6 +349,21 @@ interface ButtonConfig {
         };
     };
 }
+interface FileReference {
+    name: string;
+    path: string;
+    typeLabel: string;
+    isImage: boolean;
+    previewUrl?: string;
+}
+interface ImageReference {
+    url: string;
+    name: string;
+}
+interface MessageReferences {
+    images?: ImageReference[];
+    files?: FileReference[];
+}
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
@@ -358,7 +373,7 @@ interface MessageEntity extends BaseEntity {
     blocks?: BlockConfig[];
     blockResponse?: any;
     forkable?: boolean;
-    images?: string[];
+    references?: MessageReferences;
 }
 interface ThreadEntity extends BaseEntity {
     entityType: EARS.Entity.Thread;
@@ -846,12 +861,72 @@ declare const events: {
         mode: zod.ZodOptional<zod.ZodString>;
         phase: zod.ZodOptional<zod.ZodString>;
         threadId: zod.ZodOptional<zod.ZodString>;
-        images: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        references: zod.ZodOptional<zod.ZodObject<{
+            images: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                url: zod.ZodString;
+                name: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                url: string;
+                name: string;
+            }, {
+                url: string;
+                name: string;
+            }>, "many">>;
+            files: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                name: zod.ZodString;
+                path: zod.ZodString;
+                typeLabel: zod.ZodString;
+                isImage: zod.ZodBoolean;
+            }, "strip", zod.ZodTypeAny, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }>, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }, {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         text: string;
         type: "USER_MSG";
         systemId: "agent";
-        images?: string[] | undefined;
+        references?: {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
         mode?: string | undefined;
         phase?: string | undefined;
         threadId?: string | undefined;
@@ -859,7 +934,18 @@ declare const events: {
         text: string;
         type: "USER_MSG";
         systemId: "agent";
-        images?: string[] | undefined;
+        references?: {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
         mode?: string | undefined;
         phase?: string | undefined;
         threadId?: string | undefined;
@@ -5196,7 +5282,7 @@ declare const services: {
                 sender: "user" | "assistant" | "system";
                 blocks?: BlockConfig[];
                 forkable?: boolean;
-                images?: string[];
+                references?: MessageReferences;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

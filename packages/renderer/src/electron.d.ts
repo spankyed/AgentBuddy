@@ -15,9 +15,11 @@ declare global {
           type: 'file' | 'directory' | 'both';
         }) => Promise<string | string[] | null>;
         readFile: (filePath: string) => Promise<string>;
+        readFileBase64: (filePath: string) => Promise<string>;
       };
       shell: {
         openExternal: (url: string) => Promise<void>;
+        showItemInFolder: (filePath: string) => Promise<void>;
       };
       media: {
         upload: (entityId: string, base64Data: string, mimeType: string) => Promise<string>;
