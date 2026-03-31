@@ -6,7 +6,7 @@
     >
       <div
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
-        :class="[$style.input, { 'opacity-50': disabled, 'border-white': commandHighlight }]"
+        :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight }]"
         data-onboarding-id="agent-chat-input"
         @paste="handlePaste">
         <StatusIndicator/>
@@ -387,6 +387,9 @@ const handleSubmit = async () => {
 
 <style lang="scss" module>
 .input {
-  border-color: rgb(60 60 60);;
+  border-color: rgb(60 60 60);
+}
+.inputCommandActive {
+  border-color: white;
 }
 </style>
