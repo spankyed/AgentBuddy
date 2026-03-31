@@ -137,11 +137,12 @@
           class="flex items-start gap-3"
         >
           <textarea
+            v-auto-resize
             v-model="prompt.text"
             rows="1"
             placeholder="Prompt text"
             class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none overflow-y-hidden"
-            style="max-height: calc(1.5em * 3 + 16px)"
+            style="max-height: calc(1.5em * 5 + 16px)"
             @input="autoResize($event); debouncedSaveQuickPrompts()"
           />
           <button
@@ -208,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, type Directive, nextTick } from 'vue'
 import { Plus, X, Eye, EyeOff } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
@@ -263,12 +264,21 @@ const addQuickPrompt = () => {
   saveQuickPrompts()
 }
 
-const autoResize = (event: Event) => {
-  const el = event.target as HTMLTextAreaElement
+const resizeTextarea = (el: HTMLTextAreaElement) => {
   el.style.height = 'auto'
   el.style.height = el.scrollHeight + 'px'
   const maxHeight = parseFloat(getComputedStyle(el).maxHeight)
   el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+}
+
+const autoResize = (event: Event) => {
+  resizeTextarea(event.target as HTMLTextAreaElement)
+}
+
+const vAutoResize: Directive<HTMLTextAreaElement> = {
+  mounted(el) {
+    nextTick(() => resizeTextarea(el))
+  },
 }
 
 const removeQuickPrompt = (index: number) => {
