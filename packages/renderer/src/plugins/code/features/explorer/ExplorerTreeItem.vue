@@ -204,6 +204,7 @@ const checkAutoRename = inject<(path: string) => boolean>('explorer-check-auto-r
 const getRevealPath = inject<() => string | null>('explorer-reveal-path')!
 const clearReveal = inject<() => void>('explorer-clear-reveal')!
 const renameTrigger = inject<{ get: () => string | null, clear: () => void }>('explorer-rename-trigger')!
+const restoreFocus = inject<() => void>('explorer-restore-focus')!
 
 // Drag-drop injections
 const dragStart = inject<(e: DragEvent, path: string) => void>('explorer-drag-start')!
@@ -318,6 +319,7 @@ function confirmRename() {
 function cancelRename() {
   isEditing.value = false
   editingName.value = ''
+  restoreFocus()
 }
 
 function deleteItem() {

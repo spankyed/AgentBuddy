@@ -55,6 +55,7 @@
 
       <div
         v-else-if="rootFiles.length > 0"
+        ref="treeContainerRef"
         class="flex-1 overflow-auto focus:outline-none"
         @click="handleEmptySpaceClick"
         @dragover.prevent="onEmptySpaceDragOver"
@@ -86,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide } from 'vue'
+import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -127,6 +128,9 @@ const pendingRenamePath = ref<string | null>(null)
 
 // Rename trigger — set by Enter key, consumed by the matching tree item
 const renameTriggerPath = ref<string | null>(null)
+
+// Container ref for restoring focus after rename
+const treeContainerRef = ref<HTMLElement | null>(null)
 
 // Build flattened visible paths for shift-range selection
 function getFlattenedVisiblePaths(): string[] {
@@ -219,6 +223,10 @@ provide('explorer-rename-trigger', {
 provide('explorer-reveal-path', () => revealPath.value)
 provide('explorer-clear-reveal', () => {
   explorerActor?.send({ type: 'explorer.CLEAR_REVEAL' })
+})
+
+provide('explorer-restore-focus', () => {
+  nextTick(() => treeContainerRef.value?.focus())
 })
 
 // Drag-drop provides
