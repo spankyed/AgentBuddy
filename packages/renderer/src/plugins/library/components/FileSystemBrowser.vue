@@ -271,7 +271,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, watch, provide, onMounted, onUnmounted } from 'vue'
+import { ref, computed, reactive, watch, provide, onMounted, onUnmounted, nextTick } from 'vue'
 import {
   FolderPlus,
   FileText,
@@ -430,6 +430,12 @@ watch(() => props.itemToEdit, (newItemId) => {
       startEditingItem(item.id, item.name)
       emit('START_EDITING_ITEM', { itemId: item.id })
     }
+  }
+})
+
+watch(editingItemId, (newVal, oldVal) => {
+  if (!newVal && oldVal) {
+    nextTick(() => containerRef.value?.focus())
   }
 })
 
