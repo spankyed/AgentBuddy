@@ -14,15 +14,13 @@
         <!-- Attachment strip: files then images, horizontal scroll -->
         <div v-if="pendingFiles.length || pendingImages.length"
           class="flex items-end gap-2 mx-4 pt-3 overflow-x-auto scrollbar-thin">
-          <div v-for="(img, index) in pendingImages" :key="'i-'+index" class="relative group flex-shrink-0">
-            <img :src="img.dataUrl" class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
-              @click="$emit('open-lightbox', img.dataUrl)" />
-            <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-neutral-200 truncate text-center px-1 py-0.5 rounded-b-lg">{{ img.name }}</div>
+          <ImageThumbnail v-for="(img, index) in pendingImages" :key="'i-'+index"
+            :src="img.dataUrl" :name="img.name" class="group" @click="$emit('open-lightbox', img.dataUrl)">
             <button type="button" @click="removeImage(index)"
               class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
               <X :size="10" />
             </button>
-          </div>
+          </ImageThumbnail>
           <FileBlock v-for="(file, index) in pendingFiles" :key="'f-'+index"
             :file="file" removable @remove="removeFile(index)" class="flex-shrink-0" />
         </div>
@@ -150,6 +148,7 @@
 import { ref, computed, watch } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import FileBlock from './FileBlock.vue'
+import ImageThumbnail from './ImageThumbnail.vue'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import { useAttachments } from './composables/useAttachments'
 import {
