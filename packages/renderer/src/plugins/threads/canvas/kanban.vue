@@ -207,7 +207,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
           :group="dropGroup"
           :targets="[dropGroup]"
           :list="items.filter(({ listId }) => listId === list.id)"
-          class="flex-1 p-3 space-y-2 overflow-y-auto min-h-[6rem]"
+          class="kanban-list flex-1 flex flex-col p-3 space-y-2 overflow-y-auto min-h-[6rem]"
           :options="arrangeableOptions"
           @drop-item="dropItem"
         >
@@ -252,7 +252,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
             </article>
           </template>
           <template #after>
-            <div class="flex-1" />
+            <div class="after-spacer" />
           </template>
         </ArrangeableList>
       </section>
@@ -264,6 +264,11 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
 <style scoped>
 :deep(.cursor-grabbing) {
   position: fixed !important;
+}
+
+/* Make the #after slot's <li> wrapper grow to fill remaining column space */
+.kanban-list :deep(li:has(> .after-spacer)) {
+  flex: 1;
 }
 
 .line-clamp-2 {
