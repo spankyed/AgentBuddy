@@ -71,8 +71,8 @@ const activeMode = ref<'query' | 'examples'>('query')
 // Panel sizing
 const schemaPanelWidth = ref(15)
 const queryPanelHeight = ref(50) // percentage
-const minSchemaPanelWidth = 200
-const maxSchemaPanelWidth = 400
+const minSchemaPanelWidth = 12
+const maxSchemaPanelWidth = 25
 const minQueryPanelHeight = 30
 const maxQueryPanelHeight = 70
 
@@ -107,8 +107,9 @@ function startResizeQuery(e: MouseEvent) {
 
 function handleMouseMove(e: MouseEvent) {
   if (isResizingSchema) {
-    const diff = e.clientX - startX
-    const newWidth = Math.max(minSchemaPanelWidth, Math.min(maxSchemaPanelWidth, startWidth + diff))
+    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize)
+    const diffRem = (e.clientX - startX) / rootFontSize
+    const newWidth = Math.max(minSchemaPanelWidth, Math.min(maxSchemaPanelWidth, startWidth + diffRem))
     schemaPanelWidth.value = newWidth
   } else if (isResizingQuery) {
     const mainContentHeight = window.innerHeight
