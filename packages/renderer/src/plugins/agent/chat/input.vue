@@ -28,7 +28,7 @@
           <div v-for="(file, index) in pendingFiles" :key="index"
             class="relative group flex items-center gap-2.5 w-[240px] bg-neutral-900 border border-neutral-700 rounded-lg p-2">
             <div class="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-neutral-800 flex items-center justify-center">
-              <img v-if="file.isImage" :src="file.path" class="w-full h-full object-cover" />
+              <img v-if="file.isImage && file.previewUrl" :src="file.previewUrl" class="w-full h-full object-cover border border-neutral-700/50" />
               <FileIcon v-else :size="20" class="text-neutral-400" />
             </div>
             <div class="flex-1 min-w-0">

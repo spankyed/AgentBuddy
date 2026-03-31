@@ -33,6 +33,7 @@ const fileUtils = {
     type: 'file' | 'directory' | 'both';
   }) => ipcRenderer.invoke('dialog:select-path', options),
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
+  readFileBase64: (filePath: string) => ipcRenderer.invoke('file:read-base64', filePath) as Promise<string>,
 };
 
 // Get the API port
