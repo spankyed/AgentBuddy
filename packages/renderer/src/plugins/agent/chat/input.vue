@@ -391,7 +391,7 @@ const handleSubmit = async () => {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .inputCommandActive {
-  border-color: rgba(75, 150, 243, 0.6);
-  box-shadow: 0 0 0 1px rgba(75, 150, 243, 0.15), 0 0 12px -2px rgba(75, 150, 243, 0.2);
+  border-color: rgba(180, 180, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(180, 180, 255, 0.1), 0 0 12px -2px rgba(180, 180, 255, 0.15);
 }
 </style>
