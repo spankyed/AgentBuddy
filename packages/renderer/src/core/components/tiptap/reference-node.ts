@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin, referenceSuggestionPluginKey } from './reference-suggestion-plugin'
+import { applicationState } from '@/main'
 
 export type ReferenceRefType = 'thread' | 'document' | 'note'
 
@@ -145,6 +146,28 @@ export const ReferenceNode = Node.create({
 
       dom.appendChild(icon)
       dom.appendChild(label)
+
+      dom.addEventListener('click', () => {
+        const refType = node.attrs.refType as ReferenceRefType
+        const refId = node.attrs.refId as string
+        const { system } = applicationState
+
+        const pluginMap: Record<ReferenceRefType, string> = {
+          thread: 'threads',
+          document: 'library',
+          note: 'notes',
+        }
+
+        system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: pluginMap[refType] })
+
+        if (refType === 'thread') {
+          system.get('threads').send({ type: 'SELECT_THREAD', id: refId })
+        } else if (refType === 'document') {
+          system.get('library').send({ type: 'EDIT_DOCUMENT', documentId: refId })
+        } else if (refType === 'note') {
+          system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
+        }
+      })
 
       return {
         dom,
