@@ -96,7 +96,8 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
 
         // At category level, deactivate if query matches no categories
         if (!prev.active || prev.level === 'category') {
-          if (afterHash && !CATEGORIES.some(c => c.label.toLowerCase().includes(afterHash.toLowerCase()))) {
+          const categoryCheck = afterHash.endsWith(':') ? afterHash.slice(0, -1) : afterHash
+          if (categoryCheck && !CATEGORIES.some(c => c.label.toLowerCase().includes(categoryCheck.toLowerCase()))) {
             return prev.active ? { ...defaultState } : prev
           }
         }
