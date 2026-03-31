@@ -2,6 +2,7 @@
   <Teleport to="body">
     <div
       v-if="isActive"
+      ref="popupEl"
       class="reference-suggestion-popup"
       :style="popupStyle"
     >
@@ -64,6 +65,7 @@ const props = defineProps<{
 }>()
 
 const selectedIndex = ref(0)
+const popupEl = ref<HTMLElement | null>(null)
 const popupStyle = ref<{ bottom: string; left: string }>({ bottom: '0px', left: '0px' })
 
 function getCategoryIcon(id: ReferenceCategory) {
@@ -165,6 +167,22 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updatePosition)
 })
 
+// Close on outside click
+function handleClickOutside(event: MouseEvent) {
+  if (!isActive.value) return
+  const target = event.target as Node
+  if (popupEl.value?.contains(target)) return
+  deactivateAndClean()
+}
+
+watch(isActive, (active) => {
+  if (active) {
+    document.addEventListener('mousedown', handleClickOutside, true)
+  } else {
+    document.removeEventListener('mousedown', handleClickOutside, true)
+  }
+})
+
 // Keyboard navigation
 function handleKeyDown(event: KeyboardEvent) {
   if (!isActive.value) return
@@ -220,6 +238,7 @@ watch(isActive, (active) => {
 
 onBeforeUnmount(() => {
   props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
+  document.removeEventListener('mousedown', handleClickOutside, true)
 })
 
 function selectCategory(id: ReferenceCategory) {
