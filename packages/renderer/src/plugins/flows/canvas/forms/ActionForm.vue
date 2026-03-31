@@ -12,15 +12,25 @@
           <label class="text-xs font-semibold tracking-wider uppercase text-neutral-500">
             Template
           </label>
-          <button
-            v-if="selectedAction"
-            @click="viewAction"
-            class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
-            title="View action details"
-          >
-            <ExternalLink class="w-3 h-3" />
-            Edit Template
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="selectedAction"
+              @click="viewAction"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
+              title="View action details"
+            >
+              <ExternalLink class="w-3 h-3" />
+              Edit Template
+            </button>
+            <button
+              @click="createAction"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 transition-colors rounded hover:bg-neutral-700/50 hover:text-blue-300"
+              title="Create new action"
+            >
+              <Plus class="w-3 h-3" />
+              New Action
+            </button>
+          </div>
         </div>
         <ComboboxRoot
           :model-value="selectedAction"
@@ -137,7 +147,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Check, ChevronDown, ExternalLink } from 'lucide-vue-next'
+import { Check, ChevronDown, ExternalLink, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import {
   ComboboxAnchor,
@@ -249,6 +259,12 @@ const handleActionChange = (action: ActionEntity | null) => {
       fieldMappings: []
     })
   }
+}
+
+const createAction = () => {
+  const actionsActor = applicationState.system.get('actions');
+  actionsActor.send({ type: 'ACTION.CREATE' });
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'actions' });
 }
 
 const viewAction = () => {
