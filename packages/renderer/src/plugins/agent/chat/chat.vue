@@ -23,10 +23,12 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :modes="modes"
+          :quick-prompts="quickPrompts"
           @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
           @open-lightbox="openLightbox"
+          @update-quick-prompts="updateQuickPrompts"
         />
       </div>
     </div>
@@ -81,7 +83,8 @@ import ImageLightbox from './ImageLightbox.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
-import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences } from '@app/api'
+import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '@app/api'
+import { trpc } from '@/core/trpc'
 
 const actor: AgentState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
@@ -90,9 +93,21 @@ const recentThreads = useSelector(actor, (state) => (state.context.recentThreads
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
+const quickPrompts = useSelector(actor, (state) => (state.context.settings?.quickPrompts || []) as QuickPrompt[])
 const messagesContainer = ref<HTMLElement | null>(null)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
+
+function updateQuickPrompts(prompts: QuickPrompt[]) {
+  trpc.bus.send.mutate({
+    systemId: 'settings',
+    type: 'UPDATE_SETTINGS',
+    entityType: 'plugin',
+    label: 'agent',
+    path: ['quickPrompts'],
+    value: prompts,
+  })
+}
 
 function openLightbox(src: string) {
   lightboxSrc.value = src

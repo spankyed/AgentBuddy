@@ -125,6 +125,43 @@
       </div>
     </CollapsibleSection>
 
+    <!-- Quick Prompts Section -->
+    <CollapsibleSection label="Quick Prompts" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Short reusable prompts that can be quickly inserted into the chat input
+      </p>
+      <div class="space-y-3">
+        <div
+          v-for="(prompt, index) in quickPrompts"
+          :key="prompt.id"
+          class="flex items-center gap-3"
+        >
+          <input
+            v-model="prompt.text"
+            type="text"
+            placeholder="Prompt text"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+            @input="debouncedSaveQuickPrompts"
+          />
+          <button
+            @click="removeQuickPrompt(index)"
+            class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+            title="Remove prompt"
+          >
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <button
+          @click="addQuickPrompt"
+          class="px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all flex items-center gap-1.5"
+        >
+          <Plus class="w-3.5 h-3.5" />
+          Add Prompt
+        </button>
+      </div>
+    </CollapsibleSection>
+
     <!-- Agent Hotkeys Section -->
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Agent Hotkeys" :default-open="true" class="mb-8">
@@ -175,7 +212,7 @@ import { Plus, X, Eye, EyeOff } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
-import type { AgentSettings, AgentMode, AgentPhase } from '@app/api'
+import type { AgentSettings, AgentMode, AgentPhase, QuickPrompt } from '@app/api'
 
 interface Props {
   settings?: AgentSettings
@@ -202,6 +239,33 @@ const selectedModeId = ref<string>(modes.value.find(m => !m.hidden)?.id || '')
 const selectedMode = computed(() =>
   modes.value.find(m => m.id === selectedModeId.value)
 )
+
+// Quick prompts state
+const quickPrompts = ref<QuickPrompt[]>(props.settings?.quickPrompts ? [...props.settings.quickPrompts] : [])
+
+const saveQuickPrompts = () => {
+  emit('update-setting', {
+    path: ['quickPrompts'],
+    value: quickPrompts.value
+  })
+}
+
+const { debounced: debouncedSaveQuickPrompts } = useDebounce(() => {
+  saveQuickPrompts()
+}, 500)
+
+const addQuickPrompt = () => {
+  quickPrompts.value.push({
+    id: `qp_${Date.now()}`,
+    text: ''
+  })
+  saveQuickPrompts()
+}
+
+const removeQuickPrompt = (index: number) => {
+  quickPrompts.value.splice(index, 1)
+  saveQuickPrompts()
+}
 
 const hotkeys = reactive<AgentSettings['hotkeys']>({
   textToSpeech: props.settings?.hotkeys?.textToSpeech || null,
