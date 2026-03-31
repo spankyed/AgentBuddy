@@ -58,9 +58,12 @@
         class="flex items-end gap-2 mb-2 justify-end overflow-x-auto scrollbar-thin">
         <FileBlock v-for="(file, index) in message.references.files" :key="'f-'+index"
           :file="file" class="flex-shrink-0" />
-        <img v-for="(img, index) in message.references.images" :key="'i-'+index" :src="img"
-          class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-          @click="$emit('open-lightbox', img)" />
+        <div v-for="(img, index) in message.references.images" :key="'i-'+index" class="relative flex-shrink-0">
+          <img :src="img.url"
+            class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
+            @click="$emit('open-lightbox', img.url)" />
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-neutral-200 truncate text-center px-1 py-0.5 rounded-b-lg">{{ img.name }}</div>
+        </div>
       </div>
 
       <!-- Message content -->

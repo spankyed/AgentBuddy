@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import type { FileReference, MessageReferences } from '@app/api'
+import type { FileReference, ImageReference, MessageReferences } from '@app/api'
 
 export interface PendingImage {
   dataUrl: string
@@ -112,12 +112,12 @@ export function useAttachments() {
   }
 
   const collectAttachments = async (entityId: string): Promise<MessageReferences | undefined> => {
-    const imageUrls: string[] = []
+    const imageRefs: ImageReference[] = []
     for (const img of pendingImages.value) {
       const match = img.dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/)
       if (match) {
         const url = await window.electronAPI?.media.upload(entityId, match[2], match[1])
-        if (url) imageUrls.push(url)
+        if (url) imageRefs.push({ url, name: img.name })
       }
     }
     const files: FileReference[] = pendingFiles.value.map(f => ({
@@ -125,9 +125,9 @@ export function useAttachments() {
       isImage: f.isImage,
       // previewUrl deliberately omitted — base64 not stored
     }))
-    if (!imageUrls.length && !files.length) return undefined
+    if (!imageRefs.length && !files.length) return undefined
     return {
-      ...(imageUrls.length && { images: imageUrls }),
+      ...(imageRefs.length && { images: imageRefs }),
       ...(files.length && { files }),
     }
   }

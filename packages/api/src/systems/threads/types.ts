@@ -68,8 +68,13 @@ export interface FileReference {
   previewUrl?: string;
 }
 
+export interface ImageReference {
+  url: string;
+  name: string;
+}
+
 export interface MessageReferences {
-  images?: string[];
+  images?: ImageReference[];
   files?: FileReference[];
 }
 

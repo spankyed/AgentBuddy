@@ -19,7 +19,7 @@
           <div v-for="(img, index) in pendingImages" :key="'i-'+index" class="relative group flex-shrink-0">
             <img :src="img.dataUrl" class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
               @click="$emit('open-lightbox', img.dataUrl)" />
-            <div class="w-20 text-[10px] text-neutral-500 truncate text-center mt-0.5">{{ img.name }}</div>
+            <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-neutral-200 truncate text-center px-1 py-0.5 rounded-b-lg">{{ img.name }}</div>
             <button type="button" @click="removeImage(index)"
               class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
               <X :size="10" />
