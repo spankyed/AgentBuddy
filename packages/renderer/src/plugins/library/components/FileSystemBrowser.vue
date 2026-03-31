@@ -1,5 +1,5 @@
 <template>
-  <div ref="containerRef" class="@container flex flex-col h-full bg-neutral-900" tabindex="-1">
+  <div ref="containerRef" class="@container flex flex-col h-full bg-neutral-900 focus:outline-none" tabindex="-1">
 
     <ConfirmDialog
       v-model="deleteDialog.show"
@@ -699,6 +699,12 @@ function handleKeyDown(event: KeyboardEvent) {
   } else if (event.key === 'Escape' && hasSelection) {
     event.preventDefault()
     clearSelection()
+  } else if (event.key === 'Enter' && props.selectedItems.length === 1) {
+    event.preventDefault()
+    const item = props.items.find(i => i.id === props.selectedItems[0])
+    if (item) {
+      startEditingItem(item.id, item.name)
+    }
   }
 }
 
