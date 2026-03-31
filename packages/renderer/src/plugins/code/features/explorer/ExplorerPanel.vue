@@ -361,5 +361,26 @@ const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape') {
     clearSelection()
   }
+
+  // Arrow keys to navigate
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    const paths = getFlattenedVisiblePaths()
+    if (paths.length === 0) return
+
+    const lastSelected = selectedPaths.value[selectedPaths.value.length - 1]
+    const currentIndex = lastSelected != null
+      ? paths.indexOf(lastSelected)
+      : -1
+
+    let nextIndex: number
+    if (e.key === 'ArrowDown') {
+      nextIndex = currentIndex === -1 ? 0 : Math.min(currentIndex + 1, paths.length - 1)
+    } else {
+      nextIndex = currentIndex === -1 ? paths.length - 1 : Math.max(currentIndex - 1, 0)
+    }
+
+    explorerActor?.send({ type: 'explorer.SELECT_ITEMS', paths: [paths[nextIndex]] })
+  }
 }
 </script>
