@@ -146,7 +146,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
+import { Mic, MicOff, PaperclipIcon, Sparkle, Hash, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
@@ -220,9 +220,9 @@ const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useS
 const leftButtons = computed<ActionButton[]>(() => {
   const buttons: ActionButton[] = [
     {
-      icon: AtSign,
-      label: 'Add context',
-      action: 'add-context'
+      icon: Hash,
+      label: 'Add reference',
+      action: 'add-reference'
     },
     {
       icon: PaperclipIcon,
