@@ -64,8 +64,9 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
 
         // If a command is already selected, stay active (user is typing the body)
         if (prev.active && prev.selectedCommand) {
-          // Deactivate if the / was deleted
-          if (!textBefore.startsWith('/')) {
+          const requiredPrefix = `/${prev.selectedCommand.name} `
+          // Deactivate if the command prefix (including space separator) was broken
+          if (!docText.startsWith(requiredPrefix)) {
             return { ...defaultState }
           }
           return prev
