@@ -32,7 +32,7 @@
         </div>
 
         <!-- Prompt list -->
-        <div class="max-h-60 overflow-y-auto py-1">
+        <div class="max-h-60 overflow-y-auto">
           <template v-if="!editing">
             <button
               v-for="prompt in prompts"
@@ -53,7 +53,7 @@
             <div
               v-for="prompt in localPrompts"
               :key="prompt.id"
-              class="flex items-start gap-1 px-2 py-1"
+              class="flex items-start gap-1 px-2 pb-1 pt-2"
             >
               <span
                 class="flex-1 min-w-0 text-sm text-neutral-300 px-1 truncate"
@@ -67,7 +67,7 @@
                 <X :size="14" />
               </button>
             </div>
-            <div class="flex items-start gap-1 px-2 py-1 border-t border-neutral-700/50 mt-1">
+            <div class="flex items-center gap-1 px-2 py-1.5 border-t border-neutral-700/50 mt-1">
               <textarea
                 ref="addPromptRef"
                 v-model="newPromptText"
@@ -80,7 +80,8 @@
               />
               <button
                 type="button"
-                class="p-1.5 text-neutral-500 hover:text-white transition-colors flex-shrink-0"
+                class="p-1.5 transition-colors flex-shrink-0"
+                :class="newPromptText.trim() ? 'text-neutral-500 hover:text-white' : 'text-neutral-700 cursor-not-allowed'"
                 :disabled="!newPromptText.trim()"
                 @click="addPrompt"
               >
