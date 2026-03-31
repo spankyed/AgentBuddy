@@ -204,6 +204,11 @@ class WindowManager implements AppModule {
       }
     });
 
+    // Handle revealing files in OS file explorer
+    ipcMain.handle('shell:showItemInFolder', async (_event, filePath: string) => {
+      shell.showItemInFolder(filePath);
+    });
+
     // Media upload handler
     ipcMain.handle('media:upload', async (_event, entityId: string, base64Data: string, mimeType: string) => {
       // Validate entityId and mimeType
