@@ -9,7 +9,7 @@ export interface ReferenceItem {
   id: string
   shortCode: string
   label: string
-  type: 'thread' | 'document' | 'folder' | 'note'
+  type: 'thread' | 'document' | 'folder' | 'note' | 'task' | 'tasklist'
 }
 
 const CATEGORY_META: Record<ReferenceCategory, { label: string; type: ReferenceItem['type'] }> = {
@@ -78,14 +78,28 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
         raw = [...folderItems, ...docItems]
         break
       }
-      case 'notes':
-        raw = (notes.value || []).filter((n: NoteDTO) => n.noteType !== 'tasklist').map((n: NoteDTO) => ({
+      case 'notes': {
+        const noteItems: ReferenceItem[] = (notes.value || []).filter((n: NoteDTO) => n.noteType === 'document').map((n: NoteDTO) => ({
           id: n.id,
           shortCode: n.id,
           label: n.title || n.id,
-          type: meta.type,
+          type: 'note' as const,
         }))
+        const taskItems: ReferenceItem[] = (notes.value || []).filter((n: NoteDTO) => n.noteType === 'task').map((n: NoteDTO) => ({
+          id: n.id,
+          shortCode: n.id,
+          label: n.title || n.id,
+          type: 'task' as const,
+        }))
+        const tasklistItems: ReferenceItem[] = (notes.value || []).filter((n: NoteDTO) => n.noteType === 'tasklist').map((n: NoteDTO) => ({
+          id: n.id,
+          shortCode: n.id,
+          label: n.title || n.id,
+          type: 'tasklist' as const,
+        }))
+        raw = [...tasklistItems, ...taskItems, ...noteItems]
         break
+      }
     }
 
     const q = query.value.toLowerCase()

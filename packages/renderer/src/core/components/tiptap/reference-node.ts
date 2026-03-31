@@ -2,13 +2,15 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin, referenceSuggestionPluginKey } from './reference-suggestion-plugin'
 import { applicationState } from '@/main'
 
-export type ReferenceRefType = 'thread' | 'document' | 'folder' | 'note'
+export type ReferenceRefType = 'thread' | 'document' | 'folder' | 'note' | 'task' | 'tasklist'
 
 const PROTOCOL_MAP: Record<ReferenceRefType, string> = {
   thread: 'thread',
   document: 'doc',
   folder: 'folder',
   note: 'note',
+  task: 'task',
+  tasklist: 'tasklist',
 }
 
 const PROTOCOL_TO_TYPE: Record<string, ReferenceRefType> = {
@@ -16,10 +18,12 @@ const PROTOCOL_TO_TYPE: Record<string, ReferenceRefType> = {
   doc: 'document',
   folder: 'folder',
   note: 'note',
+  task: 'task',
+  tasklist: 'tasklist',
 }
 
 // Lucide icon SVG elements per type (matches plugin sidebar icons)
-type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>]
+type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
 
 const TYPE_ICON_ELEMENTS: Record<ReferenceRefType, SvgElement[]> = {
   thread: [ // History
@@ -45,6 +49,17 @@ const TYPE_ICON_ELEMENTS: Record<ReferenceRefType, SvgElement[]> = {
     ['path', { d: 'M9.5 8h5' }],
     ['path', { d: 'M9.5 12H16' }],
     ['path', { d: 'M9.5 16H14' }],
+  ],
+  task: [ // CircleCheck
+    ['circle', { cx: '12', cy: '12', r: '10' }],
+    ['path', { d: 'm9 12 2 2 4-4' }],
+  ],
+  tasklist: [ // ListChecks
+    ['path', { d: 'm3 17 2 2 4-4' }],
+    ['path', { d: 'm3 7 2 2 4-4' }],
+    ['path', { d: 'M13 6h8' }],
+    ['path', { d: 'M13 12h8' }],
+    ['path', { d: 'M13 18h8' }],
   ],
 }
 
@@ -128,6 +143,26 @@ export const ReferenceNode = Node.create({
           return { refType: 'note', refId: id, shortCode: id, label: el.textContent || '' }
         },
       },
+      {
+        tag: 'a[href^="task://"]',
+        priority: 60,
+        getAttrs(node) {
+          const el = node as HTMLAnchorElement
+          const href = el.getAttribute('href') || ''
+          const id = href.slice('task://'.length)
+          return { refType: 'task', refId: id, shortCode: id, label: el.textContent || '' }
+        },
+      },
+      {
+        tag: 'a[href^="tasklist://"]',
+        priority: 60,
+        getAttrs(node) {
+          const el = node as HTMLAnchorElement
+          const href = el.getAttribute('href') || ''
+          const id = href.slice('tasklist://'.length)
+          return { refType: 'tasklist', refId: id, shortCode: id, label: el.textContent || '' }
+        },
+      },
     ]
   },
 
@@ -172,6 +207,8 @@ export const ReferenceNode = Node.create({
           document: 'library',
           folder: 'library',
           note: 'notes',
+          task: 'notes',
+          tasklist: 'notes',
         }
 
         system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: pluginMap[refType] })
@@ -182,7 +219,7 @@ export const ReferenceNode = Node.create({
           system.get('library').send({ type: 'EDIT_DOCUMENT', documentId: refId })
         } else if (refType === 'folder') {
           system.get('library').send({ type: 'NAVIGATE_TO_FOLDER', folderId: refId })
-        } else if (refType === 'note') {
+        } else if (refType === 'note' || refType === 'task' || refType === 'tasklist') {
           system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
         }
       })
@@ -237,7 +274,7 @@ export const ReferenceNode = Node.create({
             // Convert parsed markdown links with our protocols back into <a> tags
             // The markdown parser will create standard <a> elements from [label](protocol://code)
             // so we just need to ensure they survive for parseHTML to pick them up
-            for (const protocol of ['thread', 'doc', 'folder', 'note']) {
+            for (const protocol of ['thread', 'doc', 'folder', 'note', 'task', 'tasklist']) {
               element.querySelectorAll(`a[href^="${protocol}://"]`).forEach((el) => {
                 // Ensure the link is inline (not wrapped in block-only <p> with nothing else)
                 // The default markdown parse already creates <a> elements, which parseHTML handles

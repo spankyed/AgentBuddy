@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { History, Library, Folder, NotebookText } from 'lucide-vue-next'
+import { History, Library, Folder, NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
 import { referenceSuggestionPluginKey } from './reference-suggestion-plugin'
 import { useReferenceItems, categories, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
 
@@ -77,11 +77,14 @@ const itemTypeIcons: Record<ReferenceItem['type'], Component> = {
   document: Library,
   folder: Folder,
   note: NotebookText,
+  task: CircleCheck,
+  tasklist: ListChecks,
 }
 
 function categoryToId(type: ReferenceItem['type']): ReferenceCategory {
   if (type === 'thread') return 'threads'
   if (type === 'document' || type === 'folder') return 'documents'
+  if (type === 'task' || type === 'tasklist') return 'notes'
   return 'notes'
 }
 
