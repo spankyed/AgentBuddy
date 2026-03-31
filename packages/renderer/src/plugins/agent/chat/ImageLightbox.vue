@@ -5,17 +5,19 @@
       <DialogContent class="lightbox-content" aria-describedby="">
         <DialogTitle class="sr-only">Image preview</DialogTitle>
 
-        <img
-          :src="imageSrc"
-          class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
-          @contextmenu.prevent="handleContextMenu"
-        />
+        <div class="lightbox-image-wrapper">
+          <img
+            :src="imageSrc"
+            class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            @contextmenu.prevent="handleContextMenu"
+          />
+
+          <button class="lightbox-close" @click="isOpen = false">
+            <X :size="18" />
+          </button>
+        </div>
 
       </DialogContent>
-
-      <button v-if="isOpen" class="lightbox-close" @click="isOpen = false">
-        <X :size="20" />
-      </button>
     </DialogPortal>
   </DialogRoot>
 
@@ -127,19 +129,24 @@ const contextMenuItems = computed<MenuItem[]>(() => [
   animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.lightbox-image-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .lightbox-close {
-  position: fixed;
-  top: 16px;
-  right: 16px;
+  position: absolute;
+  top: -12px;
+  right: -12px;
   z-index: 52;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
+  border-radius: 50%;
   color: #e0e0e0;
   cursor: pointer;
   pointer-events: auto;
@@ -147,7 +154,7 @@ const contextMenuItems = computed<MenuItem[]>(() => [
 }
 
 .lightbox-close:hover {
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.9);
   border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
 }
