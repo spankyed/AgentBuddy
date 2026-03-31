@@ -3,7 +3,7 @@
     v-if="editor"
     :editor="editor"
     :options="{ placement: 'top', offset: 8, strategy: 'absolute' }"
-    :should-show="({ state, editor: e }) => !state.selection.empty && !e.isActive('image') && !e.isActive('subDocumentLink')"
+    :should-show="shouldShow"
     class="bubble-menu flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
     <div class="flex items-center gap-0.5 px-1.5 py-1">
@@ -53,6 +53,13 @@ import {
 } from 'lucide-vue-next'
 
 const props = defineProps<{ editor: Editor }>()
+
+const atomicNodes = ['image', 'subDocumentLink', 'reference']
+
+function shouldShow(props: Record<string, any>) {
+  if (props.state.selection.empty) return false
+  return !atomicNodes.some(node => props.editor.isActive(node))
+}
 
 const linkInputVisible = ref(false)
 const linkUrl = ref('')
