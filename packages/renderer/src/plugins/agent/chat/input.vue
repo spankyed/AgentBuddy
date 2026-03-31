@@ -165,6 +165,7 @@
 import { ref, computed, watch } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X, File as FileIcon } from 'lucide-vue-next'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
+import { useAttachments } from './composables/useAttachments'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -208,79 +209,14 @@ interface ActionButton {
   class?: string
 }
 
-interface PendingFile {
-  name: string
-  path: string
-  typeLabel: string
-  isImage: boolean
-}
-
-function getFileTypeLabel(fileName: string): string {
-  const ext = fileName.split('.').pop()?.toLowerCase()
-  const map: Record<string, string> = {
-    png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', webp: 'WebP',
-    pdf: 'PDF', md: 'Markdown file', txt: 'Text file', json: 'JSON file',
-  }
-  return map[ext || ''] || (ext ? `${ext.toUpperCase()} file` : 'File')
-}
-
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
-function isImageFile(fileName: string): boolean {
-  const ext = fileName.split('.').pop()?.toLowerCase() || ''
-  return IMAGE_EXTENSIONS.has(ext)
-}
-
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
-const pendingImages = ref<string[]>([])
-const pendingFiles = ref<PendingFile[]>([])
 
-const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-
-const handlePaste = (event: ClipboardEvent) => {
-  const items = event.clipboardData?.items
-  if (!items) return
-  for (const item of items) {
-    if (item.type.startsWith('image/')) {
-      event.preventDefault()
-      const file = item.getAsFile()
-      if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
-      const reader = new FileReader()
-      reader.onload = () => {
-        pendingImages.value = [...pendingImages.value, reader.result as string]
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-}
-
-const removeImage = (i: number) => {
-  pendingImages.value = pendingImages.value.filter((_, idx) => idx !== i)
-}
-
-const openFilePicker = async () => {
-  const result = await window.electronAPI?.fileUtils.selectPath({
-    type: 'file',
-    allowMultiple: true,
-  })
-  if (!result) return
-  const paths = Array.isArray(result) ? result : [result]
-  const newFiles = paths.map(p => {
-    const name = p.split('/').pop() || p
-    return {
-      name,
-      path: p,
-      typeLabel: getFileTypeLabel(name),
-      isImage: isImageFile(name),
-    }
-  })
-  pendingFiles.value = [...pendingFiles.value, ...newFiles]
-}
-
-const removeFile = (i: number) => {
-  pendingFiles.value = pendingFiles.value.filter((_, idx) => idx !== i)
-}
+const {
+  pendingImages, pendingFiles, hasAttachments,
+  handlePaste, removeImage, openFilePicker, removeFile,
+  collectAttachments, clearAll,
+} = useAttachments()
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md
@@ -361,20 +297,16 @@ const handlePhaseChange = (newPhase: string) => {
   emit('phase-change', newPhase)
 }
 
-const hasAttachments = computed(() => pendingImages.value.length > 0 || pendingFiles.value.length > 0)
-
 const handleSubmit = () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
   if (!editor) return
   const md = (editor.storage as any).markdown.getMarkdown() as string
   if (md.trim() || hasAttachments.value) {
-    const allAttachments = [...pendingImages.value, ...pendingFiles.value.map(f => f.path)]
-    emit('send-message', md, allAttachments.length ? allAttachments : undefined)
+    emit('send-message', md, collectAttachments())
     editor.commands.clearContent(true)
     messageContent.value = ''
-    pendingImages.value = []
-    pendingFiles.value = []
+    clearAll()
   }
 }
 </script>
