@@ -135,6 +135,17 @@ function handleKeyDown(event: KeyboardEvent) {
       }
       break
 
+    // Space key selects command
+    // case ' ':
+    //   {
+    //     const cmd = filteredCommands.value[selectedIndex.value]
+    //     if (cmd) {
+    //       event.preventDefault()
+    //       selectCommand(cmd)
+    //     }
+    //   }
+    //   break
+
     case 'Escape':
       event.preventDefault()
       deactivateAndClean()
