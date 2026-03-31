@@ -68,7 +68,7 @@ export const ReferenceNode = Node.create({
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return ({ node, editor }) => {
       const dom = document.createElement('span')
       dom.classList.add('reference-pill')
       dom.dataset.refType = node.attrs.refType
@@ -85,7 +85,9 @@ export const ReferenceNode = Node.create({
       dom.appendChild(icon)
       dom.appendChild(label)
 
-      dom.addEventListener('click', () => {
+      dom.addEventListener('click', (event) => {
+        if (editor.isEditable && !event.metaKey && !event.ctrlKey) return
+
         const refType = node.attrs.refType as ReferenceRefType
         const refId = node.attrs.refId as string
         const { system } = applicationState
