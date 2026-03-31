@@ -23,6 +23,25 @@
           </div>
         </div>
 
+        <!-- File attachment blocks -->
+        <div v-if="pendingFiles.length" class="flex flex-wrap gap-2 px-3 pt-3">
+          <div v-for="(file, index) in pendingFiles" :key="index"
+            class="relative group flex items-center gap-2.5 w-[240px] bg-neutral-900 border border-neutral-700 rounded-lg p-2">
+            <div class="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-neutral-800 flex items-center justify-center">
+              <img v-if="file.isImage" :src="file.path" class="w-full h-full object-cover" />
+              <FileIcon v-else :size="20" class="text-neutral-400" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm text-neutral-200 truncate">{{ file.name }}</div>
+              <div class="text-xs text-neutral-500">{{ file.typeLabel }}</div>
+            </div>
+            <button type="button" @click="removeFile(index)"
+              class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
+              <X :size="10" />
+            </button>
+          </div>
+        </div>
+
         <!-- Editor container -->
         <div class="relative w-full min-h-12">
           <TiptapEditor
@@ -121,7 +140,7 @@
             <Button
               title="Stop agent work"
               type="submit"
-              :disabled="(!messageContent && !pendingImages.length) || disabled"
+              :disabled="(!messageContent && !hasAttachments) || disabled"
               variant="secondary"
             >
               <span class="hidden @md:inline">Stop</span>
@@ -129,7 +148,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="(!messageContent && !pendingImages.length) || disabled"
+              :disabled="(!messageContent && !hasAttachments) || disabled"
             >
               <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -144,7 +163,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
+import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X, File as FileIcon } from 'lucide-vue-next'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import {
   DropdownMenuRoot,
@@ -189,9 +208,32 @@ interface ActionButton {
   class?: string
 }
 
+interface PendingFile {
+  name: string
+  path: string
+  typeLabel: string
+  isImage: boolean
+}
+
+function getFileTypeLabel(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  const map: Record<string, string> = {
+    png: 'PNG', jpg: 'JPEG', jpeg: 'JPEG', gif: 'GIF', webp: 'WebP',
+    pdf: 'PDF', md: 'Markdown file', txt: 'Text file', json: 'JSON file',
+  }
+  return map[ext || ''] || (ext ? `${ext.toUpperCase()} file` : 'File')
+}
+
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
+function isImageFile(fileName: string): boolean {
+  const ext = fileName.split('.').pop()?.toLowerCase() || ''
+  return IMAGE_EXTENSIONS.has(ext)
+}
+
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
 const pendingImages = ref<string[]>([])
+const pendingFiles = ref<PendingFile[]>([])
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
@@ -215,6 +257,29 @@ const handlePaste = (event: ClipboardEvent) => {
 
 const removeImage = (i: number) => {
   pendingImages.value = pendingImages.value.filter((_, idx) => idx !== i)
+}
+
+const openFilePicker = async () => {
+  const result = await window.electronAPI?.fileUtils.selectPath({
+    type: 'file',
+    allowMultiple: true,
+  })
+  if (!result) return
+  const paths = Array.isArray(result) ? result : [result]
+  const newFiles = paths.map(p => {
+    const name = p.split('/').pop() || p
+    return {
+      name,
+      path: p,
+      typeLabel: getFileTypeLabel(name),
+      isImage: isImageFile(name),
+    }
+  })
+  pendingFiles.value = [...pendingFiles.value, ...newFiles]
+}
+
+const removeFile = (i: number) => {
+  pendingFiles.value = pendingFiles.value.filter((_, idx) => idx !== i)
 }
 
 const onContentUpdate = (md: string) => {
@@ -273,6 +338,10 @@ watch(() => props.currentThread?.id, () => {
 
 const handleButtonClick = (action: string) => {
   if (props.disabled) return
+  if (action === 'attach-file') {
+    openFilePicker()
+    return
+  }
   if (action === 'voice-input') {
     toggleSpeech()
     emit('voice-input')
@@ -292,16 +361,20 @@ const handlePhaseChange = (newPhase: string) => {
   emit('phase-change', newPhase)
 }
 
+const hasAttachments = computed(() => pendingImages.value.length > 0 || pendingFiles.value.length > 0)
+
 const handleSubmit = () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
   if (!editor) return
   const md = (editor.storage as any).markdown.getMarkdown() as string
-  if (md.trim() || pendingImages.value.length) {
-    emit('send-message', md, pendingImages.value.length ? [...pendingImages.value] : undefined)
+  if (md.trim() || hasAttachments.value) {
+    const allAttachments = [...pendingImages.value, ...pendingFiles.value.map(f => f.path)]
+    emit('send-message', md, allAttachments.length ? allAttachments : undefined)
     editor.commands.clearContent(true)
     messageContent.value = ''
     pendingImages.value = []
+    pendingFiles.value = []
   }
 }
 </script>
