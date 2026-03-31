@@ -241,15 +241,23 @@ function handleKeyDown(event: KeyboardEvent) {
 
 // Register key handler on the editor's DOM
 watch(isActive, (active) => {
-  if (active) {
-    props.editor.view.dom.addEventListener('keydown', handleKeyDown, true)
-  } else {
-    props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
+  try {
+    if (active) {
+      props.editor.view.dom.addEventListener('keydown', handleKeyDown, true)
+    } else {
+      props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
+    }
+  } catch {
+    // Editor view may already be destroyed during plugin switch
   }
 }, { immediate: true })
 
 onBeforeUnmount(() => {
-  props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
+  try {
+    props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
+  } catch {
+    // Editor view may already be destroyed during plugin switch
+  }
   document.removeEventListener('mousedown', handleClickOutside, true)
 })
 
