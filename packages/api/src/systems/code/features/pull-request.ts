@@ -136,7 +136,12 @@ export const pullRequestSystem = setup({
         const ev = event as { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository }
         return ev.gitRepository
       }
-    })
+    }),
+
+    selfRefreshPrStatus: ({ self }) => {
+      self.send({ type: 'pr.GET_BASE_BRANCH' })
+      self.send({ type: 'pr.GET_BRANCH_DIFF' })
+    }
   }
 }).createMachine({
   id: 'pull-request',
@@ -160,7 +165,7 @@ export const pullRequestSystem = setup({
           actions: 'handleGitStatusChanged'
         },
         'pr.UPDATE_BASE_DIRECTORY': {
-          actions: 'updateBaseDirectory'
+          actions: ['updateBaseDirectory', 'selfRefreshPrStatus']
         }
       }
     }

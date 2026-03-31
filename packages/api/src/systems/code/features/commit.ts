@@ -545,7 +545,11 @@ export const commitSystem = setup({
         const ev = event as { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
         return ev.gitWatcher
       }
-    })
+    }),
+
+    selfRefreshGitStatus: ({ self }) => {
+      self.send({ type: 'commit.GET_GIT_STATUS' })
+    }
   }
 }).createMachine({
   id: 'commit',
@@ -603,7 +607,7 @@ export const commitSystem = setup({
           actions: 'generateCommitMessage'
         },
         'commit.UPDATE_BASE_DIRECTORY': {
-          actions: 'updateBaseDirectory'
+          actions: ['updateBaseDirectory', 'selfRefreshGitStatus']
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
