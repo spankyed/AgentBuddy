@@ -15,7 +15,16 @@
         </div>
       </div>
       <div class="flex items-center gap-1">
-        <slot name="actions" />
+        <BaseDirectoryMenu
+          v-if="baseDirectory && showDirectoryMenu"
+          :base-directory="baseDirectory"
+          @open-directory="handleDirectorySelect"
+          @open-terminal="terminalActor?.send({ type: 'terminal.CREATE', cwd: baseDirectory })"
+          @open-project-directory="handleProjectDirectorySelect"
+        />
+        <div class="flex items-center gap-1 min-w-5">
+          <slot name="actions" />
+        </div>
       </div>
     </div>
 
@@ -80,9 +89,11 @@
 
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/state'
+import BaseDirectoryMenu from '@/plugins/code/features/explorer/components/BaseDirectoryMenu.vue'
 import {
   FolderOpen,
   Search,
@@ -104,8 +115,35 @@ defineEmits<{
 }>()
 
 const actor: CodeState = applicationState.system.get(id)
+const explorerActor = actor.system.get('explorer')!
+const terminalActor = actor.system.get('terminal')!
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
+const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
+
+const directoryMenuPanels = ['explorer', 'commit', 'pr', 'search', 'terminal'] as const
+const showDirectoryMenu = computed(() =>
+  directoryMenuPanels.includes(selectedPanel.value as any)
+)
+
+const handleDirectorySelect = async () => {
+  if (!window.electronAPI?.fileUtils.selectDirectory) {
+    console.error('Directory selection API not available')
+    return
+  }
+  try {
+    const directoryPath = await window.electronAPI.fileUtils.selectDirectory()
+    if (directoryPath && directoryPath !== baseDirectory.value) {
+      explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: directoryPath })
+    }
+  } catch (error) {
+    console.error('Error selecting directory:', error)
+  }
+}
+
+const handleProjectDirectorySelect = (path: string) => {
+  explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path })
+}
 
 const codePanels = [
   { id: 'explorer', label: 'Explorer', icon: FolderOpen },

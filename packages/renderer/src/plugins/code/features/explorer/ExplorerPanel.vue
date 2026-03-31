@@ -16,15 +16,6 @@
         </button>
       </template>
 
-      <template #toolbar>
-        <BaseDirectoryMenu
-          v-if="baseDirectory"
-          :base-directory="baseDirectory"
-          @open-directory="handleDirectorySelect"
-          @open-terminal="terminalActor?.send({ type: 'terminal.CREATE', cwd: baseDirectory })"
-          @open-project-directory="handleProjectDirectorySelect"
-        />
-      </template>
     </CodePanelHeader>
 
     <!-- Delete Confirmation Dialog -->
@@ -102,7 +93,6 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import Dialog from '@/core/components/design/dialog.vue'
 import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
-import BaseDirectoryMenu from './components/BaseDirectoryMenu.vue'
 import { FolderOpen, FolderPlus, AlertCircle, X } from 'lucide-vue-next'
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
@@ -306,10 +296,6 @@ const handleCreateNewFolder = () => {
   const newPath = `${targetDir}/${folderName}`
   pendingRenamePath.value = newPath
   explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newPath })
-}
-
-const handleProjectDirectorySelect = (path: string) => {
-  explorerActor?.send({ type: 'explorer.SET_BASE_DIRECTORY', path })
 }
 
 const handleEmptySpaceClick = (e: MouseEvent) => {
