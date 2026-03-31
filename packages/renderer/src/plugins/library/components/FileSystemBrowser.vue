@@ -701,7 +701,7 @@ function handleKeyDown(event: KeyboardEvent) {
     clearSelection()
   } else if (event.key === 'Enter' && props.selectedItems.length === 1) {
     event.preventDefault()
-    const item = props.items.find(i => i.id === props.selectedItems[0])
+    const item = flattenedTreeItems.value.find(i => i.id === props.selectedItems[0])
     if (item) {
       startEditingItem(item.id, item.name)
     }
