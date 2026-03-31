@@ -94,32 +94,23 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         const pluginState = commandSuggestionPluginKey.getState(state)
         if (!pluginState?.active || !pluginState.selectedCommand) return DecorationSet.empty
 
-        // Show placeholder when command is selected and no body text yet
         const docText = state.doc.textContent
-        const commandPrefix = `/${pluginState.selectedCommand.name} `
+        const commandPrefix = `/${pluginState.selectedCommand.name}`
 
-        // Only show placeholder if text is exactly the command prefix (or just the command name with trailing space)
-        if (!docText.startsWith(commandPrefix) && docText !== `/${pluginState.selectedCommand.name}`) {
-          // User has typed body text, no placeholder needed
-          if (docText.length > commandPrefix.length) return DecorationSet.empty
-        }
+        // Only show placeholder if there's no body text after the command
+        const afterCommand = docText.slice(commandPrefix.length).replace(/^\s/, '')
+        if (afterCommand) return DecorationSet.empty
 
-        // Check if there's content after the command prefix
-        const bodyText = docText.slice(commandPrefix.length).trim()
-        if (bodyText) return DecorationSet.empty
+        // Apply a node decoration on the first paragraph with the placeholder as a data attribute
+        const firstChild = state.doc.firstChild
+        if (!firstChild) return DecorationSet.empty
 
-        // Place widget decoration at end of content
-        const pos = state.doc.content.size - 1
-        const widget = Decoration.widget(pos, () => {
-          const span = document.createElement('span')
-          span.textContent = pluginState.selectedCommand!.placeholder
-          span.style.color = 'rgb(115 115 115)'
-          span.style.pointerEvents = 'none'
-          span.style.userSelect = 'none'
-          return span
-        }, { side: 1 })
+        const deco = Decoration.node(0, firstChild.nodeSize, {
+          'data-command-placeholder': pluginState.selectedCommand.placeholder,
+          'class': 'has-command-placeholder',
+        })
 
-        return DecorationSet.create(state.doc, [widget])
+        return DecorationSet.create(state.doc, [deco])
       },
     },
   })
