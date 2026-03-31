@@ -62,11 +62,12 @@ import { REF_TYPES } from './reference-config'
 
 const props = defineProps<{
   editor: Editor
+  variant?: 'full' | 'chat'
 }>()
 
 const selectedIndex = ref(0)
 const popupEl = ref<HTMLElement | null>(null)
-const popupStyle = ref<{ bottom: string; left: string }>({ bottom: '0px', left: '0px' })
+const popupStyle = ref<Record<string, string>>({ bottom: '0px', left: '0px' })
 
 function getCategoryIcon(id: ReferenceCategory) {
   return CATEGORIES.find((c) => c.id === id)?.primaryIcon
@@ -132,9 +133,20 @@ function updatePosition() {
 
   try {
     const coords = props.editor.view.coordsAtPos(pluginState.value.triggerPos)
-    popupStyle.value = {
-      bottom: `${window.innerHeight - coords.top + 4}px`,
-      left: `${coords.left}px`,
+    const left = `${coords.left}px`
+
+    if (props.variant === 'full') {
+      const spaceAbove = coords.top
+      const popupHeight = popupEl.value?.offsetHeight ?? 280
+      if (spaceAbove < popupHeight + 8) {
+        // Not enough room above → show below cursor
+        popupStyle.value = { top: `${coords.bottom + 4}px`, left }
+      } else {
+        popupStyle.value = { bottom: `${window.innerHeight - coords.top + 4}px`, left }
+      }
+    } else {
+      // Chat variant: always above (cursor is near bottom of screen)
+      popupStyle.value = { bottom: `${window.innerHeight - coords.top + 4}px`, left }
     }
   } catch {
     // Position might be invalid during transitions
