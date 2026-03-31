@@ -921,15 +921,18 @@ const notesState = setup({
           }
           return crumbs
         }),
-        ...contextMenuFn<NotesContext>((ctx) => [
-          {
-            label: 'Delete Note',
-            icon: Trash2,
-            iconColor: 'text-red-400',
-            event: { type: 'NOTE.DELETE' as const, noteId: ctx.currentNoteId! },
-            confirm: `Are you sure you want to delete "${ctx.currentNote?.title || 'this note'}"?`,
-          },
-        ]),
+        ...contextMenuFn<NotesContext>((ctx) => {
+          if (!ctx.currentNoteId) return []
+          return [
+            {
+              label: 'Delete Note',
+              icon: Trash2,
+              iconColor: 'text-red-400',
+              event: { type: 'NOTE.DELETE' as const, noteId: ctx.currentNoteId },
+              confirm: `Are you sure you want to delete "${ctx.currentNote?.title || 'this note'}"?`,
+            },
+          ]
+        }),
       },
       on: {
         'NOTE.SELECT': {
