@@ -388,8 +388,10 @@ const handleSubmit = async () => {
 <style lang="scss" module>
 .input {
   border-color: rgb(60 60 60);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .inputCommandActive {
-  border-color: white;
+  border-color: rgba(75, 150, 243, 0.6);
+  box-shadow: 0 0 0 1px rgba(75, 150, 243, 0.15), 0 0 12px -2px rgba(75, 150, 243, 0.2);
 }
 </style>

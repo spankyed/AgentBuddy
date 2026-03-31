@@ -93,25 +93,35 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
     props: {
       decorations(state) {
         const pluginState = commandSuggestionPluginKey.getState(state)
-        if (!pluginState?.active || !pluginState.selectedCommand) return DecorationSet.empty
+        if (!pluginState?.active) return DecorationSet.empty
 
         const docText = state.doc.textContent
-        const commandPrefix = `/${pluginState.selectedCommand.name}`
+        const commandPrefix = pluginState.selectedCommand
+          ? `/${pluginState.selectedCommand.name}`
+          : `/${pluginState.query}`
 
-        // Only show placeholder if there's no body text after the command
+        const decos: Decoration[] = []
+
+        // Inline decoration on the /commandName (or /query) text
+        const cmdStart = 1 // position after doc node opening
+        const cmdEnd = cmdStart + commandPrefix.length
+        if (cmdEnd > cmdStart) {
+          decos.push(Decoration.inline(cmdStart, cmdEnd, { class: 'command-segment' }))
+        }
+
+        // Only show placeholder if a command is selected and there's no body text after it
         const afterCommand = docText.slice(commandPrefix.length).replace(/^\s/, '')
-        if (afterCommand) return DecorationSet.empty
+        if (pluginState.selectedCommand && !afterCommand) {
+          const firstChild = state.doc.firstChild
+          if (firstChild) {
+            decos.push(Decoration.node(0, firstChild.nodeSize, {
+              'data-command-placeholder': pluginState.selectedCommand.placeholder,
+              'class': 'has-command-placeholder',
+            }))
+          }
+        }
 
-        // Apply a node decoration on the first paragraph with the placeholder as a data attribute
-        const firstChild = state.doc.firstChild
-        if (!firstChild) return DecorationSet.empty
-
-        const deco = Decoration.node(0, firstChild.nodeSize, {
-          'data-command-placeholder': pluginState.selectedCommand.placeholder,
-          'class': 'has-command-placeholder',
-        })
-
-        return DecorationSet.create(state.doc, [deco])
+        return DecorationSet.create(state.doc, decos)
       },
     },
   })

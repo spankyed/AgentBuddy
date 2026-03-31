@@ -239,6 +239,15 @@
   height: 0;
 }
 
+/* Command segment styling (the /commandName text when a command is selected) */
+.tiptap-wrapper .ProseMirror .command-segment {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgb(180, 180, 255);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-weight: 500;
+}
+
 /* Command placeholder (shown after /commandName when no body text typed) */
 .tiptap-wrapper .ProseMirror p.has-command-placeholder::after {
   content: attr(data-command-placeholder);
