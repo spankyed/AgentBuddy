@@ -722,8 +722,10 @@ function handleKeyDown(event: KeyboardEvent) {
 
     if (event.key === 'ArrowRight' && !props.expandedFolderIds.includes(lastSelectedId)) {
       emit('EXPAND_FOLDER', { folderId: lastSelectedId })
+      nextTick(() => containerRef.value?.focus())
     } else if (event.key === 'ArrowLeft' && props.expandedFolderIds.includes(lastSelectedId)) {
       emit('COLLAPSE_FOLDER', { folderId: lastSelectedId })
+      nextTick(() => containerRef.value?.focus())
     }
   } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
