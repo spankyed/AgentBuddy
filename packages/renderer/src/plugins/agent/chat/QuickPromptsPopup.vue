@@ -39,9 +39,10 @@
               :key="prompt.id"
               type="button"
               class="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
+              :title="prompt.text"
               @click="selectPrompt(prompt.text)"
             >
-              {{ prompt.text }}
+              {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
             </button>
             <div v-if="prompts.length === 0" class="px-3 py-4 text-sm text-neutral-600 text-center">
               No quick prompts
@@ -57,7 +58,7 @@
               <span
                 class="flex-1 min-w-0 text-sm text-neutral-300 px-1 truncate"
                 :title="prompt.text"
-              >{{ prompt.text }}</span>
+              >{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span></span>
               <button
                 type="button"
                 class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
