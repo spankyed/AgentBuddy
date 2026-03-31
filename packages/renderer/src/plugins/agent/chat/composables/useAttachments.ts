@@ -111,15 +111,23 @@ export function useAttachments() {
     pendingFiles.value = pendingFiles.value.filter((_, idx) => idx !== i)
   }
 
-  const collectAttachments = (): MessageReferences | undefined => {
-    const images = pendingImages.value.map(img => img.dataUrl)
+  const collectAttachments = async (entityId: string): Promise<MessageReferences | undefined> => {
+    const imageUrls: string[] = []
+    for (const img of pendingImages.value) {
+      const match = img.dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/)
+      if (match) {
+        const url = await window.electronAPI?.media.upload(entityId, match[2], match[1])
+        if (url) imageUrls.push(url)
+      }
+    }
     const files: FileReference[] = pendingFiles.value.map(f => ({
       name: f.name, path: f.path, typeLabel: f.typeLabel,
-      isImage: f.isImage, previewUrl: f.previewUrl,
+      isImage: f.isImage,
+      // previewUrl deliberately omitted — base64 not stored
     }))
-    if (!images.length && !files.length) return undefined
+    if (!imageUrls.length && !files.length) return undefined
     return {
-      ...(images.length && { images }),
+      ...(imageUrls.length && { images: imageUrls }),
       ...(files.length && { files }),
     }
   }

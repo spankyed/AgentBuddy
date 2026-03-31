@@ -286,13 +286,14 @@ const handlePhaseChange = (newPhase: string) => {
   emit('phase-change', newPhase)
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
   if (!editor) return
   const md = (editor.storage as any).markdown.getMarkdown() as string
   if (md.trim() || hasAttachments.value) {
-    emit('send-message', md, collectAttachments())
+    const entityId = props.currentThread?.id || 'chat-attachments'
+    emit('send-message', md, await collectAttachments(entityId))
     editor.commands.clearContent(true)
     messageContent.value = ''
     clearAll()

@@ -1,7 +1,7 @@
 <template>
   <div class="relative group flex items-center gap-2.5 w-[240px] bg-neutral-900 border border-neutral-700 rounded-lg p-2">
     <div class="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-neutral-800 flex items-center justify-center">
-      <img v-if="file.isImage && file.previewUrl" :src="file.previewUrl" class="w-full h-full object-cover border border-neutral-700/50" />
+      <img v-if="file.isImage && (file.previewUrl || loadedPreview)" :src="file.previewUrl || loadedPreview" class="w-full h-full object-cover border border-neutral-700/50" />
       <FileIcon v-else :size="20" class="text-neutral-400" />
     </div>
     <div class="flex-1 min-w-0">
@@ -16,10 +16,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { File as FileIcon, X } from 'lucide-vue-next'
 import type { FileReference } from '@app/api'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   file: FileReference
   removable?: boolean
 }>(), {
@@ -29,4 +30,21 @@ withDefaults(defineProps<{
 defineEmits<{
   (e: 'remove'): void
 }>()
+
+const loadedPreview = ref<string>()
+
+onMounted(async () => {
+  if (props.file.isImage && !props.file.previewUrl) {
+    try {
+      const ext = props.file.name.split('.').pop()?.toLowerCase() || 'png'
+      const mimeMap: Record<string, string> = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        gif: 'image/gif', webp: 'image/webp',
+      }
+      const mime = mimeMap[ext] || 'image/png'
+      const base64 = await window.electronAPI?.fileUtils.readFileBase64(props.file.path)
+      if (base64) loadedPreview.value = `data:${mime};base64,${base64}`
+    } catch { /* preview unavailable */ }
+  }
+})
 </script>

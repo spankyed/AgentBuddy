@@ -26,7 +26,6 @@ export const IncomingAgentEvents = [
       path: z.string(),
       typeLabel: z.string(),
       isImage: z.boolean(),
-      previewUrl: z.string().optional(),
     })).optional(),
   }).optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
@@ -117,6 +116,14 @@ export const agentSystem = setup({
     forwardUserMessage: ({ system, event }) => {
       const { text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_MSG', event);
 
+      // Sanitize references: strip any base64 previewUrl from files (defensive)
+      const sanitizedRefs = references ? {
+        ...references,
+        ...(references.files && {
+          files: references.files.map(({ previewUrl, ...rest }: any) => rest),
+        }),
+      } : undefined;
+
       // Step 1: Ensure we have a thread (create if needed)
       let threadId: EARS.EntityId;
       let threadData: any = null;
@@ -142,7 +149,7 @@ export const agentSystem = setup({
         threadId,
         text,
         sender: 'user',
-        references,
+        references: sanitizedRefs,
       });
 
       // Step 3: Notify frontend if new thread was created
@@ -176,9 +183,9 @@ export const agentSystem = setup({
           timestamp: messageResult.timestamp,
           createdAt: messageResult.timestamp,
           updatedAt: messageResult.timestamp,
-          ...(references && { references }),
+          ...(sanitizedRefs && { references: sanitizedRefs }),
         };
-  
+
         system.get(bus).send(emit(agent, {
           type: 'MESSAGE_ADDED',
           threadId: threadId as string,
@@ -202,7 +209,7 @@ export const agentSystem = setup({
             phase,
             threadId,
             messageId: messageResult.id,
-            ...(references && { references }),
+            ...(sanitizedRefs && { references: sanitizedRefs }),
           },
         });
       // }, 0);
