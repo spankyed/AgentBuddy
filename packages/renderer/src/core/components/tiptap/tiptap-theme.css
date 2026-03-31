@@ -440,7 +440,8 @@
 
 .tiptap-wrapper .ProseMirror .reference-pill-icon {
   flex-shrink: 0;
-  font-size: 0.85em;
+  display: flex;
+  align-items: center;
 }
 
 .tiptap-wrapper .ProseMirror .reference-pill-label {

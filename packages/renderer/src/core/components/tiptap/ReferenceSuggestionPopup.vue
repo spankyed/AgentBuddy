@@ -16,7 +16,7 @@
           @mousedown.prevent="selectCategory(cat.id)"
           @mouseenter="selectedIndex = index"
         >
-          <span class="reference-suggestion-icon">{{ categoryIcons[cat.id] }}</span>
+          <component :is="categoryIcons[cat.id]" class="reference-suggestion-icon" :size="16" />
           <span>{{ cat.label }}</span>
         </div>
         <div v-if="filteredCategories.length === 0" class="reference-suggestion-empty">
@@ -41,7 +41,7 @@
           @mousedown.prevent="insertReference(item)"
           @mouseenter="selectedIndex = index"
         >
-          <span class="reference-suggestion-icon">{{ categoryIcons[categoryToId(item.type)] }}</span>
+          <component :is="categoryIcons[categoryToId(item.type)]" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
           <span class="reference-suggestion-code">{{ item.shortCode }}</span>
         </div>
@@ -54,8 +54,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component } from 'vue'
 import type { Editor } from '@tiptap/core'
+import { History, Library, NotebookText } from 'lucide-vue-next'
 import { referenceSuggestionPluginKey } from './reference-suggestion-plugin'
 import { useReferenceItems, categories, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
 
@@ -67,10 +68,10 @@ const popupRef = ref<HTMLElement | null>(null)
 const selectedIndex = ref(0)
 const popupStyle = ref<{ top: string; left: string }>({ top: '0px', left: '0px' })
 
-const categoryIcons: Record<ReferenceCategory, string> = {
-  threads: '#',
-  documents: '\u{1F4C4}',
-  notes: '\u{1F4DD}',
+const categoryIcons: Record<ReferenceCategory, Component> = {
+  threads: History,
+  documents: Library,
+  notes: NotebookText,
 }
 
 function categoryToId(type: ReferenceItem['type']): ReferenceCategory {
@@ -356,9 +357,9 @@ function deactivateAndClean() {
 
 .reference-suggestion-icon {
   flex-shrink: 0;
-  width: 18px;
-  text-align: center;
-  font-size: 0.85rem;
+  width: 16px;
+  height: 16px;
+  color: rgb(163 163 163);
 }
 
 .reference-suggestion-label {

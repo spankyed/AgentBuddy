@@ -15,10 +15,54 @@ const PROTOCOL_TO_TYPE: Record<string, ReferenceRefType> = {
   note: 'note',
 }
 
-const TYPE_ICONS: Record<ReferenceRefType, string> = {
-  thread: '#',
-  document: '\u{1F4C4}',
-  note: '\u{1F4DD}',
+// Lucide icon SVG elements per type (matches plugin sidebar icons)
+type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>]
+
+const TYPE_ICON_ELEMENTS: Record<ReferenceRefType, SvgElement[]> = {
+  thread: [ // History
+    ['path', { d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' }],
+    ['path', { d: 'M3 3v5h5' }],
+    ['path', { d: 'M12 7v5l4 2' }],
+  ],
+  document: [ // Library
+    ['path', { d: 'm16 6 4 14' }],
+    ['path', { d: 'M12 6v14' }],
+    ['path', { d: 'M8 8v12' }],
+    ['path', { d: 'M4 4v16' }],
+  ],
+  note: [ // NotebookText
+    ['path', { d: 'M2 6h4' }],
+    ['path', { d: 'M2 10h4' }],
+    ['path', { d: 'M2 14h4' }],
+    ['path', { d: 'M2 18h4' }],
+    ['rect', { width: '16', height: '20', x: '4', y: '2', rx: '2' }],
+    ['path', { d: 'M9.5 8h5' }],
+    ['path', { d: 'M9.5 12H16' }],
+    ['path', { d: 'M9.5 16H14' }],
+  ],
+}
+
+function createIconSvg(type: ReferenceRefType): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(ns, 'svg')
+  svg.setAttribute('width', '14')
+  svg.setAttribute('height', '14')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '2')
+  svg.setAttribute('stroke-linecap', 'round')
+  svg.setAttribute('stroke-linejoin', 'round')
+
+  for (const [tag, attrs] of TYPE_ICON_ELEMENTS[type] || TYPE_ICON_ELEMENTS.thread) {
+    const el = document.createElementNS(ns, tag)
+    for (const [k, v] of Object.entries(attrs)) {
+      el.setAttribute(k, v)
+    }
+    svg.appendChild(el)
+  }
+
+  return svg
 }
 
 export const ReferenceNode = Node.create({
@@ -93,7 +137,7 @@ export const ReferenceNode = Node.create({
 
       const icon = document.createElement('span')
       icon.classList.add('reference-pill-icon')
-      icon.textContent = TYPE_ICONS[node.attrs.refType as ReferenceRefType] || '#'
+      icon.appendChild(createIconSvg(node.attrs.refType as ReferenceRefType))
 
       const label = document.createElement('span')
       label.classList.add('reference-pill-label')
@@ -107,7 +151,7 @@ export const ReferenceNode = Node.create({
         update(updatedNode) {
           if (updatedNode.type.name !== 'reference') return false
           dom.dataset.refType = updatedNode.attrs.refType
-          icon.textContent = TYPE_ICONS[updatedNode.attrs.refType as ReferenceRefType] || '#'
+          icon.replaceChildren(createIconSvg(updatedNode.attrs.refType as ReferenceRefType))
           label.textContent = updatedNode.attrs.label
           return true
         },
