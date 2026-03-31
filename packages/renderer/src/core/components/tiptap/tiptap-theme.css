@@ -400,9 +400,9 @@
   gap: 3px;
   padding: 1px 7px;
   border-radius: 10px;
-  font-size: 0.82em;
+  font-size: 0.95em;
   line-height: 1.4;
-  vertical-align: baseline;
+  vertical-align: text-bottom;
   cursor: pointer;
   user-select: none;
   text-decoration: none;
