@@ -20,7 +20,7 @@ const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
   busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), phase: z.string().optional(), threadId: z.string().optional(), references: z.object({
-    images: z.array(z.string()).optional(),
+    images: z.array(z.object({ url: z.string(), name: z.string() })).optional(),
     files: z.array(z.object({
       name: z.string(),
       path: z.string(),
