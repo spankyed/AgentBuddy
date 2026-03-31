@@ -115,6 +115,13 @@
           <MessageCircleMore :size="14" class="text-blue-400" />
           Chat
         </ContextMenuItem>
+        <ContextMenuItem
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          @select="copyId"
+        >
+          <Copy :size="14" class="text-neutral-400" />
+          Copy Id
+        </ContextMenuItem>
         <template v-if="!thread.pinned">
           <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
           <ContextMenuItem
@@ -131,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { MessageCircleMore, SquarePen, Trash2 } from 'lucide-vue-next'
+import { Copy, MessageCircleMore, SquarePen, Trash2 } from 'lucide-vue-next'
 import {
   ContextMenuContent, ContextMenuItem, ContextMenuPortal,
   ContextMenuRoot, ContextMenuSeparator, ContextMenuTrigger,
@@ -151,6 +158,10 @@ defineEmits<{
   'chat-click': [id: string]
   'delete-click': [id: string]
 }>();
+
+function copyId() {
+  navigator.clipboard.writeText(props.thread.shortCode || props.thread.id)
+}
 
 const getTagStyles = (tagName: string) => {
   const color = props.availableTags?.find(t => t.name === tagName)?.color || '#A855F7';

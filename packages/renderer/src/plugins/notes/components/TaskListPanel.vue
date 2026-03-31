@@ -143,7 +143,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal, Trash2 } from 'lucide-vue-next'
+import { Copy, Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -213,6 +213,7 @@ const headerMenuItems = computed<MenuItem[]>(() => {
     class: 'text-neutral-300',
     action: () => emit('toggle-show-completed'),
   })
+  items.push({ label: 'Copy Id', icon: Copy, class: 'text-neutral-300', action: () => navigator.clipboard.writeText(props.currentNoteId!) })
   items.push({ label: 'Delete', icon: Trash2, class: 'text-red-400', iconClass: 'text-red-400', action: () => emit('delete-tasklist') })
   return items
 })
