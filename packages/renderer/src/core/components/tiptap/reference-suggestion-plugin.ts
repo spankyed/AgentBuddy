@@ -1,6 +1,6 @@
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/core'
-import type { ReferenceCategory } from './reference-config'
+import { CATEGORIES, type ReferenceCategory } from './reference-config'
 
 export interface ReferenceSuggestionState {
   active: boolean
@@ -91,6 +91,13 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
             ...prev,
             active: true,
             query: itemQuery,
+          }
+        }
+
+        // At category level, deactivate if query matches no categories
+        if (!prev.active || prev.level === 'category') {
+          if (afterHash && !CATEGORIES.some(c => c.label.toLowerCase().includes(afterHash.toLowerCase()))) {
+            return prev.active ? { ...defaultState } : prev
           }
         }
 
