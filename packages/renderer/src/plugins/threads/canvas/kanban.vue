@@ -251,6 +251,9 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
               </div>
             </article>
           </template>
+          <template #after>
+            <div class="flex-1" />
+          </template>
         </ArrangeableList>
       </section>
     </div>
