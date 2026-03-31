@@ -28,33 +28,27 @@
           <button
             v-if="isUser"
             @click="$emit('revert', message.id)"
-            class="p-1.5 hover:bg-neutral-700 transition-colors"
+            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
             title="Revert to this message"
           >
-            <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
+            <Undo2 :size="16" />
           </button>
 
           <button
             v-if="message.forkable !== false"
             @click="$emit('fork', message.id)"
-            class="p-1.5 hover:bg-neutral-700 transition-colors"
+            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
             title="Fork conversation"
           >
-            <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
+            <GitFork :size="16" />
           </button>
 
           <button
             @click="copyMessageText"
-            class="p-1.5 hover:bg-neutral-700 transition-colors"
+            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
             title="Copy message text"
           >
-            <svg class="w-4 h-4 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
+            <Copy :size="16" />
           </button>
         </div>
       </div>
@@ -96,6 +90,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MessageEntity } from '@app/api'
+import { Undo2, GitFork, Copy } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
@@ -159,16 +154,4 @@ const formatTime = (date: Date | string | null | undefined) => {
   animation: fade-in 0.3s ease-out;
 }
 
-@keyframes bounce {
-  0%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-6px);
-  }
-}
-
-.animate-bounce {
-  animation: bounce 1.4s ease-in-out infinite;
-}
 </style>
