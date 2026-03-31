@@ -55,7 +55,7 @@
 
       <div
         v-else-if="rootFiles.length > 0"
-        class="flex-1 overflow-auto"
+        class="flex-1 overflow-auto focus:outline-none"
         @click="handleEmptySpaceClick"
         @dragover.prevent="onEmptySpaceDragOver"
         @drop="onEmptySpaceDrop"
@@ -124,6 +124,9 @@ const fileToDelete = ref<FileInfo | null>(null)
 
 // Local ref for inline rename — set when creating a folder, consumed by the tree item on mount
 const pendingRenamePath = ref<string | null>(null)
+
+// Rename trigger — set by Enter key, consumed by the matching tree item
+const renameTriggerPath = ref<string | null>(null)
 
 // Build flattened visible paths for shift-range selection
 function getFlattenedVisiblePaths(): string[] {
@@ -208,6 +211,10 @@ provide('explorer-check-auto-rename', (itemPath: string): boolean => {
     return true
   }
   return false
+})
+provide('explorer-rename-trigger', {
+  get: () => renameTriggerPath.value,
+  clear: () => { renameTriggerPath.value = null }
 })
 provide('explorer-reveal-path', () => revealPath.value)
 provide('explorer-clear-reveal', () => {
@@ -340,6 +347,13 @@ const handleKeydown = (e: KeyboardEvent) => {
     if (file) {
       confirmDelete(file)
     }
+    return
+  }
+
+  // Enter to rename selected item
+  if (e.key === 'Enter' && selectedPaths.value.length === 1) {
+    e.preventDefault()
+    renameTriggerPath.value = selectedPaths.value[0]
     return
   }
 

@@ -203,6 +203,7 @@ const getBaseDirectory = inject<() => string>('explorer-base-directory')!
 const checkAutoRename = inject<(path: string) => boolean>('explorer-check-auto-rename')!
 const getRevealPath = inject<() => string | null>('explorer-reveal-path')!
 const clearReveal = inject<() => void>('explorer-clear-reveal')!
+const renameTrigger = inject<{ get: () => string | null, clear: () => void }>('explorer-rename-trigger')!
 
 // Drag-drop injections
 const dragStart = inject<(e: DragEvent, path: string) => void>('explorer-drag-start')!
@@ -246,6 +247,14 @@ watch(isEditing, async (editing) => {
     await nextTick()
     renameInput.value?.focus()
     renameInput.value?.select()
+  }
+})
+
+// Watch for rename trigger from Enter key
+watch(() => renameTrigger.get(), (path) => {
+  if (path === props.file.path) {
+    renameTrigger.clear()
+    startRename()
   }
 })
 
