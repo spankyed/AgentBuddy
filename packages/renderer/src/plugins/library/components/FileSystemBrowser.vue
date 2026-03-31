@@ -705,6 +705,24 @@ function handleKeyDown(event: KeyboardEvent) {
     if (item) {
       startEditingItem(item.id, item.name)
     }
+  } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    const items = flattenedTreeItems.value
+    if (items.length === 0) return
+
+    const lastSelectedId = props.selectedItems[props.selectedItems.length - 1]
+    const currentIndex = lastSelectedId != null
+      ? items.findIndex(i => i.id === lastSelectedId)
+      : -1
+
+    let nextIndex: number
+    if (event.key === 'ArrowDown') {
+      nextIndex = currentIndex === -1 ? 0 : Math.min(currentIndex + 1, items.length - 1)
+    } else {
+      nextIndex = currentIndex === -1 ? items.length - 1 : Math.max(currentIndex - 1, 0)
+    }
+
+    emit('SELECT_ITEMS', { itemIds: [items[nextIndex].id] })
   }
 }
 
