@@ -1089,9 +1089,12 @@ export const librarySystem = setup({
           target: 'edit',
           getLabel: (ctx) => `${ctx.editingDocument?.name || 'Document'}`,
         }),
-        ...contextMenuFn<LibraryContext>((ctx) => [
-          { label: 'Delete Document', icon: Trash2, event: { type: 'DELETE_DOCUMENT' as const, documentId: ctx.editingDocument!.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete "${ctx.editingDocument?.name || 'this document'}"?` },
-        ]),
+        ...contextMenuFn<LibraryContext>((ctx) => {
+          if (!ctx.editingDocument) return []
+          return [
+            { label: 'Delete Document', icon: Trash2, event: { type: 'DELETE_DOCUMENT' as const, documentId: ctx.editingDocument.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete "${ctx.editingDocument.name || 'this document'}"?` },
+          ]
+        }),
       },
       on: {
         SAVE_DOCUMENT: {

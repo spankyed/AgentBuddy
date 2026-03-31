@@ -220,7 +220,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { NoteDTO } from '@app/api'
-import { Check, ChevronRight, CircleCheck, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-vue-next'
+import { Check, ChevronRight, CircleCheck, Copy, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -310,6 +310,7 @@ const menuItems = computed<MenuItem[]>(() => {
     iconClass: props.note.favorite ? 'text-yellow-400' : undefined,
     action: () => emit('toggle-favorite', props.note.id),
   })
+  items.push({ label: 'Copy Id', icon: Copy, class: 'text-neutral-300', action: () => navigator.clipboard.writeText(props.note.id) })
   items.push({ label: 'Delete', icon: Trash2, class: 'text-red-400', iconClass: 'text-red-400', action: () => emit('delete', props.note.id) })
   return items
 })

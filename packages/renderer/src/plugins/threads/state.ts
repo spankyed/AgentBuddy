@@ -556,9 +556,12 @@ const threadsState = setup({
           target: 'view',
           getLabel: (ctx) => ctx.view.topic || 'Untitled Thread'
         }),
-        ...contextMenuFn<ThreadsContext>((ctx) => [
-          ...(!ctx.view.pinned ? [{ label: 'Delete Thread', icon: Trash2, event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.` }] : []),
-        ]),
+        ...contextMenuFn<ThreadsContext>((ctx) => {
+          if (!ctx.view?.id) return []
+          return [
+            ...(!ctx.view.pinned ? [{ label: 'Delete Thread', icon: Trash2, event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.` }] : []),
+          ]
+        }),
       },
       on: {
         SHOW_CREATE_FORM_AS_CHILD: {

@@ -85,6 +85,12 @@
         >
           <Edit2 class="w-4 h-4" /> Rename
         </ContextMenuItem>
+        <ContextMenuItem
+          @select="copyId"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+        >
+          <Copy class="w-4 h-4" /> Copy Id
+        </ContextMenuItem>
         <template v-if="isSymlinkedItem && item.type === 'folder'">
           <ContextMenuItem
             @select="refreshFolder(item.id)"
@@ -226,6 +232,11 @@ function onRename() {
 
 function onDelete() {
   deleteItem(props.item)
+}
+
+function copyId() {
+  const text = props.item.type === 'document' ? props.item.shortCode : props.item.id
+  navigator.clipboard.writeText(text)
 }
 
 // Drag-drop handlers

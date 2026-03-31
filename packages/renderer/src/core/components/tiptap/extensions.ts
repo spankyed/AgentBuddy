@@ -17,6 +17,7 @@ import Blockquote from '@tiptap/extension-blockquote'
 import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
+import { ReferenceNode } from './reference-node'
 
 const lowlight = createLowlight(common)
 
@@ -242,9 +243,9 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
     Link.configure({
       openOnClick: false,
       autolink: true,
-      protocols: ['note'],
+      protocols: ['note', 'thread', 'doc'],
     }),
-    ...(isChat ? [] : createFullExtensions(mode)),
+    ...(isChat ? [ReferenceNode] : createFullExtensions(mode)),
   ]
 
   if (mode !== 'viewer' && placeholder) {

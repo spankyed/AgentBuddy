@@ -360,9 +360,17 @@ interface ImageReference {
     url: string;
     name: string;
 }
+type ContextReferenceType = 'thread' | 'document' | 'note';
+interface ContextReference {
+    refType: ContextReferenceType;
+    refId: string;
+    shortCode: string;
+    label: string;
+}
 interface MessageReferences {
     images?: ImageReference[];
     files?: FileReference[];
+    contextReferences?: ContextReference[];
 }
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
