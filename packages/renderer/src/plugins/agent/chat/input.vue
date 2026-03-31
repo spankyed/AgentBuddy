@@ -14,8 +14,6 @@
         <!-- Attachment strip: files then images, horizontal scroll -->
         <div v-if="pendingFiles.length || pendingImages.length"
           class="flex items-end gap-2 mx-4 pt-3 overflow-x-auto scrollbar-thin">
-          <FileBlock v-for="(file, index) in pendingFiles" :key="'f-'+index"
-            :file="file" removable @remove="removeFile(index)" class="flex-shrink-0" />
           <div v-for="(img, index) in pendingImages" :key="'i-'+index" class="relative group flex-shrink-0">
             <img :src="img.dataUrl" class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
               @click="$emit('open-lightbox', img.dataUrl)" />
@@ -25,6 +23,8 @@
               <X :size="10" />
             </button>
           </div>
+          <FileBlock v-for="(file, index) in pendingFiles" :key="'f-'+index"
+            :file="file" removable @remove="removeFile(index)" class="flex-shrink-0" />
         </div>
 
         <!-- Editor container -->
