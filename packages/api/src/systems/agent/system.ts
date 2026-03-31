@@ -19,7 +19,16 @@ export const agent = 'agent' as const;
 const busEvent = systemBus(agent);
 
 export const IncomingAgentEvents = [
-  busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), phase: z.string().optional(), threadId: z.string().optional(), images: z.array(z.string()).optional() }),
+  busEvent('USER_MSG', { text: z.string(), mode: z.string().optional(), phase: z.string().optional(), threadId: z.string().optional(), references: z.object({
+    images: z.array(z.string()).optional(),
+    files: z.array(z.object({
+      name: z.string(),
+      path: z.string(),
+      typeLabel: z.string(),
+      isImage: z.boolean(),
+      previewUrl: z.string().optional(),
+    })).optional(),
+  }).optional() }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
   busEvent('CANCEL'),
@@ -106,7 +115,7 @@ export const agentSystem = setup({
       services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, phase, threadId: providedThreadId, images } = typeOf('USER_MSG', event);
+      const { text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_MSG', event);
 
       // Step 1: Ensure we have a thread (create if needed)
       let threadId: EARS.EntityId;
@@ -133,7 +142,7 @@ export const agentSystem = setup({
         threadId,
         text,
         sender: 'user',
-        images,
+        references,
       });
 
       // Step 3: Notify frontend if new thread was created
@@ -167,7 +176,7 @@ export const agentSystem = setup({
           timestamp: messageResult.timestamp,
           createdAt: messageResult.timestamp,
           updatedAt: messageResult.timestamp,
-          ...(images?.length && { images }),
+          ...(references && { references }),
         };
   
         system.get(bus).send(emit(agent, {
@@ -193,7 +202,7 @@ export const agentSystem = setup({
             phase,
             threadId,
             messageId: messageResult.id,
-            ...(images?.length && { images }),
+            ...(references && { references }),
           },
         });
       // }, 0);

@@ -53,11 +53,16 @@
         </div>
       </div>
 
-      <!-- Attached images -->
-      <div v-if="message.images?.length" class="flex flex-wrap gap-2 mb-2 justify-end">
-        <img v-for="(img, index) in message.images" :key="index" :src="img"
+      <!-- Pasted images -->
+      <div v-if="message.references?.images?.length" class="flex flex-wrap gap-2 mb-2 justify-end">
+        <img v-for="(img, index) in message.references.images" :key="index" :src="img"
           class="w-20 h-20 object-cover rounded-lg border border-neutral-700 cursor-pointer hover:opacity-80 transition-opacity"
           @click="$emit('open-lightbox', img)" />
+      </div>
+
+      <!-- File attachments -->
+      <div v-if="message.references?.files?.length" class="flex flex-wrap gap-2 mb-2 justify-end">
+        <FileBlock v-for="(file, index) in message.references.files" :key="index" :file="file" />
       </div>
 
       <!-- Message content -->
@@ -92,6 +97,7 @@ import { computed } from 'vue'
 import type { MessageEntity } from '@app/api'
 import { Undo2, GitFork, Copy } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
+import FileBlock from './FileBlock.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 interface ChatMessageProps {

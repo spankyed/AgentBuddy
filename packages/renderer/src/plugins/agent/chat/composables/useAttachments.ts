@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import type { FileReference, MessageReferences } from '@app/api'
 
 export interface PendingImage {
   dataUrl: string
@@ -110,12 +111,17 @@ export function useAttachments() {
     pendingFiles.value = pendingFiles.value.filter((_, idx) => idx !== i)
   }
 
-  const collectAttachments = (): string[] | undefined => {
-    const all = [
-      ...pendingImages.value.map(img => img.dataUrl),
-      ...pendingFiles.value.map(f => f.isImage && f.previewUrl ? f.previewUrl : f.path),
-    ]
-    return all.length ? all : undefined
+  const collectAttachments = (): MessageReferences | undefined => {
+    const images = pendingImages.value.map(img => img.dataUrl)
+    const files: FileReference[] = pendingFiles.value.map(f => ({
+      name: f.name, path: f.path, typeLabel: f.typeLabel,
+      isImage: f.isImage, previewUrl: f.previewUrl,
+    }))
+    if (!images.length && !files.length) return undefined
+    return {
+      ...(images.length && { images }),
+      ...(files.length && { files }),
+    }
   }
 
   const clearAll = () => {

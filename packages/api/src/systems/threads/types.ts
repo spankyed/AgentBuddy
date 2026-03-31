@@ -60,6 +60,19 @@ export interface ButtonGroupResponse {
   state: string;
 }
 
+export interface FileReference {
+  name: string;
+  path: string;
+  typeLabel: string;
+  isImage: boolean;
+  previewUrl?: string;
+}
+
+export interface MessageReferences {
+  images?: string[];
+  files?: FileReference[];
+}
+
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
   text: string;
@@ -70,7 +83,7 @@ export interface MessageEntity extends BaseEntity {
   blocks?: BlockConfig[];
   blockResponse?: any; // Response data for block-based interactions
   forkable?: boolean;
-  images?: string[]; // base64 data URLs for attached images
+  references?: MessageReferences;
 }
 
 export interface ThreadEntity extends BaseEntity {

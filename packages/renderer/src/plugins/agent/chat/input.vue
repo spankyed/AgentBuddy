@@ -26,21 +26,8 @@
 
         <!-- File attachment blocks -->
         <div v-if="pendingFiles.length" class="flex flex-wrap gap-2 px-3 pt-3">
-          <div v-for="(file, index) in pendingFiles" :key="index"
-            class="relative group flex items-center gap-2.5 w-[240px] bg-neutral-900 border border-neutral-700 rounded-lg p-2">
-            <div class="w-10 h-10 flex-shrink-0 rounded overflow-hidden bg-neutral-800 flex items-center justify-center">
-              <img v-if="file.isImage && file.previewUrl" :src="file.previewUrl" class="w-full h-full object-cover border border-neutral-700/50" />
-              <FileIcon v-else :size="20" class="text-neutral-400" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm text-neutral-200 truncate">{{ file.name }}</div>
-              <div class="text-xs text-neutral-500">{{ file.typeLabel }}</div>
-            </div>
-            <button type="button" @click="removeFile(index)"
-              class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
-              <X :size="10" />
-            </button>
-          </div>
+          <FileBlock v-for="(file, index) in pendingFiles" :key="index"
+            :file="file" removable @remove="removeFile(index)" />
         </div>
 
         <!-- Editor container -->
@@ -164,7 +151,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X, File as FileIcon } from 'lucide-vue-next'
+import { Mic, MicOff, PaperclipIcon, Sparkle, AtSign, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
+import FileBlock from './FileBlock.vue'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import { useAttachments } from './composables/useAttachments'
 import {
@@ -180,7 +168,7 @@ import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData, AgentMode } from '@app/api'
+import type { AgentThreadData, AgentMode, MessageReferences } from '@app/api'
 
 const props = defineProps<{
   currentThread: AgentThreadData
@@ -192,7 +180,7 @@ const props = defineProps<{
 
 // Define emits including new button actions
 const emit = defineEmits<{
-  (e: 'send-message', message: string, images?: string[]): void
+  (e: 'send-message', message: string, references?: MessageReferences): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
