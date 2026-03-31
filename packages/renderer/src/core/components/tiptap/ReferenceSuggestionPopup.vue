@@ -284,16 +284,18 @@ function insertReference(item: ReferenceItem) {
     .chain()
     .focus()
     .deleteRange({ from, to })
-    .insertContentAt(from, {
-      type: 'reference',
-      attrs: {
-        refType: item.type,
-        refId: item.id,
-        shortCode: item.shortCode,
-        label: item.label,
+    .insertContentAt(from, [
+      {
+        type: 'reference',
+        attrs: {
+          refType: item.type,
+          refId: item.id,
+          shortCode: item.shortCode,
+          label: item.label,
+        },
       },
-    })
-    .insertContentAt(from + 1, ' ')
+      { type: 'text', text: ' ' },
+    ])
     .run()
 
   // Deactivate suggestion
