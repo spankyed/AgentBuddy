@@ -15,7 +15,6 @@
         @mouseenter="selectedIndex = index"
       >
         <span class="command-suggestion-name">/{{ cmd.name }}</span>
-        <span class="command-suggestion-placeholder">{{ cmd.placeholder }}</span>
       </div>
       <div v-if="filteredCommands.length === 0" class="command-suggestion-empty">
         No matching commands
@@ -239,14 +238,6 @@ function deactivateAndClean() {
 .command-suggestion-name {
   font-weight: 500;
   flex-shrink: 0;
-}
-
-.command-suggestion-placeholder {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.75rem;
-  color: rgb(115 115 115);
 }
 
 .command-suggestion-empty {
