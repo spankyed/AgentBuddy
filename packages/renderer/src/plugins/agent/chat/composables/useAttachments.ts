@@ -37,8 +37,7 @@ export function useAttachments() {
 
   const hasAttachments = computed(() => pendingImages.value.length > 0 || pendingFiles.value.length > 0)
 
-  const getUniqueName = (proposed: string): string => {
-    const existing = new Set(pendingImages.value.map(img => img.name))
+  const getUniqueName = (proposed: string, existing: Set<string>): string => {
     if (!existing.has(proposed)) return proposed
     const dotIdx = proposed.lastIndexOf('.')
     const base = dotIdx > 0 ? proposed.slice(0, dotIdx) : proposed
@@ -51,16 +50,23 @@ export function useAttachments() {
   const handlePaste = (event: ClipboardEvent) => {
     const items = event.clipboardData?.items
     if (!items) return
+
+    const batchNames = new Set(pendingImages.value.map(img => img.name))
+
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         event.preventDefault()
         const file = item.getAsFile()
         if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
+
+        const name = getUniqueName(file.name || 'image.png', batchNames)
+        batchNames.add(name)
+
         const reader = new FileReader()
         reader.onload = () => {
           pendingImages.value = [...pendingImages.value, {
             dataUrl: reader.result as string,
-            name: getUniqueName(file.name || 'image.png'),
+            name,
           }]
         }
         reader.readAsDataURL(file)
