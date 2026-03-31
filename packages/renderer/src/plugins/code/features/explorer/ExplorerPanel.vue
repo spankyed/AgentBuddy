@@ -362,6 +362,27 @@ const handleKeydown = (e: KeyboardEvent) => {
     clearSelection()
   }
 
+  // ArrowRight to expand, ArrowLeft to collapse
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault()
+    const selected = selectedPaths.value[selectedPaths.value.length - 1]
+    if (selected == null) return
+
+    const allFiles = [...rootFiles.value]
+    for (const contents of Object.values(dirContents.value)) {
+      allFiles.push(...contents)
+    }
+    const file = allFiles.find(f => f.path === selected)
+    if (!file || file.type !== 'directory') return
+
+    if (e.key === 'ArrowRight' && !expandedDirs.value.has(selected)) {
+      explorerActor?.send({ type: 'explorer.EXPAND_DIRECTORY', path: selected })
+    } else if (e.key === 'ArrowLeft' && expandedDirs.value.has(selected)) {
+      explorerActor?.send({ type: 'explorer.COLLAPSE_DIRECTORY', path: selected })
+    }
+    return
+  }
+
   // Arrow keys to navigate
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault()

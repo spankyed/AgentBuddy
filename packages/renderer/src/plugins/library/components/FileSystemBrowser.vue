@@ -711,6 +711,20 @@ function handleKeyDown(event: KeyboardEvent) {
     if (item) {
       startEditingItem(item.id, item.name)
     }
+  } else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+    event.preventDefault()
+    const lastSelectedId = props.selectedItems[props.selectedItems.length - 1]
+    if (lastSelectedId == null) return
+
+    const items = flattenedTreeItems.value
+    const item = items.find(i => i.id === lastSelectedId)
+    if (!item || item.type !== 'folder') return
+
+    if (event.key === 'ArrowRight' && !props.expandedFolderIds.includes(lastSelectedId)) {
+      emit('EXPAND_FOLDER', { folderId: lastSelectedId })
+    } else if (event.key === 'ArrowLeft' && props.expandedFolderIds.includes(lastSelectedId)) {
+      emit('COLLAPSE_FOLDER', { folderId: lastSelectedId })
+    }
   } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
     const items = flattenedTreeItems.value
