@@ -14,7 +14,8 @@
         <!-- Image preview strip -->
         <div v-if="pendingImages.length" class="flex flex-wrap gap-2 px-3 pt-3">
           <div v-for="(img, index) in pendingImages" :key="index" class="relative group">
-            <img :src="img" class="w-20 h-20 object-cover rounded-lg border border-neutral-600" />
+            <img :src="img" class="w-20 h-20 object-cover rounded-lg border border-neutral-600 cursor-pointer hover:opacity-80 transition-opacity"
+              @click="$emit('open-lightbox', img)" />
             <button type="button" @click="removeImage(index)"
               class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-neutral-900/80 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors opacity-0 group-hover:opacity-100">
               <X :size="10" />
@@ -177,6 +178,7 @@ const emit = defineEmits<{
   (e: 'stop'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
+  (e: 'open-lightbox', imageSrc: string): void
 }>()
 
 

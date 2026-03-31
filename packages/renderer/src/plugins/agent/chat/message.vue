@@ -62,7 +62,8 @@
       <!-- Attached images -->
       <div v-if="message.images?.length" class="flex flex-wrap gap-2 mb-2">
         <img v-for="(img, index) in message.images" :key="index" :src="img"
-          class="w-20 h-20 object-cover rounded-lg" />
+          class="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+          @click="$emit('open-lightbox', img)" />
       </div>
 
       <!-- Message content -->
@@ -106,6 +107,7 @@ interface ChatMessageProps {
 interface ChatMessageEmits {
   (e: 'revert', messageId: string): void
   (e: 'fork', messageId: string): void
+  (e: 'open-lightbox', imageSrc: string): void
 }
 
 const props = withDefaults(defineProps<ChatMessageProps>(), {
