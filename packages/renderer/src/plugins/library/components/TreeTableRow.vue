@@ -9,6 +9,7 @@
           !isSelected && !contextMenuOpen && 'hover:bg-neutral-700/30',
           itemClass
         ]"
+        :data-folder-id="item.type === 'folder' ? item.id : undefined"
         :draggable="!isEditing"
         @click="handleClick($event)"
         @dblclick="handleDoubleClick"
@@ -20,12 +21,6 @@
         @dragend="onDragEnd()"
       >
         <td class="px-4 py-1 relative">
-          <!-- Drop indicator -->
-          <div
-            v-if="showDropIndicator"
-            class="drop-indicator"
-            :class="currentDropPosition === 'before' ? 'drop-before' : 'drop-after'"
-          />
           <div class="flex items-center gap-2" :style="{ paddingLeft: `${depth * 24}px` }">
             <!-- Disclosure triangle for folders -->
             <button
@@ -181,8 +176,6 @@ const dragLeave = inject<(e: DragEvent) => void>('tree-drag-leave')!
 const drop = inject<(e: DragEvent, item: LibraryItem) => void>('tree-drop')!
 const dragEnd = inject<() => void>('tree-drag-end')!
 const getItemClass = inject<(item: LibraryItem) => string>('tree-get-item-class')!
-const getDraggedOverId = inject<() => string | null>('tree-get-dragged-over-id')!
-const getDropPosition = inject<() => 'before' | 'after' | 'inside' | null>('tree-get-drop-position')!
 
 const contextMenuOpen = ref(false)
 const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
@@ -193,14 +186,6 @@ const isLoading = computed(() => loadingFolderIds().includes(props.item.id))
 const isEditing = computed(() => getEditingItemId() === props.item.id)
 const editingName = computed(() => isEditing.value ? getEditingName() : '')
 const itemClass = computed(() => getItemClass(props.item))
-const currentDraggedOverId = computed(() => getDraggedOverId())
-const currentDropPosition = computed(() => getDropPosition())
-
-const showDropIndicator = computed(() =>
-  currentDraggedOverId.value === props.item.id &&
-  currentDropPosition.value &&
-  currentDropPosition.value !== 'inside'
-)
 
 const children = computed(() => {
   if (props.item.type !== 'folder') return []

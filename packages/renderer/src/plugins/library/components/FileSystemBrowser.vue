@@ -357,24 +357,20 @@ const { lastSelectedItemId, allItemsSelected, selectItem: selectItemBase, toggle
 const {
   isDragging,
   draggedOverId,
-  dropPosition,
   handleDragStart,
   handleDragOver,
   handleDragEnter,
   handleDragLeave,
   handleDrop,
   handleDragEnd,
-  getItemClass,
-  getDropIndicatorStyle
+  getItemClass
 } = useDragDrop({
   items: computed(() => props.items),
   selectedItems: computed(() => props.selectedItems),
   isInSymlinkContext: computed(() => props.isInSymlinkContext),
+  currentFolderId: computed(() => props.currentFolderId),
   onMove: (itemIds, targetFolderId) => {
     emit('MOVE_ITEMS', { itemIds, targetFolderId })
-  },
-  onReorder: (itemIds, targetIndex, targetFolderId) => {
-    emit('REORDER_ITEMS', { itemIds, targetIndex, targetFolderId })
   }
 })
 
@@ -425,7 +421,6 @@ provide('tree-drop', (e: DragEvent, item: LibraryItem) => handleDrop(e, item, un
 provide('tree-drag-end', () => handleDragEnd())
 provide('tree-get-item-class', (item: LibraryItem) => getItemClass(item))
 provide('tree-get-dragged-over-id', () => draggedOverId.value)
-provide('tree-get-drop-position', () => dropPosition.value)
 
 // Watch for external edit requests
 watch(() => props.itemToEdit, (newItemId) => {
@@ -722,24 +717,6 @@ onUnmounted(() => {
 /* Drag and drop visual feedback */
 .draggable-item {
   position: relative;
-}
-
-.drop-indicator {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: rgb(59, 130, 246);
-  pointer-events: none;
-  z-index: 10;
-}
-
-.drop-indicator.drop-before {
-  top: -1px;
-}
-
-.drop-indicator.drop-after {
-  bottom: -1px;
 }
 
 .empty-drop-zone {
