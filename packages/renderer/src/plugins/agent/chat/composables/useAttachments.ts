@@ -5,13 +5,10 @@ export interface PendingFile {
   path: string
   typeLabel: string
   isImage: boolean
+  previewUrl?: string
 }
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
-const MIME_BY_EXT: Record<string, string> = {
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-  gif: 'image/gif', webp: 'image/webp',
-}
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
@@ -63,22 +60,25 @@ export function useAttachments() {
     })
     if (!result) return
     const paths = Array.isArray(result) ? result : [result]
-    const newImages: string[] = []
-    const newFiles: PendingFile[] = []
-    for (const p of paths) {
+    const newFiles = await Promise.all(paths.map(async p => {
       const name = p.split('/').pop() || p
-      if (isImageFile(name)) {
+      const isImg = isImageFile(name)
+      let previewUrl: string | undefined
+      if (isImg) {
         try {
           const ext = name.split('.').pop()?.toLowerCase() || 'png'
-          const mime = MIME_BY_EXT[ext] || 'image/png'
+          const mimeMap: Record<string, string> = {
+            png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+            gif: 'image/gif', webp: 'image/webp',
+          }
+          const mime = mimeMap[ext] || 'image/png'
           const base64 = await window.electronAPI?.fileUtils.readFileBase64(p)
-          if (base64) { newImages.push(`data:${mime};base64,${base64}`); continue }
-        } catch { /* fall through to file block */ }
+          if (base64) previewUrl = `data:${mime};base64,${base64}`
+        } catch { /* preview unavailable */ }
       }
-      newFiles.push({ name, path: p, typeLabel: getFileTypeLabel(name), isImage: isImageFile(name) })
-    }
-    if (newImages.length) pendingImages.value = [...pendingImages.value, ...newImages]
-    if (newFiles.length) pendingFiles.value = [...pendingFiles.value, ...newFiles]
+      return { name, path: p, typeLabel: getFileTypeLabel(name), isImage: isImg, previewUrl }
+    }))
+    pendingFiles.value = [...pendingFiles.value, ...newFiles]
   }
 
   const removeFile = (i: number) => {
@@ -86,7 +86,10 @@ export function useAttachments() {
   }
 
   const collectAttachments = (): string[] | undefined => {
-    const all = [...pendingImages.value, ...pendingFiles.value.map(f => f.path)]
+    const all = [
+      ...pendingImages.value,
+      ...pendingFiles.value.map(f => f.isImage && f.previewUrl ? f.previewUrl : f.path),
+    ]
     return all.length ? all : undefined
   }
 
