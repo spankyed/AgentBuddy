@@ -2,17 +2,19 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin, referenceSuggestionPluginKey } from './reference-suggestion-plugin'
 import { applicationState } from '@/main'
 
-export type ReferenceRefType = 'thread' | 'document' | 'note'
+export type ReferenceRefType = 'thread' | 'document' | 'folder' | 'note'
 
 const PROTOCOL_MAP: Record<ReferenceRefType, string> = {
   thread: 'thread',
   document: 'doc',
+  folder: 'folder',
   note: 'note',
 }
 
 const PROTOCOL_TO_TYPE: Record<string, ReferenceRefType> = {
   thread: 'thread',
   doc: 'document',
+  folder: 'folder',
   note: 'note',
 }
 
@@ -30,6 +32,9 @@ const TYPE_ICON_ELEMENTS: Record<ReferenceRefType, SvgElement[]> = {
     ['path', { d: 'M12 6v14' }],
     ['path', { d: 'M8 8v12' }],
     ['path', { d: 'M4 4v16' }],
+  ],
+  folder: [ // Folder
+    ['path', { d: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' }],
   ],
   note: [ // NotebookText
     ['path', { d: 'M2 6h4' }],
@@ -104,6 +109,16 @@ export const ReferenceNode = Node.create({
         },
       },
       {
+        tag: 'a[href^="folder://"]',
+        priority: 60,
+        getAttrs(node) {
+          const el = node as HTMLAnchorElement
+          const href = el.getAttribute('href') || ''
+          const id = href.slice('folder://'.length)
+          return { refType: 'folder', refId: id, shortCode: id, label: el.textContent || '' }
+        },
+      },
+      {
         tag: 'a[href^="note://"]',
         priority: 60,
         getAttrs(node) {
@@ -155,6 +170,7 @@ export const ReferenceNode = Node.create({
         const pluginMap: Record<ReferenceRefType, string> = {
           thread: 'threads',
           document: 'library',
+          folder: 'library',
           note: 'notes',
         }
 
@@ -164,6 +180,8 @@ export const ReferenceNode = Node.create({
           system.get('threads').send({ type: 'SELECT_THREAD', id: refId })
         } else if (refType === 'document') {
           system.get('library').send({ type: 'EDIT_DOCUMENT', documentId: refId })
+        } else if (refType === 'folder') {
+          system.get('library').send({ type: 'NAVIGATE_TO_FOLDER', folderId: refId })
         } else if (refType === 'note') {
           system.get('notes').send({ type: 'NOTE.OPEN', noteId: refId })
         }
@@ -219,7 +237,7 @@ export const ReferenceNode = Node.create({
             // Convert parsed markdown links with our protocols back into <a> tags
             // The markdown parser will create standard <a> elements from [label](protocol://code)
             // so we just need to ensure they survive for parseHTML to pick them up
-            for (const protocol of ['thread', 'doc', 'note']) {
+            for (const protocol of ['thread', 'doc', 'folder', 'note']) {
               element.querySelectorAll(`a[href^="${protocol}://"]`).forEach((el) => {
                 // Ensure the link is inline (not wrapped in block-only <p> with nothing else)
                 // The default markdown parse already creates <a> elements, which parseHTML handles

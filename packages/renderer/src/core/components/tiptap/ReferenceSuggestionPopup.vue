@@ -40,7 +40,7 @@
           @mousedown.prevent="insertReference(item)"
           @mouseenter="selectedIndex = index"
         >
-          <component :is="categoryIcons[categoryToId(item.type)]" class="reference-suggestion-icon" :size="16" />
+          <component :is="itemTypeIcons[item.type]" class="reference-suggestion-icon" :size="16" />
           <span class="reference-suggestion-label">{{ item.label }}</span>
           <span class="reference-suggestion-code" :title="item.shortCode">{{ item.shortCode.length > 12 ? item.shortCode.slice(0, 12) + '…' : item.shortCode }}</span>
         </div>
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, type Component } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { History, Library, NotebookText } from 'lucide-vue-next'
+import { History, Library, Folder, NotebookText } from 'lucide-vue-next'
 import { referenceSuggestionPluginKey } from './reference-suggestion-plugin'
 import { useReferenceItems, categories, type ReferenceCategory, type ReferenceItem } from './useReferenceItems'
 
@@ -72,9 +72,16 @@ const categoryIcons: Record<ReferenceCategory, Component> = {
   notes: NotebookText,
 }
 
+const itemTypeIcons: Record<ReferenceItem['type'], Component> = {
+  thread: History,
+  document: Library,
+  folder: Folder,
+  note: NotebookText,
+}
+
 function categoryToId(type: ReferenceItem['type']): ReferenceCategory {
   if (type === 'thread') return 'threads'
-  if (type === 'document') return 'documents'
+  if (type === 'document' || type === 'folder') return 'documents'
   return 'notes'
 }
 

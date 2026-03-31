@@ -428,6 +428,11 @@
   color: rgb(196 148 255);
 }
 
+.tiptap-wrapper .ProseMirror .reference-pill[data-ref-type="folder"] {
+  background: rgb(96 165 250 / 0.15);
+  color: rgb(147 197 253);
+}
+
 .tiptap-wrapper .ProseMirror .reference-pill[data-ref-type="note"] {
   background: rgb(34 197 94 / 0.15);
   color: rgb(134 239 172);

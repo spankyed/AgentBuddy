@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import type { ThreadExtended, DocumentDTO, NoteDTO } from '@app/api'
+import type { ThreadExtended, DocumentDTO, NoteDTO, CollectionDTO } from '@app/api'
 
 export type ReferenceCategory = 'threads' | 'documents' | 'notes'
 
@@ -9,20 +9,31 @@ export interface ReferenceItem {
   id: string
   shortCode: string
   label: string
-  type: 'thread' | 'document' | 'note'
+  type: 'thread' | 'document' | 'folder' | 'note'
 }
 
 const CATEGORY_META: Record<ReferenceCategory, { label: string; type: ReferenceItem['type'] }> = {
   threads: { label: 'Threads', type: 'thread' },
-  documents: { label: 'Library Documents', type: 'document' },
+  documents: { label: 'Library', type: 'document' },
   notes: { label: 'Notes', type: 'note' },
 }
 
 export const categories: { id: ReferenceCategory; label: string }[] = [
   { id: 'threads', label: 'Threads' },
-  { id: 'documents', label: 'Library Documents' },
+  { id: 'documents', label: 'Library' },
   { id: 'notes', label: 'Notes' },
 ]
+
+function flattenCollections(colls: CollectionDTO[]): CollectionDTO[] {
+  const result: CollectionDTO[] = []
+  for (const c of colls) {
+    result.push(c)
+    if (c.childCollections?.length) {
+      result.push(...flattenCollections(c.childCollections))
+    }
+  }
+  return result
+}
 
 export function useReferenceItems(category: Ref<ReferenceCategory | null>, query: Ref<string>) {
   const threadsActor = applicationState.system.get('threads')
@@ -31,6 +42,7 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
 
   const threads = useSelector(threadsActor, (state: any) => state.context.threads as ThreadExtended[])
   const documents = useSelector(libraryActor, (state: any) => state.context.documents as DocumentDTO[])
+  const collections = useSelector(libraryActor, (state: any) => state.context.collections as CollectionDTO[])
   const notes = useSelector(notesActor, (state: any) => state.context.notes as NoteDTO[])
 
   const items = computed<ReferenceItem[]>(() => {
@@ -48,14 +60,24 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
           type: meta.type,
         }))
         break
-      case 'documents':
-        raw = (documents.value || []).map((d: DocumentDTO) => ({
+      case 'documents': {
+        const docItems: ReferenceItem[] = (documents.value || []).map((d: DocumentDTO) => ({
           id: d.id,
           shortCode: d.shortCode || d.id,
           label: d.name || d.shortCode || d.id,
-          type: meta.type,
+          type: 'document' as const,
         }))
+
+        const folderItems: ReferenceItem[] = flattenCollections(collections.value || []).map((c) => ({
+          id: c.id,
+          shortCode: c.id,
+          label: c.name || c.id,
+          type: 'folder' as const,
+        }))
+
+        raw = [...folderItems, ...docItems]
         break
+      }
       case 'notes':
         raw = (notes.value || []).filter((n: NoteDTO) => n.noteType !== 'tasklist').map((n: NoteDTO) => ({
           id: n.id,
