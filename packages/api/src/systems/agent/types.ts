@@ -35,6 +35,11 @@ export interface AgentMode {
   disabled?: boolean; // For modes that appear in selector but are non-selectable
 }
 
+export interface QuickPrompt {
+  id: string;
+  text: string;
+}
+
 export interface AgentSettings {
   modes: AgentMode[];
   hotkeys: {
@@ -42,6 +47,7 @@ export interface AgentSettings {
     switchMode?: KeyboardShortcut | null;
     [key: string]: KeyboardShortcut | null | undefined;
   };
+  quickPrompts?: QuickPrompt[];
 }
 
 export type AgentConnectedData = {

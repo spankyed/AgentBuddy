@@ -78,7 +78,13 @@ export const defaultSettings: SettingsData = {
       hotkeys: {
         textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
         switchMode: { key: 'Tab', modifiers: ['shift'], global: true }
-      }
+      },
+      quickPrompts: [
+        { id: 'qp_1', text: 'Write a commit message' },
+        { id: 'qp_2', text: 'Review the code' },
+        { id: 'qp_3', text: 'Summarize the conversation to a md file' },
+        { id: 'qp_4', text: 'What are the next steps?' },
+      ]
     },
     code: {
       hotkeys: {

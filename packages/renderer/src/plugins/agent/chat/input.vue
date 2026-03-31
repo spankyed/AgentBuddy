@@ -77,18 +77,28 @@
             </DropdownMenuRoot>
 
             <!-- Expanded: full action buttons (wide) -->
-            <button
-              v-for="btn in leftButtons"
-              :key="btn.action"
-              type="button"
-              class="hidden @md:block p-2 transition-colors text-neutral-500"
-              :class="[disabled ? 'cursor-not-allowed opacity-50' : (!btn.class && 'hover:text-neutral-200'), btn.class]"
-              :aria-label="btn.label"
+            <template v-for="btn in leftButtons" :key="btn.action">
+              <button
+                v-if="btn.action !== 'quick-message'"
+                type="button"
+                class="hidden @md:block p-2 transition-colors text-neutral-500"
+                :class="[disabled ? 'cursor-not-allowed opacity-50' : (!btn.class && 'hover:text-neutral-200'), btn.class]"
+                :aria-label="btn.label"
+                :disabled="disabled"
+                @click="handleButtonClick(btn.action)"
+              >
+                <component :is="btn.icon" :size="20" />
+              </button>
+            </template>
+
+            <!-- Quick Prompts Popover (wide) -->
+            <QuickPromptsPopup
+              v-model:open="popoverOpen"
+              :prompts="quickPrompts || []"
               :disabled="disabled"
-              @click="handleButtonClick(btn.action)"
-            >
-              <component :is="btn.icon" :size="20" />
-            </button>
+              @select="handleQuickPromptSelect"
+              @update="(prompts) => emit('update-quick-prompts', prompts)"
+            />
 
             <!-- Mode/Phase Selector (narrow) -->
             <div class="@md:hidden">
@@ -164,7 +174,8 @@ import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
-import type { AgentThreadData, AgentMode, MessageReferences } from '@app/api'
+import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '@app/api'
+import QuickPromptsPopup from './QuickPromptsPopup.vue'
 
 interface ContextReference {
   refType: 'thread' | 'document' | 'note'
@@ -178,6 +189,7 @@ const props = defineProps<{
   currentMode: string
   currentPhase?: string
   modes: AgentMode[]
+  quickPrompts?: QuickPrompt[]
   disabled?: boolean
 }>()
 
@@ -191,6 +203,7 @@ const emit = defineEmits<{
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
   (e: 'open-lightbox', imageSrc: string): void
+  (e: 'update-quick-prompts', prompts: QuickPrompt[]): void
 }>()
 
 
@@ -203,6 +216,7 @@ interface ActionButton {
 
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
+const popoverOpen = ref(false)
 
 const {
   pendingImages, pendingFiles, hasAttachments,
@@ -242,6 +256,7 @@ const leftButtons = computed<ActionButton[]>(() => {
       action: 'quick-message'
     },
   ]
+  // Note: In expanded view, 'quick-message' is rendered via QuickPromptsPopup instead
   if (speechSupported.value) {
     buttons.push({
       icon: isListening.value ? MicOff : Mic,
@@ -275,6 +290,10 @@ const handleButtonClick = (action: string) => {
     emit('voice-input')
     return
   }
+  if (action === 'quick-message') {
+    popoverOpen.value = true
+    return
+  }
   if (action === 'add-reference') {
     const editor = tiptapRef.value?.editor
     if (editor) {
@@ -289,6 +308,12 @@ const handleButtonClick = (action: string) => {
   }
   // @ts-expect-error - dynamic event emission
   emit(action)
+}
+
+const handleQuickPromptSelect = (text: string) => {
+  const editor = tiptapRef.value?.editor
+  if (!editor) return
+  editor.commands.insertContent(text + ' ')
 }
 
 const handleModeChange = (newMode: string) => {

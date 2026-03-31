@@ -460,6 +460,10 @@ interface AgentMode {
     hidden?: boolean;
     disabled?: boolean;
 }
+interface QuickPrompt {
+    id: string;
+    text: string;
+}
 interface AgentSettings {
     modes: AgentMode[];
     hotkeys: {
@@ -467,6 +471,7 @@ interface AgentSettings {
         switchMode?: KeyboardShortcut | null;
         [key: string]: KeyboardShortcut | null | undefined;
     };
+    quickPrompts?: QuickPrompt[];
 }
 type AgentConnectedData = {
     currentThread: AgentThreadData | null;
