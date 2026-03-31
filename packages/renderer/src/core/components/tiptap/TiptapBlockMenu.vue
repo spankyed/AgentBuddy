@@ -273,7 +273,10 @@ const blockItems: BlockItem[] = [
   { label: 'Code Block', icon: CodeSquare, command: e => e.chain().focus().toggleCodeBlock().run() },
   { label: 'Horizontal Line', icon: Minus, command: e => e.chain().focus().setHorizontalRule().run() },
   { label: 'Details', icon: ChevronDown, command: e => e.chain().focus().setDetails().run() },
-  { label: 'Reference', icon: Hash, command: e => e.chain().focus().insertContent('#').run() },
+  { label: 'Reference', icon: Hash, command: e => e.chain().focus().command(({ tr, dispatch }) => {
+  if (dispatch) tr.insertText('#')
+  return true
+}).run() },
 ]
 
 const allItems = computed(() => [...extraItems, ...blockItems])
