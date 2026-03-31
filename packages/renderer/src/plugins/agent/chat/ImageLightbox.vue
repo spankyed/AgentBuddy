@@ -2,7 +2,7 @@
   <DialogRoot v-model:open="isOpen">
     <DialogPortal>
       <DialogOverlay class="lightbox-overlay" />
-      <DialogContent class="lightbox-content" aria-describedby="">
+      <DialogContent class="lightbox-content" aria-describedby="" @interact-outside="onInteractOutside">
         <DialogTitle class="sr-only">Image preview</DialogTitle>
 
         <div class="lightbox-image-wrapper">
@@ -72,6 +72,12 @@ const { showMenu, menuRef, menuPos, open } = useContextMenu()
 
 function handleContextMenu(e: MouseEvent) {
   open(e, 2)
+}
+
+function onInteractOutside(event: Event) {
+  if (showMenu.value) {
+    event.preventDefault()
+  }
 }
 
 const contextMenuItems = computed<MenuItem[]>(() => [
