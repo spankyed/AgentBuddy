@@ -67,7 +67,7 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
         }
 
         // Exit if non-alphanumeric characters (except hyphen/underscore)
-        if (afterHash && !/^[\w-]*$/i.test(afterHash)) {
+        if (afterHash && !/^[\w:-]*$/i.test(afterHash)) {
           return prev.active ? { ...defaultState } : prev
         }
 

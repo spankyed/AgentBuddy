@@ -219,7 +219,7 @@ function selectCategory(id: ReferenceCategory) {
   // Current text from # to cursor: triggerPos+1 ... cursor
   const from = state.triggerPos + 1
   const to = props.editor.state.selection.head
-  const categoryPrefix = cat.label.toLowerCase().replace(/\s+/g, '')
+  const categoryPrefix = cat.label.toLowerCase().replace(/\s+/g, '') + ':'
 
   tr.replaceWith(from, to, props.editor.state.schema.text(categoryPrefix))
   tr.setMeta(referenceSuggestionPluginKey, {
