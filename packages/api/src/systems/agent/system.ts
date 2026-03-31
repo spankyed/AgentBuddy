@@ -8,9 +8,10 @@ import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { brain } from '../brain/system';
 import services from '@/services';
-import { AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData } from './types';
+import { AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData, CommandItem } from './types';
 import { EARS } from '@/core/types';
 import type { MessageEntity, BlockConfig } from '@/systems/threads/types';
+import type { FieldContent } from '@/systems/library/types';
 
 const logger = createLogger('agent');
 
@@ -37,6 +38,22 @@ export const IncomingAgentEvents = [
     messageId: z.string(),
     threadId: z.string(),
     response: z.any() // Response data for block-based interactions
+  }),
+  busEvent('USER_COMMAND', {
+    command: z.string(),
+    text: z.string(),
+    mode: z.string().optional(),
+    phase: z.string().optional(),
+    threadId: z.string().optional(),
+    references: z.object({
+      images: z.array(z.object({ url: z.string(), name: z.string() })).optional(),
+      files: z.array(z.object({
+        name: z.string(),
+        path: z.string(),
+        typeLabel: z.string(),
+        isImage: z.boolean(),
+      })).optional(),
+    }).optional(),
   }),
 ] as const
 
@@ -88,10 +105,26 @@ export const agentSystem = setup({
         payload: {},
       });
     },
-    sendConnectedData: ({ system }) => {
+    sendConnectedData: async ({ system }) => {
+      const data = repository.agentQueries.connectedData();
+
+      // Fetch commands from internal/commands library document
+      let commands: CommandItem[] = [];
+      try {
+        const doc = await services.library.getByPath(['internal'], 'commands');
+        if (doc) {
+          const fieldSection = doc.content.find((s): s is FieldContent => s.type === 'field');
+          if (fieldSection) {
+            commands = fieldSection.fields.map(f => ({ name: f.key, placeholder: f.value }));
+          }
+        }
+      } catch {
+        // Gracefully return empty commands if document doesn't exist
+      }
+
       system.get(bus).send(emit(agent, {
         type: 'AGENT_CONNECTED',
-        data: repository.agentQueries.connectedData()
+        data: { ...data, commands },
       }));
     },
     sendApiKeyStatus: ({ system }) => {
@@ -214,6 +247,102 @@ export const agentSystem = setup({
         });
       // }, 0);
     },
+    forwardUserCommand: ({ system, event }) => {
+      const { command, text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_COMMAND', event);
+
+      // Sanitize references
+      const sanitizedRefs = references ? {
+        ...references,
+        ...(references.files && {
+          files: references.files.map(({ previewUrl, ...rest }: any) => rest),
+        }),
+      } : undefined;
+
+      // Step 1: Ensure we have a thread (create if needed)
+      let threadId: EARS.EntityId;
+      let threadData: any = null;
+
+      if (!providedThreadId) {
+        const result = repository.agentCommands.createThreadFromMessage(text || `/${command}`);
+        threadId = result.threadId;
+        threadData = result.threadData;
+
+        logger.info('Created new thread for user command', {
+          threadId,
+          command,
+          shortCode: result.threadData.shortCode,
+        });
+
+        repository.threadCommands.markAsVisited(threadId);
+      } else {
+        threadId = providedThreadId as EARS.EntityId;
+      }
+
+      // Step 2: Save the user message with command metadata
+      const messageResult = repository.agentCommands.addMessage({
+        threadId,
+        text: text ? `/${command} ${text}` : `/${command}`,
+        sender: 'user',
+        references: sanitizedRefs,
+      });
+
+      // Step 3: Notify frontend if new thread was created
+      if (threadData) {
+        const fullThreadData = repository.threadQueries.byId(threadData.id);
+
+        system.get(bus).send(emit('threads', {
+          type: 'THREAD_CREATED',
+          id: threadData.id,
+          shortCode: threadData.shortCode,
+          entityType: EARS.Entity.Thread,
+          timestamp: threadData.timestamp,
+          topic: fullThreadData?.topic,
+          instructions: fullThreadData?.instructions,
+          status: fullThreadData?.status
+        } as any));
+
+        system.get(bus).send(emit(agent, {
+          type: 'LOAD_CHAT_THREAD',
+          data: threadData
+        }));
+      } else {
+        const userMessage: MessageEntity = {
+          id: messageResult.id,
+          entityType: EARS.Entity.Message,
+          text: messageResult.text,
+          sender: messageResult.sender as 'user' | 'assistant' | 'system',
+          timestamp: messageResult.timestamp,
+          createdAt: messageResult.timestamp,
+          updatedAt: messageResult.timestamp,
+          ...(sanitizedRefs && { references: sanitizedRefs }),
+        };
+
+        system.get(bus).send(emit(agent, {
+          type: 'MESSAGE_ADDED',
+          threadId: threadId as string,
+          message: userMessage
+        }));
+      }
+
+      // Refresh recent threads list
+      services.chat.sendRecentThreadsRefresh();
+
+      // Step 4: Forward to brain as user.command event
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'user.command',
+        payload: {
+          command,
+          text,
+          mode,
+          phase,
+          threadId,
+          messageId: messageResult.id,
+          ...(sanitizedRefs && { references: sanitizedRefs }),
+        },
+      });
+    },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
@@ -271,6 +400,9 @@ export const agentSystem = setup({
           },
           INTERACTIVE_MSG_RESPONSE: {
             actions: 'forwardInteractiveMessageResponse',
+          },
+          USER_COMMAND: {
+            actions: 'forwardUserCommand',
           },
         },
       },

@@ -18,6 +18,7 @@ import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
+import { CommandSuggestion } from './command-extension'
 
 const lowlight = createLowlight(common)
 
@@ -245,7 +246,7 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
       autolink: true,
       protocols: ['note', 'thread', 'doc'],
     }),
-    ...(isChat ? [ReferenceNode] : [...createFullExtensions(mode), ReferenceNode]),
+    ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : [])] : [...createFullExtensions(mode), ReferenceNode]),
   ]
 
   if (mode !== 'viewer' && placeholder) {
