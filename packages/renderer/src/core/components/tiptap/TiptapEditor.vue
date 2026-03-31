@@ -11,6 +11,7 @@
       <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
+    <ReferenceSuggestionPopup v-if="editor && variant === 'chat' && mode === 'input'" :editor="editor" />
   </div>
 </template>
 
@@ -23,6 +24,7 @@ import { createExtensions, type TiptapMode, type TiptapVariant } from './extensi
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
+import ReferenceSuggestionPopup from './ReferenceSuggestionPopup.vue'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{

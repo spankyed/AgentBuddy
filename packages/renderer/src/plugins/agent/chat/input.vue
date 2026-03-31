@@ -166,6 +166,13 @@ import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences } from '@app/api'
 
+interface ContextReference {
+  refType: 'thread' | 'document' | 'note'
+  refId: string
+  shortCode: string
+  label: string
+}
+
 const props = defineProps<{
   currentThread: AgentThreadData
   currentMode: string
@@ -268,6 +275,18 @@ const handleButtonClick = (action: string) => {
     emit('voice-input')
     return
   }
+  if (action === 'add-reference') {
+    const editor = tiptapRef.value?.editor
+    if (editor) {
+      editor.chain().focus().command(({ tr, dispatch }) => {
+        if (dispatch) {
+          tr.insertText('#')
+        }
+        return true
+      }).run()
+    }
+    return
+  }
   // @ts-expect-error - dynamic event emission
   emit(action)
 }
@@ -282,6 +301,22 @@ const handlePhaseChange = (newPhase: string) => {
   emit('phase-change', newPhase)
 }
 
+function collectContextReferences(editor: NonNullable<typeof tiptapRef.value>['editor']): ContextReference[] {
+  if (!editor) return []
+  const refs: ContextReference[] = []
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === 'reference') {
+      refs.push({
+        refType: node.attrs.refType,
+        refId: node.attrs.refId,
+        shortCode: node.attrs.shortCode,
+        label: node.attrs.label,
+      })
+    }
+  })
+  return refs
+}
+
 const handleSubmit = async () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
@@ -289,7 +324,13 @@ const handleSubmit = async () => {
   const md = (editor.storage as any).markdown.getMarkdown() as string
   if (md.trim() || hasAttachments.value) {
     const entityId = props.currentThread?.id || 'chat-attachments'
-    emit('send-message', md, await collectAttachments(entityId))
+    const attachmentRefs = await collectAttachments(entityId)
+    const contextRefs = collectContextReferences(editor)
+    const references: MessageReferences = {
+      ...attachmentRefs,
+      ...(contextRefs.length > 0 ? { contextReferences: contextRefs } : {}),
+    }
+    emit('send-message', md, references)
     editor.commands.clearContent(true)
     messageContent.value = ''
     clearAll()

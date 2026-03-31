@@ -73,9 +73,19 @@ export interface ImageReference {
   name: string;
 }
 
+export type ContextReferenceType = 'thread' | 'document' | 'note';
+
+export interface ContextReference {
+  refType: ContextReferenceType;
+  refId: string;
+  shortCode: string;
+  label: string;
+}
+
 export interface MessageReferences {
   images?: ImageReference[];
   files?: FileReference[];
+  contextReferences?: ContextReference[];
 }
 
 export interface MessageEntity extends BaseEntity {
