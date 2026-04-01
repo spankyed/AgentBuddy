@@ -1,5 +1,5 @@
 import { assign, log, setup, fromPromise, spawnChild, type ActorRefFrom } from 'xstate';
-import type { MessageEntity, ArtifactEntity, ThreadEntity, ThreadExtended, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig, MessageReferences } from '@app/api';
+import type { MessageEntity, ArtifactEntity, ThreadEntity, ThreadExtended, OutgoingAgentEvents, OutgoingThreadsEvents, AgentThreadData, Tab, ArtifactItem, ArtifactType, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem } from '@app/api';
 import breadcrumb from '@/core/breadcrumb';
 import { safeEvents } from '@/core/types/safe-events';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
@@ -41,6 +41,7 @@ interface AgentContext {
   hotkeys: HotkeysMap;
   settings: AgentSettings;
   hasRequiredApiKeys: boolean;
+  commands: CommandItem[];
 }
 
 type Brain_FE_AgentEvents =
@@ -52,6 +53,7 @@ type AgentEvent =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'SEND_MESSAGE'; text: string; references?: MessageReferences }
+  | { type: 'SEND_COMMAND'; command: string; text: string; references?: MessageReferences }
   | { type: 'CLEAR_THREAD' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
   | { type: 'SET_STATUS_COLOR'; color: StatusColor }
@@ -73,6 +75,7 @@ type AgentEvent =
   | { type: 'SWITCH_MODE' }
   | { type: 'NAVIGATE_TO_SECRETS' }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
+  | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -155,6 +158,19 @@ const agentState = setup({
       trpc.bus.send.mutate({
         systemId: id,
         type: 'USER_MSG',
+        text,
+        mode: context.mode,
+        phase: context.phase,
+        threadId: context.currentThread?.id,
+        ...(references && { references }),
+      });
+    },
+    sendCommand: ({ context, event }) => {
+      const { command, text, references } = typeOf('SEND_COMMAND', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'USER_COMMAND',
+        command,
         text,
         mode: context.mode,
         phase: context.phase,
@@ -301,6 +317,7 @@ const agentState = setup({
         modes,
         settings,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
+        commands: typedEvent.data.commands || [],
         ...modeUpdate
       };
     }),
@@ -561,6 +578,7 @@ const agentState = setup({
     hotkeys: {}, // Will be loaded from settings
     settings: { modes: [], hotkeys: {} }, // Will be loaded from settings
     hasRequiredApiKeys: true, // Default to true, will be updated on AGENT_CONNECTED
+    commands: [],
   }),
   on: {
     // Hotkey handling
@@ -597,6 +615,11 @@ const agentState = setup({
     API_KEYS_STATUS: {
       actions: 'updateApiKeyStatus'
     },
+    COMMANDS_UPDATED: {
+      actions: assign(({ event }) => ({
+        commands: typeOf('COMMANDS_UPDATED', event).commands
+      }))
+    },
     UPDATE_TODO_TASK: {
       actions: 'updateTodoTask'
     },
@@ -621,6 +644,12 @@ const agentState = setup({
     SEND_MESSAGE: {
       actions: [
         'sendMessage',
+        { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
+      ],
+    },
+    SEND_COMMAND: {
+      actions: [
+        'sendCommand',
         { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
       ],
     },

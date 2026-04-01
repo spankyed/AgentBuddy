@@ -99,6 +99,8 @@ export interface MessageEntity extends BaseEntity {
   blockResponse?: any; // Response data for block-based interactions
   forkable?: boolean;
   references?: MessageReferences;
+  isCommand?: boolean;
+  command?: string;
 }
 
 export interface ThreadEntity extends BaseEntity {

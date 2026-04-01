@@ -52,6 +52,7 @@
           isUser
             ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
             : ' text-neutral-100 border border-neutral-700/80',
+          isUser && isCommand && 'command-bubble',
           'hover:shadow-md'
         ]"
       >
@@ -66,7 +67,7 @@
 
         <!-- Message content -->
         <div class="leading-relaxed text-[15px]">
-          <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" />
+          <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" :is-command="isCommand" />
         </div>
 
         <!-- Block-based interactions -->
@@ -119,6 +120,7 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
 defineEmits<ChatMessageEmits>()
 
 const isUser = computed(() => props.message.sender === 'user')
+const isCommand = computed(() => props.message.isCommand ?? false)
 
 const copyMessageText = async () => {
   try {
@@ -146,6 +148,11 @@ const formatTime = (date: Date) =>
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+.command-bubble {
+  border-color: rgba(180, 180, 255, 0.3);
+  box-shadow: 0 0 8px -2px rgba(180, 180, 255, 0.12);
 }
 
 </style>

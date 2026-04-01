@@ -382,6 +382,8 @@ interface MessageEntity extends BaseEntity {
     blockResponse?: any;
     forkable?: boolean;
     references?: MessageReferences;
+    isCommand?: boolean;
+    command?: string;
 }
 interface ThreadEntity extends BaseEntity {
     entityType: EARS.Entity.Thread;
@@ -464,6 +466,10 @@ interface QuickPrompt {
     id: string;
     text: string;
 }
+interface CommandItem {
+    name: string;
+    placeholder: string;
+}
 interface AgentSettings {
     modes: AgentMode[];
     hotkeys: {
@@ -479,6 +485,7 @@ type AgentConnectedData = {
     tabs: Tab[];
     settings?: AgentSettings;
     hasRequiredApiKeys: boolean;
+    commands?: CommandItem[];
 };
 interface Tab {
     id: string;
@@ -1046,6 +1053,104 @@ declare const events: {
         threadId: string;
         messageId: string;
         response?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"USER_COMMAND">;
+        systemId: zod.ZodLiteral<"agent">;
+        command: zod.ZodString;
+        text: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodString>;
+        phase: zod.ZodOptional<zod.ZodString>;
+        threadId: zod.ZodOptional<zod.ZodString>;
+        references: zod.ZodOptional<zod.ZodObject<{
+            images: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                url: zod.ZodString;
+                name: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                url: string;
+                name: string;
+            }, {
+                url: string;
+                name: string;
+            }>, "many">>;
+            files: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                name: zod.ZodString;
+                path: zod.ZodString;
+                typeLabel: zod.ZodString;
+                isImage: zod.ZodBoolean;
+            }, "strip", zod.ZodTypeAny, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }>, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }, {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        text: string;
+        command: string;
+        type: "USER_COMMAND";
+        systemId: "agent";
+        references?: {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
+        mode?: string | undefined;
+        phase?: string | undefined;
+        threadId?: string | undefined;
+    }, {
+        text: string;
+        command: string;
+        type: "USER_COMMAND";
+        systemId: "agent";
+        references?: {
+            images?: {
+                url: string;
+                name: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
+        mode?: string | undefined;
+        phase?: string | undefined;
+        threadId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -3190,6 +3295,10 @@ declare const events: {
         mode: string;
         pluginId: "agent";
     } | {
+        type: "COMMANDS_UPDATED";
+        commands: CommandItem[];
+        pluginId: "agent";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -4431,6 +4540,7 @@ declare class LibraryService {
     get(id: EARS.EntityId): Promise<DocumentDTO | undefined>;
     getByCode(shortCode: string): Promise<DocumentDTO | undefined>;
     getByName(name: string): Promise<DocumentDTO | undefined>;
+    getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
     getText(id: EARS.EntityId): Promise<string | undefined>;
     list(folderId?: EARS.EntityId): Promise<LibraryItem[]>;
     create(params: {
@@ -5296,6 +5406,8 @@ declare const services: {
                 blocks?: BlockConfig[];
                 forkable?: boolean;
                 references?: MessageReferences;
+                isCommand?: boolean;
+                command?: string;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

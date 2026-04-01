@@ -89,6 +89,16 @@ export class LibraryService {
     return allDocuments.find(doc => doc.name === name);
   }
 
+  async getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined> {
+    const allDocuments = repository.libraryQueries.getDocuments();
+    return allDocuments.find(doc => {
+      if (doc.name !== name) return false;
+      const docPath = doc.collectionPath ?? [];
+      if (docPath.length !== collectionPath.length) return false;
+      return collectionPath.every((seg, i) => docPath[i] === seg);
+    });
+  }
+
   async getText(id: EARS.EntityId): Promise<string | undefined> {
     const doc = await this.get(id)
     if (!doc) return undefined

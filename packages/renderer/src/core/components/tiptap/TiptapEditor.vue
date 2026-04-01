@@ -12,11 +12,12 @@
     </template>
     <editor-content :editor="editor" :class="editorClass" />
     <ReferenceSuggestionPopup v-if="editor && mode !== 'viewer'" :editor="editor" :variant="variant" />
+    <CommandSuggestionPopup v-if="editor && mode === 'input' && variant === 'chat'" :editor="editor" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { splitBlock } from '@tiptap/pm/commands'
@@ -25,6 +26,8 @@ import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import ReferenceSuggestionPopup from './ReferenceSuggestionPopup.vue'
+import CommandSuggestionPopup from './CommandSuggestionPopup.vue'
+import { commandSuggestionPluginKey } from './command-suggestion-plugin'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
@@ -35,6 +38,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   editorClass?: string
   entityId?: string
+  isCommand?: boolean
 }>(), {
   variant: 'full',
   modelValue: '',
@@ -42,6 +46,7 @@ const props = withDefaults(defineProps<{
   disabled: false,
   editorClass: '',
   entityId: undefined,
+  isCommand: false,
 })
 
 const emit = defineEmits<{
@@ -227,6 +232,7 @@ const editor = useEditor({
     mode: props.mode,
     variant: props.variant,
     placeholder: props.placeholder,
+    isCommand: props.isCommand,
   }),
   content: props.modelValue,
   editable: props.mode !== 'viewer' && !props.disabled,
@@ -285,5 +291,19 @@ watch(() => props.disabled, (disabled) => {
   }
 })
 
-defineExpose({ editor })
+const commandPluginState = computed(() => {
+  if (!editor.value) return null
+  return commandSuggestionPluginKey.getState(editor.value.state)
+})
+
+const commandModeActive = computed(() => {
+  const s = commandPluginState.value
+  return s?.active === true && s.selectedCommand != null
+})
+
+const commandActive = computed(() => {
+  return commandPluginState.value?.active === true
+})
+
+defineExpose({ editor, commandModeActive, commandActive })
 </script>

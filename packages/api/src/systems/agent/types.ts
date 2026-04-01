@@ -40,6 +40,11 @@ export interface QuickPrompt {
   text: string;
 }
 
+export interface CommandItem {
+  name: string;
+  placeholder: string;
+}
+
 export interface AgentSettings {
   modes: AgentMode[];
   hotkeys: {
@@ -56,6 +61,7 @@ export type AgentConnectedData = {
   tabs: Tab[];
   settings?: AgentSettings;
   hasRequiredApiKeys: boolean;
+  commands?: CommandItem[];
 };
 
 // UI types for agent canvas

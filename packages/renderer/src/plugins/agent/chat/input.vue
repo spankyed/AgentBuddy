@@ -6,7 +6,7 @@
     >
       <div
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
-        :class="[$style.input, { 'opacity-50': disabled }]"
+        :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight }]"
         data-onboarding-id="agent-chat-input"
         @paste="handlePaste">
         <StatusIndicator/>
@@ -175,6 +175,7 @@ import Button from '@/core/components/design/button.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '@app/api'
+import { commandSuggestionPluginKey } from '@/core/components/tiptap/command-suggestion-plugin'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 
 interface ContextReference {
@@ -196,6 +197,7 @@ const props = defineProps<{
 // Define emits including new button actions
 const emit = defineEmits<{
   (e: 'send-message', message: string, references?: MessageReferences): void
+  (e: 'send-command', command: string, text: string, references?: MessageReferences): void
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
@@ -217,6 +219,10 @@ interface ActionButton {
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
 const popoverOpen = ref(false)
+
+const commandHighlight = computed(() => {
+  return tiptapRef.value?.commandActive || tiptapRef.value?.commandModeActive
+})
 
 const {
   pendingImages, pendingFiles, hasAttachments,
@@ -355,7 +361,23 @@ const handleSubmit = async () => {
       ...attachmentRefs,
       ...(contextRefs.length > 0 ? { contextReferences: contextRefs } : {}),
     }
-    emit('send-message', md, references)
+
+    // Check if this is a command submission
+    const cmdState = commandSuggestionPluginKey.getState(editor.state)
+    if (cmdState?.active && cmdState.selectedCommand) {
+      const commandName = cmdState.selectedCommand.name
+      const prefix = `/${commandName} `
+      const bodyText = md.startsWith(prefix) ? md.slice(prefix.length) : md.slice(`/${commandName}`.length)
+      emit('send-command', commandName, bodyText.trim(), references)
+
+      // Deactivate command plugin
+      const { tr } = editor.state
+      tr.setMeta(commandSuggestionPluginKey, { deactivate: true })
+      editor.view.dispatch(tr)
+    } else {
+      emit('send-message', md, references)
+    }
+
     editor.commands.clearContent(true)
     messageContent.value = ''
     clearAll()
@@ -365,6 +387,11 @@ const handleSubmit = async () => {
 
 <style lang="scss" module>
 .input {
-  border-color: rgb(60 60 60);;
+  border-color: rgb(60 60 60);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.inputCommandActive {
+  border-color: rgba(180, 180, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(180, 180, 255, 0.1), 0 0 12px -2px rgba(180, 180, 255, 0.15);
 }
 </style>
