@@ -20,6 +20,7 @@ import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
 import { CommandViewerDecoration } from './command-viewer-decoration'
+import { ListBackspace } from './list-backspace'
 
 const lowlight = createLowlight(common)
 
@@ -228,6 +229,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       codeBlock: false,
       link: false,
       blockquote: false,
+      listKeymap: false,
       ...(isChat && mode !== 'viewer' && {
         heading: false,
         strike: false,
@@ -251,12 +253,16 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : []), ...(mode === 'viewer' && isCommand ? [CommandViewerDecoration] : [])] : [...createFullExtensions(mode), ReferenceNode]),
   ]
 
-  if (mode !== 'viewer' && placeholder) {
-    extensions.push(
-      Placeholder.configure({
-        placeholder,
-      }),
-    )
+  if (mode !== 'viewer') {
+    extensions.push(ListBackspace)
+
+    if (placeholder) {
+      extensions.push(
+        Placeholder.configure({
+          placeholder,
+        }),
+      )
+    }
   }
 
   return extensions
