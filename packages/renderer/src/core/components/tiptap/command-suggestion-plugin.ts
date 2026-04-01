@@ -5,14 +5,15 @@ import type { CommandItem } from './command-config'
 
 export interface CommandSuggestionState {
   active: boolean
-  triggerPos: number
   query: string
   selectedCommand: CommandItem | null
 }
 
+/** The `/` trigger is always at ProseMirror position 1 (start of first-paragraph content). */
+export const COMMAND_TRIGGER_POS = 1
+
 const defaultState: CommandSuggestionState = {
   active: false,
-  triggerPos: 0,
   query: '',
   selectedCommand: null,
 }
@@ -29,6 +30,8 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
       },
 
       apply(tr, prev) {
+        const deactivateIf = (active: boolean) => active ? { ...defaultState } : prev
+
         // Handle explicit meta updates (from popup interactions)
         const meta = tr.getMeta(commandSuggestionPluginKey)
         if (meta) {
@@ -42,21 +45,18 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
 
         // Use first paragraph text — the `/` and query are always in the first paragraph
         const firstParagraph = tr.doc.firstChild
-        if (!firstParagraph) return prev.active ? { ...defaultState } : prev
+        if (!firstParagraph) return deactivateIf(prev.active)
 
         const firstText = firstParagraph.textContent
 
         // Only activate when / is the very first character
         if (!firstText.startsWith('/')) {
-          return prev.active ? { ...defaultState } : prev
+          return deactivateIf(prev.active)
         }
 
         const { $head } = tr.selection
         const isFirstParagraph = $head.depth === 1 && $head.index(0) === 0
         if (!isFirstParagraph && !prev.active) return prev
-
-        // triggerPos is always the start of first paragraph content
-        const triggerPos = 1
 
         // If a command is already selected, stay active while prefix is intact
         if (prev.active && prev.selectedCommand) {
@@ -64,24 +64,23 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
           if (firstText.startsWith(requiredPrefix)) return prev
           // Prefix broken — re-enter query phase with the partial command text
           const partialQuery = firstText.slice(1).split(' ')[0]
-          return { ...prev, active: true, triggerPos, query: partialQuery, selectedCommand: null }
+          return { ...prev, active: true, query: partialQuery, selectedCommand: null }
         }
 
         // Query phase: extract text after `/`, deactivate if it contains a space
         const query = firstText.slice(1)
 
         if (query.trim().length === 0) {
-          return { ...prev, active: true, triggerPos, query: '' }
+          return { ...prev, active: true, query: '' }
         }
 
         if (query.includes(' ')) {
-          return prev.active ? { ...defaultState } : prev
+          return deactivateIf(prev.active)
         }
 
         return {
           ...prev,
           active: true,
-          triggerPos,
           query,
         }
       },
@@ -94,38 +93,31 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
       if (!firstText.startsWith('/')) return null
 
       const pluginState = commandSuggestionPluginKey.getState(newState)
+      const inQueryPhase = pluginState?.active && !pluginState.selectedCommand
 
-      // Strip trailing whitespace when in query phase (no selected command)
-      if (newState.doc.childCount === 1 && pluginState?.active && !pluginState.selectedCommand) {
-        const trimmed = firstText.trimEnd()
-        if (trimmed !== firstText && trimmed.length > 0) {
-          const { tr } = newState
-          const firstChild = newState.doc.firstChild!
-          const paragraph = newState.schema.nodes.paragraph.create(
-            null,
-            newState.schema.text(trimmed),
-          )
-          tr.replaceWith(0, firstChild.nodeSize, paragraph)
-          tr.setSelection(TextSelection.atEnd(tr.doc))
-          return tr
-        }
+      // Determine desired text: strip trailing whitespace in query phase
+      const targetText = inQueryPhase ? firstText.trimEnd() : firstText
+      const needsTrim = targetText !== firstText && targetText.length > 0
+
+      // Determine if extra paragraphs should collapse (only if rest is whitespace-only)
+      let needsCollapse = false
+      if (newState.doc.childCount > 1) {
+        const rest = newState.doc.textContent.slice(firstText.length)
+        if (rest.trim().length === 0) needsCollapse = true
       }
 
-      // Only act when doc has multiple paragraphs
-      if (newState.doc.childCount <= 1) return null
+      if (!needsTrim && !needsCollapse) return null
 
-      // Everything outside the first paragraph must be whitespace-only
-      const docText = newState.doc.textContent
-      const rest = docText.slice(firstText.length)
-      if (rest.trim().length > 0) return null
-
-      // Collapse to single paragraph with just the first paragraph's content
+      // Single paragraph rebuild
       const { tr } = newState
       const paragraph = newState.schema.nodes.paragraph.create(
         null,
-        firstText ? newState.schema.text(firstText) : null,
+        targetText ? newState.schema.text(targetText) : null,
       )
-      tr.replaceWith(0, newState.doc.content.size, paragraph)
+      const replaceEnd = needsCollapse
+        ? newState.doc.content.size
+        : newState.doc.firstChild!.nodeSize
+      tr.replaceWith(0, replaceEnd, paragraph)
       tr.setSelection(TextSelection.atEnd(tr.doc))
       return tr
     },
@@ -143,7 +135,7 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         const decos: Decoration[] = []
 
         // Inline decoration on the /commandName (or /query) text
-        const cmdStart = pluginState.triggerPos
+        const cmdStart = COMMAND_TRIGGER_POS
         const cmdEnd = cmdStart + commandPrefix.length
         if (cmdEnd > cmdStart) {
           decos.push(Decoration.inline(cmdStart, cmdEnd, { class: 'command-segment' }))
