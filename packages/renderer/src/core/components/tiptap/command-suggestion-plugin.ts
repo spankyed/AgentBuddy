@@ -75,7 +75,7 @@ export function commandSuggestionPlugin(
         // Query phase: extract text after `/`, deactivate if it contains a space
         const query = trimmedText.slice(1)
 
-        if (query.trim().length === 0) {
+        if (query.length === 0) {
           return { ...prev, active: true, query: '' }
         }
 
