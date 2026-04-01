@@ -1,5 +1,26 @@
 <template>
   <div class="max-w-3xl">
+    <!-- Conversation Section -->
+    <CollapsibleSection label="Conversation" :default-open="true" class="mb-8">
+      <div class="flex items-center justify-between">
+        <div class="flex-1">
+          <label for="skip-revert-confirm" class="text-sm font-medium text-neutral-200">
+            Skip revert confirmation
+          </label>
+          <p class="mt-1 text-xs text-neutral-600">
+            Revert messages without showing a confirmation dialog
+          </p>
+        </div>
+        <input
+          id="skip-revert-confirm"
+          v-model="skipRevertConfirm"
+          type="checkbox"
+          @change="saveSkipRevertConfirm"
+          class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+        />
+      </div>
+    </CollapsibleSection>
+
     <!-- Chat Modes Section -->
     <CollapsibleSection label="Chat Modes" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
@@ -284,6 +305,16 @@ const vAutoResize: Directive<HTMLTextAreaElement> = {
 const removeQuickPrompt = (index: number) => {
   quickPrompts.value.splice(index, 1)
   saveQuickPrompts()
+}
+
+// Conversation settings
+const skipRevertConfirm = ref(props.settings?.skipRevertConfirm ?? false)
+
+const saveSkipRevertConfirm = () => {
+  emit('update-setting', {
+    path: ['skipRevertConfirm'],
+    value: skipRevertConfirm.value
+  })
 }
 
 const hotkeys = reactive<AgentSettings['hotkeys']>({
