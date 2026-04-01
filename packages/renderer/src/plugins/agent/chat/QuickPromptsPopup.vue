@@ -53,10 +53,10 @@
             <div
               v-for="prompt in localPrompts"
               :key="prompt.id"
-              class="flex items-start gap-1 px-2 pb-1 pt-2"
+              class="flex items-start gap-2 px-3 pb-1 pt-2"
             >
               <span
-                class="flex-1 min-w-0 text-sm text-neutral-300 px-1 truncate"
+                class="flex-1 min-w-0 text-sm text-neutral-300 truncate"
                 :title="prompt.text"
               >{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span></span>
               <button
@@ -67,21 +67,21 @@
                 <X :size="14" />
               </button>
             </div>
-            <div class="flex items-center gap-1 px-2 py-1.5 border-t border-neutral-700/50 mt-1">
+            <div class="flex items-center gap-2 px-3 py-2 border-t border-neutral-700/50 mt-1">
               <textarea
                 ref="addPromptRef"
                 v-model="newPromptText"
                 rows="1"
                 placeholder="Add prompt..."
-                class="flex-1 px-2 py-1.5 text-sm bg-neutral-800 border border-neutral-700/50 rounded text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-none overflow-y-hidden"
+                class="flex-1 px-0 py-0.5 text-sm bg-transparent border-none text-white placeholder-neutral-600 focus:outline-none resize-none overflow-y-hidden"
                 style="max-height: calc(1.5em * 3 + 12px)"
                 @input="autoResize($event)"
                 @keydown.enter.exact.prevent="addPrompt"
               />
               <button
                 type="button"
-                class="p-1.5 transition-colors flex-shrink-0"
-                :class="newPromptText.trim() ? 'text-neutral-500 hover:text-white' : 'text-neutral-700 cursor-not-allowed'"
+                class="p-1 rounded transition-colors flex-shrink-0"
+                :class="newPromptText.trim() ? 'text-neutral-400 hover:text-white hover:bg-neutral-700/50' : 'text-neutral-700 cursor-not-allowed'"
                 :disabled="!newPromptText.trim()"
                 @click="addPrompt"
               >
