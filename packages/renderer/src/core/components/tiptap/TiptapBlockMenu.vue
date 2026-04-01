@@ -263,6 +263,10 @@ watch(open, async (isOpen) => {
 const extraItems = inject(EXTRA_BLOCK_ITEMS_KEY, [])
 
 const blockItems: BlockItem[] = [
+  { label: 'Reference', icon: Hash, command: e => e.chain().focus().command(({ tr, dispatch }) => {
+  if (dispatch) tr.insertText('#')
+  return true
+}).run() },
   { label: 'Heading 1', icon: Heading1, command: e => e.chain().focus().toggleHeading({ level: 1 }).run() },
   { label: 'Heading 2', icon: Heading2, command: e => e.chain().focus().toggleHeading({ level: 2 }).run() },
   { label: 'Heading 3', icon: Heading3, command: e => e.chain().focus().toggleHeading({ level: 3 }).run() },
@@ -273,10 +277,6 @@ const blockItems: BlockItem[] = [
   { label: 'Code Block', icon: CodeSquare, command: e => e.chain().focus().toggleCodeBlock().run() },
   { label: 'Horizontal Line', icon: Minus, command: e => e.chain().focus().setHorizontalRule().run() },
   { label: 'Details', icon: ChevronDown, command: e => e.chain().focus().setDetails().run() },
-  { label: 'Reference', icon: Hash, command: e => e.chain().focus().command(({ tr, dispatch }) => {
-  if (dispatch) tr.insertText('#')
-  return true
-}).run() },
 ]
 
 const allItems = computed(() => [...extraItems, ...blockItems])
