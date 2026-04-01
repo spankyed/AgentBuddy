@@ -14,6 +14,7 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
 import { mergeAttributes, wrappingInputRule, InputRule, Extension } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
+import Paragraph from '@tiptap/extension-paragraph'
 import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
@@ -38,6 +39,38 @@ const TaskListParseFix = Extension.create({
               for (const token of state.tokens) {
                 if (token.type === 'inline' && /^\[[ xX]\]$/.test(token.content)) {
                   token.content += ' '
+                }
+              }
+            })
+          },
+        },
+      },
+    }
+  },
+})
+
+const EmptyLinePreserver = Paragraph.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: any, node: any) {
+          if (node.childCount === 0) {
+            state.write('&nbsp;')
+          } else {
+            state.renderInline(node)
+          }
+          state.closeBlock(node)
+        },
+        parse: {
+          setup(markdownit: any) {
+            if (markdownit._fixedEmptyLines) return
+            markdownit._fixedEmptyLines = true
+
+            markdownit.core.ruler.push('strip-nbsp-empty-lines', (state: any) => {
+              for (const token of state.tokens) {
+                if (token.type === 'inline' && token.content === '\u00a0') {
+                  token.content = ''
+                  token.children = []
                 }
               }
             })
@@ -276,6 +309,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       protocols: ['note', 'thread', 'doc'],
     }),
     ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : []), ...(mode === 'viewer' && isCommand ? [CommandViewerDecoration] : [])] : [...createFullExtensions(mode), ReferenceNode]),
+    EmptyLinePreserver,
   ]
 
   if (mode !== 'viewer') {
