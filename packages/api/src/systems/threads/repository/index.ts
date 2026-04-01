@@ -223,6 +223,14 @@ export const threadCommands = {
     });
   },
 
+  linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId): void => {
+    tx(forkedThreadId).link(EARS.RelKind.Custom('forked_from'), sourceThreadId);
+  },
+
+  forkCount: (sourceThreadId: EARS.EntityId): number => {
+    return qx(sourceThreadId).linksTo('forked_from', EARS.Entity.Thread, false).ids().length;
+  },
+
   delete: (id: EARS.EntityId): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);

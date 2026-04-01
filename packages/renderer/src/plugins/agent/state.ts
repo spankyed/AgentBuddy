@@ -76,6 +76,7 @@ type AgentEvent =
   | { type: 'NAVIGATE_TO_SECRETS' }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
+  | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -556,6 +557,16 @@ const agentState = setup({
         }
       };
     }),
+    forkThread: ({ event }) => {
+      const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FORK_THREAD',
+        messageId,
+        threadId,
+        threadTopic,
+      });
+    },
   },
   guards: {
     targetIs,
@@ -667,6 +678,9 @@ const agentState = setup({
     },
     CREATE_CHILD_THREAD: {
       actions: 'createChildThread'
+    },
+    FORK_THREAD: {
+      actions: 'forkThread'
     },
     // ADD_ASSISTANT_MESSAGE: {
     //   actions: 'addAssistantMessage'

@@ -14,6 +14,7 @@
               :key="message.id"
               :message="message"
               @open-lightbox="openLightbox"
+              @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
             />
           </div>
         </div>
