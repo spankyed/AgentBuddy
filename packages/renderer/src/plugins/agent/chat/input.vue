@@ -137,7 +137,7 @@
               variant="secondary"
             >
               <span class="hidden @md:inline">Pause</span>
-              <Square :size="22" />
+              <PauseIcon :size="22" />
             </Button>
             <Button
               type="submit"
@@ -168,7 +168,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from 'reka-ui'
-import Square from './square-svg.vue'
+// import Square from './square-svg.vue'
+import PauseIcon from './pause-svg.vue'
 import ModePhaseSelector from './ModePhaseSelector.vue'
 import type { Component } from 'vue'
 import Button from '@/core/components/design/button.vue'
