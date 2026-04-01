@@ -37,9 +37,9 @@ defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
 }>()
 
-// Constants matching SwitchNode pattern
-const HEADER_OFFSET = 40
-const ROW_HEIGHT = 22
+// Minimum spacing between handles (px). If the node's natural height can't
+// fit all handles at this spacing we grow it just enough.
+const HANDLE_SPACING = 20
 
 // Compute dynamic exit handles from connected edges
 const exitHandles = computed<HandleConfig[]>(() => {
@@ -47,7 +47,6 @@ const exitHandles = computed<HandleConfig[]>(() => {
   let maxIndex = -1
 
   if (connected) {
-    // Scan for connected exit handles: "nodeId:exit-N"
     for (const key of connected) {
       const match = key.match(new RegExp(`^${props.id}:exit-(\\d+)$`))
       if (match) {
@@ -57,24 +56,28 @@ const exitHandles = computed<HandleConfig[]>(() => {
     }
   }
 
-  // Always produce handles 0..maxIndex+1 (one extra unconnected handle)
-  const count = maxIndex + 2 // at least 1 handle when maxIndex is -1
+  const count = maxIndex + 2 // at least 1
 
+  if (count === 1) {
+    // Single handle — no offsetY, BaseNode centers it at 50%
+    return [{ id: 'exit-0', label: 'Exit 1' }]
+  }
+
+  // Distribute handles evenly using percentage positions.
+  // Each handle gets a band of 1/(count+1) so there's equal padding
+  // above the first and below the last.
   return Array.from({ length: count }, (_, i) => ({
     id: `exit-${i}`,
     label: `Exit ${i + 1}`,
-    // When only 1 handle, don't set offsetY so it centers at 50% (default)
-    ...(count > 1 && {
-      offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
-    })
+    offsetPercent: ((i + 1) / (count + 1)) * 100
   }))
 })
 
-// Grow node height when multiple handles exist
+// Only grow the node when handles can't fit at minimum spacing
 const nodeStyle = computed(() => {
   const count = exitHandles.value.length
   if (count <= 1) return {}
-  const minHeight = HEADER_OFFSET + count * ROW_HEIGHT + 10
-  return { minHeight: `${minHeight}px` }
+  const needed = (count + 1) * HANDLE_SPACING
+  return { minHeight: `${needed}px` }
 })
 </script>

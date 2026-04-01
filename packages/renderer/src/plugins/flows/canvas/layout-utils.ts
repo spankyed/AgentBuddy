@@ -83,7 +83,8 @@ function buildElkGraph(
     if (isSwitch) {
       height = Math.max(nodeHeight, 43 + branchCount * 26 + 10)
     } else if (isListen && listenExitCount > 1) {
-      height = Math.max(nodeHeight, 40 + listenExitCount * 22 + 10)
+      // Match HANDLE_SPACING from ListenNode.vue: (count + 1) * 20
+      height = Math.max(nodeHeight, (listenExitCount + 1) * 20)
     }
 
     // Single input port (except for listen nodes)

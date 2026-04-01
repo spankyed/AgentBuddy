@@ -86,6 +86,7 @@
         :node-id="id"
         :handle-id="handle.id"
         :offset-y="handle.offsetY"
+        :offset-percent="handle.offsetPercent"
         :source-handle="handle.id"
         :is-selected="isHandleSelected(handle.id)"
         :is-connected="isHandleConnected(handle.id)"
@@ -130,7 +131,8 @@ import type { NodeKind } from '@app/api'
 export interface HandleConfig {
   id: string
   label?: string
-  offsetY?: number  // Vertical offset in pixels from top of node
+  offsetY?: number       // Vertical offset in pixels from top of node
+  offsetPercent?: number  // Vertical offset as percentage (0-100) from top of node
 }
 
 interface BaseNodeData {
