@@ -7,12 +7,15 @@
   <!-- dot + glow -->
   <span class="relative inline-block">
     <!-- solid dot -->
-    <span :class="['block h-3 w-3 rounded-full transition-colors duration-300 ease-in-out', statusColorClass]" />
+    <span :class="[
+      'block h-3 w-3 rounded-full transition-colors duration-300 ease-in-out',
+      isThinking ? $style['thinking-dot'] : statusColorClass
+    ]" />
     <!-- glow -->
     <span
       :class="[
-        'absolute inset-0 rounded-full scale-[2] blur-[1px] opacity-40 transition-colors duration-300 ease-in-out',
-        statusColorClass
+        'absolute inset-0 rounded-full scale-[2] transition-colors duration-300 ease-in-out',
+        isThinking ? $style['thinking-glow'] : ['blur-[1px] opacity-40', statusColorClass]
       ]"
     />
   </span>
@@ -43,6 +46,8 @@ const messages = useSelector(actor, (state) => state.context.currentThread?.mess
 // const statusColorClass = computed(() => 'bg-purple-700/80')
 // Use the statusColor from the state machine
 const statusColorClass = useSelector(actor, (state) => state.context.statusColor)
+
+const isThinking = computed(() => statusColorClass.value === 'bg-yellow-500')
 </script>
 
 <style lang="scss" module>
@@ -50,5 +55,43 @@ const statusColorClass = useSelector(actor, (state) => state.context.statusColor
   position: absolute;
   top: -.4rem;                        // nudge so halo sits half outside the border
   left: -.4rem;                        // nudge so halo sits half outside the border
+}
+
+.thinking-dot {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #eab308,
+    #8b5cf6,
+    #3b82f6,
+    #eab308
+  );
+  animation: thinking-rotate 3s linear infinite;
+}
+
+.thinking-glow {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #eab308,
+    #8b5cf6,
+    #3b82f6,
+    #eab308
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: blur(3px);
+  opacity: 0.5;
+}
+
+@keyframes thinking-rotate {
+  to {
+    --thinking-angle: 360deg;
+  }
+}
+</style>
+
+<style>
+@property --thinking-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
 }
 </style>
