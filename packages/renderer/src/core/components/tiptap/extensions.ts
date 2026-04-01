@@ -25,15 +25,15 @@ import { ListBackspace } from './list-backspace'
 
 const lowlight = createLowlight(common)
 
-const TaskListParseFix = Extension.create({
-  name: 'taskListParseFix',
+const MarkdownParseFixes = Extension.create({
+  name: 'markdownParseFixes',
   addStorage() {
     return {
       markdown: {
         parse: {
           setup(markdownit: any) {
-            if (markdownit._fixedEmptyTaskItems) return
-            markdownit._fixedEmptyTaskItems = true
+            if (markdownit._markdownParseFixes) return
+            markdownit._markdownParseFixes = true
 
             markdownit.core.ruler.after('block', 'fix-empty-task-items', (state: any) => {
               for (const token of state.tokens) {
@@ -42,30 +42,8 @@ const TaskListParseFix = Extension.create({
                 }
               }
             })
-          },
-        },
-      },
-    }
-  },
-})
 
-const EmptyLinePreserver = Paragraph.extend({
-  addStorage() {
-    return {
-      markdown: {
-        serialize(state: any, node: any) {
-          if (node.childCount === 0) {
-            state.write('&nbsp;')
-          } else {
-            state.renderInline(node)
-          }
-          state.closeBlock(node)
-        },
-        parse: {
-          setup(markdownit: any) {
-            if (markdownit._fixedEmptyLines) return
-            markdownit._fixedEmptyLines = true
-
+            // Convert &nbsp;-only paragraphs back to empty paragraphs
             markdownit.core.ruler.push('strip-nbsp-empty-lines', (state: any) => {
               for (const token of state.tokens) {
                 if (token.type === 'inline' && token.content === '\u00a0') {
@@ -76,6 +54,22 @@ const EmptyLinePreserver = Paragraph.extend({
             })
           },
         },
+      },
+    }
+  },
+})
+
+// Empty paragraphs serialize as &nbsp; so they survive markdown round-trip
+const EmptyLinePreserver = Paragraph.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: any, node: any) {
+          if (node.childCount === 0) state.write('&nbsp;')
+          else state.renderInline(node)
+          state.closeBlock(node)
+        },
+        parse: {},
       },
     }
   },
@@ -299,7 +293,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       transformCopiedText: true,
       transformPastedText: true,
     }),
-    TaskListParseFix,
+    MarkdownParseFixes,
     CodeBlockLowlight.configure({
       lowlight,
     }),
