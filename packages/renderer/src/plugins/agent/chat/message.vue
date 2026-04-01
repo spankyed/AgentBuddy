@@ -51,7 +51,7 @@
           'rounded-xl px-4 py-3 transition-all duration-200 overflow-hidden',
           isUser
             ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
-            : ' text-neutral-100 border border-neutral-700/80',
+            : ' text-neutral-100 border border-neutral-800',
           isUser && isCommand && 'command-bubble',
           'hover:shadow-md'
         ]"
