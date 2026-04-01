@@ -100,8 +100,8 @@
               @update="(prompts) => emit('update-quick-prompts', prompts)"
             />
 
-            <!-- Mode/Phase Selector (narrow) -->
-            <div class="@md:hidden">
+            <!-- Mode/Phase Selector -->
+            <div>
               <ModePhaseSelector
                 :modes="modes"
                 :current-mode="currentMode"
@@ -112,19 +112,6 @@
                 @phase-change="handlePhaseChange"
               />
             </div>
-          </div>
-
-          <!-- Mode/Phase Selector -->
-          <div class="hidden @md:block">
-            <ModePhaseSelector
-              :modes="modes"
-              :current-mode="currentMode"
-              :current-phase="currentPhase"
-              :forced-mode="currentThread?.forcedMode"
-              :disabled="disabled"
-              @mode-change="handleModeChange"
-              @phase-change="handlePhaseChange"
-            />
           </div>
 
           <!-- Right side buttons -->
