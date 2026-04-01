@@ -97,7 +97,7 @@
                     language="typescript"
                     :function-body="true"
                     dsl-type="action"
-                    :options="{ lineNumbers: 'off', glyphMargin: false, folding: false, lineDecorationsWidth: 8, lineNumbersMinChars: 0 }"
+                    :options="codeEditorOptions"
                     @update:model-value="updateBranchCode(getConditionIndex(condition), $event)"
                   />
                 </div>
@@ -209,6 +209,14 @@ import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } fro
 function getPredicateObject(predicate?: Predicate): { key: string; operator: BinaryOperator; value?: any } | undefined {
   if (!predicate || typeof predicate === 'function') return undefined
   return predicate
+}
+
+const codeEditorOptions = {
+  lineNumbers: 'off' as const,
+  glyphMargin: false,
+  folding: false,
+  lineDecorationsWidth: 8,
+  lineNumbersMinChars: 0,
 }
 
 const props = defineProps<{
