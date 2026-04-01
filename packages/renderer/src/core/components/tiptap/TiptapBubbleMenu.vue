@@ -2,7 +2,7 @@
   <BubbleMenu
     v-if="editor"
     :editor="editor"
-    :options="{ placement: 'top', offset: 8, strategy: 'absolute' }"
+    :options="{ placement: 'top', offset: 8, strategy: 'absolute', inline: true }"
     :should-show="shouldShow"
     class="bubble-menu flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
