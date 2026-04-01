@@ -5,10 +5,10 @@
       class="w-full px-3 py-2 flex items-center justify-between text-xs font-medium text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800/30 transition-colors"
     >
       <span class="flex items-center gap-2">
-        <svg 
+        <svg
           :class="['w-3 h-3 transition-transform', isExpanded ? 'rotate-90' : '']"
-          fill="none" 
-          stroke="currentColor" 
+          fill="none"
+          stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -29,7 +29,7 @@
               class="group relative flex items-center gap-2 px-2.5 py-2 rounded-md bg-neutral-800/70 hover:bg-neutral-800 border border-neutral-700/50 hover:border-neutral-600 transition-all cursor-pointer"
               @click="copyToClipboard(example)"
             >
-              <code 
+              <code
                 class="flex-1 text-xs font-mono text-emerald-400 select-all"
               >
                 {{ example }}
@@ -39,20 +39,20 @@
                 class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-700 transition-all"
                 :title="`Copy ${example}`"
               >
-                <svg 
+                <svg
                   v-if="copiedText !== example"
                   class="w-3 h-3 text-neutral-400"
-                  fill="none" 
-                  stroke="currentColor" 
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <svg 
+                <svg
                   v-else
                   class="w-3 h-3 text-green-400"
-                  fill="none" 
-                  stroke="currentColor" 
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -64,9 +64,9 @@
         </div>
       </div>
     </Transition>
-    
+
     <Transition name="fade">
-      <div 
+      <div
         v-if="showCopyFeedback"
         class="fixed bottom-4 right-4 px-3 py-2 bg-neutral-700 text-neutral-200 text-xs rounded-lg shadow-lg z-50"
       >
@@ -93,6 +93,10 @@ const props = withDefaults(defineProps<Props>(), {
   startExpanded: false,
   exampleCategories: () => [
     {
+      label: 'Common Context',
+      examples: ['$.event.data.payload', '$.event.data','$.lastStep.result', '$.lastStep.id', '$.steps']
+    },
+    {
       label: 'JSONPath Expressions',
       examples: ['$.event.data.text', '$.lastStep.result', '$.context.userId', '$.items[0].name']
     },
@@ -100,10 +104,7 @@ const props = withDefaults(defineProps<Props>(), {
       label: 'Literal Values',
       examples: ['"hello"', '123', 'true', '["item1", "item2"]']
     },
-    {
-      label: 'Available Context',
-      examples: ['$.event.type', '$.event.data', '$.event.timestamp', '$.lastStep.result', '$.lastStep.id', '$.lastStep.label', '$.steps']
-    }
+
   ]
 })
 
@@ -118,14 +119,14 @@ const copyToClipboard = async (text: string) => {
     await navigator.clipboard.writeText(text)
     copiedText.value = text
     showCopyFeedback.value = true
-    
+
     if (feedbackTimeout) clearTimeout(feedbackTimeout)
     if (copiedTimeout) clearTimeout(copiedTimeout)
-    
+
     feedbackTimeout = setTimeout(() => {
       showCopyFeedback.value = false
     }, 2000)
-    
+
     copiedTimeout = setTimeout(() => {
       copiedText.value = null
     }, 2500)
