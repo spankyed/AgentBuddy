@@ -287,6 +287,16 @@ export const librarySystem = setup({
           event: { type: 'DOCUMENT_CREATED' as const, pluginId: 'library', data: { document } },
         })
       }
+
+      // If this is the internal/commands doc, notify agent plugin
+      if (document.name === 'commands' && document.collectionPath?.join('/') === 'internal') {
+        const fieldSection = document.content.find((s: any): s is FieldContent => s.type === 'field');
+        const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'agent' as any, commands },
+        });
+      }
     },
     updateDocument: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
