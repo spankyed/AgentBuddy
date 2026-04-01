@@ -11,6 +11,24 @@
     <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
       <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
     </div>
+
+    <!-- Exit rows — only shown when multiple exits exist -->
+    <div v-if="exitHandles.length > 1" :class="['exit-rows mt-1.5 pt-1.5 border-t', dividerClass]">
+      <div
+        v-for="(handle, i) in exitHandles"
+        :key="handle.id"
+        class="exit-row flex items-center gap-2 pr-1"
+      >
+        <span
+          class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-semibold rounded bg-neutral-600/60 text-neutral-300"
+        >
+          {{ i + 1 }}
+        </span>
+        <span class="text-[11px] text-neutral-400 truncate flex-1">
+          step {{ i + 1 }}
+        </span>
+      </div>
+    </div>
   </BaseNode>
 </template>
 
@@ -19,6 +37,7 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { ListenNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
+import { getNodeDividerClass } from './node-config'
 
 interface NodeData extends Partial<ListenNode> {
   label: string
@@ -37,9 +56,10 @@ defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
 }>()
 
-// Minimum spacing between handles (px). If the node's natural height can't
-// fit all handles at this spacing we grow it just enough.
-const HANDLE_SPACING = 20
+// Row height for handle positioning (matches .exit-row height)
+const ROW_HEIGHT = 22
+// Header offset: node padding (8px) + header height (~24px) + divider margin (8px) + eventType area (~3px)
+const HEADER_OFFSET = 43
 
 // Compute dynamic exit handles from connected edges
 const exitHandles = computed<HandleConfig[]>(() => {
@@ -63,21 +83,27 @@ const exitHandles = computed<HandleConfig[]>(() => {
     return [{ id: 'exit-0', label: 'Exit 1' }]
   }
 
-  // Distribute handles evenly using percentage positions.
-  // Each handle gets a band of 1/(count+1) so there's equal padding
-  // above the first and below the last.
+  // Pixel-based positioning aligned with exit rows
   return Array.from({ length: count }, (_, i) => ({
     id: `exit-${i}`,
     label: `Exit ${i + 1}`,
-    offsetPercent: ((i + 1) / (count + 1)) * 100
+    offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
   }))
 })
 
-// Only grow the node when handles can't fit at minimum spacing
+// Grow the node to fit exit rows
 const nodeStyle = computed(() => {
   const count = exitHandles.value.length
   if (count <= 1) return {}
-  const needed = (count + 1) * HANDLE_SPACING
-  return { minHeight: `${needed}px` }
+  return { minHeight: `${HEADER_OFFSET + count * ROW_HEIGHT + 10}px` }
 })
+
+const dividerClass = computed(() => getNodeDividerClass('listen'))
 </script>
+
+<style scoped>
+.exit-row {
+  height: 22px;
+  min-height: 22px;
+}
+</style>

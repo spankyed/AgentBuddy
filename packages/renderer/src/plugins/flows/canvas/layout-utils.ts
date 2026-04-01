@@ -78,13 +78,13 @@ function buildElkGraph(
 
     // Calculate height
     // Constants must match SwitchNode.vue: HEADER_OFFSET=43, ROW_HEIGHT=26, bottom padding=10
-    // Listen node constants: HEADER_OFFSET=40, ROW_HEIGHT=22, bottom padding=10
+    // Listen node constants: HEADER_OFFSET=43, ROW_HEIGHT=22, bottom padding=10
     let height: number = nodeHeight
     if (isSwitch) {
       height = Math.max(nodeHeight, 43 + branchCount * 26 + 10)
     } else if (isListen && listenExitCount > 1) {
-      // Match HANDLE_SPACING from ListenNode.vue: (count + 1) * 20
-      height = Math.max(nodeHeight, (listenExitCount + 1) * 20)
+      // Constants must match ListenNode.vue: HEADER_OFFSET=43, ROW_HEIGHT=22, bottom padding=10
+      height = Math.max(nodeHeight, 43 + listenExitCount * 22 + 10)
     }
 
     // Single input port (except for listen nodes)
