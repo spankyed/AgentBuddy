@@ -52,23 +52,10 @@ const getHandleIndex = (handle?: string): number => {
 function buildElkGraph(
   nodes: LayoutNode[],
   edges: LayoutEdge[],
-  direction: LayoutDirection = 'LR'
+  direction: LayoutDirection = 'LR',
+  listenExitCounts: Map<string, number> = new Map()
 ): ElkNode {
   const { nodeWidth, nodeHeight, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
-
-  // Count exit handles per listen node from edges
-  const listenExitCounts = new Map<string, number>()
-  for (const edge of edges) {
-    const sourceNode = nodes.find(n => n.id === edge.source)
-    if (sourceNode?.nodeType === 'listen' && edge.sourceHandle) {
-      const match = edge.sourceHandle.match(/exit-(\d+)/)
-      if (match) {
-        const idx = parseInt(match[1], 10)
-        const prev = listenExitCounts.get(edge.source) ?? 0
-        listenExitCounts.set(edge.source, Math.max(prev, idx + 1))
-      }
-    }
-  }
 
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const ports: ElkPort[] = []
@@ -102,7 +89,7 @@ function buildElkGraph(
           layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) }
         })
       }
-    } else if (isListen && listenExitCount > 1) {
+    } else if (isListen && listenExitCounts.has(node.id)) {
       for (let i = 0; i < listenExitCount; i++) {
         ports.push({
           id: `${node.id}-out-exit-${i}`,
@@ -140,7 +127,7 @@ function buildElkGraph(
       'elk.direction': direction === 'LR' ? 'RIGHT' : 'DOWN',
       'elk.layered.spacing.nodeNodeBetweenLayers': String(layerGap),
       'elk.spacing.nodeNode': String(nodeGap),
-      'elk.separateConnectedComponents': 'true',
+      'elk.separateConnectedComponents': 'false',
       'elk.spacing.componentComponent': String(chainGap),
       'elk.portConstraints': 'FIXED_ORDER',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
@@ -161,14 +148,91 @@ export async function calculateLayoutAsync(
   if (input.nodes.length === 0) return {}
   if (input.nodes.length === 1) return { [input.nodes[0].id]: { x: 0, y: 0 } }
 
+  const direction = options.direction
+
   try {
-    const graph = await elk.layout(buildElkGraph(input.nodes, input.edges, options.direction))
-    const positions: LayoutPositions = {}
-    for (const child of graph.children ?? []) {
-      if (child.id && child.x !== undefined && child.y !== undefined) {
-        positions[child.id] = { x: child.x, y: child.y }
+    // Pre-compute listen exit counts from ALL edges (before filtering)
+    const listenerNodeIds = new Set(
+      input.nodes.filter(n => n.nodeType === 'listen').map(n => n.id)
+    )
+    const listenExitCounts = new Map<string, number>()
+    for (const edge of input.edges) {
+      if (listenerNodeIds.has(edge.source) && edge.sourceHandle) {
+        const match = edge.sourceHandle.match(/exit-(\d+)/)
+        if (match) {
+          const idx = parseInt(match[1], 10)
+          const prev = listenExitCounts.get(edge.source) ?? 0
+          listenExitCounts.set(edge.source, Math.max(prev, idx + 1))
+        }
       }
     }
+
+    // Filter out edges targeting listener nodes (listeners have no input port)
+    const filteredEdges = input.edges.filter(e => !listenerNodeIds.has(e.target))
+
+    // Detect connected components via BFS on filtered edges
+    const adj = new Map<string, Set<string>>()
+    for (const node of input.nodes) adj.set(node.id, new Set())
+    for (const e of filteredEdges) {
+      adj.get(e.source)?.add(e.target)
+      adj.get(e.target)?.add(e.source)
+    }
+
+    const visited = new Set<string>()
+    const components: LayoutNode[][] = []
+    for (const node of input.nodes) {
+      if (visited.has(node.id)) continue
+      const component: LayoutNode[] = []
+      const queue = [node.id]
+      visited.add(node.id)
+      while (queue.length > 0) {
+        const current = queue.shift()!
+        const found = input.nodes.find(n => n.id === current)
+        if (found) component.push(found)
+        for (const neighbor of adj.get(current) ?? []) {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor)
+            queue.push(neighbor)
+          }
+        }
+      }
+      components.push(component)
+    }
+
+    // Layout each component independently and stack vertically
+    const positions: LayoutPositions = {}
+
+    if (components.length <= 1) {
+      const graph = await elk.layout(
+        buildElkGraph(input.nodes, filteredEdges, direction, listenExitCounts)
+      )
+      for (const child of graph.children ?? []) {
+        if (child.id && child.x !== undefined && child.y !== undefined) {
+          positions[child.id] = { x: child.x, y: child.y }
+        }
+      }
+    } else {
+      let yOffset = 0
+      for (const comp of components) {
+        const compNodeIds = new Set(comp.map(n => n.id))
+        const compEdges = filteredEdges.filter(
+          e => compNodeIds.has(e.source) || compNodeIds.has(e.target)
+        )
+        const graph = await elk.layout(
+          buildElkGraph(comp, compEdges, direction, listenExitCounts)
+        )
+        let maxBottom = 0
+        for (const child of graph.children ?? []) {
+          if (child.id && child.x !== undefined && child.y !== undefined) {
+            positions[child.id] = { x: child.x, y: child.y + yOffset }
+            const bottom = child.y + (child.height ?? LAYOUT_CONFIG.nodeHeight)
+            if (bottom > maxBottom) maxBottom = bottom
+          }
+        }
+        yOffset += maxBottom + LAYOUT_CONFIG.chainGap
+      }
+    }
+
     return positions
   } catch (error) {
     console.error('ELK layout failed:', error)
