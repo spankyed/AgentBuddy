@@ -13,7 +13,7 @@
         markerEnd: MarkerType.Arrow
       }"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
-      :connect-on-click="true"
+      :connect-on-click="false"
       :edges-selectable="true"
       :edges-updatable="true"
       :delete-key-code="['Backspace', 'Delete']"

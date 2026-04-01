@@ -358,8 +358,15 @@ const flowsState = setup({
       };
     }),
     connectEdge: assign(({ context, event }) => {
-      const id = `Edge-${randId()}`
       const ev = typeOf('EDGE.CONNECT', event)
+      // Guard: self-connection
+      if (ev.src === ev.tgt) return {}
+      // Guard: duplicate edge
+      const alreadyConnected = context.graph.edges.some(
+        (e) => e.source === ev.src && e.target === ev.tgt
+      )
+      if (alreadyConnected) return {}
+      const id = `Edge-${randId()}`
       const newEdge = {
         id,
         source: ev.src,
