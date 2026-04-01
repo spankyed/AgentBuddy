@@ -60,25 +60,26 @@ const isThinking = computed(() => statusColorClass.value === 'bg-yellow-500')
 .thinking-dot {
   background: conic-gradient(
     from var(--thinking-angle, 0deg),
-    #eab308,
-    #8b5cf6,
+    #facc15,
+    #a855f7,
     #3b82f6,
-    #eab308
+    #facc15
   );
   animation: thinking-rotate 3s linear infinite;
+  filter: saturate(1.5) brightness(1.2);
 }
 
 .thinking-glow {
   background: conic-gradient(
     from var(--thinking-angle, 0deg),
-    #eab308,
-    #8b5cf6,
+    #facc15,
+    #a855f7,
     #3b82f6,
-    #eab308
+    #facc15
   );
   animation: thinking-rotate 3s linear infinite;
-  filter: blur(3px);
-  opacity: 0.5;
+  filter: blur(4px) saturate(2) brightness(1.3);
+  opacity: 0.7;
 }
 
 @keyframes thinking-rotate {
