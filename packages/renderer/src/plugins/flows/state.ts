@@ -486,6 +486,12 @@ const flowsState = setup({
       // Don't connect to self — select the node and clear handle instead
       if (handle.nodeId === ev.nodeId) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
 
+      // Don't create duplicate edge to an already-connected target
+      const alreadyConnected = context.graph.edges.some(
+        (e) => e.source === handle.nodeId && e.target === ev.nodeId
+      );
+      if (alreadyConnected) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
+
       const edgeId = `Edge-${randId()}`;
       const newEdge = {
         id: edgeId,
