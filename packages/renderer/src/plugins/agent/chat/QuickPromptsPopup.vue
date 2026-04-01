@@ -55,9 +55,23 @@
               :key="prompt.id"
               class="flex items-start gap-2 px-3 pb-1 pt-2"
             >
+              <textarea
+                v-if="editingId === prompt.id"
+                ref="editPromptRefs"
+                v-model="editingText"
+                rows="1"
+                class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-y-hidden"
+                style="max-height: calc(1.5em * 3 + 12px)"
+                @input="autoResize($event)"
+                @blur="commitEdit(prompt.id)"
+                @keydown.enter.exact.prevent="commitEdit(prompt.id)"
+                @keydown.escape.prevent="cancelEdit"
+              />
               <span
-                class="flex-1 min-w-0 text-sm text-neutral-300 truncate"
+                v-else
+                class="flex-1 min-w-0 text-sm text-neutral-300 truncate cursor-text hover:text-white transition-colors"
                 :title="prompt.text"
+                @click="startEdit(prompt)"
               >{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span></span>
               <button
                 type="button"
@@ -98,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { Sparkle, Pencil, X, Plus } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { QuickPrompt } from '@app/api'
@@ -118,6 +132,9 @@ const editing = ref(false)
 const newPromptText = ref('')
 const localPrompts = ref<QuickPrompt[]>([...props.prompts])
 const addPromptRef = ref<HTMLTextAreaElement | null>(null)
+const editPromptRefs = ref<HTMLTextAreaElement[]>([])
+const editingId = ref<string | null>(null)
+const editingText = ref('')
 
 watch(() => props.prompts, (val) => {
   localPrompts.value = [...val]
@@ -127,6 +144,7 @@ watch(() => props.prompts, (val) => {
 watch(open, (isOpen) => {
   if (!isOpen) {
     editing.value = false
+    editingId.value = null
     newPromptText.value = ''
   }
 })
@@ -134,6 +152,35 @@ watch(open, (isOpen) => {
 function selectPrompt(text: string) {
   emit('select', text)
   open.value = false
+}
+
+async function startEdit(prompt: QuickPrompt) {
+  editingId.value = prompt.id
+  editingText.value = prompt.text
+  await nextTick()
+  const el = editPromptRefs.value?.[0]
+  if (el) {
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  }
+}
+
+function commitEdit(id: string) {
+  const trimmed = editingText.value.trim()
+  if (trimmed) {
+    const prompt = localPrompts.value.find(p => p.id === id)
+    if (prompt && prompt.text !== trimmed) {
+      prompt.text = trimmed
+      emit('update', [...localPrompts.value])
+    }
+  }
+  editingId.value = null
+}
+
+function cancelEdit() {
+  editingId.value = null
 }
 
 function deletePrompt(id: string) {
