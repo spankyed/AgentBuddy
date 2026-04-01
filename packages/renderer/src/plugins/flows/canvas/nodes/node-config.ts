@@ -152,7 +152,7 @@ const STATUS_STYLE_CLASSES = {
 // Color mapping for node types
 const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> = {
   flow: 'purple',
-  listen: 'blue',
+  listener: 'blue',
   fire: 'amber',
   query: 'cyan',
   create: 'purple',
@@ -191,16 +191,16 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     component: 'ActionNode',
     isImplemented: true
   },
-  listen: {
-    type: 'listen',
-    label: 'Listen',
+  listener: {
+    type: 'listener',
+    label: 'Listener',
     defaultLabel: 'on event',
     icon: Radio,
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
     hoverBgColor: 'group-hover:bg-blue-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
-    component: 'ListenNode',
+    component: 'ListenerNode',
     isImplemented: true
   },
   query: {

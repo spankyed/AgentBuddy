@@ -67,7 +67,7 @@ export const brainRows: Rows = {
       tNodeType: 'step',
       label: 'User Message',
       stepNodeId: 'Node-b1', // ! Should use INSTANCE_OF relation instead
-      stepNodeType: 'listen',
+      stepNodeType: 'listener',
       status: 'completed',
       createdAt: nowMs - 30000,
       startedAt: nowMs - 30000,

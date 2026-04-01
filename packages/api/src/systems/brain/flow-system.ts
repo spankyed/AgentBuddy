@@ -1,5 +1,5 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
-import type { ListenNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, NodeEntity } from '@/systems/flows/config/types';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
@@ -41,7 +41,7 @@ type TNodeFlowMachineContext = {
   flowStepNodeId?: EARS.EntityId;  // The original flow step node ID (for completion tracking)
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
-  eventNodes: ListenNode[];
+  eventNodes: ListenerNode[];
   activeChildrenCount: number;
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;

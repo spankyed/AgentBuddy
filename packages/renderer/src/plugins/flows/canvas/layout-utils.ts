@@ -61,24 +61,24 @@ const getHandleIndex = (handle?: string): number => {
 interface LayoutComponents {
   components: LayoutNode[][]
   filteredEdges: LayoutEdge[]
-  listenExitCounts: Map<string, number>
+  listenerExitCounts: Map<string, number>
 }
 
 export function partitionIntoComponents(
   nodes: LayoutNode[],
   edges: LayoutEdge[]
 ): LayoutComponents {
-  // Pre-compute listen exit counts from ALL edges (before filtering)
+  // Pre-compute listener exit counts from ALL edges (before filtering)
   const listenerNodeIds = new Set(
-    nodes.filter(n => n.nodeType === 'listen').map(n => n.id)
+    nodes.filter(n => n.nodeType === 'listener').map(n => n.id)
   )
-  const listenExitCounts = new Map<string, number>()
+  const listenerExitCounts = new Map<string, number>()
   for (const edge of edges) {
     if (listenerNodeIds.has(edge.source) && edge.sourceHandle) {
       const parsed = parseHandleIndex(edge.sourceHandle)
       if (parsed) {
-        const prev = listenExitCounts.get(edge.source) ?? 0
-        listenExitCounts.set(edge.source, Math.max(prev, parsed.index + 1))
+        const prev = listenerExitCounts.get(edge.source) ?? 0
+        listenerExitCounts.set(edge.source, Math.max(prev, parsed.index + 1))
       }
     }
   }
@@ -115,7 +115,7 @@ export function partitionIntoComponents(
     components.push(component)
   }
 
-  return { components, filteredEdges, listenExitCounts }
+  return { components, filteredEdges, listenerExitCounts }
 }
 
 // --- ELK graph construction (node-type-agnostic via descriptors) ---
@@ -124,13 +124,13 @@ export function buildElkGraph(
   nodes: LayoutNode[],
   edges: LayoutEdge[],
   direction: LayoutDirection = 'LR',
-  listenExitCounts: Map<string, number> = new Map()
+  listenerExitCounts: Map<string, number> = new Map()
 ): ElkNode {
   const { nodeWidth, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
 
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const descriptor = getDescriptor(node.nodeType)
-    const exitCount = listenExitCounts.has(node.id) ? listenExitCounts.get(node.id) : undefined
+    const exitCount = listenerExitCounts.has(node.id) ? listenerExitCounts.get(node.id) : undefined
     const ctx = { exitCount }
 
     const height = descriptor.getHeight(node, ctx)
@@ -183,7 +183,7 @@ export async function calculateLayoutAsync(
   const direction = options.direction
 
   try {
-    const { components, filteredEdges, listenExitCounts } =
+    const { components, filteredEdges, listenerExitCounts } =
       partitionIntoComponents(input.nodes, input.edges)
 
     // Layout each component independently and stack vertically
@@ -191,7 +191,7 @@ export async function calculateLayoutAsync(
 
     if (components.length <= 1) {
       const graph = await elk.layout(
-        buildElkGraph(input.nodes, filteredEdges, direction, listenExitCounts)
+        buildElkGraph(input.nodes, filteredEdges, direction, listenerExitCounts)
       )
       for (const child of graph.children ?? []) {
         if (child.id && child.x !== undefined && child.y !== undefined) {
@@ -206,7 +206,7 @@ export async function calculateLayoutAsync(
           e => compNodeIds.has(e.source) || compNodeIds.has(e.target)
         )
         const graph = await elk.layout(
-          buildElkGraph(comp, compEdges, direction, listenExitCounts)
+          buildElkGraph(comp, compEdges, direction, listenerExitCounts)
         )
         let maxBottom = 0
         for (const child of graph.children ?? []) {

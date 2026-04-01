@@ -2,7 +2,7 @@
  * Flow DSL Compiler
  *
  * Transforms track-based DSL format into EARS database format.
- * Each track creates a listen node + sequential step nodes.
+ * Each track creates a listener node + sequential step nodes.
  */
 
 import { EARS } from '@/core/types';
@@ -632,9 +632,9 @@ function compileFlow(
   // First pass: generate all node IDs
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
-    const listenLabel = track.label || track.event;
-    const listenId = generateId('Node', `${flowName}-${listenLabel}-t${trackIdx}`);
-    globalLabelMap.set(listenLabel, listenId);
+    const listenerLabel = track.label || track.event;
+    const listenerId = generateId('Node', `${flowName}-${listenerLabel}-t${trackIdx}`);
+    globalLabelMap.set(listenerLabel, listenerId);
 
     for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
       const exitSteps = track.exits[exitIdx];
@@ -662,7 +662,7 @@ function compileFlow(
     const track = tracks[trackIdx];
     const isFirstTrack = trackIdx === 0;
 
-    const { listenEntity, trackRoles } = compileTrack(
+    const { listenerEntity, trackRoles } = compileTrack(
       track,
       trackIdx,
       isFirstTrack,
@@ -671,7 +671,7 @@ function compileFlow(
       flowRelations,
     );
 
-    nodeEntities.push(listenEntity);
+    nodeEntities.push(listenerEntity);
     flowRoles.push(...trackRoles);
   }
 
@@ -686,42 +686,42 @@ function compileTrack(
   nodeEntities: object[],
   trackRelations: Relation[],
 ): {
-  listenEntity: object;
+  listenerEntity: object;
   trackRoles: Array<{ entityId: string; role: string }>;
 } {
   const trackRoles: Array<{ entityId: string; role: string }> = [];
 
-  const listenLabel = track.label || track.event;
-  const listenId = fCtx.globalLabelMap.get(listenLabel)!;
+  const listenerLabel = track.label || track.event;
+  const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
 
-  // Create listen node from track.event
-  const listenEntity = {
-    id: listenId,
+  // Create listener node from track.event
+  const listenerEntity = {
+    id: listenerId,
     entityType: EARS.Entity.Node,
     createdAt: fCtx.ts,
-    nodeType: 'listen',
-    label: listenLabel,
+    nodeType: 'listener',
+    label: listenerLabel,
     description: track.description,
     scope: isFirstTrack ? 'entry' : 'global',
     eventType: track.event,
   };
 
-  // Add CONTAINS for listen node
+  // Add CONTAINS for listener node
   trackRelations.push({
     source: fCtx.flowId,
     kind: EARS.RelKind.CONTAINS,
-    target: listenId,
+    target: listenerId,
   });
 
-  // Add entry role for first track's listen node
+  // Add entry role for first track's listener node
   if (isFirstTrack) {
     trackRoles.push({
-      entityId: listenId,
+      entityId: listenerId,
       role: 'entry_event',
     });
   }
 
-  // For each exit path, compile its steps and wire listen → first step
+  // For each exit path, compile its steps and wire listener → first step
   const out = { entities: nodeEntities, relations: trackRelations };
   for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
     const exitSteps = track.exits[exitIdx];
@@ -738,14 +738,14 @@ function compileTrack(
     compileStepList(exitSteps, exitStepIds, exitStepKeys, fCtx, out);
 
     trackRelations.push({
-      source: listenId,
+      source: listenerId,
       kind: EARS.RelKind.TRANSITIONS_TO,
       target: exitStepIds[0],
       info: { sourceHandle: `exit-${exitIdx}` },
     });
   }
 
-  return { listenEntity, trackRoles };
+  return { listenerEntity, trackRoles };
 }
 
 function getStepLabel(step: DSLStepNode, index: number): string {

@@ -17,10 +17,10 @@ export interface NodeMetadata {
 
 // Centralized node metadata configuration
 export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
-  listen: {
-    nodeType: 'listen',
-    label: 'Listen',
-    description: 'Listen for events to trigger flows',
+  listener: {
+    nodeType: 'listener',
+    label: 'Listener',
+    description: 'Listener for events to trigger flows',
     category: 'trigger',
     validation: {
       requiredFields: ['eventType', 'scope'],

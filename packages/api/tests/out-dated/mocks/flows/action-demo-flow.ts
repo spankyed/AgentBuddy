@@ -24,7 +24,7 @@ export const actionDemoFlow: Rows = {
       id: "Node-ad1",
       entityType: EARS.Entity.Node,
       createdAt: nowMs - 900,
-      nodeType: "listen",
+      nodeType: "listener",
       label: "Start Demo",
       scope: "global",
       eventType: "demo.start",

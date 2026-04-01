@@ -332,7 +332,7 @@ describe('round-trip', () => {
       expect(sw.conditions[0].steps).toHaveLength(0);
     });
 
-    it('flow with no steps (just listen): empty steps array', () => {
+    it('flow with no steps (just listener): empty steps array', () => {
       const exported = rt.roundTrip(flows.empty);
 
       expect(exported['Empty']).toBeDefined();

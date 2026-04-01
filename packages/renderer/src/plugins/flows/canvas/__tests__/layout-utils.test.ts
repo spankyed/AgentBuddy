@@ -90,29 +90,29 @@ describe('node height calculations', () => {
     )
   })
 
-  it('listen node height scales with exit count', () => {
-    const descriptor = getDescriptor('listen')
-    const { baseHeaderOffset, rowHeight, bottomPadding } = NODE_DIMENSIONS.listen
+  it('listener node height scales with exit count', () => {
+    const descriptor = getDescriptor('listener')
+    const { baseHeaderOffset, rowHeight, bottomPadding } = NODE_DIMENSIONS.listener
 
-    const node: LayoutNodeData = { id: 'n1', nodeType: 'listen' }
+    const node: LayoutNodeData = { id: 'n1', nodeType: 'listener' }
     // exitCount=3 → visualExitCount=4
     const height = descriptor.getHeight(node, { exitCount: 3 })
     expect(height).toBe(Math.max(defaultHeight, baseHeaderOffset + 4 * rowHeight + bottomPadding))
   })
 
-  it('listen node with eventType adds extra height', () => {
-    const descriptor = getDescriptor('listen')
-    const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listen
+  it('listener node with eventType adds extra height', () => {
+    const descriptor = getDescriptor('listener')
+    const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listener
 
-    const node: LayoutNodeData = { id: 'n1', nodeType: 'listen', eventType: 'user.created' }
+    const node: LayoutNodeData = { id: 'n1', nodeType: 'listener', eventType: 'user.created' }
     const height = descriptor.getHeight(node, { exitCount: 2 })
     const headerOffset = baseHeaderOffset + eventTypeHeight
     expect(height).toBe(Math.max(defaultHeight, headerOffset + 3 * rowHeight + bottomPadding))
   })
 
-  it('listen node without exitCount returns default height', () => {
-    const descriptor = getDescriptor('listen')
-    const node: LayoutNodeData = { id: 'n1', nodeType: 'listen' }
+  it('listener node without exitCount returns default height', () => {
+    const descriptor = getDescriptor('listener')
+    const node: LayoutNodeData = { id: 'n1', nodeType: 'listener' }
     expect(descriptor.getHeight(node, {})).toBe(defaultHeight)
   })
 
@@ -145,18 +145,18 @@ describe('node port generation', () => {
     expect(ports[3].id).toBe('n1-out-branch-2')
   })
 
-  it('listen node has no input port and exit ports matching exitCount', () => {
-    const descriptor = getDescriptor('listen')
+  it('listener node has no input port and exit ports matching exitCount', () => {
+    const descriptor = getDescriptor('listener')
     expect(descriptor.hasInput).toBe(false)
-    const ports = descriptor.getPorts({ id: 'n1', nodeType: 'listen' }, { exitCount: 2 })
+    const ports = descriptor.getPorts({ id: 'n1', nodeType: 'listener' }, { exitCount: 2 })
     expect(ports).toHaveLength(2)
     expect(ports[0].id).toBe('n1-out-exit-0')
     expect(ports[1].id).toBe('n1-out-exit-1')
   })
 
-  it('listen node without exitCount returns single default output port', () => {
-    const descriptor = getDescriptor('listen')
-    const ports = descriptor.getPorts({ id: 'n1', nodeType: 'listen' }, {})
+  it('listener node without exitCount returns single default output port', () => {
+    const descriptor = getDescriptor('listener')
+    const ports = descriptor.getPorts({ id: 'n1', nodeType: 'listener' }, {})
     expect(ports).toHaveLength(1)
     expect(ports[0].id).toBe('n1-out')
     expect(ports[0].layoutOptions!['port.side']).toBe('EAST')
@@ -216,7 +216,7 @@ describe('partitionIntoComponents', () => {
 
   it('excludes edges targeting listener nodes from filtered edges', () => {
     const nodes = [
-      { id: 'listen1', nodeType: 'listen' },
+      { id: 'listen1', nodeType: 'listener' },
       { id: 'action1' },
       { id: 'action2' },
     ]
@@ -230,9 +230,9 @@ describe('partitionIntoComponents', () => {
     expect(result.filteredEdges[0].target).toBe('action2')
   })
 
-  it('computes listen exit counts from edges', () => {
+  it('computes listener exit counts from edges', () => {
     const nodes = [
-      { id: 'listen1', nodeType: 'listen' },
+      { id: 'listen1', nodeType: 'listener' },
       { id: 'a' },
       { id: 'b' },
     ]
@@ -242,7 +242,7 @@ describe('partitionIntoComponents', () => {
     ]
     const result = partitionIntoComponents(nodes, edges)
     // Max index is 2, so count = 2+1 = 3
-    expect(result.listenExitCounts.get('listen1')).toBe(3)
+    expect(result.listenerExitCounts.get('listen1')).toBe(3)
   })
 
   it('handles nodes with no edges', () => {
@@ -281,9 +281,9 @@ describe('buildElkGraph', () => {
     expect(graph.layoutOptions!['elk.direction']).toBe('DOWN')
   })
 
-  it('listen node with no exit edges gets default output port matching edge refs', () => {
+  it('listener node with no exit edges gets default output port matching edge refs', () => {
     const nodes: LayoutNodeData[] = [
-      { id: 'listen1', nodeType: 'listen' },
+      { id: 'listen1', nodeType: 'listener' },
       { id: 'action1' },
     ]
     // Edge references the default "listen1-out" port (no sourceHandle → buildPortId returns "listen1-out")

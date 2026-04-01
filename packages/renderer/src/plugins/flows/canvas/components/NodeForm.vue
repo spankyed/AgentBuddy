@@ -31,7 +31,7 @@ import type { NodeEntity, ActionEntity, FlowEntity, ModelConfig, PromptEntity } 
 
 // Form components
 import BaseForm from '../forms/BaseForm.vue'
-import ListenForm from '../forms/ListenForm.vue'
+import ListenerForm from '../forms/ListenerForm.vue'
 import FireForm from '../forms/FireForm.vue'
 import CreateForm from '../forms/CreateForm.vue'
 import LLMForm from '../forms/LLMForm.vue'
@@ -64,7 +64,7 @@ function handleUpdateNode(updates: Record<string, any>) {
 
 function getFormComponent(nodeType: string) {
   const formMap: Record<string, any> = {
-    'listen': ListenForm,
+    'listener': ListenerForm,
     'fire': FireForm,
     'create': CreateForm,
     'llm': LLMForm,

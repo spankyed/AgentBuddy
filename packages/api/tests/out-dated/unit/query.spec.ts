@@ -137,12 +137,12 @@ describe('qx – fluent query DSL', () => {
     });
 
     it('dedupes by an attribute value', () => {
-      // Node-b1 & Node-b2 both have nodeType = 'listen'
+      // Node-b1 & Node-b2 both have nodeType = 'listener'
       const rows = qx(EARS.Entity.Node)
         .distinct('nodeType')
         .pick(['nodeType']);
       const stepTypes = rows.map(r => r.nodeType);
-      expect(stepTypes).toEqual(expect.arrayContaining(['listen', 'switch', 'create', 'update', 'fire', 'query', 'transform', 'flow'])); // unique list
+      expect(stepTypes).toEqual(expect.arrayContaining(['listener', 'switch', 'create', 'update', 'fire', 'query', 'transform', 'flow'])); // unique list
     });
   });
 
@@ -152,7 +152,7 @@ describe('qx – fluent query DSL', () => {
         .groupBy('nodeType'); // Map<string, Qx>
       expect(grouped.get('transform')!.count()).toBe(1);
       expect(grouped.get('flow')!.count()).toBe(1);
-      expect(grouped.get('listen')!.count()).toBe(2);
+      expect(grouped.get('listener')!.count()).toBe(2);
       expect(grouped.get('fire')!.count()).toBe(2);
       expect(grouped.get('switch')!.count()).toBe(1);
       expect(grouped.get('create')!.count()).toBe(1);

@@ -10,7 +10,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { ListenNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
 import { prepareNodeAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
@@ -68,8 +68,8 @@ function isEventTNode(tNode: Partial<TNodeEntity> | null): tNode is TNodeEntity 
   return tNode?.tNodeType === 'event';
 }
 
-function isListenNode(node: Partial<NodeEntity>): node is ListenNode {
-  return node.nodeType === 'listen';
+function isListenerNode(node: Partial<NodeEntity>): node is ListenerNode {
+  return node.nodeType === 'listener';
 }
 
 
@@ -84,14 +84,14 @@ export const brainQueries = {
     return qx(id).pickOne(TNODE_COLUMNS) as TNodeEntity | null;
   },
   
-  flowEventNodes: (flowId: EARS.EntityId): ListenNode[] => {
+  flowEventNodes: (flowId: EARS.EntityId): ListenerNode[] => {
     return qx(flowId)
       .linksPick(
         EARS.RelKind.CONTAINS,
         ["id", "nodeType", "label", "eventType", "scope"] as const,
         [EARS.Entity.Node]
       )
-      .filter(isListenNode);
+      .filter(isListenerNode);
   },
   
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
@@ -192,8 +192,8 @@ export const brainQueries = {
         ['id', 'label', 'nodeType', 'eventType', 'mode'] as const,
         [EARS.Entity.Node]
       )
-      .filter(isListenNode);
-    
+      .filter(isListenerNode);
+
     // Convert to EventListenerEntity format
     return listenerNodes.map(node => ({
       id: `Event-${node.id}` as EARS.EntityId,
@@ -260,7 +260,7 @@ export const brainQueries = {
 // Commands
 export const brainCommands = {
   createEventTNode: (
-    eventNode: ListenNode, 
+    eventNode: ListenerNode,
     flowTNodeId: EARS.EntityId
   ): TNodeEntity => {
     const now = Date.now();
@@ -295,7 +295,7 @@ export const brainCommands = {
     flowStepId: EARS.EntityId,
     eventTrackId?: EARS.EntityId,
     executionContext?: ExecutionContext
-  ): { flowTNode: TNodeEntity; eventNodes: ListenNode[] } => {
+  ): { flowTNode: TNodeEntity; eventNodes: ListenerNode[] } => {
     // Get the flow reference from the flow node (get all fields for attributes)
     const flowStepNode = qx(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
@@ -454,8 +454,8 @@ export const brainCommands = {
   createRootFlowTNode: (): {
     rootFlow: FlowEntity;
     rootFlowTNode: TNodeEntity;
-    eventNodes: ListenNode[];
-    entryNode: ListenNode;
+    eventNodes: ListenerNode[];
+    entryNode: ListenerNode;
   } => {
     const now = Date.now();
     const rootId = ROOT_TNODE_ID;

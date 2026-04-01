@@ -3,7 +3,7 @@ import type { ElkPort } from 'elkjs/lib/elk.bundled.js'
 /** Shared between Vue components and layout engine — single source of truth */
 export const NODE_DIMENSIONS = {
   default: { width: 200, height: 50 },
-  listen: {
+  listener: {
     rowHeight: 22,
     baseHeaderOffset: 43,
     eventTypeHeight: 29,
@@ -66,13 +66,13 @@ const switchDescriptor: NodeLayoutDescriptor = {
   hasInput: true,
 }
 
-const listenDescriptor: NodeLayoutDescriptor = {
+const listenerDescriptor: NodeLayoutDescriptor = {
   getHeight: (node, ctx) => {
     const exitCount = ctx.exitCount
     if (exitCount === undefined) return defaults.height
-    // +1 matches ListenNode.vue which always renders one extra exit slot (maxIndex + 2)
+    // +1 matches ListenerNode.vue which always renders one extra exit slot (maxIndex + 2)
     const visualExitCount = exitCount + 1
-    const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listen
+    const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listener
     const headerOffset = baseHeaderOffset + (node.eventType ? eventTypeHeight : 0)
     return Math.max(defaults.height, headerOffset + visualExitCount * rowHeight + bottomPadding)
   },
@@ -105,7 +105,7 @@ const fireDescriptor: NodeLayoutDescriptor = {
 
 const nodeLayoutDescriptors = new Map<string, NodeLayoutDescriptor>([
   ['switch', switchDescriptor],
-  ['listen', listenDescriptor],
+  ['listener', listenerDescriptor],
   ['fire', fireDescriptor],
 ])
 

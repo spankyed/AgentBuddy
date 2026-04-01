@@ -30,7 +30,7 @@ import type {
   NodeEntity,
   EdgeEntity,
   FlowEntity,
-  ListenNode,
+  ListenerNode,
   ActionNode,
   LLMNode,
   SwitchNode,
@@ -140,7 +140,7 @@ function getFlowEdges(flowId: EARS.EntityId): EdgeEntity[] {
 interface DecompileGraphCtx {
   nodes: NodeEntity[];
   edges: EdgeEntity[];
-  listenNodeIds: Set<string>;
+  listenerNodeIds: Set<string>;
   inlinedNodeIds: Set<string>;
   incomingEdges: Map<string, string[]>;   // target -> [sources]
   outgoingEdges: Map<string, string[]>;   // source -> [targets]
@@ -159,14 +159,14 @@ function isExclusiveChain(
   sourceNodeId: string,
   graphCtx: DecompileGraphCtx,
 ): { exclusive: boolean; chain: string[] } {
-  const { incomingEdges, outgoingEdges, listenNodeIds } = graphCtx;
+  const { incomingEdges, outgoingEdges, listenerNodeIds } = graphCtx;
 
   const chain: string[] = [];
   let current = startNodeId;
   let prevId = sourceNodeId;
 
   while (true) {
-    if (listenNodeIds.has(current)) break;
+    if (listenerNodeIds.has(current)) break;
 
     // Each node must have exactly one incoming edge from the expected predecessor
     const incoming = incomingEdges.get(current) || [];
@@ -182,7 +182,7 @@ function isExclusiveChain(
 
     const nextId = outgoing[0];
     if (chain.includes(nextId)) break;
-    if (listenNodeIds.has(nextId)) break;
+    if (listenerNodeIds.has(nextId)) break;
 
     prevId = current;
     current = nextId;
@@ -511,8 +511,8 @@ function buildTracksFromGraph(
   promptMap: Map<string, string>,
   flowMap: Map<string, string>
 ): Track[] {
-  // Find all listen nodes
-  const listenNodes = nodes.filter(n => n.nodeType === 'listen') as ListenNode[];
+  // Find all listener nodes
+  const listenerNodes = nodes.filter(n => n.nodeType === 'listener') as ListenerNode[];
 
   // Build edge maps once for use in chain detection and step collection
   const incomingEdges = new Map<string, string[]>();
@@ -527,13 +527,13 @@ function buildTracksFromGraph(
     outgoingEdges.set(edge.source, targets);
   }
 
-  const listenNodeIds = new Set(listenNodes.map(n => n.id as string));
+  const listenerNodeIds = new Set(listenerNodes.map(n => n.id as string));
 
   // Graph context for inline branch detection during decompilation
   const graphCtx: DecompileGraphCtx = {
     nodes,
     edges,
-    listenNodeIds,
+    listenerNodeIds,
     inlinedNodeIds: new Set(),
     incomingEdges,
     outgoingEdges,
@@ -542,18 +542,18 @@ function buildTracksFromGraph(
     flowMap,
   };
 
-  // Build tracks by following edges from each listen node
+  // Build tracks by following edges from each listener node
   const tracks: Track[] = [];
 
   // Track used labels to ensure uniqueness
   const usedLabels = new Set<string>();
 
-  for (const listenNode of listenNodes) {
-    const listenId = listenNode.id as string;
-    const listenEdges = edges.filter(e => e.source === listenId);
+  for (const listenerNode of listenerNodes) {
+    const listenerId = listenerNode.id as string;
+    const listenerEdges = edges.filter(e => e.source === listenerId);
 
     // Sort edges by exit index for deterministic ordering
-    const sortedExitEdges = [...listenEdges].sort((a, b) => {
+    const sortedExitEdges = [...listenerEdges].sort((a, b) => {
       const aIdx = parseInt(((a.info as any)?.sourceHandle || 'exit-0').replace('exit-', ''));
       const bIdx = parseInt(((b.info as any)?.sourceHandle || 'exit-0').replace('exit-', ''));
       return aIdx - bIdx;
@@ -565,7 +565,7 @@ function buildTracksFromGraph(
       const chainSteps: NodeEntity[] = [];
       const visited = new Set<string>();
       function followChain(nodeId: string) {
-        if (visited.has(nodeId) || listenNodeIds.has(nodeId)) return;
+        if (visited.has(nodeId) || listenerNodeIds.has(nodeId)) return;
         visited.add(nodeId);
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return;
@@ -590,12 +590,12 @@ function buildTracksFromGraph(
 
     // Build track
     const track: Track = {
-      event: listenNode.eventType || listenNode.label || 'unknown',
+      event: listenerNode.eventType || listenerNode.label || 'unknown',
       exits,
     };
 
     // Determine the label - use node label if set, otherwise derive from event
-    let label = listenNode.label || listenNode.eventType;
+    let label = listenerNode.label || listenerNode.eventType;
 
     // Ensure label uniqueness by appending suffix if needed
     let uniqueLabel = label;
@@ -609,8 +609,8 @@ function buildTracksFromGraph(
     // Always set an explicit label to avoid validator deriving duplicates
     track.label = uniqueLabel;
 
-    if (listenNode.description) {
-      track.description = listenNode.description;
+    if (listenerNode.description) {
+      track.description = listenerNode.description;
     }
 
     tracks.push(track);

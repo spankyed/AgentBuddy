@@ -4299,8 +4299,8 @@ interface FireNode extends NodeBase {
     payload?: unknown;
     scope?: 'local' | 'global';
 }
-interface ListenNode extends NodeBase {
-    nodeType: 'listen';
+interface ListenerNode extends NodeBase {
+    nodeType: 'listener';
     scope: 'global' | 'local' | 'entry';
     eventType: string;
     debounceMs?: number;
@@ -4347,7 +4347,7 @@ interface ActionNode extends NodeBase {
         default?: any;
     }>;
 }
-type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenNode | TransformNode | FlowNode | KeepAliveNode | LLMNode;
+type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | LLMNode;
 /** Literal union of all nodeType strings (keeps Base clean) */
 type NodeKind = NodeEntity['nodeType'];
 type NodeCreateInput = Partial<NodeEntity> & {
@@ -4634,7 +4634,7 @@ interface StartupData {
  * Flow DSL Compiler
  *
  * Transforms track-based DSL format into EARS database format.
- * Each track creates a listen node + sequential step nodes.
+ * Each track creates a listener node + sequential step nodes.
  */
 
 type Relation = {
@@ -5581,7 +5581,7 @@ declare const services: {
         readonly brainQueries: {
             readonly rootFlowTNode: () => EARS.EntityId | undefined;
             readonly tNodeById: (id: EARS.EntityId) => TNodeEntity | null;
-            readonly flowEventNodes: (flowId: EARS.EntityId) => ListenNode[];
+            readonly flowEventNodes: (flowId: EARS.EntityId) => ListenerNode[];
             readonly eventFirstStep: (eventNodeId: EARS.EntityId) => NodeEntity | undefined;
             readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
             readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
@@ -5596,10 +5596,10 @@ declare const services: {
             readonly rootData: () => FlowTNodeData;
         };
         readonly brainCommands: {
-            readonly createEventTNode: (eventNode: ListenNode, flowTNodeId: EARS.EntityId) => TNodeEntity;
+            readonly createEventTNode: (eventNode: ListenerNode, flowTNodeId: EARS.EntityId) => TNodeEntity;
             readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
                 flowTNode: TNodeEntity;
-                eventNodes: ListenNode[];
+                eventNodes: ListenerNode[];
             };
             readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {
                 tNode: TNodeEntity;
@@ -5608,8 +5608,8 @@ declare const services: {
             readonly createRootFlowTNode: () => {
                 rootFlow: FlowEntity;
                 rootFlowTNode: TNodeEntity;
-                eventNodes: ListenNode[];
-                entryNode: ListenNode;
+                eventNodes: ListenerNode[];
+                entryNode: ListenerNode;
             };
             readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
             readonly updateTNodeResult: (tNodeId: EARS.EntityId, result: any) => void;

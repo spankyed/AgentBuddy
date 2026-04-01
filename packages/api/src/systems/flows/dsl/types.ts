@@ -42,14 +42,14 @@ export const ROOT_FLOW_ROLE = 'root_flow';
 
 /**
  * A track represents an event listener + its sequential response steps.
- * The event field creates an implicit listen node.
+ * The event field creates an implicit listener node.
  */
 export interface Track {
-  /** Event type to listen for (creates a listen node) */
+  /** Event type to listen for (creates a listener node) */
   event: string;
-  /** Optional label for the listen node (defaults to event type) */
+  /** Optional label for the listener node (defaults to event type) */
   label?: string;
-  /** Optional description for the listen node */
+  /** Optional description for the listener node */
   description?: string;
   /** Exit paths from this listener — each inner array is an independent sequential step chain.
    *  Single-exit: exits: [[step1, step2]]. Parallel: exits: [[chainA...], [chainB...]] */
@@ -152,7 +152,7 @@ export interface DSLKeepAliveNode extends DSLNodeBase {
 }
 
 /**
- * Union of all step node types (excludes listen - that's implicit in Track.event)
+ * Union of all step node types (excludes listener - that's implicit in Track.event)
  */
 export type DSLStepNode =
   | DSLActionNode

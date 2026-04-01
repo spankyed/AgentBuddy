@@ -93,8 +93,8 @@ export interface FireNode extends NodeBase {
   scope?: 'local' | 'global';         // default 'local'
 }
 
-export interface ListenNode extends NodeBase {
-  nodeType: 'listen';
+export interface ListenerNode extends NodeBase {
+  nodeType: 'listener';
   scope: 'global' | 'local' | 'entry'; // global=anywhere, local=current flow, entry=flow entry point
   eventType: string;
   debounceMs?: number;                // optional debounce for global and local scopes
@@ -162,7 +162,7 @@ export type NodeEntity =
   | ActionNode
   | SwitchNode
   | FireNode
-  | ListenNode
+  | ListenerNode
   | TransformNode
   | FlowNode
   | KeepAliveNode

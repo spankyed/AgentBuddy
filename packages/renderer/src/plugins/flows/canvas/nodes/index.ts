@@ -1,5 +1,5 @@
 import type { NodeProps } from '@vue-flow/core'
-import ListenNode from './ListenNode.vue'
+import ListenerNode from './ListenerNode.vue'
 import FireNode from './FireNode.vue'
 import VariableNode from './VariableNode.vue'
 import ActionNode from './ActionNode.vue'
@@ -15,7 +15,7 @@ export * from './node-config'
 
 // Map node types to their components
 const componentMap = {
-  ListenNode,
+  ListenerNode,
   FireNode,
   SwitchNode,
   VariableNode,

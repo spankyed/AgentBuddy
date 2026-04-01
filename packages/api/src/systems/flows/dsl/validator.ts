@@ -14,7 +14,7 @@ import type {
 } from './types';
 import { isFlowConfig, resolveTracks } from './types';
 
-// Step node types (excludes 'listen' - that's implicit in track.event)
+// Step node types (excludes 'listener' - that's implicit in track.event)
 const STEP_TYPES = [
   'action',
   'llm',
@@ -253,11 +253,11 @@ function validateStep(
     return errors;
   }
 
-  // Disallow 'listen' type in steps (listen is implicit in track.event)
-  if (s.type === 'listen') {
+  // Disallow 'listener' type in steps (listener is implicit in track.event)
+  if (s.type === 'listener') {
     errors.push({
       path,
-      message: 'Steps cannot have type "listen". Use track.event instead.',
+      message: 'Steps cannot have type "listener". Use track.event instead.',
     });
     return errors;
   }

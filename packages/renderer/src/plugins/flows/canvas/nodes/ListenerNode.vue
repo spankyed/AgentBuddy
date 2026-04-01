@@ -35,12 +35,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import type { ListenNode } from '@app/api'
+import type { ListenerNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { getNodeDividerClass } from './node-config'
 import { NODE_DIMENSIONS } from './node-dimensions'
 
-interface NodeData extends Partial<ListenNode> {
+interface NodeData extends Partial<ListenerNode> {
   label: string
   scope?: 'global' | 'local' | 'entry'
   eventType?: string
@@ -57,7 +57,7 @@ defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
 }>()
 
-const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listen
+const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listener
 
 const hasEventType = computed(() => !!props.data.eventType)
 const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasEventType.value ? EVENT_TYPE_HEIGHT : 0))
@@ -100,7 +100,7 @@ const nodeStyle = computed(() => {
   return { minHeight: `${headerOffset.value + count * ROW_HEIGHT + 10}px` }
 })
 
-const dividerClass = computed(() => getNodeDividerClass('listen'))
+const dividerClass = computed(() => getNodeDividerClass('listener'))
 </script>
 
 <style scoped>

@@ -45,7 +45,7 @@ export const NODE_DEFAULTS = {
 } as const;
 
 export const FLOW_ENTRY_NODE = {
-  TYPE: 'listen' as const,
+  TYPE: 'listener' as const,
   LABEL: 'Flow Entry',
   COLOR: '#1E88E5',
   SCOPE: 'entry' as const,

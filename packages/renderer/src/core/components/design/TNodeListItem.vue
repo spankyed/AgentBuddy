@@ -201,7 +201,7 @@ const effectiveNodeType = computed((): string => {
   // Map other TNode types
   switch (props.node.tNodeType) {
     case 'flow': return 'flow';
-    case 'event': return 'listen'; // Events map to listen nodes
+    case 'event': return 'listener'; // Events map to listener nodes
     default: return 'action'; // Default fallback
   }
 });

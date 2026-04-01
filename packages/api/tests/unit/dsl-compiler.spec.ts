@@ -25,7 +25,7 @@ describe('compile', () => {
       expect(flow.flowType).toBe('workflow');
     });
 
-    it('creates listen node for each track with correct eventType', () => {
+    it('creates listener node for each track with correct eventType', () => {
       const dsl: FlowDSL = {
         'My Flow': [
           { event: 'user.created', steps: [] },
@@ -33,14 +33,14 @@ describe('compile', () => {
         ],
       };
       const result = compile(dsl);
-      const listenNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listen');
+      const listenerNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listener');
 
-      expect(listenNodes).toHaveLength(2);
-      expect(listenNodes[0].eventType).toBe('user.created');
-      expect(listenNodes[1].eventType).toBe('user.updated');
+      expect(listenerNodes).toHaveLength(2);
+      expect(listenerNodes[0].eventType).toBe('user.created');
+      expect(listenerNodes[1].eventType).toBe('user.updated');
     });
 
-    it('assigns entry_event role to first track listen node only', () => {
+    it('assigns entry_event role to first track listener node only', () => {
       const dsl: FlowDSL = {
         'My Flow': [
           { event: 'first', steps: [] },
@@ -48,10 +48,10 @@ describe('compile', () => {
         ],
       };
       const result = compile(dsl);
-      const listenNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listen');
+      const listenerNodes = filterEntities(result.entity, (e: any) => e.nodeType === 'listener');
 
       expect(result.role).toHaveLength(1);
-      expect(result.role[0].entityId).toBe(listenNodes[0].id);
+      expect(result.role[0].entityId).toBe(listenerNodes[0].id);
       expect(result.role[0].role).toBe('entry_event');
     });
 
@@ -68,7 +68,7 @@ describe('compile', () => {
       const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
       const containsRels = filterRelations(result.relation, (r) => r.kind === EARS.RelKind.CONTAINS && r.source === flow.id);
 
-      // 1 listen + 2 action nodes = 3 CONTAINS
+      // 1 listener + 2 action nodes = 3 CONTAINS
       expect(containsRels).toHaveLength(3);
     });
   });
@@ -173,7 +173,7 @@ describe('compile', () => {
       const nodes = filterEntities(result.entity, (e: any) => e.nodeType === 'action');
       const transitions = filterRelations(result.relation, (r) => r.kind === EARS.RelKind.TRANSITIONS_TO);
 
-      // listen->a, a->b, b->c = 3 transitions
+      // listener->a, a->b, b->c = 3 transitions
       const aToB = transitions.find((r) => r.source === nodes[0].id && r.target === nodes[1].id);
       const bToC = transitions.find((r) => r.source === nodes[1].id && r.target === nodes[2].id);
 
@@ -181,13 +181,13 @@ describe('compile', () => {
       expect(bToC).toBeDefined();
     });
 
-    it('listen -> first step: TRANSITIONS_TO edge', () => {
+    it('listener -> first step: TRANSITIONS_TO edge', () => {
       const dsl = wrapInFlow([{ type: 'action', action: 'first' }]);
       const result = compile(dsl);
-      const listen = findEntity(result.entity, (e: any) => e.nodeType === 'listen');
+      const listener = findEntity(result.entity, (e: any) => e.nodeType === 'listener');
       const action = findEntity(result.entity, (e: any) => e.nodeType === 'action');
       const edge = filterRelations(result.relation, (r) =>
-        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === listen.id && r.target === action.id
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === listener.id && r.target === action.id
       );
 
       expect(edge).toHaveLength(1);

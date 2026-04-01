@@ -41,7 +41,7 @@ How the flow canvas positions nodes using ELK's layered layout algorithm.
 `packages/renderer/src/plugins/flows/canvas/nodes/node-dimensions.ts`
 
 - Defines `NODE_DIMENSIONS` constants (shared between Vue components and layout engine) and a `NodeLayoutDescriptor` interface with `getHeight`, `getPorts`, and `hasInput`.
-- Per-type descriptors: `defaultDescriptor`, `switchDescriptor`, `listenDescriptor`, `fireDescriptor`. Accessed via `getDescriptor(nodeType)`.
+- Per-type descriptors: `defaultDescriptor`, `switchDescriptor`, `listenerDescriptor`, `fireDescriptor`. Accessed via `getDescriptor(nodeType)`.
 
 `packages/renderer/src/plugins/flows/canvas/layout-utils.ts`
 
@@ -51,7 +51,7 @@ How the flow canvas positions nodes using ELK's layered layout algorithm.
 
 ## Layout pipeline (`calculateLayoutAsync`)
 
-1. **Pre-compute listen exit counts** from all edges (before any filtering). For each listener, find the highest exit index referenced by its outgoing edges. This must use the full edge set so that port declarations reflect the listener's true exit count.
+1. **Pre-compute listener exit counts** from all edges (before any filtering). For each listener, find the highest exit index referenced by its outgoing edges. This must use the full edge set so that port declarations reflect the listener's true exit count.
 2. **Filter edges** — remove edges that target listener nodes (listeners have no input port; these are phantom inter-track references).
 3. **Detect connected components** via BFS on filtered edges. Each component is typically one track.
 4. **Build ELK graph per component** via `buildElkGraph`, passing in the pre-computed exit counts.
@@ -71,15 +71,15 @@ Port naming conventions:
 |-----------|-----------|
 | Standard input | `{nodeId}-in` |
 | Standard output | `{nodeId}-out` |
-| Listen exit | `{nodeId}-out-exit-{N}` |
+| Listener exit | `{nodeId}-out-exit-{N}` |
 | Switch branch | `{nodeId}-out-branch-{N}` |
-| Listen fallback output | `{nodeId}-out` |
-| Listen input | *(none — listeners are entry points)* |
+| Listener fallback output | `{nodeId}-out` |
+| Listener input | *(none — listeners are entry points)* |
 | Fire output | *(none — fire nodes are terminal)* |
 
 An edge with `sourceHandle: "exit-0"` gets mapped to port `{nodeId}-out-exit-0`. If the node only declares port `{nodeId}-out` (the generic fallback), there's a mismatch and ELK drops the edge.
 
-When a listen node has no connected exit edges (`exitCount` undefined), it gets a single default `{nodeId}-out` port — same as a regular node's output. This ensures edges referencing the generic output still resolve rather than causing an ELK port mismatch.
+When a listener node has no connected exit edges (`exitCount` undefined), it gets a single default `{nodeId}-out` port — same as a regular node's output. This ensures edges referencing the generic output still resolve rather than causing an ELK port mismatch.
 
 ## Node height calculation
 
@@ -89,12 +89,12 @@ Node heights must match what the Vue components actually render. Mismatches caus
 |-----------|---------------|--------|
 | Default | `nodeHeight` (50px) | `NODE_DIMENSIONS.default` |
 | Switch | `max(50, 43 + branchCount × 26 + 10)` | `switchDescriptor` / `SwitchNode.vue` |
-| Listen (with exits) | `max(50, headerOffset + visualExitCount × 22 + 10)` | `listenDescriptor` / `ListenNode.vue` |
-| Listen (no exits) | `nodeHeight` (50px) | `listenDescriptor` fallback |
+| Listener (with exits) | `max(50, headerOffset + visualExitCount × 22 + 10)` | `listenerDescriptor` / `ListenerNode.vue` |
+| Listener (no exits) | `nodeHeight` (50px) | `listenerDescriptor` fallback |
 
 For listeners:
 - `headerOffset` = 43 + (29 if the node has an `eventType`, else 0)
-- `visualExitCount` = connected exit count + 1, because `ListenNode.vue` always renders one extra exit slot beyond the last connected exit (`maxIndex + 2` in the Vue component)
+- `visualExitCount` = connected exit count + 1, because `ListenerNode.vue` always renders one extra exit slot beyond the last connected exit (`maxIndex + 2` in the Vue component)
 - When `exitCount` is undefined (no connected exit edges), the listener falls back to default height (50px)
 
 ## ELK configuration
