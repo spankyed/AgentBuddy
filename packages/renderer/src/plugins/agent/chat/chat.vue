@@ -3,18 +3,27 @@
     <!-- Shrinkable content area -->
     <div class="flex flex-col flex-grow overflow-hidden min-h-0">
       <!-- Agent Chat Content -->
-      <div class="flex-grow w-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer">
-        <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
-          <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
+      <div class="relative flex-grow w-full overflow-hidden min-h-0">
+        <div class="h-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer" @scroll="onScroll">
+          <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
+            <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
+          </div>
+          <div v-else class="w-9/12 py-2 mx-auto space-y-1">
+            <ChatMessage
+              v-for="message in messages"
+              :key="message.id"
+              :message="message"
+              @open-lightbox="openLightbox"
+            />
+          </div>
         </div>
-        <div v-else class="w-9/12 py-2 mx-auto space-y-1">
-          <ChatMessage
-            v-for="message in messages"
-            :key="message.id"
-            :message="message"
-            @open-lightbox="openLightbox"
-          />
-        </div>
+        <button
+          v-if="!isNearBottom && messages.length > 0"
+          class="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-neutral-700 hover:bg-neutral-600 text-white shadow-lg transition-opacity cursor-pointer"
+          @click="scrollToBottom('smooth')"
+        >
+          ↓
+        </button>
       </div>
       <!-- Input -->
       <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
@@ -96,8 +105,22 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const quickPrompts = useSelector(actor, (state) => (state.context.settings?.quickPrompts || []) as QuickPrompt[])
 const messagesContainer = ref<HTMLElement | null>(null)
+const isNearBottom = ref(true)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
+
+function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
+  const el = messagesContainer.value
+  if (!el) return
+  el.scrollTo({ top: el.scrollHeight, behavior })
+}
+
+function onScroll() {
+  const el = messagesContainer.value
+  if (!el) return
+  const threshold = 100
+  isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+}
 
 function updateQuickPrompts(prompts: QuickPrompt[]) {
   trpc.bus.send.mutate({
@@ -115,10 +138,13 @@ function openLightbox(src: string) {
   lightboxOpen.value = true
 }
 
-watch(messages, async () => {
+watch(messages, async (newMsgs, oldMsgs) => {
   await nextTick()
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  const isThreadLoad = !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
+  if (isThreadLoad) {
+    scrollToBottom('instant')
+  } else if (isNearBottom.value) {
+    scrollToBottom('smooth')
   }
 })
 </script>
@@ -128,7 +154,7 @@ watch(messages, async () => {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  scroll-behavior: smooth;
+
   min-height: 0;
 }
 
