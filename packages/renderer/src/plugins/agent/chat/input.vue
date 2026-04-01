@@ -129,14 +129,14 @@
 
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
-            <!-- Stop button -->
+            <!-- Pause button -->
             <Button
-              title="Stop agent work"
+              title="Pause agent work"
               type="submit"
               :disabled="(!messageContent && !hasAttachments) || disabled"
               variant="secondary"
             >
-              <span class="hidden @md:inline">Stop</span>
+              <span class="hidden @md:inline">Pause</span>
               <Square :size="22" />
             </Button>
             <Button
@@ -201,7 +201,7 @@ const emit = defineEmits<{
   (e: 'quick-message'): void
   (e: 'attach-file'): void
   (e: 'voice-input'): void
-  (e: 'stop'): void
+  (e: 'pause'): void
   (e: 'mode-change', mode: string): void
   (e: 'phase-change', phase: string): void
   (e: 'open-lightbox', imageSrc: string): void
