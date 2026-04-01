@@ -139,23 +139,24 @@ function openLightbox(src: string) {
   lightboxOpen.value = true
 }
 
-let stickyUntil = 0
+let pinned = false
 
 watch(messages, async (newMsgs, oldMsgs) => {
   await nextTick()
   const isThreadLoad = !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad) {
-    stickyUntil = Date.now() + 2000
+    pinned = true
     scrollToBottom('instant')
-  } else if (isNearBottom.value) {
-    scrollToBottom('smooth')
+  } else {
+    pinned = false
+    if (isNearBottom.value) scrollToBottom('smooth')
   }
 })
 
 watch(messagesContent, (el, _, onCleanup) => {
   if (!el) return
   const observer = new ResizeObserver(() => {
-    if (Date.now() < stickyUntil || isNearBottom.value) {
+    if (pinned || isNearBottom.value) {
       scrollToBottom('instant')
     }
   })
