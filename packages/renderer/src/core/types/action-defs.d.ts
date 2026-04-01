@@ -5402,6 +5402,8 @@ declare const services: {
                 blocks?: BlockConfig[];
                 forkable?: boolean;
                 references?: MessageReferences;
+                isCommand?: boolean;
+                command?: string;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
