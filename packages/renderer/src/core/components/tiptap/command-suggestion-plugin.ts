@@ -62,14 +62,8 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         if (prev.active && prev.selectedCommand) {
           const requiredPrefix = `/${prev.selectedCommand.name} `
           if (firstText.startsWith(requiredPrefix)) return prev
-          // Prefix broken — check if space separator is still intact
-          const afterSlash = firstText.slice(1)
-          if (!afterSlash.includes(' ')) {
-            // Space deleted (backspace from outside) — deactivate entirely
-            return { ...defaultState }
-          }
-          // Command name edited but space still present — re-enter query phase
-          const partialQuery = afterSlash.split(' ')[0]
+          // Prefix broken — re-enter query phase with the partial command text
+          const partialQuery = firstText.slice(1).split(' ')[0]
           return { ...prev, active: true, query: partialQuery, selectedCommand: null }
         }
 
