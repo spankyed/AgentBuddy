@@ -36,13 +36,18 @@ How the flow canvas positions nodes using ELK's layered layout algorithm.
 - **Steps within a track flow horizontally** (left to right).
 - A listener with multiple exits may fan out to different steps, but all belong to the same track.
 
-## Key file
+## Key files
+
+`packages/renderer/src/plugins/flows/canvas/nodes/node-dimensions.ts`
+
+- Defines `NODE_DIMENSIONS` constants (shared between Vue components and layout engine) and a `NodeLayoutDescriptor` interface with `getHeight`, `getPorts`, and `hasInput`.
+- Per-type descriptors: `defaultDescriptor`, `switchDescriptor`, `listenDescriptor`, `fireDescriptor`. Accessed via `getDescriptor(nodeType)`.
 
 `packages/renderer/src/plugins/flows/canvas/layout-utils.ts`
 
-Two main functions:
-- **`buildElkGraph`** — translates app nodes/edges into an ELK graph with ports.
+- **`buildElkGraph`** — translates app nodes/edges into an ELK graph. Delegates height and port logic to descriptors via `getDescriptor()`.
 - **`calculateLayoutAsync`** — orchestrates the full layout pipeline and returns final positions.
+- **`parseHandleIndex`** / **`buildPortId`** — helpers for handle string parsing and port ID construction.
 
 ## Layout pipeline (`calculateLayoutAsync`)
 
@@ -68,25 +73,29 @@ Port naming conventions:
 | Standard output | `{nodeId}-out` |
 | Listen exit | `{nodeId}-out-exit-{N}` |
 | Switch branch | `{nodeId}-out-branch-{N}` |
+| Listen fallback output | `{nodeId}-out` |
 | Listen input | *(none — listeners are entry points)* |
 | Fire output | *(none — fire nodes are terminal)* |
 
 An edge with `sourceHandle: "exit-0"` gets mapped to port `{nodeId}-out-exit-0`. If the node only declares port `{nodeId}-out` (the generic fallback), there's a mismatch and ELK drops the edge.
 
+When a listen node has no connected exit edges (`exitCount` undefined), it gets a single default `{nodeId}-out` port — same as a regular node's output. This ensures edges referencing the generic output still resolve rather than causing an ELK port mismatch.
+
 ## Node height calculation
 
-Node heights must match what the Vue components actually render. Mismatches cause tracks to overlap visually even when ELK positions are correct.
+Node heights must match what the Vue components actually render. Mismatches cause tracks to overlap visually even when ELK positions are correct. Heights are defined via `NODE_DIMENSIONS` constants in `node-dimensions.ts` and computed by each descriptor's `getHeight` method.
 
 | Node type | Height formula | Source |
 |-----------|---------------|--------|
-| Default | `nodeHeight` (50px) | `LAYOUT_CONFIG` |
-| Switch | `max(50, 43 + branchCount × 26 + 10)` | `SwitchNode.vue` |
-| Listen (with exits) | `max(50, headerOffset + visualExitCount × 22 + 10)` | `ListenNode.vue` |
+| Default | `nodeHeight` (50px) | `NODE_DIMENSIONS.default` |
+| Switch | `max(50, 43 + branchCount × 26 + 10)` | `switchDescriptor` / `SwitchNode.vue` |
+| Listen (with exits) | `max(50, headerOffset + visualExitCount × 22 + 10)` | `listenDescriptor` / `ListenNode.vue` |
+| Listen (no exits) | `nodeHeight` (50px) | `listenDescriptor` fallback |
 
 For listeners:
 - `headerOffset` = 43 + (29 if the node has an `eventType`, else 0)
 - `visualExitCount` = connected exit count + 1, because `ListenNode.vue` always renders one extra exit slot beyond the last connected exit (`maxIndex + 2` in the Vue component)
-- The condition uses `listenExitCounts.has(node.id)` (not a count threshold) because even a single connected exit causes the Vue component to show exit rows
+- When `exitCount` is undefined (no connected exit edges), the listener falls back to default height (50px)
 
 ## ELK configuration
 
