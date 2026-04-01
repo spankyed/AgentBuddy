@@ -8,8 +8,7 @@
 
     <!-- Slide-in form -->
     <div
-      class="absolute top-0 right-0 w-2/5 h-full transform transition-transform duration-300 ease-in-out z-[6] flex"
-      :class="selectedNode ? 'translate-x-0' : 'translate-x-full'"
+      class="absolute top-0 right-0 w-2/5 h-full z-[6] flex"
     >
       <!-- Form content -->
       <div class="flex-1 bg-neutral-800" data-onboarding-id="flow-node-form">

@@ -32,13 +32,25 @@
               <span class="px-2 py-0.5 text-xs font-medium rounded bg-neutral-700 text-neutral-300">
                 {{ displayIndex + 1 }}
               </span>
-              <button
-                @click="removeBranch(getConditionIndex(condition))"
-                class="p-1 text-neutral-500 hover:text-red-400 hover:bg-neutral-700/50 rounded transition-colors"
-                title="Remove branch"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-              </button>
+              <div class="flex items-center gap-1">
+                <button
+                  @click="toggleBranchMode(getConditionIndex(condition))"
+                  class="p-1 rounded transition-colors"
+                  :class="condition.mode === 'code'
+                    ? 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20'
+                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700/50'"
+                  :title="condition.mode === 'code' ? 'Switch to expression mode' : 'Switch to code mode'"
+                >
+                  <Code class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  @click="removeBranch(getConditionIndex(condition))"
+                  class="p-1 text-neutral-500 hover:text-red-400 hover:bg-neutral-700/50 rounded transition-colors"
+                  title="Remove branch"
+                >
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             <!-- Branch Label (optional) -->
@@ -55,49 +67,93 @@
               />
             </div>
 
-            <!-- Predicate: Key -->
-            <div class="mb-3">
-              <label class="block mb-1.5 text-xs font-medium text-neutral-400">
-                Key <span class="text-red-500">*</span>
-              </label>
-              <input
-                :value="getPredicateObject(condition.predicate)?.key || ''"
-                @input="updatePredicate(getConditionIndex(condition), 'key', ($event.target as HTMLInputElement).value)"
-                type="text"
-                placeholder="e.g. $.user.role or $.lastStep.result.status"
-                class="w-full px-3 py-2 text-sm font-mono border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-              />
-            </div>
+            <!-- Code Mode -->
+            <template v-if="condition.mode === 'code'">
+              <!-- Key (optional in code mode) -->
+              <div class="mb-3">
+                <label class="block mb-1.5 text-xs font-medium text-neutral-400">
+                  Key <span class="text-neutral-600">(optional)</span>
+                </label>
+                <input
+                  :value="getPredicateObject(condition.predicate)?.key || ''"
+                  @input="updatePredicate(getConditionIndex(condition), 'key', ($event.target as HTMLInputElement).value)"
+                  type="text"
+                  placeholder="e.g. $.user.role — resolved as params.value"
+                  class="w-full px-3 py-2 text-sm font-mono border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+                />
+                <p class="mt-1 text-[11px] text-neutral-500">
+                  If set, resolved value is available as <code class="text-neutral-400">params.value</code>. If empty, <code class="text-neutral-400">params</code> contains the full context (event, steps, lastStep).
+                </p>
+              </div>
 
-            <!-- Predicate: Operator -->
-            <div class="mb-3">
-              <label class="block mb-1.5 text-xs font-medium text-neutral-400">
-                Operator <span class="text-red-500">*</span>
-              </label>
-              <select
-                :value="getPredicateObject(condition.predicate)?.operator || 'equals'"
-                @change="updatePredicate(getConditionIndex(condition), 'operator', ($event.target as HTMLSelectElement).value)"
-                class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-              >
-                <option v-for="op in operators" :key="op.value" :value="op.value">
-                  {{ op.label }}
-                </option>
-              </select>
-            </div>
+              <!-- Code Editor -->
+              <div>
+                <label class="block mb-1.5 text-xs font-medium text-neutral-400">
+                  Code <span class="text-red-500">*</span>
+                </label>
+                <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 150px;">
+                  <SimpleMonacoEditor
+                    :model-value="condition.code || ''"
+                    language="typescript"
+                    :function-body="true"
+                    dsl-type="action"
+                    :dsl-params="getCodeDslParams(condition)"
+                    :options="codeEditorOptions"
+                    @update:model-value="updateBranchCode(getConditionIndex(condition), $event)"
+                  />
+                </div>
+                <p class="mt-1 text-[11px] text-neutral-500">
+                  Must return a boolean. Example: <code class="text-neutral-400">return params.value === 'admin'</code>
+                </p>
+              </div>
+            </template>
 
-            <!-- Predicate: Value (hidden for unary operators) -->
-            <div v-if="!isUnaryOperator(getPredicateObject(condition.predicate)?.operator)">
-              <label class="block mb-1.5 text-xs font-medium text-neutral-400">
-                Value
-              </label>
-              <input
-                :value="getPredicateObject(condition.predicate)?.value ?? ''"
-                @input="updatePredicate(getConditionIndex(condition), 'value', ($event.target as HTMLInputElement).value)"
-                type="text"
-                placeholder="e.g. admin, 10, true, or $.path.to.value"
-                class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-              />
-            </div>
+            <!-- Expression Mode (default) -->
+            <template v-else>
+              <!-- Predicate: Key -->
+              <div class="mb-3">
+                <label class="block mb-1.5 text-xs font-medium text-neutral-400">
+                  Key <span class="text-red-500">*</span>
+                </label>
+                <input
+                  :value="getPredicateObject(condition.predicate)?.key || ''"
+                  @input="updatePredicate(getConditionIndex(condition), 'key', ($event.target as HTMLInputElement).value)"
+                  type="text"
+                  placeholder="e.g. $.user.role or $.lastStep.result.status"
+                  class="w-full px-3 py-2 text-sm font-mono border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+                />
+              </div>
+
+              <!-- Predicate: Operator -->
+              <div class="mb-3">
+                <label class="block mb-1.5 text-xs font-medium text-neutral-400">
+                  Operator <span class="text-red-500">*</span>
+                </label>
+                <select
+                  :value="getPredicateObject(condition.predicate)?.operator || 'equals'"
+                  @change="updatePredicate(getConditionIndex(condition), 'operator', ($event.target as HTMLSelectElement).value)"
+                  class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+                >
+                  <option v-for="op in operators" :key="op.value" :value="op.value">
+                    {{ op.label }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Predicate: Value (hidden for unary operators) -->
+              <div v-if="!isUnaryOperator(getPredicateObject(condition.predicate)?.operator)">
+                <label class="block mb-1.5 text-xs font-medium text-neutral-400">
+                  Value
+                </label>
+                <input
+                  :value="getPredicateObject(condition.predicate)?.value ?? ''"
+                  @input="updatePredicate(getConditionIndex(condition), 'value', ($event.target as HTMLInputElement).value)"
+                  type="text"
+                  placeholder="e.g. admin, 10, true, or $.path.to.value"
+                  class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800/50 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+                />
+              </div>
+            </template>
           </div>
 
           <!-- Empty state -->
@@ -144,15 +200,36 @@
 
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { Plus, Trash2 } from 'lucide-vue-next'
+import { Plus, Trash2, Code } from 'lucide-vue-next'
 import BaseForm from './BaseForm.vue'
 import TipSection from '../components/TipSection.vue'
+import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue'
 import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } from '@app/api'
 
 // Type guard and accessor for object predicates (vs function predicates)
 function getPredicateObject(predicate?: Predicate): { key: string; operator: BinaryOperator; value?: any } | undefined {
   if (!predicate || typeof predicate === 'function') return undefined
   return predicate
+}
+
+function getCodeDslParams(condition: Condition): Record<string, { type: string }> {
+  const predObj = getPredicateObject(condition.predicate)
+  if (predObj?.key) {
+    return { value: { type: 'any' } }
+  }
+  return {
+    event: { type: 'ExecutionEvent' },
+    steps: { type: 'StepRun[]' },
+    lastStep: { type: 'Omit<StepRun, "timestamp">' },
+  }
+}
+
+const codeEditorOptions = {
+  lineNumbers: 'off' as const,
+  glyphMargin: false,
+  folding: false,
+  lineDecorationsWidth: 8,
+  lineNumbersMinChars: 0,
 }
 
 const props = defineProps<{
@@ -245,6 +322,22 @@ function removeBranch(index: number) {
 function updateBranch(index: number, field: 'label', value: string) {
   localConditions.value = localConditions.value.map((cond, i) =>
     i === index ? { ...cond, [field]: value } : cond
+  )
+  emit('update-node', { conditions: localConditions.value })
+}
+
+function toggleBranchMode(index: number) {
+  const current = localConditions.value[index]
+  const newMode = (current.mode === 'code') ? 'expression' : 'code'
+  localConditions.value = localConditions.value.map((cond, i) =>
+    i === index ? { ...cond, mode: newMode } : cond
+  )
+  emit('update-node', { conditions: localConditions.value })
+}
+
+function updateBranchCode(index: number, code: string) {
+  localConditions.value = localConditions.value.map((cond, i) =>
+    i === index ? { ...cond, code } : cond
   )
   emit('update-node', { conditions: localConditions.value })
 }

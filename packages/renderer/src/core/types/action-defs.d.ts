@@ -4285,6 +4285,8 @@ type Predicate = {
 type Condition = {
     predicate?: Predicate;
     label?: string;
+    mode?: 'expression' | 'code';
+    code?: string;
 };
 interface SwitchNode extends NodeBase {
     nodeType: 'switch';
