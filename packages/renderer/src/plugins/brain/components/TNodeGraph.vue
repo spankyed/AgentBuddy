@@ -153,26 +153,44 @@ const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number 
   },
 });
 
+const subtreeLeafCount = (tnode: TrackEntity): number => {
+  if (tnode.children.length === 0) return 1;
+  return tnode.children.reduce((sum, child) => sum + subtreeLeafCount(child), 0);
+};
+
 const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
   const nodes: VueFlowNode[] = [];
   let trackY = 0;
 
   const traverseTrack = (tnode: TrackEntity, x: number, y: number) => {
-    const position = { x, y };
-    nodes.push(createVueFlowNode(tnode, position));
-    
-    // Process children horizontally
-    let childX = x;
-    tnode.children.forEach((child) => {
-      childX += LAYOUT.NODE_WIDTH + LAYOUT.HORIZONTAL_GAP;
-      traverseTrack(child, childX, y);
-    });
+    nodes.push(createVueFlowNode(tnode, { x, y }));
+    const childX = x + LAYOUT.NODE_WIDTH + LAYOUT.HORIZONTAL_GAP;
+
+    if (tnode.children.length === 1) {
+      // Sequential: continue same row
+      traverseTrack(tnode.children[0], childX, y);
+    } else if (tnode.children.length > 1) {
+      // Parallel: fan out vertically
+      const rowHeight = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
+      const totalLeaves = tnode.children.reduce((s, c) => s + subtreeLeafCount(c), 0);
+      const totalPixelHeight = (totalLeaves - 1) * rowHeight;
+      let currentY = y - totalPixelHeight / 2;
+
+      tnode.children.forEach(child => {
+        const childLeaves = subtreeLeafCount(child);
+        const childCenterY = currentY + ((childLeaves - 1) * rowHeight) / 2;
+        traverseTrack(child, childX, childCenterY);
+        currentY += childLeaves * rowHeight;
+      });
+    }
   };
 
-  // Process each track
   tracks.forEach((track) => {
-    traverseTrack(track, 0, trackY);
-    trackY += LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
+    const trackLeaves = subtreeLeafCount(track);
+    const rowHeight = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
+    const trackPixelHeight = trackLeaves * rowHeight;
+    traverseTrack(track, 0, trackY + trackPixelHeight / 2);
+    trackY += trackPixelHeight + LAYOUT.VERTICAL_GAP;
   });
 
   return nodes;
@@ -189,31 +207,16 @@ const edges = computed<Edge[]>(() => {
   
   const result: Edge[] = [];
   
-  // Helper to recursively build edges
+  // Helper to recursively build edges — every child connects to its parent
   const buildEdges = (tnode: TrackEntity) => {
-    // For children, create a chain: parent -> first child -> second child -> ...
-    tnode.children.forEach((child, index) => {
-      if (index === 0) {
-        // First child connects to parent - should be animated based on parent status
-        result.push({
-          id: `${tnode.id}-to-${child.id}`,
-          source: tnode.id,
-          target: child.id,
-          type: 'smoothstep',
-          animated: tnode.status === 'active',
-        });
-      } else {
-        // Subsequent children connect to previous child - no animation
-        const previousChild = tnode.children[index - 1];
-        result.push({
-          id: `${previousChild.id}-to-${child.id}`,
-          source: previousChild.id,
-          target: child.id,
-          type: 'smoothstep',
-          animated: false, // No animation for sibling connections
-        });
-      }
-      // Recursively process each child's children
+    tnode.children.forEach((child) => {
+      result.push({
+        id: `${tnode.id}-to-${child.id}`,
+        source: tnode.id,
+        target: child.id,
+        type: 'smoothstep',
+        animated: tnode.status === 'active',
+      });
       buildEdges(child);
     });
   };

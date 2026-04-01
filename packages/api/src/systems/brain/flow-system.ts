@@ -95,15 +95,17 @@ function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
+  parentTNodeId?: EARS.EntityId,
 ) {
   if (!stepOrFlowNode?.id) {
     throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
   }
 
+  const spawnParent = parentTNodeId ?? eventTNodeId;
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId, tNode } = isFlowNode
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true)
-    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext);
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
+    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
@@ -118,6 +120,7 @@ export function createFlowNodeSystem(
   eventTNodeId?: EARS.EntityId,
   executionContext?: ExecutionContext,
   hasParent: boolean = false,
+  parentTNodeId?: EARS.EntityId,
 ) {
   const isRootFlow = !flowId;
 
@@ -135,7 +138,7 @@ export function createFlowNodeSystem(
     : (() => {
       const { flowTNode, eventNodes } = repository.brainCommands.createFlowTNode(
         flowId,
-        eventTNodeId,
+        parentTNodeId ?? eventTNodeId,
         executionContext
       );
       return {
@@ -377,7 +380,8 @@ export function createFlowNodeSystem(
             const [nextMachine, nextSystemId, nextTNode] = createChildNode(
               nextNode,
               typedEv.eventTNodeId,
-              updatedContext
+              updatedContext,
+              typedEv.tNodeId
             );
 
             // Spawn next child (both flows and steps)
