@@ -251,22 +251,15 @@ function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
   emit('edge-update-end', event)
 }
 
-// Validation function to prevent self-connections and same-node handle reconnections
+// Validates drag-to-connect only (connect-on-click is disabled; click-to-connect uses XState).
+// NOTE: Do NOT add a duplicate-edge check here. VueFlow calls isValidConnection for ALL edges
+// when the :edges prop changes (not just drag operations), causing edges to reject themselves
+// as duplicates. Duplicate prevention is handled in XState guards instead.
 function isValidConnection(
   connection: Connection,
   elements: { edges: GraphEdge[]; nodes: GraphNode[]; sourceNode: GraphNode; targetNode: GraphNode }
 ): boolean {
-  // Prevent self-connections
   if (connection.source === connection.target) return false
-
-  // Block reconnecting an edge to a different handle on the same source→target pair.
-  // During a reconnection drag, VueFlow keeps the original edge in elements.edges.
-  // If an edge already exists between these two nodes, reject the connection.
-  const duplicate = elements.edges.some(
-    (e) => e.source === connection.source && e.target === connection.target
-  )
-  if (duplicate) return false
-
   return true
 }
 </script>
