@@ -642,6 +642,9 @@ function compileFlow(
         const step = exitSteps[stepIdx];
         const stepLabel = getStepLabel(step, stepIdx);
         const stepId = generateId('Node', `${flowName}-${stepLabel}-t${trackIdx}-e${exitIdx}-s${stepIdx}`);
+        if (globalLabelMap.has(stepLabel)) {
+          throw new Error(`Duplicate step label "${stepLabel}" in flow "${flowName}" (track ${trackIdx}, exit ${exitIdx}, step ${stepIdx}). Use explicit labels to disambiguate.`);
+        }
         globalLabelMap.set(stepLabel, stepId);
 
         // Register inline step IDs for switch nodes with inline branches

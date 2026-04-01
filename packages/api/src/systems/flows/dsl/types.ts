@@ -4,7 +4,7 @@
  * A succinct, user-friendly format for defining workflows that compiles
  * into the EARS database format.
  *
- * Format: Track-based DSL where each track is an event + response steps.
+ * Format: Track-based DSL where each track is an event + parallel exit chains.
  */
 
 import type { EARS } from '@/core/types';
@@ -215,7 +215,7 @@ export interface CompilerContext {
  *─────────────────────────────────────────────────────────────────*/
 
 export interface ValidationError {
-  path: string;  // e.g., "My Flow[0].steps[2]"
+  path: string;  // e.g., "My Flow[0].exits[0][2]"
   message: string;
 }
 

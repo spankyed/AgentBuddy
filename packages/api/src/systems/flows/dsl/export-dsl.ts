@@ -568,7 +568,7 @@ function buildTracksFromGraph(
         if (visited.has(nodeId) || listenNodeIds.has(nodeId)) return;
         visited.add(nodeId);
         const node = nodes.find(n => n.id === nodeId);
-        if (!node || node.nodeType === 'listen') return;
+        if (!node) return;
         chainSteps.push(node);
         const targets = outgoingEdges.get(nodeId) || [];
         for (const t of targets) followChain(t);
