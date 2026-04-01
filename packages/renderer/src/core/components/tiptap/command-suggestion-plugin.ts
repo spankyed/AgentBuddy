@@ -1,4 +1,4 @@
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/core'
 import type { CommandItem } from './command-config'
@@ -61,6 +61,12 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
 
         // Query phase: extract text after `/`, deactivate if it contains a space
         const query = docText.slice(1)
+
+        // Whitespace-only after `/` means pre-existing whitespace, not a typed space
+        if (query.trim().length === 0) {
+          return { ...prev, active: true, triggerPos: $head.start(), query: '' }
+        }
+
         if (query.includes(' ')) {
           return prev.active ? { ...defaultState } : prev
         }
@@ -72,6 +78,31 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
           query,
         }
       },
+    },
+
+    appendTransaction(transactions, _oldState, newState) {
+      if (!transactions.some(tr => tr.docChanged)) return null
+
+      // Only act when doc has multiple paragraphs and first text starts with /
+      if (newState.doc.childCount <= 1) return null
+
+      const firstText = newState.doc.firstChild?.textContent ?? ''
+      if (!firstText.startsWith('/')) return null
+
+      // Everything outside the first paragraph must be whitespace-only
+      const docText = newState.doc.textContent
+      const rest = docText.slice(firstText.length)
+      if (rest.trim().length > 0) return null
+
+      // Collapse to single paragraph with just the first paragraph's content
+      const { tr } = newState
+      const paragraph = newState.schema.nodes.paragraph.create(
+        null,
+        firstText ? newState.schema.text(firstText) : null,
+      )
+      tr.replaceWith(0, newState.doc.content.size, paragraph)
+      tr.setSelection(TextSelection.atEnd(tr.doc))
+      return tr
     },
 
     props: {
