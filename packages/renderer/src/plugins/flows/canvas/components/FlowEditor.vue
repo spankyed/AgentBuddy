@@ -13,7 +13,7 @@
         markerEnd: MarkerType.Arrow
       }"
       :default-viewport="{ x: 0, y: 0, zoom: 1 }"
-      :connect-on-click="true"
+      :connect-on-click="false"
       :edges-selectable="true"
       :edges-updatable="true"
       :delete-key-code="['Backspace', 'Delete']"
@@ -111,7 +111,7 @@ import {
   MarkerType,
   useVueFlow,
 } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent, GraphEdge, GraphNode } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 // import { MiniMap } from '@vue-flow/minimap'
@@ -251,8 +251,15 @@ function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
   emit('edge-update-end', event)
 }
 
-// Validation function to prevent self-connections
-function isValidConnection(connection: Connection): boolean {
-  return connection.source !== connection.target
+// Validates drag-to-connect only (connect-on-click is disabled; click-to-connect uses XState).
+// NOTE: Do NOT add a duplicate-edge check here. VueFlow calls isValidConnection for ALL edges
+// when the :edges prop changes (not just drag operations), causing edges to reject themselves
+// as duplicates. Duplicate prevention is handled in XState guards instead.
+function isValidConnection(
+  connection: Connection,
+  elements: { edges: GraphEdge[]; nodes: GraphNode[]; sourceNode: GraphNode; targetNode: GraphNode }
+): boolean {
+  if (connection.source === connection.target) return false
+  return true
 }
 </script>

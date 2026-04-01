@@ -26,8 +26,9 @@ export function createStepNodeSystem(
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext = {} as ExecutionContext,
+  parentTNodeId?: EARS.EntityId,
 ) {
-  const { tNode, step } = repository.brainCommands.createStepTNode(stepId, eventTNodeId, executionContext);
+  const { tNode, step } = repository.brainCommands.createStepTNode(stepId, parentTNodeId ?? eventTNodeId, executionContext);
   return {
     tNodeId: tNode.id,
     tNode: tNode,

@@ -32,6 +32,7 @@ interface LayoutNode {
   id: string
   nodeType?: string
   conditions?: Array<{ predicate?: unknown; label?: string }>
+  eventType?: string
 }
 
 interface LayoutEdge {
@@ -43,8 +44,8 @@ interface LayoutEdge {
 
 const elk = new ELK()
 
-const getBranchIndex = (handle?: string): number => {
-  const match = handle?.match(/branch-(\d+)/)
+const getHandleIndex = (handle?: string): number => {
+  const match = handle?.match(/(?:branch|exit)-(\d+)/)
   return match ? parseInt(match[1], 10) : 0
 }
 
@@ -55,28 +56,56 @@ function buildElkGraph(
 ): ElkNode {
   const { nodeWidth, nodeHeight, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
 
+  // Count exit handles per listen node from edges
+  const listenExitCounts = new Map<string, number>()
+  for (const edge of edges) {
+    const sourceNode = nodes.find(n => n.id === edge.source)
+    if (sourceNode?.nodeType === 'listen' && edge.sourceHandle) {
+      const match = edge.sourceHandle.match(/exit-(\d+)/)
+      if (match) {
+        const idx = parseInt(match[1], 10)
+        const prev = listenExitCounts.get(edge.source) ?? 0
+        listenExitCounts.set(edge.source, Math.max(prev, idx + 1))
+      }
+    }
+  }
+
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const ports: ElkPort[] = []
     const isSwitch = node.nodeType === 'switch'
+    const isListen = node.nodeType === 'listen'
     const branchCount = node.conditions?.length ?? 0
+    const listenExitCount = listenExitCounts.get(node.id) ?? 1
 
-    // Calculate height (switch nodes need more height for branches)
+    // Calculate height
     // Constants must match SwitchNode.vue: HEADER_OFFSET=43, ROW_HEIGHT=26, bottom padding=10
+    // Listen node constants: HEADER_OFFSET=43, ROW_HEIGHT=22, bottom padding=10
     let height: number = nodeHeight
     if (isSwitch) {
       height = Math.max(nodeHeight, 43 + branchCount * 26 + 10)
+    } else if (isListen && listenExitCount > 1) {
+      // Constants must match ListenNode.vue: BASE_HEADER_OFFSET=43, EVENT_TYPE_HEIGHT=29, ROW_HEIGHT=22, bottom padding=10
+      const listenHeaderOffset = 43 + (node.eventType ? 29 : 0)
+      height = Math.max(nodeHeight, listenHeaderOffset + listenExitCount * 22 + 10)
     }
 
     // Single input port (except for listen nodes)
-    if (node.nodeType !== 'listen') {
+    if (!isListen) {
       ports.push({ id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } })
     }
 
-    // Output ports - multiple for switch, single for others
+    // Output ports - multiple for switch and listen (multi-exit), single for others
     if (isSwitch) {
       for (let i = 0; i < branchCount; i++) {
         ports.push({
           id: `${node.id}-out-branch-${i}`,
+          layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) }
+        })
+      }
+    } else if (isListen && listenExitCount > 1) {
+      for (let i = 0; i < listenExitCount; i++) {
+        ports.push({
+          id: `${node.id}-out-exit-${i}`,
           layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) }
         })
       }
@@ -88,7 +117,7 @@ function buildElkGraph(
   })
 
   const sortedEdges = [...edges].sort((a, b) =>
-    getBranchIndex(a.sourceHandle) - getBranchIndex(b.sourceHandle)
+    getHandleIndex(a.sourceHandle) - getHandleIndex(b.sourceHandle)
   )
 
   const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => {
@@ -100,7 +129,7 @@ function buildElkGraph(
       id: edge.id || `e${idx}`,
       sources: [sourcePort],
       targets: [`${edge.target}-in`],
-      layoutOptions: { 'elk.priority': String(getBranchIndex(edge.sourceHandle)) }
+      layoutOptions: { 'elk.priority': String(getHandleIndex(edge.sourceHandle)) }
     }
   })
 

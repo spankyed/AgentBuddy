@@ -59,6 +59,7 @@ type TNodeFlowMachineContext = {
     nextNode: NodeEntity;
     eventTNodeId: EARS.EntityId;
     executionContext: ExecutionContext;
+    parentTNodeId?: EARS.EntityId;
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
@@ -95,15 +96,17 @@ function createChildNode(
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
+  parentTNodeId?: EARS.EntityId,
 ) {
   if (!stepOrFlowNode?.id) {
     throw new Error(`Invalid node passed to createChildNode: ${JSON.stringify(stepOrFlowNode)}`);
   }
 
+  const spawnParent = parentTNodeId ?? eventTNodeId;
   const isFlowNode = stepOrFlowNode.nodeType === 'flow';
   const { machine, tNodeId, tNode } = isFlowNode
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true)
-    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext);
+    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
+    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
 
   const systemId = `${isFlowNode ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
@@ -118,6 +121,7 @@ export function createFlowNodeSystem(
   eventTNodeId?: EARS.EntityId,
   executionContext?: ExecutionContext,
   hasParent: boolean = false,
+  parentTNodeId?: EARS.EntityId,
 ) {
   const isRootFlow = !flowId;
 
@@ -135,7 +139,7 @@ export function createFlowNodeSystem(
     : (() => {
       const { flowTNode, eventNodes } = repository.brainCommands.createFlowTNode(
         flowId,
-        eventTNodeId,
+        parentTNodeId ?? eventTNodeId,
         executionContext
       );
       return {
@@ -207,10 +211,10 @@ export function createFlowNodeSystem(
           let spawnedCount = 0;
 
           for (const eventNode of matchingEventNodes) {
-            const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
+            const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
 
-            if (!firstStep) {
-              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No first step found to execute in response`);
+            if (allSteps.length === 0) {
+              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No steps found to execute in response`);
               continue; // Skip this event node but process others
             }
 
@@ -250,27 +254,31 @@ export function createFlowNodeSystem(
               { eventData, eventNodeId: eventNode.id }
             );
 
-            // Spawn child based on node type
-            const [machine, systemId, childTNode] = createChildNode(
-              firstStep,
-              eventTNode.id,
-              eventTrackContext
-            );
+            // Spawn ALL connected downstream steps in parallel
+            for (const step of allSteps) {
+              const [machine, systemId, childTNode] = createChildNode(
+                step,
+                eventTNode.id,
+                eventTrackContext
+              );
 
-            // Spawn child (both flows and steps)
-            enqueue.spawnChild(machine, {
-              systemId,
-              input: {} // Add empty input to satisfy TypeScript
-            });
+              // Spawn child (both flows and steps)
+              enqueue.spawnChild(machine, {
+                systemId,
+                input: {} // Add empty input to satisfy TypeScript
+              });
 
-            // Emit TNODE_SPAWNED event for the UI to display child node
-            system.get(brain).send({
-              type: 'TNODE_SPAWNED',
-              tNode: childTNode,
-              parentId: eventTNode.id,
-              eventTNodeId: eventTNode.id,
-              flowTNodeId: flowTNodeId
-            });
+              // Emit TNODE_SPAWNED event for the UI to display child node
+              system.get(brain).send({
+                type: 'TNODE_SPAWNED',
+                tNode: childTNode,
+                parentId: eventTNode.id,
+                eventTNodeId: eventTNode.id,
+                flowTNodeId: flowTNodeId
+              });
+
+              spawnedCount++;
+            }
 
             // Store the execution context for this event track
             enqueue.assign({
@@ -279,8 +287,6 @@ export function createFlowNodeSystem(
                 [eventTNode.id]: eventTrackContext,
               }),
             });
-
-            spawnedCount++;
           }
 
           // Update activeChildrenCount for all spawned children at once
@@ -367,6 +373,7 @@ export function createFlowNodeSystem(
                   nextNode,
                   eventTNodeId: typedEv.eventTNodeId!,
                   executionContext: updatedContext,
+                  parentTNodeId: typedEv.tNodeId,
                 },
               ],
             });
@@ -375,7 +382,8 @@ export function createFlowNodeSystem(
             const [nextMachine, nextSystemId, nextTNode] = createChildNode(
               nextNode,
               typedEv.eventTNodeId,
-              updatedContext
+              updatedContext,
+              typedEv.tNodeId
             );
 
             // Spawn next child (both flows and steps)
@@ -388,7 +396,7 @@ export function createFlowNodeSystem(
             system.get(brain).send({
               type: 'TNODE_SPAWNED',
               tNode: nextTNode,
-              parentId: typedEv.eventTNodeId,
+              parentId: typedEv.tNodeId,
               eventTNodeId: typedEv.eventTNodeId,
               flowTNodeId: flowTNodeId
             });
@@ -436,7 +444,8 @@ export function createFlowNodeSystem(
             const [machine, systemId, tNode] = createChildNode(
               pending.nextNode,
               pending.eventTNodeId,
-              pending.executionContext
+              pending.executionContext,
+              pending.parentTNodeId
             );
 
             enqueue.spawnChild(machine, {
@@ -447,7 +456,7 @@ export function createFlowNodeSystem(
             system.get(brain).send({
               type: 'TNODE_SPAWNED',
               tNode,
-              parentId: pending.eventTNodeId,
+              parentId: pending.parentTNodeId ?? pending.eventTNodeId,
               eventTNodeId: pending.eventTNodeId,
               flowTNodeId: flowTNodeId
             });

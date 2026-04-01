@@ -6,8 +6,8 @@
     :position="Position.Right"
     :connectable="false"
     class="source-handle"
-    :class="{ 'has-offset': offsetY !== undefined }"
-    :style="offsetY !== undefined ? { top: `${offsetY}px` } : {}"
+    :class="{ 'has-offset': hasCustomOffset }"
+    :style="handleStyle"
   />
 
   <!-- Clickable overlay for our custom click-to-connect behavior -->
@@ -57,6 +57,7 @@ interface Props {
   nodeId: string
   handleId?: string
   offsetY?: number
+  offsetPercent?: number
   sourceHandle?: string
   isSelected?: boolean
   isConnected?: boolean
@@ -65,6 +66,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   handleId: undefined,
   offsetY: undefined,
+  offsetPercent: undefined,
   sourceHandle: undefined,
   isSelected: false,
   isConnected: false,
@@ -78,13 +80,22 @@ const emit = defineEmits<{
 
 const showDropdown = ref(false)
 
+const hasCustomOffset = computed(() => props.offsetY !== undefined || props.offsetPercent !== undefined)
+
+// Resolve top position: px takes priority, then percent, then default (no style)
+const handleStyle = computed(() => {
+  if (props.offsetY !== undefined) return { top: `${props.offsetY}px` }
+  if (props.offsetPercent !== undefined) return { top: `${props.offsetPercent}%` }
+  return {}
+})
+
 // Overlay is positioned independently from the Handle
 const overlayStyle = computed(() => {
   if (props.offsetY !== undefined) {
-    return {
-      top: `${props.offsetY}px`,
-      transform: 'translateY(-50%)'
-    }
+    return { top: `${props.offsetY}px`, transform: 'translateY(-50%)' }
+  }
+  if (props.offsetPercent !== undefined) {
+    return { top: `${props.offsetPercent}%`, transform: 'translateY(-50%)' }
   }
   return {}
 })
@@ -92,10 +103,10 @@ const overlayStyle = computed(() => {
 // Connected dot needs rotation included in transform
 const connectedDotStyle = computed(() => {
   if (props.offsetY !== undefined) {
-    return {
-      top: `${props.offsetY}px`,
-      transform: 'translateY(-50%) rotate(45deg)'
-    }
+    return { top: `${props.offsetY}px`, transform: 'translateY(-50%) rotate(45deg)' }
+  }
+  if (props.offsetPercent !== undefined) {
+    return { top: `${props.offsetPercent}%`, transform: 'translateY(-50%) rotate(45deg)' }
   }
   return {}
 })

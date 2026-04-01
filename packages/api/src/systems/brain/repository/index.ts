@@ -1,7 +1,6 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { descendants } from '@/core/ears/helpers/graph';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import type {
   FlowTNodeData,
@@ -53,6 +52,13 @@ const TNODE_COLUMNS = [
   "blueprint"
 ] as const;
 
+function buildSpawnedTree(nodeId: EARS.EntityId): TrackEntity {
+  const tnode = qx(nodeId).pickOne(TNODE_COLUMNS) as TNodeEntity;
+  const directChildIds = qx(nodeId).linksTo(EARS.RelKind.SPAWNED).ids();
+  const children = directChildIds.map(childId => buildSpawnedTree(childId));
+  return { ...tnode, children };
+}
+
 // Type Guards
 function isFlowTNode(tNode: Partial<TNodeEntity> | null): tNode is TNodeEntity & { tNodeType: 'flow' } {
   return tNode?.tNodeType === 'flow';
@@ -91,13 +97,20 @@ export const brainQueries = {
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
     const transitionLinks = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
-    
+
     if (transitionLinks.length > 0) {
       return qx(transitionLinks[0].id)
         .pickAll()[0] as unknown as NodeEntity | undefined;
     }
-    
+
     return undefined;
+  },
+
+  eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
+    return qx(eventNodeId)
+      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
+      .map(link => qx(link.id).pickAll()[0] as unknown as NodeEntity)
+      .filter(node => node && node.id);
   },
   
   // Get next nodes via TRANSITIONS_TO relation
@@ -148,15 +161,11 @@ export const brainQueries = {
     const eventTNodes = qx(flowTNodeId)
       .linksPick(EARS.RelKind.TRACKED, TNODE_COLUMNS, [EARS.Entity.TNode]) as TNodeEntity[];
     
-    // For each event, get all its spawned descendants
+    // For each event, build a hierarchical tree of spawned children
     const eventTracks = eventTNodes.map(eventTNode => {
-      const descendantIds = descendants(eventTNode.id!, EARS.RelKind.SPAWNED);
-      const descendantTNodes = qx(descendantIds).pick(TNODE_COLUMNS) as TNodeEntity[];
-
-      return {
-        ...eventTNode,
-        children: descendantTNodes.map(child => ({ ...child, children: [] }))
-      };
+      const directChildIds = qx(eventTNode.id!).linksTo(EARS.RelKind.SPAWNED).ids();
+      const children = directChildIds.map(childId => buildSpawnedTree(childId));
+      return { ...eventTNode, children };
     });
 
     return eventTracks;
