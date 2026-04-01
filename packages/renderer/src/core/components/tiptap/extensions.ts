@@ -12,7 +12,7 @@ import { SubDocumentLink } from './sub-document-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
-import { mergeAttributes, wrappingInputRule, InputRule } from '@tiptap/core'
+import { mergeAttributes, wrappingInputRule, InputRule, Extension } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
 import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
@@ -23,6 +23,30 @@ import { CommandViewerDecoration } from './command-viewer-decoration'
 import { ListBackspace } from './list-backspace'
 
 const lowlight = createLowlight(common)
+
+const TaskListParseFix = Extension.create({
+  name: 'taskListParseFix',
+  addStorage() {
+    return {
+      markdown: {
+        parse: {
+          setup(markdownit: any) {
+            if (markdownit._fixedEmptyTaskItems) return
+            markdownit._fixedEmptyTaskItems = true
+
+            markdownit.core.ruler.after('block', 'fix-empty-task-items', (state: any) => {
+              for (const token of state.tokens) {
+                if (token.type === 'inline' && /^\[[ xX]\]$/.test(token.content)) {
+                  token.content += ' '
+                }
+              }
+            })
+          },
+        },
+      },
+    }
+  },
+})
 
 function applyAttributes(dom: HTMLElement, ...sources: Record<string, any>[]) {
   for (const [key, value] of Object.entries(mergeAttributes(...sources))) {
@@ -242,6 +266,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       transformCopiedText: true,
       transformPastedText: true,
     }),
+    TaskListParseFix,
     CodeBlockLowlight.configure({
       lowlight,
     }),
