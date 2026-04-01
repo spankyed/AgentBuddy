@@ -143,6 +143,18 @@ export function commandSuggestionPlugin(
     },
 
     props: {
+      handleKeyDown(view, event) {
+        if (event.key !== 'Escape') return false
+
+        const pluginState = commandSuggestionPluginKey.getState(view.state)
+        if (!pluginState?.active) return false
+
+        const { tr } = view.state
+        tr.setMeta(commandSuggestionPluginKey, { deactivate: true })
+        view.dispatch(tr)
+        return true
+      },
+
       decorations(state) {
         const pluginState = commandSuggestionPluginKey.getState(state)
         if (!pluginState?.active) return DecorationSet.empty

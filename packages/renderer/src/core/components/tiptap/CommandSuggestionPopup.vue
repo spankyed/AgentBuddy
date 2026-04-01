@@ -132,10 +132,6 @@ function handleKeyDown(event: KeyboardEvent) {
       }
       break
 
-    case 'Escape':
-      event.preventDefault()
-      deactivateAndClean()
-      break
   }
 }
 
