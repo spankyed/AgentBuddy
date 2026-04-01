@@ -239,6 +239,12 @@
   height: 0;
 }
 
+/* Hide selection highlight on empty editor paragraph */
+.tiptap-wrapper .ProseMirror p.is-editor-empty:first-child::selection,
+.tiptap-wrapper .ProseMirror p.is-editor-empty:first-child *::selection {
+  background: transparent;
+}
+
 /* Command segment styling (the /commandName text when a command is selected) */
 .tiptap-wrapper .ProseMirror .command-segment {
   background: rgba(255, 255, 255, 0.08);

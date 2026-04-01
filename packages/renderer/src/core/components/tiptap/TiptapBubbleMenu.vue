@@ -58,6 +58,7 @@ const atomicNodes = ['image', 'subDocumentLink', 'reference']
 
 function shouldShow(props: Record<string, any>) {
   if (props.state.selection.empty) return false
+  if (props.editor.isEmpty) return false
   return !atomicNodes.some(node => props.editor.isActive(node))
 }
 
