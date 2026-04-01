@@ -59,7 +59,12 @@ defineEmits<{
 // Row height for handle positioning (matches .exit-row height)
 const ROW_HEIGHT = 22
 // Header offset: node padding (8px) + header height (~24px) + divider margin (8px) + eventType area (~3px)
-const HEADER_OFFSET = 43
+const BASE_HEADER_OFFSET = 43
+// Extra height when eventType is rendered: mt-1.5(6) + pt-1.5(6) + border(1) + text line(~16)
+const EVENT_TYPE_HEIGHT = 29
+
+const hasEventType = computed(() => !!props.data.eventType)
+const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasEventType.value ? EVENT_TYPE_HEIGHT : 0))
 
 // Compute dynamic exit handles from connected edges
 const exitHandles = computed<HandleConfig[]>(() => {
@@ -84,10 +89,11 @@ const exitHandles = computed<HandleConfig[]>(() => {
   }
 
   // Pixel-based positioning aligned with exit rows
+  const offset = headerOffset.value
   return Array.from({ length: count }, (_, i) => ({
     id: `exit-${i}`,
     label: `Exit ${i + 1}`,
-    offsetY: HEADER_OFFSET + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
+    offsetY: offset + (i * ROW_HEIGHT) + (ROW_HEIGHT / 2)
   }))
 })
 
@@ -95,7 +101,7 @@ const exitHandles = computed<HandleConfig[]>(() => {
 const nodeStyle = computed(() => {
   const count = exitHandles.value.length
   if (count <= 1) return {}
-  return { minHeight: `${HEADER_OFFSET + count * ROW_HEIGHT + 10}px` }
+  return { minHeight: `${headerOffset.value + count * ROW_HEIGHT + 10}px` }
 })
 
 const dividerClass = computed(() => getNodeDividerClass('listen'))

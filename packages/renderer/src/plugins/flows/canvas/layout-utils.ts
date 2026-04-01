@@ -32,6 +32,7 @@ interface LayoutNode {
   id: string
   nodeType?: string
   conditions?: Array<{ predicate?: unknown; label?: string }>
+  eventType?: string
 }
 
 interface LayoutEdge {
@@ -83,8 +84,9 @@ function buildElkGraph(
     if (isSwitch) {
       height = Math.max(nodeHeight, 43 + branchCount * 26 + 10)
     } else if (isListen && listenExitCount > 1) {
-      // Constants must match ListenNode.vue: HEADER_OFFSET=43, ROW_HEIGHT=22, bottom padding=10
-      height = Math.max(nodeHeight, 43 + listenExitCount * 22 + 10)
+      // Constants must match ListenNode.vue: BASE_HEADER_OFFSET=43, EVENT_TYPE_HEIGHT=29, ROW_HEIGHT=22, bottom padding=10
+      const listenHeaderOffset = 43 + (node.eventType ? 29 : 0)
+      height = Math.max(nodeHeight, listenHeaderOffset + listenExitCount * 22 + 10)
     }
 
     // Single input port (except for listen nodes)
