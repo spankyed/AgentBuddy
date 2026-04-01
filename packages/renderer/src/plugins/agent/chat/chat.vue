@@ -200,13 +200,19 @@ function doRevert(messageId: string) {
 }
 
 let pinned = false
+const prevThreadId = ref(currentThread.value?.id)
 
 watch(messages, async (newMsgs, oldMsgs) => {
   await nextTick()
-  const isThreadLoad = !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
+  const threadChanged = currentThread.value?.id !== prevThreadId.value
+  if (threadChanged) prevThreadId.value = currentThread.value?.id
+
+  const isThreadLoad = threadChanged || !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad) {
     pinned = true
     scrollToBottom('instant')
+    // Re-scroll after browser paint to catch async content (Tiptap editors, images)
+    requestAnimationFrame(() => scrollToBottom('instant'))
   } else {
     pinned = false
     if (isNearBottom.value) scrollToBottom('smooth')
