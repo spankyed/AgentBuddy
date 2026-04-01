@@ -178,17 +178,17 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div class="flex flex-col h-full min-h-[300px] bg-neutral-900">
     <ThreadsHeader />
-    <main class="flex-1 flex flex-col p-6 bg-transparent overflow-hidden">
+    <main class="flex-1 flex flex-col p-6 bg-transparent overflow-hidden min-h-0">
     <div v-if="lists.length === 0" class="flex items-center justify-center h-full">
       <p class="text-neutral-500">No status columns configured. Please configure thread statuses in settings.</p>
     </div>
-    <div v-else class="flex flex-1 gap-4 w-full select-none">
+    <div v-else class="flex flex-1 gap-4 min-h-0 w-full select-none">
       <section
         v-for="list in lists"
         :key="String(list.id)"
-        class="flex flex-col flex-1 overflow-hidden shadow-sm rounded-xl bg-neutral-900 min-h-full border border-neutral-800"
+        class="flex flex-col flex-1 overflow-hidden shadow-sm rounded-xl bg-neutral-900 min-h-0 border border-neutral-800"
       >
         <!-- column header -->
         <header
