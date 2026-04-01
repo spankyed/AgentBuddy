@@ -36,6 +36,8 @@
             editor-class="w-full px-1.5 pr-2 py-2 rounded-lg min-h-12 focus:outline-none"
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
+            @history-prev="onHistoryPrev"
+            @history-next="onHistoryNext"
           />
         </div>
 
@@ -220,6 +222,8 @@ interface ActionButton {
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
 const popoverOpen = ref(false)
+const sentHistory = ref<string[]>([])
+const historyIndex = ref(-1)
 
 const commandHighlight = computed(() => {
   return tiptapRef.value?.commandActive || tiptapRef.value?.commandModeActive
@@ -233,6 +237,36 @@ const {
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md
+  historyIndex.value = -1
+}
+
+function onHistoryPrev() {
+  if (!sentHistory.value.length) return
+  const editor = tiptapRef.value?.editor
+  if (!editor) return
+
+  if (historyIndex.value === -1) {
+    historyIndex.value = sentHistory.value.length - 1
+  } else if (historyIndex.value > 0) {
+    historyIndex.value--
+  }
+
+  editor.commands.setContent(sentHistory.value[historyIndex.value])
+}
+
+function onHistoryNext() {
+  const editor = tiptapRef.value?.editor
+  if (!editor) return
+
+  if (historyIndex.value === -1) return
+
+  if (historyIndex.value < sentHistory.value.length - 1) {
+    historyIndex.value++
+    editor.commands.setContent(sentHistory.value[historyIndex.value])
+  } else {
+    historyIndex.value = -1
+    editor.commands.clearContent(true)
+  }
 }
 
 const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
@@ -379,6 +413,8 @@ const handleSubmit = async () => {
       emit('send-message', md, references)
     }
 
+    sentHistory.value.push(md)
+    historyIndex.value = -1
     editor.commands.clearContent(true)
     messageContent.value = ''
     clearAll()

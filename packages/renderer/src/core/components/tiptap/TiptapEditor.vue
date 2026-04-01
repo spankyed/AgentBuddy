@@ -56,6 +56,8 @@ const emit = defineEmits<{
   (e: 'subDocumentLinkDeleted', noteId: string): void
   (e: 'subDocumentLinkRestored', noteId: string): void
   (e: 'focusTitle'): void
+  (e: 'history-prev'): void
+  (e: 'history-next'): void
 }>()
 
 defineOptions({ inheritAttrs: false })
@@ -238,6 +240,21 @@ const editor = useEditor({
   editable: props.mode !== 'viewer' && !props.disabled,
   editorProps: {
     handleKeyDown: (view, event) => {
+      if (props.mode === 'input') {
+        const content = view.state.doc.textContent
+        const isEmpty = !content.trim()
+        const atStart = view.state.selection.from <= 1
+
+        if (event.key === 'ArrowUp' && (isEmpty || atStart)) {
+          emit('history-prev')
+          return true
+        }
+        if (event.key === 'ArrowDown' && (isEmpty || atStart)) {
+          emit('history-next')
+          return true
+        }
+      }
+
       if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
         emit('focusTitle')
         return true
