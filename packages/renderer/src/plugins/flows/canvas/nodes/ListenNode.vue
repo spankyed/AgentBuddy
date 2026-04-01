@@ -25,7 +25,7 @@
           {{ i + 1 }}
         </span>
         <span class="text-[11px] text-neutral-400 truncate flex-1">
-          step {{ i + 1 }}
+          exit {{ i + 1 }}
         </span>
       </div>
     </div>
