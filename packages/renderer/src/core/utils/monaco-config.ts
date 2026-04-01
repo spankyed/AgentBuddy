@@ -367,7 +367,7 @@ function generateParamsTypeDeclaration(
     return 'declare const params: Record<string, any>;'
   }
   const fields = entries
-    .map(([key, val]) => `    ${key}: ${PARAM_TYPE_MAP[val.type] || 'any'};`)
+    .map(([key, val]) => `    ${key}: ${PARAM_TYPE_MAP[val.type] || val.type};`)
     .join('\n')
   return `declare const params: {\n${fields}\n    [key: string]: any;\n};`
 }

@@ -97,6 +97,7 @@
                     language="typescript"
                     :function-body="true"
                     dsl-type="action"
+                    :dsl-params="getCodeDslParams(condition)"
                     :options="codeEditorOptions"
                     @update:model-value="updateBranchCode(getConditionIndex(condition), $event)"
                   />
@@ -209,6 +210,18 @@ import type { NodeEntity, SwitchNode, Condition, BinaryOperator, Predicate } fro
 function getPredicateObject(predicate?: Predicate): { key: string; operator: BinaryOperator; value?: any } | undefined {
   if (!predicate || typeof predicate === 'function') return undefined
   return predicate
+}
+
+function getCodeDslParams(condition: Condition): Record<string, { type: string }> {
+  const predObj = getPredicateObject(condition.predicate)
+  if (predObj?.key) {
+    return { value: { type: 'any' } }
+  }
+  return {
+    event: { type: 'ExecutionEvent' },
+    steps: { type: 'StepRun[]' },
+    lastStep: { type: 'Omit<StepRun, "timestamp">' },
+  }
 }
 
 const codeEditorOptions = {
