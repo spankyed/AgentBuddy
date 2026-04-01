@@ -475,7 +475,7 @@ export const librarySystem = setup({
           }
 
           // Otherwise, look in the new items array and convert to DocumentDTO format
-          const item = context.items.find((item) => item.id === event.documentId && item.type === 'document')
+          const item = findItemById(context, event.documentId)
           if (item && item.type === 'document') {
             // Convert DocumentItem to DocumentDTO format for compatibility with EditView
             return {
