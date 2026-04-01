@@ -8,7 +8,7 @@ export default {
       {
         event: "interactive.message.response",
         label: "Route Response",
-        steps: [
+        exits: [[
           action("Handle Onboarding Response", {
             label: "advance step",
             map: {
@@ -17,19 +17,19 @@ export default {
               response: "$.event.data.payload.response",
             },
           }),
-        ],
+        ]],
       },
       {
         event: "user.message",
         label: "Ignore Message",
-        steps: [
+        exits: [[
           action("Ignore Onboarding Message", {
             label: "send unable message",
             map: {
               threadId: "$.event.data.payload.threadId",
             },
           }),
-        ],
+        ]],
       },
     ],
   ),

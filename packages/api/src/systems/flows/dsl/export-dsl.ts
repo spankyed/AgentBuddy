@@ -549,44 +549,49 @@ function buildTracksFromGraph(
   const usedLabels = new Set<string>();
 
   for (const listenNode of listenNodes) {
-    const steps: NodeEntity[] = [];
-    const visited = new Set<string>();
+    const listenId = listenNode.id as string;
+    const listenEdges = edges.filter(e => e.source === listenId);
 
-    // BFS/DFS from listen node to collect sequential steps
-    function collectSteps(nodeId: string) {
-      if (visited.has(nodeId)) return;
-      if (listenNodeIds.has(nodeId) && nodeId !== listenNode.id) return;
+    // Sort edges by exit index for deterministic ordering
+    const sortedExitEdges = [...listenEdges].sort((a, b) => {
+      const aIdx = parseInt(((a.info as any)?.sourceHandle || 'exit-0').replace('exit-', ''));
+      const bIdx = parseInt(((b.info as any)?.sourceHandle || 'exit-0').replace('exit-', ''));
+      return aIdx - bIdx;
+    });
 
-      visited.add(nodeId);
-
-      const targets = outgoingEdges.get(nodeId) || [];
-      for (const targetId of targets) {
-        const targetNode = nodes.find(n => n.id === targetId);
-        if (!targetNode) continue;
-
-        if (targetNode.nodeType === 'listen') continue;
-
-        steps.push(targetNode);
-        collectSteps(targetId);
+    const exits: DSLStepNode[][] = [];
+    for (const exitEdge of sortedExitEdges) {
+      // Follow sequential chain from this exit's target
+      const chainSteps: NodeEntity[] = [];
+      const visited = new Set<string>();
+      function followChain(nodeId: string) {
+        if (visited.has(nodeId) || listenNodeIds.has(nodeId)) return;
+        visited.add(nodeId);
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node || node.nodeType === 'listen') return;
+        chainSteps.push(node);
+        const targets = outgoingEdges.get(nodeId) || [];
+        for (const t of targets) followChain(t);
       }
+      followChain(exitEdge.target as string);
+
+      const pairs = chainSteps.map(step => ({
+        nodeId: step.id as string,
+        dsl: decompileStepNode(step, graphCtx),
+      }));
+      const dslSteps = pairs
+        .filter(p => !graphCtx.inlinedNodeIds.has(p.nodeId))
+        .map(p => p.dsl);
+      exits.push(dslSteps);
     }
 
-    collectSteps(listenNode.id as string);
-
-    // Decompile steps, then filter out nodes that were inlined into switch branches
-    const pairs = steps.map(step => ({
-      nodeId: step.id as string,
-      dsl: decompileStepNode(step, graphCtx),
-    }));
-
-    const dslSteps = pairs
-      .filter(p => !graphCtx.inlinedNodeIds.has(p.nodeId))
-      .map(p => p.dsl);
+    // If no edges, single empty exit
+    if (exits.length === 0) exits.push([]);
 
     // Build track
     const track: Track = {
       event: listenNode.eventType || listenNode.label || 'unknown',
-      steps: dslSteps,
+      exits,
     };
 
     // Determine the label - use node label if set, otherwise derive from event

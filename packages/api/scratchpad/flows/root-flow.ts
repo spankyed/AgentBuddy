@@ -10,7 +10,7 @@ export default {
         {
           event: "tour.complete",
           label: "Start Onboarding",
-          steps: [subflow("Onboarding Flow", { label: "run onboarding" })],
+          exits: [[subflow("Onboarding Flow", { label: "run onboarding" })]],
         },
       ],
     ),

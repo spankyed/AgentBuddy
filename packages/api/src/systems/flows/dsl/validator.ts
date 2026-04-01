@@ -158,10 +158,15 @@ function validateFlow(
     }
     nodeLabels.add(trackLabel);
 
-    // Step labels (including inline switch branch steps)
-    const steps = track.steps as unknown[];
-    if (Array.isArray(steps)) {
-      collectStepLabels(steps, nodeLabels, errors, `${ctx.path}[${trackIdx}].steps`);
+    // Step labels from all exits (including inline switch branch steps)
+    const exits = track.exits as unknown[];
+    if (Array.isArray(exits)) {
+      for (let exitIdx = 0; exitIdx < exits.length; exitIdx++) {
+        const exitSteps = exits[exitIdx] as unknown[];
+        if (Array.isArray(exitSteps)) {
+          collectStepLabels(exitSteps, nodeLabels, errors, `${ctx.path}[${trackIdx}].exits[${exitIdx}]`);
+        }
+      }
     }
   }
   ctx.nodeLabels = nodeLabels;
@@ -189,7 +194,7 @@ function validateTrack(
   const errors: ValidationError[] = [];
 
   if (!track || typeof track !== 'object' || Array.isArray(track)) {
-    errors.push({ path, message: 'Track must be an object with "event" and "steps"' });
+    errors.push({ path, message: 'Track must be an object with "event" and "exits"' });
     return errors;
   }
 
@@ -200,17 +205,24 @@ function validateTrack(
     errors.push({ path, message: 'Track must have an "event" string' });
   }
 
-  // Validate steps array (required, can be empty)
-  if (!Array.isArray(t.steps)) {
-    errors.push({ path, message: 'Track must have a "steps" array' });
+  // Validate exits array (required, at least one exit path)
+  if (!Array.isArray(t.exits)) {
+    errors.push({ path, message: 'Track must have an "exits" array' });
     return errors;
-  }
-
-  // Validate each step
-  for (let stepIdx = 0; stepIdx < t.steps.length; stepIdx++) {
-    const stepPath = `${path}.steps[${stepIdx}]`;
-    const stepErrors = validateStep(t.steps[stepIdx], stepPath, ctx, options);
-    errors.push(...stepErrors);
+  } else if (t.exits.length === 0) {
+    errors.push({ path: `${path}.exits`, message: 'Exits must have at least one path' });
+  } else {
+    for (let exitIdx = 0; exitIdx < t.exits.length; exitIdx++) {
+      const exitPath = `${path}.exits[${exitIdx}]`;
+      const exitSteps = t.exits[exitIdx];
+      if (!Array.isArray(exitSteps)) {
+        errors.push({ path: exitPath, message: 'Each exit must be a steps array' });
+      } else {
+        for (let si = 0; si < exitSteps.length; si++) {
+          errors.push(...validateStep(exitSteps[si], `${exitPath}[${si}]`, ctx, options));
+        }
+      }
+    }
   }
 
   return errors;

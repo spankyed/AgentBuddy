@@ -636,15 +636,18 @@ function compileFlow(
     const listenId = generateId('Node', `${flowName}-${listenLabel}-t${trackIdx}`);
     globalLabelMap.set(listenLabel, listenId);
 
-    for (let stepIdx = 0; stepIdx < track.steps.length; stepIdx++) {
-      const step = track.steps[stepIdx];
-      const stepLabel = getStepLabel(step, stepIdx);
-      const stepId = generateId('Node', `${flowName}-${stepLabel}-t${trackIdx}-s${stepIdx}`);
-      globalLabelMap.set(stepLabel, stepId);
+    for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
+      const exitSteps = track.exits[exitIdx];
+      for (let stepIdx = 0; stepIdx < exitSteps.length; stepIdx++) {
+        const step = exitSteps[stepIdx];
+        const stepLabel = getStepLabel(step, stepIdx);
+        const stepId = generateId('Node', `${flowName}-${stepLabel}-t${trackIdx}-e${exitIdx}-s${stepIdx}`);
+        globalLabelMap.set(stepLabel, stepId);
 
-      // Register inline step IDs for switch nodes with inline branches
-      if (step.type === 'switch') {
-        registerInlineSwitchStepIds(step, flowName, `t${trackIdx}-s${stepIdx}`, globalLabelMap, inlineStepIds);
+        // Register inline step IDs for switch nodes with inline branches
+        if (step.type === 'switch') {
+          registerInlineSwitchStepIds(step, flowName, `t${trackIdx}-e${exitIdx}-s${stepIdx}`, globalLabelMap, inlineStepIds);
+        }
       }
     }
   }
@@ -715,25 +718,27 @@ function compileTrack(
     });
   }
 
-  // Build step IDs and path keys arrays
-  const stepIds: string[] = [];
-  const stepKeys: string[] = [];
-  for (let stepIdx = 0; stepIdx < track.steps.length; stepIdx++) {
-    const stepLabel = getStepLabel(track.steps[stepIdx], stepIdx);
-    stepIds.push(fCtx.globalLabelMap.get(stepLabel)!);
-    stepKeys.push(`t${trackIdx}-s${stepIdx}`);
-  }
-
-  // Compile steps and wire edges via shared helper
+  // For each exit path, compile its steps and wire listen → first step
   const out = { entities: nodeEntities, relations: trackRelations };
-  compileStepList(track.steps, stepIds, stepKeys, fCtx, out);
+  for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
+    const exitSteps = track.exits[exitIdx];
+    if (exitSteps.length === 0) continue;
 
-  // Wire listen -> first step
-  if (stepIds.length > 0) {
+    const exitStepIds: string[] = [];
+    const exitStepKeys: string[] = [];
+    for (let si = 0; si < exitSteps.length; si++) {
+      const stepLabel = getStepLabel(exitSteps[si], si);
+      exitStepIds.push(fCtx.globalLabelMap.get(stepLabel)!);
+      exitStepKeys.push(`t${trackIdx}-e${exitIdx}-s${si}`);
+    }
+
+    compileStepList(exitSteps, exitStepIds, exitStepKeys, fCtx, out);
+
     trackRelations.push({
       source: listenId,
       kind: EARS.RelKind.TRANSITIONS_TO,
-      target: stepIds[0],
+      target: exitStepIds[0],
+      info: { sourceHandle: `exit-${exitIdx}` },
     });
   }
 

@@ -32,13 +32,13 @@ export default {
   "Monitor Flow": modeTracks(
     [action("Analyze Text", { label: "init" })],
     [
-      { event: "user.message", label: "Handle Message", steps: [
+      { event: "user.message", label: "Handle Message", exits: [[
         action("db query", { label: "process" }),
         fire("message.processed"),
-      ]},
-      { event: "user.disconnect", label: "Handle Disconnect", steps: [
+      ]]},
+      { event: "user.disconnect", label: "Handle Disconnect", exits: [[
         fire("session.ended", { label: "end" }),
-      ]},
+      ]]},
     ],
   ),
 } satisfies FlowDSL;

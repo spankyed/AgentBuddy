@@ -1,8 +1,8 @@
 import type { Track, DSLStepNode, DSLSwitchCondition } from '../types';
 
-/** Standard flow.entry track with optional steps */
+/** Standard flow.entry track with optional steps (single exit) */
 export function entryTrack(steps: DSLStepNode[]): Track {
-  return { event: 'flow.entry', label: 'Flow Entry', steps };
+  return { event: 'flow.entry', label: 'Flow Entry', exits: [steps] };
 }
 
 /** Switch node with conditions and optional else */
@@ -20,18 +20,18 @@ export function branch(
 /** Entry + keep_alive + event listener pattern */
 export function modeTracks(
   entrySteps: DSLStepNode[],
-  listeners: { event: string; label?: string; steps: DSLStepNode[] }[],
+  listeners: { event: string; label?: string; exits: DSLStepNode[][] }[],
 ): Track[] {
   return [
     {
       event: 'flow.entry',
       label: 'Flow Entry',
-      steps: [...entrySteps, { type: 'keep_alive' }],
+      exits: [[...entrySteps, { type: 'keep_alive' }]],
     },
-    ...listeners.map(({ event, label, steps }) => ({
+    ...listeners.map(({ event, label, exits }) => ({
       event,
       label: label ?? event,
-      steps,
+      exits,
     })),
   ];
 }

@@ -51,8 +51,9 @@ export interface Track {
   label?: string;
   /** Optional description for the listen node */
   description?: string;
-  /** Sequential response steps (no listen nodes allowed here) */
-  steps: DSLStepNode[];
+  /** Exit paths from this listener — each inner array is an independent sequential step chain.
+   *  Single-exit: exits: [[step1, step2]]. Parallel: exits: [[chainA...], [chainB...]] */
+  exits: DSLStepNode[][];
 }
 
 /*─────────────────────────────────────────────────────────────────
