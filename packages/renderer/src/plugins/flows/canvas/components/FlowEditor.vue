@@ -111,7 +111,7 @@ import {
   MarkerType,
   useVueFlow,
 } from '@vue-flow/core'
-import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent } from '@vue-flow/core'
+import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEvent, EdgeUpdateEvent, GraphEdge, GraphNode } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 // import { MiniMap } from '@vue-flow/minimap'
@@ -251,8 +251,22 @@ function handleEdgeUpdateEnd(event: EdgeMouseEvent) {
   emit('edge-update-end', event)
 }
 
-// Validation function to prevent self-connections
-function isValidConnection(connection: Connection): boolean {
-  return connection.source !== connection.target
+// Validation function to prevent self-connections and same-node handle reconnections
+function isValidConnection(
+  connection: Connection,
+  elements: { edges: GraphEdge[]; nodes: GraphNode[]; sourceNode: GraphNode; targetNode: GraphNode }
+): boolean {
+  // Prevent self-connections
+  if (connection.source === connection.target) return false
+
+  // Block reconnecting an edge to a different handle on the same source→target pair.
+  // During a reconnection drag, VueFlow keeps the original edge in elements.edges.
+  // If an edge already exists between these two nodes, reject the connection.
+  const duplicate = elements.edges.some(
+    (e) => e.source === connection.source && e.target === connection.target
+  )
+  if (duplicate) return false
+
+  return true
 }
 </script>
