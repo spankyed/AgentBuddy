@@ -120,7 +120,7 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
 defineEmits<ChatMessageEmits>()
 
 const isUser = computed(() => props.message.sender === 'user')
-const isCommand = computed(() => props.message.isCommand || props.message.text.startsWith('/'))
+const isCommand = computed(() => props.message.isCommand ?? false)
 
 const copyMessageText = async () => {
   try {
