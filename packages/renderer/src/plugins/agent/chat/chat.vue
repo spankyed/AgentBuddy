@@ -48,8 +48,8 @@
         :current-thread="currentThread"
         :recent-threads="recentThreads"
         @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
-        @open-thread-chat="(threadId: string) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
-        @new-thread="() => { rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
+        @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
+        @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
         @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
       />
     </div>
@@ -137,6 +137,13 @@ function updateQuickPrompts(prompts: QuickPrompt[]) {
 function openLightbox(src: string) {
   lightboxSrc.value = src
   lightboxOpen.value = true
+}
+
+function expandChatIfCollapsed() {
+  const snapshot = applicationState.getSnapshot();
+  if (snapshot.context.panelSizes.canvasHeight >= 93) {
+    applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
+  }
 }
 
 let pinned = false
