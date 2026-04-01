@@ -107,7 +107,6 @@ const quickPrompts = useSelector(actor, (state) => (state.context.settings?.quic
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
-const shouldStickToBottom = ref(false)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
 
@@ -140,38 +139,28 @@ function openLightbox(src: string) {
   lightboxOpen.value = true
 }
 
-let stickTimeout: ReturnType<typeof setTimeout> | undefined
-let resizeObserver: ResizeObserver | null = null
+let stickyUntil = 0
 
 watch(messages, async (newMsgs, oldMsgs) => {
   await nextTick()
   const isThreadLoad = !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad) {
-    shouldStickToBottom.value = true
+    stickyUntil = Date.now() + 2000
     scrollToBottom('instant')
   } else if (isNearBottom.value) {
-    shouldStickToBottom.value = true
     scrollToBottom('smooth')
   }
-  clearTimeout(stickTimeout)
-  stickTimeout = setTimeout(() => { shouldStickToBottom.value = false }, 1500)
 })
 
-watch(messagesContent, (el, _oldEl, onCleanup) => {
-  resizeObserver?.disconnect()
-  resizeObserver = null
-  if (el) {
-    resizeObserver = new ResizeObserver(() => {
-      if (shouldStickToBottom.value) {
-        scrollToBottom('instant')
-      }
-    })
-    resizeObserver.observe(el)
-  }
-  onCleanup(() => {
-    resizeObserver?.disconnect()
-    resizeObserver = null
+watch(messagesContent, (el, _, onCleanup) => {
+  if (!el) return
+  const observer = new ResizeObserver(() => {
+    if (Date.now() < stickyUntil || isNearBottom.value) {
+      scrollToBottom('instant')
+    }
   })
+  observer.observe(el)
+  onCleanup(() => observer.disconnect())
 }, { immediate: true })
 </script>
 
