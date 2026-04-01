@@ -85,7 +85,7 @@ export interface ContextReference {
 export interface MessageReferences {
   images?: ImageReference[];
   files?: FileReference[];
-  contextReferences?: ContextReference[];
+  context?: ContextReference[];
 }
 
 export interface MessageEntity extends BaseEntity {

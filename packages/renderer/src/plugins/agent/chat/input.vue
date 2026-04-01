@@ -346,7 +346,7 @@ const handleSubmit = async () => {
     const contextRefs = collectContextReferences(editor)
     const references: MessageReferences = {
       ...attachmentRefs,
-      ...(contextRefs.length > 0 ? { contextReferences: contextRefs } : {}),
+      ...(contextRefs.length > 0 ? { context: contextRefs } : {}),
     }
 
     // Check if this is a command submission
