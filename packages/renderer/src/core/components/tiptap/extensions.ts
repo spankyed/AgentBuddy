@@ -20,6 +20,7 @@ import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
 import { CommandViewerDecoration } from './command-viewer-decoration'
+import { SelectionHighlight } from './selection-highlight'
 
 const lowlight = createLowlight(common)
 
@@ -250,6 +251,10 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     }),
     ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : []), ...(mode === 'viewer' && isCommand ? [CommandViewerDecoration] : [])] : [...createFullExtensions(mode), ReferenceNode]),
   ]
+
+  if (mode !== 'viewer') {
+    extensions.push(SelectionHighlight)
+  }
 
   if (mode !== 'viewer' && placeholder) {
     extensions.push(
