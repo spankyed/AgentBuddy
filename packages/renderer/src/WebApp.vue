@@ -2,12 +2,12 @@
 <div class="flex flex-col h-screen">
     <div class="flex flex-grow overflow-hidden">
     <!-- Left Toolbar -->
-    <Toolbar 
+    <Toolbar
         :plugins="plugins"
         :active-plugin="activePlugin"
         @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', pluginId: id })"
     />
-    
+
     <!-- Main Area -->
     <div class="flex flex-grow overflow-hidden">
         <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
@@ -38,7 +38,7 @@
             <component :is="defaultPlugin.chat" />
             </ChatArea>
         </div>
-        
+
         <!-- Horizontal Resizer -->
         <PanelResizer
             v-if="canShowPanel"
@@ -46,7 +46,7 @@
             @resize="handleInspectionResize"
             @double-click="handleInspectionDoubleClick"
         />
-        
+
         <!-- Context Panel -->
         <InspectionPanel
             v-if="canShowPanel && panelSizes.inspectionWidth > 0"
@@ -150,12 +150,15 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   applicationState.system.get(pluginId).send(event)
 }
 
+const MIN_CHAT_HEIGHT = 180; // px — enough for chat input to remain visible
+
 const handleCanvasResize = (delta: number) => {
   const mainAreaHeight = window.innerHeight - 50; // Approximate, accounting for toolbar
   const currentHeightPx = (panelSizes.value.canvasHeight / 100) * mainAreaHeight;
   const newHeightPx = currentHeightPx + delta;
-  const newHeightPercent = (newHeightPx / mainAreaHeight) * 100;
-  
+  const maxCanvasPercent = ((mainAreaHeight - MIN_CHAT_HEIGHT) / mainAreaHeight) * 100;
+  const newHeightPercent = Math.min(maxCanvasPercent, (newHeightPx / mainAreaHeight) * 100);
+
   send({ type: 'RESIZE_PANEL', panel: 'canvas', size: newHeightPercent });
 }
 
@@ -177,4 +180,4 @@ const handleInspectionDoubleClick = () => {
 </script>
 
 <style lang="scss" module>
-</style> 
+</style>
