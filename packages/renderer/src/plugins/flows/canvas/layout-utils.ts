@@ -40,7 +40,8 @@ interface LayoutEdge {
 
 const elk = new ELK()
 
-/** Parse a handle string like "branch-2" or "exit-0" into its prefix and index */
+/** Parse a handle string like "branch-2" or "exit-0" into its prefix and index.
+ *  Unanchored so it matches handles with extra context (e.g. prefixed IDs). */
 export function parseHandleIndex(handle?: string): { prefix: string; index: number } | null {
   const match = handle?.match(/(branch|exit)-(\d+)/)
   return match ? { prefix: match[1], index: parseInt(match[2], 10) } : null

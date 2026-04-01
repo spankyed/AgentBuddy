@@ -78,6 +78,8 @@ const listenDescriptor: NodeLayoutDescriptor = {
   },
   getPorts: (node, ctx) => {
     const exitCount = ctx.exitCount
+    // No exit edges yet — provide a default output port so edges
+    // referencing "nodeId-out" still resolve and ELK doesn't throw.
     if (exitCount === undefined) {
       return [{ id: `${node.id}-out`, layoutOptions: { 'port.side': 'EAST' } }]
     }
