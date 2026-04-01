@@ -61,13 +61,15 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         // If a command is already selected, stay active while prefix is intact
         if (prev.active && prev.selectedCommand) {
           const requiredPrefix = `/${prev.selectedCommand.name} `
-          return firstText.startsWith(requiredPrefix) ? prev : { ...defaultState }
+          if (firstText.startsWith(requiredPrefix)) return prev
+          // Prefix broken — re-enter query phase with the partial command text
+          const partialQuery = firstText.slice(1).split(' ')[0]
+          return { ...prev, active: true, triggerPos, query: partialQuery, selectedCommand: null }
         }
 
         // Query phase: extract text after `/`, deactivate if it contains a space
         const query = firstText.slice(1)
 
-        // Whitespace-only after `/` means pre-existing whitespace, not a typed space
         if (query.trim().length === 0) {
           return { ...prev, active: true, triggerPos, query: '' }
         }
@@ -88,11 +90,29 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
     appendTransaction(transactions, _oldState, newState) {
       if (!transactions.some(tr => tr.docChanged)) return null
 
-      // Only act when doc has multiple paragraphs and first text starts with /
-      if (newState.doc.childCount <= 1) return null
-
       const firstText = newState.doc.firstChild?.textContent ?? ''
       if (!firstText.startsWith('/')) return null
+
+      const pluginState = commandSuggestionPluginKey.getState(newState)
+
+      // Strip trailing whitespace when in query phase (no selected command)
+      if (newState.doc.childCount === 1 && pluginState?.active && !pluginState.selectedCommand) {
+        const trimmed = firstText.trimEnd()
+        if (trimmed !== firstText && trimmed.length > 0) {
+          const { tr } = newState
+          const firstChild = newState.doc.firstChild!
+          const paragraph = newState.schema.nodes.paragraph.create(
+            null,
+            newState.schema.text(trimmed),
+          )
+          tr.replaceWith(0, firstChild.nodeSize, paragraph)
+          tr.setSelection(TextSelection.atEnd(tr.doc))
+          return tr
+        }
+      }
+
+      // Only act when doc has multiple paragraphs
+      if (newState.doc.childCount <= 1) return null
 
       // Everything outside the first paragraph must be whitespace-only
       const docText = newState.doc.textContent
