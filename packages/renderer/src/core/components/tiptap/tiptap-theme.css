@@ -245,18 +245,6 @@
   background: transparent;
 }
 
-/* Full-width selection highlight via decoration */
-.tiptap-editor .ProseMirror .selection-highlight,
-.tiptap-input .ProseMirror .selection-highlight {
-  background-color: Highlight;
-}
-
-/* Suppress native text-only selection highlight in favor of block-level decoration */
-.tiptap-editor .ProseMirror ::selection,
-.tiptap-input .ProseMirror ::selection {
-  background: transparent;
-}
-
 /* Command segment styling (the /commandName text when a command is selected) */
 .tiptap-wrapper .ProseMirror .command-segment {
   background: rgba(255, 255, 255, 0.08);
