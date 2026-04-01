@@ -1,8 +1,9 @@
 import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
+import { NODE_DIMENSIONS, getDescriptor, type LayoutNodeData } from './nodes/node-dimensions'
 
 export const LAYOUT_CONFIG = {
-  nodeWidth: 200,
-  nodeHeight: 50,
+  nodeWidth: NODE_DIMENSIONS.default.width,
+  nodeHeight: NODE_DIMENSIONS.default.height,
   layerGap: 20,
   nodeGap: 40,
   chainGap: 20,
@@ -28,12 +29,7 @@ export const LAYOUT_CONFIG = {
 export type LayoutDirection = 'LR' | 'TB'
 export type LayoutPositions = Record<string, { x: number; y: number }>
 
-interface LayoutNode {
-  id: string
-  nodeType?: string
-  conditions?: Array<{ predicate?: unknown; label?: string }>
-  eventType?: string
-}
+export type LayoutNode = LayoutNodeData
 
 interface LayoutEdge {
   id?: string
@@ -44,62 +40,100 @@ interface LayoutEdge {
 
 const elk = new ELK()
 
-const getHandleIndex = (handle?: string): number => {
-  const match = handle?.match(/(?:branch|exit)-(\d+)/)
-  return match ? parseInt(match[1], 10) : 0
+/** Parse a handle string like "branch-2" or "exit-0" into its prefix and index */
+export function parseHandleIndex(handle?: string): { prefix: string; index: number } | null {
+  const match = handle?.match(/^(branch|exit)-(\d+)$/)
+  return match ? { prefix: match[1], index: parseInt(match[2], 10) } : null
 }
 
-function buildElkGraph(
+/** Build an ELK port ID from a node ID and optional handle */
+export function buildPortId(nodeId: string, handle?: string): string {
+  return handle ? `${nodeId}-out-${handle}` : `${nodeId}-out`
+}
+
+const getHandleIndex = (handle?: string): number => {
+  return parseHandleIndex(handle)?.index ?? 0
+}
+
+// --- Component detection ---
+
+interface LayoutComponents {
+  components: LayoutNode[][]
+  filteredEdges: LayoutEdge[]
+  listenExitCounts: Map<string, number>
+}
+
+export function partitionIntoComponents(
+  nodes: LayoutNode[],
+  edges: LayoutEdge[]
+): LayoutComponents {
+  // Pre-compute listen exit counts from ALL edges (before filtering)
+  const listenerNodeIds = new Set(
+    nodes.filter(n => n.nodeType === 'listen').map(n => n.id)
+  )
+  const listenExitCounts = new Map<string, number>()
+  for (const edge of edges) {
+    if (listenerNodeIds.has(edge.source) && edge.sourceHandle) {
+      const parsed = parseHandleIndex(edge.sourceHandle)
+      if (parsed) {
+        const prev = listenExitCounts.get(edge.source) ?? 0
+        listenExitCounts.set(edge.source, Math.max(prev, parsed.index + 1))
+      }
+    }
+  }
+
+  // Filter out edges targeting listener nodes (listeners have no input port)
+  const filteredEdges = edges.filter(e => !listenerNodeIds.has(e.target))
+
+  // Detect connected components via BFS on filtered edges
+  const adj = new Map<string, Set<string>>()
+  for (const node of nodes) adj.set(node.id, new Set())
+  for (const e of filteredEdges) {
+    adj.get(e.source)?.add(e.target)
+    adj.get(e.target)?.add(e.source)
+  }
+
+  const visited = new Set<string>()
+  const components: LayoutNode[][] = []
+  for (const node of nodes) {
+    if (visited.has(node.id)) continue
+    const component: LayoutNode[] = []
+    const queue = [node.id]
+    visited.add(node.id)
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      const found = nodes.find(n => n.id === current)
+      if (found) component.push(found)
+      for (const neighbor of adj.get(current) ?? []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor)
+          queue.push(neighbor)
+        }
+      }
+    }
+    components.push(component)
+  }
+
+  return { components, filteredEdges, listenExitCounts }
+}
+
+// --- ELK graph construction (node-type-agnostic via descriptors) ---
+
+export function buildElkGraph(
   nodes: LayoutNode[],
   edges: LayoutEdge[],
   direction: LayoutDirection = 'LR',
   listenExitCounts: Map<string, number> = new Map()
 ): ElkNode {
-  const { nodeWidth, nodeHeight, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
+  const { nodeWidth, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
 
   const elkNodes: ElkNode[] = nodes.map((node) => {
-    const ports: ElkPort[] = []
-    const isSwitch = node.nodeType === 'switch'
-    const isListen = node.nodeType === 'listen'
-    const branchCount = node.conditions?.length ?? 0
-    const listenExitCount = listenExitCounts.get(node.id) ?? 1
+    const descriptor = getDescriptor(node.nodeType)
+    const exitCount = listenExitCounts.has(node.id) ? listenExitCounts.get(node.id) : undefined
+    const ctx = { exitCount }
 
-    // Calculate height
-    // Constants must match SwitchNode.vue: HEADER_OFFSET=43, ROW_HEIGHT=26, bottom padding=10
-    // Listen node constants: HEADER_OFFSET=43, ROW_HEIGHT=22, bottom padding=10
-    let height: number = nodeHeight
-    if (isSwitch) {
-      height = Math.max(nodeHeight, 43 + branchCount * 26 + 10)
-    } else if (isListen && listenExitCounts.has(node.id)) {
-      // +1 matches ListenNode.vue which always renders one extra exit slot (maxIndex + 2)
-      const visualExitCount = listenExitCount + 1
-      const listenHeaderOffset = 43 + (node.eventType ? 29 : 0)
-      height = Math.max(nodeHeight, listenHeaderOffset + visualExitCount * 22 + 10)
-    }
-
-    // Single input port (except for listen nodes)
-    if (!isListen) {
-      ports.push({ id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } })
-    }
-
-    // Output ports - multiple for switch and listen (multi-exit), single for others
-    if (isSwitch) {
-      for (let i = 0; i < branchCount; i++) {
-        ports.push({
-          id: `${node.id}-out-branch-${i}`,
-          layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) }
-        })
-      }
-    } else if (isListen && listenExitCounts.has(node.id)) {
-      for (let i = 0; i < listenExitCount; i++) {
-        ports.push({
-          id: `${node.id}-out-exit-${i}`,
-          layoutOptions: { 'port.side': 'EAST', 'port.index': String(i) }
-        })
-      }
-    } else if (node.nodeType !== 'fire') {
-      ports.push({ id: `${node.id}-out`, layoutOptions: { 'port.side': 'EAST' } })
-    }
+    const height = descriptor.getHeight(node, ctx)
+    const ports: ElkPort[] = descriptor.getPorts(node, ctx)
 
     return { id: node.id, width: nodeWidth, height, ports }
   })
@@ -108,18 +142,12 @@ function buildElkGraph(
     getHandleIndex(a.sourceHandle) - getHandleIndex(b.sourceHandle)
   )
 
-  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => {
-    const sourcePort = edge.sourceHandle
-      ? `${edge.source}-out-${edge.sourceHandle}`
-      : `${edge.source}-out`
-
-    return {
-      id: edge.id || `e${idx}`,
-      sources: [sourcePort],
-      targets: [`${edge.target}-in`],
-      layoutOptions: { 'elk.priority': String(getHandleIndex(edge.sourceHandle)) }
-    }
-  })
+  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => ({
+    id: edge.id || `e${idx}`,
+    sources: [buildPortId(edge.source, edge.sourceHandle)],
+    targets: [`${edge.target}-in`],
+    layoutOptions: { 'elk.priority': String(getHandleIndex(edge.sourceHandle)) }
+  }))
 
   return {
     id: 'root',
@@ -142,6 +170,8 @@ function buildElkGraph(
   }
 }
 
+// --- Main layout orchestration ---
+
 export async function calculateLayoutAsync(
   input: { nodes: LayoutNode[]; edges: LayoutEdge[] },
   options: { direction?: LayoutDirection } = {}
@@ -152,53 +182,8 @@ export async function calculateLayoutAsync(
   const direction = options.direction
 
   try {
-    // Pre-compute listen exit counts from ALL edges (before filtering)
-    const listenerNodeIds = new Set(
-      input.nodes.filter(n => n.nodeType === 'listen').map(n => n.id)
-    )
-    const listenExitCounts = new Map<string, number>()
-    for (const edge of input.edges) {
-      if (listenerNodeIds.has(edge.source) && edge.sourceHandle) {
-        const match = edge.sourceHandle.match(/exit-(\d+)/)
-        if (match) {
-          const idx = parseInt(match[1], 10)
-          const prev = listenExitCounts.get(edge.source) ?? 0
-          listenExitCounts.set(edge.source, Math.max(prev, idx + 1))
-        }
-      }
-    }
-
-    // Filter out edges targeting listener nodes (listeners have no input port)
-    const filteredEdges = input.edges.filter(e => !listenerNodeIds.has(e.target))
-
-    // Detect connected components via BFS on filtered edges
-    const adj = new Map<string, Set<string>>()
-    for (const node of input.nodes) adj.set(node.id, new Set())
-    for (const e of filteredEdges) {
-      adj.get(e.source)?.add(e.target)
-      adj.get(e.target)?.add(e.source)
-    }
-
-    const visited = new Set<string>()
-    const components: LayoutNode[][] = []
-    for (const node of input.nodes) {
-      if (visited.has(node.id)) continue
-      const component: LayoutNode[] = []
-      const queue = [node.id]
-      visited.add(node.id)
-      while (queue.length > 0) {
-        const current = queue.shift()!
-        const found = input.nodes.find(n => n.id === current)
-        if (found) component.push(found)
-        for (const neighbor of adj.get(current) ?? []) {
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor)
-            queue.push(neighbor)
-          }
-        }
-      }
-      components.push(component)
-    }
+    const { components, filteredEdges, listenExitCounts } =
+      partitionIntoComponents(input.nodes, input.edges)
 
     // Layout each component independently and stack vertically
     const positions: LayoutPositions = {}

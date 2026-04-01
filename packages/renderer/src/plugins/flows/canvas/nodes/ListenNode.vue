@@ -38,6 +38,7 @@ import type { NodeProps } from '@vue-flow/core'
 import type { ListenNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { getNodeDividerClass } from './node-config'
+import { NODE_DIMENSIONS } from './node-dimensions'
 
 interface NodeData extends Partial<ListenNode> {
   label: string
@@ -56,12 +57,7 @@ defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
 }>()
 
-// Row height for handle positioning (matches .exit-row height)
-const ROW_HEIGHT = 22
-// Header offset: node padding (8px) + header height (~24px) + divider margin (8px) + eventType area (~3px)
-const BASE_HEADER_OFFSET = 43
-// Extra height when eventType is rendered: mt-1.5(6) + pt-1.5(6) + border(1) + text line(~16)
-const EVENT_TYPE_HEIGHT = 29
+const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listen
 
 const hasEventType = computed(() => !!props.data.eventType)
 const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasEventType.value ? EVENT_TYPE_HEIGHT : 0))

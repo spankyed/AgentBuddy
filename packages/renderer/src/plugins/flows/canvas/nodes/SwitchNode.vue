@@ -45,6 +45,7 @@ import type { NodeProps } from '@vue-flow/core'
 import type { SwitchNode, Condition } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { getNodeDividerClass } from './node-config'
+import { NODE_DIMENSIONS } from './node-dimensions'
 
 interface Branch {
   id: string
@@ -116,10 +117,7 @@ const branches = computed<Branch[]>(() => {
   return []
 })
 
-// Row height for handle positioning (matches .branch-row height)
-const ROW_HEIGHT = 26
-// Header offset: node padding (8px) + header height (~24px) + divider margin (8px)
-const HEADER_OFFSET = 43
+const { rowHeight: ROW_HEIGHT, headerOffset: HEADER_OFFSET } = NODE_DIMENSIONS.switch
 
 // Compute source handles for each branch
 const branchHandles = computed<HandleConfig[]>(() => {
