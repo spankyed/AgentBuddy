@@ -7,6 +7,7 @@ export interface CommandSuggestionState {
   active: boolean
   query: string
   selectedCommand: CommandItem | null
+  previousCommand: CommandItem | null
 }
 
 /** The `/` trigger is always at ProseMirror position 1 (start of first-paragraph content). */
@@ -16,6 +17,7 @@ const defaultState: CommandSuggestionState = {
   active: false,
   query: '',
   selectedCommand: null,
+  previousCommand: null,
 }
 
 export const commandSuggestionPluginKey = new PluginKey<CommandSuggestionState>('commandSuggestion')
@@ -64,7 +66,7 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
           if (firstText.startsWith(requiredPrefix)) return prev
           // Prefix broken — re-enter query phase with the partial command text
           const partialQuery = firstText.slice(1).split(' ')[0]
-          return { ...prev, active: true, query: partialQuery, selectedCommand: null }
+          return { ...prev, active: true, query: partialQuery, selectedCommand: null, previousCommand: prev.selectedCommand }
         }
 
         // Query phase: extract text after `/`, deactivate if it contains a space
@@ -75,6 +77,12 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         }
 
         if (query.includes(' ')) {
+          if (prev.previousCommand) {
+            const requiredPrefix = `${prev.previousCommand.name} `
+            if (query.startsWith(requiredPrefix)) {
+              return { ...prev, active: true, selectedCommand: prev.previousCommand, previousCommand: null }
+            }
+          }
           return deactivateIf(prev.active)
         }
 
