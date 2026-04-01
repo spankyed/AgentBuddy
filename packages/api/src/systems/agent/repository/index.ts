@@ -80,12 +80,12 @@ function getThreadsWithCurrent(limit: number = 4): {
     timestamp: mostRecentThread.timestamp || Date.now(),
     forcedMode: mostRecentThread.forcedMode,
     messages: mostRecentThread.id
-      ? (qx(mostRecentThread.id)
+      ? ((qx(mostRecentThread.id)
           .linksPick(
             EARS.RelKind.CONTAINS,
-            messageFields,
+            [...messageFields, "deleted"] as const,
             EARS.Entity.Message,
-          ) ?? []) as Partial<MessageEntity>[]
+          ) ?? []).filter((m: any) => !m.deleted)) as Partial<MessageEntity>[]
       : [],
     artifacts: mostRecentThread.id
       ? (qx()
@@ -170,12 +170,12 @@ export const agentQueries = {
 
     return {
       ...thread[0] as AgentThreadData,
-      messages: qx(threadId)
+      messages: (qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted"] as const,
           EARS.Entity.Message,
-        ) ?? [] as Partial<MessageEntity>[],
+        ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],
     };
   },
@@ -491,6 +491,44 @@ export const agentCommands = {
 
       if (msg.id === upToMessageId) break;
     }
+  },
+
+  softDeleteMessagesAfter: (params: {
+    threadId: EARS.EntityId;
+    messageId: EARS.EntityId;
+  }): { deletedCount: number; deletedIds: string[] } => {
+    const { threadId, messageId } = params;
+
+    // Get all messages in the thread (linksPick returns insertion order)
+    const messages = qx(threadId)
+      .linksPick(
+        EARS.RelKind.CONTAINS,
+        ["id", "deleted"] as const,
+        EARS.Entity.Message,
+      ) ?? [];
+
+    // Use positional ordering: find index of target in non-deleted messages, delete everything after
+    const nonDeleted = messages.filter((m: any) => !m.deleted);
+    const targetIndex = nonDeleted.findIndex((m: any) => m.id === messageId);
+
+    if (targetIndex === -1) {
+      throw new RepositoryError(`Message ${messageId} not found in thread ${threadId}`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const toDelete = nonDeleted.slice(targetIndex + 1);
+    const now = Date.now();
+    const deletedIds: string[] = [];
+
+    for (const msg of toDelete) {
+      if (msg.id) {
+        tx(msg.id as EARS.EntityId)
+          .put('deleted', true)
+          .put('deletedAt', now);
+        deletedIds.push(msg.id as string);
+      }
+    }
+
+    return { deletedCount: deletedIds.length, deletedIds };
   },
 
   createArtifact: (params: {

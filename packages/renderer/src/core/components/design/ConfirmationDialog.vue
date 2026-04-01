@@ -8,10 +8,11 @@
         <DialogTitle class="text-lg font-semibold text-white mb-2">
           {{ title }}
         </DialogTitle>
-        <DialogDescription class="text-sm text-neutral-400 mb-6">
+        <DialogDescription class="text-sm text-neutral-400 mb-4">
           {{ description }}
         </DialogDescription>
-        <div class="flex justify-end gap-3">
+        <slot />
+        <div class="flex justify-end gap-3 mt-4">
           <Button
             variant="ghost"
             class="text-neutral-300"

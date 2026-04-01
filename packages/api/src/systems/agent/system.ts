@@ -50,6 +50,10 @@ export const IncomingAgentEvents = [
     threadId: z.string().optional(),
     threadTopic: z.string().optional(),
   }),
+  busEvent('REVERT_THREAD', {
+    messageId: z.string(),
+    threadId: z.string(),
+  }),
   busEvent('USER_COMMAND', {
     command: z.string(),
     text: z.string(),
@@ -403,6 +407,26 @@ export const agentSystem = setup({
         },
       });
     },
+    revertThread: ({ system, event }) => {
+      const { messageId, threadId } = typeOf('REVERT_THREAD', event);
+
+      // Soft-delete all messages after the target message
+      repository.agentCommands.softDeleteMessagesAfter({
+        threadId: threadId as EARS.EntityId,
+        messageId: messageId as EARS.EntityId,
+      });
+
+      // Reload thread chat
+      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
+
+      // Fire brain event
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'thread.revert',
+        payload: { threadId, messageId },
+      });
+    },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
@@ -466,6 +490,9 @@ export const agentSystem = setup({
           },
           FORK_THREAD: {
             actions: 'forkThread',
+          },
+          REVERT_THREAD: {
+            actions: 'revertThread',
           },
         },
       },
