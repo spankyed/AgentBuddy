@@ -38,6 +38,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   editorClass?: string
   entityId?: string
+  isCommand?: boolean
 }>(), {
   variant: 'full',
   modelValue: '',
@@ -45,6 +46,7 @@ const props = withDefaults(defineProps<{
   disabled: false,
   editorClass: '',
   entityId: undefined,
+  isCommand: false,
 })
 
 const emit = defineEmits<{
@@ -230,6 +232,7 @@ const editor = useEditor({
     mode: props.mode,
     variant: props.variant,
     placeholder: props.placeholder,
+    isCommand: props.isCommand,
   }),
   content: props.modelValue,
   editable: props.mode !== 'viewer' && !props.disabled,

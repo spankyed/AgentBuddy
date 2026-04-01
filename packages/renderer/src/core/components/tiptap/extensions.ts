@@ -19,6 +19,7 @@ import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
+import { CommandViewerDecoration } from './command-viewer-decoration'
 
 const lowlight = createLowlight(common)
 
@@ -35,6 +36,7 @@ interface CreateExtensionsOptions {
   mode: TiptapMode
   variant?: TiptapVariant
   placeholder?: string
+  isCommand?: boolean
 }
 
 function createFullExtensions(mode: TiptapMode): AnyExtension[] {
@@ -218,7 +220,7 @@ function createFullExtensions(mode: TiptapMode): AnyExtension[] {
   ]
 }
 
-export function createExtensions({ mode, variant = 'full', placeholder }: CreateExtensionsOptions) {
+export function createExtensions({ mode, variant = 'full', placeholder, isCommand }: CreateExtensionsOptions) {
   const isChat = variant === 'chat'
 
   const extensions: AnyExtension[] = [
@@ -246,7 +248,7 @@ export function createExtensions({ mode, variant = 'full', placeholder }: Create
       autolink: true,
       protocols: ['note', 'thread', 'doc'],
     }),
-    ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : [])] : [...createFullExtensions(mode), ReferenceNode]),
+    ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : []), ...(mode === 'viewer' && isCommand ? [CommandViewerDecoration] : [])] : [...createFullExtensions(mode), ReferenceNode]),
   ]
 
   if (mode !== 'viewer' && placeholder) {

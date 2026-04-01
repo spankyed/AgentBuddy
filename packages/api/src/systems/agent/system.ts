@@ -284,6 +284,8 @@ export const agentSystem = setup({
         text: text ? `/${command} ${text}` : `/${command}`,
         sender: 'user',
         references: sanitizedRefs,
+        isCommand: true,
+        command,
       });
 
       // Step 3: Notify frontend if new thread was created
@@ -315,6 +317,8 @@ export const agentSystem = setup({
           createdAt: messageResult.timestamp,
           updatedAt: messageResult.timestamp,
           ...(sanitizedRefs && { references: sanitizedRefs }),
+          isCommand: true,
+          command,
         };
 
         system.get(bus).send(emit(agent, {

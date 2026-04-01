@@ -69,7 +69,7 @@ function getThreadsWithCurrent(limit: number = 4): {
 
   const mostRecentThread = threads[0];
 
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references"] as const;
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command"] as const;
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -173,7 +173,7 @@ export const agentQueries = {
       messages: qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command"] as const,
           EARS.Entity.Message,
         ) ?? [] as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],
@@ -275,6 +275,8 @@ export const agentCommands = {
     blocks?: BlockConfig[];
     forkable?: boolean;
     references?: MessageReferences;
+    isCommand?: boolean;
+    command?: string;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -282,7 +284,7 @@ export const agentCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command } = params;
 
     // Validate thread exists
     const thread = qx(threadId).id();
@@ -321,6 +323,14 @@ export const agentCommands = {
     // Add references if provided
     if (references) {
       messageTx.put('references', references);
+    }
+
+    // Add command metadata if provided
+    if (isCommand) {
+      messageTx.put('isCommand', isCommand);
+    }
+    if (command) {
+      messageTx.put('command', command);
     }
 
     const messageId = messageTx
