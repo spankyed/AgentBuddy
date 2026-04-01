@@ -40,31 +40,36 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
 
         if (!tr.docChanged && !tr.selectionSet) return prev
 
-        const { $head } = tr.selection
+        // Use first paragraph text — the `/` and query are always in the first paragraph
+        const firstParagraph = tr.doc.firstChild
+        if (!firstParagraph) return prev.active ? { ...defaultState } : prev
 
-        // Get the full document text content
-        const docText = tr.doc.textContent
+        const firstText = firstParagraph.textContent
 
-        // Only activate when / is the very first character in the document
-        if (!docText.startsWith('/')) {
+        // Only activate when / is the very first character
+        if (!firstText.startsWith('/')) {
           return prev.active ? { ...defaultState } : prev
         }
 
+        const { $head } = tr.selection
         const isFirstParagraph = $head.depth === 1 && $head.index(0) === 0
         if (!isFirstParagraph && !prev.active) return prev
+
+        // triggerPos is always the start of first paragraph content
+        const triggerPos = 1
 
         // If a command is already selected, stay active while prefix is intact
         if (prev.active && prev.selectedCommand) {
           const requiredPrefix = `/${prev.selectedCommand.name} `
-          return docText.startsWith(requiredPrefix) ? prev : { ...defaultState }
+          return firstText.startsWith(requiredPrefix) ? prev : { ...defaultState }
         }
 
         // Query phase: extract text after `/`, deactivate if it contains a space
-        const query = docText.slice(1)
+        const query = firstText.slice(1)
 
         // Whitespace-only after `/` means pre-existing whitespace, not a typed space
         if (query.trim().length === 0) {
-          return { ...prev, active: true, triggerPos: $head.start(), query: '' }
+          return { ...prev, active: true, triggerPos, query: '' }
         }
 
         if (query.includes(' ')) {
@@ -74,7 +79,7 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         return {
           ...prev,
           active: true,
-          triggerPos: $head.start(),
+          triggerPos,
           query,
         }
       },
@@ -118,7 +123,7 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         const decos: Decoration[] = []
 
         // Inline decoration on the /commandName (or /query) text
-        const cmdStart = 1 // position after doc node opening
+        const cmdStart = pluginState.triggerPos
         const cmdEnd = cmdStart + commandPrefix.length
         if (cmdEnd > cmdStart) {
           decos.push(Decoration.inline(cmdStart, cmdEnd, { class: 'command-segment' }))
