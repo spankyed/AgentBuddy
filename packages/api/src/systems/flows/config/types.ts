@@ -76,6 +76,8 @@ export type Predicate = {
 export type Condition = {
   predicate?: Predicate;
   label?: string;
+  mode?: 'expression' | 'code';
+  code?: string;
 };
 
 export interface SwitchNode extends NodeBase {

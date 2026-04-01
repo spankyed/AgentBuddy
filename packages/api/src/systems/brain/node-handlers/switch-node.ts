@@ -131,13 +131,53 @@ function evaluatePredicate(predicate: Predicate | undefined, context: ExecutionC
 }
 
 /**
+ * Evaluate a code-mode condition by constructing a function from the code string
+ */
+function evaluateCodePredicate(condition: Condition, context: ExecutionContext): boolean {
+  if (!condition.code) return false;
+
+  try {
+    const predObj = condition.predicate && typeof condition.predicate !== 'function'
+      ? condition.predicate
+      : null;
+
+    let params: Record<string, any>;
+    if (predObj?.key) {
+      params = { value: resolveValue(predObj.key, context) };
+    } else {
+      params = {
+        event: context.event,
+        steps: context.steps,
+        lastStep: context.lastStep,
+      };
+    }
+
+    const fn = new Function('params', condition.code);
+    const result = Boolean(fn(params));
+
+    brainInspect(`Code predicate evaluated:`, {
+      label: condition.label,
+      hasKey: !!predObj?.key,
+      result,
+    });
+
+    return result;
+  } catch (error) {
+    brainLogger.error('Code predicate evaluation failed:', { error, label: condition.label });
+    return false;
+  }
+}
+
+/**
  * Evaluate conditions in order and return the index of the first matching condition
  * The last condition is typically the else/default (has no predicate)
  */
 function evaluateConditions(conditions: Condition[], context: ExecutionContext): number {
   for (let i = 0; i < conditions.length; i++) {
     const condition = conditions[i];
-    const matches = evaluatePredicate(condition.predicate, context);
+    const matches = condition.mode === 'code'
+      ? evaluateCodePredicate(condition, context)
+      : evaluatePredicate(condition.predicate, context);
 
     brainInspect(`Condition ${i} (${condition.label || 'unlabeled'}): ${matches ? 'MATCHED' : 'no match'}`);
 
