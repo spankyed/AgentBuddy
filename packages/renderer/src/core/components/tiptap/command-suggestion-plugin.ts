@@ -22,7 +22,10 @@ const defaultState: CommandSuggestionState = {
 
 export const commandSuggestionPluginKey = new PluginKey<CommandSuggestionState>('commandSuggestion')
 
-export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestionState> {
+export function commandSuggestionPlugin(
+  editor: Editor,
+  getCommands: () => CommandItem[],
+): Plugin<CommandSuggestionState> {
   return new Plugin<CommandSuggestionState>({
     key: commandSuggestionPluginKey,
 
@@ -77,12 +80,21 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         }
 
         if (query.includes(' ')) {
+          // First try previousCommand (existing behavior for backspace-then-retype)
           if (prev.previousCommand) {
             const requiredPrefix = `${prev.previousCommand.name} `
             if (query.startsWith(requiredPrefix)) {
               return { ...prev, active: true, selectedCommand: prev.previousCommand, previousCommand: null }
             }
           }
+
+          // Then try matching against known commands (handles paste/setContent)
+          const queryName = query.split(' ')[0]
+          const matched = getCommands().find(cmd => cmd.name === queryName)
+          if (matched) {
+            return { ...prev, active: true, query: '', selectedCommand: matched, previousCommand: null }
+          }
+
           return deactivateIf(prev.active)
         }
 
