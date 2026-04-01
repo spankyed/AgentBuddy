@@ -36,6 +36,7 @@
             editor-class="w-full px-1.5 pr-2 py-2 rounded-lg min-h-12 focus:outline-none"
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
+            :in-history-mode="historyIndex !== -1"
             @history-prev="onHistoryPrev"
             @history-next="onHistoryNext"
           />
@@ -222,7 +223,27 @@ interface ActionButton {
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
 const popoverOpen = ref(false)
-const sentHistory = ref<string[]>([])
+const navigatingHistory = ref(false)
+
+const HISTORY_STORAGE_KEY = 'chat-sent-history'
+const MAX_HISTORY = 100
+
+function loadHistory(): string[] {
+  try {
+    const stored = localStorage.getItem(HISTORY_STORAGE_KEY)
+    if (!stored) return []
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch { return [] }
+}
+
+function saveHistory(history: string[]) {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(-MAX_HISTORY)))
+  } catch { /* ignore */ }
+}
+
+const sentHistory = ref<string[]>(loadHistory())
 const historyIndex = ref(-1)
 
 const commandHighlight = computed(() => {
@@ -237,7 +258,9 @@ const {
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md
-  historyIndex.value = -1
+  if (!navigatingHistory.value) {
+    historyIndex.value = -1
+  }
 }
 
 function onHistoryPrev() {
@@ -251,7 +274,9 @@ function onHistoryPrev() {
     historyIndex.value--
   }
 
+  navigatingHistory.value = true
   editor.commands.setContent(sentHistory.value[historyIndex.value])
+  navigatingHistory.value = false
 }
 
 function onHistoryNext() {
@@ -262,10 +287,14 @@ function onHistoryNext() {
 
   if (historyIndex.value < sentHistory.value.length - 1) {
     historyIndex.value++
+    navigatingHistory.value = true
     editor.commands.setContent(sentHistory.value[historyIndex.value])
+    navigatingHistory.value = false
   } else {
     historyIndex.value = -1
+    navigatingHistory.value = true
     editor.commands.clearContent(true)
+    navigatingHistory.value = false
   }
 }
 
@@ -414,6 +443,7 @@ const handleSubmit = async () => {
     }
 
     sentHistory.value.push(md)
+    saveHistory(sentHistory.value)
     historyIndex.value = -1
     editor.commands.clearContent(true)
     messageContent.value = ''

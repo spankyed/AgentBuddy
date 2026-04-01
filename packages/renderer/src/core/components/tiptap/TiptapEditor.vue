@@ -39,6 +39,7 @@ const props = withDefaults(defineProps<{
   editorClass?: string
   entityId?: string
   isCommand?: boolean
+  inHistoryMode?: boolean
 }>(), {
   variant: 'full',
   modelValue: '',
@@ -47,6 +48,7 @@ const props = withDefaults(defineProps<{
   editorClass: '',
   entityId: undefined,
   isCommand: false,
+  inHistoryMode: false,
 })
 
 const emit = defineEmits<{
@@ -241,15 +243,13 @@ const editor = useEditor({
   editorProps: {
     handleKeyDown: (view, event) => {
       if (props.mode === 'input') {
-        const content = view.state.doc.textContent
-        const isEmpty = !content.trim()
-        const atStart = view.state.selection.from <= 1
+        const isEmpty = !view.state.doc.textContent.trim()
 
-        if (event.key === 'ArrowUp' && (isEmpty || atStart)) {
+        if (event.key === 'ArrowUp' && (isEmpty || props.inHistoryMode)) {
           emit('history-prev')
           return true
         }
-        if (event.key === 'ArrowDown' && (isEmpty || atStart)) {
+        if (event.key === 'ArrowDown' && (isEmpty || props.inHistoryMode)) {
           emit('history-next')
           return true
         }
