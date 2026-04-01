@@ -79,7 +79,7 @@
             <!-- Expanded: full action buttons (wide) -->
             <template v-for="btn in leftButtons" :key="btn.action">
               <button
-                v-if="btn.action !== 'quick-message'"
+                v-if="btn.action !== 'quick-message' && btn.action !== 'voice-input'"
                 type="button"
                 class="hidden @md:block p-2 transition-colors text-neutral-500"
                 :class="[disabled ? 'cursor-not-allowed opacity-50' : (!btn.class && 'hover:text-neutral-200'), btn.class]"
@@ -99,6 +99,19 @@
               @select="handleQuickPromptSelect"
               @update="(prompts) => emit('update-quick-prompts', prompts)"
             />
+
+            <!-- Mic button (wide) -->
+            <button
+              v-if="speechSupported"
+              type="button"
+              class="hidden @md:block p-2 transition-colors text-neutral-500"
+              :class="[disabled ? 'cursor-not-allowed opacity-50' : (!isListening && 'hover:text-neutral-200'), isListening && 'text-red-400 animate-pulse']"
+              :aria-label="isListening ? 'Stop listening' : 'Voice input'"
+              :disabled="disabled"
+              @click="handleButtonClick('voice-input')"
+            >
+              <component :is="isListening ? MicOff : Mic" :size="20" />
+            </button>
 
             <!-- Mode/Phase Selector -->
             <div>
