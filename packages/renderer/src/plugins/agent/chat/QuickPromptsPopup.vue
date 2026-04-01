@@ -67,28 +67,30 @@
                 <X :size="14" />
               </button>
             </div>
-            <div class="flex items-center gap-2 px-3 py-2 border-t border-neutral-700/50 mt-1">
-              <textarea
-                ref="addPromptRef"
-                v-model="newPromptText"
-                rows="1"
-                placeholder="Add prompt..."
-                class="flex-1 px-0 py-0.5 text-sm bg-transparent border-none text-white placeholder-neutral-600 focus:outline-none resize-none overflow-y-hidden"
-                style="max-height: calc(1.5em * 3 + 12px)"
-                @input="autoResize($event)"
-                @keydown.enter.exact.prevent="addPrompt"
-              />
-              <button
-                type="button"
-                class="p-1 rounded transition-colors flex-shrink-0"
-                :class="newPromptText.trim() ? 'text-neutral-400 hover:text-white hover:bg-neutral-700/50' : 'text-neutral-700 cursor-not-allowed'"
-                :disabled="!newPromptText.trim()"
-                @click="addPrompt"
-              >
-                <Plus :size="14" />
-              </button>
-            </div>
           </template>
+        </div>
+
+        <!-- Add prompt input — pinned below scrollable list -->
+        <div v-if="editing" class="flex items-center gap-2 px-3 py-2 border-t border-neutral-700/50">
+          <textarea
+            ref="addPromptRef"
+            v-model="newPromptText"
+            rows="1"
+            placeholder="Add prompt..."
+            class="flex-1 px-0 py-0.5 text-sm bg-transparent border-none text-white placeholder-neutral-600 focus:outline-none resize-none overflow-y-hidden"
+            style="max-height: calc(1.5em * 3 + 12px)"
+            @input="autoResize($event)"
+            @keydown.enter.exact.prevent="addPrompt"
+          />
+          <button
+            type="button"
+            class="p-1 rounded transition-colors flex-shrink-0"
+            :class="newPromptText.trim() ? 'text-neutral-400 hover:text-white hover:bg-neutral-700/50' : 'text-neutral-700 cursor-not-allowed'"
+            :disabled="!newPromptText.trim()"
+            @click="addPrompt"
+          >
+            <Plus :size="14" />
+          </button>
         </div>
       </PopoverContent>
     </PopoverPortal>
