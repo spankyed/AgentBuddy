@@ -74,6 +74,7 @@ export type OutgoingAgentEvents =
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'SET_MODE'; mode: string }
+  | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
 
 export interface AgentContext { }
 

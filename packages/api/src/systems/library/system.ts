@@ -3,7 +3,7 @@ import { assign, setup } from 'xstate'
 import { z } from 'zod'
 import { systemBus, fromSystem } from '@/core/helpers/event-helpers'
 import type { EARS } from '@/core/types'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { safeEvents } from '@/core/helpers/actor-helpers'
 import { bus } from '@/systems/backend'
@@ -300,6 +300,16 @@ export const librarySystem = setup({
         type: 'OUTGOING' as const,
         event: { type: 'DOCUMENT_UPDATED' as const, pluginId: 'library', data: { document } },
       })
+
+      // If this is the internal/commands doc, notify agent plugin
+      if (document.name === 'commands' && document.collectionPath?.join('/') === 'internal') {
+        const fieldSection = document.content.find((s: any): s is FieldContent => s.type === 'field');
+        const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'agent' as any, commands },
+        });
+      }
     },
     deleteDocument: async ({ system, event }) => {
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }

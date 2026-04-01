@@ -75,6 +75,7 @@ type AgentEvent =
   | { type: 'SWITCH_MODE' }
   | { type: 'NAVIGATE_TO_SECRETS' }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
+  | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -613,6 +614,11 @@ const agentState = setup({
     },
     API_KEYS_STATUS: {
       actions: 'updateApiKeyStatus'
+    },
+    COMMANDS_UPDATED: {
+      actions: assign(({ event }) => ({
+        commands: typeOf('COMMANDS_UPDATED', event).commands
+      }))
     },
     UPDATE_TODO_TASK: {
       actions: 'updateTodoTask'
