@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { commandSuggestionPluginKey } from './command-suggestion-plugin'
+import { commandSuggestionPluginKey, COMMAND_TRIGGER_POS } from './command-suggestion-plugin'
 import { useCommandItems } from './useCommandItems'
 import type { CommandItem } from './command-config'
 
@@ -62,7 +62,7 @@ function updatePosition() {
   if (!isPopupVisible.value || !pluginState.value) return
 
   try {
-    const coords = props.editor.view.coordsAtPos(pluginState.value.triggerPos)
+    const coords = props.editor.view.coordsAtPos(COMMAND_TRIGGER_POS)
     popupStyle.value = {
       bottom: `${window.innerHeight - coords.top + 4}px`,
       left: `${coords.left}px`,
@@ -76,10 +76,6 @@ watch(isPopupVisible, (visible) => {
   if (visible) {
     nextTick(updatePosition)
   }
-})
-
-watch(() => pluginState.value?.triggerPos, () => {
-  if (isPopupVisible.value) nextTick(updatePosition)
 })
 
 // Scroll/resize handlers
@@ -170,7 +166,7 @@ function selectCommand(cmd: CommandItem) {
   if (!state) return
 
   // Replace /query with /commandName + space
-  const from = state.triggerPos
+  const from = COMMAND_TRIGGER_POS
   const to = props.editor.state.selection.head
   const commandText = `/${cmd.name} `
 
@@ -178,7 +174,6 @@ function selectCommand(cmd: CommandItem) {
   tr.replaceWith(from, to, props.editor.state.schema.text(commandText))
   tr.setMeta(commandSuggestionPluginKey, {
     active: true,
-    triggerPos: state.triggerPos,
     query: '',
     selectedCommand: cmd,
   })
@@ -192,7 +187,7 @@ function deactivateAndClean() {
   if (!state) return
 
   // Remove the / and any query text
-  const from = state.triggerPos
+  const from = COMMAND_TRIGGER_POS
   const to = props.editor.state.selection.head
 
   const { tr } = props.editor.state
