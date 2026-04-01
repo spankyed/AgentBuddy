@@ -465,6 +465,34 @@ export const agentCommands = {
     };
   },
 
+  copyMessagesUpTo: (params: {
+    sourceThreadId: EARS.EntityId;
+    targetThreadId: EARS.EntityId;
+    upToMessageId: string;
+  }): void => {
+    const { sourceThreadId, targetThreadId, upToMessageId } = params;
+    const sourceData = agentQueries.threadData(sourceThreadId);
+    const sourceMessages = sourceData.messages || [];
+
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command'] as const;
+
+    for (const msg of sourceMessages) {
+      const optional: Record<string, any> = {};
+      for (const key of copyableKeys) {
+        if (msg[key] !== undefined) optional[key] = msg[key];
+      }
+
+      agentCommands.addMessage({
+        threadId: targetThreadId,
+        text: msg.text || '',
+        sender: (msg.sender as 'user' | 'assistant' | 'system') || 'user',
+        ...optional,
+      });
+
+      if (msg.id === upToMessageId) break;
+    }
+  },
+
   createArtifact: (params: {
     artifactType: ArtifactType;
     title: string;

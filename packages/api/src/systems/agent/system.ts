@@ -45,6 +45,11 @@ export const IncomingAgentEvents = [
     threadId: z.string(),
     response: z.any() // Response data for block-based interactions
   }),
+  busEvent('FORK_THREAD', {
+    messageId: z.string(),
+    threadId: z.string().optional(),
+    threadTopic: z.string().optional(),
+  }),
   busEvent('USER_COMMAND', {
     command: z.string(),
     text: z.string(),
@@ -360,6 +365,44 @@ export const agentSystem = setup({
         },
       });
     },
+    forkThread: ({ system, event }) => {
+      const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
+      const originalTopic = threadTopic || 'Untitled';
+
+      // Count existing forks via relation
+      const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
+      const forkTopic = `Fork ${forkCount + 1} - ${originalTopic}`;
+
+      // Create new thread
+      const result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
+
+      // Link forked thread back to source
+      repository.threadCommands.linkFork(threadId as EARS.EntityId, result.id);
+
+      // Copy messages from source thread up to fork point
+      if (threadId) {
+        repository.agentCommands.copyMessagesUpTo({
+          sourceThreadId: threadId as EARS.EntityId,
+          targetThreadId: result.id,
+          upToMessageId: messageId,
+        });
+      }
+
+      // Open the new thread in chat
+      services.chat.openThreadChatAndRefreshRecent(result.id);
+
+      // Fire brain event
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'thread.fork',
+        payload: {
+          sourceThreadId: threadId,
+          sourceMessageId: messageId,
+          newThreadId: result.id,
+        },
+      });
+    },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
@@ -420,6 +463,9 @@ export const agentSystem = setup({
           },
           USER_COMMAND: {
             actions: 'forwardUserCommand',
+          },
+          FORK_THREAD: {
+            actions: 'forkThread',
           },
         },
       },
