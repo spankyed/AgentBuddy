@@ -39,6 +39,8 @@ import {
   initializeMonaco,
   setupMonacoForFile,
   createEditorActions,
+  updateDslParamsType,
+  clearDslParamsType,
   type InitializeMonacoOptions,
   type EditorAction
 } from '@/core/utils/monaco-config'
@@ -70,6 +72,9 @@ export interface UnifiedMonacoEditorProps {
   diffOriginal?: string
   diffModified?: string
   
+  // Dynamic DSL params for autocomplete
+  dslParams?: Record<string, { type: string }>
+
   // Features
   actions?: EditorAction[]
   executeKeybinding?: { key: string; modifiers: string[] }
@@ -235,6 +240,14 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     })
   }
   
+  // Apply dynamic params type if provided
+  if (props.dslParams) {
+    const dslType = props.dslType || resolvedDslType.value
+    if (dslType === 'action' || dslType === 'prompt') {
+      updateDslParamsType(monaco, dslType, props.dslParams)
+    }
+  }
+
   // Add editor actions if requested
   if (props.actions && props.actions.length > 0) {
     console.log('props.executeKeybinding: ', props.executeKeybinding);
@@ -324,6 +337,19 @@ watch(() => props.mode, (newMode, oldMode) => {
   editorInstance.value = undefined
 })
 
+// Watch for dslParams changes
+watch(() => props.dslParams, (newParams) => {
+  const monaco = (window as any).monaco
+  if (!monaco || !isDslMode.value) return
+  const dslType = props.dslType || (props.filePath ? getDslTypeFromPath(props.filePath) : null)
+  if (!dslType || dslType === 'database') return
+  if (newParams) {
+    updateDslParamsType(monaco, dslType as 'action' | 'prompt', newParams)
+  } else {
+    clearDslParamsType(monaco)
+  }
+}, { deep: true })
+
 // Cleanup
 onBeforeUnmount(() => {
   // Detach models from editors so library cleanup doesn't clash with our disposal
@@ -332,6 +358,14 @@ onBeforeUnmount(() => {
 })
 
 onUnmounted(() => {
+  // Clear dynamic params type if in DSL mode
+  if (isDslMode.value) {
+    const monaco = (window as any).monaco
+    if (monaco) {
+      clearDslParamsType(monaco)
+    }
+  }
+
   // Library child components have already cleaned up by now
   models.forEach(model => {
     if (!model.isDisposed()) {

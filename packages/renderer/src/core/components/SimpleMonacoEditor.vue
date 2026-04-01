@@ -10,6 +10,7 @@
     :dslType="dslType"
     :actions="actions"
     :executeKeybinding="executeKeybinding"
+    :dslParams="dslParams"
     mode="simple"
     :preset="resolvedPreset"
     @update:modelValue="handleUpdate"
@@ -37,6 +38,7 @@ export interface SimpleMonacoEditorProps {
   placeholder?: string
   functionBody?: boolean
   dslType?: 'database' | 'action' | 'prompt'
+  dslParams?: Record<string, { type: string }>
   actions?: EditorAction[]
   executeKeybinding?: { key: string; modifiers: string[] }
 }

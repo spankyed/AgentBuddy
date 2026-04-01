@@ -61,6 +61,7 @@
             <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 400px;" data-onboarding-id="action-function-editor">
               <ActionFunctionEditor
                 :value="formData.actionFn"
+                :input-params="formData.input"
                 @update="$emit('update-action', $event)"
               />
             </div>
