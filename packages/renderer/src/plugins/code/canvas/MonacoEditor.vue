@@ -10,6 +10,7 @@
     :diffOriginal="originalContent"
     :diffModified="modifiedContent"
     :actions="['insertConsoleLog']"
+    :dslParams="dslParams"
     preset="auto"
     preserveViewState
     @update:modelValue="$emit('update:modelValue', $event)"
@@ -32,6 +33,7 @@ const props = defineProps<{
   diffMode?: boolean
   originalContent?: string
   modifiedContent?: string
+  dslParams?: Record<string, { type: string }>
 }>()
 
 const emit = defineEmits<{

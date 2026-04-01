@@ -3,7 +3,7 @@
  * Single source of truth for all Monaco-related configuration
  */
 
-import type { editor, languages } from 'monaco-editor'
+import type { editor, languages, IDisposable } from 'monaco-editor'
 
 type Monaco = typeof import('monaco-editor')
 type Language = 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext'
@@ -324,13 +324,11 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
     ${dslType === 'action' ? `
     declare global {
       const services: typeof _dsl.services;
-      const params: typeof _dsl.params;
       const z: typeof _dsl.z;
     }` : ''}
     ${dslType === 'prompt' ? `
     declare global {
       const usePrompt: typeof _dsl.usePrompt;
-      const params: typeof _dsl.params;
     }` : ''}
     ${dslType === 'database' ? `
     declare global {
@@ -346,6 +344,63 @@ function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 
   
   langDefaults.addExtraLib(wrapperContent, `inmemory:///dsl-wrapper-${dslType}.d.ts`)
   registeredDslLibs.add(libKey)
+}
+
+// ============================================================================
+// DYNAMIC PARAMS TYPE
+// ============================================================================
+
+const PARAM_TYPE_MAP: Record<string, string> = {
+  string: 'string',
+  number: 'number',
+  boolean: 'boolean',
+  object: 'Record<string, any>',
+  array: 'any[]',
+  any: 'any',
+}
+
+function generateParamsTypeDeclaration(
+  params: Record<string, { type: string }>
+): string {
+  const entries = Object.entries(params)
+  if (entries.length === 0) {
+    return 'declare const params: Record<string, any>;'
+  }
+  const fields = entries
+    .map(([key, val]) => `    ${key}: ${PARAM_TYPE_MAP[val.type] || 'any'};`)
+    .join('\n')
+  return `declare const params: {\n${fields}\n    [key: string]: any;\n};`
+}
+
+let paramsTypeDisposable: IDisposable | null = null
+
+export function updateDslParamsType(
+  monaco: Monaco,
+  dslType: 'action' | 'prompt',
+  params: Record<string, { type: string }>,
+  language: Language = 'typescript'
+): void {
+  if (paramsTypeDisposable) {
+    paramsTypeDisposable.dispose()
+    paramsTypeDisposable = null
+  }
+  const declaration = generateParamsTypeDeclaration(params)
+  const langDefaults = language === 'typescript'
+    ? monaco.languages.typescript.typescriptDefaults
+    : monaco.languages.typescript.javascriptDefaults
+  paramsTypeDisposable = langDefaults.addExtraLib(declaration, 'inmemory:///dsl-params-override.d.ts')
+}
+
+export function clearDslParamsType(monaco: Monaco, language: Language = 'typescript'): void {
+  if (paramsTypeDisposable) {
+    paramsTypeDisposable.dispose()
+    paramsTypeDisposable = null
+  }
+  const fallback = 'declare const params: Record<string, any>;'
+  const langDefaults = language === 'typescript'
+    ? monaco.languages.typescript.typescriptDefaults
+    : monaco.languages.typescript.javascriptDefaults
+  paramsTypeDisposable = langDefaults.addExtraLib(fallback, 'inmemory:///dsl-params-override.d.ts')
 }
 
 // ============================================================================
@@ -574,7 +629,10 @@ export function setupFunctionBodyMode(
   // Setup DSL modules and globals
   setupDslModules(monaco, dslType, language)
   setupDslGlobals(monaco, dslType, language)
-  
+
+  // Register generic params fallback (will be overridden by updateDslParamsType)
+  clearDslParamsType(monaco, language)
+
   // Register no-op formatter to prevent virtual wrapper formatting
   monaco.languages.registerDocumentFormattingEditProvider(language, {
     provideDocumentFormattingEdits: () => null

@@ -57,6 +57,7 @@
             :original-content="diffOriginalContent"
             :modified-content="diffModifiedContent"
             :read-only="isDiffFile"
+            :dsl-params="activeDslParams"
             class="h-full"
           />
         </div>
@@ -125,6 +126,18 @@ const getDiffContent = (file: any): GitDiff | null => {
 const activeFile = computed(() =>
   props.openFiles.find(f => f.path === props.activeFilePath)
 )
+
+const activeDslParams = computed(() => {
+  const file = activeFile.value
+  if (!file) return undefined
+  if ('isAction' in file && file.isAction) {
+    return (file as ActionTab).actionEntity.input
+  }
+  if ('isPrompt' in file && file.isPrompt) {
+    return (file as PromptTab).promptEntity.inputs
+  }
+  return undefined
+})
 
 const diffOriginalContent = computed(() => {
   if (!isDiffFile.value || !activeFile.value) return undefined

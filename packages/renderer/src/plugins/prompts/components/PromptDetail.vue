@@ -56,6 +56,7 @@
           <div class="overflow-hidden border rounded-md border-neutral-700" style="height: 300px;" data-onboarding-id="prompt-template-editor">
             <PromptTemplateEditor
               :value="formData.templateFn"
+              :input-params="formData.inputs"
               @update="$emit('update-template', $event)"
             />
           </div>

@@ -39,6 +39,8 @@ import {
   initializeMonaco,
   setupMonacoForFile,
   createEditorActions,
+  updateDslParamsType,
+  clearDslParamsType,
   type InitializeMonacoOptions,
   type EditorAction
 } from '@/core/utils/monaco-config'
@@ -70,6 +72,9 @@ export interface UnifiedMonacoEditorProps {
   diffOriginal?: string
   diffModified?: string
   
+  // Dynamic DSL params for autocomplete
+  dslParams?: Record<string, { type: string }>
+
   // Features
   actions?: EditorAction[]
   executeKeybinding?: { key: string; modifiers: string[] }
@@ -246,7 +251,7 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     })
     actions.forEach(action => editor.addAction(action))
   }
-  
+
   // Set placeholder if provided
   if (props.placeholder && !props.modelValue) {
     const model = editor.getModel()
@@ -254,7 +259,7 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
       model.setValue(props.placeholder)
     }
   }
-  
+
   // Track cursor position changes
   editor.onDidChangeCursorPosition((e) => {
     emit('cursorChange', {
@@ -262,10 +267,18 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
       col: e.position.column,
     })
   })
-  
-  // Handle multi-file mode
+
+  // Handle multi-file mode (must happen before updateDslParamsType so it doesn't overwrite params)
   if (props.mode === 'multi-file' && props.filePath && props.modelValue) {
     switchToFile(props.filePath, props.modelValue)
+  }
+
+  // Apply dynamic params type if provided (after switchToFile so it isn't cleared)
+  if (props.dslParams) {
+    const dslType = props.dslType || resolvedDslType.value
+    if (dslType === 'action' || dslType === 'prompt') {
+      updateDslParamsType(monaco, dslType, props.dslParams)
+    }
   }
   
   // Emit mount event
@@ -324,6 +337,19 @@ watch(() => props.mode, (newMode, oldMode) => {
   editorInstance.value = undefined
 })
 
+// Watch for dslParams changes
+watch(() => props.dslParams, (newParams) => {
+  const monaco = (window as any).monaco
+  if (!monaco || !isDslMode.value) return
+  const dslType = props.dslType || (props.filePath ? getDslTypeFromPath(props.filePath) : null)
+  if (!dslType || dslType === 'database') return
+  if (newParams) {
+    updateDslParamsType(monaco, dslType as 'action' | 'prompt', newParams)
+  } else {
+    clearDslParamsType(monaco)
+  }
+}, { deep: true })
+
 // Cleanup
 onBeforeUnmount(() => {
   // Detach models from editors so library cleanup doesn't clash with our disposal
@@ -332,6 +358,14 @@ onBeforeUnmount(() => {
 })
 
 onUnmounted(() => {
+  // Clear dynamic params type if in DSL mode
+  if (isDslMode.value) {
+    const monaco = (window as any).monaco
+    if (monaco) {
+      clearDslParamsType(monaco)
+    }
+  }
+
   // Library child components have already cleaned up by now
   models.forEach(model => {
     if (!model.isDisposed()) {

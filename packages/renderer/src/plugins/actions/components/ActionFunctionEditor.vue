@@ -4,6 +4,7 @@
     language="typescript"
     :function-body="true"
     dsl-type="action"
+    :dsl-params="inputParams"
     :placeholder="placeholder"
     @update:model-value="$emit('update', $event)"
     class="h-full"
@@ -12,9 +13,11 @@
 
 <script setup lang="ts">
 import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue';
+import type { ActionParameter } from '@app/api';
 
 defineProps<{
   value: string;
+  inputParams?: Record<string, ActionParameter>;
 }>();
 
 defineEmits<{
