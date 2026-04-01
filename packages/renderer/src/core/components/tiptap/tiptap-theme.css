@@ -141,6 +141,11 @@
   background-size: 100%;
 }
 
+.tiptap-wrapper .ProseMirror ul[data-type="taskList"] li > div {
+  padding-left: 1px;
+  flex: 1;
+}
+
 /* Table */
 .tiptap-wrapper .ProseMirror table {
   border-collapse: collapse;
