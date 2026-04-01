@@ -114,6 +114,54 @@
       ]
     }
   ],
+  "Notification Flow": [
+    {
+      "event": "flow.entry",
+      "label": "Flow Entry",
+      "exits": [
+        [
+          {
+            "type": "action",
+            "action": "Init Notifications",
+            "label": "init"
+          },
+          {
+            "type": "keep_alive"
+          }
+        ]
+      ]
+    },
+    {
+      "event": "order.placed",
+      "label": "Handle Order",
+      "exits": [
+        [
+          {
+            "type": "action",
+            "action": "Send Confirmation Email",
+            "label": "email"
+          },
+          {
+            "type": "fire",
+            "event": "email.sent",
+            "label": "email sent"
+          }
+        ],
+        [
+          {
+            "type": "action",
+            "action": "Update Inventory",
+            "label": "inventory"
+          },
+          {
+            "type": "fire",
+            "event": "inventory.updated",
+            "label": "inventory updated"
+          }
+        ]
+      ]
+    }
+  ],
   "Onboarding Flow": [
     {
       "event": "flow.entry",
