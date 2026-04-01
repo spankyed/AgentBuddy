@@ -3295,6 +3295,10 @@ declare const events: {
         mode: string;
         pluginId: "agent";
     } | {
+        type: "COMMANDS_UPDATED";
+        commands: CommandItem[];
+        pluginId: "agent";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
