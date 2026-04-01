@@ -59,6 +59,7 @@ type TNodeFlowMachineContext = {
     nextNode: NodeEntity;
     eventTNodeId: EARS.EntityId;
     executionContext: ExecutionContext;
+    parentTNodeId?: EARS.EntityId;
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
@@ -372,6 +373,7 @@ export function createFlowNodeSystem(
                   nextNode,
                   eventTNodeId: typedEv.eventTNodeId!,
                   executionContext: updatedContext,
+                  parentTNodeId: typedEv.tNodeId,
                 },
               ],
             });
@@ -394,7 +396,7 @@ export function createFlowNodeSystem(
             system.get(brain).send({
               type: 'TNODE_SPAWNED',
               tNode: nextTNode,
-              parentId: typedEv.eventTNodeId,
+              parentId: typedEv.tNodeId,
               eventTNodeId: typedEv.eventTNodeId,
               flowTNodeId: flowTNodeId
             });
@@ -442,7 +444,8 @@ export function createFlowNodeSystem(
             const [machine, systemId, tNode] = createChildNode(
               pending.nextNode,
               pending.eventTNodeId,
-              pending.executionContext
+              pending.executionContext,
+              pending.parentTNodeId
             );
 
             enqueue.spawnChild(machine, {
@@ -453,7 +456,7 @@ export function createFlowNodeSystem(
             system.get(brain).send({
               type: 'TNODE_SPAWNED',
               tNode,
-              parentId: pending.eventTNodeId,
+              parentId: pending.parentTNodeId ?? pending.eventTNodeId,
               eventTNodeId: pending.eventTNodeId,
               flowTNodeId: flowTNodeId
             });
