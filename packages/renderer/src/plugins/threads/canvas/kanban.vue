@@ -216,17 +216,17 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
               class="group p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
               @click="onCardClick(card)"
             >
-              <div class="flex items-center justify-between gap-2 mb-1" :title="`${card.time} • ${card.date}`">
+              <div class="flex items-center justify-between gap-2 mb-1" :title="card.topic || 'Untitled Thread'">
                 <!-- Drag handle -->
                 <span
                   data-handle
-                  class="flex-shrink-0 cursor-grab text-sm leading-snug text-neutral-600"
+                  class="flex-shrink-0 cursor-grab text-sm leading-snug text-neutral-600 px-1 -mx-1 py-2 -my-2"
                   title="Drag to move"
                   @click.stop
                 >
                   &#x283F;
                 </span>
-                <p class="flex-1 text-sm font-medium leading-snug text-neutral-100">
+                <p class="flex-1 text-sm font-medium leading-snug text-neutral-100 truncate">
                   {{ card.topic || 'Untitled Thread' }}
                 </p>
                 <SquarePen
