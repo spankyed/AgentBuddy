@@ -478,6 +478,7 @@ interface AgentSettings {
         [key: string]: KeyboardShortcut | null | undefined;
     };
     quickPrompts?: QuickPrompt[];
+    skipRevertConfirm?: boolean;
 }
 type AgentConnectedData = {
     currentThread: AgentThreadData | null;
@@ -998,6 +999,21 @@ declare const events: {
         threadId?: string | undefined;
         threadTopic?: string | undefined;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REVERT_THREAD">;
+        systemId: zod.ZodLiteral<"agent">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
+        type: "REVERT_THREAD";
+        systemId: "agent";
+        messageId: string;
+    }, {
+        threadId: string;
+        type: "REVERT_THREAD";
+        systemId: "agent";
+        messageId: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"USER_COMMAND">;
         systemId: zod.ZodLiteral<"agent">;
         command: zod.ZodString;
@@ -1135,120 +1151,6 @@ declare const events: {
         mode?: string | undefined;
         phase?: string | undefined;
         threadId?: string | undefined;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
-    }, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
-        label: zod.ZodString;
-        path: zod.ZodArray<zod.ZodString, "many">;
-        value: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        path: string[];
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        value?: any;
-    }, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        path: string[];
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        value?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-        value: zod.ZodString;
-        customName: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        value: string;
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        provider: string;
-        customName?: string | undefined;
-    }, {
-        value: string;
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        provider: string;
-        customName?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-        value: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        value: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-    }, {
-        id: string;
-        value: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
-    }, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -1696,6 +1598,120 @@ declare const events: {
         type: "EXPORT_DSL";
         systemId: "flows";
         directory: string;
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
+        label: zod.ZodString;
+        path: zod.ZodArray<zod.ZodString, "many">;
+        value: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        path: string[];
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        value?: any;
+    }, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        path: string[];
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        value?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+        value: zod.ZodString;
+        customName: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        value: string;
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        provider: string;
+        customName?: string | undefined;
+    }, {
+        value: string;
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        provider: string;
+        customName?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+        value: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        value: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+    }, {
+        id: string;
+        value: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
+    }, {
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_QUERY">;
         systemId: zod.ZodLiteral<"database">;
@@ -3348,55 +3364,6 @@ declare const events: {
         commands: CommandItem[];
         pluginId: "agent";
     } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -3578,6 +3545,55 @@ declare const events: {
         type: "DSL_EXPORT_FAILED";
         errors: string[];
         pluginId: "flows";
+    } | {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
     } | {
         type: "DATABASE_REFRESH";
         data: DatabaseStartupData;
@@ -5544,6 +5560,13 @@ declare const services: {
                 targetThreadId: EARS.EntityId;
                 upToMessageId: string;
             }) => void;
+            readonly softDeleteMessagesAfter: (params: {
+                threadId: EARS.EntityId;
+                messageId: EARS.EntityId;
+            }) => {
+                deletedCount: number;
+                deletedIds: string[];
+            };
             readonly createArtifact: (params: {
                 artifactType: ArtifactType;
                 title: string;

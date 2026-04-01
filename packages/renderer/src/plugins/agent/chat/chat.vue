@@ -15,6 +15,7 @@
               :message="message"
               @open-lightbox="openLightbox"
               @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
+              @revert="(messageId: string) => handleRevert(messageId)"
             />
           </div>
         </div>
@@ -55,6 +56,20 @@
       />
     </div>
 
+    <ConfirmationDialog
+      v-model="showRevertDialog"
+      title="Revert conversation"
+      description="This will remove all messages after this point. This action cannot be undone."
+      confirm-text="Revert"
+      variant="warning"
+      @confirm="confirmRevert"
+    >
+      <label class="flex items-center gap-2 text-sm text-neutral-400 mt-2">
+        <input type="checkbox" v-model="dontAskAgain" class="rounded border-neutral-600 bg-neutral-700 text-amber-500 focus:ring-amber-500" />
+        Don't ask again
+      </label>
+    </ConfirmationDialog>
+
     <ImageLightbox v-model="lightboxOpen" :image-src="lightboxSrc" />
   </div>
 </template>
@@ -91,10 +106,11 @@ import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import ImageLightbox from './ImageLightbox.vue'
+import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';
-import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt } from '@app/api'
+import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 
 const actor: AgentState = applicationState.system.get(id);
@@ -110,6 +126,10 @@ const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
+const settings = useSelector(actor, (state) => state.context.settings as AgentSettings)
+const showRevertDialog = ref(false)
+const pendingRevertMessageId = ref<string | null>(null)
+const dontAskAgain = ref(false)
 
 function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   const el = messagesContainer.value
@@ -145,6 +165,38 @@ function expandChatIfCollapsed() {
   if (snapshot.context.panelSizes.canvasHeight >= 93) {
     applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
+}
+
+function handleRevert(messageId: string) {
+  if (settings.value?.skipRevertConfirm) {
+    doRevert(messageId)
+  } else {
+    pendingRevertMessageId.value = messageId
+    showRevertDialog.value = true
+  }
+}
+
+function confirmRevert() {
+  if (pendingRevertMessageId.value) {
+    doRevert(pendingRevertMessageId.value)
+  }
+  if (dontAskAgain.value) {
+    trpc.bus.send.mutate({
+      systemId: 'settings',
+      type: 'UPDATE_SETTINGS',
+      entityType: 'plugin',
+      label: 'agent',
+      path: ['skipRevertConfirm'],
+      value: true,
+    })
+  }
+  pendingRevertMessageId.value = null
+  dontAskAgain.value = false
+}
+
+function doRevert(messageId: string) {
+  if (!currentThread.value?.id) return
+  actor.send({ type: 'REVERT_THREAD', messageId, threadId: currentThread.value.id })
 }
 
 let pinned = false

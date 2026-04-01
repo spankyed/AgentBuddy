@@ -77,6 +77,7 @@ type AgentEvent =
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
+  | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
   // | { type: 'UPDATE_MESSAGE_INPUT'; text: string }
   | Brain_FE_AgentEvents
   | OutgoingAgentEvents
@@ -567,6 +568,15 @@ const agentState = setup({
         threadTopic,
       });
     },
+    revertThread: ({ event }) => {
+      const { messageId, threadId } = typeOf('REVERT_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REVERT_THREAD',
+        messageId,
+        threadId,
+      });
+    },
   },
   guards: {
     targetIs,
@@ -681,6 +691,9 @@ const agentState = setup({
     },
     FORK_THREAD: {
       actions: 'forkThread'
+    },
+    REVERT_THREAD: {
+      actions: 'revertThread'
     },
     // ADD_ASSISTANT_MESSAGE: {
     //   actions: 'addAssistantMessage'

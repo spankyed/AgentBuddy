@@ -53,6 +53,7 @@ export interface AgentSettings {
     [key: string]: KeyboardShortcut | null | undefined;
   };
   quickPrompts?: QuickPrompt[];
+  skipRevertConfirm?: boolean;
 }
 
 export type AgentConnectedData = {
