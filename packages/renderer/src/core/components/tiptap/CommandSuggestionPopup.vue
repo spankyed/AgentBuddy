@@ -128,6 +128,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
     case 'Enter':
     case 'Tab':
+    case 'ArrowRight':
       event.preventDefault()
       {
         const cmd = filteredCommands.value[selectedIndex.value]
