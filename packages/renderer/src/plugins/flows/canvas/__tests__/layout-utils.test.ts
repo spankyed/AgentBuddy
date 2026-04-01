@@ -28,9 +28,9 @@ describe('parseHandleIndex', () => {
     expect(parseHandleIndex('branch-')).toBeNull()
   })
 
-  it('rejects partial matches (must match full string)', () => {
-    expect(parseHandleIndex('prefix-branch-0')).toBeNull()
-    expect(parseHandleIndex('exit-0-suffix')).toBeNull()
+  it('matches handle patterns anywhere in the string', () => {
+    expect(parseHandleIndex('prefix-branch-0')).toEqual({ prefix: 'branch', index: 0 })
+    expect(parseHandleIndex('exit-0-suffix')).toEqual({ prefix: 'exit', index: 0 })
   })
 })
 
@@ -154,10 +154,12 @@ describe('node port generation', () => {
     expect(ports[1].id).toBe('n1-out-exit-1')
   })
 
-  it('listen node without exitCount returns no ports', () => {
+  it('listen node without exitCount returns single default output port', () => {
     const descriptor = getDescriptor('listen')
     const ports = descriptor.getPorts({ id: 'n1', nodeType: 'listen' }, {})
-    expect(ports).toHaveLength(0)
+    expect(ports).toHaveLength(1)
+    expect(ports[0].id).toBe('n1-out')
+    expect(ports[0].layoutOptions!['port.side']).toBe('EAST')
   })
 
   it('fire node has input but no output port', () => {
@@ -277,5 +279,28 @@ describe('buildElkGraph', () => {
   it('sets direction based on parameter', () => {
     const graph = buildElkGraph([{ id: 'a' }], [], 'TB')
     expect(graph.layoutOptions!['elk.direction']).toBe('DOWN')
+  })
+
+  it('listen node with no exit edges gets default output port matching edge refs', () => {
+    const nodes: LayoutNodeData[] = [
+      { id: 'listen1', nodeType: 'listen' },
+      { id: 'action1' },
+    ]
+    // Edge references the default "listen1-out" port (no sourceHandle → buildPortId returns "listen1-out")
+    const edges = [{ source: 'listen1', target: 'action1' }]
+    const graph = buildElkGraph(nodes, edges, 'LR')
+
+    const listenNode = graph.children!.find(c => c.id === 'listen1')!
+    const portIds = new Set(listenNode.ports!.map(p => p.id))
+    expect(portIds.has('listen1-out')).toBe(true)
+
+    // The edge source should reference an existing port
+    for (const edge of graph.edges!) {
+      for (const src of (edge as any).sources) {
+        if (src.startsWith('listen1')) {
+          expect(portIds.has(src)).toBe(true)
+        }
+      }
+    }
   })
 })

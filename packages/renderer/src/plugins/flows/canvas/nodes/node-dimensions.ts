@@ -78,7 +78,9 @@ const listenDescriptor: NodeLayoutDescriptor = {
   },
   getPorts: (node, ctx) => {
     const exitCount = ctx.exitCount
-    if (exitCount === undefined) return []
+    if (exitCount === undefined) {
+      return [{ id: `${node.id}-out`, layoutOptions: { 'port.side': 'EAST' } }]
+    }
     const ports: ElkPort[] = []
     for (let i = 0; i < exitCount; i++) {
       ports.push({
