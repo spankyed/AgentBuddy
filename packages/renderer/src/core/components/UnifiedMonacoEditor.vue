@@ -240,14 +240,6 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     })
   }
   
-  // Apply dynamic params type if provided
-  if (props.dslParams) {
-    const dslType = props.dslType || resolvedDslType.value
-    if (dslType === 'action' || dslType === 'prompt') {
-      updateDslParamsType(monaco, dslType, props.dslParams)
-    }
-  }
-
   // Add editor actions if requested
   if (props.actions && props.actions.length > 0) {
     console.log('props.executeKeybinding: ', props.executeKeybinding);
@@ -259,7 +251,7 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     })
     actions.forEach(action => editor.addAction(action))
   }
-  
+
   // Set placeholder if provided
   if (props.placeholder && !props.modelValue) {
     const model = editor.getModel()
@@ -267,7 +259,7 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
       model.setValue(props.placeholder)
     }
   }
-  
+
   // Track cursor position changes
   editor.onDidChangeCursorPosition((e) => {
     emit('cursorChange', {
@@ -275,10 +267,18 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
       col: e.position.column,
     })
   })
-  
-  // Handle multi-file mode
+
+  // Handle multi-file mode (must happen before updateDslParamsType so it doesn't overwrite params)
   if (props.mode === 'multi-file' && props.filePath && props.modelValue) {
     switchToFile(props.filePath, props.modelValue)
+  }
+
+  // Apply dynamic params type if provided (after switchToFile so it isn't cleared)
+  if (props.dslParams) {
+    const dslType = props.dslType || resolvedDslType.value
+    if (dslType === 'action' || dslType === 'prompt') {
+      updateDslParamsType(monaco, dslType, props.dslParams)
+    }
   }
   
   // Emit mount event
