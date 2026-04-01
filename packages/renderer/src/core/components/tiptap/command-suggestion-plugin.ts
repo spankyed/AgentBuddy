@@ -50,9 +50,9 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         if (!firstParagraph) return deactivateIf(prev.active)
 
         const firstText = firstParagraph.textContent
+        const trimmedText = firstText.trimStart()
 
-        // Only activate when / is the very first character
-        if (!firstText.startsWith('/')) {
+        if (!trimmedText.startsWith('/')) {
           return deactivateIf(prev.active)
         }
 
@@ -63,14 +63,14 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
         // If a command is already selected, stay active while prefix is intact
         if (prev.active && prev.selectedCommand) {
           const requiredPrefix = `/${prev.selectedCommand.name} `
-          if (firstText.startsWith(requiredPrefix)) return prev
+          if (trimmedText.startsWith(requiredPrefix)) return prev
           // Prefix broken — re-enter query phase with the partial command text
-          const partialQuery = firstText.slice(1).split(' ')[0]
+          const partialQuery = trimmedText.slice(1).split(' ')[0]
           return { ...prev, active: true, query: partialQuery, selectedCommand: null, previousCommand: prev.selectedCommand }
         }
 
         // Query phase: extract text after `/`, deactivate if it contains a space
-        const query = firstText.slice(1)
+        const query = trimmedText.slice(1)
 
         if (query.trim().length === 0) {
           return { ...prev, active: true, query: '' }
@@ -98,13 +98,13 @@ export function commandSuggestionPlugin(editor: Editor): Plugin<CommandSuggestio
       if (!transactions.some(tr => tr.docChanged)) return null
 
       const firstText = newState.doc.firstChild?.textContent ?? ''
-      if (!firstText.startsWith('/')) return null
+      if (!firstText.trimStart().startsWith('/')) return null
 
       const pluginState = commandSuggestionPluginKey.getState(newState)
       const inQueryPhase = pluginState?.active && !pluginState.selectedCommand
 
-      // Determine desired text: strip trailing whitespace in query phase
-      const targetText = inQueryPhase ? firstText.trimEnd() : firstText
+      // Determine desired text: strip leading whitespace always, trailing in query phase
+      const targetText = inQueryPhase ? firstText.trim() : firstText.trimStart()
       const needsTrim = targetText !== firstText && targetText.length > 0
 
       // Determine if extra paragraphs should collapse (only if rest is whitespace-only)
