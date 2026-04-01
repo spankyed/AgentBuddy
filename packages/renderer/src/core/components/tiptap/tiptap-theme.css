@@ -243,8 +243,8 @@
 .tiptap-wrapper .ProseMirror .command-segment {
   background: rgba(255, 255, 255, 0.08);
   color: rgb(180, 180, 255);
-  border-radius: 4px;
-  padding: 1px 4px;
+  border-radius: 3px;
+  padding: 3px 4px;
   font-weight: 500;
 }
 
