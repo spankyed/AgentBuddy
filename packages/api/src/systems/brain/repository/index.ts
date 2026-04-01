@@ -91,13 +91,20 @@ export const brainQueries = {
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
     const transitionLinks = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
-    
+
     if (transitionLinks.length > 0) {
       return qx(transitionLinks[0].id)
         .pickAll()[0] as unknown as NodeEntity | undefined;
     }
-    
+
     return undefined;
+  },
+
+  eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
+    return qx(eventNodeId)
+      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
+      .map(link => qx(link.id).pickAll()[0] as unknown as NodeEntity)
+      .filter(node => node && node.id);
   },
   
   // Get next nodes via TRANSITIONS_TO relation

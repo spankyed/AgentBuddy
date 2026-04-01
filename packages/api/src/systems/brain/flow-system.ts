@@ -207,10 +207,10 @@ export function createFlowNodeSystem(
           let spawnedCount = 0;
 
           for (const eventNode of matchingEventNodes) {
-            const firstStep = repository.brainQueries.eventFirstStep(eventNode.id!);
+            const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
 
-            if (!firstStep) {
-              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No first step found to execute in response`);
+            if (allSteps.length === 0) {
+              brainLogger.warn(`Failed to handle event ${eventType} for node ${eventNode.id}: No steps found to execute in response`);
               continue; // Skip this event node but process others
             }
 
@@ -250,27 +250,31 @@ export function createFlowNodeSystem(
               { eventData, eventNodeId: eventNode.id }
             );
 
-            // Spawn child based on node type
-            const [machine, systemId, childTNode] = createChildNode(
-              firstStep,
-              eventTNode.id,
-              eventTrackContext
-            );
+            // Spawn ALL connected downstream steps in parallel
+            for (const step of allSteps) {
+              const [machine, systemId, childTNode] = createChildNode(
+                step,
+                eventTNode.id,
+                eventTrackContext
+              );
 
-            // Spawn child (both flows and steps)
-            enqueue.spawnChild(machine, {
-              systemId,
-              input: {} // Add empty input to satisfy TypeScript
-            });
+              // Spawn child (both flows and steps)
+              enqueue.spawnChild(machine, {
+                systemId,
+                input: {} // Add empty input to satisfy TypeScript
+              });
 
-            // Emit TNODE_SPAWNED event for the UI to display child node
-            system.get(brain).send({
-              type: 'TNODE_SPAWNED',
-              tNode: childTNode,
-              parentId: eventTNode.id,
-              eventTNodeId: eventTNode.id,
-              flowTNodeId: flowTNodeId
-            });
+              // Emit TNODE_SPAWNED event for the UI to display child node
+              system.get(brain).send({
+                type: 'TNODE_SPAWNED',
+                tNode: childTNode,
+                parentId: eventTNode.id,
+                eventTNodeId: eventTNode.id,
+                flowTNodeId: flowTNodeId
+              });
+
+              spawnedCount++;
+            }
 
             // Store the execution context for this event track
             enqueue.assign({
@@ -279,8 +283,6 @@ export function createFlowNodeSystem(
                 [eventTNode.id]: eventTrackContext,
               }),
             });
-
-            spawnedCount++;
           }
 
           // Update activeChildrenCount for all spawned children at once
