@@ -8,7 +8,7 @@
           <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
             <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
           </div>
-          <div v-else class="w-9/12 py-2 mx-auto space-y-1">
+          <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
             <ChatMessage
               v-for="message in messages"
               :key="message.id"
@@ -19,7 +19,7 @@
         </div>
         <button
           v-if="!isNearBottom && messages.length > 0"
-          class="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-neutral-700 hover:bg-neutral-600 text-white shadow-lg transition-opacity cursor-pointer"
+          class="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white drop-shadow-lg transition-all cursor-pointer opacity-60 hover:opacity-100"
           @click="scrollToBottom('smooth')"
         >
           ↓
@@ -105,7 +105,9 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const quickPrompts = useSelector(actor, (state) => (state.context.settings?.quickPrompts || []) as QuickPrompt[])
 const messagesContainer = ref<HTMLElement | null>(null)
+const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
+const shouldStickToBottom = ref(false)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
 
@@ -138,15 +140,39 @@ function openLightbox(src: string) {
   lightboxOpen.value = true
 }
 
+let stickTimeout: ReturnType<typeof setTimeout> | undefined
+let resizeObserver: ResizeObserver | null = null
+
 watch(messages, async (newMsgs, oldMsgs) => {
   await nextTick()
   const isThreadLoad = !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad) {
+    shouldStickToBottom.value = true
     scrollToBottom('instant')
   } else if (isNearBottom.value) {
+    shouldStickToBottom.value = true
     scrollToBottom('smooth')
   }
+  clearTimeout(stickTimeout)
+  stickTimeout = setTimeout(() => { shouldStickToBottom.value = false }, 1500)
 })
+
+watch(messagesContent, (el, _oldEl, onCleanup) => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  if (el) {
+    resizeObserver = new ResizeObserver(() => {
+      if (shouldStickToBottom.value) {
+        scrollToBottom('instant')
+      }
+    })
+    resizeObserver.observe(el)
+  }
+  onCleanup(() => {
+    resizeObserver?.disconnect()
+    resizeObserver = null
+  })
+}, { immediate: true })
 </script>
 
 <style lang="scss" module>
