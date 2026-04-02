@@ -3,7 +3,7 @@
 
 
     <!-- Content -->
-    <div class="flex-1 overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden">
     <!-- Header with Create button -->
       <div class="flex-shrink-0 p-3 border-b border-neutral-800/50">
         <!-- Default state: Create and Search buttons -->
@@ -48,7 +48,7 @@
         </div>
       </div>
     
-      <div v-if="filteredFlows.length > 0" class="h-full overflow-y-auto">
+      <div v-if="filteredFlows.length > 0" class="flex-1 overflow-y-auto pb-3">
           <FlowItem
             v-for="flow in filteredFlows"
             :key="flow.id"
