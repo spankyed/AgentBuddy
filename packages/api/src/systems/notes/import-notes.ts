@@ -44,6 +44,17 @@ export function importNotes(importDir: string): ImportResult {
 
 // ── JSON Import ──────────────────────────────────────────
 
+/** Import notes from an in-memory ExportedNotes object (no media restoration). */
+export function importNotesFromData(data: ExportedNotes): ImportResult {
+  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  if (!data?.notes || !Array.isArray(data.notes)) {
+    result.errors.push('Invalid import data: expected object with "notes" array')
+    return result
+  }
+  importNoteNodes(data.notes, undefined, result, '', false)
+  return result
+}
+
 function importNotesJson(jsonPath: string): ImportResult {
   const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
   const importDir = path.dirname(jsonPath)

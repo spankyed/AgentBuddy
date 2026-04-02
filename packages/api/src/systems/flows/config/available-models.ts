@@ -1,6 +1,6 @@
-import type { ModelConfig } from './types';
+import type { ModelCatalogEntry } from './types';
 
-export const availableModels: ModelConfig[] = [
+export const availableModels: ModelCatalogEntry[] = [
   // OpenAI Models
   {
     id: 'gpt-4-turbo',
@@ -105,10 +105,10 @@ export const availableModels: ModelConfig[] = [
   }
 ];
 
-export function getModelById(modelId: string): ModelConfig | undefined {
+export function getModelById(modelId: string): ModelCatalogEntry | undefined {
   return availableModels.find(model => model.id === modelId);
 }
 
-export function getModelsByProvider(provider: string): ModelConfig[] {
+export function getModelsByProvider(provider: string): ModelCatalogEntry[] {
   return availableModels.filter(model => model.provider === provider);
 }

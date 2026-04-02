@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
 const outDir = resolve(__dirname, '../renderer/src/core/types/generated');
-const scratchpadOutDir = resolve(apiDir, 'defs/dist/scratchpad');
+const defaultSetupOutDir = resolve(apiDir, 'defs/dist/default-setup');
 
 const dtsPlugin = () => dts({
   respectExternal: false, // Bundle all external types
@@ -43,11 +43,11 @@ const createConfig = (name, input, moduleName) => ({
   external: [],
 });
 
-// Scratchpad configs (unwrapped, for direct import)
-const createScratchpadConfig = (name, input) => ({
+// Default-setup configs (unwrapped, for direct import)
+const createDefaultSetupConfig = (name, input) => ({
   input: resolve(apiDir, input),
   output: {
-    file: resolve(scratchpadOutDir, `${name}-defs.d.ts`),
+    file: resolve(defaultSetupOutDir, `${name}-defs.d.ts`),
     format: 'es',
   },
   plugins: [dtsPlugin(), cleanupPlugin()],
@@ -59,7 +59,8 @@ export default [
   createConfig('action', 'defs/action.ts', 'ActionDSL'),
   createConfig('prompt', 'defs/prompt.ts', 'PromptDSL'),
   createConfig('database', 'defs/database.ts', 'DatabaseDSL'),
-  // Scratchpad-compatible (unwrapped) versions
-  createScratchpadConfig('action', 'defs/action.ts'),
-  createScratchpadConfig('prompt', 'defs/prompt.ts'),
+  // Default-setup compatible (unwrapped) versions
+  createDefaultSetupConfig('action', 'defs/action.ts'),
+  createDefaultSetupConfig('prompt', 'defs/prompt.ts'),
+  createDefaultSetupConfig('default-setup', 'defs/default-setup.ts'),
 ];

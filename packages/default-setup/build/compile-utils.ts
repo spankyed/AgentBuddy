@@ -274,7 +274,7 @@ async function compileSourceFile(
 // --- Main compilation loop ---
 
 export async function compileAllSourceFiles(config: CompileConfig): Promise<void> {
-  const baseDir = import.meta.dirname;
+  const baseDir = path.resolve(import.meta.dirname, '..');
   const sourceDir = path.join(baseDir, config.sourceDir);
   const outputFile = path.join(baseDir, config.outputFile);
 

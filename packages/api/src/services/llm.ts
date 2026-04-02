@@ -110,6 +110,7 @@ export async function streamText(params: {
   system?: string;
   temperature?: number;
   maxTokens?: number;
+  [key: string]: any;
 }) {
   const { model, ...aiParams } = params;
 
@@ -126,6 +127,7 @@ export async function generateText(params: {
   system?: string;
   temperature?: number;
   maxTokens?: number;
+  [key: string]: any;
 }) {
   const { model, ...aiParams } = params;
 
@@ -143,6 +145,7 @@ export async function streamObject<T>(params: {
   system?: string;
   temperature?: number;
   maxTokens?: number;
+  [key: string]: any;
 }) {
   const { model, ...aiParams } = params;
 
@@ -160,6 +163,7 @@ export async function generateObject<T>(params: {
   system?: string;
   temperature?: number;
   maxTokens?: number;
+  [key: string]: any;
 }) {
   const { model, ...aiParams } = params;
 

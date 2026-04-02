@@ -1,5 +1,3 @@
-declare module "@app/defs/action" {
-
 import * as zod from 'zod';
 import { z } from 'zod';
 export { z } from 'zod';
@@ -762,120 +760,6 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
-    }, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
-        label: zod.ZodString;
-        path: zod.ZodArray<zod.ZodString, "many">;
-        value: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
-        value?: any;
-    }, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
-        value?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-        value: zod.ZodString;
-        customName: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
-    }, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-        value: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
-    }, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
-    }, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"USER_MSG">;
         systemId: zod.ZodLiteral<"agent">;
         text: zod.ZodString;
@@ -1015,13 +899,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"agent">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "OPEN_THREAD_CHAT";
         systemId: "agent";
-        threadId: string;
     }, {
+        threadId: string;
         type: "OPEN_THREAD_CHAT";
         systemId: "agent";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
         systemId: zod.ZodLiteral<"agent">;
@@ -1030,15 +914,15 @@ declare const events: {
         pinned: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
+        threadId: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
-        threadId: string;
         pinned?: boolean | undefined;
     }, {
         label: string;
+        threadId: string;
         type: "OPEN_THREAD_TAB";
         systemId: "agent";
-        threadId: string;
         pinned?: boolean | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"CANCEL">;
@@ -1083,15 +967,15 @@ declare const events: {
         threadId: zod.ZodString;
         response: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "INTERACTIVE_MSG_RESPONSE";
         systemId: "agent";
-        threadId: string;
         messageId: string;
         response?: any;
     }, {
+        threadId: string;
         type: "INTERACTIVE_MSG_RESPONSE";
         systemId: "agent";
-        threadId: string;
         messageId: string;
         response?: any;
     }>, zod.ZodObject<{
@@ -1118,14 +1002,14 @@ declare const events: {
         messageId: zod.ZodString;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "REVERT_THREAD";
         systemId: "agent";
-        threadId: string;
         messageId: string;
     }, {
+        threadId: string;
         type: "REVERT_THREAD";
         systemId: "agent";
-        threadId: string;
         messageId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"USER_COMMAND">;
@@ -1404,6 +1288,120 @@ declare const events: {
         payload?: any;
         targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
+        label: zod.ZodString;
+        path: zod.ZodArray<zod.ZodString, "many">;
+        value: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        path: string[];
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        value?: any;
+    }, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        path: string[];
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        value?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }, {
+        type: "COMPLETE_ONBOARDING";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+        value: zod.ZodString;
+        customName: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        value: string;
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        provider: string;
+        customName?: string | undefined;
+    }, {
+        value: string;
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        provider: string;
+        customName?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+        value: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        value: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+    }, {
+        id: string;
+        value: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
+    }, {
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
         linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
@@ -1447,13 +1445,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
-        threadId: string;
     }, {
+        threadId: string;
         type: "VIEW_THREAD";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1461,14 +1459,14 @@ declare const events: {
         status: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         status: string;
+        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
-        threadId: string;
     }, {
         status: string;
+        threadId: string;
         type: "UPDATE_THREAD_STATUS";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1476,15 +1474,15 @@ declare const events: {
         key: zod.ZodString;
         value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
-        threadId: string;
         key: string;
         value?: any;
     }, {
+        threadId: string;
         type: "UPDATE_THREAD_FIELD";
         systemId: "threads";
-        threadId: string;
         key: string;
         value?: any;
     }>, zod.ZodObject<{
@@ -1492,13 +1490,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        threadId: string;
         type: "DELETE_THREAD";
         systemId: "threads";
-        threadId: string;
     }, {
+        threadId: string;
         type: "DELETE_THREAD";
         systemId: "threads";
-        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"EXPORT_THREADS">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1827,15 +1825,15 @@ declare const events: {
         name: zod.ZodOptional<zod.ZodString>;
         databases: zod.ZodArray<zod.ZodEnum<["lmdb", "volatileLmdb", "secretsLmdb"]>, "many">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "EXPORT_DATABASE";
         systemId: "database";
-        path: string;
         databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }, {
+        path: string;
         type: "EXPORT_DATABASE";
         systemId: "database";
-        path: string;
         databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }>, zod.ZodObject<{
@@ -1843,25 +1841,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "IMPORT_DATABASE";
         systemId: "database";
-        path: string;
     }, {
+        path: string;
         type: "IMPORT_DATABASE";
         systemId: "database";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GET_BACKUP_INFO">;
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "GET_BACKUP_INFO";
         systemId: "database";
-        path: string;
     }, {
+        path: string;
         type: "GET_BACKUP_INFO";
         systemId: "database";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_DATABASE">;
         systemId: zod.ZodLiteral<"database">;
@@ -2074,9 +2072,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
+        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
-        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -2084,9 +2082,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
+        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
-        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -2228,8 +2226,8 @@ declare const events: {
             language: string;
         })[];
         type: "CREATE_DOCUMENT";
-        systemId: "library";
         name: string;
+        systemId: "library";
         collectionId?: string | undefined;
     }, {
         tags: string[];
@@ -2254,8 +2252,8 @@ declare const events: {
             language: string;
         })[];
         type: "CREATE_DOCUMENT";
-        systemId: "library";
         name: string;
+        systemId: "library";
         collectionId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_DOCUMENT">;
@@ -2352,8 +2350,8 @@ declare const events: {
             language: string;
         })[];
         type: "UPDATE_DOCUMENT";
-        systemId: "library";
         name: string;
+        systemId: "library";
         collectionId?: string | undefined;
     }, {
         tags: string[];
@@ -2379,8 +2377,8 @@ declare const events: {
             language: string;
         })[];
         type: "UPDATE_DOCUMENT";
-        systemId: "library";
         name: string;
+        systemId: "library";
         collectionId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_DOCUMENT">;
@@ -2423,14 +2421,14 @@ declare const events: {
         parentId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "CREATE_COLLECTION";
-        systemId: "library";
         name: string;
+        systemId: "library";
         description?: string | undefined;
         parentId?: string | undefined;
     }, {
         type: "CREATE_COLLECTION";
-        systemId: "library";
         name: string;
+        systemId: "library";
         description?: string | undefined;
         parentId?: string | undefined;
     }>, zod.ZodObject<{
@@ -2442,14 +2440,14 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         id: string;
         type: "UPDATE_COLLECTION";
-        systemId: "library";
         name: string;
+        systemId: "library";
         description?: string | undefined;
     }, {
         id: string;
         type: "UPDATE_COLLECTION";
-        systemId: "library";
         name: string;
+        systemId: "library";
         description?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_COLLECTION">;
@@ -2511,14 +2509,14 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         id: string;
         type: "RENAME_ITEM";
-        systemId: "library";
         name: string;
+        systemId: "library";
         itemType: "document" | "folder";
     }, {
         id: string;
         type: "RENAME_ITEM";
-        systemId: "library";
         name: string;
+        systemId: "library";
         itemType: "document" | "folder";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ITEMS">;
@@ -2573,14 +2571,14 @@ declare const events: {
         parentId: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "CREATE_SYMLINK_COLLECTION";
-        systemId: "library";
         name: string;
+        systemId: "library";
         symlinkPath: string;
         parentId?: string | undefined;
     }, {
         type: "CREATE_SYMLINK_COLLECTION";
-        systemId: "library";
         name: string;
+        systemId: "library";
         symlinkPath: string;
         parentId?: string | undefined;
     }>, zod.ZodObject<{
@@ -2615,25 +2613,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.READ_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.WRITE_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -2641,41 +2639,41 @@ declare const events: {
         content: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         content: string;
+        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
-        path: string;
     }, {
         content: string;
+        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CREATE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
         content: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
-        path: string;
         content?: string | undefined;
     }, {
+        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
-        path: string;
         content?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.DELETE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.RENAME_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -2696,37 +2694,37 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.GET_FILE_INFO">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CLOSE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.QUICK_OPEN_SEARCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -2766,9 +2764,9 @@ declare const events: {
         useRegex: zod.ZodOptional<zod.ZodBoolean>;
         maxResults: zod.ZodOptional<zod.ZodNumber>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
-        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -2777,9 +2775,9 @@ declare const events: {
         useRegex?: boolean | undefined;
         maxResults?: number | undefined;
     }, {
+        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
-        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -2849,13 +2847,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         message: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        message: string;
         type: "commit.COMMIT";
         systemId: "code";
-        message: string;
     }, {
+        message: string;
         type: "commit.COMMIT";
         systemId: "code";
-        message: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.GET_CURRENT_BRANCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -2870,13 +2868,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.REVERT_FILES">;
         systemId: zod.ZodLiteral<"code">;
@@ -2964,14 +2962,14 @@ declare const events: {
         path: zod.ZodString;
         baseBranch: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
-        path: string;
         baseBranch: string;
     }, {
+        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
-        path: string;
         baseBranch: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.CREATE_TERMINAL">;
@@ -3138,14 +3136,14 @@ declare const events: {
         path: zod.ZodString;
         fromUserNavigation: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "SET_BASE_DIRECTORY";
         systemId: "code";
-        path: string;
         fromUserNavigation?: boolean | undefined;
     }, {
+        path: string;
         type: "SET_BASE_DIRECTORY";
         systemId: "code";
-        path: string;
         fromUserNavigation?: boolean | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_NOTE">;
@@ -3329,55 +3327,6 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
         type: "AGENT_CONNECTED";
         data: AgentConnectedData;
         pluginId: "agent";
@@ -3481,6 +3430,55 @@ declare const events: {
     } | {
         type: "BRAIN_RESUMED";
         pluginId: "brain";
+    } | {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -4785,17 +4783,18 @@ declare function generateObject<T>(params: {
     [key: string]: any;
 }): Promise<ai.GenerateObjectResult<T>>;
 
-const llm = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  CoreMessage: CoreMessage,
-  ModelConfig: ModelConfig,
-  Provider: Provider,
-  ProviderName: ProviderName,
-  generateObject: generateObject,
-  generateText: generateText,
-  streamObject: streamObject,
-  streamText: streamText
-});
+declare const llm_CoreMessage: typeof CoreMessage;
+type llm_ModelConfig = ModelConfig;
+type llm_Provider = Provider;
+type llm_ProviderName = ProviderName;
+declare const llm_generateObject: typeof generateObject;
+declare const llm_generateText: typeof generateText;
+declare const llm_streamObject: typeof streamObject;
+declare const llm_streamText: typeof streamText;
+declare namespace llm {
+  export { llm_CoreMessage as CoreMessage, llm_generateObject as generateObject, llm_generateText as generateText, llm_streamObject as streamObject, llm_streamText as streamText };
+  export type { llm_ModelConfig as ModelConfig, llm_Provider as Provider, llm_ProviderName as ProviderName };
+}
 
 type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 /**
@@ -4851,14 +4850,20 @@ declare function onOutgoing(callback: (event: OutgoingSystemEvents) => void): ()
  */
 declare function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
 
-const emitter = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  onIncoming: onIncoming,
-  onOutgoing: onOutgoing,
-  sendToBrainSystem: sendToBrainSystem,
-  sendToPlugin: sendToPlugin,
-  sendToSystem: sendToSystem
-});
+declare const emitter_onIncoming: typeof onIncoming;
+declare const emitter_onOutgoing: typeof onOutgoing;
+declare const emitter_sendToBrainSystem: typeof sendToBrainSystem;
+declare const emitter_sendToPlugin: typeof sendToPlugin;
+declare const emitter_sendToSystem: typeof sendToSystem;
+declare namespace emitter {
+  export {
+    emitter_onIncoming as onIncoming,
+    emitter_onOutgoing as onOutgoing,
+    emitter_sendToBrainSystem as sendToBrainSystem,
+    emitter_sendToPlugin as sendToPlugin,
+    emitter_sendToSystem as sendToSystem,
+  };
+}
 
 /**
  * Type-safe transaction helpers for common operations
@@ -4983,30 +4988,31 @@ declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T 
  * including EARS transaction and query utilities.
  */
 
-const database = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  EARS: EARS,
-  SafeLinkOptions: SafeLinkOptions,
-  countEntities: countEntities,
-  createEntityWithDefaults: createEntityWithDefaults,
-  createRelation: createRelation,
-  exists: exists,
-  findAll: findAll,
-  findById: findById,
-  findByIdWithFields: findByIdWithFields,
-  findFirst: findFirst,
-  findFirstWithRole: findFirstWithRole,
-  findWhere: findWhere,
-  findWithFields: findWithFields,
-  findWithRole: findWithRole,
-  grantRole: grantRole,
-  prepareEntity: prepareEntity,
-  qx: qx,
-  removeRelation: removeRelation,
-  revokeRole: revokeRole,
-  tx: tx,
-  updateEntity: updateEntity
-});
+import database_EARS = EARS;
+type database_SafeLinkOptions = SafeLinkOptions;
+declare const database_countEntities: typeof countEntities;
+declare const database_createEntityWithDefaults: typeof createEntityWithDefaults;
+declare const database_createRelation: typeof createRelation;
+declare const database_exists: typeof exists;
+declare const database_findAll: typeof findAll;
+declare const database_findById: typeof findById;
+declare const database_findByIdWithFields: typeof findByIdWithFields;
+declare const database_findFirst: typeof findFirst;
+declare const database_findFirstWithRole: typeof findFirstWithRole;
+declare const database_findWhere: typeof findWhere;
+declare const database_findWithFields: typeof findWithFields;
+declare const database_findWithRole: typeof findWithRole;
+declare const database_grantRole: typeof grantRole;
+declare const database_prepareEntity: typeof prepareEntity;
+declare const database_qx: typeof qx;
+declare const database_removeRelation: typeof removeRelation;
+declare const database_revokeRole: typeof revokeRole;
+declare const database_tx: typeof tx;
+declare const database_updateEntity: typeof updateEntity;
+declare namespace database {
+  export { database_EARS as EARS, database_countEntities as countEntities, database_createEntityWithDefaults as createEntityWithDefaults, database_createRelation as createRelation, database_exists as exists, database_findAll as findAll, database_findById as findById, database_findByIdWithFields as findByIdWithFields, database_findFirst as findFirst, database_findFirstWithRole as findFirstWithRole, database_findWhere as findWhere, database_findWithFields as findWithFields, database_findWithRole as findWithRole, database_grantRole as grantRole, database_prepareEntity as prepareEntity, database_qx as qx, database_removeRelation as removeRelation, database_revokeRole as revokeRole, database_tx as tx, database_updateEntity as updateEntity };
+  export type { database_SafeLinkOptions as SafeLinkOptions };
+}
 
 /**
  * Browser Automation Service
@@ -5073,18 +5079,20 @@ declare class BrowserService {
 }
 declare function createBrowser(browserType?: BrowserType): BrowserService;
 
-const browser = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  Browser: Browser,
-  BrowserContext: BrowserContext,
-  BrowserService: BrowserService,
-  LaunchOptions: LaunchOptions,
-  Page: Page,
-  chromium: chromium,
-  createBrowser: createBrowser,
-  firefox: firefox,
-  webkit: webkit
-});
+declare const browser_Browser: typeof Browser;
+declare const browser_BrowserContext: typeof BrowserContext;
+type browser_BrowserService = BrowserService;
+declare const browser_BrowserService: typeof BrowserService;
+type browser_LaunchOptions = LaunchOptions;
+declare const browser_Page: typeof Page;
+declare const browser_chromium: typeof chromium;
+declare const browser_createBrowser: typeof createBrowser;
+declare const browser_firefox: typeof firefox;
+declare const browser_webkit: typeof webkit;
+declare namespace browser {
+  export { browser_Browser as Browser, browser_BrowserContext as BrowserContext, browser_BrowserService as BrowserService, browser_Page as Page, browser_chromium as chromium, browser_createBrowser as createBrowser, browser_firefox as firefox, browser_webkit as webkit };
+  export type { browser_LaunchOptions as LaunchOptions };
+}
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -5336,23 +5344,38 @@ declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
  */
 declare function sendRecentThreadsRefresh(): void;
 
-const chat = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  createBlockMessage: createBlockMessage,
-  createThreadAndNotify: createThreadAndNotify,
-  openThreadChatAndRefreshRecent: openThreadChatAndRefreshRecent,
-  openThreadTabAndRefresh: openThreadTabAndRefresh,
-  sendApprovalBlock: sendApprovalBlock,
-  sendBlockMessage: sendBlockMessage,
-  sendButtonGroupBlock: sendButtonGroupBlock,
-  sendChoiceBlock: sendChoiceBlock,
-  sendFilePickerBlock: sendFilePickerBlock,
-  sendLinkBlock: sendLinkBlock,
-  sendRecentThreadsRefresh: sendRecentThreadsRefresh,
-  sendTextInputBlock: sendTextInputBlock,
-  updateMessageBlockResponse: updateMessageBlockResponse,
-  updateMessageState: updateMessageState
-});
+declare const chat_createBlockMessage: typeof createBlockMessage;
+declare const chat_createThreadAndNotify: typeof createThreadAndNotify;
+declare const chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
+declare const chat_openThreadTabAndRefresh: typeof openThreadTabAndRefresh;
+declare const chat_sendApprovalBlock: typeof sendApprovalBlock;
+declare const chat_sendBlockMessage: typeof sendBlockMessage;
+declare const chat_sendButtonGroupBlock: typeof sendButtonGroupBlock;
+declare const chat_sendChoiceBlock: typeof sendChoiceBlock;
+declare const chat_sendFilePickerBlock: typeof sendFilePickerBlock;
+declare const chat_sendLinkBlock: typeof sendLinkBlock;
+declare const chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
+declare const chat_sendTextInputBlock: typeof sendTextInputBlock;
+declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
+declare const chat_updateMessageState: typeof updateMessageState;
+declare namespace chat {
+  export {
+    chat_createBlockMessage as createBlockMessage,
+    chat_createThreadAndNotify as createThreadAndNotify,
+    chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent,
+    chat_openThreadTabAndRefresh as openThreadTabAndRefresh,
+    chat_sendApprovalBlock as sendApprovalBlock,
+    chat_sendBlockMessage as sendBlockMessage,
+    chat_sendButtonGroupBlock as sendButtonGroupBlock,
+    chat_sendChoiceBlock as sendChoiceBlock,
+    chat_sendFilePickerBlock as sendFilePickerBlock,
+    chat_sendLinkBlock as sendLinkBlock,
+    chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh,
+    chat_sendTextInputBlock as sendTextInputBlock,
+    chat_updateMessageBlockResponse as updateMessageBlockResponse,
+    chat_updateMessageState as updateMessageState,
+  };
+}
 
 /**
  * Artifact Service
@@ -5391,11 +5414,12 @@ declare function createAndNotify(options: CreateArtifactOptions): {
     artifactId: EARS.EntityId;
 };
 
-const artifact = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  CreateArtifactOptions: CreateArtifactOptions,
-  createAndNotify: createAndNotify
-});
+type artifact_CreateArtifactOptions = CreateArtifactOptions;
+declare const artifact_createAndNotify: typeof createAndNotify;
+declare namespace artifact {
+  export { artifact_createAndNotify as createAndNotify };
+  export type { artifact_CreateArtifactOptions as CreateArtifactOptions };
+}
 
 interface BrainEventPayload {
     type: string;
@@ -5432,16 +5456,17 @@ declare function notify(eventType: string, payload?: any, targetFlowId?: string)
  */
 declare function removeAllListeners(): void;
 
-const brain = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  BrainEventCallback: BrainEventCallback,
-  BrainEventPayload: BrainEventPayload,
-  ListenOptions: ListenOptions,
-  listen: listen,
-  notify: notify,
-  removeAllListeners: removeAllListeners,
-  unlisten: unlisten
-});
+type brain_BrainEventCallback = BrainEventCallback;
+type brain_BrainEventPayload = BrainEventPayload;
+type brain_ListenOptions = ListenOptions;
+declare const brain_listen: typeof listen;
+declare const brain_notify: typeof notify;
+declare const brain_removeAllListeners: typeof removeAllListeners;
+declare const brain_unlisten: typeof unlisten;
+declare namespace brain {
+  export { brain_listen as listen, brain_notify as notify, brain_removeAllListeners as removeAllListeners, brain_unlisten as unlisten };
+  export type { brain_BrainEventCallback as BrainEventCallback, brain_BrainEventPayload as BrainEventPayload, brain_ListenOptions as ListenOptions };
+}
 
 interface MediaRef {
     entityId: string;
@@ -5475,16 +5500,17 @@ interface ImagePart {
 /** Extract all media refs from markdown and read them into AI SDK image parts. */
 declare function extractImageParts(markdown: string): ImagePart[];
 
-const media = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  ImagePart: ImagePart,
-  extractAndResolveImages: extractAndResolveImages,
-  extractImageParts: extractImageParts,
-  extractMediaRefs: extractMediaRefs,
-  readMediaBuffer: readMediaBuffer,
-  resolveMedia: resolveMedia,
-  stripMediaRefs: stripMediaRefs
-});
+type media_ImagePart = ImagePart;
+declare const media_extractAndResolveImages: typeof extractAndResolveImages;
+declare const media_extractImageParts: typeof extractImageParts;
+declare const media_extractMediaRefs: typeof extractMediaRefs;
+declare const media_readMediaBuffer: typeof readMediaBuffer;
+declare const media_resolveMedia: typeof resolveMedia;
+declare const media_stripMediaRefs: typeof stripMediaRefs;
+declare namespace media {
+  export { media_extractAndResolveImages as extractAndResolveImages, media_extractImageParts as extractImageParts, media_extractMediaRefs as extractMediaRefs, media_readMediaBuffer as readMediaBuffer, media_resolveMedia as resolveMedia, media_stripMediaRefs as stripMediaRefs };
+  export type { media_ImagePart as ImagePart };
+}
 
 declare const services: {
     logger: {
@@ -5907,5 +5933,3 @@ declare const params: ActionParams;
 
 export { ActionService, LibraryService, PromptService, params as params, services };
 export type { ActionEntity, ActionParams, Services };
-
-}

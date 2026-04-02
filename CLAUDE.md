@@ -10,7 +10,7 @@ AgentBuddy is an Electron desktop app with an actor-based architecture. Both fro
 - **Frontend** (`packages/renderer/`) — Vue 3 + Tailwind CSS plugin system, each plugin is an XState actor with designated UI areas (canvas, panel)
 - **Electron main** (`packages/main/`) — Module-based process manager that spawns the API server and manages windows
 - **Preload** (`packages/preload/`) — IPC bridge exposing safe APIs to renderer
-- **Scratchpad** (`packages/api/scratchpad/`) — Compiled action/prompt/flow DSL files (see `scratchpad/CLAUDE.md` for conventions)
+- **Default Setup** (`packages/default-setup/`) — Action/prompt/flow/library DSL source + compiler (see `packages/default-setup/CLAUDE.md`). Compiles output to `packages/api/src/setup/seed/data/`
 
 Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
@@ -29,7 +29,7 @@ npm run typecheck:be     # Backend only (tsc --noEmit)
 npm run test-build       # Verify FE + BE compile
 
 npm test                 # Playwright E2E tests
-npm run compile          # Compile all scratchpad DSLs (actions, prompts, flows, library)
+npm run compile          # Compile all DSLs (actions, prompts, flows, library) from packages/default-setup
 
 npm run db:cli           # Database CLI
 npm run db:reset         # Reset database
@@ -69,7 +69,6 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 ### Path aliases
 
 - Backend: `@/*` → `packages/api/src/*`
-- Scratchpad: `@/*` → `packages/api/src/*` (separate tsconfig at `scratchpad/tsconfig.json`)
 
 ## Tech stack
 

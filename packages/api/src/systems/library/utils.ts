@@ -1,7 +1,7 @@
 /**
  * Shared Library Utilities
  *
- * Common functions used across library export, import, and scratchpad compilation.
+ * Common functions used across library export, import, and default-setup compilation.
  */
 
 import type { ContentSection } from './types'
@@ -68,7 +68,7 @@ export function countExportedItems(item: ExportedItem): number {
   return 1 + item.children.reduce((sum, child) => sum + countExportedItems(child), 0)
 }
 
-/** Count only documents in an item list (used by scratchpad compiler). */
+/** Count only documents in an item list (used by default-setup compiler). */
 export function countDocs(items: ExportedItem[]): number {
   return items.reduce((sum, item) => {
     if (item.type === 'collection') return sum + countDocs(item.children)

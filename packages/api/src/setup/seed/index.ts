@@ -1,5 +1,5 @@
 /**
- * Database Seed — loads compiled scratchpad artifacts into LMDB
+ * Database Seed — loads compiled default-setup artifacts into LMDB
  *
  * Run-once: skips seeding if the `seeded` internal flag is already set,
  * unless `force` is passed. The CLI script always forces.
@@ -21,6 +21,8 @@ import { libraryCommands } from '@/systems/library/repository';
 import type { ContentSection, Document, Collection } from '@/systems/library/types';
 import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
 import { getMediaPath } from '@/core/helpers/paths';
+import { importNotesFromData } from '@/systems/notes/import-notes';
+import type { ExportedNotes } from '@/systems/notes/export-types';
 
 interface SeedCounts {
   created: number;
@@ -33,9 +35,10 @@ export interface SeedResult {
   prompts: SeedCounts;
   flows: SeedCounts;
   library: SeedCounts;
+  notes: SeedCounts;
 }
 
-const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), 'dist/compiled');
+const DEFAULT_COMPILED_DIR = path.resolve(__dirname, 'data');
 
 function loadJSON<T>(filePath: string): T | null {
   if (!fs.existsSync(filePath)) return null;
@@ -245,6 +248,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     prompts: { created: 0, updated: 0, skipped: 0 },
     flows: { created: 0, updated: 0, skipped: 0 },
     library: { created: 0, updated: 0, skipped: 0 },
+    notes: { created: 0, updated: 0, skipped: 0 },
   };
 
   // --- Actions ---
@@ -298,6 +302,19 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     seedLibraryTree(items ?? [], undefined, result.library, log, mediaDir);
   } else {
     log('  compiled-library.json not found, skipping library');
+  }
+
+  // --- Notes ---
+  const notesData = loadJSON<ExportedNotes>(path.join(compiledDir, 'compiled-notes.json'));
+  if (notesData) {
+    const importResult = importNotesFromData(notesData);
+    result.notes.created = importResult.created;
+    result.notes.skipped = importResult.skipped;
+    if (importResult.errors.length > 0) {
+      importResult.errors.forEach(e => console.warn(`[seed] notes: ${e}`));
+    }
+  } else {
+    log('  compiled-notes.json not found, skipping notes');
   }
 
   // Mark as seeded
