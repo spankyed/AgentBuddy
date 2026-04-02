@@ -24,7 +24,7 @@ import type {
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from './canvas/nodes'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG } from './canvas/layout-utils'
-import { getDescriptor } from './canvas/nodes/node-dimensions'
+import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimensions'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -636,26 +636,9 @@ const flowsState = setup({
 
       // "Below all nodes" position for new tracks or unconnected steps
       // Compute the actual bottom of all nodes (accounting for dynamic heights like multi-exit listeners)
-      let maxBottom = 0
-      if (allPos.length > 0) {
-        for (const node of context.graph.nodes) {
-          const pos = positions[node.id]
-          if (!pos) continue
-          let exitCount: number | undefined
-          if (node.nodeType === 'listener') {
-            const maxIdx = context.graph.edges
-              .filter(e => e.source === node.id && e.sourceHandle)
-              .reduce((max, e) => {
-                const m = e.sourceHandle!.match(/exit-(\d+)/)
-                return m ? Math.max(max, parseInt(m[1], 10)) : max
-              }, -1)
-            if (maxIdx >= 0) exitCount = maxIdx + 1
-          }
-          const height = getDescriptor(node.nodeType).getHeight(node as any, { exitCount })
-          const bottom = pos.y + height
-          if (bottom > maxBottom) maxBottom = bottom
-        }
-      }
+      const maxBottom = allPos.length > 0
+        ? computeMaxBottom(context.graph.nodes as LayoutNodeData[], positions, context.graph.edges)
+        : 0
 
       const belowAllPos = maxBottom > 0
         ? { x: 0, y: maxBottom + LAYOUT_CONFIG.chainGap }

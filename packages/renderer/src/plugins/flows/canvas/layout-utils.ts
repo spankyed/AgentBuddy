@@ -1,8 +1,10 @@
 import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
-import { NODE_DIMENSIONS, getDescriptor, type LayoutNodeData } from './nodes/node-dimensions'
+import { NODE_DIMENSIONS, getDescriptor, computeExitCount, type LayoutNodeData } from './nodes/node-dimensions'
 
 export const LAYOUT_CONFIG = {
   nodeWidth: NODE_DIMENSIONS.default.width,
+  /** Default height for simple nodes only. For actual node heights,
+   *  use getDescriptor(nodeType).getHeight() or computeMaxBottom(). */
   nodeHeight: NODE_DIMENSIONS.default.height,
   layerGap: 20,
   nodeGap: 40,
@@ -73,14 +75,9 @@ export function partitionIntoComponents(
     nodes.filter(n => n.nodeType === 'listener').map(n => n.id)
   )
   const listenerExitCounts = new Map<string, number>()
-  for (const edge of edges) {
-    if (listenerNodeIds.has(edge.source) && edge.sourceHandle) {
-      const parsed = parseHandleIndex(edge.sourceHandle)
-      if (parsed) {
-        const prev = listenerExitCounts.get(edge.source) ?? 0
-        listenerExitCounts.set(edge.source, Math.max(prev, parsed.index + 1))
-      }
-    }
+  for (const nodeId of listenerNodeIds) {
+    const count = computeExitCount(nodeId, edges)
+    if (count !== undefined) listenerExitCounts.set(nodeId, count)
   }
 
   // Filter out edges targeting listener nodes (listeners have no input port)
@@ -212,7 +209,7 @@ export async function calculateLayoutAsync(
         for (const child of graph.children ?? []) {
           if (child.id && child.x !== undefined && child.y !== undefined) {
             positions[child.id] = { x: child.x, y: child.y + yOffset }
-            const bottom = child.y + (child.height ?? LAYOUT_CONFIG.nodeHeight)
+            const bottom = child.y + (child.height ?? 0)
             if (bottom > maxBottom) maxBottom = bottom
           }
         }

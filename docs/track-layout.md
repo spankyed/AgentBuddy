@@ -42,6 +42,8 @@ How the flow canvas positions nodes using ELK's layered layout algorithm.
 
 - Defines `NODE_DIMENSIONS` constants (shared between Vue components and layout engine) and a `NodeLayoutDescriptor` interface with `getHeight`, `getPorts`, and `hasInput`.
 - Per-type descriptors: `defaultDescriptor`, `switchDescriptor`, `listenerDescriptor`, `fireDescriptor`. Accessed via `getDescriptor(nodeType)`.
+- **`computeExitCount(nodeId, edges)`** — returns the exit count for a node by scanning edges for the highest `exit-N` handle index. Returns `undefined` if none found. This is the single source of truth for deriving exit counts from edges.
+- **`computeMaxBottom(nodes, positions, edges)`** — returns the maximum bottom y-coordinate across all nodes, using descriptor-based heights. Use this instead of manually iterating nodes and adding `LAYOUT_CONFIG.nodeHeight`.
 
 `packages/renderer/src/plugins/flows/canvas/layout-utils.ts`
 
@@ -96,6 +98,17 @@ For listeners:
 - `headerOffset` = 43 + (29 if the node has an `eventType`, else 0)
 - `visualExitCount` = connected exit count + 1, because `ListenerNode.vue` always renders one extra exit slot beyond the last connected exit (`maxIndex + 2` in the Vue component)
 - When `exitCount` is undefined (no connected exit edges), the listener falls back to default height (50px)
+
+### Getting node heights correctly
+
+**Do not use `LAYOUT_CONFIG.nodeHeight` (50px) as a general node height.** It only applies to simple nodes with no dynamic content. Listeners and switches grow taller based on their exit/branch count, so using the fixed constant causes overlap bugs.
+
+Instead:
+- **Single node height** — call `getDescriptor(nodeType).getHeight(node, { exitCount })` to get the descriptor-based height.
+- **Exit count from edges** — call `computeExitCount(nodeId, edges)` rather than inlining a regex loop.
+- **Max bottom across all nodes** — call `computeMaxBottom(nodes, positions, edges)` rather than iterating manually. This handles exit-count derivation and descriptor dispatch internally.
+
+All three utilities live in `node-dimensions.ts`.
 
 ## ELK configuration
 

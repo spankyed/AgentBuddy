@@ -112,3 +112,33 @@ const nodeLayoutDescriptors = new Map<string, NodeLayoutDescriptor>([
 export function getDescriptor(nodeType?: string): NodeLayoutDescriptor {
   return nodeLayoutDescriptors.get(nodeType ?? '') ?? defaultDescriptor
 }
+
+export function computeExitCount(
+  nodeId: string,
+  edges: ReadonlyArray<{ source: string; sourceHandle?: string }>
+): number | undefined {
+  let maxIndex = -1
+  for (const edge of edges) {
+    if (edge.source !== nodeId || !edge.sourceHandle) continue
+    const match = edge.sourceHandle.match(/exit-(\d+)/)
+    if (match) maxIndex = Math.max(maxIndex, parseInt(match[1], 10))
+  }
+  return maxIndex >= 0 ? maxIndex + 1 : undefined
+}
+
+export function computeMaxBottom(
+  nodes: ReadonlyArray<LayoutNodeData>,
+  positions: Readonly<Record<string, { x: number; y: number }>>,
+  edges: ReadonlyArray<{ source: string; sourceHandle?: string }>
+): number {
+  let maxBottom = 0
+  for (const node of nodes) {
+    const pos = positions[node.id]
+    if (!pos) continue
+    const exitCount = node.nodeType === 'listener' ? computeExitCount(node.id, edges) : undefined
+    const height = getDescriptor(node.nodeType).getHeight(node, { exitCount })
+    const bottom = pos.y + height
+    if (bottom > maxBottom) maxBottom = bottom
+  }
+  return maxBottom
+}
