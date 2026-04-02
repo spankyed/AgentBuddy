@@ -37,6 +37,12 @@ declare global {
         notifyZoomChanged: (factor: number) => void;
       };
       apiStatus: {
+        getStatus: () => Promise<{
+          running: boolean;
+          port?: number;
+          error?: string;
+          restartAttempts: number;
+        }>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
       apiPort: number;

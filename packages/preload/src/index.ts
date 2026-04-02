@@ -75,6 +75,12 @@ const zoom = {
 
 // API status events (backend crash/restart notifications from main process)
 const apiStatus = {
+  getStatus: () => ipcRenderer.invoke('api:get-status') as Promise<{
+    running: boolean;
+    port?: number;
+    error?: string;
+    restartAttempts: number;
+  }>,
   onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
     const channels = ['api:stopped', 'api:error', 'api:restarting'];
     const handlers = channels.map(channel => {

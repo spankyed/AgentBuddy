@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { app } from 'electron';
+import { app, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import getPort from 'get-port';
@@ -23,6 +23,7 @@ export class ApiServer implements AppModule {
   private serverReady: Promise<void>;
   private serverReadyResolve?: () => void;
   private actualPort?: number;
+  private lastError?: string;
 
   constructor() {
     this.processManager = new ProcessManager({
@@ -48,6 +49,14 @@ export class ApiServer implements AppModule {
       logInfo('AgentBuddy API Server Module Enabled');
       logInfo('Log file location:', getLogger().getLogPath());
     }
+
+    // Let renderer query current API status on startup (avoids IPC race condition)
+    ipcMain.handle('api:get-status', () => ({
+      running: this.processManager.isRunning(),
+      port: this.actualPort,
+      error: this.lastError,
+      restartAttempts: this.restartAttempts,
+    }));
 
     app.whenReady().then(() => this.startApiServer());
     
@@ -121,6 +130,7 @@ export class ApiServer implements AppModule {
 
   private handleServerReady(port: number): void {
     this.actualPort = port;
+    this.lastError = undefined;
     logInfo(`[MAIN] API server is running on port ${port}`);
     broadcastEvent(API_EVENTS.STARTED, { port });
     
@@ -132,6 +142,7 @@ export class ApiServer implements AppModule {
 
   private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
     logError(`[MAIN] API server exited with code ${code} and signal ${signal}`);
+    this.lastError = `Backend process exited unexpectedly (code ${code})`;
     broadcastEvent(API_EVENTS.STOPPED);
 
     // Reset state
@@ -146,15 +157,17 @@ export class ApiServer implements AppModule {
         attempt: this.restartAttempts,
         maxAttempts: API_CONFIG.MAX_RESTART_ATTEMPTS
       });
-      
+
       setTimeout(() => this.startApiServer(), API_CONFIG.RESTART_DELAY);
     } else if (this.restartAttempts >= API_CONFIG.MAX_RESTART_ATTEMPTS) {
+      this.lastError = 'Max restart attempts reached';
       logError('[MAIN] Max restart attempts reached');
       broadcastEvent(API_EVENTS.ERROR, { error: 'Max restart attempts reached' });
     }
   }
 
   private handleProcessError(error: Error): void {
+    this.lastError = error.message;
     logError('[MAIN] Failed to start API server:', error);
     broadcastEvent(API_EVENTS.ERROR, { error: error.message });
   }

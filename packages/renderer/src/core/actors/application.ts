@@ -165,6 +165,13 @@ export const createApplicationState = () => setup({
     backendListener: fromCallback(({ system, sendBack }) => {
       console.log('connecting to backend');
 
+      // Check if backend already failed before we started listening (race condition fix)
+      window.electronAPI?.apiStatus?.getStatus().then((status) => {
+        if (status.error) {
+          sendBack({ type: 'BACKEND_ERROR', error: status.error });
+        }
+      });
+
       const subscription = trpc.bus.sub.subscribe(
         undefined, // sessionId is ignored now
         {
