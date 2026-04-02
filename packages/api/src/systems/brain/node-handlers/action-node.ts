@@ -22,6 +22,9 @@ interface ActionNodeConfig {
 
 type ActionNode = NodeEntity & ActionNodeConfig;
 
+// Config fields that should not leak into the params passed to action functions
+const ACTION_CONFIG_KEYS = new Set(['mode', 'actionFn', 'actionId']);
+
 /**
  * Execute an action function with provided services and parameters
  */
@@ -67,10 +70,11 @@ export async function actionNodeHandler(
   try {
     // Inline code mode: execute actionFn directly without entity lookup
     if (actionNode.mode === 'code' && actionNode.actionFn) {
-      const params: Record<string, any> = {};
-      for (const [key, value] of Object.entries(nodeData)) {
-        params[key] = value;
-      }
+      const params: Record<string, any> = {
+        event: executionContext.event,
+        steps: executionContext.steps,
+        lastStep: executionContext.lastStep,
+      };
 
       brainInspect(`Executing inline action code for: ${node.label}`, params);
 
@@ -105,9 +109,8 @@ export async function actionNodeHandler(
     // All params (both direct and mapped) are already resolved in nodeAttributes
     const params: Record<string, any> = {};
     
-    // Everything in nodeData is params (no actionId anymore)
     for (const [key, value] of Object.entries(nodeData)) {
-      params[key] = value;
+      if (!ACTION_CONFIG_KEYS.has(key)) params[key] = value;
     }
     
     brainInspect(`Executing action with resolved params:`, params);
