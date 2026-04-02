@@ -12,6 +12,7 @@
     "compile:all": "npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes",
     "sync:defs": "bash scripts/sync-defs.sh",
     "sync:seed": "bash scripts/sync-seed.sh",
+    "sync:external": "bash scripts/sync-external.sh",
     "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit"
   },
