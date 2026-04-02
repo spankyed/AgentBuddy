@@ -156,6 +156,7 @@ export function createFlowNodeSystem(
 
   // Add event listeners
   eventNodes.forEach((node) => {
+    if (!node.eventType) return;
     eventHandlers[node.eventType] = {
       actions: ['handleTrackEvent'],
     };
