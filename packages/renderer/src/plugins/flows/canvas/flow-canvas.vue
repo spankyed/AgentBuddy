@@ -142,6 +142,7 @@ const flows   = useSelector(actor, (s) => {
 const rootFlowId = useSelector(actor, (s) => s.context.settings?.rootFlowId)
 const positions = useSelector(actor, (s) => s.context.graph.positions)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
+const selectedNodeId = useSelector(actor, (s) => s.context.selectedNodeId)
 const selected = useSelector(actor, (s) =>
   s.context.graph.nodes.find(node => node.id === s.context.selectedNodeId)
 ) as Ref<NodeEntity | undefined>
@@ -218,6 +219,7 @@ watch(selectedFlowId, () => {
 }, { immediate: true })
 
 const plainNodes = computed(() => {
+  const selId = selectedNodeId.value
   const mappedNodes = nodes.value
     .map((n) => ({
       id       : n.id!,
@@ -226,6 +228,7 @@ const plainNodes = computed(() => {
         x: positions.value[n.id]?.x ?? 0,
         y: positions.value[n.id]?.y ?? 0
       },
+      selected : n.id === selId,
       data     : n,
     })) as VueFlowNode[]
 
