@@ -57,7 +57,7 @@ export default [
   Database,
   Logs,
   Settings,
-  Blank,
+  // Blank,
   ...mockPlugins,
 ];
 
