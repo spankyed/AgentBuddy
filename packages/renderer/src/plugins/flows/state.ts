@@ -615,12 +615,26 @@ const flowsState = setup({
         const selectedNode = context.graph.nodes.find(n => n.id === context.selectedNodeId)
         const selectedConfig = selectedNode ? getNodeConfig(selectedNode.nodeType) : null
         if (selectedConfig?.connectionRules.outputs !== 0) {
+          // For listeners, assign the next available exit handle
+          let sourceHandle: string | undefined
+          if (selectedConfig?.connectionRules.inputs === 0) {
+            const existingExits = context.graph.edges
+              .filter(e => e.source === context.selectedNodeId && e.sourceHandle)
+              .map(e => {
+                const match = e.sourceHandle!.match(/exit-(\d+)/)
+                return match ? parseInt(match[1], 10) : -1
+              })
+            const nextIndex = existingExits.length > 0 ? Math.max(...existingExits) + 1 : 0
+            sourceHandle = `exit-${nextIndex}`
+          }
+
           const tempEdgeId = `Edge-${randId()}`
           autoEdge = {
             id: tempEdgeId,
             source: context.selectedNodeId,
             target: tempId,
             kind: 'transitions_to',
+            ...(sourceHandle && { sourceHandle }),
           } as EdgeEntity
         }
       } else {
