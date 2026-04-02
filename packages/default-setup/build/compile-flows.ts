@@ -1,10 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { type FlowDSL, isFlowConfig } from './types';
-import { validate } from '@/systems/flows/dsl/validator';
+import { type FlowDSL, isFlowConfig } from '../src/types';
+import { validate } from '../defs/flow-dsl-validator';
 
-const FLOWS_DIR = path.join(import.meta.dirname, 'flows');
-const OUTPUT_FILE = path.join(import.meta.dirname, 'compiled', 'compiled-flows.json');
+const ROOT = path.resolve(import.meta.dirname, '..');
+const FLOWS_DIR = path.join(ROOT, 'src', 'flows');
+const OUTPUT_DIR = path.join(ROOT, '../api/src/setup/seed/data');
+const OUTPUT_FILE = path.join(OUTPUT_DIR, 'compiled-flows.json');
 
 export async function compileFlows(): Promise<void> {
   console.log(`Compiling flows from: ${FLOWS_DIR}`);

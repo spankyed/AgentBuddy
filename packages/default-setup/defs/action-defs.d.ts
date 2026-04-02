@@ -1,5 +1,3 @@
-declare module "@app/defs/action" {
-
 import * as zod from 'zod';
 import { z } from 'zod';
 export { z } from 'zod';
@@ -4781,17 +4779,18 @@ declare function generateObject<T>(params: {
     maxTokens?: number;
 }): Promise<ai.GenerateObjectResult<T>>;
 
-const llm = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  CoreMessage: CoreMessage,
-  ModelConfig: ModelConfig,
-  Provider: Provider,
-  ProviderName: ProviderName,
-  generateObject: generateObject,
-  generateText: generateText,
-  streamObject: streamObject,
-  streamText: streamText
-});
+declare const llm_CoreMessage: typeof CoreMessage;
+type llm_ModelConfig = ModelConfig;
+type llm_Provider = Provider;
+type llm_ProviderName = ProviderName;
+declare const llm_generateObject: typeof generateObject;
+declare const llm_generateText: typeof generateText;
+declare const llm_streamObject: typeof streamObject;
+declare const llm_streamText: typeof streamText;
+declare namespace llm {
+  export { llm_CoreMessage as CoreMessage, llm_generateObject as generateObject, llm_generateText as generateText, llm_streamObject as streamObject, llm_streamText as streamText };
+  export type { llm_ModelConfig as ModelConfig, llm_Provider as Provider, llm_ProviderName as ProviderName };
+}
 
 type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 /**
@@ -4847,14 +4846,20 @@ declare function onOutgoing(callback: (event: OutgoingSystemEvents) => void): ()
  */
 declare function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
 
-const emitter = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  onIncoming: onIncoming,
-  onOutgoing: onOutgoing,
-  sendToBrainSystem: sendToBrainSystem,
-  sendToPlugin: sendToPlugin,
-  sendToSystem: sendToSystem
-});
+declare const emitter_onIncoming: typeof onIncoming;
+declare const emitter_onOutgoing: typeof onOutgoing;
+declare const emitter_sendToBrainSystem: typeof sendToBrainSystem;
+declare const emitter_sendToPlugin: typeof sendToPlugin;
+declare const emitter_sendToSystem: typeof sendToSystem;
+declare namespace emitter {
+  export {
+    emitter_onIncoming as onIncoming,
+    emitter_onOutgoing as onOutgoing,
+    emitter_sendToBrainSystem as sendToBrainSystem,
+    emitter_sendToPlugin as sendToPlugin,
+    emitter_sendToSystem as sendToSystem,
+  };
+}
 
 /**
  * Type-safe transaction helpers for common operations
@@ -4979,30 +4984,31 @@ declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T 
  * including EARS transaction and query utilities.
  */
 
-const database = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  EARS: EARS,
-  SafeLinkOptions: SafeLinkOptions,
-  countEntities: countEntities,
-  createEntityWithDefaults: createEntityWithDefaults,
-  createRelation: createRelation,
-  exists: exists,
-  findAll: findAll,
-  findById: findById,
-  findByIdWithFields: findByIdWithFields,
-  findFirst: findFirst,
-  findFirstWithRole: findFirstWithRole,
-  findWhere: findWhere,
-  findWithFields: findWithFields,
-  findWithRole: findWithRole,
-  grantRole: grantRole,
-  prepareEntity: prepareEntity,
-  qx: qx,
-  removeRelation: removeRelation,
-  revokeRole: revokeRole,
-  tx: tx,
-  updateEntity: updateEntity
-});
+import database_EARS = EARS;
+type database_SafeLinkOptions = SafeLinkOptions;
+declare const database_countEntities: typeof countEntities;
+declare const database_createEntityWithDefaults: typeof createEntityWithDefaults;
+declare const database_createRelation: typeof createRelation;
+declare const database_exists: typeof exists;
+declare const database_findAll: typeof findAll;
+declare const database_findById: typeof findById;
+declare const database_findByIdWithFields: typeof findByIdWithFields;
+declare const database_findFirst: typeof findFirst;
+declare const database_findFirstWithRole: typeof findFirstWithRole;
+declare const database_findWhere: typeof findWhere;
+declare const database_findWithFields: typeof findWithFields;
+declare const database_findWithRole: typeof findWithRole;
+declare const database_grantRole: typeof grantRole;
+declare const database_prepareEntity: typeof prepareEntity;
+declare const database_qx: typeof qx;
+declare const database_removeRelation: typeof removeRelation;
+declare const database_revokeRole: typeof revokeRole;
+declare const database_tx: typeof tx;
+declare const database_updateEntity: typeof updateEntity;
+declare namespace database {
+  export { database_EARS as EARS, database_countEntities as countEntities, database_createEntityWithDefaults as createEntityWithDefaults, database_createRelation as createRelation, database_exists as exists, database_findAll as findAll, database_findById as findById, database_findByIdWithFields as findByIdWithFields, database_findFirst as findFirst, database_findFirstWithRole as findFirstWithRole, database_findWhere as findWhere, database_findWithFields as findWithFields, database_findWithRole as findWithRole, database_grantRole as grantRole, database_prepareEntity as prepareEntity, database_qx as qx, database_removeRelation as removeRelation, database_revokeRole as revokeRole, database_tx as tx, database_updateEntity as updateEntity };
+  export type { database_SafeLinkOptions as SafeLinkOptions };
+}
 
 /**
  * Browser Automation Service
@@ -5069,18 +5075,20 @@ declare class BrowserService {
 }
 declare function createBrowser(browserType?: BrowserType): BrowserService;
 
-const browser = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  Browser: Browser,
-  BrowserContext: BrowserContext,
-  BrowserService: BrowserService,
-  LaunchOptions: LaunchOptions,
-  Page: Page,
-  chromium: chromium,
-  createBrowser: createBrowser,
-  firefox: firefox,
-  webkit: webkit
-});
+declare const browser_Browser: typeof Browser;
+declare const browser_BrowserContext: typeof BrowserContext;
+type browser_BrowserService = BrowserService;
+declare const browser_BrowserService: typeof BrowserService;
+type browser_LaunchOptions = LaunchOptions;
+declare const browser_Page: typeof Page;
+declare const browser_chromium: typeof chromium;
+declare const browser_createBrowser: typeof createBrowser;
+declare const browser_firefox: typeof firefox;
+declare const browser_webkit: typeof webkit;
+declare namespace browser {
+  export { browser_Browser as Browser, browser_BrowserContext as BrowserContext, browser_BrowserService as BrowserService, browser_Page as Page, browser_chromium as chromium, browser_createBrowser as createBrowser, browser_firefox as firefox, browser_webkit as webkit };
+  export type { browser_LaunchOptions as LaunchOptions };
+}
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -5332,23 +5340,38 @@ declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
  */
 declare function sendRecentThreadsRefresh(): void;
 
-const chat = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  createBlockMessage: createBlockMessage,
-  createThreadAndNotify: createThreadAndNotify,
-  openThreadChatAndRefreshRecent: openThreadChatAndRefreshRecent,
-  openThreadTabAndRefresh: openThreadTabAndRefresh,
-  sendApprovalBlock: sendApprovalBlock,
-  sendBlockMessage: sendBlockMessage,
-  sendButtonGroupBlock: sendButtonGroupBlock,
-  sendChoiceBlock: sendChoiceBlock,
-  sendFilePickerBlock: sendFilePickerBlock,
-  sendLinkBlock: sendLinkBlock,
-  sendRecentThreadsRefresh: sendRecentThreadsRefresh,
-  sendTextInputBlock: sendTextInputBlock,
-  updateMessageBlockResponse: updateMessageBlockResponse,
-  updateMessageState: updateMessageState
-});
+declare const chat_createBlockMessage: typeof createBlockMessage;
+declare const chat_createThreadAndNotify: typeof createThreadAndNotify;
+declare const chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
+declare const chat_openThreadTabAndRefresh: typeof openThreadTabAndRefresh;
+declare const chat_sendApprovalBlock: typeof sendApprovalBlock;
+declare const chat_sendBlockMessage: typeof sendBlockMessage;
+declare const chat_sendButtonGroupBlock: typeof sendButtonGroupBlock;
+declare const chat_sendChoiceBlock: typeof sendChoiceBlock;
+declare const chat_sendFilePickerBlock: typeof sendFilePickerBlock;
+declare const chat_sendLinkBlock: typeof sendLinkBlock;
+declare const chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
+declare const chat_sendTextInputBlock: typeof sendTextInputBlock;
+declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
+declare const chat_updateMessageState: typeof updateMessageState;
+declare namespace chat {
+  export {
+    chat_createBlockMessage as createBlockMessage,
+    chat_createThreadAndNotify as createThreadAndNotify,
+    chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent,
+    chat_openThreadTabAndRefresh as openThreadTabAndRefresh,
+    chat_sendApprovalBlock as sendApprovalBlock,
+    chat_sendBlockMessage as sendBlockMessage,
+    chat_sendButtonGroupBlock as sendButtonGroupBlock,
+    chat_sendChoiceBlock as sendChoiceBlock,
+    chat_sendFilePickerBlock as sendFilePickerBlock,
+    chat_sendLinkBlock as sendLinkBlock,
+    chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh,
+    chat_sendTextInputBlock as sendTextInputBlock,
+    chat_updateMessageBlockResponse as updateMessageBlockResponse,
+    chat_updateMessageState as updateMessageState,
+  };
+}
 
 /**
  * Artifact Service
@@ -5387,11 +5410,12 @@ declare function createAndNotify(options: CreateArtifactOptions): {
     artifactId: EARS.EntityId;
 };
 
-const artifact = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  CreateArtifactOptions: CreateArtifactOptions,
-  createAndNotify: createAndNotify
-});
+type artifact_CreateArtifactOptions = CreateArtifactOptions;
+declare const artifact_createAndNotify: typeof createAndNotify;
+declare namespace artifact {
+  export { artifact_createAndNotify as createAndNotify };
+  export type { artifact_CreateArtifactOptions as CreateArtifactOptions };
+}
 
 interface BrainEventPayload {
     type: string;
@@ -5428,16 +5452,17 @@ declare function notify(eventType: string, payload?: any, targetFlowId?: string)
  */
 declare function removeAllListeners(): void;
 
-const brain = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  BrainEventCallback: BrainEventCallback,
-  BrainEventPayload: BrainEventPayload,
-  ListenOptions: ListenOptions,
-  listen: listen,
-  notify: notify,
-  removeAllListeners: removeAllListeners,
-  unlisten: unlisten
-});
+type brain_BrainEventCallback = BrainEventCallback;
+type brain_BrainEventPayload = BrainEventPayload;
+type brain_ListenOptions = ListenOptions;
+declare const brain_listen: typeof listen;
+declare const brain_notify: typeof notify;
+declare const brain_removeAllListeners: typeof removeAllListeners;
+declare const brain_unlisten: typeof unlisten;
+declare namespace brain {
+  export { brain_listen as listen, brain_notify as notify, brain_removeAllListeners as removeAllListeners, brain_unlisten as unlisten };
+  export type { brain_BrainEventCallback as BrainEventCallback, brain_BrainEventPayload as BrainEventPayload, brain_ListenOptions as ListenOptions };
+}
 
 interface MediaRef {
     entityId: string;
@@ -5471,16 +5496,17 @@ interface ImagePart {
 /** Extract all media refs from markdown and read them into AI SDK image parts. */
 declare function extractImageParts(markdown: string): ImagePart[];
 
-const media = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  ImagePart: ImagePart,
-  extractAndResolveImages: extractAndResolveImages,
-  extractImageParts: extractImageParts,
-  extractMediaRefs: extractMediaRefs,
-  readMediaBuffer: readMediaBuffer,
-  resolveMedia: resolveMedia,
-  stripMediaRefs: stripMediaRefs
-});
+type media_ImagePart = ImagePart;
+declare const media_extractAndResolveImages: typeof extractAndResolveImages;
+declare const media_extractImageParts: typeof extractImageParts;
+declare const media_extractMediaRefs: typeof extractMediaRefs;
+declare const media_readMediaBuffer: typeof readMediaBuffer;
+declare const media_resolveMedia: typeof resolveMedia;
+declare const media_stripMediaRefs: typeof stripMediaRefs;
+declare namespace media {
+  export { media_extractAndResolveImages as extractAndResolveImages, media_extractImageParts as extractImageParts, media_extractMediaRefs as extractMediaRefs, media_readMediaBuffer as readMediaBuffer, media_resolveMedia as resolveMedia, media_stripMediaRefs as stripMediaRefs };
+  export type { media_ImagePart as ImagePart };
+}
 
 declare const services: {
     logger: {
@@ -5903,5 +5929,3 @@ declare const params: ActionParams;
 
 export { ActionService, LibraryService, PromptService, params as params, services };
 export type { ActionEntity, ActionParams, Services };
-
-}

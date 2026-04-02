@@ -1,8 +1,8 @@
-import type services from '../src/services/index';
 import type { z } from 'zod';
-import type { EARS } from '@/core/types';
+import type { EARS } from '../defs/ears-types';
+import type { Services as ImportedServices } from '../defs/action-defs';
 
-export type Services = typeof services;
+export type Services = ImportedServices;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 
@@ -23,7 +23,7 @@ export {
   type DSLUpdateNode,
   type DSLKeepAliveNode,
   isFlowConfig,
-} from '@/systems/flows/dsl/types';
+} from '../defs/flow-dsl-types';
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';

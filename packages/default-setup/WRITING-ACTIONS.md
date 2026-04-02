@@ -4,14 +4,14 @@
 
 Actions are async function bodies stored as JavaScript strings and executed at runtime via the `AsyncFunction` constructor. The action code runs in a sandboxed scope with only the explicitly provided variables available.
 
-Source files live in `scratchpad/actions/` and are compiled to JSON via `npm run compile:actions`.
+Source files live in `default/actions/` and are compiled to JSON via `npm run compile:actions`.
 
 ## Quick Start
 
-1. Create a new `.ts` file in `scratchpad/actions/`
+1. Create a new `.ts` file in `default/actions/`
 2. Export a `meta` object and an `action` function
 3. Run `npm run compile:actions`
-4. Import the generated `compiled-actions.json` via the app UI (IMPORT_ACTIONS)
+4. Import the generated `dist/compiled-actions.json` via the app UI (IMPORT_ACTIONS)
 
 ## Template
 
@@ -99,14 +99,14 @@ The `services` object provides access to all backend modules:
 You can extract reusable logic into helper files at any relative path. The compiler uses esbuild to bundle imports — all imported declarations are inlined into the action function body at compile time, so the resulting `actionFn` string remains self-contained.
 
 Common locations for helpers:
-- `scratchpad/shared/` — helpers reusable across both actions and prompts
-- `scratchpad/actions/` — sibling helpers (files without `export const meta` are skipped during compilation)
+- `default/shared/` — helpers reusable across both actions and prompts
+- `default/actions/` — sibling helpers (files without `export const meta` are skipped during compilation)
 - Any other relative path reachable from the action file
 
 ### Creating a helper file
 
 ```typescript
-// scratchpad/shared/string-utils.ts
+// default/shared/string-utils.ts
 
 export function formatName(name: string): string {
   return name.trim().toLowerCase();
@@ -153,7 +153,7 @@ return { greeting: `Hello, ${name}!` };
 - **No Node.js globals** in helper files — same restrictions as action files
 - **No bare package imports** — cannot import from `node_modules`
 - Missing files or exports are treated as **compile errors** (the action is skipped)
-- Files in `scratchpad/actions/` without `export const meta` are treated as helpers and skipped during compilation
+- Files in `default/actions/` without `export const meta` are treated as helpers and skipped during compilation
 
 ## Metadata Reference
 
@@ -248,6 +248,6 @@ Run from the project root or `packages/api/`:
 npm run compile:actions
 ```
 
-This uses esbuild to bundle and transpile all `.ts` files in `scratchpad/actions/`, resolving relative imports and inlining helper code. It then extracts the function body and metadata and writes `scratchpad/actions/compiled-actions.json`. Files without `export const meta` are treated as helper files and skipped during compilation (but can be imported by action files).
+This uses esbuild to bundle and transpile all `.ts` files in `default/actions/`, resolving relative imports and inlining helper code. It then extracts the function body and metadata and writes `dist/compiled-actions.json`. Files without `export const meta` are treated as helper files and skipped during compilation (but can be imported by action files).
 
 The compiled JSON is git-tracked and can be imported via the app UI using the existing IMPORT_ACTIONS flow.

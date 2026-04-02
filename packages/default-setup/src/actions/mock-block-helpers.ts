@@ -1,4 +1,4 @@
-import type { ButtonConfig, LinkConfig } from '../../src/systems/threads/types';
+import type { ButtonConfig, LinkConfig } from '../../defs/thread-types';
 
 export function buildButtonsWithDeploymentState(deploymentState: string): ButtonConfig[] {
   return [

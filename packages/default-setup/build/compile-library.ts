@@ -1,10 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { ExportedItem, ExportedLibrary } from '@/systems/library/export-types'
-import { toTitleCase, countDocs } from '@/systems/library/utils'
+import type { ExportedItem, ExportedLibrary } from '../defs/library-export-types'
+import { toTitleCase, countDocs } from '../defs/library-utils'
 
-const LIBRARY_DIR = path.join(import.meta.dirname, 'library')
-const COMPILED_DIR = path.join(import.meta.dirname, 'compiled')
+const ROOT = path.resolve(import.meta.dirname, '..')
+const LIBRARY_DIR = path.join(ROOT, 'src', 'library')
+const COMPILED_DIR = path.join(ROOT, '../api/src/setup/seed/data')
 const OUTPUT_FILE = path.join(COMPILED_DIR, 'compiled-library.json')
 
 function walkDirectory(dir: string): ExportedItem[] {
@@ -29,7 +30,7 @@ function walkDirectory(dir: string): ExportedItem[] {
         type: 'document',
         name,
         content: [{ type: 'markdown', text }],
-        tags: ['scratchpad'],
+        tags: ['default'],
       })
     }
   }
@@ -52,7 +53,7 @@ export function compileLibrary(): void {
   if (fs.existsSync(mediaSrc)) {
     const mediaDest = path.join(COMPILED_DIR, 'media')
     fs.cpSync(mediaSrc, mediaDest, { recursive: true })
-    console.log(`  Copied media/ to compiled/media/`)
+    console.log(`  Copied media/ to data/media/`)
   }
 
   const output: ExportedLibrary = { version: 1, items }
@@ -63,6 +64,3 @@ export function compileLibrary(): void {
   const docCount = countDocs(items)
   console.log(`\nWrote ${docCount} library doc(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}`)
 }
-
-// Run directly
-compileLibrary()

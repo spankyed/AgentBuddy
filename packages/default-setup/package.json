@@ -1,0 +1,23 @@
+{
+  "name": "@app/default-setup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile:actions": "tsx build/compile.ts actions",
+    "compile:prompts": "tsx build/compile.ts prompts",
+    "compile:flows": "tsx build/compile.ts flows",
+    "compile:library": "tsx build/compile.ts library",
+    "compile:all": "npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library",
+    "sync:defs": "bash scripts/sync-defs.sh",
+    "pipeline": "bash scripts/pipeline.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "zod": "^3.24.0"
+  }
+}

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && cp -r scratchpad/compiled dist/ && tsup src/types.ts src/server.ts --format esm,cjs --dts",
+    "build": "tsc && tsc-alias -p tsconfig.json && cp -r src/setup/seed/data dist/setup/seed/data && tsup src/types.ts src/server.ts --format esm,cjs --dts",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",
@@ -22,11 +22,7 @@
     "db:import": "tsx scripts/db/import-backup.ts",
     "db:reset": "tsx scripts/db/reset.ts",
     "db:seed": "tsx scripts/db/seed/index.ts",
-    "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts",
-    "compile:actions": "tsx scratchpad/compile.ts actions",
-    "compile:prompts": "tsx scratchpad/compile.ts prompts",
-    "compile:flows": "tsx scratchpad/compile.ts flows",
-    "compile:library": "tsx scratchpad/compile-library.ts"
+    "dsl:export": "tsx src/systems/flows/dsl/export-to-dsl.ts"
   },
   "keywords": [],
   "author": "angel santiago",

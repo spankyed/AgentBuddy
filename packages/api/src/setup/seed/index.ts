@@ -35,7 +35,7 @@ export interface SeedResult {
   library: SeedCounts;
 }
 
-const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), 'dist/compiled');
+const DEFAULT_COMPILED_DIR = path.resolve(__dirname, 'data');
 
 function loadJSON<T>(filePath: string): T | null {
   if (!fs.existsSync(filePath)) return null;
