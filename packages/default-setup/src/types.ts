@@ -25,8 +25,6 @@ export type {
   DSLKeepAliveNode,
 } from '../defs/default-setup-defs';
 
-export { isFlowConfig } from '../build/flow-dsl-utils';
-
 export interface ActionMeta {
   label: string;
   description?: string;

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { type FlowDSL, isFlowConfig } from '../src/types';
+import type { FlowDSL } from '../src/types';
+import { isFlowConfig } from './flow-dsl-utils';
 import { validate } from './flow-dsl-validator';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
