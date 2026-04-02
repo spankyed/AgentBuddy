@@ -311,6 +311,7 @@ watch(() => nodes.value, (newNodes) => {
   const isStructuralChange = previousNodeIds.size > 0 && removedCount > previousNodeIds.size / 2;
 
   if (isStructuralChange) {
+    cancelCurrentAnimation();
     nextTick(() => {
       setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 150);
     });
