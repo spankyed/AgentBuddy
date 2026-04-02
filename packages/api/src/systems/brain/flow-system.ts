@@ -76,7 +76,7 @@ type ChildCompletedEvent =
     eventTNodeId?: EARS.EntityId;
     isFlow?: boolean; // Simple flag to indicate if completing child was a flow
   }
-  | { type: 'CANCEL_FLOW' }
+  | { type: 'KILL_FLOW' }
   | { type: 'RESUME_FLOW' }
   | { type: 'TNODE_UPDATED'; data: { tNodeId: EARS.EntityId; status: string; eventTNodeId?: EARS.EntityId } }
   | { type: 'FIRE_LOCAL_EVENT'; eventType: string; payload?: any };
@@ -523,7 +523,7 @@ export function createFlowNodeSystem(
         active: {
           entry: ['registerFlowActor', 'raiseEntryEvent'],
           on: {
-            CANCEL_FLOW: 'completed',
+            KILL_FLOW: 'completed',
           },
         },
         completed: {

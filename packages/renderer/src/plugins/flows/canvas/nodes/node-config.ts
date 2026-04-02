@@ -9,7 +9,8 @@ import {
   Split,
   Shuffle,
   Activity,
-  Sparkle
+  Sparkle,
+  X
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 import type { NodeKind } from '@app/api'
@@ -162,6 +163,7 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
   llm: 'indigo',
   event: 'blue',
   keep_alive: 'neutral',
+  kill: 'neutral',
   action: 'neutral'
 } as const
 
@@ -176,6 +178,18 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-neutral-700/20',
     hoverBgColor: 'group-hover:bg-neutral-700/30',
     connectionRules: { inputs: 1, outputs: 1 },
+    component: 'VariableNode',
+    isImplemented: true
+  },
+  kill: {
+    type: 'kill',
+    label: 'Kill',
+    defaultLabel: 'kill flow',
+    icon: X,
+    color: 'text-neutral-400',
+    bgColor: 'bg-neutral-700/20',
+    hoverBgColor: 'group-hover:bg-neutral-700/30',
+    connectionRules: { inputs: 1, outputs: 0 },
     component: 'VariableNode',
     isImplemented: true
   },

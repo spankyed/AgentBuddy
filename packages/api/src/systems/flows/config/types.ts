@@ -121,6 +121,10 @@ export interface KeepAliveNode extends NodeBase {
   nodeType: 'keep_alive';
 }
 
+export interface KillNode extends NodeBase {
+  nodeType: 'kill';
+}
+
 export interface LLMNode extends NodeBase {
   nodeType: 'llm';
   
@@ -166,6 +170,7 @@ export type NodeEntity =
   | TransformNode
   | FlowNode
   | KeepAliveNode
+  | KillNode
   | LLMNode;
 
 /** Literal union of all nodeType strings (keeps Base clean) */

@@ -2,6 +2,7 @@ import type { NodeEntity, SwitchNode } from '@/systems/flows/config/types';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';
+import { killNodeHandler } from './kill-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
@@ -26,6 +27,10 @@ export function executeNode(
       
     case 'keep_alive':
       keepAliveNodeHandler(tNode, node, executionContext, actor);
+      break;
+
+    case 'kill':
+      killNodeHandler(tNode, node, executionContext, actor);
       break;
       
     case 'llm':

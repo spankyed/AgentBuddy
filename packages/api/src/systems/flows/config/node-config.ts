@@ -136,6 +136,12 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
     description: 'Keep the flow instance active',
     category: 'logic',
   },
+  kill: {
+    nodeType: 'kill',
+    label: 'Kill',
+    description: 'Terminate the containing flow',
+    category: 'logic',
+  },
   llm: {
     nodeType: 'llm',
     label: 'LLM',

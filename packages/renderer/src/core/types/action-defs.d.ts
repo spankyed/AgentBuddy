@@ -4323,6 +4323,9 @@ interface FlowNode extends NodeBase {
 interface KeepAliveNode extends NodeBase {
     nodeType: 'keep_alive';
 }
+interface KillNode extends NodeBase {
+    nodeType: 'kill';
+}
 interface LLMNode extends NodeBase {
     nodeType: 'llm';
     prompt?: string;
@@ -4347,7 +4350,7 @@ interface ActionNode extends NodeBase {
         default?: any;
     }>;
 }
-type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | LLMNode;
+type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode;
 /** Literal union of all nodeType strings (keeps Base clean) */
 type NodeKind = NodeEntity['nodeType'];
 type NodeCreateInput = Partial<NodeEntity> & {
