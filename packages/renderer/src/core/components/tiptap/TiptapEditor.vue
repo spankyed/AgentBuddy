@@ -242,6 +242,16 @@ const editor = useEditor({
   editable: props.mode !== 'viewer' && !props.disabled,
   editorProps: {
     handleKeyDown: (view, event) => {
+      // ⌘+Shift+V → paste as plain text, parsed as markdown for structure
+      if (event.key === 'v' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        navigator.clipboard.readText().then(text => {
+          if (!text || !editor.value) return
+          editor.value.commands.insertContent(text)
+        })
+        return true
+      }
+
       if (props.mode === 'input') {
         const isEmpty = !view.state.doc.textContent.trim()
 
