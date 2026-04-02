@@ -10,7 +10,6 @@ import {
   Shuffle,
   Activity,
   Sparkle,
-  X,
   Plug
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
@@ -178,8 +177,8 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
 export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   keep_alive: {
     type: 'keep_alive',
-    label: 'Keep Alive',
-    defaultLabel: 'keep alive',
+    label: 'Keep alive',
+    defaultLabel: 'Keep alive',
     icon: Activity,
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',
@@ -191,7 +190,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   kill: {
     type: 'kill',
     label: 'Kill',
-    defaultLabel: 'kill flow',
+    defaultLabel: 'Kill flow',
     icon: Plug,
     color: 'text-red-400',
     bgColor: 'bg-red-500/10',
@@ -203,7 +202,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   action: {
     type: 'action',
     label: 'Action',
-    defaultLabel: 'do action',
+    defaultLabel: 'Do action',
     icon: Play,
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',
@@ -215,7 +214,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   listener: {
     type: 'listener',
     label: 'Listener',
-    defaultLabel: 'on event',
+    defaultLabel: 'On event',
     icon: Radio,
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
@@ -227,7 +226,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   query: {
     type: 'query',
     label: 'Query',
-    defaultLabel: 'query',
+    defaultLabel: 'Query',
     icon: Search,
     color: 'text-cyan-400',
     bgColor: 'bg-cyan-500/10',
@@ -239,7 +238,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   transform: {
     type: 'transform',
     label: 'Transform',
-    defaultLabel: 'transform output',
+    defaultLabel: 'Transform output',
     icon: Shuffle,
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/10',
@@ -251,7 +250,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   llm: {
     type: 'llm',
     label: 'LLM',
-    defaultLabel: 'generate text',
+    defaultLabel: 'Generate text',
     icon: Sparkle,
     color: 'text-indigo-400',
     bgColor: 'bg-indigo-500/10',
@@ -263,7 +262,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   flow: {
     type: 'flow',
     label: 'Flow',
-    defaultLabel: 'handle flow',
+    defaultLabel: 'Handle flow',
     icon: Workflow,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -275,7 +274,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   create: {
     type: 'create',
     label: 'Create',
-    defaultLabel: 'create entity',
+    defaultLabel: 'Create entity',
     icon: Plus,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -287,7 +286,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   update: {
     type: 'update',
     label: 'Update',
-    defaultLabel: 'update entity',
+    defaultLabel: 'Update entity',
     icon: RefreshCw,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -299,7 +298,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   switch: {
     type: 'switch',
     label: 'Switch',
-    defaultLabel: 'choose path',
+    defaultLabel: 'Choose path',
     icon: Split,
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10',
@@ -311,7 +310,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
   fire: {
     type: 'fire',
     label: 'Fire',
-    defaultLabel: 'fire event',
+    defaultLabel: 'Fire event',
     icon: Zap,
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10',
