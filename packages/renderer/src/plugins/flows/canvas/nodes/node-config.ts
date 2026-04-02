@@ -500,7 +500,7 @@ export const getAllNodeTypes = (): NodeKind[] => {
  */
 export const getPaletteItems = () => {
   return Object.values(nodeConfigs)
-    .filter((config): config is NodeConfig => Boolean(config))
+    .filter((config): config is NodeConfig => Boolean(config) && config.isImplemented === true)
     .map(({ type, label, icon, isImplemented }) => ({ type, label, icon, isImplemented }))
 }
 
