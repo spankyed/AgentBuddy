@@ -73,7 +73,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, watch, nextTick, ref, onUnmounted } from 'vue';
+import { computed, watch, nextTick, onUnmounted } from 'vue';
 import {
   VueFlow,
   ConnectionLineType,
@@ -121,6 +121,8 @@ const ANIMATION = {
   RETRY_DELAY: 16, // ~1 frame at 60fps
 } as const;
 
+const ROW_HEIGHT = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
+
 // Vue Flow composables
 const { 
   setCenter, 
@@ -136,7 +138,6 @@ let clickTimeout: NodeJS.Timeout | null = null;
 const DOUBLE_CLICK_DELAY = 250; // ms to wait for double click
 
 // State
-const nodePositionCache = new Map<string, { x: number; y: number }>();
 let previousNodeIds = new Set<string>();
 let animationController: AbortController | null = null;
 
@@ -172,24 +173,22 @@ const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
       traverseTrack(tnode.children[0], childX, y);
     } else if (tnode.children.length > 1) {
       // Parallel: fan out vertically
-      const rowHeight = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
       const totalLeaves = tnode.children.reduce((s, c) => s + subtreeLeafCount(c), 0);
-      const totalPixelHeight = (totalLeaves - 1) * rowHeight;
+      const totalPixelHeight = (totalLeaves - 1) * ROW_HEIGHT;
       let currentY = y - totalPixelHeight / 2;
 
       tnode.children.forEach(child => {
         const childLeaves = subtreeLeafCount(child);
-        const childCenterY = currentY + ((childLeaves - 1) * rowHeight) / 2;
+        const childCenterY = currentY + ((childLeaves - 1) * ROW_HEIGHT) / 2;
         traverseTrack(child, childX, childCenterY);
-        currentY += childLeaves * rowHeight;
+        currentY += childLeaves * ROW_HEIGHT;
       });
     }
   };
 
   tracks.forEach((track) => {
     const trackLeaves = subtreeLeafCount(track);
-    const rowHeight = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
-    const trackContentHeight = (trackLeaves - 1) * rowHeight + LAYOUT.NODE_HEIGHT;
+    const trackContentHeight = (trackLeaves - 1) * ROW_HEIGHT + LAYOUT.NODE_HEIGHT;
     traverseTrack(track, 0, trackY + trackContentHeight / 2);
     trackY += trackContentHeight + LAYOUT.TRACK_GAP;
   });
@@ -222,12 +221,7 @@ const edges = computed<Edge[]>(() => {
     });
   };
   
-  // Process edges for each track entity
-  if (props.tnodeTree) {
-    props.tnodeTree.forEach(track => {
-      buildEdges(track);
-    });
-  }
+  props.tnodeTree.forEach(track => buildEdges(track));
   
   return result;
 });
@@ -308,70 +302,41 @@ const animateToNode = async (nodeId: string, position: { x: number; y: number },
   return attemptCenter();
 };
 
-const findNewNodes = (currentNodes: VueFlowNode[]): string[] => {
-  const currentIds = new Set(currentNodes.map(n => n.id));
-  return Array.from(currentIds).filter(id => !previousNodeIds.has(id));
-};
-
-// Watch for new nodes and animate to them
+// Watch for node changes — handles both incremental additions and structural changes (sub-flow navigation)
 watch(() => nodes.value, (newNodes) => {
-  const newNodeIds = findNewNodes(newNodes);
-  
-  if (newNodeIds.length === 0) {
-    previousNodeIds = new Set(newNodes.map(n => n.id));
-    return;
-  }
-  
-  // Only animate if animations are enabled
-  if (props.animationsEnabled) {
-    // Cancel any existing animation
+  const currentIds = new Set(newNodes.map(n => n.id));
+  const newNodeIds = newNodes.map(n => n.id).filter(id => !previousNodeIds.has(id));
+  const removedCount = [...previousNodeIds].filter(id => !currentIds.has(id)).length;
+
+  const isStructuralChange = previousNodeIds.size > 0 && removedCount > previousNodeIds.size / 2;
+
+  if (isStructuralChange) {
+    nextTick(() => {
+      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 150);
+    });
+  } else if (newNodeIds.length > 0 && props.animationsEnabled) {
     cancelCurrentAnimation();
-    
-    // Focus on the last new node (most recent)
     const targetNodeId = newNodeIds[newNodeIds.length - 1];
     const targetNode = newNodes.find(n => n.id === targetNodeId);
-    
     if (targetNode) {
       animationController = new AbortController();
       animateToNode(targetNodeId, targetNode.position, animationController.signal);
     }
   }
-  
-  // Update tracked nodes
-  previousNodeIds = new Set(newNodes.map(n => n.id));
+
+  previousNodeIds = currentIds;
 }, { immediate: true });
 
 // Watch for selected node changes and center the node in view
-let previousSelectedId: string | undefined = undefined;
-watch(() => props.selectedNodeId, async (newSelectedId) => {
-  if (newSelectedId && newSelectedId !== previousSelectedId) {
-    // Small delay to ensure the details panel is rendered
-    setTimeout(async () => {
-      await centerNodeInView(newSelectedId);
-    }, 100);
+watch(() => props.selectedNodeId, (newSelectedId, oldSelectedId) => {
+  if (newSelectedId && newSelectedId !== oldSelectedId) {
+    setTimeout(() => centerNodeInView(newSelectedId), 100);
   }
-  previousSelectedId = newSelectedId;
 });
-
-// Auto-fit view when flow structure changes
-watch(() => props.tnodeTree, (newTree) => {
-  if (newTree && newTree.length > 0) {
-    // Small delay to ensure nodes are rendered
-    nextTick(() => {
-      setTimeout(() => {
-        fitView({ 
-          padding: 0.2,
-          duration: 400 
-        });
-      }, 150);
-    });
-  }
-}, { immediate: true });
 
 // Cleanup on unmount
 onUnmounted(() => {
   cancelCurrentAnimation();
-  nodePositionCache.clear();
   previousNodeIds.clear();
   if (clickTimeout) {
     clearTimeout(clickTimeout);
