@@ -107,6 +107,14 @@ export function logErrors(actor: string) {
   return {
     error: (error: unknown) => {
       logger.error(`${actor} State Error:`, { error });
+      // Write structured JSON for the main process to parse (JSON lines pattern)
+      const err = error instanceof Error ? error : new Error(String(error));
+      process.stderr.write(JSON.stringify({
+        __fatal: true,
+        message: err.message,
+        stack: err.stack,
+        source: actor,
+      }) + '\n');
     }
   }
 }

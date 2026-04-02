@@ -78,7 +78,7 @@ const apiStatus = {
   getStatus: () => ipcRenderer.invoke('api:get-status') as Promise<{
     running: boolean;
     port?: number;
-    error?: string;
+    error?: { message: string; stack?: string };
     restartAttempts: number;
   }>,
   onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {

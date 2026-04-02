@@ -23,12 +23,12 @@
       #error-page .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.6; }
       #error-page h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; }
       #error-page .subtitle { color: #a3a3a3; font-size: 0.875rem; margin: 0 0 1.5rem; line-height: 1.5; }
-      #error-page details { text-align: left; margin-bottom: 1.5rem; background: #262626; border-radius: 8px; padding: 0; }
+      #error-page details { text-align: left; margin-bottom: 1.5rem; background: #262626; border: 1px solid #333; border-radius: 8px; padding: 0; }
       #error-page summary { cursor: pointer; padding: 0.75rem 1rem; font-size: 0.8rem; color: #a3a3a3; user-select: none; }
-      #error-page pre {
-        margin: 0; padding: 0 1rem 0.75rem; font-size: 0.75rem; color: #ef4444;
-        white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;
-        font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      #error-page .stack-frames {
+        margin: 0; padding: 0.5rem 1rem 0.75rem; font-size: 0.6875rem; color: #737373;
+        white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow-y: auto;
+        line-height: 1.6; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
       }
       #error-page .reload-btn {
         background: #2563eb; color: #fff; border: none; border-radius: 6px;
@@ -42,10 +42,10 @@
       <div class="content">
         <div class="icon">&#9888;</div>
         <h1 id="error-title">Something went wrong</h1>
-        <p class="subtitle">The application encountered an unexpected error.</p>
+        <p id="error-subtitle" class="subtitle">The application encountered an unexpected error.</p>
         <details>
-          <summary>Error details</summary>
-          <pre id="error-detail"></pre>
+          <summary>Stack trace</summary>
+          <div id="error-detail" class="stack-frames"></div>
         </details>
         <button class="reload-btn" onclick="window.location.reload()">Reload</button>
       </div>
@@ -58,8 +58,21 @@
         var errorPage = document.getElementById('error-page');
         var appEl = document.getElementById('app');
         if (!errorPage) return;
+
         document.getElementById('error-title').textContent = title || 'Something went wrong';
-        document.getElementById('error-detail').textContent = detail || '';
+
+        // Structured error: { message, stack } — show message as subtitle, stack in details
+        // String fallback: show as-is in details section
+        var subtitle = document.getElementById('error-subtitle');
+        var detailEl = document.getElementById('error-detail');
+        if (detail && typeof detail === 'object' && detail.message) {
+          subtitle.textContent = detail.message;
+          subtitle.style.color = '#d4d4d4';
+          detailEl.textContent = detail.stack || '';
+        } else {
+          detailEl.textContent = detail || '';
+        }
+
         errorPage.style.display = 'flex';
         if (appEl) appEl.style.display = 'none';
       };

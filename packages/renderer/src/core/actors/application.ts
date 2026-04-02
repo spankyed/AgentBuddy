@@ -80,7 +80,7 @@ export type ApplicationEvent =
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'ROUTE_TOUR_EVENT'; target: string; event: any }
-  | { type: 'BACKEND_ERROR'; error: string }
+  | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();

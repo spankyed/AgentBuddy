@@ -23,7 +23,7 @@ export class ApiServer implements AppModule {
   private serverReady: Promise<void>;
   private serverReadyResolve?: () => void;
   private actualPort?: number;
-  private lastError?: string;
+  private lastError?: { message: string; stack?: string };
 
   constructor() {
     this.processManager = new ProcessManager({
@@ -142,8 +142,11 @@ export class ApiServer implements AppModule {
 
   private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
     logError(`[MAIN] API server exited with code ${code} and signal ${signal}`);
+    const fatal = this.processManager.getLastFatalError();
     const stderr = this.processManager.getLastStderr();
-    this.lastError = stderr || `Backend process exited unexpectedly (code ${code})`;
+    this.lastError = fatal
+      ? { message: fatal.message, stack: fatal.stack }
+      : { message: stderr || `Backend process exited unexpectedly (code ${code})` };
     broadcastEvent(API_EVENTS.STOPPED);
 
     // Reset state
@@ -161,14 +164,14 @@ export class ApiServer implements AppModule {
 
       setTimeout(() => this.startApiServer(), API_CONFIG.RESTART_DELAY);
     } else if (this.restartAttempts >= API_CONFIG.MAX_RESTART_ATTEMPTS) {
-      this.lastError = 'Max restart attempts reached';
+      this.lastError = { message: 'Max restart attempts reached' };
       logError('[MAIN] Max restart attempts reached');
       broadcastEvent(API_EVENTS.ERROR, { error: 'Max restart attempts reached' });
     }
   }
 
   private handleProcessError(error: Error): void {
-    this.lastError = error.message;
+    this.lastError = { message: error.message, stack: error.stack };
     logError('[MAIN] Failed to start API server:', error);
     broadcastEvent(API_EVENTS.ERROR, { error: error.message });
   }

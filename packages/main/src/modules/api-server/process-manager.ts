@@ -16,6 +16,7 @@ export class ProcessManager {
   private handlers: ProcessHandlers;
   private serverReady = false;
   private lastStderr = '';
+  private lastFatalError?: { message: string; stack?: string; source?: string };
 
   constructor(handlers: ProcessHandlers = {}) {
     this.handlers = handlers;
@@ -25,6 +26,7 @@ export class ProcessManager {
     this.process = process;
     this.serverReady = false;
     this.lastStderr = '';
+    this.lastFatalError = undefined;
     this.attachHandlers();
   }
 
@@ -82,6 +84,19 @@ export class ProcessManager {
         const message = data.toString();
         const isDev = !app.isPackaged;
         this.lastStderr = message.trim();
+
+        // Check for structured fatal error JSON line from backend
+        for (const line of message.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('{"__fatal":')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (parsed.__fatal) {
+                this.lastFatalError = { message: parsed.message, stack: parsed.stack, source: parsed.source };
+              }
+            } catch { /* not valid JSON, ignore */ }
+          }
+        }
 
         // Always log errors in production for debugging
         logError(`[API Server Error]: ${message.trim()}`);
@@ -164,6 +179,10 @@ export class ProcessManager {
 
   getLastStderr(): string {
     return this.lastStderr;
+  }
+
+  getLastFatalError(): { message: string; stack?: string; source?: string } | undefined {
+    return this.lastFatalError;
   }
 }
 
