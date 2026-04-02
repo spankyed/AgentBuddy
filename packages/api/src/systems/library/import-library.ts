@@ -15,7 +15,7 @@ import type { EARS } from '@/core/types'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import type { ContentSection } from './types'
 import type { ExportedLibrary } from './export-types'
-import { toTitleCase, parseFrontmatter } from './utils'
+import { toTitleCase, parseFrontmatter, parseMarkdownSections } from './utils'
 
 interface ImportResult {
   created: number
@@ -248,9 +248,8 @@ function importMarkdownDir(
         const raw = fs.readFileSync(fullPath, 'utf-8')
         const { tags, body } = parseFrontmatter(raw)
 
-        // Create content as a single markdown section
         const content: ContentSection[] = body.trim()
-          ? [{ type: 'markdown', text: body }]
+          ? parseMarkdownSections(body)
           : []
 
         const document = repository.libraryCommands.createDocument(name, content, tags, parentId)
@@ -258,16 +257,19 @@ function importMarkdownDir(
 
         if (!hasMedia || content.length === 0) continue
 
-        // Restore media: scan for media/{filename} refs, copy to new entity dir
+        // Restore media refs across all sections that contain text
         const newId = document.id
         let contentChanged = false
-        const section = content[0] as { type: 'markdown'; text: string }
 
-        const restored = restoreMarkdownMediaRefs(section.text, newId, rootImportDir)
-        if (restored.mediaRestored > 0) {
-          section.text = restored.content
-          contentChanged = true
-          result.mediaRestored += restored.mediaRestored
+        for (const section of content) {
+          if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
+            const restored = restoreMarkdownMediaRefs(section.text, newId, rootImportDir)
+            if (restored.mediaRestored > 0) {
+              section.text = restored.content
+              contentChanged = true
+              result.mediaRestored += restored.mediaRestored
+            }
+          }
         }
 
         if (contentChanged) {
