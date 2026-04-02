@@ -5,7 +5,7 @@ import { toTitleCase, countDocs } from '../defs/library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const LIBRARY_DIR = path.join(ROOT, 'src', 'library')
-const COMPILED_DIR = path.join(ROOT, '../api/src/setup/seed/data')
+const COMPILED_DIR = path.join(ROOT, 'dist')
 const OUTPUT_FILE = path.join(COMPILED_DIR, 'compiled-library.json')
 
 function walkDirectory(dir: string): ExportedItem[] {
@@ -53,7 +53,7 @@ export function compileLibrary(): void {
   if (fs.existsSync(mediaSrc)) {
     const mediaDest = path.join(COMPILED_DIR, 'media')
     fs.cpSync(mediaSrc, mediaDest, { recursive: true })
-    console.log(`  Copied media/ to data/media/`)
+    console.log(`  Copied media/ to dist/media/`)
   }
 
   const output: ExportedLibrary = { version: 1, items }
