@@ -16,7 +16,7 @@ export class ProcessManager {
   private handlers: ProcessHandlers;
   private serverReady = false;
   private lastStderr = '';
-  private lastFatalError?: { message: string; stack?: string; source?: string };
+  private fatalErrors: { message: string; stack?: string; source?: string }[] = [];
 
   constructor(handlers: ProcessHandlers = {}) {
     this.handlers = handlers;
@@ -26,7 +26,7 @@ export class ProcessManager {
     this.process = process;
     this.serverReady = false;
     this.lastStderr = '';
-    this.lastFatalError = undefined;
+    this.fatalErrors = [];
     this.attachHandlers();
   }
 
@@ -92,7 +92,7 @@ export class ProcessManager {
             try {
               const parsed = JSON.parse(trimmed);
               if (parsed.__fatal) {
-                this.lastFatalError = { message: parsed.message, stack: parsed.stack, source: parsed.source };
+                this.fatalErrors.push({ message: parsed.message, stack: parsed.stack, source: parsed.source });
               }
             } catch { /* not valid JSON, ignore */ }
           }
@@ -181,8 +181,8 @@ export class ProcessManager {
     return this.lastStderr;
   }
 
-  getLastFatalError(): { message: string; stack?: string; source?: string } | undefined {
-    return this.lastFatalError;
+  getFatalErrors(): { message: string; stack?: string; source?: string }[] {
+    return this.fatalErrors;
   }
 }
 
