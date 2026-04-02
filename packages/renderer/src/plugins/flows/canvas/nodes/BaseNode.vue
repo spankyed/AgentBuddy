@@ -5,7 +5,7 @@
       nodeClasses,
       {
         'ring-2 ring-blue-400/70 shadow-lg shadow-blue-500/20': isEditing,
-        'ring-1 ring-white/30': !isEditing && (isActive || selected),
+        'ring-2 ring-white/40 shadow-md shadow-white/5': !isEditing && (isActive || selected),
         'cursor-pointer': selectable,
       }
     ]"
