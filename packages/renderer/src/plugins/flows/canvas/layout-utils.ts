@@ -136,16 +136,30 @@ export function buildElkGraph(
     return { id: node.id, width: nodeWidth, height, ports }
   })
 
+  // Collect all declared ports so we can filter out edges referencing non-existent ports
+  const validPorts = new Set<string>()
+  for (const node of elkNodes) {
+    for (const port of node.ports ?? []) {
+      validPorts.add(port.id)
+    }
+  }
+
   const sortedEdges = [...edges].sort((a, b) =>
     getHandleIndex(a.sourceHandle) - getHandleIndex(b.sourceHandle)
   )
 
-  const elkEdges: ElkExtendedEdge[] = sortedEdges.map((edge, idx) => ({
-    id: edge.id || `e${idx}`,
-    sources: [buildPortId(edge.source, edge.sourceHandle)],
-    targets: [`${edge.target}-in`],
-    layoutOptions: { 'elk.priority': String(getHandleIndex(edge.sourceHandle)) }
-  }))
+  const elkEdges: ElkExtendedEdge[] = sortedEdges
+    .filter(edge => {
+      const sourcePort = buildPortId(edge.source, edge.sourceHandle)
+      const targetPort = `${edge.target}-in`
+      return validPorts.has(sourcePort) && validPorts.has(targetPort)
+    })
+    .map((edge, idx) => ({
+      id: edge.id || `e${idx}`,
+      sources: [buildPortId(edge.source, edge.sourceHandle)],
+      targets: [`${edge.target}-in`],
+      layoutOptions: { 'elk.priority': String(getHandleIndex(edge.sourceHandle)) }
+    }))
 
   return {
     id: 'root',

@@ -28,6 +28,18 @@ import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimen
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
+/** Scan existing edges from a switch node and return the next branch index */
+function nextBranchIndex(edges: EdgeEntity[], sourceNodeId: string): number {
+  const indices = edges
+    .filter(e => e.source === sourceNodeId && e.sourceHandle)
+    .map(e => {
+      const match = e.sourceHandle!.match(/branch-(\d+)/)
+      return match ? parseInt(match[1], 10) : -1
+    })
+    .filter(i => i >= 0)
+  return indices.length > 0 ? Math.max(...indices) + 1 : 0
+}
+
 
 const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
 
@@ -742,6 +754,8 @@ const flowsState = setup({
               })
             const nextIndex = existingExits.length > 0 ? Math.max(...existingExits) + 1 : 0
             sourceHandle = `exit-${nextIndex}`
+          } else if (selectedNode?.nodeType === 'switch') {
+            sourceHandle = `branch-${nextBranchIndex(context.graph.edges, context.selectedNodeId!)}`
           }
 
           const tempEdgeId = `Edge-${randId()}`
@@ -813,6 +827,15 @@ const flowsState = setup({
         ? { x: sourcePos.x + nodeOffset.xOffset, y: sourcePos.y + nodeOffset.yOffset }
         : { x: nodeOffset.fallbackX, y: nodeOffset.fallbackY }
 
+      // Resolve sourceHandle — fallback to next branch index for switch nodes
+      let resolvedSourceHandle = ev.sourceHandle
+      if (!resolvedSourceHandle) {
+        const sourceNode = context.graph.nodes.find(n => n.id === ev.sourceNodeId)
+        if (sourceNode?.nodeType === 'switch') {
+          resolvedSourceHandle = `branch-${nextBranchIndex(context.graph.edges, ev.sourceNodeId)}`
+        }
+      }
+
       // Create temporary edge
       const tempEdgeId = `Edge-${randId()}`
       const tempEdge: EdgeEntity = {
@@ -820,7 +843,7 @@ const flowsState = setup({
         source: ev.sourceNodeId,
         target: tempId,
         kind: 'transitions_to',
-        sourceHandle: ev.sourceHandle,
+        sourceHandle: resolvedSourceHandle,
       } as EdgeEntity
 
       // Send create to backend
