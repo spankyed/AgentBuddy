@@ -10,6 +10,8 @@ function getServices() {
 }
 
 interface ActionNodeConfig {
+  mode?: 'template' | 'code';
+  actionFn?: string;
   params?: Record<string, any>;               // Direct parameters
   fieldMappings?: Array<{                     // Or map from context
     target: string;
@@ -63,7 +65,27 @@ export async function actionNodeHandler(
   });
   
   try {
-    // Get the linked action via INSTANCE_OF relationship
+    // Inline code mode: execute actionFn directly without entity lookup
+    if (actionNode.mode === 'code' && actionNode.actionFn) {
+      const params: Record<string, any> = {};
+      for (const [key, value] of Object.entries(nodeData)) {
+        params[key] = value;
+      }
+
+      brainInspect(`Executing inline action code for: ${node.label}`, params);
+
+      const result = await executeActionFunction(
+        actionNode.actionFn,
+        params,
+        executionContext.flowTNodeId,
+      );
+
+      brainInspect(`Inline action completed successfully:`, { nodeLabel: node.label, result });
+      actor.send({ type: 'COMPLETE', result });
+      return;
+    }
+
+    // Template mode: Get the linked action via INSTANCE_OF relationship
     const actionId = repository.flowsQueries.getNodeActionId(node.id);
     
     if (!actionId) {

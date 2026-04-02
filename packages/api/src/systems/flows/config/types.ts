@@ -146,9 +146,11 @@ export interface LLMNode extends NodeBase {
 
 export interface ActionNode extends NodeBase {
   nodeType: 'action';
-  actionId?: string;                    // Reference to Action entity
-  params?: Record<string, any>;         // Direct parameters
-  fieldMappings?: Array<{               // Or map from context
+  mode?: 'template' | 'code';            // default 'template' (select existing action)
+  actionId?: string;                      // Reference to Action entity (template mode)
+  actionFn?: string;                      // Inline code (code mode)
+  params?: Record<string, any>;           // Direct parameters
+  fieldMappings?: Array<{                 // Or map from context
     target: string;
     source: string;
     default?: any;
