@@ -212,13 +212,13 @@ export interface FlowsConnectedData {
   };
   flows: Partial<FlowEntity>[];
   rootFlow?: Partial<FlowEntity>;
-  models: ModelConfig[];
+  models: ModelCatalogEntry[];
   prompts: PromptEntity[];
   actions: ActionEntity[];
   settings?: any; // FlowsSettings from backend
 }
 
-export interface ModelConfig {
+export interface ModelCatalogEntry {
   id: string;
   name: string;
   provider: string;

@@ -44,8 +44,9 @@ export async function action(
     const queryDoc = doc1.content;
     const transactionDoc = doc2.content;
 
-    const queryExamples = queryDoc[0]?.text || 'No content found in DOC-1';
-    const transactionExamples = transactionDoc[0]?.text || 'No content found in DOC-2';
+    const textOf = (s: (typeof queryDoc)[number]) => 'text' in s ? s.text : '';
+    const queryExamples = textOf(queryDoc[0]) || 'No content found in DOC-1';
+    const transactionExamples = textOf(transactionDoc[0]) || 'No content found in DOC-2';
 
     // Define schema for message classification
     const MessageClassificationSchema = z.object({
@@ -57,7 +58,7 @@ export async function action(
       model: { provider: 'openai', model: 'gpt-5-nano-2025-08-07' },
       schema: MessageClassificationSchema,
       "reasoning_effort": "minimal",
-      prompt: services.prompt.usePrompt('db-query-classification')({
+      prompt: services.prompt.usePrompt('db-query-classification', {
         queryExamples,
         transactionExamples,
         dbPrompt
@@ -68,8 +69,8 @@ export async function action(
     services.logger.info('classificationResult', classificationResult)
     const classification = classificationResult.object;
 
-    const queryPrompt = queryDoc[1]?.text || '';
-    const transactionPrompt = transactionDoc[1]?.text || '';
+    const queryPrompt = textOf(queryDoc[1]) || '';
+    const transactionPrompt = textOf(transactionDoc[1]) || '';
 
     // Select appropriate document based on classification
     const selectedDoc = classification.type === 'query' ? queryPrompt : transactionPrompt;
@@ -85,7 +86,7 @@ export async function action(
       },
       "reasoning_effort": "minimal",
       prompt: dbPrompt,
-      system: services.prompt.usePrompt('db-query-examples')({
+      system: services.prompt.usePrompt('db-query-examples', {
         selectedDoc
       }),
       temperature: 0.7,
