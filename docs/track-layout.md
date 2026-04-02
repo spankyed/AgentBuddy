@@ -83,6 +83,48 @@ An edge with `sourceHandle: "exit-0"` gets mapped to port `{nodeId}-out-exit-0`.
 
 When a listener node has no connected exit edges (`exitCount` undefined), it gets a single default `{nodeId}-out` port — same as a regular node's output. This ensures edges referencing the generic output still resolve rather than causing an ELK port mismatch.
 
+## Keeping edges and ports in sync
+
+The most common cause of broken layouts (all nodes in a horizontal row at y=0) is a **port mismatch**: an edge references a port ID that doesn't exist on its source or target node. Under `FIXED_ORDER` port constraints, ELK throws on unresolvable ports, and the catch block returns the horizontal fallback.
+
+### How mismatches happen
+
+Any code path that creates an edge must set `sourceHandle` to a value that the source node's descriptor will actually declare as a port. Mismatches typically occur when:
+
+1. **A node type has indexed output ports** (e.g. `branch-N` for switch, `exit-N` for listener) but the edge-creation code leaves `sourceHandle` undefined. This produces the generic port `{nodeId}-out`, which the descriptor doesn't declare — it only declares `{nodeId}-out-branch-0`, `{nodeId}-out-branch-1`, etc.
+
+2. **Persisted bad edges** — if a bug once wrote edges without proper handles, those edges break layout on every subsequent load (inform don't fix).
+
+### Prevention pattern
+
+When programmatically creating edges from a node with indexed ports, always resolve the correct handle:
+
+```ts
+// For listeners (exit-N ports):
+if (connectionRules.inputs === 0) {
+  sourceHandle = `exit-${nextExitIndex(edges, sourceNodeId)}`
+}
+// For switch nodes (branch-N ports):
+else if (sourceNode.nodeType === 'switch') {
+  sourceHandle = `branch-${nextBranchIndex(edges, sourceNodeId)}`
+}
+```
+
+The index is derived by scanning existing edges from that source and incrementing past the highest existing index. See `nextBranchIndex()` in `state.ts` for the implementation.
+
+### Safety net: port validation in `buildElkGraph`
+
+As a defensive measure, `buildElkGraph` filters out any edge whose source or target port doesn't exist in the declared port set before passing edges to ELK. This prevents ELK from throwing on stale or malformed edges, but it means the affected edge simply won't influence layout — so the root cause should still be fixed upstream.
+
+### Checklist for adding new multi-output node types
+
+When introducing a node type with multiple output handles:
+
+1. **Descriptor** — implement `getPorts()` in `node-dimensions.ts` to declare all `{nodeId}-out-{handle}` ports.
+2. **`createNode` auto-connect** — add a branch in the sourceHandle resolution block (around the `selectedConfig?.connectionRules` check) to assign the correct handle.
+3. **`createConnectedNode`** — add a fallback that resolves `sourceHandle` when `ev.sourceHandle` is undefined.
+4. **Verify** — select the new node type, create a step from the palette, and confirm the edge has the correct handle and layout is correct.
+
 ## Node height calculation
 
 Node heights must match what the Vue components actually render. Mismatches cause tracks to overlap visually even when ELK positions are correct. Heights are defined via `NODE_DIMENSIONS` constants in `node-dimensions.ts` and computed by each descriptor's `getHeight` method.
