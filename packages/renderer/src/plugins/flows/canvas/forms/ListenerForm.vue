@@ -33,6 +33,7 @@
       <input
         :value="nodeData.eventType || ''"
         @input="$emit('update-node', { eventType: ($event.target as HTMLInputElement).value })"
+        @keydown.enter="$emit('close')"
         class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     </div>
