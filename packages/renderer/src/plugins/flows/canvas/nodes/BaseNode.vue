@@ -90,7 +90,7 @@
         :source-handle="handle.id"
         :is-selected="isHandleSelected(handle.id)"
         :is-connected="isHandleConnected(handle.id)"
-        :can-remove-handle="canRemoveHandles"
+        :can-remove-handle="canRemoveHandles && handle.id !== sourceHandles[sourceHandles.length - 1].id"
         @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
         @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
         @edge-select="(nodeId, handleId) => $emit('edge-select', nodeId, handleId)"
