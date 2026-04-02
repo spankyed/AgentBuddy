@@ -56,38 +56,3 @@ export function createRoundTrip() {
     },
   };
 }
-
-/** Strip fields that the exporter always adds but the original DSL may omit (e.g. track.label) */
-export function normalizeTrack(track: any) {
-  const out = { ...track };
-  // The exporter always sets a label on tracks. Remove it if it matches the event.
-  if (out.label === out.event) delete out.label;
-  return out;
-}
-
-/** Compare steps arrays, ignoring label echoes on nodes where label == derived name */
-export function expectStepsMatch(exported: any[], original: any[]) {
-  expect(exported).toHaveLength(original.length);
-  for (let i = 0; i < original.length; i++) {
-    const exp = { ...exported[i] };
-    const orig = { ...original[i] };
-
-    // Switch node: recursively check conditions/else steps
-    if (orig.type === 'switch') {
-      expect(exp.type).toBe('switch');
-      expect(exp.conditions).toHaveLength(orig.conditions.length);
-      for (let ci = 0; ci < orig.conditions.length; ci++) {
-        expect(exp.conditions[ci].if).toBe(orig.conditions[ci].if);
-        expectStepsMatch(exp.conditions[ci].steps || [], orig.conditions[ci].steps || []);
-      }
-      if (orig.else) {
-        expect(exp.else).toBeDefined();
-        expectStepsMatch(exp.else, orig.else);
-      }
-      return;
-    }
-
-    // For non-switch nodes, check type + key fields
-    expect(exp.type).toBe(orig.type);
-  }
-}

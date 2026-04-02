@@ -98,6 +98,9 @@ export const steps = {
   create: { type: 'create' as const, entity: 'Thread' },
   update: { type: 'update' as const, target: 'some-entity', onMissing: 'ignore' },
   keepAlive: { type: 'keep_alive' as const },
+
+  // fire variants
+  fireLocal: { type: 'fire' as const, event: 'local.ping' },
 };
 
 /* ── Named flow DSLs ──────────────────────────────────────────── */
@@ -150,5 +153,30 @@ export const flows = {
 
   empty: {
     'Empty': [{ event: 'start', exits: [[]] }],
+  } as FlowDSL,
+
+  rootFlow: {
+    'RootFlow': {
+      root: true,
+      tracks: [{ event: 'start', exits: [[{ type: 'action', action: 'init' }]] }],
+    },
+  } as FlowDSL,
+
+  parallelExits: {
+    'F': [{
+      event: 'go',
+      exits: [
+        [{ type: 'action', action: 'pathA' }],
+        [{ type: 'action', action: 'pathB' }, { type: 'action', action: 'pathC' }],
+      ],
+    }],
+  } as FlowDSL,
+
+  trackWithDescription: {
+    'F': [{
+      event: 'signup',
+      description: 'Handles user signup',
+      exits: [[{ type: 'action', action: 'welcome' }]],
+    }],
   } as FlowDSL,
 };

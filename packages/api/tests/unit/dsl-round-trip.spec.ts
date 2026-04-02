@@ -53,6 +53,16 @@ describe('round-trip', () => {
 
       expect(step.final).toBe(true);
     });
+
+    it('root flow config: root flag and tracks preserved', () => {
+      const exported = rt.roundTrip(flows.rootFlow);
+      const entry = exported['RootFlow'] as any;
+
+      expect(Array.isArray(entry)).toBe(false); // FlowConfig, not Track[]
+      expect(entry.root).toBe(true);
+      expect(entry.tracks).toHaveLength(1);
+      expect(entry.tracks[0].event).toBe('start');
+    });
   });
 
   describe('action + llm nodes', () => {
@@ -84,6 +94,15 @@ describe('round-trip', () => {
       expect(step.temperature).toBe(0.7);
       expect(step.maxTokens).toBe(500);
       expect(step.systemPrompt).toBe('You are helpful');
+    });
+
+    it('llm with field mappings (map): preserved', () => {
+      const dsl = wrapInFlow([steps.llm]);
+      const exported = rt.roundTrip(dsl, { prompts: ctx.prompts });
+      const step = exported['F'][0].exits[0][0];
+
+      expect(step.type).toBe('llm');
+      expect(step.map).toEqual({ input: '$.data.text' });
     });
   });
 
@@ -181,6 +200,36 @@ describe('round-trip', () => {
       // Should have exactly 1 step (the switch)
       expect(exported['F'][0].exits[0]).toHaveLength(1);
       expect(exported['F'][0].exits[0][0].type).toBe('switch');
+    });
+
+    it('varied operators: !=, contains, is_empty all round-trip', () => {
+      const dsl = wrapInFlow([{
+        type: 'switch',
+        conditions: [
+          { if: '$.x != 5', steps: [{ type: 'action', action: 'notFive' }] },
+          { if: '$.name contains admin', steps: [{ type: 'action', action: 'isAdmin' }] },
+          { if: '$.field is_empty', steps: [{ type: 'action', action: 'empty' }] },
+        ],
+      }]);
+      const exported = rt.roundTrip(dsl);
+      const sw = exported['F'][0].exits[0][0];
+
+      expect(sw.conditions).toHaveLength(3);
+      expect(sw.conditions[0].if).toBe('$.x != 5');
+      expect(sw.conditions[1].if).toBe('$.name contains admin');
+      expect(sw.conditions[2].if).toBe('$.field is_empty');
+    });
+
+    it('switch with explicit label: preserved', () => {
+      const dsl = wrapInFlow([{
+        type: 'switch',
+        label: 'Route Decision',
+        conditions: [{ if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] }],
+      }]);
+      const exported = rt.roundTrip(dsl);
+      const sw = exported['F'][0].exits[0][0];
+
+      expect(sw.label).toBe('Route Decision');
     });
 
     it('switch followed by another step: branches inlined, continuation present', () => {
@@ -284,6 +333,17 @@ describe('round-trip', () => {
 
       expect(step.type).toBe('keep_alive');
     });
+
+    it('fire with default scope (local omitted) + no payload', () => {
+      const dsl = wrapInFlow([steps.fireLocal]);
+      const exported = rt.roundTrip(dsl);
+      const step = exported['F'][0].exits[0][0];
+
+      expect(step.type).toBe('fire');
+      expect(step.event).toBe('local.ping');
+      expect(step.scope).toBeUndefined();
+      expect(step.payload).toBeUndefined();
+    });
   });
 
   describe('multi-track flows', () => {
@@ -296,12 +356,32 @@ describe('round-trip', () => {
       expect(events).toContain('user.updated');
     });
 
+    it('track description: preserved', () => {
+      const exported = rt.roundTrip(flows.trackWithDescription);
+
+      expect(exported['F'][0].description).toBe('Handles user signup');
+    });
+
     it('track labels: unique labels preserved', () => {
       const exported = rt.roundTrip(flows.twoLabeledTracks);
       const labels = exported['F'].map((t: any) => t.label);
 
       expect(labels).toContain('Track A');
       expect(labels).toContain('Track B');
+    });
+  });
+
+  describe('parallel exits', () => {
+    it('two exit chains from one listener: both preserved', () => {
+      const exported = rt.roundTrip(flows.parallelExits);
+      const exits = exported['F'][0].exits;
+
+      expect(exits).toHaveLength(2);
+      expect(exits[0]).toHaveLength(1);
+      expect(exits[0][0].action).toBe('pathA');
+      expect(exits[1]).toHaveLength(2);
+      expect(exits[1][0].action).toBe('pathB');
+      expect(exits[1][1].action).toBe('pathC');
     });
   });
 
