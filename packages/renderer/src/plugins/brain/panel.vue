@@ -1,8 +1,8 @@
 <template>
   <!-- TNode Tree Display -->
   <div class="h-full brain-panel bg-neutral-900/50 backdrop-blur-sm">
-    <!-- Brain Dead State -->
-    <div v-if="brainIsDead" class="flex items-center justify-center h-full">
+    <!-- Brain Dead State (no nodes) -->
+    <div v-if="brainIsDead && (!tNodeTree || tNodeTree.length === 0)" class="flex items-center justify-center h-full">
       <div class="px-6 py-8 text-center">
         <div class="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-full bg-neutral-800/50">
           <svg class="w-6 h-6 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,6 +17,25 @@
         >
           Start Brain
         </button>
+      </div>
+    </div>
+    <!-- Brain Dead State (with stale nodes) -->
+    <div v-else-if="brainIsDead" class="tnode-tree">
+      <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
+          <span class="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded bg-neutral-700/50 text-neutral-400">Stopped</span>
+        </div>
+      </div>
+      <div class="flex-1 p-4 opacity-50 pointer-events-none">
+        <div class="space-y-1">
+          <TNodeListItem
+            v-for="node in tNodeTree"
+            :key="node.id"
+            :node="node"
+            :depth="0"
+          />
+        </div>
       </div>
     </div>
     <!-- Normal TNode Tree Display -->

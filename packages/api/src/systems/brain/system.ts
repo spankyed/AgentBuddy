@@ -155,21 +155,21 @@ export const brainSystem = setup({
         };
       });
       
-      // Send plugin data after brain is started
+      // Send BRAIN_STARTED before plugin data so frontend resets brainIsDead before processing data
       enqueue(({ system, context }) => {
-        const data = repository.brainQueries.rootData();
-        
-        system.get(bus).send(emit(brain, { 
-          type: 'RECEIVE_PLUGIN_DATA',
-          data
-        }));
-        
-        // Send current brain state
+        // Send current brain state first
         if (context.brainActor) {
-          system.get(bus).send(emit(brain, { 
+          system.get(bus).send(emit(brain, {
             type: 'BRAIN_STARTED'
           }));
         }
+
+        const data = repository.brainQueries.rootData();
+
+        system.get(bus).send(emit(brain, {
+          type: 'RECEIVE_PLUGIN_DATA',
+          data
+        }));
       });
     }),
     
@@ -194,18 +194,6 @@ export const brainSystem = setup({
           value: undefined
         });
 
-        // Send empty data to clear the UI
-
-        system.get(bus).send(emit(brain, {
-          type: 'RECEIVE_PLUGIN_DATA',
-          data: {
-            flowTNodeId: '' as EARS.EntityId,
-            tNodeTree: [],
-            possibleEvents: [],
-            flowHierarchy: [],
-          }
-        }));
-        
         // Send BRAIN_KILLED event
         system.get(bus).send(emit(brain, {
             type: 'BRAIN_KILLED'

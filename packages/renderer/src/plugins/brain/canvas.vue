@@ -60,6 +60,25 @@
         @flow-navigate="handleFlowNavigate"
         @back-click="handleBackClick"
       />
+
+      <!-- Brain Stopped Overlay -->
+      <div v-if="brainIsDead && tNodeTree && tNodeTree.length" class="absolute inset-0 z-20 flex items-center justify-center bg-neutral-900/60 backdrop-blur-[1px]">
+        <div class="text-center">
+          <div class="flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-neutral-800/80 border border-neutral-700/50">
+            <svg class="w-7 h-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-12.728 12.728m0-12.728l12.728 12.728" />
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-neutral-300">Brain Stopped</p>
+          <p class="mt-1 text-xs text-neutral-500">This is the last known state</p>
+          <button
+            class="mt-4 px-4 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            @click.stop="handleStart"
+          >
+            Start Brain
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Step Node Details Panel (Slide-out) -->
@@ -78,6 +97,7 @@ import { id, type BrainState } from '@/plugins/brain/state.ts';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
+import { trpc } from '@/core/trpc';
 
 const actor: BrainState = applicationState.system.get(id);
 
@@ -88,6 +108,7 @@ const flowTNodeId = useSelector(actor, (state) => state.context.flowTNodeId);
 const pulsingEventType = useSelector(actor, (state) => state.context.pulsingEventType);
 const canGoBack = useSelector(actor, (state) => state.context.flowTNodeId !== 'TNode-Root');
 const brainIsPaused = useSelector(actor, (state) => state.context.brainIsPaused);
+const brainIsDead = useSelector(actor, (state) => state.context.brainIsDead);
 
 // UI state selectors
 const showLeftPanel = useSelector(actor, (state) => state.context.showLeftPanel);
@@ -97,15 +118,25 @@ const animationsEnabled = useSelector(actor, (state) => state.context.animations
 
 // Event handlers
 const handleNodeClick = (nodeId: string) => {
+  if (brainIsDead.value) return;
   actor.send({ type: 'NODE.CLICK', nodeId });
 };
 
 const handleFlowNavigate = (tNodeId: string) => {
+  if (brainIsDead.value) return;
   actor.send({ type: 'FLOW.NAVIGATE', tNodeId });
 };
 
 const handleBackClick = () => {
+  if (brainIsDead.value) return;
   actor.send({ type: 'BACK.CLICK' });
+};
+
+const handleStart = () => {
+  trpc.bus.send.mutate({
+    systemId: 'brain',
+    type: 'START_BRAIN'
+  });
 };
 
 const handleEventClick = (eventType: string) => {

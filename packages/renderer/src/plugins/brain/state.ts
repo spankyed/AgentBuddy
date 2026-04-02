@@ -358,6 +358,9 @@ const brainState = setup({
     setBrainKilled: assign({
       brainIsDead: true,
       brainIsPaused: false,
+      possibleEvents: [],
+      flowHierarchy: [],
+      selectedStepNode: undefined,
     }),
     setBrainStarted: assign({
       brainIsDead: false,
