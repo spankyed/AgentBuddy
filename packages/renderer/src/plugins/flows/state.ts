@@ -78,6 +78,8 @@ function reindexEdges(
 }
 
 
+const HANDLE_OCCUPIED_ERROR = 'This step already has an outbound connection'
+
 const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
 
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
@@ -120,6 +122,7 @@ export interface FlowsContext {
   // Dialog bridge flags (set by context menu, consumed by watchers in flow-canvas.vue)
   showEditLabelDialog?: boolean;
   showDeleteFlowDialog?: boolean;
+  canvasError?: string;
   // DSL Import state
   dslImport: {
     status: 'idle' | 'importing' | 'success' | 'error';
@@ -182,6 +185,8 @@ type UIEvent =
   | { type: 'FLOW.REQUEST_EDIT_LABEL' }
   | { type: 'FLOW.REQUEST_DELETE' }
   | { type: 'FLOW.DIALOG_CLOSED' }
+  // Canvas error
+  | { type: 'CANVAS.CLEAR_ERROR' }
   // Layout events
   | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
 
@@ -419,7 +424,7 @@ const flowsState = setup({
       )
       if (alreadyConnected) return {}
       // Guard: source handle already occupied (except listeners)
-      if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.src, ev.sourceHandle)) return {}
+      if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.src, ev.sourceHandle)) return { canvasError: HANDLE_OCCUPIED_ERROR }
       const id = `Edge-${randId()}`
       const newEdge = {
         id,
@@ -536,6 +541,11 @@ const flowsState = setup({
     }),
 
     deselectHandle: assign({ selectedHandle: undefined }),
+    clearCanvasError: assign({ canvasError: undefined }),
+    surfaceEdgeError: assign(({ event }) => {
+      const ev = typeOf('EDGE_CREATE_FAILED', event)
+      return { canvasError: ev.error }
+    }),
 
     reindexHandles: assign(({ context, event }) => {
       const ev = typeOf('HANDLE.REINDEX', event)
@@ -582,7 +592,7 @@ const flowsState = setup({
 
       // Don't connect if source handle already has an outgoing edge (except listeners)
       if (isHandleOccupied(context.graph.edges, context.graph.nodes, handle.nodeId, handle.handleId)) {
-        return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
+        return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined, canvasError: HANDLE_OCCUPIED_ERROR };
       }
 
       const edgeId = `Edge-${randId()}`;
@@ -696,6 +706,7 @@ const flowsState = setup({
 
       let newPosition: { x: number; y: number }
       let autoEdge: EdgeEntity | null = null
+      let handleBlocked = false
 
       if (ev.position) {
         // Drag-drop: use explicit position
@@ -727,14 +738,21 @@ const flowsState = setup({
             sourceHandle = `branch-${nextBranchIndex(context.graph.edges, context.selectedNodeId!)}`
           }
 
-          const tempEdgeId = `Edge-${randId()}`
-          autoEdge = {
-            id: tempEdgeId,
-            source: context.selectedNodeId,
-            target: tempId,
-            kind: 'transitions_to',
-            ...(sourceHandle && { sourceHandle }),
-          } as EdgeEntity
+          // Only auto-connect if handle is not already occupied
+          if (!isHandleOccupied(context.graph.edges, context.graph.nodes, context.selectedNodeId!, sourceHandle)) {
+            const tempEdgeId = `Edge-${randId()}`
+            autoEdge = {
+              id: tempEdgeId,
+              source: context.selectedNodeId,
+              target: tempId,
+              kind: 'transitions_to',
+              ...(sourceHandle && { sourceHandle }),
+            } as EdgeEntity
+          } else {
+            // Handle occupied — skip auto-connect, place below instead
+            handleBlocked = true
+            newPosition = belowAllPos
+          }
         }
       } else {
         // Step with no selection — place below all nodes
@@ -763,7 +781,8 @@ const flowsState = setup({
           positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
-        tempIdMap: { ...context.tempIdMap, [tempId]: tempId }
+        tempIdMap: { ...context.tempIdMap, [tempId]: tempId },
+        canvasError: handleBlocked ? HANDLE_OCCUPIED_ERROR : undefined,
       }
     }),
 
@@ -807,7 +826,7 @@ const flowsState = setup({
 
       // Don't connect if source handle already occupied (except listeners)
       if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.sourceNodeId, resolvedSourceHandle)) {
-        return {}
+        return { canvasError: HANDLE_OCCUPIED_ERROR }
       }
 
       // Create temporary edge
@@ -1237,6 +1256,12 @@ const flowsState = setup({
     },
     EDGE_CREATED: {
       actions: 'reconcileEdgeId'
+    },
+    EDGE_CREATE_FAILED: {
+      actions: 'surfaceEdgeError',
+    },
+    'CANVAS.CLEAR_ERROR': {
+      actions: 'clearCanvasError',
     },
     EDGE_UPDATED: {
       actions: 'reconcileUpdatedEdgeId'

@@ -100,6 +100,7 @@ export type OutgoingFlowsEvents =
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_DELETED'; nodeId: string }
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
+  | { type: 'EDGE_CREATE_FAILED'; sourceId: string; targetId: string; error: string }
   | { type: 'EDGE_DELETED'; edgeId: string }
   | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
@@ -252,20 +253,30 @@ export const flowsSystem = setup({
 
       logger.info('Creating edge', { flowId, sourceId, targetId, sourceHandle, targetHandle });
 
-      const { relId } = repository.flowsCommands.createEdge(
-        sourceId as EARS.EntityId,
-        targetId as EARS.EntityId,
-        { sourceHandle, targetHandle }
-      );
+      try {
+        const { relId } = repository.flowsCommands.createEdge(
+          sourceId as EARS.EntityId,
+          targetId as EARS.EntityId,
+          { sourceHandle, targetHandle }
+        );
 
-      system.get(bus).send(emit(pluginId, {
-        type: 'EDGE_CREATED',
-        sourceId: sourceId as EARS.EntityId,
-        targetId: targetId as EARS.EntityId,
-        relId,
-        sourceHandle,
-        targetHandle,
-      }));
+        system.get(bus).send(emit(pluginId, {
+          type: 'EDGE_CREATED',
+          sourceId: sourceId as EARS.EntityId,
+          targetId: targetId as EARS.EntityId,
+          relId,
+          sourceHandle,
+          targetHandle,
+        }));
+      } catch (err: any) {
+        logger.warn('Edge creation failed', { sourceId, targetId, error: err.message });
+        system.get(bus).send(emit(pluginId, {
+          type: 'EDGE_CREATE_FAILED',
+          sourceId,
+          targetId,
+          error: err.message || 'Edge creation failed',
+        }));
+      }
     },
     
     deleteEdge: ({ system, event }) => {

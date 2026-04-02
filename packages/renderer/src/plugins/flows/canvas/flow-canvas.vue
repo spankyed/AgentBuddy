@@ -87,6 +87,8 @@
       @confirm="handleConfirmDelete"
       @cancel="handleCancelDelete"
     />
+
+    <ToastNotification ref="canvasToast" />
   </div>
 </template>
 
@@ -114,6 +116,7 @@ import FlowEditor from './components/FlowEditor.vue'
 import NodeForm from './components/NodeForm.vue'
 import FlowLabelDialog from './components/FlowLabelDialog.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
+import ToastNotification from '@/core/components/design/ToastNotification.vue'
 
 const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 
@@ -155,6 +158,16 @@ const actions = useSelector(actor, (s) => s.context.actions)
 const models = useSelector(actor, (s) => s.context.models)
 const prompts = useSelector(actor, (s) => s.context.prompts)
 const selectedHandle = useSelector(actor, (s) => s.context.selectedHandle)
+const canvasError = useSelector(actor, (s) => s.context.canvasError)
+
+const canvasToast = ref<InstanceType<typeof ToastNotification>>()
+
+watch(canvasError, (error) => {
+  if (error) {
+    canvasToast.value?.error(error)
+    actor.send({ type: 'CANVAS.CLEAR_ERROR' })
+  }
+})
 
 // Context-menu dialog bridge flags
 const showEditLabelDialog = useSelector(actor, (s) => s.context.showEditLabelDialog)
