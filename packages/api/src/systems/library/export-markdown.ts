@@ -2,7 +2,7 @@
  * Flat Markdown Library Export
  *
  * Exports library items as individual .md files with a flat media/ folder,
- * matching the scratchpad source structure for direct reuse.
+ * matching the default-setup source structure for direct reuse.
  */
 
 import * as fs from 'node:fs'

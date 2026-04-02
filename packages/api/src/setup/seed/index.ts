@@ -1,5 +1,5 @@
 /**
- * Database Seed — loads compiled scratchpad artifacts into LMDB
+ * Database Seed — loads compiled default-setup artifacts into LMDB
  *
  * Run-once: skips seeding if the `seeded` internal flag is already set,
  * unless `force` is passed. The CLI script always forces.

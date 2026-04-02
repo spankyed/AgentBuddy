@@ -11,4 +11,4 @@ fi
 # Monorepo-relative paths (default-setup is at packages/default-setup/)
 MONOREPO_ROOT="$(cd "$ROOT/../.." && pwd)"
 AB_API="$MONOREPO_ROOT/packages/api"
-AB_DEFS_OUT="$AB_API/defs/dist/scratchpad"
+AB_DEFS_OUT="$AB_API/defs/dist/default-setup"
