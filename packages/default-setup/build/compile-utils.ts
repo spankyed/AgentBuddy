@@ -202,7 +202,7 @@ function scanSourceFiles(dir: string): { sourceFiles: string[]; helperFiles: str
     for (const entry of entries) {
       if (entry.isDirectory()) {
         walk(path.join(currentDir, entry.name));
-      } else if (entry.name.endsWith('.ts')) {
+      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.example.ts')) {
         const relativePath = path.relative(dir, path.join(currentDir, entry.name));
         const content = fs.readFileSync(path.join(currentDir, entry.name), 'utf-8');
         if (META_RE.test(content)) {

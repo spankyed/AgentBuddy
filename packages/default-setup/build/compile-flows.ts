@@ -17,7 +17,7 @@ export async function compileFlows(): Promise<void> {
   }
 
   const tsFiles = fs.readdirSync(FLOWS_DIR)
-    .filter(f => f.endsWith('.ts'))
+    .filter(f => f.endsWith('.ts') && !f.endsWith('.example.ts'))
     .sort();
 
   console.log(`Found ${tsFiles.length} TypeScript file(s): ${tsFiles.join(', ')}`);
