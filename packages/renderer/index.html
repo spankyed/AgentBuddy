@@ -11,28 +11,46 @@
         display: none;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         height: 100vh;
         background: #171717;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+        background-size: 30px 30px;
         color: #f5f5f5;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        padding: 2rem;
+        padding: 15vh 2rem 2rem;
         text-align: center;
       }
-      #error-page .content { max-width: 480px; width: 100%; }
-      #error-page .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.6; }
-      #error-page h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; }
-      #error-page .subtitle { color: #a3a3a3; font-size: 0.875rem; margin: 0 0 1.5rem; line-height: 1.5; }
-      #error-page details { text-align: left; margin-bottom: 1.5rem; background: #262626; border: 1px solid #333; border-radius: 8px; padding: 0; }
-      #error-page summary { cursor: pointer; padding: 0.75rem 1rem; font-size: 0.8rem; color: #a3a3a3; user-select: none; }
+      #error-page .content { max-width: 560px; width: 100%; }
+      #error-page .icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
+      #error-page h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1.25rem; color: #e5e5e5; }
+      #error-page .subtitle {
+        color: #fca5a5; font-size: 0.75rem; margin: 0 0 1.75rem;
+        line-height: 1.5; text-align: center;
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.15);
+        border-radius: 6px; padding: 0.75rem 1rem;
+      }
+      #error-page details {
+        text-align: left; margin-bottom: 2rem;
+        background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 6px; padding: 0;
+      }
+      #error-page summary {
+        cursor: pointer; padding: 0.625rem 0.875rem 0.625rem 0.35rem; font-size: 0.8rem;
+        color: #525252; user-select: none; letter-spacing: 0.02em;
+        list-style-position: outside; margin-left: 2rem;
+      }
       #error-page .stack-frames {
-        margin: 0; padding: 0.5rem 1rem 0.75rem; font-size: 0.6875rem; color: #737373;
-        white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow-y: auto;
-        line-height: 1.6; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+        margin: 0; padding: 0 0.875rem 0.625rem; font-size: 0.625rem; color: #525252;
+        white-space: pre-wrap; word-break: break-all; max-height: 40vh; overflow-y: auto;
+        line-height: 1.5; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
       }
       #error-page .reload-btn {
         background: #2563eb; color: #fff; border: none; border-radius: 6px;
-        padding: 0.5rem 1.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;
+        padding: 0.5rem 1.75rem; font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+        transition: background 0.15s;
       }
       #error-page .reload-btn:hover { background: #3b82f6; }
     </style>
@@ -61,16 +79,18 @@
 
         document.getElementById('error-title').textContent = title || 'Something went wrong';
 
-        // Structured error: { message, stack } — show message as subtitle, stack in details
-        // String fallback: show as-is in details section
         var subtitle = document.getElementById('error-subtitle');
         var detailEl = document.getElementById('error-detail');
         if (detail && typeof detail === 'object' && detail.message) {
           subtitle.textContent = detail.message;
-          subtitle.style.color = '#d4d4d4';
           detailEl.textContent = detail.stack || '';
         } else {
           detailEl.textContent = detail || '';
+        }
+
+        // Hide details section entirely if there's no stack trace content
+        if (!detailEl.textContent) {
+          detailEl.closest('details').style.display = 'none';
         }
 
         errorPage.style.display = 'flex';
