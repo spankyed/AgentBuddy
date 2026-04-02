@@ -46,6 +46,7 @@
           @create-connected="(nodeType: string, sourceHandle?: string) => $emit('create-connected', nodeType, nodeProps.id, sourceHandle)"
           @handle-select="(nodeId: string, handleId?: string) => $emit('handle-select', nodeId, handleId)"
           @edge-select="(nodeId: string, handleId?: string) => $emit('edge-select', nodeId, handleId)"
+          @remove-handle="(nodeId: string, handleId?: string) => $emit('remove-handle', nodeId, handleId)"
         />
       </template>
       <template #edge-generic="edgeProps">
@@ -171,6 +172,7 @@ const emit = defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
   'handle-deselect': []
   'edge-select': [nodeId: string, handleId?: string]
+  'remove-handle': [nodeId: string, handleId?: string]
 }>()
 
 // Watch for editing node changes and center the node

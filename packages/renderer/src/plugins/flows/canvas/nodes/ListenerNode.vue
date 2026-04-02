@@ -4,9 +4,11 @@
     :show-target-handle="false"
     :source-handles="exitHandles"
     :show-source-handle="false"
+    :can-remove-handles="exitHandles.length > 1"
     :style="nodeStyle"
     @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
     @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+    @remove-handle="(nodeId, handleId) => $emit('remove-handle', nodeId, handleId)"
   >
     <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
       <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
@@ -55,6 +57,7 @@ const props = defineProps<Props>()
 defineEmits<{
   'create-connected': [nodeType: string, sourceHandle?: string]
   'handle-select': [nodeId: string, handleId?: string]
+  'remove-handle': [nodeId: string, handleId?: string]
 }>()
 
 const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listener

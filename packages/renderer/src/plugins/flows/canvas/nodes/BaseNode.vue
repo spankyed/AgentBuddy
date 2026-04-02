@@ -90,9 +90,11 @@
         :source-handle="handle.id"
         :is-selected="isHandleSelected(handle.id)"
         :is-connected="isHandleConnected(handle.id)"
+        :can-remove-handle="canRemoveHandles"
         @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
         @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
         @edge-select="(nodeId, handleId) => $emit('edge-select', nodeId, handleId)"
+        @remove-handle="(handleId) => $emit('remove-handle', id, handleId)"
       />
     </template>
     <!-- Default single source handle (AddHandle with + icon) - only in edit mode -->
@@ -156,6 +158,8 @@ interface Props extends NodeProps<BaseNodeData> {
   selectedHandle?: { nodeId: string; handleId?: string }
   // Set of connected handles: "nodeId" or "nodeId:handleId"
   connectedHandles?: Set<string>
+  // Whether exit handles can be removed
+  canRemoveHandles?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -169,12 +173,14 @@ const props = withDefaults(defineProps<Props>(), {
   targetHandles: undefined,
   selectedHandle: undefined,
   connectedHandles: undefined,
+  canRemoveHandles: false,
 })
 
 defineEmits<{
   'create-connected': [nodeType: string, sourceHandle?: string]
   'handle-select': [nodeId: string, handleId?: string]
   'edge-select': [nodeId: string, handleId?: string]
+  'remove-handle': [nodeId: string, handleId?: string]
 }>()
 
 // Check if a specific handle is selected

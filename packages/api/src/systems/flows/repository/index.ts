@@ -597,6 +597,28 @@ export const flowsCommands = {
     logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
   },
 
+  reindexExitHandles: (nodeId: EARS.EntityId, removedIndex: number): void => {
+    // Find all outgoing TRANSITIONS_TO edges from this node
+    const relDetails = edgeStore.find({
+      sourceEntity: nodeId,
+      relationType: EARS.RelKind.TRANSITIONS_TO,
+    })
+
+    for (const rel of relDetails) {
+      const info = rel.info as { sourceHandle?: string } | undefined
+      if (!info?.sourceHandle) continue
+      const match = info.sourceHandle.match(/exit-(\d+)/)
+      if (!match) continue
+      const idx = parseInt(match[1], 10)
+      if (idx <= removedIndex) continue
+
+      edgeStore.patchOne(
+        { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
+        { newInfo: { ...info, sourceHandle: `exit-${idx - 1}` } }
+      )
+    }
+  },
+
   /**
    * Import flows from compiled DSL data
    */

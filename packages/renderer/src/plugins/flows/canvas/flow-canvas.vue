@@ -51,6 +51,7 @@
       @handle-select="handleHandleSelect"
       @handle-deselect="handleHandleDeselect"
       @edge-select="handleEdgeSelect"
+      @remove-handle="handleRemoveHandle"
     />
 
     <!-- ▸ Node form overlay -->
@@ -318,6 +319,10 @@ function handleEdgeSelect(nodeId: string, handleId?: string) {
   if (edge) {
     addSelectedEdges([edge])
   }
+}
+
+function handleRemoveHandle(nodeId: string, handleId?: string) {
+  actor.send({ type: 'HANDLE.REMOVE', nodeId, handleId })
 }
 
 function handleNodeClick(e: NodeMouseEvent) {

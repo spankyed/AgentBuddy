@@ -37,6 +37,7 @@
     :open="showDropdown"
     side="right"
     align="start"
+    :extra-items="extraMenuItems"
     @update:open="showDropdown = $event"
     @select="handleSelectNode($event)"
   >
@@ -50,8 +51,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { Plus } from 'lucide-vue-next'
+import { Plus, Minus } from 'lucide-vue-next'
 import NodeTypeMenu from '../components/NodeTypeMenu.vue'
+import type { ExtraMenuItem } from '../components/NodeTypeMenu.vue'
 
 interface Props {
   nodeId: string
@@ -61,6 +63,7 @@ interface Props {
   sourceHandle?: string
   isSelected?: boolean
   isConnected?: boolean
+  canRemoveHandle?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,13 +73,22 @@ const props = withDefaults(defineProps<Props>(), {
   sourceHandle: undefined,
   isSelected: false,
   isConnected: false,
+  canRemoveHandle: false,
 })
 
 const emit = defineEmits<{
   'handle-select': [nodeId: string, handleId?: string]
   'create-connected': [nodeType: string, sourceHandle?: string]
   'edge-select': [nodeId: string, handleId?: string]
+  'remove-handle': [handleId?: string]
 }>()
+
+const extraMenuItems = computed<ExtraMenuItem[]>(() => {
+  if (props.canRemoveHandle && !props.isConnected) {
+    return [{ type: '__remove_handle__', label: 'Remove handle', icon: Minus, separator: true }]
+  }
+  return []
+})
 
 const showDropdown = ref(false)
 
@@ -132,7 +144,11 @@ function handleDoubleClick() {
 }
 
 function handleSelectNode(nodeType: string) {
-  emit('create-connected', nodeType, props.sourceHandle)
+  if (nodeType === '__remove_handle__') {
+    emit('remove-handle', props.sourceHandle)
+  } else {
+    emit('create-connected', nodeType, props.sourceHandle)
+  }
   showDropdown.value = false
 }
 

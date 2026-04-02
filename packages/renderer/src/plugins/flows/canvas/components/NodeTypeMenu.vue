@@ -24,6 +24,19 @@
             <component :is="item.icon" class="flex-shrink-0 w-4 h-4" />
             <span class="font-medium">{{ item.label }}</span>
           </DropdownMenuItem>
+
+          <template v-if="extraItems && extraItems.length > 0">
+            <DropdownMenuSeparator v-if="extraItems[0]?.separator" class="h-px my-1 bg-neutral-700" />
+            <DropdownMenuItem
+              v-for="item in extraItems"
+              :key="item.type"
+              @select="$emit('select', item.type)"
+              class="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white outline-none focus:bg-neutral-800 focus:text-white"
+            >
+              <component :is="item.icon" class="flex-shrink-0 w-4 h-4" />
+              <span class="font-medium">{{ item.label }}</span>
+            </DropdownMenuItem>
+          </template>
         </div>
       </DropdownMenuContent>
     </DropdownMenuPortal>
@@ -36,21 +49,32 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRoot,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
 import { getConnectableNodeTypes } from '../nodes'
+import type { Component } from 'vue'
+
+export interface ExtraMenuItem {
+  type: string
+  label: string
+  icon: Component
+  separator?: boolean
+}
 
 interface Props {
   open: boolean
   side?: 'top' | 'right' | 'bottom' | 'left'
   align?: 'start' | 'center' | 'end'
   sideOffset?: number
+  extraItems?: ExtraMenuItem[]
 }
 
 withDefaults(defineProps<Props>(), {
   side: 'bottom',
   align: 'start',
   sideOffset: 8,
+  extraItems: () => [],
 })
 
 defineEmits<{

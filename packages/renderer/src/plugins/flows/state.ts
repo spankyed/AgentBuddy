@@ -101,6 +101,7 @@ type UIEvent =
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
   | { type: 'HANDLE.SELECT'; nodeId: string; handleId?: string }
   | { type: 'HANDLE.DESELECT' }
+  | { type: 'HANDLE.REMOVE'; nodeId: string; handleId?: string }
   | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'NODE.DELETE'; nodeId: string }
   | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
@@ -482,6 +483,46 @@ const flowsState = setup({
     }),
 
     deselectHandle: assign({ selectedHandle: undefined }),
+
+    removeExitHandle: assign(({ context, event }) => {
+      const ev = typeOf('HANDLE.REMOVE', event)
+      const match = ev.handleId?.match(/exit-(\d+)/)
+      if (!match) return {}
+      const removedIndex = parseInt(match[1], 10)
+
+      // Reindex edges with sourceHandle > removedIndex
+      const updatedEdges = context.graph.edges.map(edge => {
+        if (edge.source !== ev.nodeId || !edge.sourceHandle) return edge
+        const m = edge.sourceHandle.match(/exit-(\d+)/)
+        if (!m) return edge
+        const idx = parseInt(m[1], 10)
+        if (idx <= removedIndex) return edge
+        return { ...edge, sourceHandle: `exit-${idx - 1}` }
+      })
+
+      return { graph: { ...context.graph, edges: updatedEdges } }
+    }),
+
+    sendRemoveExitHandle: ({ context, event }) => {
+      const ev = typeOf('HANDLE.REMOVE', event)
+      if (!context.selectedFlowId) return
+      const match = ev.handleId?.match(/exit-(\d+)/)
+      if (!match) return
+
+      // Resolve temp IDs
+      const nodeId = ev.nodeId.startsWith('temp-')
+        ? context.tempIdMap[ev.nodeId] || ev.nodeId
+        : ev.nodeId
+      if (nodeId.startsWith('temp-')) return
+
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REINDEX_EXIT_HANDLES',
+        flowId: context.selectedFlowId,
+        nodeId,
+        removedIndex: parseInt(match[1], 10),
+      })
+    },
 
     // Connect from selected handle to clicked node and send to backend
     // Combined into single action to ensure handle is captured before being cleared
@@ -1233,6 +1274,7 @@ const flowsState = setup({
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
         'HANDLE.SELECT': { actions: 'selectHandle' },
         'HANDLE.DESELECT': { actions: 'deselectHandle' },
+        'HANDLE.REMOVE': { actions: ['removeExitHandle', 'sendRemoveExitHandle'] },
         'NODE.DELETE': { actions: ['deleteNode', 'sendNodeDeleted'] },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },

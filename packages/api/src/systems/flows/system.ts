@@ -84,6 +84,7 @@ export const IncomingFlowsEvents = [
   }),
   busEvent('IMPORT_DSL', { dsl: z.any() }),
   busEvent('EXPORT_DSL', { directory: z.string() }),
+  busEvent('REINDEX_EXIT_HANDLES', { flowId: z.string(), nodeId: z.string(), removedIndex: z.number() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -408,6 +409,11 @@ export const flowsSystem = setup({
       logger.info('DSL import complete', { flowIds });
     },
 
+    reindexExitHandles: ({ event }) => {
+      const { nodeId, removedIndex } = typeOf('REINDEX_EXIT_HANDLES', event);
+      repository.flowsCommands.reindexExitHandles(nodeId as EARS.EntityId, removedIndex);
+    },
+
     exportDSL: ({ system, event }) => {
       const { directory } = typeOf('EXPORT_DSL', event);
       const pluginId = flows;
@@ -476,6 +482,9 @@ export const flowsSystem = setup({
         },
         UPDATE_EDGE: {
           actions: 'updateEdge',
+        },
+        REINDEX_EXIT_HANDLES: {
+          actions: 'reindexExitHandles',
         },
         FLOWS_SETTINGS_UPDATED: {
           actions: 'handleSettingsUpdate',
