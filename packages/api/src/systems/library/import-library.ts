@@ -31,10 +31,11 @@ export function importLibrary(importDir: string): ImportResult {
     return importLibraryJson(importDir, jsonPath)
   }
 
-  // Check for .md files
-  const entries = fs.readdirSync(importDir)
-  const hasMdFiles = entries.some(e => e.endsWith('.md'))
-  if (hasMdFiles) {
+  // Check for .md files or subdirectories (collections)
+  const entries = fs.readdirSync(importDir, { withFileTypes: true })
+  const hasMdFiles = entries.some(e => e.isFile() && e.name.endsWith('.md'))
+  const hasSubdirs = entries.some(e => e.isDirectory() && e.name !== 'media')
+  if (hasMdFiles || hasSubdirs) {
     return importLibraryMarkdown(importDir)
   }
 
