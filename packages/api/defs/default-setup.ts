@@ -33,3 +33,7 @@ export type { ButtonConfig, LinkConfig, LinkEvent, LinkIcon } from '@/systems/th
 
 // Notes export types (for compiler)
 export type { ExportedNote, ExportedNotes } from '@/systems/notes/export-types';
+
+// Action/prompt authoring types
+export type { ActionParameter } from '@/systems/actions/types';
+export type { TemplateInput } from '@/systems/prompts/types';

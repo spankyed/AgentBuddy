@@ -317,6 +317,31 @@ interface ExportedLibrary {
 }
 type ExportFormat = 'markdown' | 'json';
 
+/**
+ * Prompt template types and definitions
+ */
+
+/**
+ * Defines an input parameter that a prompt template expects
+ */
+interface TemplateInput {
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    defaultValue?: any;
+    commonSources?: string[];
+    example?: any;
+}
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+
 interface LinkEvent {
     target: 'application' | 'external' | string;
     data: any;
@@ -366,4 +391,4 @@ interface ExportedNotes {
 }
 
 export { EARS, ROOT_FLOW_ROLE, isFlowConfig, resolveTracks };
-export type { BaseEntity, ButtonConfig, CodeContent, CompiledEntity, CompiledFlow, CompiledRelation, CompiledRole, CompilerContext, ContentSection, ContentType, DSLActionNode, DSLCreateNode, DSLFireNode, DSLFlowNode, DSLKeepAliveNode, DSLLLMNode, DSLQueryNode, DSLStepNode, DSLSwitchCondition, DSLSwitchNode, DSLTransformNode, DSLUpdateNode, ExportFormat, ExportedCollection, ExportedDocument, ExportedItem, ExportedLibrary, ExportedNote, ExportedNotes, ExportedSymlink, FieldContent, FlowConfig, FlowDSL, LinkConfig, LinkEvent, LinkIcon, ListContent, MarkdownContent, TextContent, Track, ValidationError, ValidationResult };
+export type { ActionParameter, BaseEntity, ButtonConfig, CodeContent, CompiledEntity, CompiledFlow, CompiledRelation, CompiledRole, CompilerContext, ContentSection, ContentType, DSLActionNode, DSLCreateNode, DSLFireNode, DSLFlowNode, DSLKeepAliveNode, DSLLLMNode, DSLQueryNode, DSLStepNode, DSLSwitchCondition, DSLSwitchNode, DSLTransformNode, DSLUpdateNode, ExportFormat, ExportedCollection, ExportedDocument, ExportedItem, ExportedLibrary, ExportedNote, ExportedNotes, ExportedSymlink, FieldContent, FlowConfig, FlowDSL, LinkConfig, LinkEvent, LinkIcon, ListContent, MarkdownContent, TemplateInput, TextContent, Track, ValidationError, ValidationResult };
