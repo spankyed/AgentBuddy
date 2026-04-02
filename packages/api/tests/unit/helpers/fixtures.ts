@@ -104,51 +104,51 @@ export const steps = {
 
 export const flows = {
   parentChild: {
-    'Parent': [{ event: 'go', steps: [steps.flowRef] }],
-    'Child': [{ event: 'start', steps: [] }],
+    'Parent': [{ event: 'go', exits: [[steps.flowRef]] }],
+    'Child': [{ event: 'start', exits: [[]] }],
   } as FlowDSL,
 
   simple: {
     'Simple': [{
       event: 'start',
-      steps: [{ type: 'action', action: 'doSomething' }],
+      exits: [[{ type: 'action', action: 'doSomething' }]],
     }],
   } as FlowDSL,
 
   multiStep: {
     'Multi': [{
       event: 'start',
-      steps: [
+      exits: [[
         { type: 'action', action: 'first' },
         { type: 'action', action: 'second' },
         { type: 'action', action: 'third' },
-      ],
+      ]],
     }],
   } as FlowDSL,
 
   labeled: {
-    'Labeled': [{ event: 'start', steps: [steps.actionLabeled] }],
+    'Labeled': [{ event: 'start', exits: [[steps.actionLabeled]] }],
   } as FlowDSL,
 
   final: {
-    'Final': [{ event: 'start', steps: [steps.actionFinal] }],
+    'Final': [{ event: 'start', exits: [[steps.actionFinal]] }],
   } as FlowDSL,
 
   multiTrack: {
     'MultiTrack': [
-      { event: 'user.created', steps: [{ type: 'action', action: 'welcome' }] },
-      { event: 'user.updated', steps: [{ type: 'action', action: 'sync' }] },
+      { event: 'user.created', exits: [[{ type: 'action', action: 'welcome' }]] },
+      { event: 'user.updated', exits: [[{ type: 'action', action: 'sync' }]] },
     ],
   } as FlowDSL,
 
   twoLabeledTracks: {
     'F': [
-      { event: 'ev1', label: 'Track A', steps: [{ type: 'action', action: 'a' }] },
-      { event: 'ev2', label: 'Track B', steps: [{ type: 'action', action: 'b' }] },
+      { event: 'ev1', label: 'Track A', exits: [[{ type: 'action', action: 'a' }]] },
+      { event: 'ev2', label: 'Track B', exits: [[{ type: 'action', action: 'b' }]] },
     ],
   } as FlowDSL,
 
   empty: {
-    'Empty': [{ event: 'start', steps: [] }],
+    'Empty': [{ event: 'start', exits: [[]] }],
   } as FlowDSL,
 };

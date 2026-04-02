@@ -17,7 +17,7 @@ export function parseSearchTerm(searchTerm: string): SearchFilter {
   for (const term of terms) {
     if (term.startsWith('-') && term.length > 1) {
       excludes.push(term.substring(1).toLowerCase());
-    } else if (term) {
+    } else if (term && term !== '-') {
       includes.push(term.toLowerCase());
     }
   }

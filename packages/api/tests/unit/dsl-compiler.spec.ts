@@ -14,7 +14,7 @@ describe('compile', () => {
   describe('flow structure', () => {
     it('creates flow entity with correct label, entityType, flowType', () => {
       const dsl: FlowDSL = {
-        'My Flow': [{ event: 'start', steps: [] }],
+        'My Flow': [{ event: 'start', exits: [[]] }],
       };
       const result = compile(dsl);
       const flow = findEntity(result.entity, (e: any) => e.entityType === EARS.Entity.Flow);
@@ -28,8 +28,8 @@ describe('compile', () => {
     it('creates listener node for each track with correct eventType', () => {
       const dsl: FlowDSL = {
         'My Flow': [
-          { event: 'user.created', steps: [] },
-          { event: 'user.updated', steps: [] },
+          { event: 'user.created', exits: [[]] },
+          { event: 'user.updated', exits: [[]] },
         ],
       };
       const result = compile(dsl);
@@ -43,8 +43,8 @@ describe('compile', () => {
     it('assigns entry_event role to first track listener node only', () => {
       const dsl: FlowDSL = {
         'My Flow': [
-          { event: 'first', steps: [] },
-          { event: 'second', steps: [] },
+          { event: 'first', exits: [[]] },
+          { event: 'second', exits: [[]] },
         ],
       };
       const result = compile(dsl);
@@ -60,7 +60,7 @@ describe('compile', () => {
         'My Flow': [
           {
             event: 'start',
-            steps: [{ type: 'action', action: 'doA' }, { type: 'action', action: 'doB' }],
+            exits: [[{ type: 'action', action: 'doA' }, { type: 'action', action: 'doB' }]],
           },
         ],
       };

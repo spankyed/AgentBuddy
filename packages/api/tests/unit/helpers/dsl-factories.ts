@@ -4,7 +4,7 @@ import { findEntity } from './compiled-result';
 
 /** Wrap steps in a minimal single-track flow DSL (flow name 'F', default event 'go') */
 export function wrapInFlow(steps: any[], event = 'go'): FlowDSL {
-  return { 'F': [{ event, steps }] };
+  return { 'F': [{ event, exits: [steps] }] };
 }
 
 /** Build a FlowDSL containing a switch node as the first step, with optional else and after-step */
