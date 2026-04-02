@@ -41,17 +41,17 @@ export default {
       ]]},
     ],
   ),
-  /** Parallel exits: one listen node triggers independent chains */
+  /** Parallel exits: one listener node triggers independent chains */
   "Notification Flow": modeTracks(
-    [action("Init Notifications", { label: "init" })],
+    [action("db query", { label: "init" })],
     [
       { event: "order.placed", label: "Handle Order", exits: [
         [
-          action("Send Confirmation Email", { label: "email" }),
+          action("db query", { label: "email" }),
           fire("email.sent", { label: "email sent" }),
         ],
         [
-          action("Update Inventory", { label: "inventory" }),
+          action("db query", { label: "inventory" }),
           fire("inventory.updated", { label: "inventory updated" }),
         ],
       ]},
