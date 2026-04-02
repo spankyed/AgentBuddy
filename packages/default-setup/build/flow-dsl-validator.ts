@@ -1,7 +1,5 @@
 /**
- * Flow DSL Validator – Vendored from AgentBuddy
- * Source: packages/api/src/systems/flows/dsl/validator.ts
- *
+ * Flow DSL Validator
  * Validates track-based DSL documents before compilation.
  */
 
@@ -12,8 +10,8 @@ import type {
   DSLStepNode,
   ValidationError,
   ValidationResult,
-} from './flow-dsl-types';
-import { isFlowConfig, resolveTracks } from './flow-dsl-types';
+} from '../defs/default-setup-defs';
+import { isFlowConfig, resolveTracks } from './flow-dsl-utils';
 
 // Step node types (excludes 'listener' - that's implicit in track.event)
 const STEP_TYPES = [

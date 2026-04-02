@@ -17,7 +17,3 @@ fi
 
 cp "$AB_DEFS_OUT"/*.d.ts "$ROOT/defs/"
 echo "Copied $count generated def(s) from AgentBuddy → defs/"
-
-echo ""
-echo "Note: Hand-extracted defs (ears-types, flow-dsl-*, library-*, thread-types)"
-echo "must be updated manually when their AgentBuddy sources change."

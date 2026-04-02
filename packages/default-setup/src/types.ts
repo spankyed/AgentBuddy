@@ -1,29 +1,30 @@
 import type { z } from 'zod';
-import type { EARS } from '../defs/ears-types';
+import type { EARS } from '../defs/default-setup-defs';
 import type { Services as ImportedServices } from '../defs/action-defs';
 
 export type Services = ImportedServices;
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 
-export {
-  type FlowDSL,
-  type FlowConfig,
-  type Track,
-  type DSLStepNode,
-  type DSLActionNode,
-  type DSLLLMNode,
-  type DSLSwitchNode,
-  type DSLSwitchCondition,
-  type DSLFireNode,
-  type DSLTransformNode,
-  type DSLQueryNode,
-  type DSLFlowNode,
-  type DSLCreateNode,
-  type DSLUpdateNode,
-  type DSLKeepAliveNode,
-  isFlowConfig,
-} from '../defs/flow-dsl-types';
+export type {
+  FlowDSL,
+  FlowConfig,
+  Track,
+  DSLStepNode,
+  DSLActionNode,
+  DSLLLMNode,
+  DSLSwitchNode,
+  DSLSwitchCondition,
+  DSLFireNode,
+  DSLTransformNode,
+  DSLQueryNode,
+  DSLFlowNode,
+  DSLCreateNode,
+  DSLUpdateNode,
+  DSLKeepAliveNode,
+} from '../defs/default-setup-defs';
+
+export { isFlowConfig } from '../build/flow-dsl-utils';
 
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';

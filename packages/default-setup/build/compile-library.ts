@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { ExportedItem, ExportedLibrary } from '../defs/library-export-types'
-import { toTitleCase, countDocs } from '../defs/library-utils'
+import type { ExportedItem, ExportedLibrary } from '../defs/default-setup-defs'
+import { toTitleCase, countDocs } from './library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const LIBRARY_DIR = path.join(ROOT, 'src', 'library')

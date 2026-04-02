@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import type { ExportedNote, ExportedNotes } from '../defs/notes-export-types'
-import { toTitleCase } from '../defs/library-utils'
+import type { ExportedNote, ExportedNotes } from '../defs/default-setup-defs'
+import { toTitleCase } from './library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const NOTES_DIR = path.join(ROOT, 'src', 'notes')

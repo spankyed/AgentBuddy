@@ -7,30 +7,27 @@ Source `.ts` files in `src/actions/`, `src/prompts/`, `src/flows/` are compiled 
 
 ```
 default-setup/
-  defs/                     # Vendored definitions from AgentBuddy
-    ears-types.ts           # EARS Entity, EntityId, RelKind (from src/core/types.ts)
-    flow-dsl-types.ts       # FlowDSL, Track, DSLStepNode types (from src/systems/flows/dsl/types.ts)
-    flow-dsl-validator.ts   # validate() function (from src/systems/flows/dsl/validator.ts)
-    library-types.ts        # ContentSection union (from src/systems/library/types.ts)
-    library-export-types.ts # ExportedItem, ExportedLibrary (from src/systems/library/export-types.ts)
-    library-utils.ts        # toTitleCase, countDocs (from src/systems/library/utils.ts)
-    thread-types.ts         # ButtonConfig, LinkConfig (from src/systems/threads/types.ts)
-    action-defs.d.ts        # Generated: full Services type, z, ActionEntity (from rollup pipeline)
-    prompt-defs.d.ts        # Generated: PromptService, usePrompt, PromptContext (from rollup pipeline)
+  defs/                         # Generated type definitions (all auto-generated via rollup)
+    action-defs.d.ts            # Services type, z, ActionEntity
+    prompt-defs.d.ts            # PromptService, usePrompt, PromptContext
+    default-setup-defs.d.ts     # EARS, FlowDSL, library/thread/notes types
 
-  src/                      # Compiler infrastructure (moved from default root)
-    compile.ts              # Entry point — dispatches to action/prompt/flow/library compilers
-    compile-utils.ts        # esbuild bundling, TS AST extraction, validation
-    compile-flows.ts        # Flow compiler — dynamic import + validation
-    compile-library.ts      # Library markdown compiler
-    types.ts                # Re-exports types from defs/ for action/prompt/flow authoring
+  build/                        # Compiler infrastructure
+    compile.ts                  # Entry point — dispatches to action/prompt/flow/library compilers
+    compile-utils.ts            # esbuild bundling, TS AST extraction, validation
+    compile-flows.ts            # Flow compiler — dynamic import + validation
+    compile-library.ts          # Library markdown compiler
+    flow-dsl-validator.ts       # Flow DSL validation logic
+    library-utils.ts            # toTitleCase, countDocs helpers
 
-  actions/                  # Action source files (copied as-is, imports updated)
-  prompts/                  # Prompt template source files
-  flows/                    # Flow DSL files
-  library/                  # Markdown docs + media
-  shared/                   # Cross-cutting helpers (empty for now)
-  dist/                 # Generated JSON output (gitignored)
+  src/
+    types.ts                    # Re-exports types from defs/ for action/prompt/flow authoring
+    actions/                    # Action source files
+    prompts/                    # Prompt template source files
+    flows/                      # Flow DSL files
+    library/                    # Markdown docs + media
+    shared/                     # Cross-cutting helpers
+  dist/                         # Generated JSON output (gitignored)
 ```
 
 
@@ -42,9 +39,9 @@ default-setup/
 - `src/library/` — markdown docs compiled to JSON
 - `src/shared/` — cross-cutting helpers
 - `src/types.ts` — shared type definitions (`ActionMeta`, `PromptMeta`, `Services`, `Z`, etc.)
-- `build/` — compile scripts (compile.ts, compile-utils.ts, compile-flows.ts, compile-library.ts)
+- `build/` — compiler infrastructure (compile scripts, validator, utils)
 - `dist/` — generated output (**do not edit**, gitignored)
-- `defs/` — vendored type definitions from AgentBuddy (update when upstream changes)
+- `defs/` — auto-generated type definitions from API rollup pipeline (do not hand-edit)
 
 ## Hard rules (compiler-enforced)
 
@@ -92,13 +89,10 @@ default-setup/
 - `npm run compile:library` — compile library markdown to JSON
 - `npm run typecheck` — type check all source files
 
-### Update vendored defs when AgentBuddy types change
+### Regenerate defs when API types change
 
-For generated defs (Services, PromptService):
+All defs are auto-generated. Run from monorepo root:
 ```bash
-cd /path/to/AgentBuddy/packages/api
-npm run generate:defs-types
-cp defs/dist/default/*.d.ts /path/to/default-setup/defs/
+npm run build:be          # Rebuilds API + runs rollup defs generation
+npm run sync:defs --workspace @app/default-setup  # Copies generated .d.ts to defs/
 ```
-
-For hand-extracted defs (EARS, FlowDSL, library, thread types): manually update from the source files listed in the defs/ section above.

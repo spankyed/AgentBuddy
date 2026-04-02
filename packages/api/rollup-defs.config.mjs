@@ -62,4 +62,5 @@ export default [
   // Default-setup compatible (unwrapped) versions
   createDefaultSetupConfig('action', 'defs/action.ts'),
   createDefaultSetupConfig('prompt', 'defs/prompt.ts'),
+  createDefaultSetupConfig('default-setup', 'defs/default-setup.ts'),
 ];

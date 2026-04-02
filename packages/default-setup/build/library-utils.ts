@@ -1,9 +1,8 @@
 /**
- * Library utilities – Vendored subset from AgentBuddy
- * Source: packages/api/src/systems/library/utils.ts
+ * Library utilities for the compiler.
  */
 
-import type { ExportedItem } from './library-export-types'
+import type { ExportedItem } from '../defs/default-setup-defs'
 
 export function toTitleCase(str: string): string {
   return str
