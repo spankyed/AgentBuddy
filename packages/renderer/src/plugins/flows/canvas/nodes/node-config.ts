@@ -168,25 +168,13 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
   transform: 'emerald',
   llm: 'indigo',
   event: 'blue',
-  keep_alive: 'neutral',
+  keep_alive: 'emerald',
   kill: 'red',
   action: 'neutral'
 } as const
 
 // Node configuration registry
 export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
-  keep_alive: {
-    type: 'keep_alive',
-    label: 'Keep alive',
-    defaultLabel: 'Keep alive',
-    icon: Activity,
-    color: 'text-neutral-400',
-    bgColor: 'bg-neutral-700/20',
-    hoverBgColor: 'group-hover:bg-neutral-700/30',
-    connectionRules: { inputs: 1, outputs: 1 },
-    component: 'VariableNode',
-    isImplemented: true
-  },
   action: {
     type: 'action',
     label: 'Action',
@@ -197,6 +185,18 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     hoverBgColor: 'group-hover:bg-neutral-700/30',
     connectionRules: { inputs: -1, outputs: -1 },  // Allow multiple inputs (converging) and outputs (parallel)
     component: 'ActionNode',
+    isImplemented: true
+  },
+  keep_alive: {
+    type: 'keep_alive',
+    label: 'Keep alive',
+    defaultLabel: 'Keep alive',
+    icon: Activity,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    hoverBgColor: 'group-hover:bg-emerald-500/15',
+    connectionRules: { inputs: 1, outputs: 1 },
+    component: 'VariableNode',
     isImplemented: true
   },
   listener: {
