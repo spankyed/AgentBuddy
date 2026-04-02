@@ -15,6 +15,7 @@ export class ProcessManager {
   private process?: ChildProcess;
   private handlers: ProcessHandlers;
   private serverReady = false;
+  private lastStderr = '';
 
   constructor(handlers: ProcessHandlers = {}) {
     this.handlers = handlers;
@@ -23,6 +24,7 @@ export class ProcessManager {
   setProcess(process: ChildProcess): void {
     this.process = process;
     this.serverReady = false;
+    this.lastStderr = '';
     this.attachHandlers();
   }
 
@@ -79,7 +81,8 @@ export class ProcessManager {
       this.process.stderr.on('data', (data) => {
         const message = data.toString();
         const isDev = !app.isPackaged;
-        
+        this.lastStderr = message.trim();
+
         // Always log errors in production for debugging
         logError(`[API Server Error]: ${message.trim()}`);
 
@@ -157,6 +160,10 @@ export class ProcessManager {
 
   getPid(): number | undefined {
     return this.process?.pid;
+  }
+
+  getLastStderr(): string {
+    return this.lastStderr;
   }
 }
 

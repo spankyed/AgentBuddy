@@ -142,7 +142,8 @@ export class ApiServer implements AppModule {
 
   private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
     logError(`[MAIN] API server exited with code ${code} and signal ${signal}`);
-    this.lastError = `Backend process exited unexpectedly (code ${code})`;
+    const stderr = this.processManager.getLastStderr();
+    this.lastError = stderr || `Backend process exited unexpectedly (code ${code})`;
     broadcastEvent(API_EVENTS.STOPPED);
 
     // Reset state
