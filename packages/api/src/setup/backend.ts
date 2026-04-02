@@ -6,7 +6,7 @@ import { initializeLogCapture } from '@/core/helpers/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
-import { seedData } from '@/setup/seed';
+import { seedData } from '@/setup/seed/index';
 
 export async function setupBackend(): Promise<void> {
   // Initialize log capture first to catch all logs

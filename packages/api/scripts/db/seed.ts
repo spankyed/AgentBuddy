@@ -10,7 +10,7 @@ import * as path from 'path';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
-import { seedData } from '@/setup/seed';
+import { seedData } from '@/setup/seed/index';
 
 async function run() {
   console.log('Initializing database...');
