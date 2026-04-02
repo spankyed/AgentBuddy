@@ -58,7 +58,8 @@ const NODE_STYLE_CLASSES = {
     orange: 'bg-orange-900/60 border border-orange-400/25 hover:border-orange-400/40 shadow-sm',
     emerald: 'bg-emerald-900/60 border border-emerald-400/25 hover:border-emerald-400/40 shadow-sm',
     indigo: 'bg-indigo-900/60 border border-indigo-400/25 hover:border-indigo-400/40 shadow-sm',
-    neutral: 'bg-neutral-700/60 border border-neutral-500/30 hover:border-neutral-400/40 shadow-sm'
+    neutral: 'bg-neutral-700/60 border border-neutral-500/30 hover:border-neutral-400/40 shadow-sm',
+    red: 'bg-red-900/60 border border-red-400/25 hover:border-red-400/40 shadow-sm'
   },
   // Solid accent colors for meaningful indicators
   solid: {
@@ -69,7 +70,8 @@ const NODE_STYLE_CLASSES = {
     orange: 'bg-orange-500',
     emerald: 'bg-emerald-500',
     indigo: 'bg-indigo-500',
-    neutral: 'bg-neutral-500'
+    neutral: 'bg-neutral-500',
+    red: 'bg-red-500'
   },
   // Glow effects - much more subtle
   glow: {
@@ -80,7 +82,8 @@ const NODE_STYLE_CLASSES = {
     orange: 'bg-orange-500/5',
     emerald: 'bg-emerald-500/5',
     indigo: 'bg-indigo-500/5',
-    neutral: 'bg-neutral-500/5'
+    neutral: 'bg-neutral-500/5',
+    red: 'bg-red-500/5'
   },
   // Subtle badge styles
   badge: {
@@ -91,7 +94,8 @@ const NODE_STYLE_CLASSES = {
     orange: 'bg-neutral-700/40 text-orange-300/80 font-medium',
     emerald: 'bg-neutral-700/40 text-emerald-300/80 font-medium',
     indigo: 'bg-neutral-700/40 text-indigo-300/80 font-medium',
-    neutral: 'bg-neutral-700/40 text-neutral-400 font-medium'
+    neutral: 'bg-neutral-700/40 text-neutral-400 font-medium',
+    red: 'bg-neutral-700/40 text-red-300/80 font-medium'
   },
   // Ring colors for icon dots - very subtle
   ring: {
@@ -102,7 +106,8 @@ const NODE_STYLE_CLASSES = {
     orange: 'ring-orange-500/20',
     emerald: 'ring-emerald-500/20',
     indigo: 'ring-indigo-500/20',
-    neutral: 'ring-neutral-600/30'
+    neutral: 'ring-neutral-600/30',
+    red: 'ring-red-500/20'
   },
   // Canvas styles (legacy)
   canvas: {
@@ -113,7 +118,8 @@ const NODE_STYLE_CLASSES = {
     orange: 'bg-orange-500/20 border-orange-500/50 text-orange-200',
     emerald: 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200',
     indigo: 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200',
-    neutral: 'bg-neutral-700 border-neutral-600 text-neutral-300'
+    neutral: 'bg-neutral-700 border-neutral-600 text-neutral-300',
+    red: 'bg-red-500/20 border-red-500/50 text-red-200'
   }
 } as const
 
@@ -163,7 +169,7 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
   llm: 'indigo',
   event: 'blue',
   keep_alive: 'neutral',
-  kill: 'neutral',
+  kill: 'red',
   action: 'neutral'
 } as const
 
@@ -186,9 +192,9 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     label: 'Kill',
     defaultLabel: 'kill flow',
     icon: X,
-    color: 'text-neutral-400',
-    bgColor: 'bg-neutral-700/20',
-    hoverBgColor: 'group-hover:bg-neutral-700/30',
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    hoverBgColor: 'group-hover:bg-red-500/15',
     connectionRules: { inputs: 1, outputs: 0 },
     component: 'VariableNode',
     isImplemented: true
@@ -372,7 +378,8 @@ export const getNodeAccentBarClasses = (nodeType: NodeKind | string, options?: N
     orange: 'bg-orange-400/40',
     emerald: 'bg-emerald-400/40',
     indigo: 'bg-indigo-400/40',
-    neutral: 'bg-neutral-400/40'
+    neutral: 'bg-neutral-400/40',
+    red: 'bg-red-400/40'
   }
 
   return accentMap[colorKey] || accentMap.neutral
@@ -402,7 +409,8 @@ export const getNodeDividerClass = (nodeType: NodeKind | string, options?: NodeS
     orange: 'border-orange-500/40',
     emerald: 'border-emerald-500/40',
     indigo: 'border-indigo-500/40',
-    neutral: 'border-neutral-500/45'
+    neutral: 'border-neutral-500/45',
+    red: 'border-red-500/40'
   }
 
   return dividerMap[colorKey] || dividerMap.neutral
@@ -561,7 +569,8 @@ export const getPaletteIconComponentClasses = (type: string): string => {
     orange: 'text-orange-300/70 group-hover:text-orange-300/90',
     emerald: 'text-emerald-300/70 group-hover:text-emerald-300/90',
     indigo: 'text-indigo-300/70 group-hover:text-indigo-300/90',
-    neutral: 'text-neutral-400 group-hover:text-neutral-300'
+    neutral: 'text-neutral-400 group-hover:text-neutral-300',
+    red: 'text-red-300/70 group-hover:text-red-300/90'
   }
 
   return textColorMap[colorKey] || textColorMap.neutral
@@ -590,7 +599,8 @@ export const getPaletteGradientClasses = (type: string): string => {
     orange: 'from-orange-400 to-orange-600',
     emerald: 'from-emerald-400 to-emerald-600',
     indigo: 'from-indigo-400 to-indigo-600',
-    neutral: 'from-neutral-400 to-neutral-600'
+    neutral: 'from-neutral-400 to-neutral-600',
+    red: 'from-red-400 to-red-600'
   }
 
   return gradientMap[colorKey] || gradientMap.neutral
