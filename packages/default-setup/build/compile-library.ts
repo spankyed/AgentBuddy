@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { ExportedItem, ExportedLibrary } from '../defs/default-setup-defs'
-import { toTitleCase, countDocs } from './library-utils'
+import { toTitleCase, countDocs, parseMarkdownSections } from './library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const LIBRARY_DIR = path.join(ROOT, 'src', 'library')
@@ -29,7 +29,7 @@ function walkDirectory(dir: string): ExportedItem[] {
       items.push({
         type: 'document',
         name,
-        content: [{ type: 'markdown', text }],
+        content: parseMarkdownSections(text),
         tags: ['default'],
       })
     }
