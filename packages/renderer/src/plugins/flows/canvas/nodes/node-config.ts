@@ -10,7 +10,8 @@ import {
   Shuffle,
   Activity,
   Sparkle,
-  X
+  X,
+  Plug
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 import type { NodeKind } from '@app/api'
@@ -191,7 +192,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     type: 'kill',
     label: 'Kill',
     defaultLabel: 'kill flow',
-    icon: X,
+    icon: Plug,
     color: 'text-red-400',
     bgColor: 'bg-red-500/10',
     hoverBgColor: 'group-hover:bg-red-500/15',
