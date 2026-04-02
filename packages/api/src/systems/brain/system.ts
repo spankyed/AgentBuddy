@@ -52,6 +52,7 @@ export type BrainInternalEvents =
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
+  | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
 
 export type OutgoingBrainEvents =
   | { type: 'RECEIVE_PLUGIN_DATA'; data: FlowTNodeData }
@@ -510,6 +511,10 @@ export const brainSystem = setup({
           RESTART_BRAIN: {
             actions: 'restartBrain',
             target: '.active',
+          },
+          CHILD_COMPLETED: {
+            actions: 'killBrain',
+            target: 'stopped',
           },
           TNODE_SPAWNED: {
             actions: ({ system, event }) => {
