@@ -76,19 +76,19 @@
               <!-- Controls -->
               <div class="flex items-center gap-1 shrink-0">
                 <button
-                  @click.stop="goToAction(action)"
-                  class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
-                  title="Go to action"
-                >
-                  <ExternalLink :size="14" />
-                </button>
-                <button
                   @click.stop="toggleInputs(action.id)"
                   class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
                   :title="expandedActions.has(action.id) ? 'Hide inputs' : 'Show inputs'"
                 >
                   <ChevronDown v-if="expandedActions.has(action.id)" :size="14" />
                   <ChevronRight v-else :size="14" />
+                </button>
+                <button
+                  @click.stop="goToAction(action)"
+                  class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
+                  title="Go to action"
+                >
+                  <ExternalLink :size="14" />
                 </button>
               </div>
             </div>
