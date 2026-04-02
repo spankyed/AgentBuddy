@@ -597,8 +597,11 @@ export const flowsCommands = {
     logger.info('Deleted flow and all its contents', { flowId, deletedNodes: nodeIds.length });
   },
 
-  reindexExitHandles: (nodeId: EARS.EntityId, removedIndex: number): void => {
-    // Find all outgoing TRANSITIONS_TO edges from this node
+  reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1): void => {
+    const pattern = new RegExp(`^${prefix}-(\\d+)$`)
+    // Insert (direction=1): shift indices >= pivotIndex up
+    // Remove (direction=-1): shift indices > pivotIndex down
+    const threshold = direction === 1 ? pivotIndex : pivotIndex + 1
     const relDetails = edgeStore.find({
       sourceEntity: nodeId,
       relationType: EARS.RelKind.TRANSITIONS_TO,
@@ -607,56 +610,14 @@ export const flowsCommands = {
     for (const rel of relDetails) {
       const info = rel.info as { sourceHandle?: string } | undefined
       if (!info?.sourceHandle) continue
-      const match = info.sourceHandle.match(/exit-(\d+)/)
+      const match = info.sourceHandle.match(pattern)
       if (!match) continue
       const idx = parseInt(match[1], 10)
-      if (idx <= removedIndex) continue
+      if (idx < threshold) continue
 
       edgeStore.patchOne(
         { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
-        { newInfo: { ...info, sourceHandle: `exit-${idx - 1}` } }
-      )
-    }
-  },
-
-  reindexBranchHandlesInsert: (nodeId: EARS.EntityId, insertedAt: number): void => {
-    const relDetails = edgeStore.find({
-      sourceEntity: nodeId,
-      relationType: EARS.RelKind.TRANSITIONS_TO,
-    })
-
-    for (const rel of relDetails) {
-      const info = rel.info as { sourceHandle?: string } | undefined
-      if (!info?.sourceHandle) continue
-      const match = info.sourceHandle.match(/branch-(\d+)/)
-      if (!match) continue
-      const idx = parseInt(match[1], 10)
-      if (idx < insertedAt) continue
-
-      edgeStore.patchOne(
-        { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
-        { newInfo: { ...info, sourceHandle: `branch-${idx + 1}` } }
-      )
-    }
-  },
-
-  reindexBranchHandlesRemove: (nodeId: EARS.EntityId, removedAt: number): void => {
-    const relDetails = edgeStore.find({
-      sourceEntity: nodeId,
-      relationType: EARS.RelKind.TRANSITIONS_TO,
-    })
-
-    for (const rel of relDetails) {
-      const info = rel.info as { sourceHandle?: string } | undefined
-      if (!info?.sourceHandle) continue
-      const match = info.sourceHandle.match(/branch-(\d+)/)
-      if (!match) continue
-      const idx = parseInt(match[1], 10)
-      if (idx <= removedAt) continue
-
-      edgeStore.patchOne(
-        { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
-        { newInfo: { ...info, sourceHandle: `branch-${idx - 1}` } }
+        { newInfo: { ...info, sourceHandle: `${prefix}-${idx + direction}` } }
       )
     }
   },

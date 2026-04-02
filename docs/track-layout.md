@@ -125,6 +125,23 @@ When introducing a node type with multiple output handles:
 3. **`createConnectedNode`** — add a fallback that resolves `sourceHandle` when `ev.sourceHandle` is undefined.
 4. **Verify** — select the new node type, create a step from the palette, and confirm the edge has the correct handle and layout is correct.
 
+## Handle reindexing
+
+When a handle is inserted or removed (e.g. adding a branch to a switch node, or removing an exit from a listener), existing edges that reference higher-indexed handles must be shifted so they continue pointing at the correct handle.
+
+This is handled by a single unified flow:
+
+1. **FE dispatches** `HANDLE.REINDEX` with `{ nodeId, prefix, index, direction }` — where `prefix` is `'exit'` or `'branch'`, `index` is the insertion/removal point, and `direction` is `1` (insert, shift up) or `-1` (remove, shift down).
+2. **FE action** `reindexHandles` calls `reindexEdges()` (a pure utility in `state.ts`) to update edge `sourceHandle` values in the graph.
+3. **BE action** `sendReindexHandles` forwards to the backend via `REINDEX_HANDLES`, which calls `repository.flowsCommands.reindexHandles()` to patch the persisted edge store.
+
+The threshold logic: for insert (`direction=1`), indices `>= pivotIndex` shift up; for remove (`direction=-1`), indices `> pivotIndex` shift down.
+
+Key files:
+- `state.ts` — `reindexEdges()` utility and `HANDLE.REINDEX` event/actions
+- `repository/index.ts` — `reindexHandles()` command
+- `system.ts` — `REINDEX_HANDLES` bus event
+
 ## Node height calculation
 
 Node heights must match what the Vue components actually render. Mismatches cause tracks to overlap visually even when ELK positions are correct. Heights are defined via `NODE_DIMENSIONS` constants in `node-dimensions.ts` and computed by each descriptor's `getHeight` method.

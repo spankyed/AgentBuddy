@@ -40,6 +40,25 @@ function nextBranchIndex(edges: EdgeEntity[], sourceNodeId: string): number {
   return indices.length > 0 ? Math.max(...indices) + 1 : 0
 }
 
+/** Shift handle indices on edges when a handle is inserted or removed.
+ *  direction=1 (insert): indices >= pivotIndex shift up
+ *  direction=-1 (remove): indices > pivotIndex shift down */
+function reindexEdges(
+  edges: EdgeEntity[], nodeId: string, prefix: string,
+  pivotIndex: number, direction: 1 | -1
+): EdgeEntity[] {
+  const pattern = new RegExp(`^${prefix}-(\\d+)$`)
+  const threshold = direction === 1 ? pivotIndex : pivotIndex + 1
+  return edges.map(edge => {
+    if (edge.source !== nodeId || !edge.sourceHandle) return edge
+    const m = edge.sourceHandle.match(pattern)
+    if (!m) return edge
+    const idx = parseInt(m[1], 10)
+    if (idx < threshold) return edge
+    return { ...edge, sourceHandle: `${prefix}-${idx + direction}` }
+  })
+}
+
 
 const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
 
@@ -115,9 +134,7 @@ type UIEvent =
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
   | { type: 'HANDLE.SELECT'; nodeId: string; handleId?: string }
   | { type: 'HANDLE.DESELECT' }
-  | { type: 'HANDLE.REMOVE'; nodeId: string; handleId?: string }
-  | { type: 'BRANCH.INSERTED'; nodeId: string; insertedAt: number }
-  | { type: 'BRANCH.REMOVED'; nodeId: string; removedAt: number }
+  | { type: 'HANDLE.REINDEX'; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
   | { type: 'NODE.EDITOR.CLOSE' }
   | { type: 'NODE.DELETE'; nodeId: string }
   | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
@@ -500,74 +517,16 @@ const flowsState = setup({
 
     deselectHandle: assign({ selectedHandle: undefined }),
 
-    removeExitHandle: assign(({ context, event }) => {
-      const ev = typeOf('HANDLE.REMOVE', event)
-      const match = ev.handleId?.match(/exit-(\d+)/)
-      if (!match) return {}
-      const removedIndex = parseInt(match[1], 10)
-
-      // Reindex edges with sourceHandle > removedIndex
-      const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.source !== ev.nodeId || !edge.sourceHandle) return edge
-        const m = edge.sourceHandle.match(/exit-(\d+)/)
-        if (!m) return edge
-        const idx = parseInt(m[1], 10)
-        if (idx <= removedIndex) return edge
-        return { ...edge, sourceHandle: `exit-${idx - 1}` }
-      })
-
+    reindexHandles: assign(({ context, event }) => {
+      const ev = typeOf('HANDLE.REINDEX', event)
+      const updatedEdges = reindexEdges(
+        context.graph.edges, ev.nodeId, ev.prefix, ev.index, ev.direction
+      )
       return { graph: { ...context.graph, edges: updatedEdges } }
     }),
 
-    sendRemoveExitHandle: ({ context, event }) => {
-      const ev = typeOf('HANDLE.REMOVE', event)
-      if (!context.selectedFlowId) return
-      const match = ev.handleId?.match(/exit-(\d+)/)
-      if (!match) return
-
-      // Resolve temp IDs
-      const nodeId = ev.nodeId.startsWith('temp-')
-        ? context.tempIdMap[ev.nodeId] || ev.nodeId
-        : ev.nodeId
-      if (nodeId.startsWith('temp-')) return
-
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'REINDEX_EXIT_HANDLES',
-        flowId: context.selectedFlowId,
-        nodeId,
-        removedIndex: parseInt(match[1], 10),
-      })
-    },
-
-    reindexBranchHandles: assign(({ context, event }) => {
-      const ev = typeOf('BRANCH.INSERTED', event)
-      const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.source !== ev.nodeId || !edge.sourceHandle) return edge
-        const m = edge.sourceHandle.match(/branch-(\d+)/)
-        if (!m) return edge
-        const idx = parseInt(m[1], 10)
-        if (idx < ev.insertedAt) return edge
-        return { ...edge, sourceHandle: `branch-${idx + 1}` }
-      })
-      return { graph: { ...context.graph, edges: updatedEdges } }
-    }),
-
-    reindexBranchHandlesOnRemove: assign(({ context, event }) => {
-      const ev = typeOf('BRANCH.REMOVED', event)
-      const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.source !== ev.nodeId || !edge.sourceHandle) return edge
-        const m = edge.sourceHandle.match(/branch-(\d+)/)
-        if (!m) return edge
-        const idx = parseInt(m[1], 10)
-        if (idx <= ev.removedAt) return edge
-        return { ...edge, sourceHandle: `branch-${idx - 1}` }
-      })
-      return { graph: { ...context.graph, edges: updatedEdges } }
-    }),
-
-    sendReindexBranchHandles: ({ context, event }) => {
-      const ev = typeOf('BRANCH.INSERTED', event)
+    sendReindexHandles: ({ context, event }) => {
+      const ev = typeOf('HANDLE.REINDEX', event)
       if (!context.selectedFlowId) return
       const nodeId = ev.nodeId.startsWith('temp-')
         ? context.tempIdMap[ev.nodeId] || ev.nodeId
@@ -576,27 +535,12 @@ const flowsState = setup({
 
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'REINDEX_BRANCH_HANDLES_INSERT',
+        type: 'REINDEX_HANDLES',
         flowId: context.selectedFlowId,
         nodeId,
-        insertedAt: ev.insertedAt,
-      })
-    },
-
-    sendReindexBranchHandlesOnRemove: ({ context, event }) => {
-      const ev = typeOf('BRANCH.REMOVED', event)
-      if (!context.selectedFlowId) return
-      const nodeId = ev.nodeId.startsWith('temp-')
-        ? context.tempIdMap[ev.nodeId] || ev.nodeId
-        : ev.nodeId
-      if (nodeId.startsWith('temp-')) return
-
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'REINDEX_BRANCH_HANDLES_REMOVE',
-        flowId: context.selectedFlowId,
-        nodeId,
-        removedAt: ev.removedAt,
+        prefix: ev.prefix,
+        index: ev.index,
+        direction: ev.direction,
       })
     },
 
@@ -1392,9 +1336,7 @@ const flowsState = setup({
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
         'HANDLE.SELECT': { actions: 'selectHandle' },
         'HANDLE.DESELECT': { actions: 'deselectHandle' },
-        'HANDLE.REMOVE': { actions: ['removeExitHandle', 'sendRemoveExitHandle'] },
-        'BRANCH.INSERTED': { actions: ['reindexBranchHandles', 'sendReindexBranchHandles'] },
-        'BRANCH.REMOVED': { actions: ['reindexBranchHandlesOnRemove', 'sendReindexBranchHandlesOnRemove'] },
+        'HANDLE.REINDEX': { actions: ['reindexHandles', 'sendReindexHandles'] },
         'NODE.DELETE': { actions: ['deleteNode', 'sendNodeDeleted'] },
         'EDGE.CONNECT': { actions: ['connectEdge', 'sendEdgeConnected'] },
         'EDGE.DISCONNECT': { actions: ['disconnectEdge', 'sendEdgeDisconnected'] },

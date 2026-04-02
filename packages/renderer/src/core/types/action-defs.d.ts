@@ -1713,59 +1713,29 @@ declare const events: {
         systemId: "flows";
         directory: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REINDEX_EXIT_HANDLES">;
+        type: zod.ZodLiteral<"REINDEX_HANDLES">;
         systemId: zod.ZodLiteral<"flows">;
         flowId: zod.ZodString;
         nodeId: zod.ZodString;
-        removedIndex: zod.ZodNumber;
+        prefix: zod.ZodString;
+        index: zod.ZodNumber;
+        direction: zod.ZodUnion<[zod.ZodLiteral<1>, zod.ZodLiteral<-1>]>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REINDEX_EXIT_HANDLES";
+        type: "REINDEX_HANDLES";
         systemId: "flows";
         flowId: string;
         nodeId: string;
-        removedIndex: number;
+        prefix: string;
+        index: number;
+        direction: 1 | -1;
     }, {
-        type: "REINDEX_EXIT_HANDLES";
+        type: "REINDEX_HANDLES";
         systemId: "flows";
         flowId: string;
         nodeId: string;
-        removedIndex: number;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REINDEX_BRANCH_HANDLES_INSERT">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        nodeId: zod.ZodString;
-        insertedAt: zod.ZodNumber;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REINDEX_BRANCH_HANDLES_INSERT";
-        systemId: "flows";
-        flowId: string;
-        nodeId: string;
-        insertedAt: number;
-    }, {
-        type: "REINDEX_BRANCH_HANDLES_INSERT";
-        systemId: "flows";
-        flowId: string;
-        nodeId: string;
-        insertedAt: number;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REINDEX_BRANCH_HANDLES_REMOVE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        nodeId: zod.ZodString;
-        removedAt: zod.ZodNumber;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REINDEX_BRANCH_HANDLES_REMOVE";
-        systemId: "flows";
-        flowId: string;
-        nodeId: string;
-        removedAt: number;
-    }, {
-        type: "REINDEX_BRANCH_HANDLES_REMOVE";
-        systemId: "flows";
-        flowId: string;
-        nodeId: string;
-        removedAt: number;
+        prefix: string;
+        index: number;
+        direction: 1 | -1;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_QUERY">;
         systemId: zod.ZodLiteral<"database">;
@@ -5705,9 +5675,7 @@ declare const services: {
             readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
             readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
             readonly deleteFlow: (flowId: EARS.EntityId) => void;
-            readonly reindexExitHandles: (nodeId: EARS.EntityId, removedIndex: number) => void;
-            readonly reindexBranchHandlesInsert: (nodeId: EARS.EntityId, insertedAt: number) => void;
-            readonly reindexBranchHandlesRemove: (nodeId: EARS.EntityId, removedAt: number) => void;
+            readonly reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1) => void;
             readonly importFromDSL: (compiled: CompiledRows) => {
                 flowIds: EARS.EntityId[];
             };

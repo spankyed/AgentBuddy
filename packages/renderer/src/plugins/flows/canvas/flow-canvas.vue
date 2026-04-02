@@ -323,7 +323,16 @@ function handleEdgeSelect(nodeId: string, handleId?: string) {
 }
 
 function handleRemoveHandle(nodeId: string, handleId?: string) {
-  actor.send({ type: 'HANDLE.REMOVE', nodeId, handleId })
+  const parsed = handleId?.match(/(exit|branch)-(\d+)/)
+  if (parsed) {
+    actor.send({
+      type: 'HANDLE.REINDEX',
+      nodeId,
+      prefix: parsed[1],
+      index: parseInt(parsed[2], 10),
+      direction: -1,
+    })
+  }
 }
 
 function handleNodeClick(e: NodeMouseEvent) {
@@ -503,11 +512,13 @@ function handleNodeUpdate(nodeId: string, updates: Record<string, any>) {
 }
 
 function handleReindexBranches(nodeId: string, data: { type: 'inserted' | 'removed'; index: number }) {
-  if (data.type === 'inserted') {
-    actor.send({ type: 'BRANCH.INSERTED', nodeId, insertedAt: data.index })
-  } else {
-    actor.send({ type: 'BRANCH.REMOVED', nodeId, removedAt: data.index })
-  }
+  actor.send({
+    type: 'HANDLE.REINDEX',
+    nodeId,
+    prefix: 'branch',
+    index: data.index,
+    direction: data.type === 'inserted' ? 1 : -1,
+  })
 }
 
 function handleNodeDragStop(event: NodeMouseEvent) {
