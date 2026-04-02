@@ -18,11 +18,12 @@
 
     <!-- Terminal List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="terminals.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
-        <Terminal class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">No terminals open</p>
-        <p class="text-xs text-neutral-500">Click + to create a new terminal</p>
-      </div>
+      <EmptyState
+        v-if="terminals.length === 0"
+        :icon="Terminal"
+        title="No terminals open"
+        subtitle="Click + to create a new terminal"
+      />
 
       <div v-else class="p-2">
         <ContextMenuRoot v-for="terminal in terminals" :key="terminal.id">
@@ -103,6 +104,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { TerminalInfo } from './state'
 import { Terminal, X, Edit, Plus } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
+import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,

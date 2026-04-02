@@ -4,7 +4,7 @@
     <div class="mb-8">
       <h2 class="text-xl font-semibold text-white mb-2">Personal Information</h2>
       <p class="text-sm text-neutral-500">
-        Manage your personal details and contact information. This information gets stored locally on your device.
+        Manage your personal details and contact information. This information is only stored locally on your device, to be used in AI workflows.
       </p>
     </div>
 
@@ -14,7 +14,7 @@
         <User class="w-4 h-4 text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Personal Details</h3>
       </div>
-      
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Name Field -->
         <div class="group">
@@ -65,7 +65,7 @@
         <MapPin class="w-4 h-4 text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Address Information</h3>
       </div>
-      
+
       <AddressInput v-model="formData.address" @update:modelValue="debouncedSave" />
     </div>
 
@@ -114,11 +114,11 @@ const formData = ref<{
 const formatPhoneNumber = (value: string) => {
   // Remove all non-digits
   const cleaned = value.replace(/\D/g, '')
-  
+
   // Format as (XXX) XXX-XXXX
   const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/)
   if (!match) return value
-  
+
   if (match[1] && !match[2]) {
     return match[1]
   } else if (match[2] && !match[3]) {

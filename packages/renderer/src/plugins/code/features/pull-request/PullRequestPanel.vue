@@ -18,13 +18,12 @@
     </CodePanelHeader>
 
     <!-- Show friendly empty state if no git repository -->
-    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 gap-2 p-8 text-center">
-      <GitPullRequest class="w-5 h-5 text-neutral-500" />
-      <p class="text-sm text-neutral-400">No Git Repository</p>
-      <p class="max-w-xs text-xs text-neutral-500">
-        Open a folder with a git repository to create and view pull requests
-      </p>
-    </div>
+    <EmptyState
+      v-if="isNoGitRepoError"
+      :icon="GitPullRequest"
+      title="No Git Repository"
+      subtitle="Open a folder with a git repository to create and view pull requests"
+    />
 
     <!-- Show error if no directory selected -->
     <NoDirectoryState v-else-if="!baseDirectory" />
@@ -32,13 +31,12 @@
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
       <!-- Show friendly empty state if cannot determine base branch -->
-      <div v-if="isNoBaseBranchError" class="flex flex-col items-center justify-center flex-1 gap-2 p-8 text-center">
-        <GitBranch class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">Cannot Determine Base Branch</p>
-        <p class="max-w-sm text-xs text-neutral-500">
-          Unable to determine the base branch for comparison. Check that the repository has a default branch configured.
-        </p>
-      </div>
+      <EmptyState
+        v-if="isNoBaseBranchError"
+        :icon="GitBranch"
+        title="Cannot Determine Base Branch"
+        subtitle="Unable to determine the base branch for comparison. Check that the repository has a default branch configured."
+      />
 
       <!-- Generic error state for other errors -->
       <div v-else-if="prError" class="error-state">
@@ -51,13 +49,12 @@
         <span class="text-sm text-neutral-400">Loading changes...</span>
       </div>
 
-      <div v-else-if="prFiles.length === 0" class="empty-state">
-        <GitBranch class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">No changes found</p>
-        <p class="mt-1 text-xs text-neutral-500">
-          Comparing with {{ prBaseBranch || 'base branch' }}
-        </p>
-      </div>
+      <EmptyState
+        v-else-if="prFiles.length === 0"
+        :icon="GitBranch"
+        title="No changes found"
+        :subtitle="`Comparing with ${prBaseBranch || 'base branch'}`"
+      />
 
       <div v-else class="pr-content">
         <div class="branch-info bg-neutral-800/50">
@@ -103,6 +100,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { AlertCircle, Loader2, GitBranch, GitPullRequest, RefreshCw, UnfoldVertical, FoldVertical } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
+import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 

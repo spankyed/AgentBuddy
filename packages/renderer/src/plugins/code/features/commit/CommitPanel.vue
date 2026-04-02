@@ -35,13 +35,12 @@
     />
 
     <!-- Show friendly empty state if no git repository -->
-    <div v-if="isNoGitRepoError" class="flex flex-col items-center justify-center flex-1 gap-2 p-8 text-center">
-      <GitBranch class="w-5 h-5 text-neutral-500" />
-      <p class="text-sm text-neutral-400">No Git Repository</p>
-      <p class="max-w-xs text-xs text-neutral-500">
-        Open a folder with a git repository to use source control features
-      </p>
-    </div>
+    <EmptyState
+      v-if="isNoGitRepoError"
+      :icon="GitBranch"
+      title="No Git Repository"
+      subtitle="Open a folder with a git repository to use source control features"
+    />
 
     <!-- Show error if no directory selected -->
     <NoDirectoryState v-else-if="!baseDirectory" />
@@ -199,11 +198,12 @@
 
     <!-- File Changes -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="gitStatus.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
-        <GitCommit class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">No changes to commit</p>
-        <p class="text-xs text-neutral-500">Working tree is clean</p>
-      </div>
+      <EmptyState
+        v-if="gitStatus.length === 0"
+        :icon="GitCommit"
+        title="No changes to commit"
+        subtitle="Working tree is clean"
+      />
 
       <div v-else class="divide-y divide-neutral-800">
         <!-- Staged Changes -->
@@ -319,6 +319,7 @@ import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
+import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 
 // Get actors

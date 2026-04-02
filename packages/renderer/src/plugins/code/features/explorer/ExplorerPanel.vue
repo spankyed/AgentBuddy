@@ -47,11 +47,12 @@
         <div class="text-sm text-neutral-400">Loading...</div>
       </div>
 
-      <div v-else-if="rootFiles.length === 0" class="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center">
-        <FolderOpen class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">Directory is empty</p>
-        <p class="text-xs text-neutral-500">This folder contains no files</p>
-      </div>
+      <EmptyState
+        v-else-if="rootFiles.length === 0"
+        :icon="FolderOpen"
+        title="Directory is empty"
+        subtitle="This folder contains no files"
+      />
 
       <div
         v-else-if="rootFiles.length > 0"
@@ -86,6 +87,7 @@ import Dialog from '@/core/components/design/dialog.vue'
 import ExplorerTreeItem from '@/plugins/code/features/explorer/ExplorerTreeItem.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
+import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import { FolderOpen, FolderPlus, AlertCircle, X } from 'lucide-vue-next'
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
