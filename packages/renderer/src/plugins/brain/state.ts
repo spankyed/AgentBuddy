@@ -120,7 +120,8 @@ const brainState = setup({
   },
   actors: {},
   actions: {
-    setBrainData: assign(({ event }) => {
+    setBrainData: assign(({ context, event }) => {
+      if (context.brainIsDead) return {};
       const typedEv = typeOf('RECEIVE_PLUGIN_DATA', event);
       const normalizedTree = typedEv.data.tNodeTree ? normalizeTNodeTree(typedEv.data.tNodeTree) : undefined;
       return {
