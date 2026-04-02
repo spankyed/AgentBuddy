@@ -34,12 +34,6 @@ const {
   <!-- Separator -->
   <component v-if="showSeparator" :is="SeparatorComponent" :class="MENU_SEPARATOR_CLASS" />
 
-  <!-- New Project -->
-  <component :is="ItemComponent" @select="() => createProject(directoryPath)" :class="MENU_ITEM_CLASS">
-    <FolderPlus class="w-4 h-4" />
-    New Project
-  </component>
-
   <!-- Add to Project submenu -->
   <component :is="SubComponent" v-if="allProjects.length > 0">
     <component :is="SubTriggerComponent" :class="MENU_ITEM_CLASS">
@@ -72,6 +66,12 @@ const {
         </component>
       </component>
     </component>
+  </component>
+
+  <!-- New Project -->
+  <component :is="ItemComponent" @select="() => createProject(directoryPath)" :class="MENU_ITEM_CLASS">
+    <FolderPlus class="w-4 h-4" />
+    New Project
   </component>
 
   <!-- Show message when no projects -->
