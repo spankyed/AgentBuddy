@@ -35,22 +35,33 @@
       </div>
       <!-- Filter buttons -->
       <div class="flex gap-2 flex-shrink-0 whitespace-nowrap">
-        <Button
-          type="button"
-          variant="transparent"
-          class="!text-sm !px-3 !py-1.5"
+        <FilterPopover
+          :statuses="statuses"
+          :tags="availableTags"
+          :selected-statuses="filters.statuses"
+          :selected-tags="filters.tags"
+          @toggle-status="(s) => actor.send({ type: 'TOGGLE_FILTER_STATUS', status: s })"
+          @toggle-tag="(t) => actor.send({ type: 'TOGGLE_FILTER_TAG', tag: t })"
         >
-          <Filter :size="14" />
-          <span>Filter</span>
-        </Button>
+          <Button
+            type="button"
+            variant="transparent"
+            class="!text-sm !px-3 !py-1.5"
+          >
+            <Filter :size="14" />
+            <span>Filter</span>
+          </Button>
+        </FilterPopover>
         <Button
+          v-if="activeFilterCount > 0"
           type="button"
           variant="transparent"
           class="!text-sm !px-3 !py-1.5"
+          @click="actor.send({ type: 'CLEAR_FILTERS' })"
         >
           <span>Clear filters</span>
-          <span v-if="5 > 0" class="ml-1 text-neutral-500">
-            ({{ 5 }})
+          <span class="ml-1 text-neutral-500">
+            ({{ activeFilterCount }})
           </span>
         </Button>
       </div>
@@ -79,11 +90,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Search, Filter, LayoutList, LayoutGrid, History } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
+import FilterPopover from './FilterPopover.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
 
 const actor: ThreadsState = applicationState.system.get(id)
@@ -91,5 +103,29 @@ const currentState = useSelector(actor, s => s.value)
 const isListView = computed(() => currentState.value === 'list')
 const isKanbanView = computed(() => currentState.value === 'kanban')
 
+const filters = useSelector(actor, s => s.context.filters)
+const settings = useSelector(actor, s => s.context.settings)
+const availableTags = useSelector(actor, s => s.context.availableTags)
+
+const statuses = computed(() => settings.value?.statuses || [])
+
+const activeFilterCount = computed(() =>
+  filters.value.statuses.length + filters.value.tags.length + (filters.value.search ? 1 : 0)
+)
+
 const searchKeyword = ref('')
+let searchTimeout: ReturnType<typeof setTimeout> | undefined
+watch(searchKeyword, (val) => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    actor.send({ type: 'SET_SEARCH', keyword: val })
+  }, 200)
+})
+
+// Sync search input when filters are cleared externally
+watch(() => filters.value.search, (val) => {
+  if (val === '' && searchKeyword.value !== '') {
+    searchKeyword.value = ''
+  }
+})
 </script>

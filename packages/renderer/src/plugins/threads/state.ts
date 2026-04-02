@@ -60,6 +60,10 @@ type UIEvent =
   | { type: 'CLEAR_NEW_THREAD_FLAG'; id: string }
   | { type: 'TOGGLE_TAGS_SECTION'; show: boolean }
   | { type: 'TOGGLE_LINKED_SECTION'; show: boolean }
+  | { type: 'TOGGLE_FILTER_STATUS'; status: string }
+  | { type: 'TOGGLE_FILTER_TAG'; tag: string }
+  | { type: 'SET_SEARCH'; keyword: string }
+  | { type: 'CLEAR_FILTERS' }
   | { type: 'THREADS.IMPORT'; directory: string }
   | { type: 'THREADS.RESET_IMPORT_STATUS' }
   | { type: 'THREADS.EXPORT'; directory: string }
@@ -88,6 +92,11 @@ interface ThreadsContext {
   };
   availableTags: ThreadTagOption[];
   settings: ThreadsSettings | null;
+  filters: {
+    statuses: string[];
+    tags: string[];
+    search: string;
+  };
   threadsImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number };
   threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
 }
@@ -391,6 +400,41 @@ const threadsState = setup({
     resetExportThreadsStatus: assign({
       threadsExport: { status: 'idle' as const, errors: [] as string[], filePath: '', threadCount: 0 },
     }),
+
+    /* ── Filter actions ────────────────────────────────────── */
+    toggleFilterStatus: assign(({ context, event }) => {
+      const status = typeOf('TOGGLE_FILTER_STATUS', event).status;
+      const current = context.filters.statuses;
+      return {
+        filters: {
+          ...context.filters,
+          statuses: current.includes(status)
+            ? current.filter(s => s !== status)
+            : [...current, status],
+        },
+      };
+    }),
+    toggleFilterTag: assign(({ context, event }) => {
+      const tag = typeOf('TOGGLE_FILTER_TAG', event).tag;
+      const current = context.filters.tags;
+      return {
+        filters: {
+          ...context.filters,
+          tags: current.includes(tag)
+            ? current.filter(t => t !== tag)
+            : [...current, tag],
+        },
+      };
+    }),
+    setSearch: assign(({ context, event }) => {
+      const keyword = typeOf('SET_SEARCH', event).keyword;
+      return {
+        filters: { ...context.filters, search: keyword },
+      };
+    }),
+    clearFilters: assign({
+      filters: { statuses: [] as string[], tags: [] as string[], search: '' },
+    }),
   },
   guards: {
     targetIs
@@ -411,6 +455,7 @@ const threadsState = setup({
     create: { ...defaultThread },
     availableTags: [],
     settings: null,
+    filters: { statuses: [], tags: [], search: '' },
     threadsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     threadsExport: { status: 'idle' as const, errors: [], filePath: '', threadCount: 0 },
   }),
@@ -488,6 +533,12 @@ const threadsState = setup({
     THREADS_EXPORT_FAILED: {
       actions: 'handleThreadsExportFailed',
     },
+
+    // Filter events
+    TOGGLE_FILTER_STATUS: { actions: 'toggleFilterStatus' },
+    TOGGLE_FILTER_TAG: { actions: 'toggleFilterTag' },
+    SET_SEARCH: { actions: 'setSearch' },
+    CLEAR_FILTERS: { actions: 'clearFilters' },
 
     // ...TRAIL_CLICK<UIEvent>([
     ...TRAIL_CLICK([

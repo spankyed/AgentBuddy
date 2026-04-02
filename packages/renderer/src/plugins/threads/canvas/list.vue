@@ -4,7 +4,7 @@
 
     <!-- Threads Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="threads.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+      <div v-if="filteredThreads.length > 0" class="h-full overflow-y-auto custom-scrollbar">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
@@ -30,6 +30,25 @@
         </table>
       </div>
 
+      <!-- Filtered Empty State -->
+      <div
+        v-else-if="hasActiveFilters"
+        class="flex flex-col items-center justify-center h-full"
+      >
+        <div class="flex flex-col items-center max-w-sm text-center">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
+            <SearchX class="w-8 h-8 text-neutral-500" />
+          </div>
+          <h3 class="mb-2 text-lg font-semibold text-neutral-100">No matching threads</h3>
+          <p class="mb-6 text-sm text-neutral-400">
+            Try adjusting your filters or search
+          </p>
+          <Button @click="actor.send({ type: 'CLEAR_FILTERS' })" variant="transparent">
+            <span>Clear filters</span>
+          </Button>
+        </div>
+      </div>
+
       <!-- Empty State -->
       <div
         v-else
@@ -52,9 +71,9 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="threads.length > threadsPerPage" class="px-6 py-4 border-t border-neutral-800">
+    <div v-if="filteredThreads.length > threadsPerPage" class="px-6 py-4 border-t border-neutral-800">
       <Pagination
-        :total="threads.length"
+        :total="filteredThreads.length"
         :items-per-page="threadsPerPage"
         @page-changed="(page: number) => currentPage = page"
       />
@@ -63,8 +82,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { MessageCircleMore, Plus } from 'lucide-vue-next'
+import { ref, computed, watch } from 'vue'
+import { MessageCircleMore, Plus, SearchX } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
@@ -75,14 +94,46 @@ import { id, type ThreadsState } from '@/plugins/threads/state'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
+const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 const availableTags = useSelector(actor, s => s.context.availableTags)
 const threadsPerPage = 6
 const currentPage = ref(1)
 
+const hasActiveFilters = computed(() =>
+  filters.value.statuses.length > 0 || filters.value.tags.length > 0 || filters.value.search !== ''
+)
+
+const filteredThreads = computed(() => {
+  let result = threads.value
+
+  if (filters.value.statuses.length > 0) {
+    result = result.filter(t => filters.value.statuses.includes(t.status))
+  }
+
+  if (filters.value.tags.length > 0) {
+    result = result.filter(t =>
+      t.tags && t.tags.some(tag => filters.value.tags.includes(tag))
+    )
+  }
+
+  if (filters.value.search) {
+    const keyword = filters.value.search.toLowerCase()
+    result = result.filter(t =>
+      t.topic?.toLowerCase().includes(keyword)
+    )
+  }
+
+  return result
+})
+
+watch(filters, () => {
+  currentPage.value = 1
+}, { deep: true })
+
 const paginatedThreads = computed(() => {
   const start = (currentPage.value - 1) * threadsPerPage
-  return threads.value.slice(start, start + threadsPerPage)
+  return filteredThreads.value.slice(start, start + threadsPerPage)
 })
 
 const handleDeleteThread = (threadId: string) => {

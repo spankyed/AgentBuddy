@@ -10,6 +10,7 @@ import { SquarePen } from 'lucide-vue-next'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
+const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 
 /* -------------------------------------------------------------------------- */
@@ -73,9 +74,24 @@ function initializeItems() {
     return
   }
 
+  let source = threads.value
+
+  if (filters.value.statuses.length > 0) {
+    source = source.filter(t => filters.value.statuses.includes(t.status))
+  }
+  if (filters.value.tags.length > 0) {
+    source = source.filter(t =>
+      t.tags && t.tags.some(tag => filters.value.tags.includes(tag))
+    )
+  }
+  if (filters.value.search) {
+    const keyword = filters.value.search.toLowerCase()
+    source = source.filter(t => t.topic?.toLowerCase().includes(keyword))
+  }
+
   const workItemsByStatus: Record<string, WorkItem[]> = {}
 
-  threads.value.forEach((thread) => {
+  source.forEach((thread) => {
     const status = thread.status || lists.value[0]?.name || 'Backlog'
     const listIndex = statusToListIndex.value[status] ?? statusToListIndex.value[status.toLowerCase().replace(/\s+/g, '-')] ?? 0
     const listId = lists.value[listIndex]?.id || lists.value[0].id
@@ -108,7 +124,7 @@ function initializeItems() {
 
 // Initialize and watch for changes
 initializeItems()
-watch([threads, settings], () => {
+watch([threads, settings, filters], () => {
   if (droppingItem) {
     droppingItem = false
     return
