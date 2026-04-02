@@ -1730,6 +1730,42 @@ declare const events: {
         flowId: string;
         nodeId: string;
         removedIndex: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REINDEX_BRANCH_HANDLES_INSERT">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        nodeId: zod.ZodString;
+        insertedAt: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REINDEX_BRANCH_HANDLES_INSERT";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        insertedAt: number;
+    }, {
+        type: "REINDEX_BRANCH_HANDLES_INSERT";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        insertedAt: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REINDEX_BRANCH_HANDLES_REMOVE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        nodeId: zod.ZodString;
+        removedAt: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REINDEX_BRANCH_HANDLES_REMOVE";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        removedAt: number;
+    }, {
+        type: "REINDEX_BRANCH_HANDLES_REMOVE";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        removedAt: number;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_QUERY">;
         systemId: zod.ZodLiteral<"database">;
@@ -5670,6 +5706,8 @@ declare const services: {
             readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
             readonly deleteFlow: (flowId: EARS.EntityId) => void;
             readonly reindexExitHandles: (nodeId: EARS.EntityId, removedIndex: number) => void;
+            readonly reindexBranchHandlesInsert: (nodeId: EARS.EntityId, insertedAt: number) => void;
+            readonly reindexBranchHandlesRemove: (nodeId: EARS.EntityId, removedAt: number) => void;
             readonly importFromDSL: (compiled: CompiledRows) => {
                 flowIds: EARS.EntityId[];
             };

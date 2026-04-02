@@ -64,6 +64,7 @@
       :edges="plainEdges"
       @close="handleCloseNodeEditor"
       @update-node="handleNodeUpdate"
+      @reindex-branches="handleReindexBranches"
       @create-connected="handleCreateConnectedNode"
     />
 
@@ -499,6 +500,14 @@ async function handleNodesInitialized() {
 
 function handleNodeUpdate(nodeId: string, updates: Record<string, any>) {
   actor.send({ type: 'NODE.UPDATE', nodeId: nodeId as any, updates })
+}
+
+function handleReindexBranches(nodeId: string, data: { type: 'inserted' | 'removed'; index: number }) {
+  if (data.type === 'inserted') {
+    actor.send({ type: 'BRANCH.INSERTED', nodeId, insertedAt: data.index })
+  } else {
+    actor.send({ type: 'BRANCH.REMOVED', nodeId, removedAt: data.index })
+  }
 }
 
 function handleNodeDragStop(event: NodeMouseEvent) {

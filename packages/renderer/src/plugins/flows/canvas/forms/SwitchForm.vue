@@ -238,6 +238,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update-node': [updates: Record<string, any>]
+  'reindex-branches': [data: { type: 'inserted' | 'removed'; index: number }]
   'close': []
 }>()
 
@@ -303,20 +304,23 @@ function getConditionIndex(condition: Condition): number {
 }
 
 function addBranch() {
+  const insertedAt = elseIndex.value
   const newCondition: Condition = {
     predicate: { key: '', operator: 'equals' as BinaryOperator, value: '' },
     label: ''
   }
   const updated = [...localConditions.value]
-  updated.splice(elseIndex.value, 0, newCondition)
+  updated.splice(insertedAt, 0, newCondition)
   localConditions.value = updated
   emit('update-node', { conditions: localConditions.value })
+  emit('reindex-branches', { type: 'inserted', index: insertedAt })
 }
 
 function removeBranch(index: number) {
   if (localConditions.value[index]?.predicate === undefined) return
   localConditions.value = localConditions.value.filter((_, i) => i !== index)
   emit('update-node', { conditions: localConditions.value })
+  emit('reindex-branches', { type: 'removed', index })
 }
 
 function updateBranch(index: number, field: 'label', value: string) {

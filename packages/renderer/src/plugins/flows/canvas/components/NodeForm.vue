@@ -18,6 +18,7 @@
           :node="selectedNode"
           :resources="{ actions, flows, models, prompts }"
           @update-node="handleUpdateNode"
+          @reindex-branches="handleReindexBranches"
           @close="$emit('close')"
         />
       </div>
@@ -53,12 +54,19 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'close': []
   'update-node': [nodeId: string, updates: Record<string, any>]
+  'reindex-branches': [nodeId: string, data: { type: 'inserted' | 'removed'; index: number }]
   'create-connected': [nodeType: string, sourceNodeId: string]
 }>()
 
 function handleUpdateNode(updates: Record<string, any>) {
   if (props.selectedNode?.id) {
     emit('update-node', props.selectedNode.id, updates)
+  }
+}
+
+function handleReindexBranches(data: { type: 'inserted' | 'removed'; index: number }) {
+  if (props.selectedNode?.id) {
+    emit('reindex-branches', props.selectedNode.id, data)
   }
 }
 

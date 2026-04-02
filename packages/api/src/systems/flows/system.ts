@@ -85,6 +85,8 @@ export const IncomingFlowsEvents = [
   busEvent('IMPORT_DSL', { dsl: z.any() }),
   busEvent('EXPORT_DSL', { directory: z.string() }),
   busEvent('REINDEX_EXIT_HANDLES', { flowId: z.string(), nodeId: z.string(), removedIndex: z.number() }),
+  busEvent('REINDEX_BRANCH_HANDLES_INSERT', { flowId: z.string(), nodeId: z.string(), insertedAt: z.number() }),
+  busEvent('REINDEX_BRANCH_HANDLES_REMOVE', { flowId: z.string(), nodeId: z.string(), removedAt: z.number() }),
 ] as const
 
 export type FlowsInternalEvents = 
@@ -414,6 +416,16 @@ export const flowsSystem = setup({
       repository.flowsCommands.reindexExitHandles(nodeId as EARS.EntityId, removedIndex);
     },
 
+    reindexBranchHandlesInsert: ({ event }) => {
+      const { nodeId, insertedAt } = typeOf('REINDEX_BRANCH_HANDLES_INSERT', event);
+      repository.flowsCommands.reindexBranchHandlesInsert(nodeId as EARS.EntityId, insertedAt);
+    },
+
+    reindexBranchHandlesRemove: ({ event }) => {
+      const { nodeId, removedAt } = typeOf('REINDEX_BRANCH_HANDLES_REMOVE', event);
+      repository.flowsCommands.reindexBranchHandlesRemove(nodeId as EARS.EntityId, removedAt);
+    },
+
     exportDSL: ({ system, event }) => {
       const { directory } = typeOf('EXPORT_DSL', event);
       const pluginId = flows;
@@ -485,6 +497,12 @@ export const flowsSystem = setup({
         },
         REINDEX_EXIT_HANDLES: {
           actions: 'reindexExitHandles',
+        },
+        REINDEX_BRANCH_HANDLES_INSERT: {
+          actions: 'reindexBranchHandlesInsert',
+        },
+        REINDEX_BRANCH_HANDLES_REMOVE: {
+          actions: 'reindexBranchHandlesRemove',
         },
         FLOWS_SETTINGS_UPDATED: {
           actions: 'handleSettingsUpdate',

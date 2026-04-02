@@ -619,6 +619,48 @@ export const flowsCommands = {
     }
   },
 
+  reindexBranchHandlesInsert: (nodeId: EARS.EntityId, insertedAt: number): void => {
+    const relDetails = edgeStore.find({
+      sourceEntity: nodeId,
+      relationType: EARS.RelKind.TRANSITIONS_TO,
+    })
+
+    for (const rel of relDetails) {
+      const info = rel.info as { sourceHandle?: string } | undefined
+      if (!info?.sourceHandle) continue
+      const match = info.sourceHandle.match(/branch-(\d+)/)
+      if (!match) continue
+      const idx = parseInt(match[1], 10)
+      if (idx < insertedAt) continue
+
+      edgeStore.patchOne(
+        { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
+        { newInfo: { ...info, sourceHandle: `branch-${idx + 1}` } }
+      )
+    }
+  },
+
+  reindexBranchHandlesRemove: (nodeId: EARS.EntityId, removedAt: number): void => {
+    const relDetails = edgeStore.find({
+      sourceEntity: nodeId,
+      relationType: EARS.RelKind.TRANSITIONS_TO,
+    })
+
+    for (const rel of relDetails) {
+      const info = rel.info as { sourceHandle?: string } | undefined
+      if (!info?.sourceHandle) continue
+      const match = info.sourceHandle.match(/branch-(\d+)/)
+      if (!match) continue
+      const idx = parseInt(match[1], 10)
+      if (idx <= removedAt) continue
+
+      edgeStore.patchOne(
+        { sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: rel.targetEntity },
+        { newInfo: { ...info, sourceHandle: `branch-${idx - 1}` } }
+      )
+    }
+  },
+
   /**
    * Import flows from compiled DSL data
    */
