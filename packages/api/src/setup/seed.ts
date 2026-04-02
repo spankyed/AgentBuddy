@@ -246,8 +246,10 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
       };
       const compileOpts = { actions: actionMap, prompts: promptMap };
 
-      // Validate and import each flow independently so one bad flow
-      // doesn't block the others (e.g. Root Flow).
+      // Validate each flow independently so one bad flow doesn't block
+      // the others, but compile all valid flows together so inter-flow
+      // references (e.g. subflow nodes) resolve correctly.
+      const validFlowDSL: FlowDSL = {};
       for (const [flowName, entry] of Object.entries(filteredDSL)) {
         const singleFlowDSL: FlowDSL = { [flowName]: entry };
         const validation = validate(singleFlowDSL, validationOpts);
@@ -258,11 +260,16 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
           result.flows.skipped++;
           continue;
         }
+        validFlowDSL[flowName] = entry;
+      }
 
-        const compiled = compile(singleFlowDSL, compileOpts);
+      if (Object.keys(validFlowDSL).length > 0) {
+        const compiled = compile(validFlowDSL, compileOpts);
         flowsCommands.importFromDSL(compiled);
-        result.flows.created++;
-        log(`  flow created: ${flowName}`);
+        result.flows.created += Object.keys(validFlowDSL).length;
+        for (const flowName of Object.keys(validFlowDSL)) {
+          log(`  flow created: ${flowName}`);
+        }
       }
     }
   } else {
