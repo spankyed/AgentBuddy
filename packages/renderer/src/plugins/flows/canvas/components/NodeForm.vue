@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide } from 'vue'
-import type { NodeEntity, ActionEntity, FlowEntity, ModelConfig, PromptEntity } from '@app/api'
+import type { NodeEntity, ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@app/api'
 
 // Form components
 import BaseForm from '../forms/BaseForm.vue'
@@ -44,7 +44,7 @@ interface Props {
   selectedNode?: NodeEntity | null
   actions?: ActionEntity[]
   flows?: FlowEntity[]
-  models?: ModelConfig[]
+  models?: ModelCatalogEntry[]
   prompts?: PromptEntity[]
   edges?: { id: string; source: string; target: string; sourceHandle?: string }[]
 }

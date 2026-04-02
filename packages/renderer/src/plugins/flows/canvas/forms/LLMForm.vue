@@ -220,7 +220,7 @@ import {
 } from 'reka-ui'
 import BaseForm from './BaseForm.vue'
 import TipSection from '../components/TipSection.vue'
-import type { ModelConfig, PromptEntity, NodeEntity } from '@app/api'
+import type { ModelCatalogEntry, PromptEntity, NodeEntity } from '@app/api'
 import type { FormResources } from '../../types/form-props'
 
 const props = defineProps<{
@@ -248,7 +248,7 @@ const { startsWith } = useFilter({ sensitivity: 'base' })
 // Get selected model and prompt
 const selectedModel = computed(() => {
   if (!nodeData.value.model || !props.resources?.models) return null
-  return props.resources.models.find((m: ModelConfig) => m.id === nodeData.value.model) || null
+  return props.resources.models.find((m: ModelCatalogEntry) => m.id === nodeData.value.model) || null
 })
 
 const selectedPrompt = computed(() => {
@@ -275,7 +275,7 @@ const filteredPrompts = computed(() => {
 const filteredModels = computed(() => {
   if (!props.resources?.models) return []
   if (modelQuery.value === '') return props.resources.models
-  return props.resources.models.filter((model: ModelConfig) =>
+  return props.resources.models.filter((model: ModelCatalogEntry) =>
     startsWith(model.name, modelQuery.value) ||
     startsWith(model.provider, modelQuery.value)
   )
@@ -283,8 +283,8 @@ const filteredModels = computed(() => {
 
 // Group models by provider
 const groupedModels = computed(() => {
-  const groups: Record<string, ModelConfig[]> = {}
-  filteredModels.value.forEach((model: ModelConfig) => {
+  const groups: Record<string, ModelCatalogEntry[]> = {}
+  filteredModels.value.forEach((model: ModelCatalogEntry) => {
     if (!groups[model.provider]) {
       groups[model.provider] = []
     }
@@ -349,7 +349,7 @@ const handlePromptChange = (prompt: PromptEntity | null) => {
   }
 }
 
-const handleModelChange = (model: ModelConfig | null) => {
+const handleModelChange = (model: ModelCatalogEntry | null) => {
   modelQuery.value = ''
   isModelDropdownOpen.value = false
   emit('update-node', { model: model?.id || undefined })

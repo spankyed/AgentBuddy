@@ -15,7 +15,7 @@ import type {
   EARS,
   EdgeEntity,
   PromptEntity,
-  ModelConfig,
+  ModelCatalogEntry,
   ActionEntity,
   TNodeEntity,
   TrackEntity,
@@ -113,7 +113,7 @@ export interface FlowsContext {
   flows: FlowEntity[];
   // Resources available for node configuration
   prompts: PromptEntity[];
-  models: ModelConfig[];
+  models: ModelCatalogEntry[];
   actions: ActionEntity[];
   // Track temporary IDs during async creation
   tempIdMap: Record<string, string>; // tempId -> permanentId
