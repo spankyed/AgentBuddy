@@ -26,7 +26,7 @@ default-setup/
     prompts/                    # Prompt template source files
     flows/                      # Flow DSL files
     library/                    # Markdown docs + media
-    shared/                     # Cross-cutting helpers
+    _examples/                  # Reference examples (excluded from compilation)
   dist/                         # Generated JSON output (gitignored)
 ```
 
@@ -37,7 +37,7 @@ default-setup/
 - `src/prompts/` — prompt template source files
 - `src/flows/` — flow DSL files (dynamically imported, not bundled)
 - `src/library/` — markdown docs compiled to JSON
-- `src/shared/` — cross-cutting helpers
+- `src/_examples/` — reference examples (excluded from compilation and typecheck)
 - `src/types.ts` — shared type definitions (`ActionMeta`, `PromptMeta`, `Services`, `Z`, etc.)
 - `build/` — compiler infrastructure (compile scripts, validator, utils)
 - `dist/` — generated output (**do not edit**, gitignored)
@@ -66,7 +66,7 @@ default-setup/
 
 - Any `.ts` file without `export const meta` is auto-detected as a helper
 - Helpers are inlined into the consuming action/prompt at compile time via esbuild
-- Can live in `src/actions/`, `src/prompts/`, `src/shared/`, or subdirectories
+- Can live in `src/actions/`, `src/prompts/`, or subdirectories
 
 ## Flow conventions
 

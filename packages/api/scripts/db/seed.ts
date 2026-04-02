@@ -21,7 +21,7 @@ async function run() {
   const result = seedData({
     verbose: true,
     force: true,
-    compiledDir: path.resolve(process.cwd(), 'scratchpad/compiled'),
+    compiledDir: path.resolve(process.cwd(), 'packages/default-setup/dist'),
   });
 
   if (result) {

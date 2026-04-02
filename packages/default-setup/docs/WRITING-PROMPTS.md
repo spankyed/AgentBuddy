@@ -4,11 +4,11 @@
 
 Prompts are synchronous template function bodies stored as JavaScript strings and executed at runtime via the `Function` constructor. The template code runs in a sandboxed scope with only `params` and `usePrompt` available. Templates must return a string.
 
-Source files live in `default/prompts/` and are compiled to JSON via `npm run compile:prompts`.
+Source files live in `src/prompts/` and are compiled to JSON via `npm run compile:prompts`.
 
 ## Quick Start
 
-1. Create a new `.ts` file in `default/prompts/`
+1. Create a new `.ts` file in `src/prompts/`
 2. Export a `meta` object and a `template` function
 3. Run `npm run compile:prompts`
 4. Import the generated `dist/compiled-prompts.json` via the app UI (IMPORT_PROMPTS)
@@ -97,13 +97,13 @@ ${params.userMessage}`;
 You can extract reusable logic into helper files at any relative path. The compiler uses esbuild to bundle imports — all imported declarations are inlined into the template function body at compile time, so the resulting `templateFn` string remains self-contained.
 
 Common locations for helpers:
-- `default/shared/` — helpers reusable across both actions and prompts
-- `default/prompts/` — sibling helpers (files without `export const meta` are skipped during compilation)
+- `src/prompts/` — helpers reusable across both actions and prompts
+- `src/prompts/` — sibling helpers (files without `export const meta` are skipped during compilation)
 
 ### Creating a helper file
 
 ```typescript
-// default/shared/format-list.ts
+// src/prompts/format-list.ts
 
 export function formatList(items: string[]): string {
   return items.map((item, i) => `${i + 1}. ${item}`).join('\n');
@@ -144,7 +144,7 @@ return `Complete the following tasks:\n${formatList(params.tasks)}`;
 - **No Node.js globals** in helper files — same restrictions as prompt files
 - **No bare package imports** — cannot import from `node_modules`
 - Missing files or exports are treated as **compile errors** (the prompt is skipped)
-- Files in `default/prompts/` without `export const meta` are treated as helpers and skipped during compilation
+- Files in `src/prompts/` without `export const meta` are treated as helpers and skipped during compilation
 
 ## Metadata Reference
 
@@ -258,6 +258,6 @@ Run from the project root or `packages/api/`:
 npm run compile:prompts
 ```
 
-This uses esbuild to bundle and transpile all `.ts` files in `default/prompts/`, resolving relative imports and inlining helper code. It then extracts the function body and metadata and writes `dist/compiled-prompts.json`. Files without `export const meta` are treated as helper files and skipped during compilation (but can be imported by prompt files).
+This uses esbuild to bundle and transpile all `.ts` files in `src/prompts/`, resolving relative imports and inlining helper code. It then extracts the function body and metadata and writes `dist/compiled-prompts.json`. Files without `export const meta` are treated as helper files and skipped during compilation (but can be imported by prompt files).
 
 The compiled JSON is git-tracked and can be imported via the app UI using the existing IMPORT_PROMPTS flow.
