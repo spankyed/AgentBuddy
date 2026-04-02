@@ -23,7 +23,7 @@
         padding: 15vh 2rem 2rem;
         text-align: center;
       }
-      #error-page .content { max-width: 560px; width: 100%; }
+      #error-page .content { max-width: 560px; width: 100%; display: flex; flex-direction: column; max-height: 80vh; }
       #error-page .icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
       #error-page h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1.25rem; color: #e5e5e5; }
       #error-page .subtitle {
@@ -31,25 +31,38 @@
         line-height: 1.5; text-align: center;
         font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
         background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.15);
-        border-radius: 6px; padding: 0.75rem 1rem;
+        border-radius: 6px; padding: 0.75rem 1rem; cursor: pointer;
+        transition: border-color 0.15s;
       }
+      #error-page .subtitle:hover { border-color: rgba(239, 68, 68, 0.35); }
       #error-page details {
         text-align: left; margin-bottom: 2rem;
         background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 6px; padding: 0;
+        flex: 1; min-height: 0; overflow: hidden;
       }
       #error-page summary {
         cursor: pointer; padding: 0.625rem 0.875rem 0.625rem 0.35rem; font-size: 0.8rem;
         color: #525252; user-select: none; letter-spacing: 0.02em;
         list-style-position: outside; margin-left: 2rem;
       }
+      #error-page .summary-inner {
+        display: flex; align-items: center; justify-content: space-between; width: 100%;
+      }
+      #error-page .copy-btn {
+        background: none; border: 1px solid #333; border-radius: 4px; color: #525252;
+        font-size: 0.7rem; padding: 0.25rem 0.5rem; cursor: pointer;
+        transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+      }
+      #error-page .copy-btn:hover { color: #a3a3a3; border-color: #525252; }
       #error-page .stack-frames {
-        margin: 0; padding: 0 0.875rem 0.625rem; font-size: 0.625rem; color: #525252;
-        white-space: pre-wrap; word-break: break-all; max-height: 40vh; overflow-y: auto;
+        margin: 0; padding: 0.875rem 1rem; font-size: 0.625rem; color: #525252;
+        background: #181818; border-top: 1px solid #2a2a2a;
+        white-space: pre-wrap; word-break: break-all; max-height: calc(80vh - 16rem); overflow-y: auto;
         line-height: 1.5; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
       }
       #error-page .reload-btn {
         background: #2563eb; color: #fff; border: none; border-radius: 6px;
-        padding: 0.5rem 1.75rem; font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+        padding: 0.5rem 1.75rem; font-size: 0.8125rem; font-weight: 500; cursor: pointer; flex-shrink: 0;
         transition: background 0.15s;
       }
       #error-page .reload-btn:hover { background: #3b82f6; }
@@ -60,9 +73,23 @@
       <div class="content">
         <div class="icon">&#9888;</div>
         <h1 id="error-title">Something went wrong</h1>
-        <p id="error-subtitle" class="subtitle">The application encountered an unexpected error.</p>
+        <p id="error-subtitle" class="subtitle" onclick="
+          var el = this;
+          navigator.clipboard.writeText(el.textContent).then(function() {
+            el.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+            setTimeout(function() { el.style.borderColor = ''; }, 1000);
+          });
+        ">The application encountered an unexpected error.</p>
         <details>
-          <summary>Stack trace</summary>
+          <summary><span class="summary-inner">Stack trace <button class="copy-btn" id="copy-stack-btn" onclick="
+              event.preventDefault();
+              var text = document.getElementById('error-detail').textContent;
+              navigator.clipboard.writeText(text).then(function() {
+                var btn = document.getElementById('copy-stack-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+              });
+            ">Copy</button></span></summary>
           <div id="error-detail" class="stack-frames"></div>
         </details>
         <button class="reload-btn" onclick="window.location.reload()">Reload</button>
