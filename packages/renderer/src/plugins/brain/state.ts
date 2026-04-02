@@ -153,12 +153,17 @@ const brainState = setup({
         return {};
       }
 
+      // Event TNodes have parentId = flowTNodeId (the flow container), but the flow
+      // container is NOT in the display tree. Event TNodes are root-level items in the
+      // display tree (matching how eventTracks() returns them from the repository).
+      const isDirectFlowChild = parentId === context.flowTNodeId;
+
       if (!context.normalizedTree) {
         // Initialize if not present
         return {
           normalizedTree: {
             byId: { [tNode.id]: tNode },
-            rootIds: parentId ? [] : [tNode.id],
+            rootIds: (!parentId || isDirectFlowChild) ? [tNode.id] : [],
             childrenById: { [tNode.id]: [] }
           }
         };
@@ -175,8 +180,8 @@ const brainState = setup({
       newTree.byId[tNode.id] = tNode;
       newTree.childrenById[tNode.id] = [];
 
-      // Update parent's children if parentId exists
-      if (parentId) {
+      if (parentId && !isDirectFlowChild) {
+        // Child of a node that's IN the display tree (e.g., step under event)
         if (!newTree.childrenById[parentId]) {
           newTree.childrenById[parentId] = [];
         } else {
@@ -184,7 +189,7 @@ const brainState = setup({
         }
         newTree.childrenById[parentId].push(tNode.id);
       } else {
-        // No parent means it's a root node
+        // Root node: either no parent, or parent is the flow container
         newTree.rootIds.push(tNode.id);
       }
 
