@@ -23,45 +23,11 @@ import type {
 } from '@app/api'
 import { trpc } from '@/core/trpc'
 import { getNodeConfig } from './canvas/nodes'
-import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, partitionIntoComponents, type LayoutPositions } from './canvas/layout-utils'
+import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimensions'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
-function layoutComponentAroundSource(
-  sourceNodeId: string,
-  nodes: Parameters<typeof calculateLayoutAsync>[0]['nodes'],
-  edges: Parameters<typeof calculateLayoutAsync>[0]['edges'],
-  actualPositions: LayoutPositions,
-  updatePosition: (nodeId: string, position: { x: number; y: number }) => void
-) {
-  calculateLayoutAsync({ nodes, edges })
-    .then((elkPositions) => {
-      const elkSourcePos = elkPositions[sourceNodeId]
-      if (!elkSourcePos) return
-
-      const actualSourcePos = actualPositions[sourceNodeId]
-      if (!actualSourcePos) return
-
-      const dx = actualSourcePos.x - elkSourcePos.x
-      const dy = actualSourcePos.y - elkSourcePos.y
-
-      // Find all nodes in the source's connected component
-      const { components } = partitionIntoComponents(nodes, edges)
-      const sourceComp = components.find(comp => comp.some(n => n.id === sourceNodeId))
-      if (!sourceComp) return
-
-      const compNodeIds = new Set(sourceComp.map(n => n.id))
-
-      // Update all nodes in the component EXCEPT the source (it's the anchor)
-      for (const nodeId of compNodeIds) {
-        if (nodeId === sourceNodeId) continue
-        const elkPos = elkPositions[nodeId]
-        if (!elkPos) continue
-        updatePosition(nodeId, { x: elkPos.x + dx, y: elkPos.y + dy })
-      }
-    })
-}
 
 const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
 

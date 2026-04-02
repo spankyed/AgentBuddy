@@ -33,7 +33,7 @@ export type LayoutPositions = Record<string, { x: number; y: number }>
 
 export type LayoutNode = LayoutNodeData
 
-interface LayoutEdge {
+export interface LayoutEdge {
   id?: string
   source: string
   target: string
@@ -229,4 +229,39 @@ export function allNodesHavePositions(
   positions: LayoutPositions
 ): boolean {
   return nodes.every(n => positions[n.id]?.x !== undefined && positions[n.id]?.y !== undefined)
+}
+
+export function layoutComponentAroundSource(
+  sourceNodeId: string,
+  nodes: LayoutNode[],
+  edges: LayoutEdge[],
+  actualPositions: LayoutPositions,
+  updatePosition: (nodeId: string, position: { x: number; y: number }) => void
+) {
+  calculateLayoutAsync({ nodes, edges })
+    .then((elkPositions) => {
+      const elkSourcePos = elkPositions[sourceNodeId]
+      if (!elkSourcePos) return
+
+      const actualSourcePos = actualPositions[sourceNodeId]
+      if (!actualSourcePos) return
+
+      const dx = actualSourcePos.x - elkSourcePos.x
+      const dy = actualSourcePos.y - elkSourcePos.y
+
+      // Find all nodes in the source's connected component
+      const { components } = partitionIntoComponents(nodes, edges)
+      const sourceComp = components.find(comp => comp.some(n => n.id === sourceNodeId))
+      if (!sourceComp) return
+
+      const compNodeIds = new Set(sourceComp.map(n => n.id))
+
+      // Update all nodes in the component EXCEPT the source (it's the anchor)
+      for (const nodeId of compNodeIds) {
+        if (nodeId === sourceNodeId) continue
+        const elkPos = elkPositions[nodeId]
+        if (!elkPos) continue
+        updatePosition(nodeId, { x: elkPos.x + dx, y: elkPos.y + dy })
+      }
+    })
 }
