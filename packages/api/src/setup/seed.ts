@@ -38,10 +38,11 @@ export interface SeedResult {
 const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), 'dist/compiled');
 
 function loadJSON<T>(filePath: string): T | null {
+  if (!fs.existsSync(filePath)) return null;
   try {
-    if (!fs.existsSync(filePath)) return null;
     return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T;
-  } catch {
+  } catch (err) {
+    console.warn(`[seed] Failed to parse ${path.basename(filePath)}:`, (err as Error).message);
     return null;
   }
 }
@@ -77,6 +78,23 @@ function seedCollection<T>(opts: {
   return counts;
 }
 
+interface CompiledAction {
+  label: string;
+  description: string;
+  category: string;
+  input: any;
+  actionFn: string;
+  output: any;
+}
+
+interface CompiledPrompt {
+  label: string;
+  description: string;
+  category: string;
+  inputs: any;
+  templateFn: string;
+}
+
 function buildLabelMap<T extends { label: string; id: string }>(entities: T[]): Map<string, string> {
   return new Map(entities.map(e => [e.label, e.id]));
 }
@@ -94,9 +112,7 @@ function restoreDocMedia(
   const updated = content.map(section => {
     if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
       let text = section.text;
-      let match: RegExpExecArray | null;
-      const re = new RegExp(RELATIVE_MEDIA_RE.source, RELATIVE_MEDIA_RE.flags);
-      while ((match = re.exec(section.text)) !== null) {
+      for (const match of section.text.matchAll(RELATIVE_MEDIA_RE)) {
         const filename = match[3];
         const srcFile = path.join(mediaDir, filename);
         if (!fs.existsSync(srcFile)) continue;
@@ -161,6 +177,55 @@ function seedLibraryTree(
   }
 }
 
+function seedFlows(
+  flowsDSL: FlowDSL,
+  result: SeedResult,
+  log: (...args: any[]) => void,
+): void {
+  const existingLabels = new Set(findAll<FlowEntity>(EARS.Entity.Flow).map(f => f.label));
+
+  const filteredDSL: FlowDSL = {};
+  for (const [key, entry] of Object.entries(flowsDSL)) {
+    if (existingLabels.has(key)) {
+      log(`  flow skipped: ${key}`);
+      result.flows.skipped++;
+    } else {
+      filteredDSL[key] = entry;
+    }
+  }
+
+  const flowNames = Object.keys(filteredDSL);
+  if (flowNames.length === 0) {
+    log('  no new flows to import');
+    return;
+  }
+
+  const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
+  const promptMap = buildLabelMap(promptQueries.all());
+
+  const validFlowDSL: FlowDSL = {};
+  for (const [flowName, entry] of Object.entries(filteredDSL)) {
+    const validation = validate({ [flowName]: entry }, {
+      actions: Array.from(actionMap.keys()),
+      prompts: Array.from(promptMap.keys()),
+    });
+    if (!validation.valid) {
+      const msgs = validation.errors.map(e => `${e.path}: ${e.message}`);
+      console.warn(`[seed] Skipping flow "${flowName}":`, msgs.join('; '));
+      result.flows.skipped++;
+      continue;
+    }
+    validFlowDSL[flowName] = entry;
+  }
+
+  const validNames = Object.keys(validFlowDSL);
+  if (validNames.length === 0) return;
+
+  flowsCommands.importFromDSL(compile(validFlowDSL, { actions: actionMap, prompts: promptMap }));
+  result.flows.created += validNames.length;
+  validNames.forEach(name => log(`  flow created: ${name}`));
+}
+
 export function seedData(options?: { verbose?: boolean; force?: boolean; compiledDir?: string }): SeedResult | null {
   const log = options?.verbose ? console.log.bind(console) : () => {};
 
@@ -183,7 +248,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   };
 
   // --- Actions ---
-  result.actions = seedCollection<Record<string, any>>({
+  result.actions = seedCollection<CompiledAction>({
     file: path.join(compiledDir, 'compiled-actions.json'),
     label: 'action',
     getKey: item => item.label,
@@ -200,7 +265,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   });
 
   // --- Prompts ---
-  result.prompts = seedCollection<Record<string, any>>({
+  result.prompts = seedCollection<CompiledPrompt>({
     file: path.join(compiledDir, 'compiled-prompts.json'),
     label: 'prompt',
     getKey: item => item.label,
@@ -217,61 +282,9 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   });
 
   // --- Flows ---
-  const flowsFile = path.join(compiledDir, 'compiled-flows.json');
-  const flowsDSL = loadJSON<FlowDSL>(flowsFile);
-
+  const flowsDSL = loadJSON<FlowDSL>(path.join(compiledDir, 'compiled-flows.json'));
   if (flowsDSL) {
-    const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
-    const existingLabels = new Set(existingFlows.map(f => f.label));
-
-    const filteredDSL: FlowDSL = Object.fromEntries(
-      Object.entries(flowsDSL).filter(([key]) => {
-        if (existingLabels.has(key)) {
-          log(`  flow skipped: ${key}`);
-          result.flows.skipped++;
-          return false;
-        }
-        return true;
-      })
-    );
-
-    if (Object.keys(filteredDSL).length === 0) {
-      log('  no new flows to import');
-    } else {
-      const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
-      const promptMap = buildLabelMap(promptQueries.all());
-      const validationOpts = {
-        actions: Array.from(actionMap.keys()),
-        prompts: Array.from(promptMap.keys()),
-      };
-      const compileOpts = { actions: actionMap, prompts: promptMap };
-
-      // Validate each flow independently so one bad flow doesn't block
-      // the others, but compile all valid flows together so inter-flow
-      // references (e.g. subflow nodes) resolve correctly.
-      const validFlowDSL: FlowDSL = {};
-      for (const [flowName, entry] of Object.entries(filteredDSL)) {
-        const singleFlowDSL: FlowDSL = { [flowName]: entry };
-        const validation = validate(singleFlowDSL, validationOpts);
-
-        if (!validation.valid) {
-          const msgs = validation.errors.map(e => `${e.path}: ${e.message}`);
-          console.warn(`[seed] Skipping flow "${flowName}":`, msgs.join('; '));
-          result.flows.skipped++;
-          continue;
-        }
-        validFlowDSL[flowName] = entry;
-      }
-
-      if (Object.keys(validFlowDSL).length > 0) {
-        const compiled = compile(validFlowDSL, compileOpts);
-        flowsCommands.importFromDSL(compiled);
-        result.flows.created += Object.keys(validFlowDSL).length;
-        for (const flowName of Object.keys(validFlowDSL)) {
-          log(`  flow created: ${flowName}`);
-        }
-      }
-    }
+    seedFlows(flowsDSL, result, log);
   } else {
     log('  compiled-flows.json not found, skipping flows');
   }

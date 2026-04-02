@@ -241,21 +241,6 @@ interface PromptsConnectedData {
     categories?: Category[];
 }
 
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
-
 declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
 type LogLevel = z.infer<typeof LogLevel>;
 declare const LogEntry: z.ZodObject<{
@@ -284,6 +269,21 @@ declare const LogEntry: z.ZodObject<{
     stack?: string | undefined;
 }>;
 type LogEntry = z.infer<typeof LogEntry>;
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
 
 interface ActionParameter {
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
@@ -3323,6 +3323,55 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
         type: "AGENT_CONNECTED";
         data: AgentConnectedData;
         pluginId: "agent";
@@ -3564,26 +3613,6 @@ declare const events: {
         errors: string[];
         pluginId: "flows";
     } | {
-        type: "LOGS_CONNECTED";
-        logs: LogEntry[];
-        settings?: LogsSettings | undefined;
-        pluginId: "logs";
-    } | {
-        type: "LOGS_UPDATE";
-        logs: LogEntry[];
-        pluginId: "logs";
-    } | {
-        type: "LOG_ADDED";
-        log: LogEntry;
-        pluginId: "logs";
-    } | {
-        type: "LOGS_CLEARED";
-        pluginId: "logs";
-    } | {
-        type: "LOGS_SETTINGS_UPDATED";
-        settings: LogsSettings;
-        pluginId: "logs";
-    } | {
         type: "DATABASE_REFRESH";
         data: DatabaseStartupData;
         pluginId: "database";
@@ -3661,54 +3690,25 @@ declare const events: {
         error: string;
         pluginId: "database";
     } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
+        type: "LOGS_CONNECTED";
+        logs: LogEntry[];
+        settings?: LogsSettings | undefined;
+        pluginId: "logs";
     } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
+        type: "LOGS_UPDATE";
+        logs: LogEntry[];
+        pluginId: "logs";
     } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
+        type: "LOG_ADDED";
+        log: LogEntry;
+        pluginId: "logs";
     } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
+        type: "LOGS_CLEARED";
+        pluginId: "logs";
     } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
+        type: "LOGS_SETTINGS_UPDATED";
+        settings: LogsSettings;
+        pluginId: "logs";
     } | {
         type: "PROMPTS_CONNECTED";
         data: PromptsConnectedData;
