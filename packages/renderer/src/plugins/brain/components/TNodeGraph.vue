@@ -109,7 +109,8 @@ const emit = defineEmits<{
 // Constants
 const LAYOUT = {
   HORIZONTAL_GAP: 45,   // Reduced by 2/3 (was 250)
-  VERTICAL_GAP: 40,     // Reduced by half (was 100)
+  VERTICAL_GAP: 40,     // Between sibling nodes in parallel branches
+  TRACK_GAP: 30,        // Between separate tracks (like flow plugin's chainGap)
   NODE_WIDTH: 200,
   NODE_HEIGHT: 80,
 } as const;
@@ -188,9 +189,9 @@ const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
   tracks.forEach((track) => {
     const trackLeaves = subtreeLeafCount(track);
     const rowHeight = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
-    const trackPixelHeight = trackLeaves * rowHeight;
-    traverseTrack(track, 0, trackY + trackPixelHeight / 2);
-    trackY += trackPixelHeight + LAYOUT.VERTICAL_GAP;
+    const trackContentHeight = (trackLeaves - 1) * rowHeight + LAYOUT.NODE_HEIGHT;
+    traverseTrack(track, 0, trackY + trackContentHeight / 2);
+    trackY += trackContentHeight + LAYOUT.TRACK_GAP;
   });
 
   return nodes;
