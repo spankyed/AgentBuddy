@@ -640,8 +640,14 @@ const flowsState = setup({
         ? computeMaxBottom(context.graph.nodes as LayoutNodeData[], positions, context.graph.edges)
         : 0
 
+      // Use the x-position of an existing listener so the new node aligns with
+      // ELK-laid-out tracks (ELK may add internal padding, so x is often non-zero).
+      const existingListenerX = context.graph.nodes
+        .find(n => n.nodeType === 'listener' && positions[n.id])
+      const alignX = existingListenerX ? positions[existingListenerX.id].x : 0
+
       const belowAllPos = maxBottom > 0
-        ? { x: 0, y: maxBottom + LAYOUT_CONFIG.chainGap }
+        ? { x: alignX, y: maxBottom + LAYOUT_CONFIG.chainGap }
         : { x: nodeOffset.defaultX, y: nodeOffset.defaultY }
 
       let newPosition: { x: number; y: number }
