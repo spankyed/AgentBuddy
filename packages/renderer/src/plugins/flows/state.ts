@@ -28,6 +28,24 @@ import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimen
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
+/** Check if a source handle already has an outgoing edge (single-connection-per-handle rule).
+ *  Listener nodes are exempt — they support unlimited parallel exits. */
+function isHandleOccupied(
+  edges: EdgeEntity[],
+  nodes: any[],
+  sourceNodeId: string,
+  sourceHandle?: string,
+): boolean {
+  const sourceNode = nodes.find((n: any) => n.id === sourceNodeId)
+  if (sourceNode?.nodeType === 'listener') return false
+
+  return edges.some(e => {
+    if (e.source !== sourceNodeId) return false
+    if (sourceHandle) return e.sourceHandle === sourceHandle
+    return !e.sourceHandle
+  })
+}
+
 /** Scan existing edges from a switch node and return the next branch index */
 function nextBranchIndex(edges: EdgeEntity[], sourceNodeId: string): number {
   const indices = edges
@@ -400,6 +418,8 @@ const flowsState = setup({
         (e) => e.source === ev.src && e.target === ev.tgt
       )
       if (alreadyConnected) return {}
+      // Guard: source handle already occupied (except listeners)
+      if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.src, ev.sourceHandle)) return {}
       const id = `Edge-${randId()}`
       const newEdge = {
         id,
@@ -559,6 +579,11 @@ const flowsState = setup({
         (e) => e.source === handle.nodeId && e.target === ev.nodeId
       );
       if (alreadyConnected) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
+
+      // Don't connect if source handle already has an outgoing edge (except listeners)
+      if (isHandleOccupied(context.graph.edges, context.graph.nodes, handle.nodeId, handle.handleId)) {
+        return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
+      }
 
       const edgeId = `Edge-${randId()}`;
       const newEdge = {
@@ -778,6 +803,11 @@ const flowsState = setup({
         if (sourceNode?.nodeType === 'switch') {
           resolvedSourceHandle = `branch-${nextBranchIndex(context.graph.edges, ev.sourceNodeId)}`
         }
+      }
+
+      // Don't connect if source handle already occupied (except listeners)
+      if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.sourceNodeId, resolvedSourceHandle)) {
+        return {}
       }
 
       // Create temporary edge

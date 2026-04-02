@@ -363,6 +363,23 @@ export const flowsCommands = {
     targetId: EARS.EntityId,
     options?: { sourceHandle?: string; targetHandle?: string }
   ): { relId: EARS.EntityId } => {
+    // Validate: source handle must not already have an outgoing edge (except listener nodes)
+    const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
+    if (sourceAttrs?.nodeType !== 'listener') {
+      const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
+      const handleOccupied = existingEdges.some(rel => {
+        const relHandle = (rel.info as any)?.sourceHandle;
+        if (options?.sourceHandle) return relHandle === options.sourceHandle;
+        return !relHandle;
+      });
+      if (handleOccupied) {
+        throw new RepositoryError(
+          `Source handle already has an outgoing connection`,
+          RepositoryErrorCode.VALIDATION_ERROR
+        );
+      }
+    }
+
     // In EARS, edges are relationships, not entities
     // Store handle info for switch nodes with multiple outputs
     const info = options?.sourceHandle || options?.targetHandle
