@@ -1,6 +1,7 @@
 import { compileAllSourceFiles, type CompileConfig } from './compile-utils';
 import { compileFlows } from './compile-flows';
 import { compileLibrary } from './compile-library';
+import { compileNotes } from './compile-notes';
 
 const configs: Record<string, CompileConfig> = {
   actions: {
@@ -28,12 +29,14 @@ if (target === 'flows') {
   });
 } else if (target === 'library') {
   compileLibrary();
+} else if (target === 'notes') {
+  compileNotes();
 } else if (target && configs[target]) {
   compileAllSourceFiles(configs[target]).catch(err => {
     console.error('Compilation failed:', err);
     process.exit(1);
   });
 } else {
-  console.error(`Usage: tsx compile.ts <${[...Object.keys(configs), 'flows', 'library'].join('|')}>`);
+  console.error(`Usage: tsx compile.ts <${[...Object.keys(configs), 'flows', 'library', 'notes'].join('|')}>`);
   process.exit(1);
 }
