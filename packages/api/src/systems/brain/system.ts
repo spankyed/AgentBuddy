@@ -280,9 +280,15 @@ export const brainSystem = setup({
         ? event.flowTNodeId as EARS.EntityId
         : undefined;
 
-      const data = flowId
-        ? repository.brainQueries.extendedTNodeData(flowId)
-        : repository.brainQueries.rootData();
+      let data: FlowTNodeData;
+      try {
+        data = flowId
+          ? repository.brainQueries.extendedTNodeData(flowId)
+          : repository.brainQueries.rootData();
+      } catch {
+        // TNode was destroyed (e.g., volatile data cleared after brain kill)
+        data = { flowTNodeId: '' as EARS.EntityId, tNodeTree: [], possibleEvents: [], flowHierarchy: [] };
+      }
 
       system.get(bus).send(emit(brain, {
         type: 'RECEIVE_PLUGIN_DATA',
