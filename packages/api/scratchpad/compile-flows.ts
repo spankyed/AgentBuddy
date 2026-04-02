@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { type FlowDSL, isFlowConfig } from './types';
+import { validate } from '@/systems/flows/dsl/validator';
 
 const FLOWS_DIR = path.join(import.meta.dirname, 'flows');
 const OUTPUT_FILE = path.join(import.meta.dirname, 'compiled', 'compiled-flows.json');
@@ -64,7 +65,31 @@ export async function compileFlows(): Promise<void> {
     console.log(`  * Root flow: "${rootFlowName}"`);
   }
 
+  // --- Validate against compiled actions & prompts ---
+  const compiledDir = path.dirname(OUTPUT_FILE);
+  const actionLabels = loadLabels(path.join(compiledDir, 'compiled-actions.json'));
+  const promptLabels = loadLabels(path.join(compiledDir, 'compiled-prompts.json'));
+
+  const validation = validate(merged, {
+    actions: actionLabels,
+    prompts: promptLabels,
+  });
+
+  if (!validation.valid) {
+    console.error('\n  Validation errors:');
+    for (const err of validation.errors) {
+      console.error(`    ${err.path}: ${err.message}`);
+    }
+    process.exit(1);
+  }
+
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(merged, null, 2) + '\n');
   console.log(`\nWrote ${Object.keys(merged).length} flow(s) from ${loaded} file(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}`);
+}
+
+function loadLabels(filePath: string): string[] {
+  if (!fs.existsSync(filePath)) return [];
+  const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Array<{ label: string }>;
+  return data.map(item => item.label);
 }

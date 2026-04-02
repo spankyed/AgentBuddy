@@ -240,27 +240,29 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     } else {
       const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
       const promptMap = buildLabelMap(promptQueries.all());
-
-      const validation = validate(filteredDSL, {
+      const validationOpts = {
         actions: Array.from(actionMap.keys()),
         prompts: Array.from(promptMap.keys()),
-      });
+      };
+      const compileOpts = { actions: actionMap, prompts: promptMap };
 
-      if (!validation.valid) {
-        log('  flow validation errors:');
-        for (const err of validation.errors) {
-          log(`    ${err.path}: ${err.message}`);
+      // Validate and import each flow independently so one bad flow
+      // doesn't block the others (e.g. Root Flow).
+      for (const [flowName, entry] of Object.entries(filteredDSL)) {
+        const singleFlowDSL: FlowDSL = { [flowName]: entry };
+        const validation = validate(singleFlowDSL, validationOpts);
+
+        if (!validation.valid) {
+          const msgs = validation.errors.map(e => `${e.path}: ${e.message}`);
+          console.warn(`[seed] Skipping flow "${flowName}":`, msgs.join('; '));
+          result.flows.skipped++;
+          continue;
         }
-        result.flows.skipped += Object.keys(filteredDSL).length;
-      } else {
-        const compiled = compile(filteredDSL, {
-          actions: actionMap,
-          prompts: promptMap,
-        });
 
-        const { flowIds } = flowsCommands.importFromDSL(compiled);
-        result.flows.created = flowIds.length;
-        log(`  flows created: ${flowIds.length}`);
+        const compiled = compile(singleFlowDSL, compileOpts);
+        flowsCommands.importFromDSL(compiled);
+        result.flows.created++;
+        log(`  flow created: ${flowName}`);
       }
     }
   } else {
