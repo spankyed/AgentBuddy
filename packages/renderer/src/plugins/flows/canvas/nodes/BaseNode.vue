@@ -72,7 +72,7 @@
     </template>
     <!-- Default single target handle -->
     <Handle
-      v-else-if="showTargetHandle"
+      v-else-if="effectiveShowTargetHandle"
       type="target"
       :position="Position.Left"
       class="!w-1 !h-1 !bg-transparent !border-none !left-0"
@@ -97,7 +97,7 @@
     </template>
     <!-- Default single source handle (AddHandle with + icon) - only in edit mode -->
     <AddHandle
-      v-else-if="editable && showSourceHandle"
+      v-else-if="editable && effectiveShowSourceHandle"
       :node-id="id"
       :is-selected="isHandleSelected()"
       :is-connected="isHandleConnected()"
@@ -107,7 +107,7 @@
     />
     <!-- Plain invisible source handle for edge anchoring (view mode) -->
     <Handle
-      v-else-if="!editable && showSourceHandle"
+      v-else-if="!editable && effectiveShowSourceHandle"
       type="source"
       :position="Position.Right"
       class="!w-1 !h-1 !bg-transparent !border-none !right-0"
@@ -197,30 +197,24 @@ function isHandleConnected(handleId?: string): boolean {
   return props.connectedHandles.has(props.id)
 }
 
-const nodeClasses = computed(() => {
-  const type = props.data.nodeType || 'action'
-  return getNodeClasses(type)
-})
+const nodeType = computed(() => props.data.nodeType || 'action')
+const nodeConfig = computed(() => getNodeConfig(nodeType.value))
 
-const nodeIcon = computed(() => {
-  const type = props.data.nodeType || 'action'
-  const config = getNodeConfig(type)
-  return config?.icon
-})
+const effectiveShowSourceHandle = computed(() =>
+  nodeConfig.value?.connectionRules.outputs === 0 ? false : props.showSourceHandle
+)
+const effectiveShowTargetHandle = computed(() =>
+  nodeConfig.value?.connectionRules.inputs === 0 ? false : props.showTargetHandle
+)
 
-const iconTextColor = computed(() => {
-  const type = props.data.nodeType || 'action'
-  return getNodeIconTextColor(type)
-})
+const nodeClasses = computed(() => getNodeClasses(nodeType.value))
+const nodeIcon = computed(() => nodeConfig.value?.icon)
+const iconTextColor = computed(() => getNodeIconTextColor(nodeType.value))
+const dividerClass = computed(() => getNodeDividerClass(nodeType.value))
 
 const statusClasses = computed(() => {
   if (!props.data.status) return ''
   return getNodeStatusClasses(props.data.status, 'simple') as string
-})
-
-const dividerClass = computed(() => {
-  const type = props.data.nodeType || 'action'
-  return getNodeDividerClass(type)
 })
 </script>
 
