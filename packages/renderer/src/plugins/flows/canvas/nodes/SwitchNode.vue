@@ -87,7 +87,10 @@ function formatOperator(op: string): string {
 }
 
 // Format predicate as readable expression
-function formatPredicate(predicate: Condition['predicate']): string | undefined {
+function formatPredicate(condition: Condition): string | undefined {
+  if (condition.mode === 'code') return 'code'
+
+  const { predicate } = condition
   if (!predicate || typeof predicate === 'function') return undefined
 
   const { key, operator, value } = predicate
@@ -110,7 +113,7 @@ const branches = computed<Branch[]>(() => {
     return props.data.conditions.map((c, i) => ({
       id: `branch-${i}`,
       label: c.label,
-      expression: formatPredicate(c.predicate),
+      expression: formatPredicate(c),
       isElse: c.predicate === undefined,
     }))
   }
