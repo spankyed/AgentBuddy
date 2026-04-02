@@ -23,7 +23,7 @@ const {
   projects,
   allProjects,
   isDirectoryInProject,
-  toggleDirectoryInProject,
+  addDirectoryToProject,
   createProject,
   navigateToProjects
 } = useProjectActions()
@@ -54,7 +54,7 @@ const {
           v-for="({ project, pIndex }) in allProjects"
           :key="`${pIndex}`"
           :checked="isDirectoryInProject(project.directories, directoryPath)"
-          @select="() => toggleDirectoryInProject(directoryPath, pIndex)"
+          @select="() => { if (!isDirectoryInProject(project.directories, directoryPath)) addDirectoryToProject(directoryPath, pIndex) }"
           :class="MENU_ITEM_CLASS"
         >
           <component :is="ItemIndicatorComponent" class="flex items-center justify-center w-4 h-4">
