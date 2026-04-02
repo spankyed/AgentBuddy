@@ -612,7 +612,7 @@ const flowsState = setup({
       });
     },
 
-    createNode: assign(({ context, event }) => {
+    createNode: assign(({ context, event, self }) => {
       if (!context.selectedFlowId) return { selectedNodeId: undefined }
 
       const tempId = `temp-${randId()}`
@@ -698,6 +698,30 @@ const flowsState = setup({
       const tempNodeData: any = { id: tempId, nodeType: ev.nodeType, label, flowId: context.selectedFlowId, configuration: {} }
       applyNodeTypeDefaults(tempNodeData)
 
+      // Async ELK layout to snap the new node to the correct position relative to its source
+      if (autoEdge && context.selectedNodeId) {
+        const sourceNodeId = context.selectedNodeId
+        const updatedNodes = [...context.graph.nodes, tempNodeData]
+        const updatedEdges = [...context.graph.edges, autoEdge]
+
+        calculateLayoutAsync({ nodes: updatedNodes, edges: updatedEdges })
+          .then((elkPositions) => {
+            const elkSourcePos = elkPositions[sourceNodeId]
+            const elkNewPos = elkPositions[tempId]
+            if (!elkSourcePos || !elkNewPos) return
+
+            const actualSourcePos = positions[sourceNodeId]
+            self.send({
+              type: 'NODE.UPDATE_POSITION',
+              nodeId: tempId,
+              position: {
+                x: elkNewPos.x + (actualSourcePos.x - elkSourcePos.x),
+                y: elkNewPos.y + (actualSourcePos.y - elkSourcePos.y),
+              },
+            })
+          })
+      }
+
       return {
         graph: {
           ...context.graph,
@@ -710,7 +734,7 @@ const flowsState = setup({
       }
     }),
 
-    createConnectedNode: assign(({ context, event }) => {
+    createConnectedNode: assign(({ context, event, self }) => {
       if (!context.selectedFlowId) {
         return { selectedNodeId: undefined }
       }
@@ -760,6 +784,29 @@ const flowsState = setup({
           label: newNode.label,
         },
       });
+
+      // Async ELK layout to snap the new node to the correct position relative to its source
+      const sourceNodeId = ev.sourceNodeId
+      const updatedNodes = [...context.graph.nodes, newNode]
+      const updatedEdges = [...context.graph.edges, tempEdge]
+
+      calculateLayoutAsync({ nodes: updatedNodes, edges: updatedEdges })
+        .then((elkPositions) => {
+          const elkSourcePos = elkPositions[sourceNodeId]
+          const elkNewPos = elkPositions[tempId]
+          if (!elkSourcePos || !elkNewPos) return
+
+          const actualSourcePos = positions[sourceNodeId]
+          if (!actualSourcePos) return
+          self.send({
+            type: 'NODE.UPDATE_POSITION',
+            nodeId: tempId,
+            position: {
+              x: elkNewPos.x + (actualSourcePos.x - elkSourcePos.x),
+              y: elkNewPos.y + (actualSourcePos.y - elkSourcePos.y),
+            },
+          })
+        })
 
       return {
         graph: {
