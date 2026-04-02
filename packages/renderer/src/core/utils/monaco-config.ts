@@ -63,9 +63,9 @@ const LANGUAGE_MAP: Record<string, string> = {
 }
 
 // DSL type imports
-import databaseDslTypes from '../types/database-defs.d.ts?raw'
-import actionDslTypes from '../types/action-defs.d.ts?raw'
-import promptDslTypes from '../types/prompt-defs.d.ts?raw'
+import databaseDslTypes from '../types/generated/database-defs.d.ts?raw'
+import actionDslTypes from '../types/generated/action-defs.d.ts?raw'
+import promptDslTypes from '../types/generated/prompt-defs.d.ts?raw'
 
 const DSL_SCHEMAS: Record<DslType, string> = {
   database: databaseDslTypes,

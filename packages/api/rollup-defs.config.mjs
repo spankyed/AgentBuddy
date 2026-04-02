@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
-const outDir = resolve(__dirname, '../renderer/src/core/types');
+const outDir = resolve(__dirname, '../renderer/src/core/types/generated');
 
 // Common rollup config for all DSL modules
 const createConfig = (name, input, moduleName) => ({
