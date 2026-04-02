@@ -89,15 +89,15 @@
     <!-- Backdrop overlay when in list state -->
     <div
       v-if="showOverlay"
-      class="absolute top-0 left-0 z-10 w-full h-full cursor-pointer bg-black/40 backdrop-blur-sm"
+      class="absolute inset-0 z-10 cursor-pointer backdrop-blur-[2px] bg-gradient-to-b from-black/25 via-black/15 to-black/20 transition-all duration-300"
       @click="$emit('overlay-click')"
     >
-      <div class="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none top-20 left-1/2">
-        <div class="px-4 py-2 text-center border rounded-lg bg-neutral-800/90 border-neutral-700/50 w-96">
-          <div v-if="props.selectedFlowLabel" class="text-base font-semibold text-neutral-100 mb-1">
+      <div class="absolute pointer-events-none top-16 left-1/2 -translate-x-1/2">
+        <div class="flex flex-col items-center gap-1.5">
+          <div v-if="props.selectedFlowLabel" class="px-5 py-2 text-sm font-medium tracking-wide text-neutral-200 rounded-full bg-neutral-800/70 border border-neutral-600/30 shadow-lg shadow-black/20">
             {{ props.selectedFlowLabel }}
           </div>
-          <div class="text-sm text-neutral-400">Double-click flow or click here to edit</div>
+          <div class="text-xs text-neutral-400/70">Click to edit</div>
         </div>
       </div>
     </div>

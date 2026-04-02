@@ -2,7 +2,7 @@
   <div v-if="selectedNode">
     <!-- Backdrop overlay -->
     <div
-      class="absolute top-0 left-0 w-full h-full bg-black/70 z-[5]"
+      class="absolute top-0 left-0 w-full h-full bg-black/30 z-[5]"
       @click="$emit('close')"
     />
 
@@ -98,4 +98,4 @@ provide('nextStep', {
 watch(() => props.selectedNode?.id, () => {
   showNextStepMenu.value = false
 })
-</script> 
+</script>
