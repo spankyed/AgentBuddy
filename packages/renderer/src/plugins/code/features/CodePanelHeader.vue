@@ -1,11 +1,11 @@
 <template>
   <div>
     <div class="flex items-center justify-between h-header px-4 border-b border-neutral-800 panel-header">
-      <div class="flex items-center gap-2">
-        <component :is="icon" :size="16" class="text-neutral-400" />
-        <div class="flex items-center gap-1.5 text-sm">
+      <div class="flex items-center gap-2 min-w-0">
+        <component :is="icon" :size="16" class="text-neutral-400 shrink-0" />
+        <div class="flex items-center gap-1.5 text-sm min-w-0">
           <span
-            class="font-medium transition-colors"
+            class="font-medium transition-colors whitespace-nowrap truncate"
             :class="clickable ? 'text-neutral-400 hover:text-neutral-200 cursor-pointer' : 'text-neutral-200'"
             @click="clickable ? $emit('title-click') : null"
           >
@@ -14,7 +14,7 @@
           <slot name="title-extra" />
         </div>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1 shrink-0">
         <BaseDirectoryMenu
           v-if="baseDirectory && showDirectoryMenu"
           :base-directory="baseDirectory"
