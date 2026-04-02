@@ -586,15 +586,47 @@ const flowsState = setup({
         nodeData: { nodeType: ev.nodeType, label },
       });
 
-      // Calculate position: use provided, or right of selected node, or right of rightmost node
-      const { newNode } = LAYOUT_CONFIG
+      // Calculate position based on node type and selection state
+      const { newNode: nodeOffset } = LAYOUT_CONFIG
       const positions = context.graph.positions
-      const selectedPos = context.selectedNodeId ? positions[context.selectedNodeId] : null
       const allPos = Object.values(positions)
-      const newPosition = ev.position
-        || (selectedPos && { x: selectedPos.x + newNode.xOffset, y: selectedPos.y + newNode.yOffset })
-        || (allPos.length > 0 && { x: Math.max(...allPos.map(p => p.x)) + newNode.xOffset, y: allPos.reduce((s, p) => s + p.y, 0) / allPos.length })
-        || { x: newNode.defaultX, y: newNode.defaultY }
+      const isListener = nodeConfig?.connectionRules.inputs === 0
+
+      // "Below all nodes" position for new tracks or unconnected steps
+      const belowAllPos = allPos.length > 0
+        ? { x: 0, y: Math.max(...allPos.map(p => p.y)) + LAYOUT_CONFIG.nodeHeight + LAYOUT_CONFIG.chainGap }
+        : { x: nodeOffset.defaultX, y: nodeOffset.defaultY }
+
+      let newPosition: { x: number; y: number }
+      let autoEdge: EdgeEntity | null = null
+
+      if (ev.position) {
+        // Drag-drop: use explicit position
+        newPosition = ev.position
+      } else if (isListener) {
+        // Listeners start new tracks — always place below
+        newPosition = belowAllPos
+      } else if (context.selectedNodeId && positions[context.selectedNodeId]) {
+        // Step with selected node — place to the right and auto-connect
+        const selectedPos = positions[context.selectedNodeId]
+        newPosition = { x: selectedPos.x + nodeOffset.xOffset, y: selectedPos.y + nodeOffset.yOffset }
+
+        // Auto-create edge unless selected node has no outputs (fire/kill)
+        const selectedNode = context.graph.nodes.find(n => n.id === context.selectedNodeId)
+        const selectedConfig = selectedNode ? getNodeConfig(selectedNode.nodeType) : null
+        if (selectedConfig?.connectionRules.outputs !== 0) {
+          const tempEdgeId = `Edge-${randId()}`
+          autoEdge = {
+            id: tempEdgeId,
+            source: context.selectedNodeId,
+            target: tempId,
+            kind: 'transitions_to',
+          } as EdgeEntity
+        }
+      } else {
+        // Step with no selection — place below all nodes
+        newPosition = belowAllPos
+      }
 
       const tempNodeData: any = { id: tempId, nodeType: ev.nodeType, label, flowId: context.selectedFlowId, configuration: {} }
       applyNodeTypeDefaults(tempNodeData)
@@ -603,6 +635,7 @@ const flowsState = setup({
         graph: {
           ...context.graph,
           nodes: [...context.graph.nodes, tempNodeData],
+          edges: autoEdge ? [...context.graph.edges, autoEdge] : context.graph.edges,
           positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,

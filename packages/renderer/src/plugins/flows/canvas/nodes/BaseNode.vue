@@ -5,7 +5,7 @@
       nodeClasses,
       {
         'ring-2 ring-blue-400/70 shadow-lg shadow-blue-500/20': isEditing,
-        'ring-2 ring-white/40 shadow-md shadow-white/5': !isEditing && (isActive || selected),
+        'ring-2 ring-white/40 shadow-md shadow-white/5': !isEditing && selected,
         'cursor-pointer': selectable,
       }
     ]"
@@ -143,7 +143,6 @@ interface BaseNodeData {
 }
 
 interface Props extends NodeProps<BaseNodeData> {
-  isActive?: boolean
   isEditing?: boolean
   selectable?: boolean
   showTargetHandle?: boolean
@@ -160,7 +159,6 @@ interface Props extends NodeProps<BaseNodeData> {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isActive: false,
   isEditing: false,
   selectable: true,
   showTargetHandle: true,
