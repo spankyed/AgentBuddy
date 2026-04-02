@@ -10,7 +10,6 @@ import { useSelector } from '@xstate/vue';
 const isSettingUp = useSelector(applicationState, (s) => s.hasTag('setup'));
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
 const isTouring = useSelector(applicationState, (s) => s.hasTag('guided-tour'));
-const hasError = useSelector(applicationState, (s) => s.hasTag('error'));
 
 // Toggle for showing API status (can be toggled with a hotkey)
 const showApiStatus = ref(false);
@@ -24,26 +23,23 @@ window.addEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <!-- Error state — HTML fallback handles display, suppress Vue rendering -->
-  <template v-if="!hasError">
-    <!-- Loading skeleton for initial state -->
-    <Skeleton v-if="isSettingUp" />
+  <!-- Loading skeleton for initial state -->
+  <Skeleton v-if="isSettingUp" />
 
-    <template v-else>
-      <!-- Onboarding modal overlay -->
-      <Onboarding v-if="isOnboarding" />
-      <!-- Main web app component (always rendered when running) -->
-      <WebApp />
-      <!-- Guided tour overlay -->
-      <TourSpotlight v-if="isTouring" />
-    </template>
-
-    <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
-    <div v-if="showApiStatus" class="api-status-overlay">
-      <button @click="showApiStatus = false" class="close-btn">×</button>
-      <ApiStatus />
-    </div>
+  <template v-else>
+    <!-- Onboarding modal overlay -->
+    <Onboarding v-if="isOnboarding" />
+    <!-- Main web app component (always rendered when running) -->
+    <WebApp />
+    <!-- Guided tour overlay -->
+    <TourSpotlight v-if="isTouring" />
   </template>
+
+  <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
+  <div v-if="showApiStatus" class="api-status-overlay">
+    <button @click="showApiStatus = false" class="close-btn">×</button>
+    <ApiStatus />
+  </div>
 </template>
 
 <style>

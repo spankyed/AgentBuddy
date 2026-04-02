@@ -726,9 +726,7 @@ export const createApplicationState = () => setup({
         'disconnected': {},
       }
     },
-    'error': {
-      tags: ['error'],
-    },
+    'error': {},
   },
   on: {
     APPLICATION_HOTKEYS: {
@@ -813,8 +811,7 @@ export const createApplicationState = () => setup({
     BACKEND_ERROR: {
       target: '.error',
       actions: ({ event }) => {
-        const { error } = typeOf('BACKEND_ERROR', event);
-        window.__showErrorPage?.('Connection lost', `Backend error: ${error}`);
+        window.__showErrorPage?.('Something went wrong', (event as any).error);
       }
     },
     NOOP: {
