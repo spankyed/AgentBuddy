@@ -4,12 +4,7 @@
 # the two environments and must be synced by hand.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-# Load .env
-if [ -f "$ROOT/.env" ]; then
-  set -a; source "$ROOT/.env"; set +a
-fi
+source "$SCRIPT_DIR/resolve-env.sh"
 
 if [ -z "${DEFAULT_SETUP_EXTERNAL:-}" ]; then
   echo "Error: DEFAULT_SETUP_EXTERNAL not set. Add it to packages/default-setup/.env"
