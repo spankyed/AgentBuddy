@@ -4,7 +4,6 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
-import logErrors from '@/core/log-errors';
 import plugins, { defaultPlugin } from '@/plugins';
 import { application, createApplicationState } from '@/core/actors/application';
 
@@ -19,14 +18,33 @@ export const applicationState = createActor(createApplicationState(), {
   }
 }).start();
 
-applicationState.subscribe(logErrors('Application'));
+applicationState.subscribe({
+  error: (error: unknown) => {
+    console.error('Application State Error:', error);
+    window.__showErrorPage?.(
+      'Something went wrong',
+      error instanceof Error ? error.stack || error.message : String(error)
+    );
+  }
+});
 
 declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createApplicationState>>;
+    __showErrorPage?: (title: string, detail: string) => void;
   }
 }
 
 window.applicationState = applicationState;
 
-createApp(App).mount('#app')
+const app = createApp(App);
+
+app.config.errorHandler = (err, _instance, info) => {
+  console.error('Vue error:', err, info);
+  window.__showErrorPage?.(
+    'Something went wrong',
+    err instanceof Error ? err.stack || err.message : String(err)
+  );
+};
+
+app.mount('#app');

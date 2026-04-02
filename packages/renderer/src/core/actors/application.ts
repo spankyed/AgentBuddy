@@ -80,6 +80,7 @@ export type ApplicationEvent =
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'ROUTE_TOUR_EVENT'; target: string; event: any }
+  | { type: 'BACKEND_ERROR'; error: string }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
@@ -171,6 +172,7 @@ export const createApplicationState = () => setup({
           // },
           onError: (error: any) => {
             console.error('Error in subscription:', error);
+            sendBack({ type: 'BACKEND_ERROR', error: String(error) });
           },
           onData: (event: any) => {
             const { pluginId, ...ev } = event;
@@ -189,8 +191,19 @@ export const createApplicationState = () => setup({
         }
       );
 
+      // Listen for Electron IPC crash notifications (instant detection)
+      const cleanupApiStatus = window.electronAPI?.apiStatus?.onEvent((event) => {
+        if (event.type === 'api:stopped' || event.type === 'api:error') {
+          sendBack({
+            type: 'BACKEND_ERROR',
+            error: event.error || 'The backend process stopped unexpectedly.',
+          });
+        }
+      });
+
       return () => {
         subscription.unsubscribe();
+        cleanupApiStatus?.();
       };
     }),
     guidedTour: guidedTourMachine,
@@ -615,6 +628,17 @@ export const createApplicationState = () => setup({
     'setup': {
       tags: ['setup'],
       entry: spawnChild('backendListener'),
+      after: {
+        5000: {
+          target: 'error',
+          actions: () => {
+            window.__showErrorPage?.(
+              'Unable to connect',
+              'The backend did not respond within 5 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
+            );
+          }
+        }
+      },
       on: {
         'CLIENT_CONNECTED': [
           {
@@ -626,7 +650,7 @@ export const createApplicationState = () => setup({
             actions: [],
             target: 'running',
           }
-        ]
+        ],
       }
     },
     'onboarding': {
@@ -694,6 +718,9 @@ export const createApplicationState = () => setup({
         'connected': {},
         'disconnected': {},
       }
+    },
+    'error': {
+      tags: ['error'],
     },
   },
   on: {
@@ -775,6 +802,13 @@ export const createApplicationState = () => setup({
     },
     RESET_CHAT_HEIGHT: {
       actions: 'resetChatHeight'
+    },
+    BACKEND_ERROR: {
+      target: '.error',
+      actions: ({ event }) => {
+        const { error } = typeOf('BACKEND_ERROR', event);
+        window.__showErrorPage?.('Connection lost', `Backend error: ${error}`);
+      }
     },
     NOOP: {
       // No-op event, do nothing

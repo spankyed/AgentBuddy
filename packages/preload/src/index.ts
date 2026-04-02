@@ -73,6 +73,23 @@ const zoom = {
   notifyZoomChanged: (factor: number) => ipcRenderer.send('zoom:changed', factor),
 };
 
+// API status events (backend crash/restart notifications from main process)
+const apiStatus = {
+  onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
+    const channels = ['api:stopped', 'api:error', 'api:restarting'];
+    const handlers = channels.map(channel => {
+      const handler = (_: Electron.IpcRendererEvent, data?: any) => {
+        callback({ type: channel, ...data });
+      };
+      ipcRenderer.on(channel, handler);
+      return { channel, handler };
+    });
+    return () => {
+      handlers.forEach(({ channel, handler }) => ipcRenderer.removeListener(channel, handler));
+    };
+  },
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
@@ -81,6 +98,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   media,
   speechRecognition,
   zoom,
+  apiStatus,
   apiPort,
 });
 

@@ -36,6 +36,9 @@ declare global {
         getZoomFactor: () => number;
         notifyZoomChanged: (factor: number) => void;
       };
+      apiStatus: {
+        onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
+      };
       apiPort: number;
     };
   }
