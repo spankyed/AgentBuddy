@@ -6,6 +6,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const apiDir = resolve(__dirname, '.');
 const outDir = resolve(__dirname, '../renderer/src/core/types/generated');
 const defaultSetupOutDir = resolve(apiDir, 'defs/dist/default-setup');
+const defaultSetupDefsDir = resolve(__dirname, '../default-setup/defs');
 
 const dtsPlugin = () => dts({
   respectExternal: false, // Bundle all external types
@@ -43,13 +44,13 @@ const createConfig = (name, input, moduleName) => ({
   external: [],
 });
 
-// Default-setup configs (unwrapped, for direct import)
+// Default-setup configs (unwrapped, outputs to both api/defs/dist/ and workspace sibling)
 const createDefaultSetupConfig = (name, input) => ({
   input: resolve(apiDir, input),
-  output: {
-    file: resolve(defaultSetupOutDir, `${name}-defs.d.ts`),
-    format: 'es',
-  },
+  output: [
+    { file: resolve(defaultSetupOutDir, `${name}-defs.d.ts`), format: 'es' },
+    { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
+  ],
   plugins: [dtsPlugin(), cleanupPlugin()],
   external: [],
 });
