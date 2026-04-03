@@ -5,7 +5,7 @@
  * Uses helper functions from _patterns.ts for concise DSL authoring.
  */
 import type { FlowDSL } from '../types';
-import { entryTrack, branch, modeTracks, action, fire, subflow } from '../flows/_patterns';
+import { entryTrack, branch, entryWithListeners, action, fire, subflow } from '../flows/_patterns';
 
 export default {
   /** Linear: entry → action → fire */
@@ -35,7 +35,7 @@ export default {
   ],
 
   /** Long-running: entry with keep_alive + multiple event listeners */
-  'Monitor Flow': modeTracks(
+  'Monitor Flow': entryWithListeners(
     [action('Initialize', { label: 'init' })],
     [
       { event: 'user.message', label: 'Handle Message', exits: [[
@@ -49,7 +49,7 @@ export default {
   ),
 
   /** Parallel exits: one listener triggers independent chains */
-  'Notification Flow': modeTracks(
+  'Notification Flow': entryWithListeners(
     [action('Initialize', { label: 'init' })],
     [
       { event: 'order.placed', label: 'Handle Order', exits: [

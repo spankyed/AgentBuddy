@@ -1,8 +1,8 @@
 import type { FlowDSL } from '../types';
-import { modeTracks, action } from './_patterns';
+import { entryWithListeners, action } from './_patterns';
 
 export default {
-  "Onboarding Flow": modeTracks(
+  "Onboarding Flow": entryWithListeners(
     [action("Init Onboarding", { label: "setup onboarding" })],
     [
       {

@@ -1,10 +1,10 @@
 import type { FlowDSL } from '../types';
-import { modeTracks, subflow } from './_patterns';
+import { entryWithListeners, subflow } from './_patterns';
 
 export default {
   "Root Flow": {
     root: true,
-    tracks: modeTracks(
+    tracks: entryWithListeners(
       [], // no entry steps, just keep_alive
       [
         {

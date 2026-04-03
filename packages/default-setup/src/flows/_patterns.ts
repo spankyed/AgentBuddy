@@ -18,7 +18,7 @@ export function branch(
 }
 
 /** Entry + keep_alive + event listener pattern */
-export function modeTracks(
+export function entryWithListeners(
   entrySteps: DSLStepNode[],
   listeners: { event: string; label?: string; exits: DSLStepNode[][] }[],
 ): Track[] {
