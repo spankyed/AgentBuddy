@@ -29,8 +29,8 @@ echo ""
 
 # Check if app exists in various locations
 # IMPORTANT: Always prefer the dist version which has the correctly built modules
-if [ -d "$SCRIPT_DIR/../dist/mac-arm64/AgentBuddy.app" ]; then
-    APP_PATH="$SCRIPT_DIR/../dist/mac-arm64/AgentBuddy.app/Contents/MacOS/AgentBuddy"
+if [ -d "$SCRIPT_DIR/../../dist/mac-arm64/AgentBuddy.app" ]; then
+    APP_PATH="$SCRIPT_DIR/../../dist/mac-arm64/AgentBuddy.app/Contents/MacOS/AgentBuddy"
     echo "✓ Found app in dist folder (using this version)"
 elif [ -d "/Applications/AgentBuddy.app" ]; then
     APP_PATH="/Applications/AgentBuddy.app/Contents/MacOS/AgentBuddy"

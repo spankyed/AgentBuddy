@@ -1,0 +1,22 @@
+[2026-04-03T04:21:52.033Z] ============================================================
+[2026-04-03T04:21:52.035Z] AgentBuddy Started: 2026-04-03T04:21:52.035Z
+[2026-04-03T04:21:52.035Z] Version: 0.0.1
+[2026-04-03T04:21:52.035Z] Packaged: true
+[2026-04-03T04:21:52.035Z] Platform: darwin
+[2026-04-03T04:21:52.035Z] Electron: 37.2.4
+[2026-04-03T04:21:52.035Z] Node: 22.17.1
+[2026-04-03T04:21:52.035Z] ============================================================
+[2026-04-03T04:21:52.035Z] INFO: AgentBuddy API Server Module Enabled
+[2026-04-03T04:21:52.035Z] INFO: Log file location: /Users/spankyed/Library/Application Support/abuddy/agentbuddy.log
+[2026-04-03T04:21:52.188Z] INFO: [MAIN] Starting API server...
+[2026-04-03T04:21:52.188Z] INFO: [MAIN] Checking API path: /Users/spankyed/Develop/Projects/AgentBuddy/dist/mac-arm64/AgentBuddy.app/Contents/Resources/app/packages/api
+[2026-04-03T04:21:52.188Z] INFO: [MAIN] Checking server file: /Users/spankyed/Develop/Projects/AgentBuddy/dist/mac-arm64/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js
+[2026-04-03T04:21:52.188Z] INFO: [MAIN] Server file found, proceeding with launch...
+[2026-04-03T04:21:52.222Z] INFO: [MAIN] Selected port 3001 for API server
+[2026-04-03T04:21:52.222Z] INFO: [MAIN] Spawning API server:
+[2026-04-03T04:21:52.222Z] INFO: [MAIN]   Executable: /Users/spankyed/Develop/Projects/AgentBuddy/dist/mac-arm64/AgentBuddy.app/Contents/MacOS/AgentBuddy
+[2026-04-03T04:21:52.222Z] INFO: [MAIN]   Args: ["/Users/spankyed/Develop/Projects/AgentBuddy/dist/mac-arm64/AgentBuddy.app/Contents/Resources/app/packages/api/dist/server.js"]
+[2026-04-03T04:21:52.222Z] INFO: [MAIN]   CWD: /Users/spankyed/Develop/Projects/AgentBuddy/dist/mac-arm64/AgentBuddy.app/Contents/Resources/app/packages/api
+[API Server]: ✅ WebSocket Server listening on ws://localhost:3001 (tRPC endpoint: ws://localhost:3001/trpc)
+[2026-04-03T04:21:52.701Z] INFO: [MAIN] API server is running on port 3001
+[MAIN] Creating window with API port: 3001
