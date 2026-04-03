@@ -150,6 +150,25 @@ interface SecretData {
     updatedAt?: number;
 }
 
+/**
+ * Database Seed — loads compiled default-setup artifacts into LMDB
+ *
+ * Skips seeding if the compiled data hash is unchanged since last seed,
+ * unless `force` is passed. The CLI script always forces.
+ */
+interface SeedCounts {
+    created: number;
+    updated: number;
+    skipped: number;
+}
+interface SeedResult {
+    actions: SeedCounts;
+    prompts: SeedCounts;
+    flows: SeedCounts;
+    library: SeedCounts;
+    notes: SeedCounts;
+}
+
 type Simplify<T> = {
     [K in keyof T]: T[K];
 } & {};
@@ -1401,6 +1420,18 @@ declare const events: {
         type: "TEST_CLI_PROVIDER";
         systemId: "settings";
         provider: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }, {
+        type: "IMPORT_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -3453,6 +3484,14 @@ declare const events: {
         error?: string | undefined;
         pluginId: "settings";
     } | {
+        type: "SETUP_PACK_IMPORTED";
+        result: SeedResult;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORT_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
         type: "SECRETS.EVENT.LOADED";
         data: SecretData[];
         pluginId: "settings";
@@ -4574,7 +4613,7 @@ interface InternalSettings {
     hasOnboarded: boolean;
     lastInteractionTimestamp: number | null;
     version: string;
-    seeded: boolean;
+    seedHash: string | null;
 }
 interface AssistantSettings {
     name: string;
