@@ -1,0 +1,63 @@
+name: Build macOS (Signed + Notarized)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-14 # Apple Silicon runner
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile DSL
+        run: npm run compile
+
+      - name: Build packages
+        run: SKIP_DSL_GEN=1 npm run build
+
+      - name: Build native helpers
+        run: npm run build:speech-macos
+
+      - name: Package, sign, and notarize
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: npx electron-builder build --config electron-builder.mjs --mac --arm64
+
+      - name: Verify signing
+        run: |
+          codesign --verify --deep --strict dist/mac-arm64/AgentBuddy.app
+          xcrun stapler validate dist/mac-arm64/AgentBuddy.app
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentBuddy-mac-arm64
+          path: |
+            dist/AgentBuddy-*.dmg
+            dist/AgentBuddy-*.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/AgentBuddy-*.dmg
+            dist/AgentBuddy-*.zip

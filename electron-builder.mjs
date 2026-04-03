@@ -31,6 +31,9 @@ export default /** @type import('electron-builder').Configuration */
       NSMicrophoneUsageDescription: 'AgentBuddy needs microphone access for voice input.',
       NSSpeechRecognitionUsageDescription: 'AgentBuddy uses speech recognition to convert voice to text.',
     },
+    notarize: {
+      teamId: process.env.APPLE_TEAM_ID || ''
+    },
     target: [
       {
         target: 'dmg',
@@ -133,6 +136,11 @@ export default /** @type import('electron-builder').Configuration */
     },
   ],
   
-  // Disable publishing and auto-updater
-  publish: null
+  // Publishing: enable with PUBLISH_TO_GITHUB=true
+  publish: process.env.PUBLISH_TO_GITHUB === 'true' ? {
+    provider: 'github',
+    owner: 'spankyed',
+    repo: 'AgentBuddy',
+    releaseType: 'draft'
+  } : null
 });
