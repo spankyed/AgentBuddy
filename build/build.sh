@@ -32,13 +32,13 @@ npm install --silent
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
-# Step 3: Compile DSL (default-setup)
+# Step 3: Compile default-setup
 if [ -z "$SKIP_COMPILE" ]; then
-  echo -e "${BLUE}[3/6]${NC} Compiling default-setup DSL..."
+  echo -e "${BLUE}[3/6]${NC} Compiling default-setup..."
   npm run compile
-  echo -e "${GREEN}✓${NC} DSL compiled"
+  echo -e "${GREEN}✓${NC} Default-setup compiled"
 else
-  echo -e "${BLUE}[3/6]${NC} Skipping DSL compilation (SKIP_COMPILE set)"
+  echo -e "${BLUE}[3/6]${NC} Skipping default-setup compilation (SKIP_COMPILE set)"
 fi
 echo ""
 
