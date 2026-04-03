@@ -58,7 +58,6 @@ jobs:
         run: npx electron-builder build --config electron-builder.mjs --mac --arm64
 
       - name: Verify signing
-        if: ${{ secrets.APPLE_TEAM_ID != '' }}
         continue-on-error: true
         run: |
           codesign --verify --deep --strict dist/mac-arm64/AgentBuddy.app
