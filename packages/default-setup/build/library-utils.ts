@@ -4,10 +4,8 @@
 
 import type { ExportedItem, ContentSection } from '../defs/default-setup-defs'
 
-export function toTitleCase(str: string): string {
-  return str
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
+export function toDisplayName(str: string): string {
+  return str.replace(/-/g, ' ')
 }
 
 /** Count only documents in an item list (used by default compiler). */

@@ -15,7 +15,7 @@ import type { EARS } from '@/core/types'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import type { ContentSection } from './types'
 import type { ExportedLibrary } from './export-types'
-import { toTitleCase, parseFrontmatter, parseMarkdownSections } from './utils'
+import { toDisplayName, parseFrontmatter, parseMarkdownSections } from './utils'
 
 interface ImportResult {
   created: number
@@ -229,7 +229,7 @@ function importMarkdownDir(
 
     if (entry.isDirectory()) {
       // Subdirectory → collection
-      const name = toTitleCase(entry.name)
+      const name = toDisplayName(entry.name)
       try {
         const collection = repository.libraryCommands.createCollection(name, undefined, parentId)
         result.created++
@@ -242,7 +242,7 @@ function importMarkdownDir(
     } else if (entry.name.endsWith('.md')) {
       // .md file → document
       const basename = entry.name.slice(0, -3) // strip .md
-      const name = toTitleCase(basename)
+      const name = toDisplayName(basename)
 
       try {
         const raw = fs.readFileSync(fullPath, 'utf-8')

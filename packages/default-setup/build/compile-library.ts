@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { ExportedItem, ExportedLibrary } from '../defs/default-setup-defs'
-import { toTitleCase, countDocs, parseMarkdownSections } from './library-utils'
+import { toDisplayName, countDocs, parseMarkdownSections } from './library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const LIBRARY_DIR = path.join(ROOT, 'src', 'library')
@@ -20,11 +20,11 @@ function walkDirectory(dir: string): ExportedItem[] {
     if (entry.isDirectory()) {
       items.push({
         type: 'collection',
-        name: toTitleCase(entry.name),
+        name: toDisplayName(entry.name),
         children: walkDirectory(fullPath),
       })
     } else if (entry.name.endsWith('.md')) {
-      const name = toTitleCase(entry.name.replace(/\.md$/, ''))
+      const name = toDisplayName(entry.name.replace(/\.md$/, ''))
       const text = fs.readFileSync(fullPath, 'utf-8')
       items.push({
         type: 'document',

@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
-import { toTitleCase } from '@/systems/library/utils'
+import { toDisplayName } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
 
 interface ImportResult {
@@ -184,7 +184,7 @@ function importMarkdownDir(
 
     if (entry.isDirectory()) {
       // Subdirectory → document with children
-      const name = toTitleCase(entry.name)
+      const name = toDisplayName(entry.name)
 
       try {
         // Check for index.md in subdirectory
@@ -238,7 +238,7 @@ function importMarkdownDir(
       }
     } else if (entry.name.endsWith('.md') && entry.name !== 'index.md') {
       const basename = entry.name.slice(0, -3)
-      const name = toTitleCase(basename)
+      const name = toDisplayName(basename)
 
       try {
         const raw = fs.readFileSync(fullPath, 'utf-8')

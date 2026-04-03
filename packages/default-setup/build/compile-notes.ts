@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { ExportedNote, ExportedNotes } from '../defs/default-setup-defs'
-import { toTitleCase } from './library-utils'
+import { toDisplayName } from './library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const NOTES_DIR = path.join(ROOT, 'src', 'notes')
@@ -71,7 +71,7 @@ function walkDirectory(dir: string): ExportedNote[] {
 
       notes.push({
         ...meta,
-        title: toTitleCase(entry.name),
+        title: toDisplayName(entry.name),
         content: body,
         children: walkDirectory(fullPath),
       })
@@ -81,7 +81,7 @@ function walkDirectory(dir: string): ExportedNote[] {
 
       notes.push({
         ...meta,
-        title: toTitleCase(entry.name.replace(/\.md$/, '')),
+        title: toDisplayName(entry.name.replace(/\.md$/, '')),
         content: body,
         children: [],
       })

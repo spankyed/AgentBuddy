@@ -9,10 +9,8 @@ import type { ExportedItem } from './export-types'
 
 export { toSlug, uniqueFilename } from '@/core/helpers/export'
 
-export function toTitleCase(str: string): string {
-  return str
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
+export function toDisplayName(str: string): string {
+  return str.replace(/-/g, ' ')
 }
 
 export function buildFrontmatter(tags: string[]): string {
