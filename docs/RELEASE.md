@@ -22,6 +22,18 @@ Validates, bumps version, generates changelog, tags, and pushes — triggering C
 | `npm run clean-prod` | Delete all prod data and build artifacts |
 | `npm run verify-signing` | Verify code signature and notarization |
 
+## Installing (Unsigned Builds)
+
+Until code signing is configured, downloaded builds will be blocked by macOS Gatekeeper. After opening the DMG and dragging AgentBuddy to Applications, run:
+
+```bash
+xattr -cr /Applications/AgentBuddy.app
+```
+
+Then open the app normally. This only needs to be done once per download.
+
+This step is not needed once the app is signed and notarized (see [Code Signing & Notarization](#code-signing--notarization)).
+
 ## How a Release Works
 
 ```
