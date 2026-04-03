@@ -36,7 +36,7 @@
     "db:exec": "cd packages/api && npm run db:exec",
     "db:reset": "cd packages/api && npm run db:reset",
     "db:script": "cd packages/api && npm run db:script",
-    "compile": "npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes && npm run sync:seed --workspace @app/default-setup",
+    "compile": "npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes",
     "compile:actions": "npm run compile:actions --workspace @app/default-setup",
     "compile:prompts": "npm run compile:prompts --workspace @app/default-setup",
     "compile:flows": "npm run compile:flows --workspace @app/default-setup",

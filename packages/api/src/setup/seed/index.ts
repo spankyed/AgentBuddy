@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { EARS } from '@/core/types';
 import { findWhere, findAll } from '@/core/helpers/repository/query-helpers';
 import { actionCommands } from '@/systems/actions/repository';
@@ -38,7 +39,21 @@ export interface SeedResult {
   notes: SeedCounts;
 }
 
-const DEFAULT_COMPILED_DIR = path.resolve(__dirname, 'setup/seed/data');
+const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
+
+const SEED_FILES = [
+  'compiled-actions.json', 'compiled-prompts.json',
+  'compiled-flows.json', 'compiled-library.json', 'compiled-notes.json',
+];
+
+function computeSeedHash(compiledDir: string): string {
+  const hash = crypto.createHash('sha256');
+  for (const file of SEED_FILES) {
+    const filePath = path.join(compiledDir, file);
+    if (fs.existsSync(filePath)) hash.update(fs.readFileSync(filePath));
+  }
+  return hash.digest('hex').slice(0, 16);
+}
 
 function loadJSON<T>(filePath: string): T | null {
   if (!fs.existsSync(filePath)) return null;
@@ -232,16 +247,20 @@ function seedFlows(
 export function seedData(options?: { verbose?: boolean; force?: boolean; compiledDir?: string }): SeedResult | null {
   const log = options?.verbose ? console.log.bind(console) : () => {};
 
-  // Run-once gate
+  const compiledDir = options?.compiledDir ?? DEFAULT_COMPILED_DIR;
+
+  // Run-once gate with hash-based change detection
   if (!options?.force) {
     const internal = settingsQueries.getInternalSettings();
     if (internal.seeded) {
-      log('  seed skipped: already seeded');
-      return null;
+      const currentHash = computeSeedHash(compiledDir);
+      if (internal.seedHash === currentHash) {
+        log('  seed skipped: data unchanged');
+        return null;
+      }
+      log('  seed data changed, re-seeding...');
     }
   }
-
-  const compiledDir = options?.compiledDir ?? DEFAULT_COMPILED_DIR;
 
   const result: SeedResult = {
     actions: { created: 0, updated: 0, skipped: 0 },
@@ -317,8 +336,9 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     log('  compiled-notes.json not found, skipping notes');
   }
 
-  // Mark as seeded
+  // Mark as seeded with content hash
   settingsCommands.updateSettings('internal', null, ['seeded'], true);
+  settingsCommands.updateSettings('internal', null, ['seedHash'], computeSeedHash(compiledDir));
 
   return result;
 }
