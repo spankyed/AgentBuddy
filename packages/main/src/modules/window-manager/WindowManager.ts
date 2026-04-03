@@ -310,7 +310,6 @@ class WindowManager implements AppModule {
   }
 
   private async closeSplashWithDelay(): Promise<void> {
-    return; // TODO: remove — keep splash visible for testing
     if (this.#splashScreen && this.#splashScreen.isVisible()) {
       setTimeout(async () => {
         await this.#splashScreen?.close();
