@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { agent } from '@/systems/agent/system';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { seedData, type SeedResult } from '@/setup/seed/index';
 
 const execFileAsync = promisify(execFile);
 
@@ -54,6 +55,9 @@ export const IncomingSettingsEvents = [
   busEvent('TEST_CLI_PROVIDER', {
     provider: z.string(),
   }),
+  busEvent('IMPORT_SETUP_PACK', {
+    directory: z.string(),
+  }),
 ] as const
 
 export type SettingsInternalEvents = 
@@ -66,6 +70,8 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string }
+  | { type: 'SETUP_PACK_IMPORTED'; result: SeedResult }
+  | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
@@ -337,6 +343,21 @@ export const settingsSystem = setup({
         });
     },
 
+    importSetupPack: ({ system, event }) => {
+      const ev = typeOf('IMPORT_SETUP_PACK', event);
+      try {
+        const result = seedData({ force: true, verbose: true, compiledDir: ev.directory });
+        if (result) {
+          system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORTED', result }));
+        } else {
+          system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORT_FAILED', error: 'Seed returned no result' }));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORT_FAILED', error: message }));
+      }
+    },
+
     completeOnboarding: ({ system }) => {
       settingsCommands.updateSettings('internal', null, ['tourComplete'], true);
 
@@ -392,6 +413,9 @@ export const settingsSystem = setup({
         },
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',
+        },
+        IMPORT_SETUP_PACK: {
+          actions: 'importSetupPack',
         },
         // Forward incoming SECRETS.CMD.* events to secrets actor
         'SECRETS.CMD.*': {

@@ -166,7 +166,7 @@ export interface InternalSettings {
   hasOnboarded: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
-  seeded: boolean;
+  seedHash: string | null;
 }
 
 export interface AssistantSettings {

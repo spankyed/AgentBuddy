@@ -19,10 +19,17 @@ export type SettingsState = ActorRefFrom<typeof settingsState>
 
 // Use backend types directly
 
+export interface SetupPackImport {
+  status: 'idle' | 'importing' | 'success' | 'error';
+  result: any | null;
+  error: string | null;
+}
+
 export interface SettingsContext {
   settings: SettingsData | null;
   secretsData: any[];
   cliTestResults: Record<string, 'idle' | 'testing' | 'success' | 'error'>;
+  setupPackImport: SetupPackImport;
   activeTab: 'general' | 'plugins' | 'help';
   generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc';
   selectedPluginId: string | null;
@@ -36,8 +43,12 @@ type UIEvent =
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
+  | { type: 'SETUP_PACK.IMPORT'; directory: string }
+  | { type: 'SETUP_PACK.RESET_STATUS' }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
+  | { type: 'SETUP_PACK_IMPORTED'; result: any }
+  | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
   | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
   | { type: 'SECRETS.EVENT.CREATED'; id: string; provider: string; customName?: string }
   | { type: 'SECRETS.EVENT.UPDATED'; id: string }
@@ -163,6 +174,36 @@ const settingsState = setup({
         },
       };
     }),
+
+    importSetupPack: assign(({ event }) => {
+      const ev = event as { type: 'SETUP_PACK.IMPORT'; directory: string };
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'IMPORT_SETUP_PACK',
+        directory: ev.directory,
+      } as any);
+      return {
+        setupPackImport: { status: 'importing' as const, result: null, error: null },
+      };
+    }),
+
+    setSetupPackImported: assign(({ event }) => {
+      const ev = event as { type: 'SETUP_PACK_IMPORTED'; result: any };
+      return {
+        setupPackImport: { status: 'success' as const, result: ev.result, error: null },
+      };
+    }),
+
+    setSetupPackImportFailed: assign(({ event }) => {
+      const ev = event as { type: 'SETUP_PACK_IMPORT_FAILED'; error: string };
+      return {
+        setupPackImport: { status: 'error' as const, result: null, error: ev.error },
+      };
+    }),
+
+    resetSetupPackStatus: assign(() => ({
+      setupPackImport: { status: 'idle' as const, result: null, error: null },
+    })),
   },
 }).createMachine({
   id,
@@ -177,6 +218,7 @@ const settingsState = setup({
       settings: null,
       secretsData: [],
       cliTestResults: {},
+      setupPackImport: { status: 'idle', result: null, error: null },
       activeTab: 'general',
       generalNavItem: 'personal',
       selectedPluginId: defaultPluginId,
@@ -232,6 +274,18 @@ const settingsState = setup({
         },
         'CLI_TEST_RESULT': {
           actions: 'setCliTestResult',
+        },
+        'SETUP_PACK.IMPORT': {
+          actions: 'importSetupPack',
+        },
+        'SETUP_PACK.RESET_STATUS': {
+          actions: 'resetSetupPackStatus',
+        },
+        SETUP_PACK_IMPORTED: {
+          actions: 'setSetupPackImported',
+        },
+        SETUP_PACK_IMPORT_FAILED: {
+          actions: 'setSetupPackImportFailed',
         },
       },
     },
