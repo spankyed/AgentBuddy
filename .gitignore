@@ -9,5 +9,6 @@ untracked
 .serena
 .DS_Store
 
-# Compiled native helpers (built via build scripts)
+# Build artifacts
 native/speech/macos/SpeechHelper
+build/prod/logs/

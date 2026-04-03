@@ -6,39 +6,38 @@
 npm run release
 ```
 
-Interactive CLI that validates, bumps version, generates changelog, tags, and pushes — triggering CI to build and publish automatically.
+Validates, bumps version, generates changelog, tags, and pushes — triggering CI to build and publish automatically.
 
 ## Release Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run release` | Interactive release (prompts for bump type) |
-| `npm run release:minor` | Skip prompt, bump minor |
-| `npm run release:major` | Skip prompt, bump major |
+| `npm run release` | Release with patch bump (default) |
+| `npm run release:minor` | Release with minor bump |
+| `npm run release:major` | Release with major bump |
 | `npm run release -- --dry-run` | Preview without making changes |
 | `npm run build-prod` | Local production build (unsigned) |
 | `npm run build-prod:signed` | Local build with signing (reads `.env.signing`) |
 | `npm run prod-app` | Launch the built app with logging |
+| `npm run clean-prod` | Delete all prod data and build artifacts |
 | `npm run verify-signing` | Verify code signature and notarization |
 
 ## How a Release Works
 
 ```
-1. npm run release
-2. Select bump type → typecheck → tests → confirm
-3. Commits version bump + changelog, tags vX.Y.Z, pushes
-4. GitHub Actions builds, signs, notarizes, publishes
-5. Users download from GitHub Releases
+1. npm run release          (or: npm run release:minor)
+2. Typecheck → tests → version bump → changelog → tag → push
+3. GitHub Actions builds, signs, notarizes, publishes
+4. Users download from GitHub Releases
 ```
 
-The release script (`build/scripts/cli/release.mjs`) runs these steps:
+The release script (`build/release/release.sh`) runs these steps:
 
 1. Checks for a clean git working tree
-2. Prompts for bump type (patch / minor / major)
-3. Runs `npm run typecheck` and `npm test` — aborts on failure
-4. Bumps the version in `package.json`
-5. Generates a changelog entry grouped by commit type
-6. Asks for confirmation, then commits, tags, and pushes
+2. Runs `npm run typecheck` and `npm test` — aborts on failure
+3. Bumps the version in `package.json`
+4. Generates a changelog entry grouped by commit type
+5. Commits, tags, and pushes to origin
 
 ## Production Build Pipeline
 

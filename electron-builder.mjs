@@ -12,9 +12,9 @@ export default /** @type import('electron-builder').Configuration */
   productName: 'AgentBuddy',
   directories: {
     output: 'dist',
-    buildResources: 'buildResources',
+    buildResources: 'build/resources',
   },
-  icon: 'buildResources/icon',
+  icon: 'build/resources/icon',
   
   // Build options
   artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
@@ -25,8 +25,8 @@ export default /** @type import('electron-builder').Configuration */
     category: 'public.app-category.developer-tools',
     hardenedRuntime: true,
     gatekeeperAssess: false,
-    entitlements: 'buildResources/entitlements.mac.plist',
-    entitlementsInherit: 'buildResources/entitlements.mac.plist',
+    entitlements: 'build/resources/entitlements.mac.plist',
+    entitlementsInherit: 'build/resources/entitlements.mac.plist',
     extendInfo: {
       NSMicrophoneUsageDescription: 'AgentBuddy needs microphone access for voice input.',
       NSSpeechRecognitionUsageDescription: 'AgentBuddy uses speech recognition to convert voice to text.',
