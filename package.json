@@ -20,6 +20,7 @@
     "build": "npm run build -ws --if-present",
     "build-prod": "sh build/build.sh",
     "prod-app": "sh build/scripts/run_with_logs.sh",
+    "clean-prod": "sh build/scripts/clean-prod.sh",
     "verify-signing": "sh build/scripts/verify-signing.sh",
     "release": "node build/scripts/cli/release.mjs",
     "release:minor": "node build/scripts/cli/release.mjs minor",
