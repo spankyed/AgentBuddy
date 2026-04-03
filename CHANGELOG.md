@@ -1,5 +1,14 @@
 -e # Changelog
 
+## v0.0.2 (2026-04-03)
+
+### Fixes
+-  prevent empty signing secrets from crashing electron-builder in CI
+-  consolidate CI to use build.sh directly, prevent duplicate runs
+-  prevent CI from triggering on branch pushes and handle missing DSL source dirs
+
+-e # Changelog
+
 ## v0.0.1 (2026-04-03)
 
 ### Features
