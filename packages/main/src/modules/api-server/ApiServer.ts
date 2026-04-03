@@ -22,6 +22,7 @@ export class ApiServer implements AppModule {
   private restartAttempts = 0;
   private serverReady: Promise<void>;
   private serverReadyResolve?: () => void;
+  private serverReadyReject?: (error: Error) => void;
   private actualPort?: number;
   private lastError?: { message: string; stack?: string };
 
@@ -36,8 +37,9 @@ export class ApiServer implements AppModule {
   }
 
   private createReadyPromise(): Promise<void> {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       this.serverReadyResolve = resolve;
+      this.serverReadyReject = reject;
     });
   }
 
@@ -87,18 +89,20 @@ export class ApiServer implements AppModule {
     // Validate API path exists
     logInfo(`[MAIN] Checking API path: ${apiPath}`);
     if (!fs.existsSync(apiPath)) {
-      const error = `[MAIN] API path does not exist: ${apiPath}`;
-      logError(error);
+      const error = `API path does not exist: ${apiPath}`;
+      logError(`[MAIN] ${error}`);
       broadcastEvent(API_EVENTS.ERROR, { error });
+      this.serverReadyReject?.(new Error(error));
       return;
     }
 
     const serverPath = path.join(apiPath, 'dist', 'server.js');
     logInfo(`[MAIN] Checking server file: ${serverPath}`);
     if (!fs.existsSync(serverPath)) {
-      const error = `[MAIN] Server file does not exist: ${serverPath}`;
-      logError(error);
+      const error = `Server file does not exist: ${serverPath}`;
+      logError(`[MAIN] ${error}`);
       broadcastEvent(API_EVENTS.ERROR, { error });
+      this.serverReadyReject?.(new Error(error));
       return;
     }
     logInfo('[MAIN] Server file found, proceeding with launch...');
@@ -156,7 +160,6 @@ export class ApiServer implements AppModule {
 
     // Reset state
     this.actualPort = undefined;
-    this.serverReady = this.createReadyPromise();
 
     // Handle restart
     if (!this.isShuttingDown && this.restartAttempts < API_CONFIG.MAX_RESTART_ATTEMPTS) {
@@ -172,6 +175,7 @@ export class ApiServer implements AppModule {
       this.lastError = { message: 'Max restart attempts reached' };
       logError('[MAIN] Max restart attempts reached');
       broadcastEvent(API_EVENTS.ERROR, { error: 'Max restart attempts reached' });
+      this.serverReadyReject?.(new Error('Max restart attempts reached'));
     }
   }
 
