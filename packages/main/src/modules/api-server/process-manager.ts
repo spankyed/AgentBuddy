@@ -15,6 +15,7 @@ export class ProcessManager {
   private process?: ChildProcess;
   private handlers: ProcessHandlers;
   private serverReady = false;
+  private exited = false;
   private lastStderr = '';
   private fatalErrors: { message: string; stack?: string; source?: string }[] = [];
 
@@ -25,6 +26,7 @@ export class ProcessManager {
   setProcess(process: ChildProcess): void {
     this.process = process;
     this.serverReady = false;
+    this.exited = false;
     this.lastStderr = '';
     this.fatalErrors = [];
     this.attachHandlers();
@@ -120,6 +122,7 @@ export class ProcessManager {
 
     // Process exit handling
     this.process.on('exit', (code, signal) => {
+      this.exited = true;
       console.log(`Process exited with code ${code} and signal ${signal}`);
       this.handlers.onExit?.(code, signal);
     });
@@ -170,7 +173,7 @@ export class ProcessManager {
   }
 
   isRunning(): boolean {
-    return !!this.process && !this.process.killed;
+    return !!this.process && !this.process.killed && !this.exited;
   }
 
   getPid(): number | undefined {
