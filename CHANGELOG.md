@@ -1,5 +1,3405 @@
 -e # Changelog
 
+## v0.0.2 (2026-04-03)
+
+### Features
+-  add script for cleaning AgentBuddy production data
+-  add release script for automated versioning and changelog generation
+-  add interactive release CLI and automated release pipeline
+-  add automated release pipeline with version bumping and changelog
+-  add comprehensive release process documentation for automation and CI improvements
+-  add code signing, notarization, and distribution infrastructure
+-  enhance PROD-BUILD documentation with detailed build steps and prerequisites
+-  add PROD-BUILD documentation for production build process of AgentBuddy Electron app
+-  enhance seed functionality with detailed SeedCounts and SeedResult interfaces
+-  add frontmatter support to default-setup compilers
+-  add comprehensive import/export documentation for library metadata handling
+-  add escapeQuotes function to handle special characters in metadata fields for markdown exports
+-  preserve collection names via _meta.md marker file in markdown exports
+-  enhance frontmatter handling to include title and name in markdown exports and imports
+-  add unified Import Setup Pack UI in settings
+-  reposition goToAction and goToPrompt buttons for improved accessibility in ActionsPanel and PromptsPanel
+-  implement EmptyState component for improved user feedback in various panels
+-  add project quick-open buttons to empty explorer state
+-  add section header for commit message guidelines in commands documentation
+-  add paste as plain text functionality in Tiptap editor
+-  add section marker parsing to default-setup library compiler
+-  add gcmsg command for standardized commit messages
+-  structured error propagation from backend to error page
+-  add crash/error page with immediate backend failure detection
+-  remove example action and flow files from default-setup
+-  exclude .example.ts files from compilation and typecheck
+-  add sync:external script to push changes to standalone default-setup repo
+-  add notes compilation support to monorepo default-setup package
+-  add notes seeding to startup pipeline
+-  add scratchpad-compatible rollup output targets for defs pipeline
+-  add inline code mode for action nodes in flow editor
+-  preserve brain canvas state on kill with "Brain Stopped" overlay
+-  implement filter functionality with status and tag selection in threads
+-  document issue with node placement from palette and outline attempted solutions
+-  add functionality to remove handles in flow editor
+-  track-aware node placement from palette
+-  update kill node icon to Plug for improved clarity
+-  add validation for flows during seeding to handle errors individually
+-  add kill node type to terminate flows with keep_alive steps
+-  add parallel exits example to scratchpad flow patterns
+-  support multiple parallel exit handles on listen nodes
+-  add skip revert confirmation toggle to agent settings
+-  make existing quick prompts editable inline
+-  add params intellisense to switch branch code editor
+-  add custom code mode for switch node branches
+-  dynamic params type definitions in Monaco editors
+-  wire up revert action on chat messages end-to-end
+-  wire up fork action on chat messages end-to-end
+-  add Escape key handling to deactivate command suggestion
+-  add localStorage persistence and history-mode prop for up-arrow message history
+-  add animated gradient dot for thinking state
+-  add up/down arrow message history navigation in chat input
+-  add PauseIcon component and update button to use it in chat input
+-  expand chat if collapsed when opening threads or creating new threads
+-  enhance message scrolling behavior with resize observer and auto-scroll logic
+-  prevent selection highlight on empty editor paragraphs
+-  enforce pixel-based min chat height during drag resize
+-  move 'Reference' block item up in TiptapBlockMenu
+-  move microphone button to the right of quick prompts
+-  refactor context references and add to USER_MSG and USER_COMMAND Zod schemas
+-  add COMMANDS_UPDATED event to agent and library systems
+-  remove space key command selection logic from keyboard navigation
+-  allow command trigger when editor has only whitespace after /
+-  adjust border-radius for command segment styling in Tiptap theme
+-  add command metadata and styling for command messages in chat
+-  add ArrowRight key support for command selection in suggestion popup
+-  simplify command-suggestion-plugin apply() by removing indirection
+-  update input command active styling for improved visibility
+-  enhance command suggestion styling and add command segment decoration
+-  add space key command selection in command suggestion popup
+-  update chat input styling to highlight active command with border color
+-  enhance command activation guard so it now checks that docText starts with /${commandName}  (including the   trailing space). When the user backspaces the space, the prefix check fails, the   command deactivates, and the plugin re-enters query mode — showing the popup filtered   by the remaining text
+-  remove command placeholder display from suggestion popup
+-  use decoration node for  command placeholder display in chat input
+-  add /command feature for chat input
+-  implement auto-resizing textarea for quick prompts and enhance max height
+-  enhance prompt display with title tooltips and ellipsis for long text
+-  replace single-line inputs with auto-growing textareas for quick prompts
+-  add Quick Prompts feature with management UI and integration
+-  auto-deactivate reference popup when query matches no categories
+-  add click outside to close functionality for reference suggestion popup
+-  update reference insertion logic to include space after reference
+-  add support for task and tasklist references in the reference suggestion system
+-  add "Copy Id" to context menus for library items, threads, and notes
+-  add support for folder references in the reference suggestion popup and update related components
+-  truncate shortCode display in reference suggestions for better UI
+-  auto-transition to items level when user manually types colon in reference popup
+-  add colon separator when selecting a reference category
+-  make reference pills clickable to navigate to referenced items
+-  replace string icons with Lucide components and improve icon rendering in reference nodes
+-  add #reference mention system for chat input
+-  add "New Action" link to ActionForm template label
+-  overlay image names on thumbnails and preserve names through upload
+-  inline attachment display with horizontal scroll for files and images
+-  open file in OS explorer when clicking FileBlock
+-  handle image files like pasted files with full base64 preview
+-  wire up file attachments in chat input with native file picker
+-  add focus restoration after inline rename in Explorer
+-  add ArrowRight/ArrowLeft expand/collapse to Explorer and Library tree views
+-  add keyboard navigation with arrow keys in ExplorerPanel
+-  enhance FlowItem display with root badge integration
+-  add arrow key navigation to Library table
+-  add Enter key shortcut to rename items in Library table
+-  implement rename functionality triggered by Enter key in Explorer
+-  add support for image attachments in chat messages
+-  enable bold & italic formatting in chat input editor
+-  implement Enter key behavior handling in TiptapEditor
+-  add Enter key handling for input mode in TiptapEditor
+-  show friendly empty state in commit, PR, and search panels when no directory   selected
+-  add lang parameter support to Windows SpeechHelper.ps1
+-  replace Web Speech API with native OS speech recognition
+-  add speech recognition functionality to chat input (Web Speech API)
+-  add event deferral during brain pause with replay on resume
+-  add brain pause/resume with deferred step spawning
+-  add versioned export folders with timestamped subfolders
+-  add media handling to threads import/export
+-  add media handling to notes import/export
+-  add tasklist and task icons to note buttons for improved visual distinction
+-  enhance favorites button UI with improved styling and hover effects
+-  reorganize favorites and recently visited sections in notes UI
+-  enhance favorites section with expandable view and treeview UI
+-  add favorite functionality to notes with UI updates and state management
+-  add tasklist panel position setting (left/right) to notes plugin
+-  add double-click prevention to dropdown menu in NoteTreeItem
+-  add create tasklist functionality to document NoteTreeItems
+-  add delete tasklist functionality to TaskListPanel
+-  counter-zoom toolbar to prevent traffic light misalignment
+-  persist show completed tasks state for tasklist
+-  persist hideCompletedChildren toggle on backend
+-  implement dropdown menu for header actions
+-  share context menu for notes and tasks with improved UX
+-  enhance context menu items with icons for better UX
+- Merge pull request #70 from spankyed/AS/task-list
+-  wire up NOTE.OPEN event for double-click to open notes directly
+-  add double-click and open event for tasklist in NoteTreeItem and TaskListPanel
+-  add context menu for task creation with right-click options
+-  enhance context menu for notes with dynamic positioning and task-related actions
+-  add reorder functionality for notes
+-  separate expand/collapse state for task list panel and notes panel
+-  auto-expand tree nodes when creating notes and tasks
+-  add nested task support with drag-and-drop and expand/collapse in TaskListPanel
+-  show selected task in breadcrumbs and handle task breadcrumb clicks
+-  restrict task drag-and-drop to task/tasklist targets and skip subpage links
+-  auto-select and focus title when creating a task
+-  update NoteTreeItem to differentiate between adding tasks and sub-notes; modify panel button labels for clarity
+-  add context menu for task creation in NoteTreeItem component
+-  add strike through styling for completed notes in NoteTreeItem component
+-  implement findNearestTaskList function and update note selection logic for task notes
+-  integrate NoteTreeItem component for task display in TaskListPanel
+-  extend noteType to include 'task' across note-related interfaces and components
+-  add task list note type with split-panel UI
+-  add image bubble menu for enhanced image handling in Tiptap editor
+-  add image upload support in Tiptap editor with media protocol integration
+-  unify Available Context into TipSection across all form components
+-  move "Next step" button into form header with output-edge visibility, merge   AvailableContext into TipSection
+-  conditionally display code option in content type selector for symlink documents
+-  add delete functionality for actions, prompts, documents, and threads with confirmation dialog
+-  add copy functionality for selected document short code with visual feedback
+-  add support for code content type in library service and editors
+-  update compile-library to use markdown content type
+-  split content sections into separate markdown and plain text types
+-  add external URL handling and improve link display in Tiptap editor
+-  enhance TiptapBubbleMenu with link input functionality and improved layout
+-  style task list checkboxes with custom appearance and checked state
+-  enhance Tiptap block menu positioning and visibility with improved styles and dropdown behavior
+-  update Tiptap menus and styles for improved positioning and visibility
+-  implement Tiptap block and bubble menus for enhanced text editing experience
+-  integrate Tiptap editor for rich text editing across various components
+-  add disabled state to agent modes for improved selection control
+-  persist threads view preference (kanban/list) in localStorage
+-  add edit icon to kanban cards for thread selection
+-  add drag handle to kanban cards for improved item movement
+-  update thread selection action to open thread chat
+-  upsert all seed entities, add updated counter, fix flow seeding
+-  add pinned option for threads and update related actions
+-  pin birth thread tab and support pinned tabs in UI
+-  add quote rotation functionality for empty chat state
+-  simplify artifact empty state, add random quotes to chat empty state
+-  set default mode and phase based on visible modes in agent state
+-  make thread topic clickable to select the thread
+-  add 'Click to Chat' setting and update thread row behavior
+-  add context menu to thread row with chat and delete actions
+-  add action buttons to NameSaveHeader and integrate chat button in ThreadDetail
+-  add repository handling for explorer system and update outgoing event types
+-  add task completion functionality for onboarding steps
+-  rename 'onboarding-state' artifact type to generic 'json' and add JSON viewer component
+-  add agent quick reference documentation for scratchpad structure and conventions
+-  streamline onboarding flow - reduce tour modal from 3 -> 2 bulletins - remove hasRequiredApiKeys and api key chat restriction - rename hasOnboarded to tourComplete - reset chat height when actual onboarding starts
+-  implement onboarding flow triggered after guided tour completion
+-  add open-file event handling in FileTree and FileTreeItem components
+-  auto-focus new branch input on creation
+-  update log handling to prioritize new entries and improve filtering
+-  implement infinite scroll for log display with loading indicator
+-  add symlink folder context menu (refresh/copy path), show path in panel, remove dbl-click rename
+-  add library document compilation and seeding functionality
+-  add standalone db:reset CLI script
+-  auto-seed compiled scratchpad artifacts into LMDB on app startup
+- Merge pull request #63 from spankyed/AS/flows-compiler
+-  implement flow compilation and management system
+-  add search functionality for folders in ExplorerPanel
+-  add actions compilation pipeline with TypeScript source files
+-  replace full-screen error state with dismissible banner in ExplorerPanel
+-  add pull branch button with commits-behind badge to CommitPanel
+-  add "Open Terminal Here" option to explorer base directory menu
+-  reveal file in explorer tree when opening from commit view
+-  add AI commit message generation via Copilot CLI
+-  Add navigate-up button to explorer breadcrumb
+-  Refactor project management system (previously workspace)
+-  disable semantic search behind [SEARCH_INDEX_FF] dev flag
+-  add library export/import with symlink support
+-  add filesystem symlink support to library
+-  add inline tree expansion for folders in library browser
+-  add empty folder message in FileSystemBrowser component
+-  add restart and kill brain menu options
+-  update context menu items to include default settings and inspection panel actions
+-  support root-level default breadcrumbs + fix database TRAIL_CLICK navigation
+-  add ad-hoc brain event listener service (services.brain.listen)
+-  add Export Flows UI to Flows settings
+-  support inline branch steps in DSL switch nodes
+-  add Backup & Restore section in database settings
+-  support dynamic $. path references in switch node predicate values
+-  implement switch node runtime execution with review fixes
+-  integrate newNode configuration into layout calculations for improved node positioning
+-  add edge selection functionality to connected handles
+-  add editable prop to BaseNode for view-only mode
+-  enhance click behavior to open dropdown on selected handle
+-  add larger invisible hitbox for easier clicking on add handle overlay
+-  sync edge and handle selection with UX improvements
+-  implement click-to-connect functionality with AddHandle component
+-  add vertical spreading for converging edges with space check
+-  enhance edge visibility and selection feedback in GenericEdge component
+-  add anchor points for converging edges
+-  improve node form UX and viewport behavior
+-  rename decision nodes to switch nodes across the application
+-  replace Dagre with ELK for port-aware flow layout
+-  implement switch node with dynamic handles and decision form
+-  implement Flow DSL and compilation for better workflows DevX
+-  add delete functionality for actions and prompts in context menus
+-  improve inline edit UX with cancel buttons and fix blur behavior
+-  add inline create and edit name for prompts/actions panels
+-  add parameter removal functionality and improve editing UI in Actions and Prompts panels
+-  update entity function to replace values instead of merging
+-  implement ParameterRow component for managing action and prompt inputs
+-  add keyboard shortcut for saving actions and prompts using Ctrl+S or Cmd+S
+-  add brain restart functionality after database reset
+-  refactor dbQuery generation to use a dedicated builder prompts
+-  update root flow role to include settings update for rootFlowId
+-  implement database reset functionality with UI confirmation and state management
+-  enhance birth thread creation by opening chat and marking as visited
+-  implement createBirthThread action and artifact management service for onboarding
+-  add toggleStates for button-group with backend-controlled state management
+-  add button group interactive message with state management and UI component
+-  add updateMessageState service method for ad hoc message updates
+-  implement MESSAGE_ADDED event for user messages and clean up unused message handling code
+-  add clickable category filters to prompts and actions plugins
+-  response display for disabled text input
+-  hardcode message append to thread & thread creation from user messages logic in agent system
+-  add block-based interaction components for chat messages - with mock messages for testing
+-  add kanban board view to threads plugin with drag-and-drop
+-  add workspace artifact to agent canvas
+-  enhance GitWatcherService to monitor working directory changes and improve git file watching
+-  add quick actions to workspace explorer for directory management
+-  add terminal opening functionality in workspace context menu
+-  add workspace and project depth guidelines in explorer view
+-  enhance text color handling in GroupLabel component
+-  update color variables and improve text color handling for tab groups
+-  add close button to tab items and improve group menu item editing functionality
+-  make explorer panel buttons responsive with container queries
+-  add navigation button to go to workspaces in default base directory settings
+-  add color picker functionality for workspaces and projects
+-  reorder panel types for improved navigation and consistency
+-  enhance header elements across panels to be non-draggable for improved usability
+-  move Git panels around in toolbar for improved UX
+-  extend thread and agent types with ThreadExtended for improved data handling
+-  add event and handler for updating current directory in explorer
+-  add configurable terminal process close on tab close + refactor
+-  add listener comment to shell integration commands
+-  add shell integration comment to terminal commands
+-  add configurable terminal close confirmation setting
+-  add configurable shell integration setting for terminal
+-  add terminal CWD change listen to update tab title
+-  add terminal renaming functionality with custom title support
+-  implement smart color cycling and functional menu trigger for tab groups
+-  enhance drag-and-drop support for tab groups with visual feedback and context handling
+-  implement pinnable tab groups with full drag-and-drop support
+-  implement tab grouping functionality
+-  add flow preview mode with configurable setting
+-  sync action templates between actions and flows plugins
+-  implement hierarchical back button navigation in brain plugin
+-  add breadcrumb navigation to brain plugin with flow hierarchy
+-  include phase in USER_MSG event and update message sending logic
+-  add start:gen script to streamline development workflow
+-  add subtle visual indicators for unimplemented flow nodes
+-  add default labels for node types in configuration
+-  add edit label to context menu and simplify dialog state management
+-  add flow deletion with centralized confirmation dialog
+-  implement fire node with field mappings and scope toggle
+-  prevent duplicate relations in addRelation function
+-  add reusable back button component to thread pages
+-  add separator between message and delete button in thread row
+-  add delete thread functionality with comprehensive cleanup
+-  add db:import script for importing database backups
+-  support multiple event nodes per event type in flow system
+-  implement ModePhaseSelector component for improved mode and phase selection
+-  add assistant settings with default name
+-  refresh recent threads list on loading chat and thread tab
+-  improve thread sorting to prioritize recently visited threads
+-  enhance assistant birth thread creation to check for existing threads
+-  add assistant birth thread and API key validation
+-  implement assistant birth thread creation for first-time users
+-  add assistantBirthdate to internal settings
+-  add provider alias support for openai.responses
+-  add expand button to view large JSON objects in modal
+-  enhance QueryEditor with loading overlay for magic prompt generation
+-  update dbQuery to use the latest OpenAI model and enhance tx() examples with new features
+-  update natural language examples to return results for tx() and qx() queries
+-  add database query and transaction examples with natural language translations
+-  add TextStreamService for streaming text in chunks
+-  add page refresh after database import
+-  add reusable toast notification component
+-  implement database backup and restore functionality
+- database): hide results area when examples view is active
+- db): update query examples to include reset settings functionality
+- db): enhance settings destruction script with logging
+- db): add script to clear settings
+-  enable onboarding completion
+- secrets): add additional API provider URLs to external URLs whitelist
+- secrets): add placeholders for API key inputs in standard providers
+- secrets): enhance provider display with clickable links and priority indicators
+- tour): restore arrow keys hint UI on first tour step
+- onboarding): add autoplay with 1.5s intervals between steps
+- tour): simplify backdrop handling and enhance spotlight styling
+- tour): enhance tour spotlight and target handling with multiple targets support
+- onboarding): navigate to settings/secrets on Get Started
+- onboarding): enhance keyboard navigation for onboarding steps
+- tour): update final step content and remove old tour complete step
+- tour): add simplified tour with 2-step plugin overviews
+-  add keyboard navigation hint to tour UI
+-  dynamically inject API port instead of using hardcoded value
+-  add immediate handling for plugin visibility updates in application routing
+- tour): enhance tour spotlight UX
+- tour): add backdrop blur effect to enhance visual appearance
+-  remove ListView component to streamline document management interface
+- tour): fix and enhance guided tour functionality
+- tour): separate tour steps into a new file for better organization
+-  improve guided tour with explicit setup actions and collapsible state management
+- tour): add smooth transitions to spotlight animation
+- tour): enhance end tour button with title and additional styling
+- tour): add tooltip positioning options for tour steps
+- tour): Implement guided tour feature with onboarding integration
+-  implement onboarding flow for new users
+-  implement ProductionLogger for enhanced logging functionality
+-  add splash screen module with dynamic loading UI and integrate into application startup
+-  implement drag-and-drop functionality for plugin reordering in the toolbar
+-  enhance Tags display in CollapsibleSection with dynamic styling and improved UI
+-  enhance Linked Threads section with dynamic label and improved button styling
+-  update start script to skip DSL generation
+-  replace tag input div with collapsible section for improved UI
+-  add JSON hover popup for database table cells
+-  add double-click to unpin functionality for pinned tabs
+-  add mouse back/forward navigation for plugins
+-  add click-away deselection for library documents
+-  add attribution text to settings help tab
+-  add right-click delete functionality for database entities
+-  add comprehensive database CLI tool for offline management
+-  redesign Personal Information settings UI/UX
+-  send initial activation to the active plugin on application setup
+-  implement last active plugin restoration and sync functionality
+-  add plugin visibility toggle in settings sidebar
+-  add REQUEST_LOGS_UPDATE event and integrate into logs state management
+-  add flows settings management with root flow selection and updates
+-  implement dynamic tag colors for thread list
+-  add tags settings to library plugin with shared TagInput component
+-  thread settings to management dynamic status options and settings
+-  refactor category system for prompts and actions
+-  add category management for prompts and actions plugins
+-  enable reset button for keyboard shortcut inputs
+-  add database settings with configurable execute query hotkey
+-  add default settings initialization on startup
+-  add tooltip formatting for keyboard shortcuts
+-  set default selected plugin in settings context
+-  implement settings service for managing application settings
+-  add terminal restoration toggle and simplify settings API
+-  implement proper settings refresh for plugins
+-  add global shortcut support to KeyboardShortcutInput component
+-  improve agent settings UI with CollapsibleSection components
+-  implement real agent settings with centralized hotkey system
+-  add internal settings type for system configuration
+-  integrate hotkey settings with application
+-  add custom keyboard shortcuts with event names
+-  add new event types for brain system interactions in action DSL
+-  disable global hotkeys when recording keyboard shortcuts
+-  Redesign settings UI with improved UX
+-  Revise address input layout for improved clarity and usability
+-  Redesign address input with structured fields
+-  Implement autosave for all settings components
+-  add Settings plugin for user configuration management
+-  Enhance database and prompt DSL types with partitioning and persistence interfaces
+-  implement dynamic DSL type generation for Monaco editor
+-  add context-specific DSL types for Monaco editors
+-  add function body mode support to SimpleMonacoEditor
+-  refactor TNode display logic and replace TnodeItem with TNodeListItem
+-  enhance LMDB query layer with correctness fixes and performance improvements
+-  add decodeAttrRaw function for accessing raw attribute records
+-  add trace history viewer for LMDB trace data exploration
+-  enhance LMDB query layer with robust error handling and better semantics
+-  add MDB files for ears-trace and update related lock files
+-  implement partitioned persistence for verbose entity types
+-  implement LmdbQuery class with attribute and entity management methods
+-  add MDB files for ears-db and update USER_DATA_PATH logic in API config
+-  enhance process spawning options for API server by adding detached and windowsHide properties
+-  prepend [MAIN] to log messages in ApiServer and WindowManager for better context
+-  add inspect mode for Electron process spawning in development
+-  forward logging and event broadcasting for API server stdout and stderr in development mode
+-  integrate LMDB for persistent data storage and hydration
+-  enhance syntax linter to support multiple languages and improve validation in editors
+-  implement separate pinned tabs row in code editor
+-  apply input truncation to prevent memory overflow
+-  implement result truncation to prevent memory overflow
+-  enhance flow node context with step node ID and label for better tracking
+-  add self-contained horizontal scrolling and copy button to DataRenderer
+-  add navigation from brain trace nodes to flow blueprints
+-  auto-fit graph view when switching between flows
+-  add navigation buttons to flow and action nodes for better ergonomics
+-  implement node selection indication and animation for brain plugin
+-  reorganize button layout in TNodeGraph component for improved UI
+-  add button to fit graph to view in TNodeGraph component
+-  add click handling to canvas for closing StepNodeDetails
+-  add toggleable animations feature with UI integration
+-  add UI menu for toggling brain debug logs
+-  add toggleable debug logging for brain system
+-  add TODO for truncating long result strings in storeResult function
+-  add output result display to node details with live updates
+-  integrate DataRenderer for complex data display in agent panel node details
+-  add isFlow property to notifyComplete action for step completion for consistency
+-  update and simplify flow completion logic to differentiate between flow and step completions
+-  implement flow node execution with entry parameter support
+-  enhance flow node handling with detailed attributes and UI integration
+-  add FlowForm component and integrate flows into NodeForm
+-  move tags below content in library docs
+-  add right-click context menu for creating child threads in agent chat
+-  add support for parent-child thread linking in thread creation
+-  add tooltip to staged and unstaged files displaying file path
+-  replace collapseKey with allCollapsed for better file tree management
+-  add collapse all button for file tree in PR panel
+-  improve multi-selection UX in library panel
+-  add tag management with localStorage and autocomplete
+-  add collapsible content sections in document editor
+-  integrate Autocomplete component for dynamic key input in FieldEditor
+-  auto-scroll to content section when type is changed
+-  add "Move Up" action for selected items
+-  implement drag-and-drop reordering for library items
+-  enhance item selection and editing behavior in FileSystemBrowser
+-  add inline rename functionality for documents in library plugin
+-  export BaseEntity type alongside EARS in types definition
+-  implement immediate folder creation with inline renaming in library plugin
+-  add CLAUDE.md documentation for frontend and backend development, including debugging instructions
+-  add build and run scripts for application
+-  Add dynamic port selection using get-port package - refactor: modularize API server and improve maintainability
+-  add build instructions and requirements for Electron app; fix API server path handling
+-  implement dynamic snapshots directory path handling
+-  add dynamic path handling for search indices in production
+-  improve search indices UI in library panel
+-  convert search input to auto-growing multi-line textarea
+-  enhance search index testing UI with robust chunk visualization
+-  implement multi-indexing support for list and field types in search indexing
+-  add search index test UI and fix index creation issues
+-  implement BE logic for fastembed and usearch
+-  add occurrence parser and improve input consistency
+-  move connector label next to description for better clarity
+-  improve search index template preview functionality
+-  add comprehensive search index creation UI for document vector search
+-  improve flow node form tips UI with collapsible copyable examples
+-  move console log insertion action for Monaco editor
+-  add ctrl+` hotkey to open terminal at current directory
+-  preserve scroll position when switching between tabs in code editor
+-  add hotkey support for toggling inspection panel with cmd+b
+-  add create folder functionality in explorer panel
+-  add copy message text button and functionality
+-  add panel switching hotkeys to code plugin
+-  implement global hotkey system for plugin navigation
+-  add support for retrieving and handling git root directory
+-  implement frameless window with integrated controls
+-  update prompts UI to match actions design consistency
+-  improve parameter display UX in actions and prompts lists
+-  Add draggable panel resizers for dynamic layout adjustment
+-  Add ultra-compact todo list artifact with inline header actions
+-  add slack artifact to dashboard and refactor to reuse code
+-  implement cross-plugin event propagation for thread status updates
+-  implement dynamic kanban board with real thread statuses
+-  add pull button to source control panel
+-  add current thread tab to startup data and refactor repository
+-  add action to remove deleted edges from the graph
+-  add prompt referencing capability to template system
+-  update agent startup event to refresh threads and adjust related types
+-  add refresh button to database schema panel
+-  update threads plugin when thread created via action
+-  notify frontend plugins when new thread created via action
+-  add thread recency tracking with lastMessageTimestamp
+-  fix edge deletion for newly created edges
+-  add edge disconnection functionality to flow UI
+-  add blue border-top to selected tabs in code editor
+-  auto-delete old snapshots when creating new git snapshots
+-  add addMessageToThread functionality to playground
+-  add publish button for unpublished branches
+-  add branch checkout functionality to commit panel
+-  add repository service to expose centralized repository
+-  add settings plugin to mockPlugins
+-  update prompts panel UI to match actions panel improvements
+-  restyle category tags and icons to action items in actions panel
+-  display action inputs in actions panel
+-  enhance actions panel with action navigation and icons
+-  add mode selector to agent chat with payload support
+-  add message for empty threads state in chat component
+-  add collapsible Input Parameters sections
+-  add context menu to tabs with copy path and reveal in explorer
+-  add copy relative path option to file explorer context menu
+-  order open files by recency in quick open palette
+-  add recently opened files tracking to quick open palette
+-  add VS Code-style quick open palette to code plugin
+-  preserve tab order during persistence and restoration
+-  add drag reordering to tabs with visual feedback
+-  add "open in editor" buttons to PromptView and PromptForm
+-  improve code panel toolbar layout
+-  add prompts panel to code plugin
+-  refresh panel for terminal and actions in code state machine
+-  use Play icon for action tabs instead of FileCode icon
+-  add actions panel to code plugin
+-  add support for opening terminal tabs and restoring persisted tabs
+-  enhance PR system to handle git status changes and notify frontend
+-  refactor code system into modular feature subsystems
+-  import OutgoingCodeEvents type and remove redundant type definition from state.ts
+-  add Brain_FE_AgentEvents type to AgentEvent union
+-  reorder node pallette items
+-  reorganize code components into folders
+-  add double-click to rename functionality for file explorer
+-  implement inline rename functionality and remove RenameDialog component
+-  add rename and delete functionality to file explorer
+-  add loading state for terminal initialization
+-  add revert button and open file functionality to commit panel
+-  add discard changes button to commit panel
+-  implement terminal session restoration with EARS metadata storage
+-  enhance terminal output handling with debounced localStorage saves and improved memory management
+-  add minimal terminal output storage
+-  add terminal output processing to reduce storage size
+-  enhance terminal service with improved data retrieval and restoration logic
+-  PR file tree expanded by default
+-  add updatePid command to modify terminal process ID and update timestamp
+-  implement terminal management with EARS integration and consider startup data retrieval
+-  replace XTerm.js with vue-web-terminal for terminal UI
+-  add terminal functionality with node-pty (not working)
+-  implement Monaco editor with proper language support
+-  implement cache invalidation for Git repository on file changes
+-  enhance Git status handling and diff operations with binary support
+-  implement Pull Request panel with tree view
+-  implement diff tabs for better UX
+-  implement git commit functionality for code plugin
+-  add truncating breadcrumb navigation with dropdown for hidden segments
+-  improve path truncation to show more directory segments
+-  add toggle to search in current directory vs root directory
+-  implement ripgrep-based search functionality in code plugin
+-  properly separate root and current directory concepts in code plugin
+-  refactor backend communication with sendToBackend helper function
+-  add set as root directory functionality with persistence
+-  add clickable breadcrumb navigation to directory path
+-  add code editor plugin with Monaco editor
+-  add getWithinFolder method to library service
+-  add Taiko browser automation wrapper service
+-  add library service with document shortcode support
+-  add magic prompt query generator to database plugin
+-  properly refresh database after transactions
+-  add transaction support to database plugin
+-  add copy metadata functionality with visual feedback
+-  add entity type exclusion to snapshot creation
+-  add initial snapshot data and documentation for snapshots-git directory
+-  add database snapshot functionality
+-  add action service wrapper for executing actions
+-  improve visual differentiation between folders and documents
+- library): add breadcrumb navigation for folder contents
+- library): implement file browser interface with Finder-style UI
+- library): enhance UI components with improved styling and layout
+- library): implement library plugin with document and collection management
+-  add floating hover UI with timestamp and action buttons for chat messages
+-  add prompt service with label-based retrieval
+-  implement streaming in streamToFE action
+-  add centralized database service
+-  initialize OpenAI instance with api key
+-  enhance action entities
+-  integrate AI SDKs and implement event emitter service
+-  enhance JsonDisplay component with CodeMirror integration
+-  add double-click to copy row data as JSON in ObjectsTable
+-  redesign agent canvas with tab-based artifact viewer
+-  add createTNode command to manage TNode creation with validation
+-  enhance action management with new repository structure
+-  introduce repository layer for action management
+-  add "Next step" dropdown to node form for creating connected nodes
+-  add "Next step" action to node form for creating connected nodes
+-  add detailed node inspection UI components for different node types
+-  improve execution tree UI/UX design
+-  apply flows palette styling to agent panel TNode tree
+-  implement real-time TNode tree updates with normalized structure
+-  include eventTNodeId in TNode status updates
+-  replace Zap icon with Play in ActionsList and plugin, update FileText to Sparkle in PromptsList
+-  add CodeMirror editor for action functions
+-  implement actions plugin for custom action functions
+-  add utility functions for node icon text and background color styling
+-  update children indicator logic in TNodeGraphNode component
+-  refine status and children indicators in TNodeGraphNode component
+-  improve brain plugin event trace UI for better space efficiency
+-  align brain plugin node styles with flow editor nodes
+-  enhance node positioning and animation handling in TNodeGraph component
+-  add event pulse animation to brain plugin watched events
+-  enhance node palette styling to match flow nodes
+-  position node type badge at bottom of flow nodes
+-  add fetching models for llm node functionality with loading states
+-  add model selection to LLM node configuration
+-  improve prompt template formatting and add new templates
+-  enhance NodeForm with tab label display
+-  move available context info section above field mappings
+-  add LLM node form with prompt template selection and field mapping
+-  replace textarea with CodeMirror for JSON schema editor
+-  enable instant node centering in viewport without animation
+-  implement node centering functionality on pallette item interaction
+-  implement viewport adjustment on node click for better visibility
+-  add flow label and styling to canvas overlay when in list state
+-  add createNode and updateNode functions, enhance NodeForm and related components for node management
+-  implement prompts system with CRUD operations and UI components for managing prompt templates
+-  introduce data-driven field mappings for LLM nodes and enhance schema definitions
+-  enhance event payload extraction and input mapping resolution with improved logging
+-  hookup brain event handling with triggerBrainEvent action and input mapping resolution
+-  enhance error logging with detailed stack trace handling
+-  implement passing prompt templates params
+-  update node IDs and add new responder for user message processing
+-  add define method to tx for streamlined attribute, link, and role definition
+-  add client connection handling for logs system and prevent duplicate logs
+-  add log added callback and event handling for new logs
+-  simplify header layout and improve log item layout
+-  improve UI layout and styling for log filters and counts
+-  implement fuzzy search and highlighting for log entries
+-  enhance log display by highlighting search terms and improving filtering logic
+-  enhance logging system by adding CLEAR_LOGS event handling and backend integration
+-  replace internal logging with structured logger for EARS operations
+-  simplify logging of outgoing messages by removing event details
+-  enhance data rendering by adding depth support for nested structures
+-  improve UI for data rendering objects to be more compact
+-  enhance logging metadata handling and improve UI for log details
+-  enhance log expansion functionality and improve UI layout
+-  enhance log level filtering UI and improve overall layout
+-  move mock logs initialization to be and simplify logging system
+-  add empty state design and improve logs display layout
+-  implement logging system with log management and UI integration
+-  add TNode event emission functionality (commented out)
+-  add entry event raising to flow machine
+-  implement plugin activation/deactivation events and data refresh
+- brain): integrate brain runner and enhance event handling
+-  implement centralized node configuration system with metadata and helper functions
+-  add run-agent-brain flow nodes. Add EVENT_TRACE relation kind and enhance flow node types with KeepAliveNode and LLMNode
+-  implement brain UI with mock data
+-  add execution time tracking to database query results and update related components
+-  add type imports for NodeEntity and NodeKind from @abuddy/api
+-  simplify query execution and result handling with improved error management and new simple result table component
+-  separate query execution functionality and refactor database system
+-  enhance Graph Explorer UI with improved controls and layout options
+-  enhance UI/UX schema panel and query editor
+-  add resize observer to dynamically adjust graph size and fit view
+-  enhance GraphExplorer with zoom controls and fit view functionality
+-  update GraphExplorer to initialize G6 graph and enhance data handling
+-  replace graph visualization with simple table view for query results
+-  add database explorer with schema browser and query editor
+-  add icons to palette items in NodePalette component
+-  split flow canvas into modular components with shared functionality
+-  display flow label in breadcrumb navigation instead of ID
+-  update breadcrumb computation to process only the first active node and handle default state correctly
+-  enhance breadcrumb system to support arrays and optional metadata
+-  implement flow label update functionality with dialog and state management
+-  add updatedAt field to BaseEntity
+-  update root flow section styling and replace icon for improved UI clarity
+-  implement flow creation with backend persistence and UI updates
+-  add create flow button and improve flows list scrolling behavior
+-  enhance flow palette with root flow section and improved styling
+-  add selectedFlowId to FlowsStartupData and update state management for flow selection
+-  implement flow selection and edge retrieval functionality with extended data support
+-  implement single parent constraint in safeLink method with unit tests
+-  add safeLink method to tx for cycle prevention and symmetric relations
+-  implement comprehensive unit tests for graph algorithms including cycle detection, topological sort, and shortest path
+-  enhance qx and tx functions to improve entity existence checks and add creation timestamps
+-  enhance AtomicTransaction with new operations and unit tests for comprehensive transaction support
+-  implement AtomicTransaction class for ACID transaction support
+-  add batchPut method to tx for bulk attribute updates
+-  enhance node editor with backdrop overlay and slide-in form
+-  add dedicated ActionNode component for action type nodes
+-  enhance ListenNode styling with dynamic color and improved layout
+-  animate consumed_by edges in flow diagram
+-  update node handle positions to improve flow connectivity
+-  update default layout direction to 'LR' for improved graph orientation
+-  add auto-layout functionality with dagre for flow graph nodes
+-  add query, transform, and fire nodes to mock data with connections
+-  add node-specific form components for flow canvas editor
+-  update node types in mock data and flow canvas for consistency
+-  enhance edge and node components with handle support for better connectivity
+-  add generic edge component with bezier path and arrow marker for flow canvas
+-  add custom event and step node components to flow canvas
+-  add pagination, grouping and prefix caching to query API
+- qx): add multi‑entity support for seeds and link targets
+-  refactor Vue-Flow integration to use computed nodes and edges
+-  enhance flow state management with detailed and list views
+-  implement drag-and-drop node creation and edge connections in flow editor
+-  update mockPlugin for 'angel' to be pinned by default
+-  hookup flow component state management
+-  implement flows system with entities, relationships, and startup data
+-  add flows system with basic state machine and type definitions
+-  add graph traversal helper functions for path finding and cycle detection
+-  implement graph-v2 helper for ears module with audio stream processing
+-  implement graph data structure and traversal helpers for conversation flow
+-  replace headset icon with message circle icon in thread UI
+-  implement flow canvas with node editor and mock data
+-  add flows plugin with basic state machine and UI components
+-  hookup view thread button and navigation to threads plugin to view a thread
+-  fetch only 4 most recent threads and their messages on startup
+-  add orderby and limit qx helpers
+-  add lite prop to ThreadLinkInput for customizable thread display
+-  add click handler to open thread chat from canvas view
+-  implement thread chat opening functionality across agent and threads plugins
+-  sort thread links by relation type and improve link item styling
+-  enhance thread search UI with improved display formatting and fallback handling
+-  clear search on backspace and improve thread linking by matching thread ID
+-  add dropdown control and improve thread selection UI in link-thread-input component
+-  add scroll-to-bottom button in canvas area when not at bottom
+-  add status dropdown to thread view with draft/queued/active/inactive options
+-  add open state and rounded corner styling to thread tag input dropdown
+-  replace MessageCircleMore icon with Headset icon across chat UI components
+-  add empty state message when chat thread has no messages
+-  rename Files plugin to Includes and update icon to AtSign
+-  add rough thread linking component with search and relation type selection
+-  add editable instructions field to thread canvas view
+-  add inline editing for thread topic with click-to-edit functionality
+-  add optional status field to ThreadEditFields type
+-  fix tag and thread items when setting view state
+-  fix tags input value updating and add tags field to thread creation
+-  add clickable tag display to thread list items
+-  refactor and unified thread types and field updates
+-  add delete functionality to tag input items
+-  use starts with tags input filter
+-  add instructions field to thread entity and system creation
+-  add tag input component to thread creation form
+-  add default values and type casting for thread entity attributes
+-  add placeholder threads to maintain consistent pagination layout
+-  improve thread highlight animation and replace chat icon with headset
+
+### Fixes
+-  add postinstall hook to rebuild node-pty against system Node
+-  update event types for settings and secrets management
+-  update icon paths from buildResources to build/resources
+-  splash screen hangs forever when API server fails to start
+-  update splash screen behavior to allow quitting and prevent manual close
+-  ensure transitive @ai-sdk deps are bundled in packaged app
+-  grant workflow write permissions for creating GitHub releases
+-  prevent empty signing secrets from crashing electron-builder in CI
+-  consolidate CI to use build.sh directly, prevent duplicate runs
+-  prevent CI from triggering on branch pushes and handle missing DSL source dirs
+-  handle missing source directories gracefully in DSL compilers and make notarize config   conditional
+-  conditionally include notarization team ID in Electron Builder config
+-  remove invalid secrets reference in GitHub Actions workflow if condition
+-  disable running tests in release script due to stale boilerplate
+-  update release script messages for clarity on CI process
+-  update app path in run_with_logs script to correct directory structure
+-  update sync-external script to resolve environment variables correctly
+-  update import setup pack to use 'compile' script instead of 'compile:all'
+-  add escaped-quote handling to compiler frontmatter parsers
+-  correct casing of .DS_Store entry in .gitignore
+-  add .DS_Store to .gitignore to prevent tracking of macOS system files
+-  preserve original filename casing in library and notes imports
+-  clean dist seed data before copy to prevent stale nested directory
+-  update project directory toggle logic to prevent duplicate additions in ProjectMenuItems
+-  improve layout and responsiveness of CodePanelHeader component
+-  preserve content section types in markdown library export/import
+-  library import fails when all docs are nested in collection subdirectories
+- fix errors
+-  improve error handling by storing multiple fatal errors in ProcessManager
+-  propagate actual backend error message to error page
+-  resolve race condition where renderer misses backend crash IPC events
+-  correct seed data path for tsup-bundled ESM output
+-  add ESM shims to API build for __dirname support
+-  resolve type errors in default-setup typecheck
+-  update references from scratchpad to default-setup
+-  update db:seed script path and change tags from 'scratchpad' to 'default' in compiled-library.json
+-  comment out Blank plugin from the default export
+-  guard createNode auto-connect against occupied handles + add canvas error toasts
+-  prevent multiple outbound connections per handle in flow editor
+-  filter config fields from action node params and pass full execution context in   code mode
+-  cancel current animation on structural changes in node updates
+-  adjust layout for FlowsList component to improve structure and spacing
+-  document edge and port synchronization to prevent layout issues
+-  prevent switch node from breaking flow canvas layout
+-  reindex branch-N sourceHandles when switch node branches are added/removed
+-  reduce excessive vertical spacing between brain plugin tracks
+-  add enter key functionality to close ListenerForm
+-  update tests to match Track refactor (steps → exits) and fix FE issues
+-  reduce backdrop opacity for improved visibility
+-  compile all seed flows together so inter-flow references resolve
+-  wrap sendPluginData query in try-catch to prevent crash on cleared volatile data
+-  skip flow listener nodes with empty eventType to prevent XState crash
+-  show kill_flow event track on brain canvas
+-  handle root flow completion in brain system to properly kill brain
+-  reposition all sibling nodes in component when palette-created node adds an exit
+-  use ELK layout for palette-created nodes with auto-edges
+-  align new node position with existing listener in flow layout
+-  account for dynamic node height in "below all" placement
+-  prevent removal of the last source handle in BaseNode component
+-  sync VueFlow selection styling with XState selectedNodeId
+-  assign exit handles on auto-edges from palette to listener nodes
+-  update styling for active and selected states in BaseNode component
+-  hide exit handles on kill and keep_alive nodes
+-  add yellow color options to node style classes for improved visual differentiation
+-  update keep_alive node configuration with new color and style properties
+-  move kill node configuration to bottom of pallette
+-  filter palette items to include only implemented node configurations
+-  replace missing action refs in example Notification Flow
+-  detect label collisions across parallel exits in DSL compiler
+-  restore listen node fallback port to fix vertical track stacking
+-  restore listen node fallback port to fix vertical track stacking
+-  match listener node ELK height to rendered height to prevent track overlap
+-  add documentation for horizontal track rendering issue and desired layout
+-  stack tracks vertically by fixing ELK port mismatches and component packing
+-  remove duplicate-edge check from isValidConnection to fix programmatic edge   rendering
+-  resolve isValidConnection breaking click-to-connect flow
+-  block duplicate edges in click-to-connect flow
+-  block same-node handle reconnections via isValidConnection
+-  correct parentId in handleChildCompletion and resumeFlowSteps for proper tree hierarchy
+-  adjust listen node height calculation to account for event type
+-  render parallel brain paths as branches instead of sequential chain
+-  update label from 'step' to 'exit' for clarity in listen node
+-  fill listen node empty space with numbered exit rows
+-  improve style support for multiple parallel exit handles on listen nodes
+-  notify agent plugin when internal/commands doc is first created
+-  improve kanban card UX — truncate titles, enlarge drag handle, fix tooltip
+-  enable vertical scrolling in kanban columns
+-  prevent getting stuck in command mode when typing slash-space
+-  simplify class binding in NodeForm and refactor code editor options in SwitchForm
+-  prevent dslParams from being overwritten in multi-file mode during mount
+-  update markdown parsing to handle empty task items and preserve empty paragraphs
+-  scroll to bottom after forking a thread
+-  preserve empty lines (blank paragraphs) after save/reload
+-  preserve empty task list items after save/reload
+-  auto-recognize pasted/set commands in command-suggestion-plugin
+-  make cursor visible on empty task list items
+-  update button styles for consistent height and border radius
+-  backspace on non-first list items now lifts instead of joining
+-  make Cmd+A selection highlight span full line width in TipTap editors
+-  rename stop button to pause button in chat input component
+- refactor: simplify scroll behavior logic and remove unused variables in chat component
+-  update border color for non-user messages in chat component
+-  position bubble menu above selected text on multi-line selections
+-  nested document selection in library tree
+-  activate command mode when slash has leading whitespace
+-  restore command mode when Ctrl+Z undoes a command name edit
+-  exit command mode when backspacing breaks selected command prefix
+-  prevent command mode from exiting on typing and backspace
+-  remove startsWith('/') fallback for command detection in chat display
+-  improve category level deactivation logic in reference suggestion plugin
+-  polish Quick Prompts textarea and display issues
+-  resolve textarea issues in Quick Prompts
+-  hide selection outline on reference pills in non-editable views
+-  include reference check in should-show condition for BubbleMenu
+-  guard editor view access in ReferenceSuggestionPopup to prevent crash on plugin   switch
+-  require Cmd/Ctrl+Click to navigate reference pills
+-  update Reference command to insert text correctly in TiptapBlockMenu
+-  pass variant prop to ReferenceSuggestionPopup for improved positioning
+-  support ReferenceSuggestionPopup in all app md editors
+-  show kanban drop indicator when hovering empty space in populated columns
+-  show kanban drop indicator when hovering empty space in populated columns
+-  guard contextMenuFn callbacks against undefined context during state   transitions
+-  anchor reference popup bottom edge to prevent jumping on content changes
+-  ensure focus on container after expanding or collapsing folders
+-  constrain message bubble width so attachment strip scrolls instead of overflowing
+- fix Zod schema for the USER_MSG event in agent/system.ts
+-  resolve race condition in pasted image name deduplication
+-  deduplicate pasted image names and forward attachments to brain
+-  use base64 data URLs for image previews from file picker
+-  restore focus to container after inline rename ends
+-  update item retrieval for editing in FileSystemBrowser to use flattenedTreeItems
+-  auto-refresh commit/PR panels on backend directory change
+-  update border color for image elements in chat input and message components
+-  when DialogContent fires @interact-outside, we prevent the   default close behavior if the context menu is currently open. Once the context menu is    dismissed (by clicking outside it or selecting an item), subsequent outside clicks   will close the lightbox as normal.
+-  reposition lightbox close button to image corner and right-align chat image   thumbnails
+-  align attached images to the right in chat message component
+-  conditionally render close button in image lightbox
+-  adjust padding in chat input editor and buttons row for improved layout
+-  adjust padding in chat input editor for improved usability
+-  remove duplicate scroll classes from chat input editor wrapper
+-  prevent extra empty paragraph when using markdown input rules in chat input
+-  adjust padding in buttons row for improved layout
+-  eliminate list height jank when toggling paragraph to bullet/numbered list
+-  allow codeBlock to handle Enter key in TiptapEditor
+-  hide gutter block handle when bubble menu is active
+-  feature panel content not loading after directory selection
+-  NoDirectoryState updates immediately after directory selection
+-  all three panels now also check !baseDirectory from the code actor
+-  stop speech helper on unmount during pending start
+-  remove ready timeout on macOS for permission dialogs
+-  register onEarlyExit directly as exit listener so cleanup() can remove it
+-  harden PowerShell spawn flags in SpeechHelperProcess
+-  add voice-input event emission in handleButtonClick
+-  increase readyTimeout to 60s on macOS for permission dialogs
+-  prevent concurrent speech:start from bypassing spawn readiness
+-  move readyTimeout assignment before event handlers in SpeechHelperProcess
+-  improve error handling in useSpeechRecognition and streamline event processing
+-  handle errors in speech recognition lifecycle and ensure proper state management
+-  dispose and null recognizer on failed start in SpeechHelper.ps1
+-  improve error handling and cleanup in SpeechHelperProcess refactor: simplify spawn() in SpeechHelperProcess
+-  remove compiled binary from git and fix dead helper recovery
+-  use RecognizeAsyncStop() instead of RecognizeAsyncCancel() for Windows   speech helper
+-  update button class binding to handle undefined class scenario
+-  use finish() instead of cancel() to deliver final speech text
+-  correct dev-mode path resolution for speech helper binary
+-  prevent name column text wrapping in prompts/actions tables
+- fix white square from
+-  adjust table layout for better responsiveness
+-  responsive library table with container queries
+-  left-align mode selector below @md breakpoint
+-  decouple quote rotation from messages, tie to new thread button
+-  prevent horizontal overflow in inspection panel
+-  open main window on same monitor as splash screen
+-  dynamically center macOS traffic lights on zoom change
+-  reduce window dimensions
+-  correct toolbar controls area height for consistency
+-  adjust padding in headers
+-  adjust panel resizer width and handle positioning for better usability
+-  scale toolbar spacer height to prevent plugin icons overlapping macOS   traffic lights
+-  export tasklists as folders with individual task files instead of checkbox syntax
+-  reduce button min-height and margin for note display
+-  preserve image resize query params (?w=XX) during markdown export/import
+-  strip query params from media filenames during export
+-  load notes settings on startup via NOTES_CONNECTED payload
+-  drag reorder onto expanded parent drops as sibling instead of child
+-  honor drop target when dropping on a valid node
+-  drop below last tree node places item at bottom instead of top
+-  close dropdown menus when clicking drag region in panel headers
+-  address tasklist bugs and extract shared reparent helper
+-  prevent editor from stealing focus on new task title when tasklist isn't   selected
+-  remove unnecessary opacity from completed tasks separator
+-  enhance task list header interactions with improved selected indication
+-  reorder plugin exports to prioritize Notes
+-  cancel pending debounced updates when editing note or task changes
+-  add checks for note existence before updating and viewing notes
+-  update local context immediately on title change to prevent input flickering
+-  clear selectedTask when adding new note so it becomes the active editing note
+-  use editingNote for noteId in page insert command
+-  add subpagelink when creating subnote from tree view context menu
+-  adjust margin for note tree item for better alignment
+- fix restriction task reordering to within task/tasklist containers
+-  allow dragging item back into its current parent
+-  initialize task descendants with the current note
+-  update draggable logic for task notes based on depth and mute status
+-  add subpagelinks when dragging notes into tasks/tasklists
+-  prevent task notes from being dragged out of tasklist via gap cursor
+- fix flickering between gap cursor
+-  add sub-note action in tasklist panel and welcome state
+-  notes inside tasklists should navigate to parent tasklist
+-  improve context menu positioning to prevent overflow
+-  prevent tasks from being dragged outside task lists
+-  stale dropTarget causing header drop to fail in TaskListPanel
+- fix flickering drag-and-drop functionality by adding cancel drag leave feature
+- Move the overview item into the panel header, showing the actual tasklist name and icon instead of a generic "Overview" label.
+-  integrate notes panel menus with useMenuState so drag regions don't swallow close clicks
+-  update event listeners to use 'mousedown' for handling outside clicks in NoteTreeItem and panel components
+-  implement context menu for editing and deleting parameters in ActionsPanel and PromptsPanel
+-  adjust padding and margin for improved layout in BaseDirectoryMenu
+-  adjust button class for improved layout in BaseDirectoryMenu
+- fix cutoff a top of editor
+- fix title row padding
+-  add gapcursor styling for improved visibility between block nodes
+-  update image resizing functionality to preview changes and commit on input change
+-  add border to images in Tiptap editor for improved visibility
+-  prevent last image from being auto-selected on initial load and after content update
+-  encode image resize width as URL query param for markdown round-trip
+-  handle multiple images in paste and drop handlers
+-  enable image paste in create mode by generating fallback entity ID
+-  preserve newlines in chat input by using innerText instead of textContent
+-  hide misleading Save button on threads edit page
+-  filter "Next step" dropdown to only show implemented node types
+-  reorder plugin exports to ensure Code is listed after Library
+-  hide delete actions for pinned threads in detail view and list
+-  reset link input when selection changes in TiptapBubbleMenu
+-  adjust padding for unordered and ordered lists in Tiptap theme
+- fix jank in ContentSectionEditor by disabling type selection when content is present instead of constructing a label
+-  prevent text selection in kanban columns for improved user experience
+-  prevent duplicate items flash when dragging cards between kanban columns
+-  disable click-to-chat feature in default settings
+-  update tab label for existing tabs in THREAD_TAB_REQUESTED handler
+-  remove redundant LIST_FILES call that caused error flash on directory open
+-  move 'New Project' component to the correct position in the template
+-  update label from 'Create Project' to 'New Project' for clarity
+-  type-safe sendToPlugin with DistributiveOmit to eliminate as any casts
+-  update onboarding task completion logic and add SET_MODE event type
+-  set chat mode to 'chat' upon finishing onboarding
+-  reset mode to default when switching threads without forcedMode
+-  clear forcedMode when onboarding completes so thread exits Birth mode
+-  add container reference for improved keyboard event handling
+-  adjust position of status indicator halo for better alignment
+-  add watch to sync todoData with artifact prop updates
+-  enhance response handling in ChoiceInput and TextInput components
+-  update selectSuggestion to set inputValue before emitting submit
+-  prevent onboarding step skipping from misrouted/duplicate responses
+-  update todo artifact status from 'pending' to 'active' and adjust related logic
+-  resolve scratchpad tsconfig errors for import.meta and @/ path alias
+-  restore LibraryService as a class to match other service patterns
+-  improve git rename handling and stage/unstage responsiveness
+-  correct rename path handling in commit panel for diff, open file, and unstage
+-  correct import path for TourTarget type in TourSpotlight component
+- fix types in analyze-text action
+- fix re-expanding inspection panel using handle dbl click
+-  Detach diff editor models before mode switch to prevent disposal error
+-  Discard changes preserves staged changes instead of wiping both
+-  Show correct diff content for staged vs unstaged changes
+-  Handle disposed Monaco editor models during mode switches and file navigation
+-  Update label from "Topic" to "Title" in NameSaveHeader component
+-  update FileSystemBrowser header styles and adjust canvas template class binding
+-  improve panel details for nested folder items and symlink docs
+-  hide shortCode for default document selection
+-  show panel details for documents selected in nested expanded folders
+-  handle symlink items in moveItems backend action
+-  prevent drag-and-drop of items across symlink contexts
+- fix dragging back into root level
+-  preserve expanded folders during drag-and-drop tree mutations
+-  adjust padding for 'Name' column in FileSystemBrowser table header
+-  rename 'Home' button to 'root' in FileSystemBrowser component
+-  update canvas breadcrumb label to 'Code'
+-  update canvas header class binding to conditionally apply 'canvas-header'
+-  add else as condition entry in compileSwitchNode for proper handle rendering
+-  set default open state for Import Flows section
+-  update label for flows plugin to 'Flows'
+-  address PR review issues for switch node and flow editor
+-  prevent handle click from triggering dropdown outside click
+-  persist node connections from click-to-connect and switch branches
+-  ensure consistent edge spread ordering across page refreshes
+-  stack flow chains vertically using ELK component separation
+- fix type err
+-  adjust rankSep in layout configuration for reduced spacing
+-  calculate layout before render to prevent nodes clustering at origin
+-  hide empty content slot wrapper in flow nodes
+-  improve flow node contrast with brighter backgrounds
+-  update labels for flow entries to ensure uniqueness
+-  improve DSL export and import error handling
+-  restrict forcedMode to 'birth' in ThreadEntity interface
+-  add tooltip with time and date to kanban card and clean up commented code
+-  use unified Electron dialog API for file/directory selection
+-  simplify menu item labels for clarity
+-  prevent horizontal scroll in commit panel file paths
+-  clean up template and style formatting in message component
+-  improve file modification tracking with content comparison
+-  improve file change handling and debounce logic in GitWatcherService
+- fix GitWatcherService logic and enhance file change detection
+-  auto-delete empty tab groups when last tab is removed
+-  ensure defaultBaseDirectory setting takes priority over navigation history
+-  eliminate double scrollbars in settings tabs by adjusting overflow handling
+-  reduce maximum visible segments in breadcrumb to improve UI clarity
+-  remove preventDefault from directory breadcrumb project toggle
+- fix scroll hover disappearing
+-  adjust panel resizer styles and improve drag handling
+-  refine panel header drag regions to preserve window dragging on whitespace
+-  simplify explorer initialization to handle CODE_CONNECTED directly
+- fix runtime type gen
+-  auto-delete empty tab groups when closing last tab
+-  improve drag-and-drop logic to handle context changes and target tab positioning
+-  enhance drag-and-drop functionality to improve tab positioning and gap detection
+-  improve drag leave handling to reset state only when leaving both pinned and main containers
+-  implement holistic soft-delete filtering in repository query helpers
+-  prevent llm.now.available from firing on every startup
+-  preserve sub-flow state when switching plugins in brain
+- fix event scoping for local/global/entry events
+-  filter TNode spawns to match the currently viewed flow for real-time updates
+-  replace icon with text label for chat button in thread row
+-  comment out unused createBrowserInspector import and related code
+-  add XState visualization URL to external URLs whitelist
+-  resolve LMDB "Dbi is not open" errors with graceful handling
+-  add graceful-fs dependency
+-  maintain current sub-flow view when new events arrive in brain plugin
+-  standardize form event emissions to resolve keep_alive label update issue
+-  enhance table header visibility with background color
+-  display thread artifacts in agent canvas when opening threads
+-  update chat display logic to show message prompt at bottom of chat
+-  resolve birth mode display issues and type errors
+-  update version number from 1.0.0 to 0.1.0
+-  temporarily set isProd to true for debugging API key retrieval
+-  use env var in dev
+-  add @ts-nocheck directive to add-to-thread and db-query files
+-  prevent duplicate vector IDs during batch indexing and ensure valid keys are inserted
+- fix add to thread action
+-  preserve existing graph positions when setting plugin and loading flow data
+-  update button text to improve clarity and remove unused exit function
+-  handle potential undefined values for document content and tags on mount
+-  resolve Monaco editor intellisense widget cutoff issue
+-  improve clarity and consistency in tour step content descriptions
+-  resolve Settings persistence issue and cleanup codebase
+-  enhance import confirmation message and success toast for clarity
+-  update warning message styling for better visibility
+- paths): correct database names in copy script and paths configuration
+- tour): properly complete onboarding when tour finishes
+- tour): update content for API keys setup instructions for clarity
+- secrets): update Google AI API key URL to the correct endpoint
+- onboarding): adjust autoplay timing for smoother transitions between steps
+- tour): fix pointer-events to allow clicks in spotlight area and block backdrop
+- tour): make flash animation more subtle and less aggressive
+- tour): add full backdrop for steps without targets and fix timing for multi-target rendering
+-  reorder standard providers to place OpenAI entry correctly
+-  update onboarding and guided tour step descriptions for clarity
+- tour): enhance keyboard navigation to handle Enter key for tour completion
+- application): handle _meta plugin ID and prevent undefined actor errors
+- tour): improve content clarity in tour steps descriptions
+- tour): comment out unnecessary nextTick call in updateTargetRect function
+- tour): prevent keyboard navigation from completing tour
+- tour): implement dynamic tooltip measurement for flexible width
+-  update onboarding copy
+-  extend thread creation to include status and update thread creation status handling
+-  update default thread status to match settings configuration
+-  include flow settings in connected data response
+-  prevent page refresh when clicking app icon in dock/taskbar
+-  rename production run script for clarity
+-  rename build scripts for consistency
+-  cleanup build scripts
+-  enhance build script with improved validation and database setup
+-  clarify log message for WebSocket server startup
+-  add icon path to Electron Builder configuration
+-  update thread row to display shortCode in parentheses for better clarity
+-  update splash screen status message to reflect application initialization
+-  update splash screen status message to remove trailing ellipsis
+-  update splash screen status message during API server startup
+-  update available tags when thread settings change
+-  reorder table columns to place 'Status' after 'Tags'
+-  correct spelling of developer's attribution name in HelpTab attribution
+-  prevent brainIsDead UI from showing initially on page load
+-  complete IndexedDoc entity cleanup in deletion flows
+-  implement deterministic IDs for Settings entities to prevent duplicates
+-  exclude CLI files from main build to resolve compilation errors
+-  brain plugin start button now properly refreshes UI
+-  position toggles absolutely in collapsible sections
+-  remove existing terminal activation logic for cleaner terminal creation
+-  update log truncation logic to use dynamic maxLogs setting
+-  logs filtering now applies immediately when sources are excluded
+-  implement proper brain start/stop state machine
+-  brain state management and UI updates
+-  track running root flow ID for proper brain restart notifications
+-  use dynamic status options from settings in Thread component
+-  update clear button icon and hover color in KeyboardShortcutInput
+-  resolve duplicate code settings entity creation on startup
+-  ensure hotkey updates apply immediately without page refresh
+-  correct tx() usage for settings persistence
+-  prevent feedback loop in settings components
+-  code cleanup and bug fixes
+-  improve layout and accessibility of keyboard shortcut input
+-  allow saving of all custom hotkeys, including incomplete entries
+-  make all default hotkey inputs exactly the same width
+-  update built-in hotkeys to use reactive state and preserve defaults
+-  prevent overwriting built-in hotkeys if not defined in changed settings
+-  rename clearShortcut to resetShortcut and update button title
+-  replace Trash2 icon with X icon for remove shortcut button
+-  update default switchPlugin hotkey from arbitrary 'arrows' to actual keys
+-  correct arrow key combination display bug
+-  reorder Settings plugin in the export list
+-  Enable multi-arrow key support in keyboard shortcuts
+-  Improve clarity of API keys description in settings
+-  update wording in Personal Information description for clarity
+-  Standardize settings section headers and labels
+-  correct HTML structure in ScopeSection and remove unnecessary condition in SectionsConfig
+-  update collapse icons to use anticipatory animation pattern
+-  generate DSL types dynamically for Monaco editor
+-  improve TNodeListItem responsive layout for timing section
+-  prevent and clean corrupt relation data in LMDB persistence
+-  implement relation metadata tracking for correct partition routing
+-  address critical LMDB adapter review feedback
+-  address critical LMDB persistence layer issues and improvements
+-  update LMDB path references and comment out snapshot loading in backend setup
+-  remove logger info call from WebSocket server startup
+-  update development paths for snapshots and LMDB to reflect project structure
+-  ensure parent directory exists before opening LMDB environment
+-  replace handrolled syntax linter with Acorn parser for proper syntax validation
+-  enable pinning for terminal tabs
+-  improve PR panel folder expansion and add expand all button
+-  preserve drop position when dragging palette items to flow graph
+-  save flow node output to nodeAttributes for display in details panel
+-  correct event type handling for flow node double-click navigation
+-  update getSnapshotsPath to always use project structure in development
+- fix snapshots
+-  use full nodeAttributes for entryData in createFlowNodeSystem
+-  resolve flow step node data binding issues
+-  use step-specific label for flow trace node
+-  improve header layout in StepNodeDetails component for better responsiveness
+-  inline header elements in StepNodeDetails component
+-  add overflow-hidden class to prevent content overflow in canvas layout
+-  standardize node details display across brain and agent plugins
+-  simplify actionId display in keyAttribute computation
+-  add completedAt tracking for accurate step duration calculation
+-  move View menu next to back button to avoid panel overlap
+-  hide back button when viewing root flow in brain plugin
+-  link flow TNodes to Flow entities instead of Node entities
+-  prevent crash when clicking non-flow TNodes in brain graph
+-  add flow-scoped filtering for TNODE_SPAWNED events
+-  prevent nested flows from terminating parent flow unless marked as final
+-  add isFlowCompletion flow completion logic to support nested flows
+-  handle multi-item deletion in FileSystemBrowser
+-  remove unnecessary await from backend mutation calls
+-  use context-aware folder count instead of global collections count
+-  adjust spacing and layout for selected items actions in FileSystemBrowser
+-  update action and prompt detail bindings to use undefined instead of null
+-  git watcher now properly updates status after external commits
+-  simplify commit panel file display to show filename.ext followed by path
+-  remove global cursor styles and clean up drag styles
+-  clicking selected item now deselects it
+-  remove redundant prefixes in breadcrumb labels for clarity
+-  remove duplicate headers in list sections and add item counts
+-  adjust textarea height dynamically for better user experience
+-  update thread dropdown animation and styling for improved UX
+-  list editor bulk mode behavior and cancel button
+-  Ensure onReady handler is triggered only once when server is ready
+-  Hide 'Open in editor' button for create forms
+-  preserve multi-selection when starting drag operation
+-  use action array for handleDoubleClick with clearSelection
+-  resolve drag-reorder UX issues and horizontal scrollbar
+-  update start script to include build step for backend
+-  use tx().update() instead of tx().put() for displayOrder to prevent array accumulation
+-  complete breadcrumb implementation for library plugin
+-  adjust padding for 'Home' button in FileSystemBrowser component
+-  correct breadcrumb metadata format in library plugin states
+-  rename 'Library' button to 'Home' for clarity
+-  prevent unnecessary rename operations when name unchanged
+-  conditionally render status bar based on open files
+-  reorder buttons in FileSystemBrowser for improved UX
+-  enhance typecheck scripts with success messages for frontend and backend
+-  update label from 'Collections' to 'Folders' in panel component
+-  remove unnecessary model label display in panel component
+-  remove unnecessary opacity class from button in FileSystemBrowser component
+-  uncomment base path configuration for Electron compatibility
+-  update package name and version in package-lock.json
+-  update application name and version in build scripts
+-  disable auto-updater and publishing in Electron Builder configuration
+-  update copyright information and author details in LICENSE and package.json
+-  update build scripts to use exact Electron version for native module rebuilding
+-  spawn API server process using Electron's Node.js for native module compatibility
+-  resolve Electron native module compilation for production packaging
+-  update groupedResults computation to use Array.from for better compatibility
+-  remove unused untracked snapshots directory logic
+-  resolve TypeScript type error in setTextRef function
+-  improve search results display for documents vs chunks
+-  standardize option text casing and improve note clarity in SectionsConfig
+-  resolve usearch index creation and document indexing issues
+-  update .gitignore to include local_cache and search-indices
+-  add search index management UI and fix create index functionality
+-  update folder and document mock data types for better type safety
+-  comment out export statements for parser and type in OccurrenceInput.vue
+-  improve input styling and validation feedback for better user experience
+-  update option label from 'Key:Value' to 'Field' for clarity
+-  rename 'Work Item' option to 'Task' for clarity in thread type selection
+-  improve search placeholder to handle missing root directory
+-  adjust padding in pinned bottom section for consistency
+-  adjust window controls area height for consistency
+-  improve quick open palette navigation and Monaco editor functionality
+-  enhance console.log insertion logic for better line handling
+-  improve file URI handling for consistency across platforms
+-  normalize file URI formatting for cross-platform compatibility
+-  add type assertion to fix ts errorr
+-  rename fbeUserMessage to forwardUserMessage for clarity
+-  replace browser prompts with Electron-compatible dialogs in library plugin
+-  prevent timestamp text from wrapping in message component
+-  resolve document update and collection persistence issues
+-  reorder actions in CODE_STARTUP event for proper execution flow
+-  update import path for applicationState in canvas.vue
+-  prevent toolbar from shrinking with flex-shrink-0
+-  disable flow MiniMap
+-  remove unused Logs plugin import from index.ts
+-  add draggable areas to canvas and inspection panel headers
+-  coordinate API server startup with window creation
+-  update window manager to set default dimensions and minimum size
+-  tailwind config not being found
+- fix fe type errors
+-  correct scrollbar thumb hover color in style.css
+- fix import error
+-  TRPC subscription
+-  add .env to .gitignore
+-  add whitespace-nowrap class to category span for better text handling
+-  improve actions list UI consistency and usability
+-  refactor parameter handling to use stable IDs and improve rendering logic
+-  only zoom/pan to node on double-click, not selection
+-  sync node selection state with VueFlow's internal selection
+-  Implement node deletion functionality in flow editor
+-  Improve node selection UX in flow editor
+-  Set hasUpstream to false in commit state
+-  Remove box-shadow from chat area component for improved visual clarity
+-  Elevate resizer z-index to ensure it's always accessible
+-  Increase horizontal resizer click target area to avoid browser resize conflict
+-  Improve resizer visibility and double-click behavior for collapsed panels
+-  update thread status from active to backlog in snapshot
+-  thread status dropdown issues in list view
+-  display actual dashboard work items in kanban artifact
+-  resolve dashboard tabs not showing by moving to backend-driven data
+-  update background color for active tab item
+-  correct border style in tab item component
+-  update default value of withContext in getAndExecute method to true
+-  resolve prompt editing issue by using consistent field naming
+-  update git snapshots directory path to match new structure
+-  make thread ID optional in AgentThreadData type
+-  clearing thread
+-  resolve duplicate edges issue in flow editor reconnection
+-  add proper type imports and clean up JSDoc in action-playground
+-  make threadId optional in addMessageToThread, creating new thread if there isnt one
+-  remove ignored path for database snapshots in .gitignore
+-  update untracked snapshots directory path
+-  standardize panel width and prevent overflow issues
+- fix imports
+-  reorder plugins to place Prompts after Actions
+- fix imports
+-  update mode select options and align text to center
+-  reorder Agent plugin in the default export list
+-  handle potential null values for currentThread in agent components
+-  improve tab close button styling and alignment
+-  resolve quick open file selection mismatch
+-  preserve recency order when displaying recent files
+-  implement VS Code fuzzy search heuristics for proper exact match ranking
+-  improve quick open palette performance and UX
+-  simplify tab drag implementation to use container-level handlers only
+-  eliminate dead zones in tab drag-and-drop
+-  eliminate duplicate events when opening code plugin
+-  update description for async JavaScript function in ActionForm component
+-  update action icon from Code2 to Play and adjust class order for better styling
+-  prevent duplicate terminal tabs when clicking already open terminals
+-  prevent duplicate action tabs when clicking already open actions
+-  make terminal tab restoration async to work with early loading
+-  action tabs not being restored (introduces terminal bug)
+-  display action label instead of ID in tab names
+-  fix git status update flow
+-  add missing onMounted lifecycle hook for keyboard event listener
+-  correct import path for GitStatusFile and adjust class order in FileTree component
+-  update import paths for FileEditor component to use absolute paths
+-  improve file path display in discard changes dialog
+-  make revert button always visible in commit panel
+-  remove loadPersistedTabs action on plugin activation
+-  implement tab persistence with explicit save actions
+-  update background color of the editor to improve visibility
+-  terminal scrollbar and flex layout issues
+-  use .merge instead of .put for updating terminal attributes in EARS
+-  prevent terminal output duplication on reconnect
+-  improve terminal output handling
+-  update terminal creation to be asynchronous and adjust shell initialization focus
+-  resolve terminal tab switching and Monaco editor disposal errors
+-  replace node-pty with node-pty-prebuilt-multiarch for terminal support
+-  refresh git panels when root directory changes
+-  address remaining git repository edge cases
+-  improve git repository robustness and fix PR panel
+-  resolve git diff viewer issues in code plugin
+-  show root directory name instead of '.' in search placeholder
+-  search from root directory instead of current directory
+-  correct directory path display in code plugin breadcrumbs
+-  improve breadcrumb UX with better click targets
+-  update currentDirectory in UI without refresh
+- fix chromium ref for taiko
+-  check for proc sub-action firing logic
+-  update Node-b1 eventType to 'user.message' and change mode to 'internal'
+-  update eventType for user message node to 'user.message.old'
+-  include zod in action function execution context
+-  update border color for tab bar in canvas component
+-  update snapshot filename format to use underscores instead of dashes
+-  ensure fieldMappings is always an array in ActionForm and LLMForm
+-  resolve TypeScript errors in frontend components
+-  enable document editing from file browser in library plugin
+-  preserve editor content when toggling database mode
+-  prevent tab key from losing focus in CodeMirror editors
+-  handle fieldMappings as array or single object
+-  update snapshot data
+-  exclude relations involving excluded entity types
+- fix snapshot data
+-  handle undefined selectedFlow in flows startup data
+- fix useState type error
+-  simplify library plugin ID assignment
+-  rename libraryMachine to librarySystem for consistency
+-  correct alternating row pattern for empty rows
+-  dynamically fill remaining space with empty rows
+-  reduce empty row count to prevent scrolling
+-  show alternating row colors even when folder is empty
+-  breadcrumb navigation and folder parentId issues
+- chat): adjust background opacity for non-user messages
+-  change initial state of library machine from 'idle' to 'list'
+-  improve disabled primary button styling for better text visibility
+-  update message background colors and improve timestamp formatting logic
+-  reorder plugin export to ensure Threads is included after Agent
+-  better position of floating hover UI in chat message component
+-  clarify introduction and enhance backend systems description in README
+-  enhance introduction and features sections for clarity and detail
+-  update system architecture diagram to include flows and clarify interactions
+-  ensure finishReason is awaited before sending LLM_DONE event
+-  move sendToPlugin call inside the streaming loop for real-time updates
+-  correct function name from emitToPlugin to sendToPlugin in event emitter documentation
+-  add missing await for streamText in Stream to FE action
+-  update border color for tab bar in canvas component
+-  reorganize layout and root styling of inbox components
+-  update search input placeholder for clarity
+-  adjust search input width for better layout
+-  improve kanban board styling and layout
+-  ensure node relations are merged correctly in updateNodeRelations function
+-  correct prompt template ID retrieval in generatePrompt function
+- fix import
+-  optimize node retrieval by using links and mapping node IDs
+-  retrieve all node properties when loading flow data
+-  ensure new flows start with blank canvas and entry node
+-  replace Teleport with DropdownMenuPortal for improved dropdown positioning
+-  use ComboboxPortal with popper positioning for proper dropdown placement
+-  remove user-select property from tnode-item style
+-  remove grab cursor from inspection panel items
+-  include nodeAttributes in TNode queries for inspection panel
+-  remove nesting bar and center child nodes in TNode tree
+-  recursive TNode tree rendering in agent panel
+-  event node icon computation for event nodes
+-  adjust layout gaps and refine edge animation logic in TNodeGraph component
+-  reduce TNode graph spacing for better visibility
+-  enable real-time UI updates in brain plugin when events occur
+-  resolve "Step ID is required" error in brain flow execution
+-  add missing prompt templates for run-agent-brain flow
+-  adjust layout of tab in NodeForm to improve visibility of node type
+-  properly center all nodes on click by moving logic to FlowEditor
+-  preserve node positions in frontend state after layout calculation
+-  add border to pinned items section in toolbar component
+-  rename event emitters for layout and edit label actions in FlowActionsMenu
+-  rename event emitters for layout and label actions in FlowEditor and flow-canvas components
+-  improve contrast for inputs and selects in LLM form
+-  make model provider headers sticky in model dropdown
+-  resolve translucent sticky header issue in model dropdown
+-  update table header from 'ID' to 'Code' for clarity
+-  improve LLM form UI and fix combobox display issues
+- fix prompt template selection input binding
+-  hide prompts header when no prompts exist
+-  adjust overlay message position for better visibility in FlowEditor
+-  simplify input mapping
+-  close node form when going back to flows list
+-  rename DataRenderer component file
+-  update logs plugin icon to ScrollText
+-  step node creation data
+-  update editor theme background color for improved consistency
+-  enhance no-results state layout with improved structure and styling
+-  improve error message handling in query execution and update ResultsInfoBar styling
+-  update flow node mode from entry to internal and add new entry_event role
+-  update label and add model to run agent brain flow node
+-  update LLM icon from Brain to Headset in node configuration
+-  enhance node configuration handling with partial record and type safety improvements
+-  update relation kind from CONSUMED_BY to RESPONDER across multiple files
+-  replace Custom('INSTANCE_OF') with INSTANCE_OF for stronger typing in relation handling
+-  adjust padding on Footer Actions for improved button layout consistency
+-  adjust padding on Collapse All button for improved layout consistency
+-  update event types in brain state to use OutgoingBrainEvents
+-  add 'Keep Alive' item to NodePalette with Activity icon
+-  update query example to retrieve IDs of active threads instead of agents
+-  update query examples for improved clarity and consistency
+-  add key bindings for Ctrl-Enter and F5 to emit execute event
+-  update query examples to use lowercase relation types for consistency
+-  update query example to use 'text' instead of 'content' for message retrieval
+-  improve execution time measurement and formatting in ResultsInfoBar component
+-  reorder KeyboardHint component in QueryEditorHeader for improved layout
+-  remaining type issues
+-  update graph layout handling and allow Ref type for useResultAnalysis input
+- fix types - remove fitView and fitViewPadding from graph initialization
+-  improve search functionality by refactoring search button click handler and ensuring input focus
+-  handle undefined order and matchedIndexes in FlowsList component
+-  hide flow breadcrumb when no flow is selected
+-  improve breadcrumb computation for default and route-less routes
+-  prevent duplicate flow selection in selectFlow handler
+-  filter out root flow from flows selection in state management
+-  add minimum height to header row for better layout consistency
+-  prevent flow selection error when id is undefined
+- edge-store): return correct intersection when both source and target are given
+-  update relationship types in mock data for accurate flow representation
+-  update handle types in DecisionNode to ensure correct connection behavior
+-  stick with arrays everywhere in flows state management
+-  update onNodeClick handler to use NodeMouseEvent type and extract node property
+-  add type assertions and null checks for thread and message data
+-  prevent tag click event from triggering when deleting tag
+-  reorder filter and clear filter buttons in thread list toolbar
+-  fallback to default panel when active plugin has no panel component
+-  move toggle button from top to bottom of canvas
+- fix edge-store.matchIds scanning the target index with no key,
+-  add unique id to clearNewThreadFlag child actor to prevent duplicate spawns
+
+### Refactors
+-  reorganize build scripts into grouped subfolders
+-  remove outdated production build and release process documentation; consolidate into a single release guide
+-  clarify build script compilation step for default-setup
+-  update build script to enhance clarity and add DSL compilation step
+-  eliminate sync-defs by outputting defs directly to default-setup
+-  reorder settings event types for improved organization
+-  enhance entryWithListeners to accept single or parallel entry exits
+-  replace modeTracks with entryWithListeners for improved flow handling
+-  replace seeded boolean with seedHash for seed gate
+-  eliminate intermediate seed data copies from build pipeline
+-  reorder New Project component for improved clarity in ProjectMenuItems
+-  extract restyled empty state into shared NoDirectoryState component
+-  clean up error page implementation
+-  clean up src/ data, consolidate examples
+-  remove src/ → build/ dependency in default-setup
+-  import ActionParameter and TemplateInput from generated defs
+-  auto-generate all default-setup defs, move compiler infra to build/
+-  simplify resolve-env.sh for monorepo-only use
+-  streamline environment variable loading in sync-external script
+-  separate compile output from API delivery in default-setup
+-  move default-setup into monorepo, decouple scratchpad from API
+-  move generated type defs to types/generated/ subdirectory
+-  clean up brain plugin layout code
+-  unify handle reindexing into single parameterized flow
+-  clean up seed.ts for succinctness and maintainability
+-  move layoutComponentAroundSource to layout-utils.ts
+-  rename node type 'listen' to 'listener' for consistency
+-  make layout system data-driven with node descriptors
+-  replace stickyUntil timestamp with boolean pinned flag in chat scroll logic
+-  simplify scroll behavior logic and remove unused variables in chat component
+-  simplify Mode/Phase Selector layout in chat input component
+-  clean up code formatting and add 'Common Context' example category
+-  simplify command-suggestion-plugin logic
+-  harden command-suggestion-plugin state derivation
+-  extract reference-config.ts as single source of truth for ref types
+-  update button styling and icon in Next Step menu for improved UX
+-  update icon and label for context button to improve clarity
+-  adjust panel resizing limits and calculations for better responsiveness
+-  create ImageThumbnail.vue and updated both consumers:
+-  move ImageBlocks before FileBlock attachments
+-  strip base64 from stored/transported references
+-  move attachments from flat images array to references.images + references.files
+-  simplify drag-and-drop logic and remove unused drop indicators
+-  replace inline SVGs with Lucide icons and remove unused CSS
+-  derive bubble menu items from loaded extensions instead of hardcoded set
+-  remove Enter key handling from input mode in TiptapEditor
+-  remove unused 'voice-input' event from emits
+-  type the preload speech API — remove `any` from `onEvent`
+-  simplify SpeechRecognition with closure-scoped emit and ensureHelper
+- fix: improve error handling and cleanup in SpeechHelperProcess refactor: simplify spawn() in SpeechHelperProcess
+-  standardize panel header height via Tailwind h-header token
+-  dedupe writeExportJson by delegating to writeExportFile
+-  extract writeExportFile helper to core/helpers/export
+-  extract writeExportJson helper to core/helpers/export
+-  extract shared export utilities to core/helpers/export
+-  deduplicate media handling between library and notes export/import
+-  reduce duplication in notes import/export media handling
+-  merge redundant cancel watchers in canvas.vue
+-  move search panel from support panels to code panels
+-  extract shared NodeTypeMenu component for "next step" dropdowns
+-  improve message display logic and styling in message list component
+-  update content overview to content preview and adjust text truncation length
+-  extract shared file icon utility from duplicated extension lists
+-  extract seedCollection helper to reduce repetition in seed.ts
+-  remove scroll button and related functionality from canvas area
+-  split onboarding step handlers into separate files and fix types
+-  move onboarding actions into subdirectory and support recursive compilation
+-  update thread topic to general after onboarding
+-  replace tourStarted + tourComplete with single tourComplete boolean, fix onboarding action EARS API calls
+-  update library service methods and enhance document handling
+-  extract symlink-aware logic from library system into LibraryService
+-  rename magic prompt to AI query and migrate generation to copilot-cli
+-  remove unused import of 'initializeMockData' from agent system
+-  remove 'searchIndices' from database export/import functionality and related UI components
+-  remove snapshot handling and related code from database system and components
+-  rename packages/api/dsl to packages/api/defs
+-  comment out root flow creation logic in db reset script
+-  streamline type imports and enhance flow role handling
+-  move expand/collapse buttons to a more accessible position in PullRequestPanel
+-  unify compile script and add prompts compilation support in new /scratchpad
+-  reorganize actions into scratchpad and generalize compile utilities
+-  replace hand-rolled import resolution with esbuild bundling in action compiler
+-  replace `any` with `Z` type for action parameter in default actions
+-  extract copilot CLI invocation into dedicated service module
+-  Extract shared CodePanelHeader with integrated toolbar and panel toggle buttons
+-  Update canvas resizing logic and improve chat component structure
+-  symlink-related actions and events from library system
+-  update action and prompt creation labels to 'New Action' and 'New Prompt'
+-  simplify DSL switch to inline-only branches with convergence wiring
+-  hide add handle when connected instead of syncing with edge selection
+-  simplify edge paths to single L-shaped bend
+-  simplify layout-utils and add configurable spacing
+-  simplify edge rendering and node creation
+-  improve edge path calculation for smoother transitions
+-  remove otherwise branch from switch nodes
+-  move node components to shared location with smart auto-rendering
+-  redesign flow editor nodes for compact, minimal UI
+-  update chat button icon and labels for consistency
+-  rename openThreadChatAndRefresh to openThreadChatAndRefreshRecent for clarity
+-  remove currentThread from RecentThreadRefreshData and related updates in agent state management
+-  add manual state transition example with delays and DRY helper
+-  simplify thread ID retrieval in mockBlockMessages function
+-  implement MESSAGE_ADDED event for efficient message updates
+-  move message operations to repository pattern
+-  remove dashboard-related code and artifacts
+-  enhance workspace explorer with reusable components and new features
+-  streamline search input section and enhance inline filter options
+-  extract workspace menu logic into reusable components
+-  replace directory entities with settings-based last directory tracking
+-  simplify shell integration output and remove unused env vars
+-  update unpin functionality to use single click for tabs and groups
+-  update text color logic for group name and icon based on drag state and color
+-  update context menu to use tabGroups instead of sortedGroups for improved group management
+-  enhance background color logic for group label based on collapse state and drag status
+-  reorganize pinned tabs rendering and context menu structure for improved clarity
+-  streamline group management by removing delete functionality and updating tab group handling
+-  remove inline editing for group name in GroupLabel component, move input to context menu
+-  fix tab positioning bugs and simplify drag-drop logic
+-  simplify birthdate assignment logic in agent system
+-  separate birth flow trigger from thread creation
+-  rename flowId to tNodeId in brain plugin navigation
+-  move assistantBirthdate to assistant settings and trigger birth flow on API key setup
+-  remove superfluous EVENT_TRACE relation kind
+-  simplify child node creation by removing unnecessary hasParent parameter
+-  remove debug logging and replace console statements with logger in flow system
+-  rename listen node 'mode' to 'scope' with entry/global/local options
+-  provider aliases API key resolution logic
+-  consolidate LLM provider management and add Google AI support
+-  replace UUID with EARS built-in ID generation
+-  remove outdated query examples for clarity and maintainability
+-  use localStorage for backup paths instead of hardcoded defaults
+- tour-steps): update content descriptions for clarity and consistency
+- threads): remove unused link thread actions and clean up updateField function
+- view): remove console log from updateField function
+-  move tour logic from App.vue to TourSpotlight.vue
+- tour): implement generic event routing and fix reactivity
+- tour): simplify TourSpotlight component and improve positioning
+-  display onboarding as modal overlay
+-  simplify production build by disabling ASAR
+-  extract thread row into a separate component for better readability and maintainability
+-  move ApiServer module to a dedicated directory and update import paths
+-  reorganize splash and window modules into directory structure
+-  update table header and body padding for improved layout
+-  adjust padding and update list item styling in thread list
+-  align thread create form layout with edit view
+-  remove integrate-renderer scaffolding package and clean up DevTools
+-  move ears directory from utils to core
+-  remove success/error result wrapper from repository layer
+-  improve DataRenderer copy button styling and add compact mode
+-  initialize logs system before database hydration
+-  restructure plugin visibility settings and update related references
+-  use guard and separate action for secrets operations in settings system
+-  rename apiKeys to secrets and implement compact grid layout
+-  extract log filtering logic into separate utils module
+-  make settings-changes utilities generic with configurable key extractors
+-  remove Tag entities and implement settings-based tag management
+-  wrap Terminal and Code Hotkeys sections in divs for improved layout
+-  enhance layout for keyboard shortcut inputs and update description
+-  streamline directory selector layout and button integration
+-  remove hardcoded hotkey defaults from frontend
+-  pass settings as props to child components
+-  create reusable useDebounce composable
+-  convert general settings components to event-driven pattern
+-  rename Hotkeys type to ApplicationHotkeys for clarity
+-  simplify hotkey types and remove HotkeyConfig alias
+-  complete type system improvements and remove duplicate definitions
+-  improve type organization for agent modes and keyboard shortcuts
+-  implement generic hotkey system with event-driven architecture
+-  relocate default settings import for improved structure
+-  move default settings to a new file for better organization
+-  viciously optimize settings repository (75% LOC reduction)
+-  consolidate settings updates into single reusable pattern
+-  implement multi-entity settings architecture
+-  rename FAQ tab to Help and separate FAQ from settings
+-  enhance hotkey input layout and move labels inside input
+-  clean up Hotkeys component and remove X buttons from default hotkeys
+-  extract keyboard shortcut input into reusable component
+-  Unify styling across all General Settings components
+-  Convert Settings plugin components to Tailwind-only styling
+-  move core/data to persistence directory
+-  add .serena to .gitignore
+-  correct path for modelsCache in development environment
+-  simplify path utility functions and consolidate logic
+-  consolidate design and layout into core/components
+-  remove unnecessary CodeEditor wrapper component
+-  replace CodeMirrorEditor with CodeEditor component in QueryEditor
+-  remove unused actions prop from SimpleMonacoEditor in CodeMirrorEditor
+-  centralize editor actions in Monaco configuration
+-  centralize Monaco Editor configuration and fix intellisense for DSL files
+-  update category labels from 'Uncategorized' to 'None' and enhance category options in Action and Prompt components
+-  switch from ambient to module-based DSL types using Rollup
+-  update DSL type definitions and enhance conversion script for ambient declarations
+-  replace regex-based DSL conversion with ts-morph AST transformer
+-  replace CodeMirror with Monaco editor across all components
+-  remove backward compatibility and use openEnvAt directly
+-  consolidate LMDB environment modules and eliminate Dbs type
+-  reorganize persistence directory structure
+-  simplify syntax validation to use only Lezer parsers
+-  simplify brain plugin events with proper click delay handling
+-  update flow graph UI to match brain plugin styling
+-  integrate node type label into form header with close button
+-  update input parameters to node attributes for clarity and consistency
+-  reorganize layout of StepNodeDetails for improved readability and add empty state for active nodes
+-  move execution info display to the bottom for better layout
+-  unify Input Parameters and Output Result styling in agent panel
+-  remove unused parameters extraction logic for cleaner code
+-  update overlay styling from gradient to solid color for improved visibility
+-  remove redundant details indicator from tnode-item
+-  simplify isRootFlow logic in flow-system using ternary operator
+-  enhance expand/collapse logic for TNode items and improve detail visibility
+-  clean up FlowNodeDetails.vue with improved type safety
+-  comment out actionId display in ActionNode component
+-  comment out actionId display in ActionNode component
+-  remove RepositoryResult wrapper from brain repository
+-  move event emission from repository to flow/step systems
+-  remove EVENT_TNODE_SPAWNED for consistency and cleanup unused event handling
+-  simplify node attribute mapping and field resolution
+-  consolidate field mapping utilities into node-attribute-mappers and remove unused field-mapper file
+-  improve flow execution context handling and cleanup unused code
+-  simplify event handling and increment child count logic in createFlowNodeSystem
+-  restructure library repository to follow query/command pattern
+-  change .put() to replace values instead of appending
+-  simplify chat input and thread dropdown components for better readability and performance
+-  Update output schema description in ActionDetail and PromptDetail components
+-  Consolidate duplicate ActionDetail and PromptDetail instances
+-  Combine view/edit pages for actions and prompts
+-  reduce library repository file size by 20%
+-  comprehensive code cleanup and helper function extraction
+-  simplify library plugin multi-select implementation
+-  improve rename UX with click-to-edit and subtle inline styling
+-  optimize embedding batch processing and clean up search index code
+-  organize build scripts and logs into build folder
+-  move copy functionality in search index results to enhance UI layout
+-  enhance text display and copy functionality in search index results
+-  improve search index UI with enhanced layout and document expansion features
+-  convert test search modal to full page view
+-  eliminate duplicate code in search-index repository
+-  clean up embedding model code and remove dead code
+-  improve embedding model architecture and clean up types
+-  reorganize search index components into unified directory structure
+-  remove unnecessary padding from toolbar layout
+-  simplify handleCodeStartup logic by removing unnecessary directory check
+-  improve flows UI with subtle, harmonious color scheme
+-  enhance keyboard navigation and mouse interaction in Quick Open Palette
+-  improve hotkey handling architecture for better maintainability
+-  simplify Monaco editor scroll persistence implementation
+-  improve chat layout and input responsiveness
+-  migrate all repository update operations to use new update/updateBatch methods
+-  rename TextBlockContent content prop to text
+-  clean up ListEditor component for better maintainability
+-  update import paths for applicationState from '@/app' to '@/main'
+-  Update slack artifact to use dynamic data from content
+-  improve agent repository with generic thread query function
+-  remove test thread tab button from agent canvas
+-  replace dynamic thread artifacts with static mock thread
+-  combine ContextItem and CanvasContent into unified Artifact entity
+-  reorganize agent canvas layout with full-height artifacts panel
+-  simplify prompt API by injecting usePrompt directly
+-  remove withContext flag and always provide prompt context
+-  simplify edge deletion to use relation IDs directly
+-  move file status indicators to right end in commit and PR panels
+-  implement lazy loading for services to avoid circular dependencies in action service and action node
+-  convert action-playground files from TypeScript to JavaScript
+-  simplify snapshot system with single directory flag
+-  belongs_to -> CONTAINS
+-  separate commit and push/publish buttons
+-  centralize all repositories under unified namespace
+-  extract tabs component from FileEditor
+-  use shared language detection for DiffViewer
+-  prefix code actions events with codeActions.*
+-  rename ACTIONS_STARTUP to ACTIONS_LISTED for consistency across events
+-  move change directory button to ExplorerPanel component
+-  move panel selection logic to code state machine
+-  move openFile logic from CommitPanel into commit state machine
+-  update root directory handling to use assign for context updates
+-  remove rootDirectory from context and related actions
+-  improve event routing logic and separate concerns
+-  move feature-specific types to their respective state machines
+-  use past tense event names for consistency
+-  standardize terminal event formats to use backend format only
+-  create shared tab management utilities for consistent tab operations
+-  extract terminal tab merge logic to pure helper function
+-  simplify terminal selection to use proper event delegation
+-  rename terminal.LIST to terminal.REFRESH_LIST for consistency
+-  move explorer event handling directly into ExplorerPanel component
+-  remove duplicate context between parent and child state machines
+-  extract inline actions from code plugin state machines
+-  update event types to include explorer prefix for consistency
+-  simplify state update handling by removing validation logic
+-  separate child states from code plugin
+-  reorder node configuration entries
+-  simplify click handling in FileItem component
+-  redesign library document forms for improved UX
+-  separate explorer panel components
+-  remove LLM logic and TNode handling from agent system
+-  simplify context access in code plugin and system actions
+-  add enhanced terminal support and UX
+-  remove node-pty dependency and update terminal implementation to use child_process
+-  clean up Monaco editor configuration
+-  remove Monaco language server dependencies and unused code
+-  make git repository production-ready based on code review
+-  separate canvas components and fix diff viewer visibility
+-  separate Explorer, Search, Commit, and Pull Request panels into separate component files
+-  update mockPlugins and remove unused Code import
+-  eliminate global state in browser service
+-  replace Taiko with Playwright for browser automation
+-  remove action parameter name field and refactor param handling in action components
+-  improve timestamp readability for snapshot filenames
+-  use individual selectors in library panel for better performance
+-  properly implement database schema discovery from real data
+-  reorganize database query editor header layout
+-  rename applyFieldMappings to mapTemplateFields for clarity
+-  remove unused context properties and input types across systems
+-  rename usePlugin to useState composable
+-  use full EntityIds throughout library system
+-  adjust padding and spacing in chat message component for improved layout
+-  simplify chat message component structure with minimalist styling
+-  separate action entities into individual files
+-  use tidyFunction utility for all prompt templates
+-  update action entity transformation and clean up logger service return type
+-  comment out llm runner references in agent system
+-  update flow machine naming for consistency and clarity
+-  rename createStepMachine to createStepNodeSystem for consistency and clarity
+-  replace nextNodes function with nextNodeInFlowTrack for improved clarity and functionality
+-  reorganize entity type definitions and update imports in mock-data
+-  update import paths for entity types and restructure agent and threads types
+-  update import paths and restructure entity types in agent system
+-  update import paths for Rows type to use mock-data directory
+-  update import paths for mock data files
+-  update import paths to backend system
+-  consolidate loadMockData function and update import path
+-  update import path for loadMockData in server.ts
+-  update import path for agent and agentSystem in runner.ts
+-  move template executor import to brain utils
+-  move action ID query to flows repository
+-  improve readability of edge update condition in flowsState
+-  remove unused edge kinds from FLOW_EDGE_KINDS and clean up exports
+-  extract search logic from logs canvas and add exclude syntax
+-  consolidate flows repository into single index.ts with flowsQueries and flowsCommands
+-  consolidate brain repository functions into index.ts
+-  remove buildTNodeTree function and its dependencies
+-  migrate logging system to shared/debug module and remove old logger implementation
+-  comment out unused db imports in context and system files
+-  consolidate event handling by moving rootEvents to bus-emitter
+-  remove compatibility exports and fully integrate new repository pattern
+-  remove unnecessary comment from NodeForm component
+-  enhance flows state management and streamline node forms
+-  remove obsolete test files for brain runner and flow completion
+-  standardize service metadata input property naming
+-  simplify node form events and optimize view model stores computation
+-  streamline node form components with unified data handling
+-  implement dead-simple normalized data pattern for flow nodes
+-  simplify node relations handling with direct functions
+-  improve node handler architecture and type safety
+-  simplify node enrichment and remove form data fetching
+-  Replace RESPONDER relation with TRANSITIONS_TO for event first steps
+-  implement node handler factory and standardize flow repository operations
+-  remove action id and link flows to actions properly
+-  convert node form close button to be completely clickable
+-  improve UI design and fix timestamp alignment issues
+-  extract FlowItem component and improve flows list UI with enhanced styling
+-  change default expanded state of TNode to false for improved initial rendering
+-  improve UI consistency with standardized headers, spacing and event counters
+-  remove header and adjust padding in inspection panel
+-  apply agent panel styling to brain TNode tree components
+-  change TNode tree UI to nest children visually within parent containers
+-  remove logging from flow machine active state entry
+-  centralize palette styling functions in node-config
+-  transform TNode into complete runtime instantiation of blueprint nodes
+-  improve actions service architecture
+-  update node icons in node-config and index files
+-  replace lightning bolt SVG with Radio icon in EventsList
+-  consolidate node styling into shared configuration
+-  consolidate node styling into shared configuration
+-  implement manual layout for brain plugin TNode graph
+-  apply TNodeGraphNode styles to flow nodes with BaseNode component
+-  improve LLM form UI design to reduce clutter
+-  restructure model selection and prompts selection data integrating into flows startup data
+-  remove function wrapper from prompt templates for cleaner editing
+-  remove custom scrollbar styling from multiple components
+-  update BaseForm and node forms to modern dark theme styling
+-  simplify node drag creation by removing position parameters
+-  remove hardcoded x/y coordinates and implement automatic node positioning
+-  rename FlowCanvas to FlowEditor for consistency in component usage
+-  move mock data up a level and extract composeData utility to merge mock data rows
+-  centralize all mock data into backend system directory
+-  refactor prompts system CRUD operations to integrate with EARS and organize mock data
+-  update example structure in prompt templates to use 'input' instead of 'params'
+-  streamline execution context and field mapping structure for improved clarity and usability
+-  consistent logging across various modules
+-  enhance layout and styling of logs component for better responsiveness
+-  improve UI styling and layout for logs display
+-  enhance logs display with improved styling and structure
+-  use tailwind for UI
+-  simplify execution context handling and streamline event track management in flow and step machines
+-  rename nodeType to tNodeType and simplify step/flow machine creation
+-  extract child node spawning logic into a helper function
+-  streamline flow tnode creation
+-  remove brain runner event handling and related context property
+-  move tnode-manager functions to repository for better organization
+-  consolidate flow runner into state machines and remove spawner utils
+-  rename execution chain to child spawning and update related functions
+-  update flow machine context to use activeChildrenCount and streamline event handling
+-  streamline TNode creation and event emission processes
+-  streamline relation info structure in query examples and constants
+-  rename eventTag to eventType for consistency across the codebase
+-  redesign ResultsInfoBar component for improved layout and user experience
+-  enhance query examples with additional queries and improve existing ones for better usability
+-  remove unused description property from tree categories in SchemaPanel
+-  simplify QueryEditor structure by modularizing components and enhancing state management
+-  improve QueryEditor functionality by reinitializing editor on mode change and updating query state handling
+-  update schema panel width unit from pixels to rem for consistency
+-  add custom scrollbar styling to SimpleTable component for improved user experience
+-  update canvas layout to support vertical stacking and enhance query panel resizing functionality
+-  enhance QueryEditor styling with improved overflow handling and custom scrollbar design
+-  add relation query examples and improve feedback for no results in database constants
+-  update example queries in database constants for improved clarity and consistency
+-  remove unused constants and configurations from database constants file
+-  enhance SimpleTable component by replacing inline result displays with dedicated components for improved readability and maintainability
+-  add db components dir and update import paths for SchemaPanel and QueryEditor components
+-  clean up unused imports and comments in database system files
+-  consolidate query constants and templates into a single file
+-  improve graph data update process by storing layout and adding padding to fitView
+-  simplify graph data update by clearing existing data before adding new data
+-  enhance scroll indicators and improve layout in GraphLegend component
+-  remove legend label from GraphLegend component
+-  remove redundant header from Graph Explorer component
+-  separate interactive graph for db into sub-components
+-  remove g6 dynamic import in onMounted lifecycle
+-  simplify root flow display by moving arrow icon and commenting out description
+-  update mock flow data with new labels and flow references
+-  rename FlowCanvas to FlowEditor and NodeEditor to NodeEditorForm components
+-  reorganize flow canvas file structure and update imports
+-  update breadcrumbWithParams to support custom label generation
+-  extract flow actions menu into separate component
+-  streamline flow creation
+-  simplify palette view logic by removing toggle buttons and using state tags
+-  remove unused flow canvas functions for node coloring and view management
+-  remove redundant role retrieval tests and streamline node attribute filters
+-  improve entity handling and relation management in attribute and transaction modules
+-  clean up mock data by removing unused nodes and updating edges
+-  remove attributes update logic from CreateForm component
+-  separate layout logic from flow template
+-  move connection validation from flow to individual node components
+-  consolidate Step and FlowEvent entities into unified Node entity
+-  remove 'createdAt' from attribute filtering in loadMockData function
+-  update root flow query to use role-based lookup instead of custom function
+-  update qx.ts to version 5, enhance prefix checking and seed resolution
+-  rename rows() to pick() and linkRows() to linksPick() for better clarity
+-  update qx.ts to version 4, improve immutability and streamline entity handling
+-  rename relation fields from srcId/tgtId to source/target for consistency
+-  restructure flow graph data model and visualization components
+-  move thread mock data to dedicated file and import into backend mock data
+-  reimplement startup data handling for agent and threads and reorganize backend structure
+-  replace recursive graph traversal with iterative approach using stack
+-  remove unused panel components from plugins
+-  remove redundant view-current-thread event handler from chat components
+-  consolidate thread view handling into single event handler
+-  rename thread id prop to threadId for consistency across codebase
+-  consolidate thread data into AgentThreadData type and update references
+-  move thread action handlers from link-thread-input to parent component
+-  extract thread linking into separate component and simplify form input handling
+-  remove shadow styling from tag input dropdown trigger
+-  reorder tag input and status fields in canvas view
+-  simplify relation type handling in thread link input component
+-  improve link thread input UI layout and button styling
+-  reposition delete button to left side of thread link items
+-  improve thread linking UI with better layout and reuse thread component from list
+-  move thread link input below messages in canvas view
+-  improved tag input dropdown trigger behavior
+-  remove back button from inspection panel
+-  move link-thread-input component to canvas directory
+-  reorder and rename chat mode option in agent input dropdown
+-  simplify field updates by passing values directly instead of DOM elements
+-  rename _bus directory to _backend for clarity
+-  rename ThreadListFields type to ThreadLinkedFields for clarity
+-  rename relatedThreads to linkedThreads across thread management system
+-  split thread repository into separate create and read modules
+-  overhaul attribute storage and reimplement query system with simplified edge traversal and attribute projection
+-  extract thread relation update logic into separate module with type-safe handlers
+-  consolidate tag updates into UPDATE_THREAD_FIELD action
+-  separate thread list update logic and reconsolidate thread update logic
+-  rename thread properties from tagItems/threadItems to tags/relatedThreads for consistency
+-  reorganize thread creation form layout and hide instructions label
+-  move Simplify type to dedicated type-helpers utility
+-  merge ThreadAdditional type into ThreadListItem for simplified typing
+-  move ThreadViewData type to shared types and add additional thread view fields
+-  rename relatedThreadsInput to threadItems across fe and be
+-  rename tagsInput to tagItems across fe and be
+-  rename ThreadRelatedData interface to ThreadExtendedData for clarity
+-  simplify thread types and remove unused ThreadLinkInput interface
+-  consolidate thread field update logic with state parameter
+-  simplify thread type checks by removing redundant isNewThread function
+-  simplify thread creation by moving metadata defaults into repository
+-  move params for thread tags and relations into thread create data object
+-  update thread creation types and remove entityType field
+-  rename ThreadViewData type to ThreadExtendedView for better clarity
+-  rename ThreadsViewData type to ThreadViewData for consistency
+-  unify tag handling and update thread relation types across frontend and API
+-  update tag input to use TagItem object interface and improve tag input handling
+-  reposition tag input and improve related threads layout
+-  increase threads per page from 3 to 6 and fix threads list height
+-  extract pagination component and simplify thread list implementation
+-  update package namespace from @agent to @abuddy
+
+### Other
+- update defs
+- update defs
+- update defs
+- update defs
+- docs: add instructions for handling unsigned builds on macOS
+- chore: reset version to 0.0.0 and fix CI release permissions
+- chore: reset version to 0.0.0 for first release
+- Merge pull request #88 from spankyed/AS/github-release
+- docs: update production build and release process documentation
+- auto-publishes releases on version tags
+- move cli code
+- Merge pull request #87 from spankyed/AS/clean-seed-pipeline
+- update defs
+- Revert "issue prompt"
+- issue prompt
+- update defs
+- updates defs
+- update defs
+- style: enhance error page layout for better content display and overflow handling
+- style: enhance error page layout and improve detail visibility
+- docs: fix stale paths in seed CLI, WRITING docs, and CLAUDE.md
+- chore: delete stale rollup-defs.config.mjs from build/scripts
+- update defs
+- Merge pull request #86 from spankyed/AS/default-setup-package
+- chore: remove outdated setup notes from default-setup documentation
+- move default-setup docs
+- docs: update CLAUDE.md with detailed architecture and command instructions
+- Update DSL round-trip tests to cover features added since initial write
+- ix: guard setBrainData when brain is dead to prevent stale data overwrite
+- Fix: show "code" instead of "==" for code-mode switch branches
+- cleanup: refactor layout calculations with computeExitCount and computeMaxBottom helper functions
+- style: capitalize default labels in node configurations for consistency
+- style: restyle kill node with red theme to signal destructive action
+- docs: update track layout documentation with key files and node height details
+- Support parallel listen exits in DSL compiler & exporter
+- convert docs/fix-track-layout.md from an issue prompt into a   layout-system reference doc (renamed to docs/track-layout.md).
+- Merge pull request #85 from spankyed/AS/parallel-listen-exit-nodes
+- update defs
+- Prevent double scrollbar in quick prompt
+- style: restyle quick prompts input to be cleaner and more integrated
+- document command suggestion plugin behavior
+- Merge pull request #84 from spankyed/AS/switch-node-code-backdoor
+- Merge pull request #83 from spankyed/AS/action-prompts-dynamic-param-typing
+- Merge pull request #82 from spankyed/thread-revert
+- Merge pull request #81 from spankyed/AS/thread-fork
+- more vibrant thinking indicator
+- Revert "fix: make Cmd+A selection highlight span full line width in TipTap editors"
+- Update styles in chat.vue:
+- Merge pull request #80 from spankyed/AS/chat-input-commands-feat
+- update defs
+- Revert "fix: exit command mode when backspacing breaks selected command prefix"
+- update defs
+- missed code last commit
+- Merge pull request #79 from spankyed/AS/chat-input-quick-prompts-action
+- Merge pull request #78 from spankyed/AS/chat-reference-action
+- style: adjust font size and vertical alignment in Tiptap theme
+- Merge pull request #77 from spankyed/AS/chat-file-attachments
+- style: update border opacity for image thumbnails in FileBlock and ImageThumbnail components
+- style: update title style and add attribute to ImageThumbnail component for better accessibility
+- style: enhance thumbnail name display with improved styling and backdrop blur
+- revert: restore file-picked images as file attachment blocks
+- code cleanup
+- Move BaseDirectoryMenu from ExplorerPanel toolbar to CodePanelHeader
+- Merge pull request #76 from spankyed/AS/chat-input-rework
+- image lightbox dialog overlay
+-  fix: prevent tiptap editor shortcuts from triggering app hotkeys
+- update defs
+- revert "fix: allow codeBlock to handle Enter key in TiptapEditor"
+- style: update inline code and code block styles for improved visibility
+- Fix chat variant markdown features not rendering in message viewer
+- Cleanup chat variant code quality in tiptap components
+- Replace contenteditable chat input with TiptapEditor (chat variant)
+- update defs
+- Reorder general settings
+- style: update Add Project button to use dashed-border style
+- style: improve phase management UI with better spacing and updated button styles
+- update defs
+- search panel now shows the NoDirectoryState when baseDirectory is falsy   (empty/null)
+- Merge pull request #75 from spankyed/AS/native-stt
+- Move editorRef, messageContent, and useSpeechRecognition() above the   leftButtons computed so all refs are declared before they're referenced
+- Wire macOS SpeechHelper build into packaging pipeline
+- send events only to the requesting window
+- Merge pull request #72 from spankyed/AS/brain-pause-feature
+- Fix white square at scrollbar corner intersection
+- responsive styling for chat input
+- Restyle custom hotkeys section to match Add Parameters card pattern
+- update defs
+- align window controls with canvas header border
+- Merge pull request #71 from spankyed/AS/notes-export
+- update definitions
+- eat: add import/export support for notes plugin (JSON + Markdown)
+- consistent panel height
+- Rename insert-related state from "document" → "subDocument"
+- Rename "page" → "document" and noteType 'note' → 'document'
+- Add per-node toggle to hide completed children in task list
+- Add 3-dots dropdown and right-click context menu in NoteTreeItem
+- Merge pull request #70 from spankyed/AS/task-list
+- ix: place cross-parent 'on' drops at top of new parent's children
+- margin right for tree view items
+- restyle task action buttons
+- Move the overview item into the panel header, showing the actual tasklist name and icon instead of a generic "Overview" label.
+- Fix: enhance action and prompt panels with expandable input controls and improved layout
+- update defs
+- Fix: attach block drag listeners to document so drops near the   title land at position 0
+- Fix: suppress spurious updatedAt bump when viewing notes with non-plain-text content
+- Fix: add markdown serializers to Details extensions to prevent round-trip mismatch
+- Fix: suppress spurious UPDATE_NOTE when switching notes
+- Fix updatedAt bumped when viewing a note
+- Fix: clear undo history on external content reset to prevent stale sub-page links
+- Fix sub-page links rendered as plain text after <details> block
+- improve padding left for chevron and note icon in tree view
+- Move tree item chevron into icon area with hover reveal
+- Cleanup notes tree multiselect and drag-drop code
+- Add shift-select functionality for note range selection
+- Implement note moving functionality with drag-and-drop support
+- Add action to describe document images with AI analysis
+- restyle recent notes display with carousel navigation and scroll indicators
+- Enhance notes canvas with greeting message and improved search results layout
+- Add notes homepage with recent notes and search
+- decrease save debounce notes
+- Fix checkbox markdown not persisting across note navigation
+- Enhance NoteTreeItem styling and padding for improved layout
+- Fix empty parent notes showing dropdown arrow after child deletion
+- move details chevron up
+- Fix drag and delete both broken on drag handle
+- Revert "Add gapcursor support to fix cursor placement above first block in editor"
+- Add gapcursor support to fix cursor placement above first block in editor
+- Enhance padding for content section and instructions input for better layout
+- Fix backspace/delete not working after selecting block via drag handle
+- Add selection highlight and spacing for text-based blocks on drag handle click
+- Fix details block toggle not working at position 0
+- Merge pull request #69 from spankyed/AS/notes-drag-handle
+- Add drag handle to block menu for selecting and reordering blocks
+- Hide + button and close menu when user starts typing
+- code cleanup
+- Fix + button not working on SubPageLink atom blocks
+- code cleanup
+- swap input rules for Blockquote and Details extensions in Tiptap
+- note perfect
+- Update spacing and font size for details block button styles in Tiptap theme
+- Adjust margin and padding for sub-page link styles in Tiptap theme
+- Fix Enter not exiting details block after creation
+- cleanup for Fix details blocks losing content on refresh and open by default
+- open details block by default
+- Fix details blocks losing content on page refresh
+- Refactor block resolution and button positioning logic in Tiptap editor
+- Implement onPlusClick function for improved block insertion logic in Tiptap editor
+- Fix tiptap editor errors on note navigation
+- Refactor Tiptap block menu to use better handle logic for improved interaction
+- Refactor styles for collapsible details in Tiptap editor for improved layout and responsiveness
+- Add Tiptap details extension and styles for collapsible content
+- Swap positions of icons and text in Recent Threads button for improved visibility
+- Merge pull request #68 from spankyed/AS/notes-plugin
+- Set text selection to start in Tiptap editor on content reset and initial load
+- Focus editor when pressing right arrow at end of note title
+- Auto-expand ancestor nodes in tree view on note navigation
+- Simplify title enter handling by focusing the editor at the start without checking for subPageLink
+- Refactor note insertion logic to streamline child note creation and improve readability
+- Remove unnecessary focus call before inserting sub-page link
+- Fix title focus on note creation and extract canvas composables
+- Enhance title focus behavior to set cursor at the end on focus
+- Enhance note navigation focus logic to prevent unnecessary focus on the editor
+- Fix sub-page link icon flash on note load
+- Implement soft-delete for sub-notes on subPageLink removal
+- Add arrow key navigation between title input and editor
+- Allow backspace to delete empty first paragraph above sub-page links
+- Add handler for enter key in title input to bump sub-page links
+- Add nextTick to focus editor when navigating into a note
+- Update sub-page highlight link styles for improved visibility
+- reorder tiptap page block menu item to top
+- Add enter key handler to focus editor in note title input
+- Refactor TiptapEditor to streamline markdown handling and content reset logic
+- Fix child note showing stale parent content after Page block creation
+- Fix breadcrumb double root and click navigation in notes plugin
+- Add skipContentSync option to note events for conditional content updates
+- Add per-note icon system with emoji picker
+- Add sub-page link block node for hierarchical note linking
+- Fix broken links on note deletion and self-reference crash
+- rename sync to touch notes that contain links to a renamed note
+- Fix note page links rendering as raw HTML text
+- Add Notes plugin with hierarchical wiki-style note-taking
+- Filter linked threads to include only those with a shortCode before export
+- Enhance instructions input styling by adding padding for improved usability
+- Refactor editor components to remove unnecessary borders and adjust width and padding for improved layout
+- Bundle media assets with database backup export/import
+- Extract shared library utilities and implement thread export/import
+- Implement library export in both JSON and Markdown formats with updated import functionality
+- Rewrite scratchpad library compiler to align with export format
+- Add media file bundling to library export/import
+- Hide trailing empty paragraph in chat message viewer
+- Merge pull request #67 from spankyed/AS/tiptap-image-support
+- Add media service and vision action/flow example
+- Fix: Bubble Menu Always Visible
+- style: adjust line height and margin for improved readability in Tiptap theme
+- style: header in NodeForms dont scroll, stick to top
+- tyle: make tiptap headings more compact
+- Merge pull request #66 from spankyed/AS/tiptap-md-editor
+- Revert unrelated seed.ts upsert change.
+- remove mock create-thread action
+- hide fork button on non-forkable messages
+- style: update quote text color and adjust max width for better readability
+- spruce up random quotes
+- move 'Chat' mode to default agent mode
+- code cleanup
+- Merge pull request #65 from spankyed/AS/onboarding-scratchpad
+- chore: update compiled-actions.json
+- Added suggestions prop, rendered suggestion buttons below the text input artifacts
+- style: invert artifact content area backgrounds for better contrast
+- copy update
+- left-align all artifact components
+- replace tourStarted + tourComplete with single tourComplete boolean
+- add library breadcrumb rename and path copy to new context menu
+- Merge pull request #64 from spankyed/AS/generate-query-with-ai
+- style: update branch info background color for improved visibility
+- style: adjust margin for staged and unstaged changes headers in CommitPanel for improved alignment
+- lower collapse/expand button size
+- style: update button padding and icon sizes in PullRequestPanel for better usability
+- style: restyle "Add" buttons in settings to simple inline buttons
+- code cleanup
+- folder reorder
+- update flow compiler examples
+- Merge pull request #63 from spankyed/AS/flows-compiler
+- add flows example
+- move tour into dedicate file
+- Move TNodeListItem.vue into core/components/design/
+- move components/flow-nodes into flow/canvas/nodes
+- move onboarding components into onboarding folder
+- move components/ contents into core/components/
+- move persistence folder into core
+- remove stray vitest internal
+- update core/utils imports to core/helpers
+- move db cli into scripts/db
+- code cleanup
+- consolidate 9 ad-hoc persistence test scripts into single Vitest suite
+- code cleanup
+- move library docs into references folder
+- code cleanup
+- style: adjust FlowItem and FlowsList padding and remove multi-select ring styling
+- UX fixes
+- Merge pull request #62 from spankyed/AS/action-compiler
+- move action writing docs
+- add shared helper inlining to action compiler
+- move flow list footer to header
+- consistent add button for terminal in code panel
+- Merge pull request #61 from spankyed/AS/cli-providers
+- rename secrets setting to providers
+- redesign cli providers settings
+- code cleanup
+- Add CLI binary path inputs to Secrets settings
+- Make AI prompt loader event-driven from runtime action
+- Add else/default branch to switch node
+- Fix switch node branch inputs resetting after each character
+- remove pagination from code agent and prompts panel
+- shorten header label for action and prompts plugins
+- Make database query editor header responsive with container queries
+- Improve threads plugin responsiveness
+- Improve library table responsiveness at narrow widths
+- Move Watched Events panel from right to left side of brain canvas
+- Move inspection panel from agent to brain and clean up dead code
+- Rename "debug mode" to "inspect mode" throughout brain plugin
+- Persist brain debug mode across refresh and promote toggle to app menu
+- remove inspection-header class on side panel when a context menu is open
+- add Cmd+Shift+F hotkey for quick open code find
+- Restrict add to projects sub menu width
+- Make "Add to Project" submenu consistent with "Open Projects" styling
+- consistent panel resizer for inspection panel
+- reorganize project menu items
+- Redesign empty states for code panel features
+- Restyle projects submenu in base directory context menu
+- base directory menu reorg
+- tweak padding
+- Restyle dir select menu label
+- single click opens file in explorer
+- remove duplicate border left
+- restyle error display
+- Fix: deduplicate nested paths in explorer drag-and-drop
+- explorer fix updating tree view on actions
+- Replace flat explorer with tree view, remove activeDirectory
+- Add group action buttons for staged and unstaged changes
+- Commit button takes priority when there are staged files
+- Fix search panel input and move results label
+- style: Update search input background color for improved visibility
+- redesign branch creation flow in CommitPanel
+- style: Enhance log list styling and improve fade transition effect
+- Comment out splash screen update messages for cleaner output during initialization
+- Refactor FlowItem component to always display context menu and conditionally show delete option for non-root flows
+- remove flow canvas menu and move items into state specific context menu
+- Refactor NameSaveHeader component to enhance button styling and improve layout consistency
+- Enhance FlowItem and FlowsList components to support multi-selection and improve event handling
+- Reduce button padding in FlowItem component for improved layout consistency
+- Refactor FlowItem component to improve layout and move root badge for better visibility
+- Refactor view toggle buttons in ThreadsHeader to use standard button elements and improve styling
+- Move header to top of logs plugin, reverse logs
+- Fix state transition from kanban to create
+- Add ThreadsHeader component and integrate it into list and kanban views
+- Reduce padding in log entry items for a more compact layout
+- Refactor KeyboardHint component usage and update button text for clarity
+- Remove Plus icon from action, flow, prompt, and thread creation buttons for a cleaner UI
+- Add keyboard shortcut to delete selected flow in list state
+- Prevent accidental palette clicks during state transitions
+- lint
+- Restyle FlowItem to simple row styling and merge root flow into single list
+- Refactor thread creation to use ThreadDetail component for better code reuse
+- Refactor table cell padding in ActionsList, PromptsList, and ThreadRow for improved layout consistency
+- Refactor DocumentEditor to use NameSaveHeader for improved layout and consistency
+- Refactor useInlineEdit to remove unnecessary nextTick and replace with setTimeout for improved focus handling
+- Refactor thread creation and viewing components to use NameSaveHeader for improved consistency and layout
+- Refactor table row padding and font sizes in ActionsList, PromptsList, and ThreadRow for improved layout consistency
+- Enhance header design in ActionsList, PromptsList, and ThreadsList with icons for improved visual clarity
+- Reduce padding in the main content area for improved layout consistency
+- Restyle metadata and reposition open-in-editor button on detail pages
+- Compact list rows, reorder detail sections, simplify parameters
+- Implement NameSaveHeader component in ActionDetail and PromptDetail for consistent header design
+- Mirror ActionDetail 3-column grid header redesign in PromptDetail
+- Refactor ActionDetail component header for improved layout and accessibility
+- Merge CreateView + EditView into single DocumentEditor component
+- Remove and redesign the header row containing the "CONTENT *" label on edit doc page
+- Restyle Create/Edit document header with DOCUMENT NAME label
+- Confirm symlink selection after directory is chosen
+- Fix symlink input to float instead of pushing content down
+- Allow deletion of selected items with both Delete and Backspace keys
+- Highlight newly created folder by selecting it until user interaction
+- Simplify row click behavior: dblclick name to rename, dblclick row to open
+- remove actions column from FileSystemBrowser and add context menu to TreeTableRow items
+- compact library TreeTableRow
+- Redesign library breadcrumb navigation with home icon, path truncation, and stable layout
+- Merge pull request #60 from spankyed/AS/dev-gate-semantic-search
+- replace delete icon for symlink folders with unlink icon
+- simplify library item background
+- add export/import for prompts
+- add export/import for actions
+- Extract DSL test mock data into shared fixtures file
+- docs
+- mark api tests as outdated
+- definitions update
+- Reorder plugins
+- Merge pull request #59 from spankyed/AS/switch-parallel-nodes
+- handle animated edges manually
+- Increase visible handle size and hitbox
+- change the sort from ID-based to sourceY-based
+- code cleanup
+- make icon click to open form for BaseNode component
+- change logs icon to a bug
+- move agent plugin up in toolbar
+- Merge pull request #56 from spankyed/AS/birth-flow-real
+- code cleanup
+- Allow editing params for actions/prompts from code plugin
+- remove add to thread action
+- add chat service methods to refresh recent threads
+- delay brain events to prevent race due to callback chain being sync – devs assume brain calls run async, not sync
+- lint
+- ux tweaks
+- style: replace indigo colors with primary brand color in block components
+- style tweaks for message actions
+- remove mock interactive messages and logic
+- style: update layout for kanban main section and improve responsiveness
+- design: move artifact panel into tab content
+- Merge pull request #57 from spankyed/AS/code-tab-groups
+- improve: enhance error state UX in code plugin panels
+- restyle directory select
+- adjust resizer
+- hide excess UI elms when no projects for workspace conditional rendering
+- remove description display
+- code cleanup
+- move toolbar to bottom of code panel
+- rename and refactor directory code
+- add workspace and project settings support
+- update runtime types
+- output tweak
+- move pinning group menu items to top of menu
+- redesign tab and group label styles for improved UI
+- catch and add error logging for document indexing and embedding processes
+- debug
+- mode router temp
+- code cleanup
+- make  configurable agent modes and phases to support birth flow
+- update dbQuery to use OpenAI's latest model and
+- Merge pull request #55 from spankyed/AS/birth-flow
+- Merge pull request #52 from spankyed/AS/startup-and-onboarding
+- Merge pull request #53 from spankyed/AS/onboarding
+- Merge pull request #54 from spankyed/AS/guided-tour
+- Revert "attempt at autoplay"
+- attempt at autoplay
+- update copy
+- perf: optimize rendering performance for tour and onboarding
+- improve copy
+- copy update
+- docs: update debugging instructions for clarity and consistency
+- build: remove unused SQLite dependencies and update build script
+- Refactor API server launch and prod build process
+- improve logging
+- improve api server startup logging
+- truncate tags for threads and refactor file structure
+- re organize thread list layout
+- Revert "feat: implement drag-and-drop functionality for plugin reordering in the toolbar"
+- Add scroll-to-view when opening messages section
+- Fix "see more" text alignment with message content
+- Improve message list UI with better expand indicators
+- Update thread details page header and breadcrumbs
+- Set Messages and Linked Threads sections to collapsed by default
+- Use CollapsibleSection component for Messages and Linked Threads
+- Remove threadType field from ThreadEntity
+- Revert imports and settings types ES2022 -> commonjs
+- Refactor event types from *STARTUP to *CONNECTED across multiple plugins
+- Merge pull request #50 from spankyed/AS/setting-plugin
+- move secrets system
+- code comment
+- Refactor code structure for improved readability and maintainability
+- get modes for agent UI from settings
+- types update
+- style: Adjust input padding and font size for consistency across address and API key fields
+- move playground code to untracked _scratchpad
+- Refactor code structure untracking data
+- Merge pull request #49 from spankyed/AS/migrate-codmirror-to-monaco
+- Revert "Refactor DSL Type Generation and Ambient Declaration Process"
+- Refactor DSL Type Generation and Ambient Declaration Process
+- chore: update dts-bundle-generator version in type definition files
+- perf: parallelize DSL type generation and fix output paths
+- remove snapshot
+- Merge pull request #48 from spankyed/AS/db-sync-lmbd-wbl
+- Add tombstone filtering to attribute scans in query.ts
+- docs: add example usage for LmdbQuery class in query.ts
+- chore: remove unused dependencies
+- Merge pull request #46 from spankyed/AS/flow-step
+- snapshot: update
+- use payload instead of param prop name for flow.entry input
+- chore: code cleanup
+- chore: code cleanup
+- code cleanup
+- chore: code cleanup
+- Fix actions plugin save/create buttons and apply same improvements to prompts plugin
+- move search indicies below other library panel content
+- Merge pull request #45 from spankyed/AS/library-repository-refactor
+- Merge pull request #44 from spankyed/AS/child-threads-ux
+- Merge pull request #43 from spankyed/AS/library-document-details-and-tags-autocomplete
+- Merge pull request #42 from spankyed/AS/combine-view-edit-pages
+- Merge pull request #41 from spankyed/AS/library-drag-n-drop
+- Merge pull request #39 from spankyed/AS/semantic-library
+- Merge pull request #40 from spankyed/AS/package-test-dmg-semantic
+- Add rebuild:dev script to package.json for development environment
+- chore: clean up PR before merging
+- Fix Electron app build and runtime issues
+- Simplify build system and fix native module compilation
+- Disable auto-updater until GitHub releases are configured
+- app runner and issue log
+- Move around search indices data
+- Improve segment rules UI consistency and clarity
+- Add dropdown hint selector for occurrence options in create index form
+- Add intelligent truncation detection for search results
+- Improve search results UI layout and text truncation
+- Enhance search index UI with colored score badges and improved form layout
+- Refactor and improve TestIndexView component UI/UX
+- Code reorganization
+- update database library docs
+- improve scope section UX
+- muted flow colors
+- move Quick Open Palette file
+- Merge pull request #38 from spankyed/AS/library-content-types
+- snapshot: update google search action proc
+- snapshot: google search simplify
+- Add keyboard shortcuts for faster data entry in list and field editors
+- Remove backward compatibility logic for content sections
+- Add multiple content types support for library documents
+- Add "Open Terminal Here" context menu option for folders
+- disable node inspector
+- Fix search panel error state not clearing when directory is selected
+- Fix terminal error handling to show names and auto-clear
+- Fix syntax highlighting for diff editor files
+- Refactor logic for Monaco editor initialization to disable error diagnostics and preserve syntax highlighting
+- Disable Monaco validation for TypeScript and JSON editors
+- Fix frontend TypeScript type errors
+- Fix explorer panel UI to show either empty state or content
+- Add error state to search panel when no directory is selected
+- Simplify commit and PR panel UI when no directory is selected
+- Fix PR panel UX to show error when no directory is selected
+- Refactor error handling in pull request system to unify error event structure
+- Fix EISDIR error when folders appear in commit panel
+- Refactor terminal cwd handling to use root directory instead of current directory
+- Merge pull request #37 from spankyed/AS/store-working-dir
+- Fix terminal working directory to use root directory
+- Remove dead code from explorer system
+- Fix directory listing issue and improve state machine architecture
+- Refactor git repository to never use cwd
+- Add directory storages features
+- Simplify directory management architecture with single GitRepository instance
+- Merge pull request #36 from spankyed/AS/root-dir-consistency
+- Fix git repository update when changing directories
+- Replace inefficient webkitdirectory file selector with native directory dialog
+- Add file utilities to electronAPI and enhance directory selection in ExplorerPanel
+- Refactor assignFiles action to simplify state updates and remove unnecessary enqueue calls
+- Fix terminal system to use git repository root instead of API directory
+- Fix pull request system to handle root directory properly
+- Fix file path duplication in commit diff viewer
+- Replace native Monaco implementation with @guolao/vue-monaco-editor
+- Refactor code editor components and remove unused DiffViewer; enhance SimpleMonacoEditor for diff mode support
+- track additional icon designs
+- Fix terminal Shift+Enter behavior to insert newline instead of executing
+- Prevent emitting TNODE_SPAWNED event for root flow to maintain tree clarity
+- code cleanup
+- Prevent emitting root brain TNODE_SPAWNED event for root flow to maintain tree clarity
+- Update web page title
+- replace web favicon
+- Add dock icon support for macOS and set window icon based on platform
+- make logo icon smaller
+- logo: new app icon
+- track draft
+- track: logo drafts
+- Rename dashboard thread
+- un gitignore logs
+- Revert "feat: add support for retrieving and handling git root directory"
+- Merge pull request #34 from spankyed/AS/electorn-2
+- chore: remove obsolete README.md from renderer package
+- copy over web files into renderer (broken trpc sub)
+- add web fe files
+-     feat: integrate API server with Electron app
+- Revert "shared types schema layer"
+- shared types schema layer
+- add dist to .gitignore
+- init vue
+- clone: cawa-93/vite-electron-builder
+- wipe directory
+- snapshot: persist agent message in thread
+- snapshot: remove add-thread-message action call from check-procedures
+- snapshot: add message to thread step
+- Merge pull request #33 from spankyed/AS/resizable-layout-panels
+- style: Update background colors for Slack and workload artifacts for improved visibility
+- Merge pull request #32 from spankyed/AS/artifacts-todo-doc
+- Merge pull request #31 from spankyed:AS/artifacts-kanban
+- Merge pull request #30 from spankyed/AS/artifacts-todo-docs
+- Disable mock data initialization in agent system setup
+- code cleanup
+- update agent canvas bg color
+- move actions playground folder
+- rename snapshots-git folder
+- Merge pull request #29 from spankyed/AS/thread-messages-hookup
+- snapshot: stream to fe after adding message to thread
+- code comment
+- update imports
+- snapshot: update actions to pg impl
+- playground: routeProcedure function to route user messages to appropriate procedures
+- snapshot: add threadId and attempt add-message-to-thread
+- docs: update README for snapshot usage and adding instructions
+- move action-playground dir
+- update gitignore
+- cleanup snapshots
+- snapshot: add-to-thread action
+- Add create buttons to Actions and Prompts panels
+- snapshot: update check for proc params
+- snapshot: update check for proc params
+- Standardize panel headers across code plugin
+- snapshot: fix input passing for user messaging
+- snapshot: fix stream-to-fe params
+- snapshot: fix payload schema
+- snapshot: update message payload schema in actions
+- reorganize agent FE files
+- snapshot: strip early prototype/demo data
+- Merge pull request #28 from spankyed:AS/code-quick-open-pallete
+- Merge pull request #27 from spankyed:AS/code-tabs-reordering
+- Merge pull request #26 from spankyed/AS/code-prompts-panel
+- chore: remove unused pagination code from actions system
+- Merge pull request #25 from spankyed/AS/code-actions-panel
+- Add 'open in editor' button to ActionView and ActionForm components
+- improve agent plugin styling
+- Merge pull request #24 from spankyed/AS/code-panels-refactor
+- code cleanup
+- code cleanup
+- code cleanup
+- code cleanup
+- rename panel to features
+- move code panel items into separate folders, prep for state refactor
+- continue reorganize code plugin files
+- chore: remove unused handle-backspaces package
+- Merge pull request #23 from spankyed/AS/terminal-gone-wrong
+- Revert "feat: add terminal output processing to reduce storage size"
+- reorganize code repository & services
+- Revert "feat: replace XTerm.js with vue-web-terminal for terminal UI"
+- Remove command from claude.md
+- style: update Pull Request panel background and adjust text alignment
+- Merge pull request #22 from spankyed/AS/code-plugin
+- Revert "feat: enhance Git status handling and diff operations with binary support"
+- Add automatic git status monitoring with chokidar
+- Fix file sync state after loading external changes
+- Simplify file conflict handling UI
+- Replace turbowatch with chokidar for file watching
+- style: improve UI consistency in canvas and editor components
+- style: move search location into input placeholder
+- style: move directory search toggle inline with other search options
+- style: enhance layout and spacing in explorer panel for improved readability
+- style: improve UI consistency in file tabs and editor container
+- code cleanup
+- Absolute path dirs
+- Move mock data to tests folder
+- code cleanup
+- ignore actions playground
+- update snapshot, google search with pw
+- Merge pull request #21 from spankyed/AS/agent-browser
+- update snapshot
+- update snapshot
+- update snapshot
+- snapshot update
+- update snapshot
+- If the node type is 'listen', an additional EVENT_TRACE relation is created from the flow to the node
+- update snapshot data to add procedure action and google search action
+- update snapshot, adding google proc
+- Merge pull request #20 from spankyed/AS/database-magic-query-prompt
+- update snapshot, working db query
+- update snapshots
+- update snapshot
+- update snapshot
+- update snapshot data
+- update snapshot
+- update snapshot data
+- Update snapshot data
+- Merge pull request #19 from spankyed/AS/database-snapshotting
+- Only load snapshot data
+- Merge pull request #18 from spankyed/AS/library-plugin
+- style: update colors and spacing in workload artifact component for improved visibility and aesthetics
+- Improve chat ui
+- Update readme
+- Update readme
+- Update readme
+- Update readme
+- code cleanup
+- test: add unit and smoke tests for LLM service
+- code cleanup
+- move around mock/static data
+- implement real services api and strip down mock actions
+- remove mock service actions
+- Refactor EARS imports across the codebase
+- Move mock data up a dir
+- cleanup: move around files/folders to clarify priority
+- code cleanup
+- reorganize brain files
+- Move llm execution code into services
+- Move mock-data folder
+- Move services folder
+- rename inactive kanban col to open
+- Merge pull request #17 from spankyed/AS/agent-inbox-ui
+- add log
+- code cleanup
+- code cleanup
+- Add action-log-message as instance of mock-data
+- remove outgoing event loggin
+- code cleanup
+- Add log results step to mock data
+- rename node-executor file
+- Cleanup flow data
+- code cleanup
+- reorganize mock data files
+- reorganize and cleanup db folder
+- move flow types
+- move internal logging system
+- cleanup: move unused files into scratchpad (graphology, db)
+- Merge pull request #16 from spankyed/AS/repository-refactor
+- Merge master into AS/repository-refactor, resolving conflicts
+- Merge branch 'master' into AS/repository-refactor
+- Merge pull request #15 from spankyed/AS/refactor-flows-data
+- Quiet fe logs
+- Cleanup field mappings
+- Clear graph and edges on flow creation
+- Merge pull request #14 from spankyed/AS/brain-agent-inspection-panel
+- Remove old code
+- style: improve layout and visibility of node item details in agent panel
+- Merge pull request #13 from spankyed/AS/brain-agent-inspection-panel
+- style: update text colors to neutral-500 for consistent header styling
+- style: update event trace UI with improved typography and layout
+- style: fix panel scrollbar
+- Merge pull request #12 from spankyed/AS/actions-plugin
+- Improve brain node type labels
+- Revert "fix: make model provider headers sticky in model dropdown"
+- format prompts template fn return string to start and end on a new line
+- style: fix llmnode form scroll
+- style: remove max-width constraint from canvas layout
+- style: modernize prompt components with dark theme
+- style: align prompts and threads list styling for consistency
+- style: refactor threads table structure and remove placeholder logic
+- style: rearrange inputs for create page
+- style: swap status and type input positions in thread forms
+- style: update table layout and improve empty state for threads list
+- style: redesign prompts list with modern table layout and improved empty state
+- Merge pull request #11 from spankyed/AS/flow-forms
+- Enhance node and edge creation with temporary ID handling and reconciliation
+- Add edge creation events and handling to flows system
+- Dont sort db obj keys in query results
+- Rearrange query template data
+- Rearrange query template data
+- Collapse all database schema items by default
+- Make header bg color db results opaque
+- Prevent double viewport node centering
+- Revert "feat: enable instant node centering in viewport without animation"
+- docs: add Vue component best practices to CLAUDE.md
+- style: update button base and variant classes for better contrast in styling
+- style: adjust overlay background opacity for improved visibility in FlowEditor
+- style: enhance layout with border and padding adjustments for improved structure
+- Merge pull request #10 from spankyed/AS/prompt-plugin
+- style: update getPromptById to return single record
+- style: update EmptyState and ModeTabs components for improved visual consistency
+- style: update components to use consistent neutral color scheme for improved visual coherence
+- make shit darker
+- style: update table components to use consistent neutral color scheme for improved visual coherence
+- style: update border colors to enhance visual consistency across components
+- style: enhance layout and button components in PromptsList for improved usability
+- style: update color scheme to use neutral palette and darker backgrounds
+- Add claude code md files
+- Merge pull request #9 from spankyed/AS/prompt-nodes
+- Move knowledge plugin up
+- Add mock "knowledge" plugin
+- move prompt template into templates folder
+- Reorder expansion order for logs
+- Code cleanup
+- Implement logging system enhancements and event handling
+- Improve safe events fn ref
+- data-renderer expanded by default
+- Auto scroll to bottom of logs when opened
+- Prevent infinite loop
+- Merge pull request #8 from spankyed/AS/logs-plugin
+- Revert "feat: implement fuzzy search and highlighting for log entries"
+- Revert "feat: replace internal logging with structured logger for EARS operations"
+- code cleanup
+- tweak empty state design
+- uncomment code
+- Fix scroll-to-bottom fab
+- redesign logs display UI
+- Merge pull request #7 from spankyed/AS/run-agent-brain
+- Comment out brain mock-data
+- Comment out brain startup data fetching for time being
+- debug: simplify getStartupData, comment out debug log
+- Handle final step node
+- Cleanup brain runner code, splitting into multiple files.
+- Move code around
+- breakup mock data for chat flow and run agent brain flow, including entity, role, and relation definitions
+- Copy of brain mock-data, before editing
+- style: update button backgrounds and borders for improved visibility in FlowActionsMenu and FlowEditor components
+- style: update color scheme to use neutral tones for database plugin
+- Merge pull request #4 from spankyed/AS/trace-event-plumbing
+- style: adjust padding, backgrounds and click areas in node visualization components
+- Reduce backdrop overlay opacity for improved visibility in FlowEditor component
+- Remove unnecessary top padding in Threads list section for improved layout consistency
+- Refactor layout and styling in Thread component for improved consistency and user experience
+- Enhance layout and styling in TNodeTree and TNodeTreeItem components for improved user experience and consistency
+- Enhance layout and styling in canvas, TNodeGraph, EventsList, TNodeTree, and TNodeGraphNode components for improved user experience and consistency
+- Restyle layout and styling in ThreadsList and Thread components for improved consistency and user experience
+- Restyle FlowsList component for improved layout and styling consistency
+- Enhance TNodeTreeItem layout and styling for improved user experience
+- Refactor TNodeTree to be multiple TrackEntities and update related components
+- Code cleanup
+- Fix spacing for node type vertical bar in TNodeTreeItem component
+- Refactor labels in mock data for clarity and conciseness
+- Restyle TNodeTreeItem for improved layout and consistency
+- Update node type icon styling to be vertical bar
+- Begin implementing trace-event plumbing
+- Fix graph algorithms
+- Code cleanup
+- Add single Id extraction helper for qx
+- Move entity type defs
+- Code cleanup
+- Merge pull request #3 from spankyed/AS/brain-plugin
+- Add actions mock plugin
+- Add brain plugin
+- Code cleanup
+- Improve query examples
+- redesign: hide QueryEditorStatusBar
+- Merge pull request #2 from spankyed/AS/database-plugin
+- style: move Firefox scrollbar styles from scroller to editor wrapper
+- Fix import
+- Move SimpleTable component continued
+- move SimpleTable component
+- move graph into components dir
+- rename database/sections dir to graph
+- Rename and move around files
+- Add db schema retrieval helpers
+- Fix zoom range db plugin
+- Reorganize database plugin files
+- Move graph explorer components into dedicated dir
+- redesign: enhance GraphExplorer actions layout
+- Improve query editor ui
+- move editorContainer above action div in QueryEditor template
+- code cleanup
+- Hide description from schema panel
+- Fix layout
+- Rename node form component
+- test: refactor breadcrumb processing tests to use parameterized cases for improved coverage and clarity
+- test: enhance route-trailer tests to improve console log handling and refine breadcrumb processing logic
+- route trailer and breadcrumb unit tests
+- test: add unit tests for route-trailer and setup vitest with UI support
+- Adjust header padding
+- Add capitalize first letter util
+- Reduce padding for view area in canvas
+- Change flow list item icon
+- style: update header minimum height and enhance palette item button styles for better interaction
+- style: add click handler for palette items to create nodes at viewport center
+- style: update button styles for improved visual consistency in FlowActionsMenu and flow components
+- style: update back button padding for improved touch target size
+- style: enhance flow layout with back button and update state management for improved navigation
+- style: enhance VueFlow layout with responsive container and backdrop overlay for improved user interaction
+- style: update button and dropdown menu styles for improved visual consistency
+- style: remove unnecessary heading in steps palette view for cleaner layout
+- style: update borders in flow and type definition for layout event to use Direction type for better type safety
+- style: update sidebar and minimap background colors for improved visual consistency
+- style: add customizable header class to canvas area for improved styling flexibility
+- style: update flow component styles for improved visual consistency and accessibility
+- style: update root and sub flow sections for improved layout and visual consistency
+- style: enhance root flow display with improved label and icon styling for better visibility
+- style: enhance UI elements and improve scrollbar styling for better user experience
+- style: add uFuzzy dependency and implement fuzzy search functionality for improved flow filtering
+- style: adjust padding in search input and cancel search button for improved UI consistency
+- style: reorder create flow button and enhance search input focus styles
+- style: implement search functionality for flows with UI enhancements
+- style: enhance sub flows section title with icon and improved styling
+- style: truncate long flow labels in canvas sidebar to prevent overflow
+- style: refactor flow component layout and enhance styling for better usability
+- style: reposition actions menu trigger to the top
+- style: enhance sub flows section layout and title styling
+- Code cleanup
+- Add pick all attr query utility
+- Code comment
+- Revert "feat: implement single parent constraint in safeLink method with unit tests"
+- test: add unit test for batchPut method to validate multiple attribute addition
+- test: add unit tests for transaction operations including entity creation, attribute manipulation, role management, and relation handling
+- test: add additional query tests for Flow entity type and relationship filters
+- test: update query tests to reflect changes in node relationships and attributes
+- Rename ActionNode component and delete EventNode component
+- Initial  handle restriction logic
+- Update query tests
+- chore: rename Output node label to Final in flow canvas
+- Revert "Fix test type errors"
+- Fix test type errors
+- Code cleanup
+- Code cleanup
+- query: Extract asArr helper, Immutability for ids, Memoise hasPrefix
+- Flakey test
+- chore: setup vitest testing infrastructure for API with initial query test
+- Tweak unlinkWhere
+- Add edge store relation ids helper
+- Code cleanup
+- continued: add multi‑entity support for seeds and link targets
+- Update pick logic to safely keep "id" if included in pick list
+- Code cleanup
+- Add bug reports template
+- Code cleanup
+- Fix threads init data loading
+- Change labels for mode select options
+- Reorder plugins
+- Reorder plugins
+- Tweak thread list hover style
+- style: enhance flow canvas UI with Tailwind classes and fix connection line type
+- Use inbox icon for agent plugin
+- Code cleanup
+- Fix type import
+- Move code file
+- Move code file
+- style: move hover effect from parent to child element in thread header
+- chore: update thread view button text to 'View Details'
+- Code cleanup
+- hookup switching chats through recent threads list
+- Disable pointer events for linked threads on create form
+- Code cleanup
+- style: reduce vertical spacing between thread elements from 6 to 4 units
+- style: update tag input border radius from rounded-lg to rounded
+- style: adjust padding and remove empty lines in link thread input component
+- style: improve thread linking UI with better button styling and layout
+- Code cleanup
+- style: update message button visibility to use disabled state instead of v-if
+- style: reduce opacity of horizontal rule divider in thread input
+- Code cleanup
+- style: adjust thread view layout spacing and reposition status/tag inputs
+- Code cleanup
+- lint
+- Disable canvas and panel quick toggles for now
+- Fix import
+- Update readme
+- Code cleanup
+- link all threads/tags on creation, not just one
+- chore: export createEntity from attribute store
+- Add prototype query helper
+- Add updated relation query functions
+- Code cleanup
+- Add hidden count
+- style: update select background opacity to 60% in thread canvas views
+- Persist thread field updates (related fields broken)
+- Consistent spacing between create-view
+- Blue hover bg on thread list items
+- Code cleanup
+- Combine ThreadEditFields and ThreadListFields
+- regression: fix thread field updates in view screen propagating to list
+- Code cleanup
+- Code cleanup
+- Share thread types from BE to FE
+- Rename accessors folder -> repository
+- Add tag relations when thread created
+- Fix broken type
+- Tweak layout
+- Tweak layout
+- Types cleanup
+- Add tags to startup data
+- chore: add note to replace OpenAI stream handler with Vercel AI SDK
+- style: remove border from thread and placeholder list items
+- Remove instructions label
+- style: update tag input styling with improved padding and dropdown colors
+- Add reka tag input component
+- style: adjust thread list spacing and remove highlight animation
+- style: update search input and button hover states in thread list
+- style: darken hover background color for thread items from 50% to 70% opacity
+- style: update selected pagination item background color to darker shade
+- style: adjust thread list hover and background colors to darker neutral shades
+- Code cleanup
+- Update pagination UI with consistent dark theme and smaller icons
+- Add pagination to threads list with reka-ui components
+- Fetch thread data from EARS instead of mock data
+- Add getAllAttributes function to retrieve all attributes for an entity
+- Add paginate-numbered utility function for numbered pagination
+- Rename paginate -> paginate-scroll
+- Add pagination utility function to handle offset-based pagination
+- Add attribute and type indexes for optimized entity queries
+- Rewrite attribute storage using graphology
+- Rename entityID parameter to id across attribute storage functions
+- Rename getAttributes to getAttributesOfKind for clarity and consistency
+- Move startup-data file from brain to systems directory
+- Update placeholder text for thread instructions input field
+- Move tags above threads in view.vue
+- Add back button and navigation to thread view
+- Move thread status update logic to dedicated action handler
+- Refactor thread flag clearing logic
+- Rename thread operations to link operations for better semantics
+- Extract thread list item into separate component with improved status management
+- Create list folder for thread list components
+- Add highlight animation for newly created threads in list view
+- Code cleanup
+- Go to list after thread creation
+- Code cleanup
+- Implement thread shortcode generation, thread creation and append newly created thread to list view
+- Convert arrow functions to named functions and reorganize entity retrieval methods
+- Enhance entity indexing with type-based lookup and management
+- Receieve created thread from FE on BE
+- Add get all entities method
+- Convert static instructions to editable textarea in thread creation form
+- Hookup state machine to thread creation form
+- Add notes and todos mock plugins
+- Increase width of inspection panel and toolbar containers
+- Remove italic formatting from instruction text
+- Adjust spacing and add message icon to chat buttons
+- Adjust message list padding and extract isUserMsg helper function
+- Add hover effects to message list items for better interactivity
+- Add message expansion toggle with click interaction in message list
+- Add longer mock conversation data for testing UI functionality
+- Extract message list component from canvas view
+- Rename message content field to text across frontend and backend
+- Remove token streaming log
+- Add instructions ref to thread canvas view
+- Consolidate thread view data types and make messages optional
+- Remove italic text style from instructions in canvas view
+- Conditionally show messages button only when messages exist
+- Code cleanup
+- Extract getRelatedAttributes helper to simplify entity related attribute fetching
+- Move blueprint and transaction files to helpers directory
+- Rename selectedThreadId to selectedThreadCode for consistency
+- Remove selectedThreadId from thread initialization
+- Remove mock data from thread state
+- Temporarily disable thread tags display in list view
+- Add related threads and tags to thread view data
+- Add parent_of thread relations
+- Update readme copy
+- Update readme copy
+- Set view data with joined messages
+- Add tags mock entities and relations
+- Add empty incoming brain message to fix trpc.send.mutate typing
+- Add threads system with EARS storage accessors
+- update thread creation form layout and input styling
+- Remove dynamic placeholder logic from thread creation
+- Display 'Untitled...' placeholder when thread topic is missing
+- Remove support for dynamic placeholder topic [view]
+- Remove support for notes on threads
+- Remove support for notes on threads
+- Iterate on thread view design
+- Implement and consolidate threads update logic
+- Update thread selection to use shortCode and add view state management
+- Consolidate type exports using wildcard import from shared types
+- Fix type errors
+- Rename thread title field to topic across frontend and backend
+- Add thread status field and update thread list template to use data from BE
+- Add and send startup data for threads plugin
+- Refactor how startup data is sent
+- Rename WAKEUP -> STARTUP
+- Rename WAKEUP -> STARTUP
+- Standardize entity IDs to use full type names in mock data
+- Add shortCode and tags fields to Thread entities and update mock data
+- Add client xstate browser inspect
+- Delete proto mock data
+- Rename context section to instructions in threads canvas views
+- Reorder mockPLugins
+- Update mock data to better conform to relational data schema
+- Quiet BE errors for proto code snippets
+- Quiet BE errors for proto code snippets
+- Proto hydration adapter
+- Take a step back from the electric ledge
+- Refactor to use electric-sql for CRDT
+- Update readme copy
+- Handrolled CRDT
+- Update readme copy
+- Unique roles builder for blueprints
+- Use enhanced transaction API
+- Add transaction helpers
+- Disable ears internal logs
+- Blueprint implementation at feature parody
+- Move around types
+- Rename to msg.role to msg.sender
+- Update readme copy
+- Update README
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme
+- Update readme
+- style: update user message background and add border in chat interface
+- Add dynamic status indicator color transitions for chat states
+- Remove unused status label code from chat indicator
+- Load mock data into EARS on startup and use last thread as new message parent
+- Rename mock data file
+- Rename accessors index file
+- Iterate on status indicator
+- Status indicator UI mockup
+- Implement EARS-based message storage and retrieval for agent system
+- Code cleanup
+- Add unused updateExclusiveRole attribute storage method
+- Add chat input option
+- Code cleanup
+- Make chat stream cancelable
+- Use randomId when creating entities
+- Code cleanup
+- Move utils around
+- Code cleanup
+- Code cleanup
+- Rename type definition file name
+- Move backend bus system
+- Move ears to shared folder
+- Rename ECS -> EARS
+- Remove v2 ears implementation
+- Code cleanup
+- Code cleanup
+- Move llm code into folder
+- Rewrite attribute storage using Map-based implementation for improved type safety
+- Code cleanup
+- Code cleanup
+- New version of _ears
+- Lint
+- Code cleanup
+- Code cleanup
+- Code cleanup
+- Refactor ECS types and split attribute storage into separate modules
+- Add ecs utils
+- Text streaming to chat!
+- Chat streaming to the FE!
+- Add env example
+- Add dotenv to fix api key .env
+- Mock local env file
+- Mock local env file
+- Mock local env file
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Update readme copy
+- Code cleanup
+- Share outgoing agent events from BE with FE
+- Code cleanup
+- Code cleanup
+- Share app type config from the BE with the FE
+- Remove actions prototype from data model
+- Move mock data to BE and send it on wakeup
+- Send user_msg and respond with mock message from the BE!
+- Add open ai sdk
+- Code cleanup
+- Recent threads toggle UX improvements
+- Update copy
+- Update copy
+- Update copy
+- Move diagram to end of copy
+- Increase dialog diagram nodes
+- Add dialog diagram to readme
+- Update readme
+- Update readme
+- Ears init
+- Code cleanup
+- Reorganize client folders
+- Code cleanup
+- Fix message passing from child to bus actor BE, and send events to FE from a child system!
+- Fix message passing from child to bus actor BE, and send events to FE from a child system!
+- Tweak underline
+- Add underline to continue to chat button
+- Update systems diagram
+- Events receivable from frontend!
+- Code comment
+- Add prompt templates folder
+- Reduce margin between threads in list
+- Hardcode websockets url
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Add systems diagram
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Iterate copy
+- Improve readme formatting
+- Improve readme formatting
+- Expand upond docs, add systems section, and additional plugin diagram
+- Cleanup trpc requirements section
+- Modifrequirements section
+- Modify getting started section
+- Tweak diagram
+- Tweak padding formatting
+- Tweak padding formatting
+- Combine plugin diagrams into single conceptual diagram
+- Update plugins docs copy
+- Vertical plugins diagram arrangment
+- Tweak readme
+- Combine plugin diagrams
+- Add diagram padding left
+- Add plugin diagrams to readme
+- Add notes section with resizable textarea to thread view
+- Add error handling when retrieving actors from the system
+- Improve type safety of emit function with better event type inference
+- Update README diagram with plugins and systems label
+- Rename systemStates to systems and SystemIds to SystemId for consistency
+- Rename plugin param to systemId in bus.send mutation call
+- Rename plugin to systemId in event system for consistent terminology
+- Rename plugin to system in event bus and related types for better semantics
+- Code cleanup
+- Code cleanup
+- Fix trpc procedure.input undefined issue separate _app.ts
+- Log backend system errors
+- Continue  Rename agentState to agentSystem
+- Rename agentState to agentSystem for better semantic clarity
+- Rename backendState to backendSystem for better semantic clarity
+- Rename actorStates to systemStates and remove actors from bus context
+- Rename actors folder -> systems
+- Rename type-helpers -> event-helpers
+- Code cleanup
+- Add utility to get bus actor reference from actor system
+- Move emit helper to actor-helpers and add getActor usage in agent state
+- Code cleanup
+- Move XState event helpers from type-helpers to actor-helpers
+- Refactor sendParent helper and update event payload structure
+- Add getActor helper function
+- Commit missed file
+- Rename trail-actor to route-trailer and app-state to application
+- Refresh git cache
+- Refresh git cache
+- Rename app.vue component
+- Rename application.ts -> app.ts and rename applicationActor to applicationState across all components
+- Move contents of components directory into the shared directory continued
+- Move contents of components directory into the shared directory
+- Quiet error, fix build
+- Rename web/state directory -> actors
+- Rename api state directory -> actors
+- Move api plugins into state directory
+- Centralize plugin event definitions in state/index.ts
+- Add plugins path aliases and update all be imports to use new alias patterns
+- Add import paths alias to use @/ and configure path mapping in tsconfig
+- Export backend state from central index
+- Move window type declaration and assignment after app mount
+- Rename bus to backend for state management files and imports
+- Code cleanup
+- little less compact diagram
+- More compact diagram
+- Cleaner readme diagram
+- Update README with project overview
+- Update bus-state import path to bus in router and agent state files
+- Reorganize tRPC setup files: move context and router logic to dedicated files
+- Code cleanup
+- Cleanup type helper comments
+- Add mergePlugins helper to fix joining plugin events
+- Consolidate plugin event types into type-helpers and remove safe-events
+- Code cleanup
+- Reorder generic type inference in fromPlugin helper
+- Decentralize PluginEvents definitions
+- BusEvents code cleanup
+- Add MergeReceivable for simplified event handling
+- Add fromPlugin helper for better dx ergonomics
+- Add safe parent event sending
+- Less redundant IncomingPluginEvents definition boilerplate
+- Remove unused OutgoingEvent type and inline Extract type in bus machine config
+- Rename agent events and improve type organization for better clarity
+- Add internal events and simplify agent event types
+- Fix event routing
+- Route incoming events to plugins and improve agent event type definitions
+- Attempt file rename
+- Attempt file rename
+- Add plugin field to USER_MSG payload when sending messages
+- Define agent outgoing events and add token emission action
+- Add safe events type helper to backend
+- Consolidate TRPC setup by moving context and router config into server and bus files
+- Consolidate router files and remove unused prefix-events utility
+- Refactor outgoing event handling to use xstate emit for outgoing events
+- Refactor event bus to support plugin architecture and bidirectional events
+- Code cleanup
+- Add agents plugin to api
+- Rename some files
+- Code cleanup
+- Add plugin bus type helpers for handling chat events and schemas
+- Add event prefixing and reorganize state management files
+- Refactor api to use event bus for state management
+- Rename chat router to api router and update import/usage references
+- Add mergeRouters export to trpc config for router composition
+- Fix event propagation for status selector and tags in thread list
+- Update README descriptions and add license information
+- Git ignore vite dir
+- #1 - Scaffold monorepo for BE work
+- Rename @/helpers to @/shared
+- Add type safety to actor references and make plugin IDs const assertions
+- Improve type safety and remove redundant interface declarations
+- Fix vue type checking in component files
+- Enable strict TypeScript and fix type issues in useChat.ts
+- Fix trpc client type checking and add readme docs
+- Update trpc client and add Vue TypeScript config
+- Update build script and upgrade TypeScript/Vue dependencies
+- Rename package from @agent/common to @abuddy/common
+- Update dev script aliases to 'be' and 'fe' for backend and frontend
+- Update workload import path to use correct component file
+- Refactor state machine actions and add Vue type declarations
+- Refactor state machine actions and update build scripts in package.json
+- Fix file imports and type errors
+- Add type safety and refactor state machine actions with inline implementations
+- Refactor state machine actions and fix .ts extension imports
+- Refactor state machine actions and add dev scripts for frontend/backend
+- Add type checking to dev and build scripts, pin typescript version
+- Add Vite TypeScript config and update project references
+- Add dist/ and build/ to gitignore
+- Add TypeScript declarations for Vite environment variables
+- chore: fix type builds to share types from FE to BE
+- Api server running and placeholder web chat interfaces
+- Update package names and main entry point for monorepo packages
+- Add watch script and TUI config to turbo setup
+- Setup Turborepo and add TypeScript config for monorepo build system
+- Scaffold api with placeholder dirs and files
+- Initialize monorepo with TypeScript config and workspace setup
+- Move web folders and files around in prep for monorepo and addition of BE logic
+- Add planning option to chat input select dropdown
+- Move to pnpm
+- Replace headset icon with message-circle-more in chat button
+- Adjust UI spacing and button styles, update 'Open thread' to 'Continue to chat'
+- Add fixed width and max width to thread list items for better layout
+- Update thread list hover states and text colors for better contrast
+- Create Label component and replace hardcoded labels in canvas views
+- Increase max width of agent chat messages to 90% for better readability
+- Refine form styles and remove border from inputs and labels
+- Update chat UI styles and button text for improved visual consistency
+- Update label text color from neutral-300 to neutral-500 for better contrast
+- Update thread UI with improved styling and hover states
+- Add tags fields to threads view
+- Rename blank.vue to view.vue and update plugin reference
+- Auto-scroll messages and root container when opening messages panel
+- Add button to view canvas and chat alongside messages toggle
+- Add message dropdown
+- Rename crumb label canvas to agent
+- Basic readme
+- Remove reka ui
+- Code cleanup
+- Code cleanup
+- Code cleanup
+- Code cleanup
+- Make chat messages more square
+- Restyle threads id badge
+- Restyle open threads chat button
+- Rename conversation mode -> working
+- Rename conversation mode -> working
+- Update threads UI to seamless blend with canvas and have consisten threads bg color
+- Move app state machine into separate file in state folder
+- Code cleanup
+- Add thread edit screen
+- Add chat button to threads list items
+- Naviaget to thread view page on click
+- Fix paramterized breadcrumbs
+- Code cleanup
+- Code cleanup
+- Add vue arrange and build agent workboard kanban
+- Dont toggle panel when selecting plugin
+- Navigate on cancle/create threads btn click
+- Rename agent display to content
+- Chat terminal mode select
+- Increase breadcrumbs font
+- Update workload button
+- Fix default plugin trail click
+- Move view workload button to the left
+- Code cleanup
+- Move agent types out of shared types file
+- Make typeOf generic and code cleanup
+- Add blank state with routes
+- Add canvas routing for agent plugin
+- Route default plugin without conflict
+- Fix router for single component
+- Breadcrumb helper functions
+- Code cleanup
+- Add stately browser inspector
+- Add router component and hookup logic
+- Imrpove window.applicationActor type
+- Code cleanup
+- Move showCreateForm logic into fsm
+- Add go-to-workboard button
+- Allow custom button classes
+- Add show all toggle to agent canvas
+- Simplify toggle button chevrons
+- Add design system buttons
+- Add design and layout component folders
+- Rename files
+- Add random placeholder texts forcreate thread title input
+- Change status field to type and
+- Add draft thread
+- Add draft status
+- Reorganize folders
+- Ensure context panel toggle is always to far right of panel
+- Add context panel back button
+- Make threads badges in create form
+- Improve threads list styling
+- Code cleanup
+- Separate create form on threads
+- Mock threads canvas UI
+- Code cleanup
+- Consistent chat button sizing
+- Cleanup mock data
+- Add stop agent button
+- Add mock breadcrumbs ui
+- Add current thread description under chat
+- Move canvas toggle to right end
+- Add Threads plugin
+- Rename blank plugins folder
+- Code cleanup
+- Show active plugin UI in canvas and context panel when selecting a new plugin
+- Display real (mock) data to agent canvas and context panel
+- Add mock plugins and fix plugin selection
+- Reorganize main files and folders
+- Spawn child actors for each plugin and move chat to agent component
+- Update TypeScript configuration for module
+- Fix message event handling
+- Tweak panel padding
+- Hookup plugin system and toggles including default plugin
+- Add plugins folder to prep for introduction of plugin system
+- Fix chat width and add border
+- Rename context panel title
+- Edit scss module scoping
+- Edit scss module scoping
+- Improve typing
+- Improve typing
+- Add eventOf action type checker
+- Code cleanup
+- Improve debugging
+- Clickng new thread clears messages
+- Remove theme state
+- Add XState and Vue integration; refactor App.vue and state management
+- Fix type error
+- Tweak Message and chat styling
+- Restyle recent threads toggle
+- Update folder strucure
+- Update folder strucure
+- Tweak canvas area styling relative to chat area
+- Context inspection btn toggle
+- Add new thread button
+- Add toolbar item
+- Condense chat space
+- Disable chat input placeholder pointer events to pass through focus to input
+- Disable chat input placeholder pointer events to pass through focus to input
+- Make panel title darker
+- Tweak canvas toggle btn styling
+- Add canvas/plugin toggle in the canvas area
+- Add subtle dropshadow to canvas area
+- Fix scroll on message behavior
+- Code cleanup
+- Remove canvas area border
+- Add disabled primary color
+- Remove focus ring from chat input
+- Enter submits content editable form
+- Add primary color theme
+- Make chat input a content editable section
+- Add canvas area border
+- Tweak scrollbar
+- Remove boilerplate tailwind theme
+- Add missing toolbar item
+- Add pinned section to bottom of the toolbar
+- Rename past chats to threads
+- Add additional mock plugin tools
+- Add past chats ui
+- Move and hide header action buttons
+- Further style tweaks
+- Tweak scrollbar
+- Tweak chat area height
+- Migrate to vue
+- Make app dark
+- Add git ignore
+- Bolt new bootstrap
+- Project init
+
+-e # Changelog
+
 ## v0.0.1 (2026-04-03)
 
 ### Features
@@ -3386,4 +6786,3 @@
 - Add git ignore
 - Bolt new bootstrap
 - Project init
-
