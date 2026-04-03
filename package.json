@@ -17,6 +17,7 @@
     "node": ">=23.0.0"
   },
   "scripts": {
+    "postinstall": "cd packages/api && npm rebuild node-pty",
     "build": "npm run build -ws --if-present",
     "build-prod": "sh build/build.sh",
     "prod-app": "sh build/prod/run.sh",
