@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE="${1:-$SCRIPT_DIR/../resources/draft-final.svg}"
+SOURCE="${1:-$SCRIPT_DIR/../resources/logo.svg}"
 OUT_DIR="$SCRIPT_DIR/resources"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

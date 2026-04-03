@@ -34,7 +34,7 @@ export default /**
           dest: 'assets'
         },
         {
-          src: '../../resources/draft-final.svg',
+          src: '../../resources/logo.svg',
           dest: 'assets',
           rename: 'logo.svg'
         }
