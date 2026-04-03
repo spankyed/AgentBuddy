@@ -8,8 +8,10 @@ import { SPLASH_CONFIG } from './constants.js';
 
 export class SplashScreen implements AppModule {
   private splashWindow: BrowserWindow | null = null;
+  private isQuitting = false;
 
   async enable({ app }: ModuleContext): Promise<void> {
+    app.on('before-quit', () => { this.isQuitting = true; });
     await app.whenReady();
     this.createSplashWindow();
   }
@@ -23,7 +25,7 @@ export class SplashScreen implements AppModule {
       title: SPLASH_CONFIG.TITLE,
       frame: false,
       transparent: true,
-      alwaysOnTop: true,
+      alwaysOnTop: false,
       resizable: false,
       movable: false,
       center: true,
@@ -45,10 +47,9 @@ export class SplashScreen implements AppModule {
       }
     });
 
-    // Prevent manual close
+    // Prevent manual close, but allow quit (Cmd+Q)
     this.splashWindow.on('close', (event) => {
-      // Only prevent close if window hasn't started closing animation
-      if (this.isValid() && this.splashWindow!.getOpacity() === 1) {
+      if (!this.isQuitting && this.isValid() && this.splashWindow!.getOpacity() === 1) {
         event.preventDefault();
       }
     });
