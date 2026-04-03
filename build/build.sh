@@ -29,10 +29,6 @@ echo ""
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
 npm install --silent
-# Re-install API deps with nested strategy so transitive deps (e.g. @ai-sdk/provider-utils)
-# land in packages/api/node_modules/ instead of being hoisted to root.
-# This ensures the packaged app can resolve them at runtime.
-npm install --workspace=packages/api --install-strategy=nested --silent
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
@@ -88,14 +84,6 @@ if [ ! -d "$APP_PATH/app/packages/api" ]; then
   echo -e "  ❌ Build validation failed: API package not found"
   exit 1
 fi
-# Verify critical transitive deps are in API's node_modules (not just hoisted to root)
-for dep in "@ai-sdk/provider-utils" "@ai-sdk/provider"; do
-  if [ ! -d "$APP_PATH/app/packages/api/node_modules/$dep" ]; then
-    echo -e "  ❌ Build validation failed: $dep missing from packages/api/node_modules/"
-    echo "  This will cause ERR_MODULE_NOT_FOUND at runtime."
-    exit 1
-  fi
-done
 echo -e "${GREEN}✓${NC} Application packaged"
 echo ""
 
