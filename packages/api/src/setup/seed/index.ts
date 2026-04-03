@@ -1,7 +1,7 @@
 /**
  * Database Seed — loads compiled default-setup artifacts into LMDB
  *
- * Run-once: skips seeding if the `seeded` internal flag is already set,
+ * Skips seeding if the compiled data hash is unchanged since last seed,
  * unless `force` is passed. The CLI script always forces.
  */
 
@@ -249,16 +249,13 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
 
   const compiledDir = options?.compiledDir ?? DEFAULT_COMPILED_DIR;
 
-  // Run-once gate with hash-based change detection
+  // Skip if data unchanged (hash match)
   if (!options?.force) {
     const internal = settingsQueries.getInternalSettings();
-    if (internal.seeded) {
-      const currentHash = computeSeedHash(compiledDir);
-      if (internal.seedHash === currentHash) {
-        log('  seed skipped: data unchanged');
-        return null;
-      }
-      log('  seed data changed, re-seeding...');
+    const currentHash = computeSeedHash(compiledDir);
+    if (internal.seedHash === currentHash) {
+      log('  seed skipped: data unchanged');
+      return null;
     }
   }
 
@@ -336,8 +333,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
     log('  compiled-notes.json not found, skipping notes');
   }
 
-  // Mark as seeded with content hash
-  settingsCommands.updateSettings('internal', null, ['seeded'], true);
+  // Store content hash
   settingsCommands.updateSettings('internal', null, ['seedHash'], computeSeedHash(compiledDir));
 
   return result;
