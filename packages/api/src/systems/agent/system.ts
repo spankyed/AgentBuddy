@@ -29,7 +29,7 @@ export const IncomingAgentEvents = [
       isImage: z.boolean(),
     })).optional(),
     context: z.array(z.object({
-      refType: z.enum(['thread', 'document', 'note']),
+      refType: z.enum(['thread', 'document', 'note', 'task', 'tasklist', 'folder']),
       refId: z.string(),
       shortCode: z.string(),
       label: z.string(),
@@ -69,7 +69,7 @@ export const IncomingAgentEvents = [
         isImage: z.boolean(),
       })).optional(),
       context: z.array(z.object({
-        refType: z.enum(['thread', 'document', 'note']),
+        refType: z.enum(['thread', 'document', 'note', 'task', 'tasklist', 'folder']),
         refId: z.string(),
         shortCode: z.string(),
         label: z.string(),

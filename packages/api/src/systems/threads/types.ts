@@ -73,7 +73,7 @@ export interface ImageReference {
   name: string;
 }
 
-export type ContextReferenceType = 'thread' | 'document' | 'note';
+export type ContextReferenceType = 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder';
 
 export interface ContextReference {
   refType: ContextReferenceType;
