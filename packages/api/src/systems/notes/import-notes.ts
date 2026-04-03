@@ -147,17 +147,18 @@ function parseFrontmatter(content: string): {
   const frontmatter = match[1]
   const body = content.slice(match[0].length)
 
-  const titleMatch = frontmatter.match(/title:\s*"([^"]*)"/)
+  const unescape = (s: string) => s.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+  const titleMatch = frontmatter.match(/title:\s*"((?:[^"\\]|\\.)*)"/)
   const typeMatch = frontmatter.match(/type:\s*(\w+)/)
-  const iconMatch = frontmatter.match(/icon:\s*"([^"]*)"/)
+  const iconMatch = frontmatter.match(/icon:\s*"((?:[^"\\]|\\.)*)"/)
   const favoriteMatch = frontmatter.match(/favorite:\s*true/)
   const hideMatch = frontmatter.match(/hideCompletedChildren:\s*true/)
   const completedMatch = frontmatter.match(/completed:\s*true/)
 
   return {
-    title: titleMatch?.[1] ?? undefined,
+    title: titleMatch?.[1] ? unescape(titleMatch[1]) : undefined,
     type: (typeMatch?.[1] as 'document' | 'tasklist' | 'task') ?? 'document',
-    icon: iconMatch?.[1] ?? null,
+    icon: iconMatch?.[1] ? unescape(iconMatch[1]) : null,
     favorite: !!favoriteMatch,
     hideCompletedChildren: !!hideMatch,
     completed: !!completedMatch,

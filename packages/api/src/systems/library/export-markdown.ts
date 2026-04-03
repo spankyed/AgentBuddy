@@ -12,6 +12,10 @@ import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
 import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
+
+function escapeQuotes(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
 import { writeExportFile } from '@/core/helpers/export'
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
@@ -85,12 +89,12 @@ function writeItems(
       const subDir = path.join(dir, dirName)
       ensureDirectoryExists(subDir)
 
-      const metaFields: string[] = [`name: "${item.name}"`]
-      if (item.description) metaFields.push(`description: "${item.description}"`)
+      const metaFields: string[] = [`name: "${escapeQuotes(item.name)}"`]
+      if (item.description) metaFields.push(`description: "${escapeQuotes(item.description)}"`)
       const metaContent = `---\n${metaFields.join('\n')}\n---\n`
       writeExportFile(subDir, '_meta.md', metaContent)
 
-      const childNames = new Set<string>()
+      const childNames = new Set<string>(['_meta.md'])
       writeItems(item.children, subDir, mediaFilenameMap, childNames)
     }
   }

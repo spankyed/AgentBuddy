@@ -85,11 +85,15 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
   return { filePath, itemCount, mediaCopied }
 }
 
+function escapeQuotes(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
 function buildNoteFrontmatter(note: ExportedNote): string {
   const fields: string[] = []
-  if (note.title) fields.push(`title: "${note.title}"`)
+  if (note.title) fields.push(`title: "${escapeQuotes(note.title)}"`)
   fields.push(`type: ${note.type}`)
-  if (note.icon) fields.push(`icon: "${note.icon}"`)
+  if (note.icon) fields.push(`icon: "${escapeQuotes(note.icon)}"`)
   if (note.favorite) fields.push(`favorite: true`)
   if (note.hideCompletedChildren) fields.push(`hideCompletedChildren: true`)
   if (note.completed) fields.push(`completed: true`)

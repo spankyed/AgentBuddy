@@ -289,7 +289,7 @@ function importMarkdownDir(
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        result.errors.push(`Failed to import "${name}": ${message}`)
+        result.errors.push(`Failed to import "${basename}": ${message}`)
         result.skipped++
       }
     }
