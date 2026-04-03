@@ -20,26 +20,36 @@ echo "=========================================="
 echo ""
 
 # Step 1: Clean previous builds
-echo -e "${BLUE}[1/5]${NC} Cleaning previous builds..."
-rm -rf dist/ 
+echo -e "${BLUE}[1/6]${NC} Cleaning previous builds..."
+rm -rf dist/
 rm -rf packages/*/dist/
 echo -e "${GREEN}✓${NC} Clean complete"
 echo ""
 
 # Step 2: Install dependencies
-echo -e "${BLUE}[2/5]${NC} Installing dependencies..."
+echo -e "${BLUE}[2/6]${NC} Installing dependencies..."
 npm install --silent
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
-# Step 3: Build TypeScript/Vite packages
-echo -e "${BLUE}[3/5]${NC} Building packages..."
+# Step 3: Compile DSL (default-setup)
+if [ -z "$SKIP_COMPILE" ]; then
+  echo -e "${BLUE}[3/6]${NC} Compiling default-setup DSL..."
+  npm run compile
+  echo -e "${GREEN}✓${NC} DSL compiled"
+else
+  echo -e "${BLUE}[3/6]${NC} Skipping DSL compilation (SKIP_COMPILE set)"
+fi
+echo ""
+
+# Step 4: Build TypeScript/Vite packages
+echo -e "${BLUE}[4/6]${NC} Building packages..."
 SKIP_DSL_GEN=1 npm run build
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 
-# Step 4: Build native helpers
-echo -e "${BLUE}[4/5]${NC} Building native helpers..."
+# Step 5: Build native helpers
+echo -e "${BLUE}[5/6]${NC} Building native helpers..."
 if [[ "$OSTYPE" == "darwin"* ]]; then
     npm run build:speech-macos
     echo -e "${GREEN}✓${NC} Native helpers built"
@@ -54,8 +64,8 @@ if [[ "$OSTYPE" == "darwin"* ]] && [ ! -f "native/speech/macos/SpeechHelper" ]; 
     exit 1
 fi
 
-# Step 5: Package with electron-builder
-echo -e "${BLUE}[5/5]${NC} Packaging application..."
+# Step 6: Package with electron-builder
+echo -e "${BLUE}[6/6]${NC} Packaging application..."
 npx electron-builder build --config electron-builder.mjs --mac --arm64
 
 # Quick validation - check for app directory (ASAR disabled)
