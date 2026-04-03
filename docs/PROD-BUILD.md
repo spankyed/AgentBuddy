@@ -1,1 +1,41 @@
-Act as a senior DevOps engineer to prepare and execute a production build of the AgentBuddy Electron app. The build pipeline involves multiple workspace packages that must be built in the correct order. Review the full build chain (`npm run build-prod` and `build/build.sh`), identify any prerequisites (compiled default-setup artifacts, generated defs, backend build, frontend build, Electron packaging), verify all steps complete without errors, and troubleshoot any failures. Reference `electron-builder.mjs` for packaging config, `packages/api/package.json` for the API build pipeline, and `package.json` root scripts. The app targets macOS (Apple Silicon). Flag any issues with missing assets, stale build artifacts, or configuration that needs updating before the build can succeed.
+# Production Build (macOS Apple Silicon)
+
+## Prerequisites
+
+- Node >= 23.0.0
+- Xcode Command Line Tools (for native module compilation)
+
+## Build
+
+```bash
+npm run build-prod
+```
+
+This runs `build/build.sh` which executes 6 steps:
+
+1. **Clean** — removes `dist/` and `packages/*/dist/`
+2. **Install** — `npm install`
+3. **Compile DSL** — `npm run compile` (skip with `SKIP_COMPILE=1`)
+4. **Build packages** — API (tsc + tsup), main/preload (Vite), renderer (vue-tsc + Vite)
+5. **Build native helpers** — macOS speech recognition binary
+6. **Package** — electron-builder → `.app`, `.dmg`, `.zip` in `dist/`
+
+## Run
+
+```bash
+npm run prod-app
+```
+
+Launches `dist/mac-arm64/AgentBuddy.app` with console logging to `build/scripts/logs/`.
+
+## Output
+
+- `dist/mac-arm64/AgentBuddy.app` — app bundle
+- `dist/AgentBuddy-*.dmg` — installer
+- `dist/AgentBuddy-*.zip` — archive
+
+## Notes
+
+- ASAR is disabled — API server needs direct filesystem access to `node_modules`
+- Native modules (lmdb, node-pty) are rebuilt by electron-builder for Electron's Node
+- Code signing requires a valid "Developer ID Application" certificate for distribution
