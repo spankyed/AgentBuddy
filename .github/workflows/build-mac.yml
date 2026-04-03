@@ -4,6 +4,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (e.g. 0.1.0). Leave empty to use package.json version.'
+        required: false
+        type: string
 
 jobs:
   build-mac:
@@ -18,8 +23,20 @@ jobs:
           node-version: 23
           cache: npm
 
+      - name: Validate version matches tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "Tag version: $TAG_VERSION"
+          echo "Package version: $PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Compile DSL
         run: npm run compile
@@ -41,6 +58,8 @@ jobs:
         run: npx electron-builder build --config electron-builder.mjs --mac --arm64
 
       - name: Verify signing
+        if: ${{ secrets.APPLE_TEAM_ID != '' }}
+        continue-on-error: true
         run: |
           codesign --verify --deep --strict dist/mac-arm64/AgentBuddy.app
           xcrun stapler validate dist/mac-arm64/AgentBuddy.app
@@ -55,9 +74,12 @@ jobs:
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: |
-            dist/AgentBuddy-*.dmg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --generate-notes \
+            --title "AgentBuddy $GITHUB_REF_NAME" \
+            dist/AgentBuddy-*.dmg \
             dist/AgentBuddy-*.zip
