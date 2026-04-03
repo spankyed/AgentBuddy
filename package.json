@@ -30,7 +30,7 @@
     "rebuild": "cd packages/api && npm rebuild",
     "package:all": "electron-builder --mac --win --linux",
     "test": "npx playwright test ./tests/e2e.spec.ts",
-    "start": "SKIP_DSL_GEN=1 npm run build:be && node packages/dev-mode.js",
+    "start": "SKIP_DEFS_GEN=1 npm run build:be && node packages/dev-mode.js",
     "start:gen": "npm run build:be && node packages/dev-mode.js",
     "start:inspect": "npm run build:be && ELECTRON_INSPECT=true node packages/dev-mode.js",
     "start:no-build": "node packages/dev-mode.js",

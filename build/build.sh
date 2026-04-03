@@ -44,7 +44,7 @@ echo ""
 
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
-SKIP_DSL_GEN=1 npm run build
+SKIP_DEFS_GEN=1 npm run build
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 
