@@ -20,11 +20,13 @@ export function parseFrontmatter(content: string): { tags: string[]; name?: stri
     ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean)
     : []
 
-  const nameMatch = frontmatter.match(/name:\s*"([^"]*)"/)
-  const name = nameMatch?.[1]
+  const unescape = (s: string) => s.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
 
-  const descMatch = frontmatter.match(/description:\s*"([^"]*)"/)
-  const description = descMatch?.[1]
+  const nameMatch = frontmatter.match(/name:\s*"((?:[^"\\]|\\.)*)"/)
+  const name = nameMatch?.[1] ? unescape(nameMatch[1]) : undefined
+
+  const descMatch = frontmatter.match(/description:\s*"((?:[^"\\]|\\.)*)"/)
+  const description = descMatch?.[1] ? unescape(descMatch[1]) : undefined
 
   return { tags, name, description, body }
 }

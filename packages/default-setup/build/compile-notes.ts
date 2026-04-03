@@ -32,18 +32,19 @@ function parseFrontmatter(content: string): { meta: Frontmatter; body: string } 
   const fm = match[1]
   const body = content.slice(match[0].length)
 
-  const titleMatch = fm.match(/title:\s*"([^"]*)"/)
+  const unescape = (s: string) => s.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+  const titleMatch = fm.match(/title:\s*"((?:[^"\\]|\\.)*)"/)
   const typeMatch = fm.match(/type:\s*(\w+)/)
-  const iconMatch = fm.match(/icon:\s*"([^"]*)"/)
+  const iconMatch = fm.match(/icon:\s*"((?:[^"\\]|\\.)*)"/)
   const favoriteMatch = fm.match(/favorite:\s*true/)
   const hideMatch = fm.match(/hideCompletedChildren:\s*true/)
   const completedMatch = fm.match(/completed:\s*true/)
 
   return {
     meta: {
-      title: titleMatch?.[1],
+      title: titleMatch?.[1] ? unescape(titleMatch[1]) : undefined,
       type: (typeMatch?.[1] as Frontmatter['type']) ?? 'document',
-      icon: iconMatch?.[1] ?? null,
+      icon: iconMatch?.[1] ? unescape(iconMatch[1]) : null,
       favorite: !!favoriteMatch,
       hideCompletedChildren: !!hideMatch,
       completed: !!completedMatch,
