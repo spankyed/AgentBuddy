@@ -4,7 +4,7 @@
 # the two environments and must be synced by hand.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/resolve-env.sh"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Load .env for DEFAULT_SETUP_EXTERNAL
 if [ -f "$ROOT/.env" ]; then

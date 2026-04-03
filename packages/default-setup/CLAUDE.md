@@ -83,16 +83,21 @@ default-setup/
 
 ## Commands
 
+- `npm run compile` — compile all targets (actions, prompts, flows, library, notes)
 - `npm run compile:actions` — compile actions to JSON
 - `npm run compile:prompts` — compile prompts to JSON
 - `npm run compile:flows` — compile flows to JSON
 - `npm run compile:library` — compile library markdown to JSON
 - `npm run typecheck` — type check all source files
+- `npm run pipeline` — compile all targets
 
-### Regenerate defs when API types change
+## Importing compiled output into AgentBuddy
 
-All defs are auto-generated. Run from monorepo root:
+After compiling, import `dist/` via AgentBuddy Settings → Import Setup Pack.
+
+### Updating defs
+
+Type definitions in `defs/` are generated automatically during `npm run build:be` (via the API's `postbuild` step). To sync to the external repo:
 ```bash
-npm run build:be          # Rebuilds API + runs rollup defs generation
-npm run sync:defs --workspace @app/default-setup  # Copies generated .d.ts to defs/
+npm run sync:external --workspace @app/default-setup
 ```
