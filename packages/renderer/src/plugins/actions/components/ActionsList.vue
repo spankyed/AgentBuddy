@@ -112,7 +112,7 @@
 
 <script setup lang="ts">
 import type { ActionEntity, EARS, Category } from '@app/api'
-import { Play, Trash2 } from 'lucide-vue-next'
+import { Play, Trash2, Plus } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import CategoryFilter from '@/core/components/design/CategoryFilter.vue'
 
