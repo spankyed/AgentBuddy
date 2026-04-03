@@ -1,22 +1,27 @@
 #!/bin/bash
-# Usage: ./build/generate-icons.sh [source.svg]
-# Generates icon.png, icon.icns, icon.ico from source SVG
-# Requires: rsvg-convert (librsvg), sips, iconutil (macOS)
+# Usage: ./build/resources/gen-icons.sh [source.png|source.svg]
+# Generates icon.png, icon.icns, icon.ico in build/resources/
+# Requires: sips, iconutil (macOS). rsvg-convert needed only for SVG input.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE="${1:-$SCRIPT_DIR/../resources/logo.svg}"
-OUT_DIR="$SCRIPT_DIR/resources"
+DEFAULT_SOURCE="$SCRIPT_DIR/../../resources/logo-dark.png"
+SOURCE="${1:-$DEFAULT_SOURCE}"
+OUT_DIR="$SCRIPT_DIR"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 echo "Generating icons from: $SOURCE"
 
-# 1. SVG -> 1024x1024 master PNG
-rsvg-convert -w 1024 -h 1024 "$SOURCE" > "$WORK/icon-1024.png"
+# Get 1024x1024 master PNG from source
+if [[ "$SOURCE" == *.svg ]]; then
+  rsvg-convert -w 1024 -h 1024 "$SOURCE" > "$WORK/icon-1024.png"
+else
+  sips -z 1024 1024 "$SOURCE" --out "$WORK/icon-1024.png" >/dev/null
+fi
 
-# 2. macOS .icns (requires iconset with standard sizes)
+# macOS .icns
 ICONSET="$WORK/icon.iconset"
 mkdir -p "$ICONSET"
 for size in 16 32 128 256 512; do
@@ -27,12 +32,12 @@ done
 iconutil -c icns "$ICONSET" -o "$OUT_DIR/icon.icns"
 echo "  icon.icns"
 
-# 3. General-purpose PNG (512x512)
+# General PNG (512x512)
 sips -z 512 512 "$WORK/icon-1024.png" --out "$OUT_DIR/icon.png" >/dev/null
 echo "  icon.png"
 
-# 4. Windows .ico (256x256 PNG — electron-builder accepts PNG-based ico)
+# Windows .ico (256x256)
 sips -z 256 256 "$WORK/icon-1024.png" --out "$OUT_DIR/icon.ico" >/dev/null
 echo "  icon.ico"
 
-echo "All icons generated in $OUT_DIR/"
+echo "Done — icons in $OUT_DIR/"
