@@ -151,7 +151,7 @@ Flows import via a compiled DSL JSON file. The DSL is validated against availabl
 
 ## Import Setup Pack
 
-Settings → Misc → "Import Setup Pack" imports all artifact types from a single `dist/` directory (the output of `npm run compile:all`). Calls `seedData({ force: true, compiledDir })` which processes:
+Settings → Misc → "Import Setup Pack" imports all artifact types from a single `dist/` directory (the output of `npm run compile`). Calls `seedData({ force: true, compiledDir })` which processes:
 - `compiled-actions.json`
 - `compiled-prompts.json`
 - `compiled-flows.json`
