@@ -3,6 +3,7 @@ name: Build macOS (Signed + Notarized)
 on:
   push:
     tags: ['v*']
+    branches: []
   workflow_dispatch:
     inputs:
       version:
