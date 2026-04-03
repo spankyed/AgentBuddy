@@ -30,20 +30,20 @@ body {
 
 .logo-wrapper {
     position: relative;
-    margin-bottom: 30px;
+    margin-bottom: 8px;
 }
 
 .logo {
     width: 150px;
     height: 150px;
     display: block;
-    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.3));
 }
 
 .loading-bar {
-    width: 80px;
+    width: 100px;
     height: 2px;
-    margin: 20px auto 0;
+    margin: 12px auto 14px;
     background: rgba(212, 168, 67, 0.15);
     border-radius: 1px;
     overflow: hidden;
@@ -65,6 +65,7 @@ body {
     color: #666;
     font-size: 12px;
     font-weight: 300;
+    letter-spacing: 0.5px;
     text-align: center;
 }
 
