@@ -69,7 +69,7 @@
           </div>
 
           <!-- Tags -->
-          <CollapsibleSection :default-open="false" class="pt-2">
+          <CollapsibleSection :default-open="false" button-class="py-3">
             <template #label>
               <div class="flex items-center gap-2">
                 <span>Tags</span>
@@ -102,8 +102,8 @@
         </div>
 
         <!-- Messages Section (view only) -->
-        <div v-if="isViewMode" ref="messagesSection" class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection :default-open="false" @toggle="onMessagesToggle">
+        <div v-if="isViewMode" ref="messagesSection" class="border-t border-neutral-800">
+          <CollapsibleSection :default-open="false" button-class="py-4" @toggle="onMessagesToggle">
             <template #label>
               Messages ({{ messages.length }})
             </template>
@@ -117,8 +117,8 @@
         </div>
 
         <!-- Linked Threads Section -->
-        <div class="pt-6 border-t border-neutral-800">
-          <CollapsibleSection :default-open="false">
+        <div class="border-t border-neutral-800">
+          <CollapsibleSection :default-open="false" button-class="py-4">
             <template #label>
               Linked Threads ({{ linkedThreads.length }})
             </template>
