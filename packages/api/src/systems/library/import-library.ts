@@ -224,14 +224,21 @@ function importMarkdownDir(
   const entries = fs.readdirSync(dir, { withFileTypes: true })
 
   for (const entry of entries) {
-    if (entry.name === 'media') continue
+    if (entry.name === 'media' || entry.name === '_meta.md') continue
     const fullPath = path.join(dir, entry.name)
 
     if (entry.isDirectory()) {
       // Subdirectory → collection
-      const name = toDisplayName(entry.name)
+      let name = toDisplayName(entry.name)
+      let description: string | undefined
+      const metaPath = path.join(fullPath, '_meta.md')
+      if (fs.existsSync(metaPath)) {
+        const meta = parseFrontmatter(fs.readFileSync(metaPath, 'utf-8'))
+        if (meta.name) name = meta.name
+        description = meta.description
+      }
       try {
-        const collection = repository.libraryCommands.createCollection(name, undefined, parentId)
+        const collection = repository.libraryCommands.createCollection(name, description, parentId)
         result.created++
         importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia)
       } catch (err) {

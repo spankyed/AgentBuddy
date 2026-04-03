@@ -21,7 +21,7 @@ export function buildFrontmatter(tags: string[], name?: string): string {
   return `---\n${fields.join('\n')}\n---\n\n`
 }
 
-export function parseFrontmatter(content: string): { tags: string[]; name?: string; body: string } {
+export function parseFrontmatter(content: string): { tags: string[]; name?: string; description?: string; body: string } {
   const match = content.match(/^---\n([\s\S]*?)\n---\n\n?/)
   if (!match) return { tags: [], body: content }
 
@@ -36,7 +36,10 @@ export function parseFrontmatter(content: string): { tags: string[]; name?: stri
   const nameMatch = frontmatter.match(/name:\s*"([^"]*)"/)
   const name = nameMatch?.[1]
 
-  return { tags, name, body }
+  const descMatch = frontmatter.match(/description:\s*"([^"]*)"/)
+  const description = descMatch?.[1]
+
+  return { tags, name, description, body }
 }
 
 export function serializeContentToMarkdown(sections: ContentSection[]): string {

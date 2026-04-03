@@ -85,6 +85,11 @@ function writeItems(
       const subDir = path.join(dir, dirName)
       ensureDirectoryExists(subDir)
 
+      const metaFields: string[] = [`name: "${item.name}"`]
+      if (item.description) metaFields.push(`description: "${item.description}"`)
+      const metaContent = `---\n${metaFields.join('\n')}\n---\n`
+      writeExportFile(subDir, '_meta.md', metaContent)
+
       const childNames = new Set<string>()
       writeItems(item.children, subDir, mediaFilenameMap, childNames)
     }
