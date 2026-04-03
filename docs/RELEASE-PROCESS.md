@@ -1,21 +1,133 @@
-Act as a senior DevOps engineer to streamline the release process for the AgentBuddy Electron app. The production build pipeline (`npm run build-prod` via `build/build.sh`) already produces a signed/notarized `.app`, `.dmg`, and `.zip` for macOS ARM64, and a GitHub Actions workflow exists at `.github/workflows/build-mac.yml` that builds on version tags. Code signing and notarization are configured in `electron-builder.mjs` via environment variables (`APPLE_TEAM_ID`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_API_KEY`, `CSC_LINK`, `CSC_KEY_PASSWORD`).
+# Release Process
 
-Automate the end-to-end release flow so that cutting a release is a single command. Set up the following:
+## Quick Start
 
-1. **Version bumping** — Add an `npm run release` script (or similar) that bumps the version in `package.json` (and any other places the version appears), creates a git tag (`v0.x.x`), and pushes the tag to trigger the CI workflow. Support `patch`, `minor`, and `major` bumps. Consider using `standard-version`, `release-it`, or a simple shell script — pick whichever is lightest.
+```bash
+npm run release
+```
 
-2. **CI workflow improvements** — Update `.github/workflows/build-mac.yml` to:
-   - Extract the version from the git tag and validate it matches `package.json`
-   - Generate release notes from commit history (or a changelog) and include them in the GitHub Release body
-   - Transition the release from draft to published automatically (or keep as draft with a manual publish step — recommend which is safer)
-   - Add a `workflow_dispatch` input to allow manual builds with an optional version override
-   - Cache `node_modules` and native module rebuilds to speed up builds
-   - Add build status badges
+This launches an interactive CLI that walks you through the entire release:
 
-3. **Changelog** — Set up automatic changelog generation from conventional commits. Configure it to group by type (features, fixes, etc.) and include in both the release notes and a `CHANGELOG.md` file.
+1. Checks for a clean git working tree
+2. Prompts for bump type (patch / minor / major)
+3. Runs type checks and tests
+4. Bumps the version in `package.json`
+5. Generates a changelog entry from commit history
+6. Asks for confirmation, then commits, tags, and pushes
 
-4. **Local signed builds** — Add an `npm run build-prod:signed` convenience script that sources credentials from `.env.signing` (gitignored) and runs the production build with signing enabled, for cases where you want to distribute a signed build without going through CI.
+Pushing the tag triggers a GitHub Actions workflow that builds, signs, notarizes, and publishes the release automatically.
 
-5. **Pre-release validation** — Before tagging, run type checking (`npm run typecheck`) and the test suite (`npm test`) as a gate. The release script should abort if either fails.
+## Commands
 
-Reference the existing build infrastructure: `build/build.sh` (7-step build), `electron-builder.mjs` (notarize + publish config), `package.json` (scripts), and `.github/workflows/build-mac.yml`. The app uses npm workspaces with Node >= 23. Keep the solution simple — this is a small team shipping to a small number of users, not a large-scale CI/CD pipeline.
+| Command | Description |
+|---------|-------------|
+| `npm run release` | Interactive release (prompts for bump type) |
+| `npm run release:minor` | Skip prompt, bump minor version |
+| `npm run release:major` | Skip prompt, bump major version |
+| `npm run release -- --dry-run` | Preview what would happen |
+| `npm run release -- --help` | Show usage |
+
+## What Happens After Pushing
+
+1. GitHub Actions workflow (`.github/workflows/build-mac.yml`) triggers on the `v*` tag
+2. CI builds the app on a macOS Apple Silicon runner
+3. If signing secrets are configured, the app is code-signed and notarized
+4. A GitHub Release is published automatically with:
+   - Signed `.dmg` installer
+   - Signed `.zip` archive
+   - Auto-generated release notes from commit history
+5. Users download from the [Releases page](https://github.com/spankyed/AgentBuddy/releases)
+
+## Versioning
+
+Uses [semver](https://semver.org/). The version lives in the root `package.json` and is read by electron-builder for artifact naming.
+
+- **patch** (0.0.1 → 0.0.2) — bug fixes, small changes
+- **minor** (0.0.1 → 0.1.0) — new features, backward-compatible
+- **major** (0.0.1 → 1.0.0) — breaking changes
+
+## Changelog
+
+A `CHANGELOG.md` file is generated/updated automatically by the release script. Entries are grouped by conventional commit type:
+
+- `feat:` → Features
+- `fix:` → Fixes
+- `refactor:` → Refactors
+- Everything else → Other
+
+## Code Signing & Notarization
+
+Signing is optional and controlled entirely by environment variables. Without them, builds are unsigned (fine for local dev).
+
+### Required Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `APPLE_TEAM_ID` | Apple Developer Team ID (enables signing + notarization) |
+| `APPLE_API_KEY_ID` | App Store Connect API Key ID |
+| `APPLE_API_ISSUER` | App Store Connect API Issuer UUID |
+| `APPLE_API_KEY` | Path to `.p8` private key file |
+
+### CI-Only (certificate from file)
+
+| Variable | Purpose |
+|----------|---------|
+| `CSC_LINK` | Base64-encoded `.p12` certificate |
+| `CSC_KEY_PASSWORD` | Password for the `.p12` file |
+
+### Local Signed Builds
+
+Create a `.env.signing` file (gitignored) with your credentials, then:
+
+```bash
+npm run build-prod:signed
+```
+
+This sources `.env.signing` and runs the full production build with signing enabled.
+
+See `.env.signing.example` for the template.
+
+### Verifying a Signed Build
+
+```bash
+npm run verify-signing
+```
+
+This checks code signature, notarization staple, Gatekeeper assessment, and native module signatures.
+
+## CI Workflow
+
+The workflow at `.github/workflows/build-mac.yml`:
+
+- **Triggers**: tag push (`v*`) or manual dispatch
+- **Runner**: `macos-14` (Apple Silicon)
+- **Validates**: tag version matches `package.json`
+- **Builds**: full 7-step production pipeline
+- **Signs + notarizes**: when secrets are configured
+- **Publishes**: GitHub Release with artifacts and auto-generated notes
+- **Artifacts**: also uploaded as workflow artifacts (downloadable from Actions tab)
+
+### GitHub Secrets to Configure
+
+| Secret | Value |
+|--------|-------|
+| `MAC_CERTIFICATE_P12_BASE64` | `base64 -i certificate.p12 \| pbcopy` |
+| `MAC_CERTIFICATE_PASSWORD` | Password used when exporting the .p12 |
+| `APPLE_TEAM_ID` | 10-character team ID |
+| `APPLE_API_KEY_ID` | Key ID from App Store Connect |
+| `APPLE_API_ISSUER` | Issuer ID from App Store Connect |
+| `APPLE_API_KEY` | Contents of the .p8 private key file |
+
+## Manual Workflow Dispatch
+
+You can trigger a build manually from the Actions tab without pushing a tag. This is useful for testing the CI pipeline. An optional version input lets you override the package.json version.
+
+## Typical Release Flow
+
+```
+1. Finish work on master
+2. npm run release
+3. Select bump type → typecheck → tests → confirm
+4. Tag pushed → CI builds → release published
+5. Users download from GitHub Releases
+```
