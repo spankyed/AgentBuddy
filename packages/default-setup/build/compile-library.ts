@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import type { ExportedItem, ExportedLibrary } from '../defs/default-setup-defs'
-import { toDisplayName, countDocs, parseMarkdownSections } from './library-utils'
+import { toDisplayName, countDocs, parseMarkdownSections, parseFrontmatter } from './library-utils'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const LIBRARY_DIR = path.join(ROOT, 'src', 'library')
@@ -13,24 +13,34 @@ function walkDirectory(dir: string): ExportedItem[] {
   const items: ExportedItem[] = []
 
   for (const entry of entries) {
-    if (entry.name === 'media') continue
+    if (entry.name === 'media' || entry.name === '_meta.md') continue
 
     const fullPath = path.join(dir, entry.name)
 
     if (entry.isDirectory()) {
+      let name = toDisplayName(entry.name)
+      let description: string | undefined
+      const metaPath = path.join(fullPath, '_meta.md')
+      if (fs.existsSync(metaPath)) {
+        const meta = parseFrontmatter(fs.readFileSync(metaPath, 'utf-8'))
+        if (meta.name) name = meta.name
+        description = meta.description
+      }
       items.push({
         type: 'collection',
-        name: toDisplayName(entry.name),
+        name,
+        ...(description && { description }),
         children: walkDirectory(fullPath),
       })
     } else if (entry.name.endsWith('.md')) {
-      const name = toDisplayName(entry.name.replace(/\.md$/, ''))
       const text = fs.readFileSync(fullPath, 'utf-8')
+      const { tags, name: fmName, body } = parseFrontmatter(text)
+      const name = fmName || toDisplayName(entry.name.replace(/\.md$/, ''))
       items.push({
         type: 'document',
         name,
-        content: parseMarkdownSections(text),
-        tags: ['default'],
+        content: parseMarkdownSections(body || text),
+        tags: tags.length ? tags : ['default'],
       })
     }
   }

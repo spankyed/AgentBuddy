@@ -9,6 +9,7 @@ const COMPILED_DIR = path.join(ROOT, 'dist')
 const OUTPUT_FILE = path.join(COMPILED_DIR, 'compiled-notes.json')
 
 interface Frontmatter {
+  title?: string
   type: 'document' | 'tasklist' | 'task'
   icon: string | null
   favorite: boolean
@@ -31,6 +32,7 @@ function parseFrontmatter(content: string): { meta: Frontmatter; body: string } 
   const fm = match[1]
   const body = content.slice(match[0].length)
 
+  const titleMatch = fm.match(/title:\s*"([^"]*)"/)
   const typeMatch = fm.match(/type:\s*(\w+)/)
   const iconMatch = fm.match(/icon:\s*"([^"]*)"/)
   const favoriteMatch = fm.match(/favorite:\s*true/)
@@ -39,6 +41,7 @@ function parseFrontmatter(content: string): { meta: Frontmatter; body: string } 
 
   return {
     meta: {
+      title: titleMatch?.[1],
       type: (typeMatch?.[1] as Frontmatter['type']) ?? 'document',
       icon: iconMatch?.[1] ?? null,
       favorite: !!favoriteMatch,
@@ -71,7 +74,7 @@ function walkDirectory(dir: string): ExportedNote[] {
 
       notes.push({
         ...meta,
-        title: toDisplayName(entry.name),
+        title: meta.title || toDisplayName(entry.name),
         content: body,
         children: walkDirectory(fullPath),
       })
@@ -81,7 +84,7 @@ function walkDirectory(dir: string): ExportedNote[] {
 
       notes.push({
         ...meta,
-        title: toDisplayName(entry.name.replace(/\.md$/, '')),
+        title: meta.title || toDisplayName(entry.name.replace(/\.md$/, '')),
         content: body,
         children: [],
       })

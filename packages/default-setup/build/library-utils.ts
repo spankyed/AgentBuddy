@@ -8,6 +8,27 @@ export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ')
 }
 
+export function parseFrontmatter(content: string): { tags: string[]; name?: string; description?: string; body: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n\n?/)
+  if (!match) return { tags: [], body: content }
+
+  const frontmatter = match[1]
+  const body = content.slice(match[0].length)
+
+  const tagsMatch = frontmatter.match(/tags:\s*\[([^\]]*)\]/)
+  const tags = tagsMatch
+    ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean)
+    : []
+
+  const nameMatch = frontmatter.match(/name:\s*"([^"]*)"/)
+  const name = nameMatch?.[1]
+
+  const descMatch = frontmatter.match(/description:\s*"([^"]*)"/)
+  const description = descMatch?.[1]
+
+  return { tags, name, description, body }
+}
+
 /** Count only documents in an item list (used by default compiler). */
 export function countDocs(items: ExportedItem[]): number {
   return items.reduce((sum, item) => {
