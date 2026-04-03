@@ -139,8 +139,7 @@ git tag "v$NEW_VERSION"
 
 echo ""
 echo -e "  Pushing to origin..."
-git push origin HEAD
-git push origin "v$NEW_VERSION"
+git push origin HEAD "v$NEW_VERSION"
 
 echo -e "${GREEN}✓${NC} Release v$NEW_VERSION pushed"
 echo ""
