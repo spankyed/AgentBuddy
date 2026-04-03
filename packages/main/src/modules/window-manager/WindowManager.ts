@@ -36,7 +36,7 @@ class WindowManager implements AppModule {
     
     // Set dock icon for macOS in development
     if (process.platform === 'darwin' && app.dock) {
-      const iconPath = join(process.cwd(), 'buildResources', 'icon.png');
+      const iconPath = join(process.cwd(), 'build', 'resources', 'icon.png');
       app.dock.setIcon(iconPath);
     }
     
@@ -264,7 +264,7 @@ class WindowManager implements AppModule {
     // Determine icon path based on platform
     const iconName = process.platform === 'win32' ? 'icon.ico' : 
                      process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
-    const iconPath = join(process.cwd(), 'buildResources', iconName);
+    const iconPath = join(process.cwd(), 'build', 'resources', iconName);
     
     // Get the API port before creating the window
     const apiPort = this.#apiServer?.getStatus().port || 3001;

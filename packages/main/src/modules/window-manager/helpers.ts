@@ -15,5 +15,5 @@ export function getWindowIcon(): string {
   const { join } = require('node:path');
   const iconName = process.platform === 'win32' ? 'icon.ico' : 
                    process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
-  return join(process.cwd(), 'buildResources', iconName);
+  return join(process.cwd(), 'build', 'resources', iconName);
 }
