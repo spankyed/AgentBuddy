@@ -87,6 +87,7 @@ function exportNotesJson(outputDir: string): { filePath: string; itemCount: numb
 
 function buildNoteFrontmatter(note: ExportedNote): string {
   const fields: string[] = []
+  if (note.title) fields.push(`title: "${note.title}"`)
   fields.push(`type: ${note.type}`)
   if (note.icon) fields.push(`icon: "${note.icon}"`)
   if (note.favorite) fields.push(`favorite: true`)

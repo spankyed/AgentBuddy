@@ -72,7 +72,7 @@ function writeItems(
       const filename = uniqueFilename(`${slug}.md`, usedNames)
       usedNames.add(filename)
 
-      const frontmatter = buildFrontmatter(item.tags)
+      const frontmatter = buildFrontmatter(item.tags, item.name)
       let body = serializeContentToMarkdown(item.content)
       body = rewriteMediaUrls(body, mediaFilenameMap)
 

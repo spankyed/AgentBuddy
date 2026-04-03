@@ -13,25 +13,30 @@ export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ')
 }
 
-export function buildFrontmatter(tags: string[]): string {
-  if (!tags.length) return ''
-  return `---\ntags: [${tags.join(', ')}]\n---\n\n`
+export function buildFrontmatter(tags: string[], name?: string): string {
+  const fields: string[] = []
+  if (name) fields.push(`name: "${name}"`)
+  if (tags.length) fields.push(`tags: [${tags.join(', ')}]`)
+  if (!fields.length) return ''
+  return `---\n${fields.join('\n')}\n---\n\n`
 }
 
-export function parseFrontmatter(content: string): { tags: string[]; body: string } {
+export function parseFrontmatter(content: string): { tags: string[]; name?: string; body: string } {
   const match = content.match(/^---\n([\s\S]*?)\n---\n\n?/)
   if (!match) return { tags: [], body: content }
 
   const frontmatter = match[1]
   const body = content.slice(match[0].length)
 
-  // Parse tags: [tag1, tag2] from YAML
   const tagsMatch = frontmatter.match(/tags:\s*\[([^\]]*)\]/)
   const tags = tagsMatch
     ? tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean)
     : []
 
-  return { tags, body }
+  const nameMatch = frontmatter.match(/name:\s*"([^"]*)"/)
+  const name = nameMatch?.[1]
+
+  return { tags, name, body }
 }
 
 export function serializeContentToMarkdown(sections: ContentSection[]): string {

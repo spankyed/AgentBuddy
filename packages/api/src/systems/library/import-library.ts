@@ -242,11 +242,11 @@ function importMarkdownDir(
     } else if (entry.name.endsWith('.md')) {
       // .md file → document
       const basename = entry.name.slice(0, -3) // strip .md
-      const name = toDisplayName(basename)
 
       try {
         const raw = fs.readFileSync(fullPath, 'utf-8')
-        const { tags, body } = parseFrontmatter(raw)
+        const { tags, name: frontmatterName, body } = parseFrontmatter(raw)
+        const name = frontmatterName || toDisplayName(basename)
 
         const content: ContentSection[] = body.trim()
           ? parseMarkdownSections(body)

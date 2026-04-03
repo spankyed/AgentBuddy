@@ -131,6 +131,7 @@ function importNoteNodes(
 // ── Markdown Import ──────────────────────────────────────
 
 function parseFrontmatter(content: string): {
+  title?: string
   type: 'document' | 'tasklist' | 'task'
   icon: string | null
   favorite: boolean
@@ -146,6 +147,7 @@ function parseFrontmatter(content: string): {
   const frontmatter = match[1]
   const body = content.slice(match[0].length)
 
+  const titleMatch = frontmatter.match(/title:\s*"([^"]*)"/)
   const typeMatch = frontmatter.match(/type:\s*(\w+)/)
   const iconMatch = frontmatter.match(/icon:\s*"([^"]*)"/)
   const favoriteMatch = frontmatter.match(/favorite:\s*true/)
@@ -153,6 +155,7 @@ function parseFrontmatter(content: string): {
   const completedMatch = frontmatter.match(/completed:\s*true/)
 
   return {
+    title: titleMatch?.[1] ?? undefined,
     type: (typeMatch?.[1] as 'document' | 'tasklist' | 'task') ?? 'document',
     icon: iconMatch?.[1] ?? null,
     favorite: !!favoriteMatch,
@@ -184,7 +187,7 @@ function importMarkdownDir(
 
     if (entry.isDirectory()) {
       // Subdirectory → document with children
-      const name = toDisplayName(entry.name)
+      const fallbackName = toDisplayName(entry.name)
 
       try {
         // Check for index.md in subdirectory
@@ -195,6 +198,7 @@ function importMarkdownDir(
         let hideCompletedChildren = false
         let noteType: 'document' | 'tasklist' | 'task' = 'document'
         let completed = false
+        let name = fallbackName
 
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
@@ -205,6 +209,7 @@ function importMarkdownDir(
           hideCompletedChildren = parsed.hideCompletedChildren
           noteType = parsed.type
           completed = parsed.completed
+          if (parsed.title) name = parsed.title
         }
 
         const note = repository.noteCommands.create({
@@ -238,11 +243,11 @@ function importMarkdownDir(
       }
     } else if (entry.name.endsWith('.md') && entry.name !== 'index.md') {
       const basename = entry.name.slice(0, -3)
-      const name = toDisplayName(basename)
 
       try {
         const raw = fs.readFileSync(fullPath, 'utf-8')
         const parsed = parseFrontmatter(raw)
+        const name = parsed.title || toDisplayName(basename)
 
         const note = repository.noteCommands.create({
           title: name,
