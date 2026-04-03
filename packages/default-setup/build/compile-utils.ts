@@ -281,8 +281,11 @@ export async function compileAllSourceFiles(config: CompileConfig): Promise<void
   console.log(`Compiling from: ${sourceDir}`);
 
   if (!fs.existsSync(sourceDir)) {
-    console.error('Source directory not found:', sourceDir);
-    process.exit(1);
+    console.log(`Source directory not found: ${sourceDir}`);
+    console.log(`\nWrote 0 entries to ${config.outputFile}\n`);
+    fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+    fs.writeFileSync(outputFile, JSON.stringify([], null, 2));
+    return;
   }
 
   const { sourceFiles, helperFiles } = scanSourceFiles(sourceDir);

@@ -103,8 +103,11 @@ export function compileNotes(): void {
   console.log(`Compiling notes from: ${NOTES_DIR}`)
 
   if (!fs.existsSync(NOTES_DIR)) {
-    console.error('Notes directory not found:', NOTES_DIR)
-    process.exit(1)
+    console.log(`Notes directory not found: ${NOTES_DIR}`)
+    console.log(`\nWrote 0 note(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}\n`)
+    fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true })
+    fs.writeFileSync(OUTPUT_FILE, JSON.stringify([], null, 2))
+    return
   }
 
   const notes = walkDirectory(NOTES_DIR)

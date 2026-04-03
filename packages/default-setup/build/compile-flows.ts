@@ -12,8 +12,11 @@ export async function compileFlows(): Promise<void> {
   console.log(`Compiling flows from: ${FLOWS_DIR}`);
 
   if (!fs.existsSync(FLOWS_DIR)) {
-    console.error('Flows directory not found:', FLOWS_DIR);
-    process.exit(1);
+    console.log(`Flows directory not found: ${FLOWS_DIR}`);
+    console.log(`\nWrote 0 flow(s) to dist/compiled-flows.json\n`);
+    fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
+    fs.writeFileSync(OUTPUT_FILE, JSON.stringify([], null, 2));
+    return;
   }
 
   const tsFiles = fs.readdirSync(FLOWS_DIR)

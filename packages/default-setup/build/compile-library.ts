@@ -52,8 +52,11 @@ export function compileLibrary(): void {
   console.log(`Compiling library docs from: ${LIBRARY_DIR}`)
 
   if (!fs.existsSync(LIBRARY_DIR)) {
-    console.error('Library directory not found:', LIBRARY_DIR)
-    process.exit(1)
+    console.log(`Library directory not found: ${LIBRARY_DIR}`)
+    console.log(`\nWrote 0 library doc(s) to ${path.relative(process.cwd(), OUTPUT_FILE)}\n`)
+    fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true })
+    fs.writeFileSync(OUTPUT_FILE, JSON.stringify([], null, 2))
+    return
   }
 
   const items = walkDirectory(LIBRARY_DIR)
