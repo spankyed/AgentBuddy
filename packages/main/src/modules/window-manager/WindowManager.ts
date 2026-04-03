@@ -34,8 +34,8 @@ class WindowManager implements AppModule {
   async enable({app}: ModuleContext): Promise<void> {
     await app.whenReady();
     
-    // Set dock icon for macOS in development
-    if (process.platform === 'darwin' && app.dock) {
+    // Set dock icon for macOS in development (production uses bundled icon from Info.plist)
+    if (!app.isPackaged && process.platform === 'darwin' && app.dock) {
       const iconPath = join(process.cwd(), 'build', 'resources', 'icon.png');
       app.dock.setIcon(iconPath);
     }
