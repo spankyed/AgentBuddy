@@ -28,11 +28,12 @@
 
     <!-- Prompts List -->
     <div v-else class="flex-1 overflow-auto">
-      <div v-if="prompts.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
-        <Sparkle class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">No prompts found</p>
-        <p class="text-xs text-neutral-500">Click + to create a new prompt</p>
-      </div>
+      <EmptyState
+        v-if="prompts.length === 0"
+        :icon="Sparkle"
+        title="No prompts found"
+        subtitle="Click + to create a new prompt"
+      />
 
       <ContextMenuRoot v-for="prompt in prompts" :key="prompt.id">
         <ContextMenuTrigger as-child>
@@ -204,6 +205,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
+import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import type { PromptEntity } from '@app/api'
 import {
   ContextMenuRoot,

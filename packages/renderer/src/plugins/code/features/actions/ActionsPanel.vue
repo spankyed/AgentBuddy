@@ -28,11 +28,12 @@
 
     <!-- Actions List -->
     <div v-else class="flex-1 overflow-auto">
-      <div v-if="actions.length === 0" class="flex flex-col items-center justify-center gap-2 p-8 text-center">
-        <Play class="w-5 h-5 text-neutral-500" />
-        <p class="text-sm text-neutral-400">No actions found</p>
-        <p class="text-xs text-neutral-500">Click + to create a new action</p>
-      </div>
+      <EmptyState
+        v-if="actions.length === 0"
+        :icon="Play"
+        title="No actions found"
+        subtitle="Click + to create a new action"
+      />
 
       <ContextMenuRoot v-for="action in actions" :key="action.id">
         <ContextMenuTrigger as-child>
@@ -204,6 +205,7 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as actionsPluginId } from '@/plugins/actions/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
+import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import type { ActionEntity } from '@app/api'
 import {
   ContextMenuRoot,
