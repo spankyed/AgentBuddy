@@ -17,16 +17,17 @@ export function branch(
   };
 }
 
-/** Entry + keep_alive + event listener pattern */
+/** Entry + keep_alive + event listener pattern. Accepts single or parallel entry exits. */
 export function entryWithListeners(
-  entrySteps: DSLStepNode[],
+  entryExits: DSLStepNode[] | DSLStepNode[][],
   listeners: { event: string; label?: string; exits: DSLStepNode[][] }[],
 ): Track[] {
+  const exits = (Array.isArray(entryExits[0]) ? entryExits : [entryExits]) as DSLStepNode[][];
   return [
     {
       event: 'flow.entry',
       label: 'Flow Entry',
-      exits: [[...entrySteps, { type: 'keep_alive' }]],
+      exits: exits.map(seq => [...seq, { type: 'keep_alive' as const }]),
     },
     ...listeners.map(({ event, label, exits }) => ({
       event,

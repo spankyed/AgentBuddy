@@ -65,6 +65,19 @@ export default {
     ],
   ),
 
+  /** Parallel entry exits: spawn independent sequences on flow start */
+  'Setup Flow': entryWithListeners(
+    [
+      [action('Load Config', { label: 'config' })],
+      [action('Warm Cache', { label: 'cache' })],
+    ],
+    [
+      { event: 'user.ready', label: 'Handle Ready', exits: [[
+        action('Greet User', { label: 'greet' }),
+      ]]},
+    ],
+  ),
+
   /** Sub-flow: delegate to another flow */
   'Orchestrator Flow': [
     entryTrack([
