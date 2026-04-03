@@ -46,6 +46,13 @@
         </button>
       </div>
     </div>
+
+    <!-- DEV badge at very bottom -->
+    <div v-if="isDev" class="flex items-center justify-center pb-3 -mt-1">
+      <span class="px-1.5 py-0.5 text-[9px] font-bold leading-none tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded">
+        DEV
+      </span>
+    </div>
   </div>
 </template>
 
@@ -63,6 +70,8 @@ const props = defineProps<{
 
 const pluginItems = computed(() => props.plugins.filter((item) => !item.isPinned));
 const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned));
+
+const isDev = import.meta.env.DEV;
 
 const isMac = computed(() => {
   return navigator.platform.toLowerCase().includes('mac');
