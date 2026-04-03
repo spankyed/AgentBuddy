@@ -33,7 +33,8 @@ class TerminalService {
     'LD_PRELOAD',
     'LD_LIBRARY_PATH',
     'DYLD_INSERT_LIBRARIES',
-    'DYLD_LIBRARY_PATH'
+    'DYLD_LIBRARY_PATH',
+    'ELECTRON_RUN_AS_NODE',
   ]
 
   create(options: TerminalCreate): TerminalInfo {
