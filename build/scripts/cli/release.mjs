@@ -250,8 +250,8 @@ async function main() {
   console.log(`✅ Release v${newVersion} pushed!`);
   console.log('==========================================');
   console.log('');
-  console.log('📦 CI will build, sign, and create a draft release.');
-  console.log('📋 Review and publish at: https://github.com/spankyed/AgentBuddy/releases');
+  console.log('📦 CI will build, sign, and publish the release automatically.');
+  console.log('📋 View at: https://github.com/spankyed/AgentBuddy/releases');
   console.log('');
 
   rl.close();
