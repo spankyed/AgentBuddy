@@ -420,6 +420,7 @@ provide('tree-drag-leave', (e: DragEvent) => handleDragLeave(e))
 provide('tree-drop', (e: DragEvent, item: LibraryItem) => handleDrop(e, item, undefined, props.currentFolderId))
 provide('tree-drag-end', () => handleDragEnd())
 provide('tree-get-item-class', (item: LibraryItem) => getItemClass(item))
+provide('tree-sort-items', sortItems)
 provide('tree-get-dragged-over-id', () => draggedOverId.value)
 
 // Watch for external edit requests
@@ -483,7 +484,7 @@ function copyBreadcrumbPath(crumb: BreadcrumbItem) {
   if (fullPath) navigator.clipboard.writeText(fullPath)
 }
 
-const sortedItems = computed(() => {
+function sortItems(items: LibraryItem[]): LibraryItem[] {
   const compareFunctions = {
     name: (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name),
     modified: (a: LibraryItem, b: LibraryItem) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
@@ -495,12 +496,14 @@ const sortedItems = computed(() => {
     kind: (a: LibraryItem, b: LibraryItem) => a.kind.localeCompare(b.kind)
   }
 
-  return [...props.items].sort((a, b) => {
+  return [...items].sort((a, b) => {
     if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
     const compareValue = compareFunctions[props.sortBy](a, b)
     return props.sortDirection === 'asc' ? compareValue : -compareValue
   })
-})
+}
+
+const sortedItems = computed(() => sortItems(props.items))
 
 function navigateBack() {
   const parentId = props.breadcrumbs.length > 1

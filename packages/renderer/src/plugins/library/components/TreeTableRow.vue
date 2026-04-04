@@ -182,6 +182,7 @@ const dragLeave = inject<(e: DragEvent) => void>('tree-drag-leave')!
 const drop = inject<(e: DragEvent, item: LibraryItem) => void>('tree-drop')!
 const dragEnd = inject<() => void>('tree-drag-end')!
 const getItemClass = inject<(item: LibraryItem) => string>('tree-get-item-class')!
+const sortItems = inject<(items: LibraryItem[]) => LibraryItem[]>('tree-sort-items')!
 
 const contextMenuOpen = ref(false)
 const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
@@ -195,7 +196,8 @@ const itemClass = computed(() => getItemClass(props.item))
 
 const children = computed(() => {
   if (props.item.type !== 'folder') return []
-  return expandedFolderChildren()[props.item.id] || []
+  const items = expandedFolderChildren()[props.item.id] || []
+  return sortItems(items)
 })
 
 function toggleExpand() {
