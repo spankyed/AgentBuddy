@@ -96,7 +96,7 @@ export const defaultSettings: SettingsData = {
       restoreTerminals: true,
       defaultBaseDirectory: null,
       lastDirectoryOpened: null,
-      enableShellIntegration: true,
+      enableShellIntegration: false,
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,
     },
