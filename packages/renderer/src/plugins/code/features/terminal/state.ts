@@ -118,15 +118,39 @@ export const terminalState = setup({
       }
     }),
 
-    updateTerminalTitle: assign({
-      terminals: ({ context, event }) => {
-        const ev = event as { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
-        return context.terminals.map(t =>
+    updateTerminalTitle: enqueueActions(({ enqueue, context, event, self }) => {
+      const ev = event as { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
+
+      // Update local terminals list
+      enqueue.assign({
+        terminals: context.terminals.map(t =>
           t.id === ev.data.terminalId
             ? { ...t, customTitle: ev.data.customTitle }
             : t
         )
-      }
+      })
+
+      // Propagate to parent's openFiles so tab label updates
+      enqueue(() => {
+        const parentContext = getParentContext(self)
+        const openFiles = parentContext?.openFiles || []
+        const terminalPath = `terminal:${ev.data.terminalId}`
+
+        const updatedOpenFiles = openFiles.map((file: any) => {
+          if (file.path === terminalPath && file.isTerminal) {
+            return {
+              ...file,
+              terminalInfo: {
+                ...file.terminalInfo,
+                customTitle: ev.data.customTitle
+              }
+            }
+          }
+          return file
+        })
+
+        updateParentState(self, { openFiles: updatedOpenFiles })
+      })
     }),
 
     updateTerminalCwd: enqueueActions(({ enqueue, context, event, self }) => {

@@ -208,7 +208,7 @@
       <div v-else class="divide-y divide-neutral-800">
         <!-- Staged Changes -->
         <div v-if="stagedFiles.length > 0" class="p-3">
-          <div class="flex items-center justify-between mb-2 mr-2">
+          <div class="flex items-center justify-between mb-2 px-2">
             <span class="text-xs font-medium text-neutral-400">STAGED CHANGES</span>
             <button @click="unstageAll" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage All">
               <Minus class="w-3 h-3 text-neutral-400" />
@@ -254,9 +254,9 @@
 
         <!-- Unstaged Changes -->
         <div v-if="unstagedFiles.length > 0" class="p-3">
-          <div class="flex items-center justify-between mb-2 mr-2">
+          <div class="flex items-center justify-between mb-2 px-2">
             <span class="text-xs font-medium text-neutral-400">CHANGES</span>
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-2">
               <button @click="openDiscardAllDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard All Changes">
                 <RotateCcw class="w-3 h-3 text-red-400" />
               </button>

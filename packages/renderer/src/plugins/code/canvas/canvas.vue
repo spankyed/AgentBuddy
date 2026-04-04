@@ -27,6 +27,7 @@
       @close-all-in-group="closeAllInGroup"
       @pin-group="pinGroup"
       @unpin-group="unpinGroup"
+      @rename-terminal="renameTerminal"
       class="flex-1 min-h-0"
     />
 
@@ -326,6 +327,11 @@ const createGroup = (name: string, tabPaths: string[]) => {
 
 const renameGroup = (groupId: string, name: string) => {
   actor.send({ type: 'RENAME_GROUP', groupId, name })
+}
+
+const renameTerminal = (path: string, customTitle: string) => {
+  const terminalId = path.replace('terminal:', '')
+  terminalActor.send({ type: 'terminal.RENAME', terminalId, customTitle })
 }
 
 const changeGroupColor = (groupId: string, color: string) => {

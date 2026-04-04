@@ -75,7 +75,17 @@
                   :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
                 >
                   <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
-                  <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+                  <input
+                    v-if="renamingTabPath === tab.path"
+                    ref="renameInput"
+                    v-model="renameValue"
+                    @blur="finishTabRename"
+                    @keydown.enter.prevent="finishTabRename"
+                    @keydown.esc.prevent="cancelTabRename"
+                    @click.stop
+                    class="w-24 px-1 text-sm bg-neutral-800 border border-blue-500 rounded outline-none text-neutral-100"
+                  />
+                  <span v-else class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
                   <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
                   <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
                 </button>
@@ -84,6 +94,15 @@
 
             <ContextMenuPortal>
               <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                <ContextMenuItem
+                  v-if="isTerminal(tab)"
+                  @select="startTabRename(tab)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <Pencil class="w-4 h-4" />
+                  Rename
+                </ContextMenuItem>
+
                 <ContextMenuItem
                   @select="$emit('remove-tab-from-group', tab.path)"
                   class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -139,7 +158,17 @@
               :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
             >
               <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
-              <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+              <input
+                v-if="renamingTabPath === tab.path"
+                ref="renameInput"
+                v-model="renameValue"
+                @blur="finishTabRename"
+                @keydown.enter.prevent="finishTabRename"
+                @keydown.esc.prevent="cancelTabRename"
+                @click.stop
+                class="w-24 px-1 text-sm bg-neutral-800 border border-blue-500 rounded outline-none text-neutral-100"
+              />
+              <span v-else class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
               <Pin
                 v-if="tab.isPinned"
                 class="w-3 h-3 ml-1 text-neutral-400 cursor-pointer hover:text-neutral-200 transition-colors"
@@ -154,6 +183,15 @@
 
         <ContextMenuPortal>
           <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+            <ContextMenuItem
+              v-if="isTerminal(tab)"
+              @select="startTabRename(tab)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Pencil class="w-4 h-4" />
+              Rename
+            </ContextMenuItem>
+
             <ContextMenuItem
               v-if="tab.isPinned"
               @select="unpinTab(tab)"
@@ -382,7 +420,17 @@
             :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
           >
             <component :is="getTabIcon(tab)" class="flex-shrink-0 w-4 h-4" />
-            <span class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
+            <input
+              v-if="renamingTabPath === tab.path"
+              ref="renameInput"
+              v-model="renameValue"
+              @blur="finishTabRename"
+              @keydown.enter.prevent="finishTabRename"
+              @keydown.esc.prevent="cancelTabRename"
+              @click.stop
+              class="w-24 px-1 text-sm bg-neutral-800 border border-blue-500 rounded outline-none text-neutral-100"
+            />
+            <span v-else class="max-w-[150px] truncate">{{ getTabLabel(tab) }}</span>
             <span v-if="!isTerminal(tab) && !tab.isDiff && tab.pendingSaveConflict" class="w-2 h-2 bg-orange-500 rounded-full"></span>
             <span v-else-if="!isTerminal(tab) && !tab.isDiff && tab.modified" class="w-2 h-2 bg-blue-500 rounded-full"></span>
           </button>
@@ -391,6 +439,15 @@
 
       <ContextMenuPortal>
         <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+          <ContextMenuItem
+            v-if="isTerminal(tab)"
+            @select="startTabRename(tab)"
+            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          >
+            <Pencil class="w-4 h-4" />
+            Rename
+          </ContextMenuItem>
+
           <ContextMenuItem
             @select="pinTab(tab)"
             class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -468,7 +525,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import {
   X,
   FolderMinus,
@@ -480,7 +537,8 @@ import {
   FolderOpen,
   FolderPlus,
   Pin,
-  ChevronRight
+  ChevronRight,
+  Pencil
 } from 'lucide-vue-next'
 import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
@@ -528,6 +586,7 @@ const emit = defineEmits<{
   'close-all-in-group': [groupId: string]
   'pin-group': [groupId: string]
   'unpin-group': [groupId: string]
+  'rename-terminal': [path: string, customTitle: string]
 }>()
 
 // Categorize tabs using utility function - must be reactive!
@@ -673,6 +732,35 @@ const handleGroupDrop = (event: DragEvent, groupId: string) => {
   dragOverGroupId.value = null
 }
 
+// Terminal tab rename
+const renamingTabPath = ref<string | null>(null)
+const renameValue = ref('')
+const renameInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
+
+const startTabRename = async (tab: OpenFile | TerminalTab | ActionTab | PromptTab) => {
+  if (!isTerminal(tab)) return
+  renamingTabPath.value = tab.path
+  renameValue.value = tab.terminalInfo.customTitle || tab.terminalInfo.title
+  // Delay focus until after the context menu fully unmounts
+  setTimeout(() => {
+    const el = Array.isArray(renameInput.value) ? renameInput.value[0] : renameInput.value
+    el?.focus()
+    el?.select()
+  }, 50)
+}
+
+const finishTabRename = () => {
+  if (renamingTabPath.value && renameValue.value.trim()) {
+    emit('rename-terminal', renamingTabPath.value, renameValue.value.trim())
+  }
+  cancelTabRename()
+}
+
+const cancelTabRename = () => {
+  renamingTabPath.value = null
+  renameValue.value = ''
+}
+
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
@@ -693,7 +781,7 @@ const getFileName = (path: string) => {
 
 const getTabLabel = (file: OpenFile | TerminalTab | ActionTab | PromptTab) => {
   if (isTerminal(file)) {
-    return file.terminalInfo.title
+    return file.terminalInfo.customTitle || file.terminalInfo.title
   }
   if ('isDiff' in file && file.isDiff && (file as any).gitFile) {
     const fileName = getFileName((file as any).gitFile.path)
