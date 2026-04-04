@@ -31,6 +31,8 @@ export interface NotesContext {
   settings: { tasklistPanelPosition: 'left' | 'right' }
   notesImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
   notesExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
+  showTrash: boolean
+  trashedNotes: NoteDTO[]
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -75,6 +77,10 @@ type UIEvent =
   | { type: 'NOTES.RESET_IMPORT_STATUS' }
   | { type: 'NOTES.EXPORT'; directory: string; format: 'markdown' | 'json' }
   | { type: 'NOTES.RESET_EXPORT_STATUS' }
+  | { type: 'NOTE.SHOW_TRASH' }
+  | { type: 'NOTE.HIDE_TRASH' }
+  | { type: 'NOTE.PERMANENTLY_DELETE'; noteId: string }
+  | { type: 'NOTE.EMPTY_TRASH' }
 
 type SettingsEvent =
   | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
@@ -203,6 +209,15 @@ const notesState = setup({
       })
     },
 
+    sendSoftDeleteTask: ({ event }) => {
+      const ev = typeOf('TASK.DELETE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_NOTE',
+        id: ev.taskId,
+      })
+    },
+
     sendSoftDeleteNote: ({ event }) => {
       const ev = typeOf('NOTE.SOFT_DELETE', event)
       trpc.bus.send.mutate({
@@ -224,9 +239,9 @@ const notesState = setup({
     addRestoredNote: assign(({ context, event }) => {
       const ev = typeOf('NOTE_RESTORED', event)
       const exists = context.notes.some(n => n.id === ev.note.id)
-      if (exists) return {}
       return {
-        notes: [...context.notes, ev.note],
+        notes: exists ? context.notes : [...context.notes, ev.note],
+        trashedNotes: context.trashedNotes.filter(n => n.id !== ev.note.id),
       }
     }),
 
@@ -719,6 +734,45 @@ const notesState = setup({
       const ev = typeOf('NOTES_SETTINGS_UPDATED', event)
       return { settings: ev.settings }
     }),
+
+    showTrash: assign({ showTrash: true, trashedNotes: [] }),
+
+    requestTrashedNotes: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_TRASHED_NOTES',
+      })
+    },
+
+    hideTrash: assign({ showTrash: false, trashedNotes: [] }),
+
+    setTrashedNotes: assign(({ event }) => {
+      const ev = typeOf('TRASHED_NOTES', event)
+      return { trashedNotes: ev.notes }
+    }),
+
+    sendPermanentlyDelete: ({ event }) => {
+      const ev = typeOf('NOTE.PERMANENTLY_DELETE', event)
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'PERMANENTLY_DELETE_NOTE',
+        id: ev.noteId,
+      })
+    },
+
+    removeTrashedNote: assign(({ context, event }) => {
+      const ev = typeOf('NOTE_DELETED', event)
+      return {
+        trashedNotes: context.trashedNotes.filter(n => n.id !== ev.noteId),
+      }
+    }),
+
+    sendEmptyTrash: () => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'EMPTY_TRASH',
+      })
+    },
   },
   guards: { targetIs },
 }).createMachine({
@@ -739,6 +793,8 @@ const notesState = setup({
     settings: { tasklistPanelPosition: 'left' as const },
     notesImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     notesExport: { status: 'idle' as const, errors: [], filePath: '', itemCount: 0 },
+    showTrash: false,
+    trashedNotes: [],
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -748,6 +804,10 @@ const notesState = setup({
     'NOTE.SOFT_DELETE': { actions: 'sendSoftDeleteNote' },
     'NOTE.RESTORE': { actions: 'sendRestoreNote' },
     NOTE_DELETED: [
+      {
+        guard: ({ context }) => context.showTrash,
+        actions: 'removeTrashedNote',
+      },
       {
         guard: ({ context, event }) => {
           const ev = typeOf('NOTE_DELETED', event)
@@ -776,7 +836,7 @@ const notesState = setup({
     'TASK.TOGGLE_COMPLETE': { actions: 'sendToggleComplete' },
     'TASK.UPDATE_CONTENT': { actions: ['updateLocalTaskContent', 'sendTaskUpdateContent'] },
     'TASK.UPDATE_TITLE': { actions: ['updateLocalTaskTitle', 'sendTaskUpdateTitle'] },
-    'TASK.DELETE': { actions: 'sendDeleteTask' },
+    'TASK.DELETE': { actions: 'sendSoftDeleteTask' },
     'TASK.TOGGLE_SHOW_COMPLETED': { actions: 'sendToggleShowCompleted' },
     'TASK.TOGGLE_HIDE_COMPLETED_CHILDREN': { actions: 'sendToggleHideCompletedChildren' },
     'NOTES.IMPORT': { actions: ['setImportingNotes', 'sendImportNotes'] },
@@ -787,6 +847,11 @@ const notesState = setup({
     'NOTES.RESET_EXPORT_STATUS': { actions: 'resetExportNotesStatus' },
     NOTES_EXPORTED: { actions: 'handleNotesExported' },
     NOTES_EXPORT_FAILED: { actions: 'handleNotesExportFailed' },
+    'NOTE.SHOW_TRASH': { actions: ['showTrash', 'requestTrashedNotes'] },
+    'NOTE.HIDE_TRASH': { actions: 'hideTrash' },
+    'NOTE.PERMANENTLY_DELETE': { actions: 'sendPermanentlyDelete' },
+    'NOTE.EMPTY_TRASH': { actions: 'sendEmptyTrash' },
+    TRASHED_NOTES: { actions: 'setTrashedNotes' },
     TRAIL_CLICK: [
       {
         guard: { type: 'targetIs', params: { view: 'welcome' } },

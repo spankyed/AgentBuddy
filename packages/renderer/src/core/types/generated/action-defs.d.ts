@@ -213,6 +213,7 @@ interface NoteDTO {
     updatedAt: number;
     lastSeen: number;
     favorite: boolean;
+    deletedAt?: number;
 }
 interface NotesConnectedData {
     notes: NoteDTO[];
@@ -379,7 +380,7 @@ interface ImageReference {
     url: string;
     name: string;
 }
-type ContextReferenceType = 'thread' | 'document' | 'note';
+type ContextReferenceType = 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder';
 interface ContextReference {
     refType: ContextReferenceType;
     refId: string;
@@ -941,19 +942,19 @@ declare const events: {
                 isImage: boolean;
             }>, "many">>;
             context: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                refType: zod.ZodEnum<["thread", "document", "note"]>;
+                refType: zod.ZodEnum<["thread", "document", "note", "task", "tasklist", "folder"]>;
                 refId: zod.ZodString;
                 shortCode: zod.ZodString;
                 label: zod.ZodString;
             }, "strip", zod.ZodTypeAny, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
@@ -970,7 +971,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         }, {
@@ -987,7 +988,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         }>>;
@@ -1009,7 +1010,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         } | undefined;
@@ -1034,7 +1035,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         } | undefined;
@@ -1194,19 +1195,19 @@ declare const events: {
                 isImage: boolean;
             }>, "many">>;
             context: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                refType: zod.ZodEnum<["thread", "document", "note"]>;
+                refType: zod.ZodEnum<["thread", "document", "note", "task", "tasklist", "folder"]>;
                 refId: zod.ZodString;
                 shortCode: zod.ZodString;
                 label: zod.ZodString;
             }, "strip", zod.ZodTypeAny, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
@@ -1223,7 +1224,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         }, {
@@ -1240,7 +1241,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         }>>;
@@ -1263,7 +1264,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         } | undefined;
@@ -1289,7 +1290,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "thread" | "note";
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
                 refId: string;
             }[] | undefined;
         } | undefined;
@@ -3332,6 +3333,36 @@ declare const events: {
         systemId: "notes";
         query: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TRASHED_NOTES">;
+        systemId: zod.ZodLiteral<"notes">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TRASHED_NOTES";
+        systemId: "notes";
+    }, {
+        type: "GET_TRASHED_NOTES";
+        systemId: "notes";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PERMANENTLY_DELETE_NOTE">;
+        systemId: zod.ZodLiteral<"notes">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "PERMANENTLY_DELETE_NOTE";
+        systemId: "notes";
+    }, {
+        id: string;
+        type: "PERMANENTLY_DELETE_NOTE";
+        systemId: "notes";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EMPTY_TRASH">;
+        systemId: zod.ZodLiteral<"notes">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EMPTY_TRASH";
+        systemId: "notes";
+    }, {
+        type: "EMPTY_TRASH";
+        systemId: "notes";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"IMPORT_NOTES">;
         systemId: zod.ZodLiteral<"notes">;
         directory: zod.ZodString;
@@ -4269,6 +4300,10 @@ declare const events: {
     } | {
         type: "NOTE_RESTORED";
         note: NoteDTO;
+        pluginId: "notes";
+    } | {
+        type: "TRASHED_NOTES";
+        notes: NoteDTO[];
         pluginId: "notes";
     } | {
         type: "NOTES_SEARCH_RESULTS";
@@ -5884,6 +5919,7 @@ declare const services: {
             readonly children: (parentId: EARS.EntityId) => NoteDTO[];
             readonly ancestorChain: (noteId: EARS.EntityId) => NoteDTO[];
             readonly referencedBy: (noteId: EARS.EntityId) => EARS.EntityId[];
+            readonly trashedDTOs: () => NoteDTO[];
             readonly expiredSoftDeleted: (maxAgeDays: number) => NoteEntity[];
             readonly connectedData: () => {
                 notes: NoteDTO[];

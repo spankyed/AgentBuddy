@@ -2,78 +2,172 @@
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="flex items-center justify-between h-header px-4 border-b border-neutral-800"
-      @dragover.prevent="handleRootDragOver"
-      @drop="handleRootDrop"
+      @dragover.prevent="!showTrash && handleRootDragOver($event)"
+      @drop="!showTrash && handleRootDrop($event)"
     >
-      <span class="text-sm font-medium text-neutral-300">Notes</span>
-      <div class="flex items-center gap-0.5">
-        <DropdownMenuRoot v-model:open="dropdownOpen">
-          <DropdownMenuTrigger as-child>
-            <button
-              class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-              title="More actions"
-              @click.stop
-            >
-              <MoreHorizontal :size="16" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              class="bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px] z-50"
-              :side-offset="4"
-            >
-              <DropdownMenuItem
-                v-for="item in createMenuItems"
-                :key="item.label"
-                class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
-                :class="item.class"
-                @select="item.action"
-              >
-                <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
-                {{ item.label }}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenuRoot>
+      <div class="flex items-center gap-1.5">
         <button
-          class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-          title="New Document"
-          @click="handleCreateNote()"
+          v-if="showTrash"
+          class="flex items-center justify-center w-5 h-5 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+          title="Back to Notes"
+          @click="handleHideTrash"
         >
-          <Plus :size="16" />
+          <ArrowLeft :size="14" />
         </button>
+        <span class="text-sm font-medium text-neutral-300">{{ showTrash ? 'Trash' : 'Notes' }}</span>
+      </div>
+      <div class="flex items-center gap-0.5">
+        <template v-if="showTrash">
+          <button
+            v-if="trashedNotes.length > 0"
+            class="flex items-center justify-center px-2 h-6 text-xs text-red-400 hover:text-red-300 hover:bg-neutral-700/50 transition-colors rounded"
+            title="Empty Trash"
+            @click="handleEmptyTrash"
+          >
+            Empty
+          </button>
+        </template>
+        <template v-else>
+          <DropdownMenuRoot v-model:open="dropdownOpen">
+            <DropdownMenuTrigger as-child>
+              <button
+                class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+                title="More actions"
+                @click.stop
+              >
+                <MoreHorizontal :size="16" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent
+                class="bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px] z-50"
+                :side-offset="4"
+              >
+                <DropdownMenuItem
+                  v-for="item in createMenuItems"
+                  :key="item.label"
+                  class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors cursor-pointer"
+                  :class="item.class"
+                  @select="item.action"
+                >
+                  <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
+                  {{ item.label }}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenuRoot>
+          <button
+            class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+            title="New Document"
+            @click="handleCreateNote()"
+          >
+            <Plus :size="16" />
+          </button>
+        </template>
       </div>
     </div>
 
-    <!-- Favorites -->
-    <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
-      <button
-        class="group flex items-center gap-2 px-1.5 w-full text-left ml-2.5"
-        :class="favoritesExpanded && 'mb-1'"
-        @click="favoritesExpanded = !favoritesExpanded"
-      >
-        <span class="relative shrink-0 w-[10px] h-[10px]">
-          <Star :size="10" class="absolute inset-0 text-yellow-500/60 transition-opacity group-hover:opacity-0" />
-          <ChevronRight
-            :size="10"
-            class="absolute inset-0 text-neutral-500 opacity-0 transition-all duration-150 group-hover:opacity-100"
-            :class="favoritesExpanded && 'rotate-90'"
+    <!-- Trash View -->
+    <template v-if="showTrash">
+      <div class="flex-1 overflow-y-auto p-3 px-2">
+        <div v-if="trashedNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
+          Trash is empty
+        </div>
+        <div
+          v-for="note in trashedNotes"
+          :key="note.id"
+          class="group flex items-center gap-2 px-3 py-1.5 rounded text-sm text-neutral-400 hover:bg-neutral-800 cursor-default"
+        >
+          <span v-if="note.icon" class="shrink-0 text-xs">{{ note.icon }}</span>
+          <span class="truncate flex-1">{{ note.title || 'Untitled' }}</span>
+          <span class="shrink-0 text-[10px] text-neutral-600">{{ formatDeletedAge(note.deletedAt) }}</span>
+          <div class="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-neutral-200 rounded"
+              title="Restore"
+              @click="handleRestoreNote(note.id)"
+            >
+              <Undo2 :size="12" />
+            </button>
+            <button
+              class="flex items-center justify-center w-5 h-5 text-neutral-500 hover:text-red-400 rounded"
+              title="Delete permanently"
+              @click="handlePermanentlyDelete(note.id)"
+            >
+              <Trash2 :size="12" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Normal View -->
+    <template v-else>
+      <!-- Favorites -->
+      <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
+        <button
+          class="group flex items-center gap-2 px-1.5 w-full text-left ml-2.5"
+          :class="favoritesExpanded && 'mb-1'"
+          @click="favoritesExpanded = !favoritesExpanded"
+        >
+          <span class="relative shrink-0 w-[10px] h-[10px]">
+            <Star :size="10" class="absolute inset-0 text-yellow-500/60 transition-opacity group-hover:opacity-0" />
+            <ChevronRight
+              :size="10"
+              class="absolute inset-0 text-neutral-500 opacity-0 transition-all duration-150 group-hover:opacity-100"
+              :class="favoritesExpanded && 'rotate-90'"
+            />
+          </span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
+        </button>
+        <template v-if="favoritesExpanded">
+          <NoteTreeItem
+            v-for="fav in favoriteNotes"
+            :key="fav.id"
+            :note="fav"
+            :all-notes="notes"
+            :current-note-id="currentNoteId"
+            :expanded-node-ids="expandedNodeIds"
+            :depth="0"
+            :get-item-class="getItemClass"
+            :drop-indicator-note-id="null"
+            :drop-indicator-position="null"
+            @select="handleSelectNote"
+            @toggle-expand="handleToggleExpand"
+            @create="handleCreateNote"
+            @delete="handleDeleteNote"
+            @update-icon="handleUpdateIcon"
+            @toggle-select="handleToggleSelect"
+            @shift-select="handleShiftSelect"
+            @create-task="handleCreateTask"
+            @open="handleOpenNote"
+            @create-tasklist="handleCreateTaskList"
+            @toggle-favorite="handleToggleFavorite"
           />
-        </span>
-        <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
-      </button>
-      <template v-if="favoritesExpanded">
+        </template>
+      </div>
+
+      <!-- Tree -->
+      <div
+        class="flex-1 overflow-y-auto p-3 px-2"
+        @click="handleOutsideClick"
+        @dragover.prevent="handleRootDragOver"
+        @drop="handleRootDrop"
+      >
+        <div v-if="rootNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
+          No notes yet
+        </div>
         <NoteTreeItem
-          v-for="fav in favoriteNotes"
-          :key="fav.id"
-          :note="fav"
+          v-for="note in rootNotes"
+          :key="note.id"
+          :note="note"
           :all-notes="notes"
           :current-note-id="currentNoteId"
           :expanded-node-ids="expandedNodeIds"
           :depth="0"
           :get-item-class="getItemClass"
-          :drop-indicator-note-id="null"
-          :drop-indicator-position="null"
+          :drop-indicator-note-id="dropIndicator?.noteId ?? null"
+          :drop-indicator-position="dropIndicator?.position ?? null"
           @select="handleSelectNote"
           @toggle-expand="handleToggleExpand"
           @create="handleCreateNote"
@@ -81,53 +175,18 @@
           @update-icon="handleUpdateIcon"
           @toggle-select="handleToggleSelect"
           @shift-select="handleShiftSelect"
+          @drag-start="handleDragStart"
+          @drag-over="handleDragOver"
+          @drag-leave="handleDragLeave"
+          @drop="(e: DragEvent, id: string) => handleDrop(e, id)"
+          @drag-end="handleDragEnd"
           @create-task="handleCreateTask"
           @open="handleOpenNote"
           @create-tasklist="handleCreateTaskList"
           @toggle-favorite="handleToggleFavorite"
         />
-      </template>
-    </div>
-
-    <!-- Tree -->
-    <div
-      class="flex-1 overflow-y-auto p-3 px-2"
-      @click="handleOutsideClick"
-      @dragover.prevent="handleRootDragOver"
-      @drop="handleRootDrop"
-    >
-      <div v-if="rootNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
-        No notes yet
       </div>
-      <NoteTreeItem
-        v-for="note in rootNotes"
-        :key="note.id"
-        :note="note"
-        :all-notes="notes"
-        :current-note-id="currentNoteId"
-        :expanded-node-ids="expandedNodeIds"
-        :depth="0"
-        :get-item-class="getItemClass"
-        :drop-indicator-note-id="dropIndicator?.noteId ?? null"
-        :drop-indicator-position="dropIndicator?.position ?? null"
-        @select="handleSelectNote"
-        @toggle-expand="handleToggleExpand"
-        @create="handleCreateNote"
-        @delete="handleDeleteNote"
-        @update-icon="handleUpdateIcon"
-        @toggle-select="handleToggleSelect"
-        @shift-select="handleShiftSelect"
-        @drag-start="handleDragStart"
-        @drag-over="handleDragOver"
-        @drag-leave="handleDragLeave"
-        @drop="(e: DragEvent, id: string) => handleDrop(e, id)"
-        @drag-end="handleDragEnd"
-        @create-task="handleCreateTask"
-        @open="handleOpenNote"
-        @create-tasklist="handleCreateTaskList"
-        @toggle-favorite="handleToggleFavorite"
-      />
-    </div>
+    </template>
   </div>
 </template>
 
@@ -137,7 +196,7 @@ import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
-import { Plus, ListChecks, MoreHorizontal, Star, ChevronRight } from 'lucide-vue-next'
+import { Plus, ListChecks, MoreHorizontal, Star, ChevronRight, Trash2, ArrowLeft, Undo2 } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -157,11 +216,14 @@ watch(dropdownOpen, onMenuOpenChange)
 
 const createMenuItems = computed<MenuItem[]>(() => [
   { label: 'New Task List', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
+  { label: 'Trash', icon: Trash2, class: 'text-neutral-300', action: () => handleShowTrash() },
 ])
 const notes = useSelector(actor, (s) => s.context.notes)
 const currentNoteId = useSelector(actor, (s) => s.context.currentNoteId)
 const expandedNodeIds = useSelector(actor, (s) => s.context.expandedNodeIds)
 const selectedNoteIds = useSelector(actor, (s) => s.context.selectedNoteIds)
+const showTrash = useSelector(actor, (s) => s.context.showTrash)
+const trashedNotes = useSelector(actor, (s) => s.context.trashedNotes)
 
 const rootNotes = computed(() =>
   notes.value
@@ -267,6 +329,34 @@ function handleDeleteNote(noteId: string) {
 
 function handleUpdateIcon(noteId: string, icon: string | null) {
   actor.send({ type: 'NOTE.UPDATE_ICON', noteId, icon })
+}
+
+function handleShowTrash() {
+  actor.send({ type: 'NOTE.SHOW_TRASH' })
+}
+
+function handleHideTrash() {
+  actor.send({ type: 'NOTE.HIDE_TRASH' })
+}
+
+function handleRestoreNote(noteId: string) {
+  actor.send({ type: 'NOTE.RESTORE', noteId })
+}
+
+function handlePermanentlyDelete(noteId: string) {
+  actor.send({ type: 'NOTE.PERMANENTLY_DELETE', noteId })
+}
+
+function handleEmptyTrash() {
+  actor.send({ type: 'NOTE.EMPTY_TRASH' })
+}
+
+function formatDeletedAge(deletedAt?: number): string {
+  if (!deletedAt) return ''
+  const days = Math.floor((Date.now() - deletedAt) / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'today'
+  if (days === 1) return '1 day ago'
+  return `${days} days ago`
 }
 
 function handleOutsideClick(e: MouseEvent) {

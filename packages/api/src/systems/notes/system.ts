@@ -71,6 +71,9 @@ export const IncomingNoteEvents = [
   busEvent('SEARCH_NOTES', {
     query: z.string(),
   }),
+  busEvent('GET_TRASHED_NOTES', {}),
+  busEvent('PERMANENTLY_DELETE_NOTE', { id: z.string() }),
+  busEvent('EMPTY_TRASH', {}),
   busEvent('IMPORT_NOTES', { directory: z.string() }),
   busEvent('EXPORT_NOTES', { directory: z.string(), format: z.enum(['markdown', 'json']) }),
 ] as const;
@@ -83,6 +86,7 @@ export type OutgoingNotesEvents =
   | { type: 'NOTE_UPDATED'; note: NoteDTO }
   | { type: 'NOTE_DELETED'; noteId: string }
   | { type: 'NOTE_RESTORED'; note: NoteDTO }
+  | { type: 'TRASHED_NOTES'; notes: NoteDTO[] }
   | OutgoingNotesSearchEvent
   | { type: 'NOTES_IMPORTED'; count: number; errors?: string[] }
   | { type: 'NOTES_IMPORT_FAILED'; errors: string[] }
@@ -295,7 +299,7 @@ export const notesSystem = setup({
     },
 
     cleanupExpiredNotes: () => {
-      const expired = repository.noteQueries.expiredSoftDeleted(10);
+      const expired = repository.noteQueries.expiredSoftDeleted(7);
       if (expired.length === 0) return;
       for (const note of expired) {
         try {
@@ -497,7 +501,7 @@ export const notesSystem = setup({
       const noteDTO = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       const parentId = noteDTO?.parentId;
 
-      // Collect all descendant IDs before deletion
+      // Collect all descendant IDs before soft-deletion
       const collectDescendants = (id: EARS.EntityId): string[] => {
         const children = repository.noteQueries.children(id);
         const descendantIds: string[] = [];
@@ -562,7 +566,8 @@ export const notesSystem = setup({
         }
       }
 
-      repository.noteCommands.delete(ev.id as EARS.EntityId);
+      // Soft-delete instead of hard-delete (moves to trash)
+      repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       // Notify about deleted note and all descendants
       system.get(bus).send(emit(notes, {
@@ -586,6 +591,42 @@ export const notesSystem = setup({
           }));
         }
       }
+    },
+
+    permanentlyDeleteNote: ({ system, event }) => {
+      const ev = typeOf('PERMANENTLY_DELETE_NOTE', event);
+      try {
+        repository.noteCommands.delete(ev.id as EARS.EntityId);
+        system.get(bus).send(emit(notes, {
+          type: 'NOTE_DELETED',
+          noteId: ev.id,
+        }));
+      } catch {
+        // Already deleted or missing
+      }
+    },
+
+    emptyTrash: ({ system }) => {
+      const trashed = repository.noteQueries.trashedDTOs();
+      for (const note of trashed) {
+        try {
+          repository.noteCommands.delete(note.id as EARS.EntityId);
+          system.get(bus).send(emit(notes, {
+            type: 'NOTE_DELETED',
+            noteId: note.id,
+          }));
+        } catch {
+          // Already deleted or missing
+        }
+      }
+    },
+
+    sendTrashedNotes: ({ system }) => {
+      const trashed = repository.noteQueries.trashedDTOs();
+      system.get(bus).send(emit(notes, {
+        type: 'TRASHED_NOTES',
+        notes: trashed,
+      }));
     },
   },
 }).createMachine({
@@ -622,6 +663,15 @@ export const notesSystem = setup({
     },
     IMPORT_NOTES: {
       actions: 'importNotesItems',
+    },
+    GET_TRASHED_NOTES: {
+      actions: 'sendTrashedNotes',
+    },
+    PERMANENTLY_DELETE_NOTE: {
+      actions: 'permanentlyDeleteNote',
+    },
+    EMPTY_TRASH: {
+      actions: 'emptyTrash',
     },
     EXPORT_NOTES: {
       actions: 'exportNotesToFile',

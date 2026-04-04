@@ -37,6 +37,7 @@ export interface NoteDTO {
   updatedAt: number;
   lastSeen: number;
   favorite: boolean;
+  deletedAt?: number;
 }
 
 export type OutgoingNotesSearchEvent = { type: 'NOTES_SEARCH_RESULTS'; results: NoteDTO[] }
