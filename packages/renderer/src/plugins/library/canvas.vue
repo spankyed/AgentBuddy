@@ -132,9 +132,6 @@ const currentEvents = computed(() => {
     MOVE_ITEMS: (payload: { itemIds: string[]; targetFolderId: string | null }) => {
       send({ type: 'MOVE_ITEMS', ...payload })
     },
-    REORDER_ITEMS: (payload: { itemIds: string[]; targetIndex: number; targetFolderId: string | null }) => {
-      send({ type: 'REORDER_ITEMS', ...payload })
-    },
     EXPAND_FOLDER: (payload: { folderId: string }) => {
       send({ type: 'EXPAND_FOLDER', ...payload })
     },

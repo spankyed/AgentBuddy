@@ -221,13 +221,13 @@
         <table class="w-full min-w-[480px]"  data-onboarding-id="library-table">
           <thead class="sticky top-0 z-10 bg-neutral-900 shadow-[inset_0_-1px_0_0_theme(colors.neutral.800)]">
             <tr class="text-xs font-medium text-left text-neutral-500">
-              <TableHeader @click="sort('name')" class="!pl-6 w-[60%]">Name</TableHeader>
-              <TableHeader @click="sort('modified')" class="w-[18%]">
+              <TableHeader column="name" :sort-by="sortBy" :sort-direction="sortDirection" @click="sort('name')" class="!pl-6 w-[60%]">Name</TableHeader>
+              <TableHeader column="modified" :sort-by="sortBy" :sort-direction="sortDirection" @click="sort('modified')" class="w-[18%]">
                 <span class="@lg:hidden">Modified</span>
                 <span class="hidden @lg:inline">Date Modified</span>
               </TableHeader>
-              <TableHeader @click="sort('size')" class="w-[10%]">Size</TableHeader>
-              <TableHeader @click="sort('kind')" class="w-[12%] hidden @lg:table-cell">Kind</TableHeader>
+              <TableHeader column="size" :sort-by="sortBy" :sort-direction="sortDirection" @click="sort('size')" class="w-[10%]">Size</TableHeader>
+              <TableHeader column="kind" :sort-by="sortBy" :sort-direction="sortDirection" @click="sort('kind')" class="w-[12%] hidden @lg:table-cell">Kind</TableHeader>
             </tr>
           </thead>
           <tbody>
@@ -484,18 +484,6 @@ function copyBreadcrumbPath(crumb: BreadcrumbItem) {
 }
 
 const sortedItems = computed(() => {
-  // If no explicit sort is selected, use displayOrder (the user's custom order)
-  if (props.sortBy === 'name' && props.sortDirection === 'asc') {
-    // Default sort - use displayOrder
-    return [...props.items].sort((a, b) => {
-      // Folders always come first
-      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
-      // Then sort by displayOrder
-      return a.displayOrder - b.displayOrder
-    })
-  }
-
-  // Otherwise use the selected sort
   const compareFunctions = {
     name: (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name),
     modified: (a: LibraryItem, b: LibraryItem) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
@@ -508,9 +496,7 @@ const sortedItems = computed(() => {
   }
 
   return [...props.items].sort((a, b) => {
-    // Folders always come first
     if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
-
     const compareValue = compareFunctions[props.sortBy](a, b)
     return props.sortDirection === 'asc' ? compareValue : -compareValue
   })
@@ -650,7 +636,7 @@ function deleteSelectedItems() {
 
 function handleDropOnEmpty(event: DragEvent) {
   // When dropping on empty space, move items to current folder
-  handleDrop(event, null, sortedItems.value.length, props.currentFolderId)
+  handleDrop(event, null, undefined, props.currentFolderId)
 }
 
 function handleTableContainerClick(event: MouseEvent) {

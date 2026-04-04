@@ -149,11 +149,9 @@ export type LibraryEvents =
   | { type: 'CREATE_FOLDER'; name: string }
   | { type: 'SORT_BY'; column: 'name' | 'modified' | 'size' | 'kind' }
   | { type: 'MOVE_ITEMS'; itemIds: string[]; targetFolderId: string | null }
-  | { type: 'REORDER_ITEMS'; itemIds: string[]; targetIndex: number; targetFolderId: string | null }
   | { type: 'SEARCH'; query: string }
   | { type: 'BREADCRUMB_CLICK'; folderId: string | null }
   | { type: 'CLEAR_ITEM_TO_EDIT' }
-  | { type: 'ITEMS_REORDERED'; data: { itemIds: string[]; targetFolderId: string | null } }
   // Symlink events
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
   | { type: 'REFRESH_FOLDER'; folderId: string }
@@ -256,17 +254,6 @@ export const librarySystem = setup({
           systemId: id,
           type: 'MOVE_ITEMS',
           ids: event.itemIds,
-          targetFolderId: event.targetFolderId,
-        })
-      }
-    },
-    reorderItems: ({ event }) => {
-      if (event.type === 'REORDER_ITEMS') {
-        trpc.bus.send.mutate({
-          systemId: id,
-          type: 'REORDER_ITEMS',
-          itemIds: event.itemIds,
-          targetIndex: event.targetIndex,
           targetFolderId: event.targetFolderId,
         })
       }
@@ -918,9 +905,6 @@ export const librarySystem = setup({
     MOVE_ITEMS: {
       actions: 'moveItems',
     },
-    REORDER_ITEMS: {
-      actions: 'reorderItems',
-    },
     CLEAR_ITEM_TO_EDIT: {
       actions: assign({
         itemToEdit: null
@@ -1010,10 +994,6 @@ export const librarySystem = setup({
     ITEMS_MOVED: {
       actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
-    ITEMS_REORDERED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
-    },
-
     // Legacy events for backward compatibility
     DOCUMENTS_LOADED: {
       actions: 'setDocuments',

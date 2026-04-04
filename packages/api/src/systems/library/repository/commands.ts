@@ -16,7 +16,6 @@ import {
   getCollectionPath,
   formatFileSize,
   getContentLength,
-  getItemsForReordering
 } from './helpers'
 
 const logger = createLogger('library')
@@ -417,38 +416,6 @@ export const libraryCommands = {
         const displayOrder = getNextDisplayOrder(targetFolderId)
         tx(collectionId).update('displayOrder', displayOrder)
       }
-    }
-  },
-
-  reorderItems(
-    itemIds: EARS.EntityId[],
-    targetIndex: number,
-    targetFolderId: EARS.EntityId | null
-  ): void {
-    // Get all items in the target folder
-    const allItems = getItemsForReordering(targetFolderId)
-    
-    // Sort by display order, folders first
-    allItems.sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
-      return a.displayOrder - b.displayOrder
-    })
-    
-    // Remove items being moved from the list
-    const itemsToMove = allItems.filter(item => itemIds.includes(item.id))
-    const remainingItems = allItems.filter(item => !itemIds.includes(item.id))
-    
-    // Insert items at the target position
-    const finalItems = [
-      ...remainingItems.slice(0, targetIndex),
-      ...itemsToMove,
-      ...remainingItems.slice(targetIndex)
-    ]
-    
-    // Update display orders
-    for (let i = 0; i < finalItems.length; i++) {
-      const newOrder = (i + 1) * 1000
-      tx(finalItems[i].id).update('displayOrder', newOrder)
     }
   },
 
