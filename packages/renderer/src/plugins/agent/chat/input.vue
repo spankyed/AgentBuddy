@@ -383,7 +383,7 @@ const handleButtonClick = (action: string) => {
 const handleQuickPromptSelect = (text: string) => {
   const editor = tiptapRef.value?.editor
   if (!editor) return
-  editor.commands.insertContent(text + ' ')
+  editor.chain().focus('end').insertContent(text + ' ').run()
 }
 
 const handleModeChange = (newMode: string) => {
