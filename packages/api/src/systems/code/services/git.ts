@@ -510,20 +510,44 @@ export class GitRepository {
   }
 
   async revertFile(filePath: string): Promise<void> {
-    // Use git checkout to revert the file to its staged state
-    const result = await this.executeGitCommand(['checkout', '--', filePath])
-    if (!result.success) {
-      throw new Error(result.error || `Failed to revert file: ${filePath}`)
+    const status = await this.getStatus()
+    const fileStatus = status.find(f => f.path === filePath)
+
+    if (fileStatus?.status === 'untracked') {
+      const fullPath = path.join(this.workingDirectory, filePath)
+      await fs.unlink(fullPath)
+    } else {
+      const result = await this.executeGitCommand(['checkout', '--', filePath])
+      if (!result.success) {
+        throw new Error(result.error || `Failed to revert file: ${filePath}`)
+      }
     }
     this.cache.delete('status')
   }
 
   async revertFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    const result = await this.executeGitCommand(['checkout', '--', ...filePaths])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to revert files')
+
+    const status = await this.getStatus()
+    const statusMap = new Map(status.map(f => [f.path, f.status]))
+
+    const untrackedPaths = filePaths.filter(p => statusMap.get(p) === 'untracked')
+    const trackedPaths = filePaths.filter(p => statusMap.get(p) !== 'untracked')
+
+    // Delete untracked files
+    for (const filePath of untrackedPaths) {
+      const fullPath = path.join(this.workingDirectory, filePath)
+      await fs.unlink(fullPath)
     }
+
+    // Revert tracked files
+    if (trackedPaths.length > 0) {
+      const result = await this.executeGitCommand(['checkout', '--', ...trackedPaths])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revert files')
+      }
+    }
+
     this.cache.delete('status')
   }
 
