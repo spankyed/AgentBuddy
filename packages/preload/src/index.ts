@@ -81,6 +81,7 @@ const apiStatus = {
     error?: { message: string; stack?: string };
     restartAttempts: number;
   }>,
+  relaunch: () => ipcRenderer.invoke('app:relaunch'),
   onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
     const channels = ['api:stopped', 'api:error', 'api:restarting'];
     const handlers = channels.map(channel => {

@@ -60,12 +60,19 @@
         white-space: pre-wrap; word-break: break-all; max-height: calc(80vh - 16rem); overflow-y: auto;
         line-height: 1.5; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
       }
+      #error-page .btn-row { display: flex; gap: 0.75rem; justify-content: center; flex-shrink: 0; }
       #error-page .reload-btn {
         background: #2563eb; color: #fff; border: none; border-radius: 6px;
-        padding: 0.5rem 1.75rem; font-size: 0.8125rem; font-weight: 500; cursor: pointer; flex-shrink: 0;
+        padding: 0.5rem 1.75rem; font-size: 0.8125rem; font-weight: 500; cursor: pointer;
         transition: background 0.15s;
       }
       #error-page .reload-btn:hover { background: #3b82f6; }
+      #error-page .restart-btn {
+        background: transparent; color: #a3a3a3; border: 1px solid #333; border-radius: 6px;
+        padding: 0.5rem 1.75rem; font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      #error-page .restart-btn:hover { color: #e5e5e5; border-color: #525252; }
     </style>
   </head>
   <body>
@@ -92,7 +99,17 @@
             ">Copy</button></span></summary>
           <div id="error-detail" class="stack-frames"></div>
         </details>
-        <button class="reload-btn" onclick="window.location.reload()">Reload</button>
+        <div class="btn-row">
+          <button class="reload-btn" onclick="
+            window.__errorPageShown = false;
+            window.location.reload();
+          ">Reload</button>
+          <button class="restart-btn" onclick="
+            if (window.electronAPI && window.electronAPI.apiStatus) {
+              window.electronAPI.apiStatus.relaunch();
+            }
+          ">Restart App</button>
+        </div>
       </div>
     </div>
 

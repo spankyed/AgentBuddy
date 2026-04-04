@@ -60,6 +60,12 @@ export class ApiServer implements AppModule {
       restartAttempts: this.restartAttempts,
     }));
 
+    // Relaunch the entire Electron app
+    ipcMain.handle('app:relaunch', () => {
+      app.relaunch();
+      app.exit(0);
+    });
+
     app.whenReady().then(() => this.startApiServer());
     
     app.on('before-quit', () => {
