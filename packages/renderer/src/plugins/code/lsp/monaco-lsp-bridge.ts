@@ -36,8 +36,15 @@ export class MonacoLspBridge {
   ) {
     this.supportedLanguages = supportedLanguages
     this.registerProviders()
-    this.trackModels()
     this.client.onDiagnostics((uri, diagnostics) => this.applyDiagnostics(uri, diagnostics))
+  }
+
+  /**
+   * Start tracking Monaco models and sending didOpen/didChange/didClose.
+   * Must be called after the LSP server has completed the initialize handshake.
+   */
+  start(): void {
+    this.trackModels()
   }
 
   private isFileUri(uri: Uri): boolean {

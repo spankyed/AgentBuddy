@@ -103,6 +103,15 @@ export const lspSystem = setup({
           rootEvents.emitOutgoing(wrapped.event)
         })
 
+        // Wire up error callback → emit to frontend
+        lspService.onError(serverId, (error) => {
+          const wrapped = emit(pluginId, {
+            type: 'lsp.SERVER_ERROR',
+            data: { serverId, error }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+        })
+
         // Wire up exit callback
         lspService.onExit(serverId, (code) => {
           const wrapped = emit(pluginId, {

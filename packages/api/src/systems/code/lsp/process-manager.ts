@@ -89,6 +89,7 @@ class LspService {
       if (srv) {
         srv.status = 'error'
         srv.errorCallback?.(err.message)
+        this.servers.delete(serverId)
       }
     })
 
@@ -100,8 +101,10 @@ class LspService {
 
   send(serverId: string, message: string): boolean {
     const server = this.servers.get(serverId)
-    if (!server || !server.process.stdin?.writable) {
-      logger.warn(`Cannot send to server ${serverId}: not found or stdin not writable`)
+    const stdin = server?.status === 'running' ? server.process.stdin : null
+
+    if (!stdin?.writable) {
+      logger.warn(`Cannot send to server ${serverId}: not available`)
       return false
     }
 
@@ -109,7 +112,7 @@ class LspService {
     const header = `${CONTENT_LENGTH_HEADER}${contentLength}${HEADER_DELIMITER}`
 
     try {
-      server.process.stdin.write(header + message, 'utf-8')
+      stdin.write(header + message, 'utf-8')
       return true
     } catch (err: any) {
       logger.error(`Failed to write to server ${serverId}: ${err.message}`)

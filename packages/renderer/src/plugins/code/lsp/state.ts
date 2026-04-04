@@ -35,7 +35,7 @@ export type Event =
   | { type: 'lsp.SERVER_STOPPED'; data: { serverId: string; languageId: string } }
   | { type: 'lsp.SERVER_ERROR'; data: { serverId: string; error: string } }
   | { type: 'lsp.SERVERS_LISTED'; data: LspServerInfo[] }
-  | { type: 'CODE_CONNECTED' }
+  | { type: 'lsp.INITIALIZED' }
 
 export const lspState = setup({
   types: {
@@ -59,7 +59,7 @@ export const lspState = setup({
       sendToBackend('lsp.START_SERVER', { languageId: 'typescript' })
     },
 
-    handleServerStarted: async ({ context, self, event }) => {
+    handleServerStarted: ({ context, self, event }) => {
       const ev = event as { type: 'lsp.SERVER_STARTED'; data: { serverId: string; languageId: string } }
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory
@@ -69,33 +69,37 @@ export const lspState = setup({
       const client = context.lspClient
       client.setServerId(ev.data.serverId)
 
-      try {
-        // LSP initialize handshake
-        const rootUri = `file://${baseDirectory}`
-        await client.initialize(rootUri)
+      // Track server
+      context.servers = [...context.servers, {
+        serverId: ev.data.serverId,
+        languageId: ev.data.languageId,
+        status: 'running'
+      }]
 
-        // Create Monaco bridge after initialization
-        const monaco = (window as any).monaco as Monaco
-        if (monaco) {
-          // Disable Monaco's built-in TS diagnostics to avoid duplicates with LSP
-          disableBuiltinTsDiagnostics(monaco)
-
-          const supportedLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
-          const bridge = new MonacoLspBridge(monaco, client, supportedLanguages)
-          context.monacoLspBridge = bridge
-          context.initialized = true
-        }
-
-        // Track server
-        context.servers = [...context.servers, {
-          serverId: ev.data.serverId,
-          languageId: ev.data.languageId,
-          status: 'running'
-        }]
-      } catch (err: any) {
+      // Kick off async LSP initialize handshake — send internal event when done
+      const rootUri = `file://${baseDirectory}`
+      client.initialize(rootUri).then(() => {
+        self.send({ type: 'lsp.INITIALIZED' })
+      }).catch((err: any) => {
         console.error('[LSP] Initialize handshake failed:', err)
         context.error = err.message || 'Failed to initialize language server'
-      }
+      })
+    },
+
+    handleInitialized: ({ context }) => {
+      if (!context.lspClient) return
+
+      const monaco = (window as any).monaco as Monaco
+      if (!monaco) return
+
+      // Disable Monaco's built-in TS diagnostics to avoid duplicates with LSP
+      disableBuiltinTsDiagnostics(monaco)
+
+      const supportedLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
+      const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages)
+      bridge.start() // Begin tracking models now that server is ready
+      context.monacoLspBridge = bridge
+      context.initialized = true
     },
 
     forwardServerMessage: ({ context, event }) => {
@@ -180,6 +184,9 @@ export const lspState = setup({
         },
         'lsp.SERVER_STARTED': {
           actions: 'handleServerStarted'
+        },
+        'lsp.INITIALIZED': {
+          actions: 'handleInitialized'
         },
         'lsp.SERVER_STOPPED': {
           actions: 'handleServerStopped'

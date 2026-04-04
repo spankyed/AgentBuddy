@@ -209,7 +209,7 @@ const codeState = setup({
         enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
         enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
         enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
-        enqueue.spawnChild('lspState', { systemId: 'lsp' });
+        enqueue.spawnChild('lspState', { systemId: 'lsp', input: { baseDirectory: context.baseDirectory } });
     }),
 
     notifyDirectoryChange: ({ event, context, system }) => {
@@ -379,7 +379,6 @@ const codeState = setup({
       system.get('terminal')?.send(event);
       system.get('codeActions')?.send(event);
       system.get('codePrompts')?.send(event);
-      system.get('lsp')?.send(event);
     },
 
     routeEvent: ({ event, system }) => {
