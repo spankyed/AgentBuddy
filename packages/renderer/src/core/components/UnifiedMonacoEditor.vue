@@ -3,6 +3,7 @@
     <!-- Diff Editor Mode -->
     <VueMonacoDiffEditor
       v-if="mode === 'diff'"
+      :key="filePath"
       :theme="theme"
       :original="diffOriginal || ''"
       :modified="diffModified || modelValue"
