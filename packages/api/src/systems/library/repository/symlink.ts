@@ -99,7 +99,7 @@ export async function listDirectory(dirPath: string, collectionId: string, relat
         name: entry.name,
         parentId: null,
         childCount,
-        size: String(childCount),
+        size: '--',
         kind: 'Folder',
         displayOrder: 0,
         createdAt: stat.birthtime.toISOString(),

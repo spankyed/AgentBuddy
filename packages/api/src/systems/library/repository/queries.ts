@@ -171,7 +171,7 @@ export const libraryQueries = {
         name: folder.name as string,
         parentId: folderId,
         childCount,
-        size: childCount === 1 ? '1 item' : `${childCount} items`,
+        size: '--',
         kind: 'Folder',
         displayOrder: getDisplayOrder(folder),
         createdAt: new Date(folder.createdAt as number).toISOString(),
@@ -181,7 +181,7 @@ export const libraryQueries = {
       if (folderSymlinkPath) {
         folderItem.isSymlink = true
         folderItem.symlinkPath = folderSymlinkPath
-        folderItem.size = String(childCount)
+        folderItem.size = '--'
       }
 
       items.push(folderItem)
