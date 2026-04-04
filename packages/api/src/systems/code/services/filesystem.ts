@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { spawn } from 'child_process'
+import { rgPath } from '@vscode/ripgrep'
 import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -306,7 +307,7 @@ export class FileSystemRepository {
       args.push(validPath)
       
       return new Promise((resolve, reject) => {
-        const rg = spawn('rg', args)
+        const rg = spawn(rgPath, args)
         
         let currentResult: SearchResult | null = null
         let filesSearched = 0
