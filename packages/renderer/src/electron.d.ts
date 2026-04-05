@@ -45,6 +45,15 @@ declare global {
         }>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
+      appUpdate: {
+        onUpdateAvailable: (cb: (info: { version: string; releaseNotes?: string | { version: string; note: string }[] }) => void) => () => void;
+        onDownloadProgress: (cb: (progress: { percent: number; bytesPerSecond: number; transferred: number; total: number }) => void) => () => void;
+        onUpdateDownloaded: (cb: (info: { version: string; releaseNotes?: string | { version: string; note: string }[] }) => void) => () => void;
+        onUpdateError: (cb: (message: string) => void) => () => void;
+        startDownload: () => Promise<void>;
+        installAndRestart: () => Promise<void>;
+        dismissUpdate: (version: string) => Promise<void>;
+      };
       apiPort: number;
     };
   }

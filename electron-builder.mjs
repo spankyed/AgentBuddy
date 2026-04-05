@@ -134,11 +134,11 @@ export default /** @type import('electron-builder').Configuration */
     },
   ],
   
-  // Publishing: enable with PUBLISH_TO_GITHUB=true
-  publish: process.env.PUBLISH_TO_GITHUB === 'true' ? {
+  // Publishing: GitHub Releases (electron-updater reads this config)
+  publish: {
     provider: 'github',
     owner: 'spankyed',
     repo: 'AgentBuddy',
-    releaseType: 'draft'
-  } : null
+    releaseType: 'release',
+  }
 });
