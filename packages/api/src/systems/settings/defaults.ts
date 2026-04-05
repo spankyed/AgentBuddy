@@ -99,7 +99,7 @@ export const defaultSettings: SettingsData = {
       enableShellIntegration: false,
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,
-      mdEditorDefault: false,
+      mdEditorDefault: true,
     },
     database: {
       hotkeys: {
