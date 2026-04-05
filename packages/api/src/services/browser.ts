@@ -119,7 +119,7 @@ export class BrowserService {
   }
 
   // Waiting
-  async waitForSelector(selector: string, timeout?: number): Promise<ElementHandle<Element> | null> {
+  async waitForSelector(selector: string, timeout?: number): Promise<ElementHandle | null> {
     const page = this.getPage();
     return await page.waitForSelector(selector, { timeout });
   }
