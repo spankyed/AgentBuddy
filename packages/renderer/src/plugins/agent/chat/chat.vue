@@ -19,13 +19,7 @@
             />
           </div>
         </div>
-        <button
-          v-if="!isNearBottom && messages.length > 0"
-          class="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white drop-shadow-lg transition-all cursor-pointer opacity-60 hover:opacity-100"
-          @click="scrollToBottom('smooth')"
-        >
-          ↓
-        </button>
+        <ScrollToBottomFob :visible="!isNearBottom && messages.length > 0" @click="scrollToBottom('smooth')" />
       </div>
       <!-- Input -->
       <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
@@ -107,6 +101,7 @@ import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import ImageLightbox from './ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
+import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type AgentState } from '@/plugins/agent/state';

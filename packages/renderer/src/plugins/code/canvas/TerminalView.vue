@@ -1,10 +1,13 @@
 <template>
-  <!-- Fills available space; Tailwind-coloured background for consistency -->
-  <div ref="container" class="h-full w-full bg-[#1e1e1e]"></div>
+  <div class="relative h-full w-full">
+    <div ref="container" class="h-full w-full bg-[#1e1e1e]"></div>
+    <ScrollToBottomFob :visible="showScrollFob" @click="scrollToBottom()" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -31,10 +34,21 @@ let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
 let unsubscribe: (() => void) | null = null
 let isShowingLoadingContent = false
+const isPinnedToBottom = ref(true)
+let isScrollingProgrammatically = false
+const showScrollFob = computed(() => !isPinnedToBottom.value)
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
 const fit = () => fitAddon?.fit()
+
+const scrollToBottom = () => {
+  if (!term) return
+  isPinnedToBottom.value = true
+  isScrollingProgrammatically = true
+  term.scrollToBottom()
+  requestAnimationFrame(() => { isScrollingProgrammatically = false })
+}
 
 const sendResize = () => {
   if (!term) return
@@ -105,6 +119,15 @@ onMounted(() => {
   fit()
   sendResize()
 
+  /* 2a. Track user scroll to support "pin to bottom" */
+  const viewport = term.element!.querySelector('.xterm-viewport')
+  if (viewport) {
+    viewport.addEventListener('scroll', () => {
+      if (isScrollingProgrammatically) return
+      isPinnedToBottom.value = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 10
+    }, { passive: true })
+  }
+
   /* 3. Load any stored output or show loading content */
   const storedOutput = terminalEventBus.getOutput(props.terminalInfo.id)
   if (storedOutput) {
@@ -123,7 +146,9 @@ onMounted(() => {
       isShowingLoadingContent = false
     }
     
-    term.write(data)
+    term.write(data, () => {
+      if (isPinnedToBottom.value) scrollToBottom()
+    })
   })
 
   /* 5. PTY -> FE communication */
@@ -161,6 +186,7 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(() => {
     fit()
     sendResize()
+    if (isPinnedToBottom) scrollToBottom()
   })
   resizeObserver.observe(container.value)
 
