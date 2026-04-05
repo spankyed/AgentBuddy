@@ -25,6 +25,7 @@ export interface Context {
   baseDirectory: string | null
   servers: LspServerInfo[]
   initialized: boolean
+  handshakeComplete: boolean
   error: string | null
 }
 
@@ -36,6 +37,7 @@ export type Event =
   | { type: 'lsp.SERVER_ERROR'; data: { serverId: string; error: string } }
   | { type: 'lsp.SERVERS_LISTED'; data: LspServerInfo[] }
   | { type: 'lsp.INITIALIZED' }
+  | { type: 'lsp.MONACO_READY' }
 
 function buildFileUri(path: string): string {
   const url = new URL('file:///')
@@ -89,8 +91,11 @@ export const lspState = setup({
       })
     }),
 
-    handleInitialized: assign(({ context }) => {
-      if (!context.lspClient) return {}
+    handleInitialized: assign(() => ({ handshakeComplete: true })),
+
+    attemptBridgeCreation: assign(({ context }) => {
+      if (!context.lspClient || !context.handshakeComplete) return {}
+      if (context.monacoLspBridge) return {} // already created
       const monaco = (window as any).monaco as Monaco
       if (!monaco) return {}
 
@@ -99,10 +104,7 @@ export const lspState = setup({
       const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages)
       bridge.start()
 
-      return {
-        monacoLspBridge: bridge,
-        initialized: true,
-      }
+      return { monacoLspBridge: bridge, initialized: true }
     }),
 
     forwardServerMessage: ({ context, event }) => {
@@ -155,6 +157,7 @@ export const lspState = setup({
         monacoLspBridge: () => null,
         lspClient: () => null,
         initialized: () => false,
+        handshakeComplete: () => false,
       })
     })
   }
@@ -167,6 +170,7 @@ export const lspState = setup({
     baseDirectory: null,
     servers: [],
     initialized: false,
+    handshakeComplete: false,
     error: null,
   },
   exit: 'cleanup',
@@ -179,7 +183,8 @@ export const lspState = setup({
         },
         'lsp.SERVERS_LISTED': {
           actions: 'handleServersListed'
-        }
+        },
+        'lsp.MONACO_READY': {} // no-op in idle
       }
     },
     active: {
@@ -191,7 +196,10 @@ export const lspState = setup({
           actions: 'handleServerStarted'
         },
         'lsp.INITIALIZED': {
-          actions: 'handleInitialized'
+          actions: ['handleInitialized', 'attemptBridgeCreation']
+        },
+        'lsp.MONACO_READY': {
+          actions: 'attemptBridgeCreation'
         },
         'lsp.SERVER_STOPPED': {
           actions: 'handleServerStopped'

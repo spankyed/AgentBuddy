@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate'
+import { setup, assign, enqueueActions } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/helpers/event-helpers'
@@ -47,6 +47,12 @@ export const lspSystem = setup({
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null }
+  },
+  guards: {
+    isNewBaseDirectory: ({ context, event }) => {
+      const ev = event as { type: 'lsp.UPDATE_BASE_DIRECTORY'; path: string }
+      return ev.path !== context.baseDirectory
+    }
   },
   actions: {
     sendConnectedData: () => {
@@ -153,23 +159,21 @@ export const lspSystem = setup({
       }
     },
 
-    updateBaseDirectory: assign({
-      baseDirectory: ({ event }) => {
-        const ev = event as { type: 'lsp.UPDATE_BASE_DIRECTORY'; path: string }
+    updateBaseDirectory: enqueueActions(({ enqueue, event }) => {
+      const ev = event as { type: 'lsp.UPDATE_BASE_DIRECTORY'; path: string }
 
-        // Kill all running servers — they hold state tied to the old rootUri
-        const servers = lspService.list()
-        for (const server of servers) {
-          lspService.kill(server.serverId)
-          const wrapped = emit(pluginId, {
-            type: 'lsp.SERVER_STOPPED',
-            data: { serverId: server.serverId, languageId: server.languageId }
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-        }
-
-        return ev.path
+      // Kill all running servers — they hold state tied to the old rootUri
+      const servers = lspService.list()
+      for (const server of servers) {
+        lspService.kill(server.serverId)
+        const wrapped = emit(pluginId, {
+          type: 'lsp.SERVER_STOPPED',
+          data: { serverId: server.serverId, languageId: server.languageId }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
       }
+
+      enqueue.assign({ baseDirectory: () => ev.path })
     }),
 
     cleanupServers: () => {
@@ -199,6 +203,7 @@ export const lspSystem = setup({
           actions: 'forwardToServer'
         },
         'lsp.UPDATE_BASE_DIRECTORY': {
+          guard: 'isNewBaseDirectory',
           actions: 'updateBaseDirectory'
         }
       }
