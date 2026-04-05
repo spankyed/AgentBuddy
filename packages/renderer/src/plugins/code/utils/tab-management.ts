@@ -136,24 +136,13 @@ export function pushTabViewHistory(history: string[], path: string): string[] {
 }
 
 /**
- * Removes a path from tab view history
- */
-export function removeFromTabViewHistory(history: string[], path: string): string[] {
-  return history.filter(p => p !== path)
-}
-
-/**
  * Replaces an old path with a new path in tab view history (e.g. after rename)
  */
 export function renameInTabViewHistory(history: string[], oldPath: string, newPath: string): string[] {
   return history.map(p => p === oldPath ? newPath : p)
 }
 
-/**
- * Finds the most recently viewed tab that exists in the given set of open paths.
- * Returns undefined if no match found.
- */
-export function findMostRecentTab(history: string[], openPaths: Set<string>): string | undefined {
+function findMostRecentTab(history: string[], openPaths: Set<string>): string | undefined {
   for (let i = history.length - 1; i >= 0; i--) {
     if (openPaths.has(history[i])) return history[i]
   }

@@ -1,7 +1,7 @@
 import { setup } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs, pushTabViewHistory } from '../../utils/tab-management';
+import { mergeTabs } from '../../utils/tab-management';
 import type { PromptEntity } from '@app/api';
 
 const sendToBackend = (type: string, data: any) => {
@@ -64,13 +64,10 @@ export const promptsState = setup({
       // Check if prompt tab already exists
       const existingTab = openFiles.find((f: any) => f.path === promptPath)
 
-      const history = pushTabViewHistory(parentContext?.tabViewHistory || [], promptPath)
-
       if (existingTab) {
         // Tab already exists, just activate it
         updateParentState(self, {
-          activeFilePath: promptPath,
-          tabViewHistory: history
+          activeFilePath: promptPath
         })
       } else {
         // Create new prompt tab
@@ -87,8 +84,7 @@ export const promptsState = setup({
 
         updateParentState(self, {
           openFiles: updatedFiles,
-          activeFilePath: activeFilePath,
-          tabViewHistory: history
+          activeFilePath: activeFilePath
         })
       }
     },

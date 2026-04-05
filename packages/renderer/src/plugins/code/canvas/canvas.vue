@@ -92,7 +92,7 @@ import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
-import { reorderTabs, pushTabViewHistory, removeFromTabViewHistory, nextActiveFromHistory } from '../utils/tab-management'
+import { reorderTabs, nextActiveFromHistory } from '../utils/tab-management'
 import { useTerminalActions } from '../composables/useTerminalActions'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -238,7 +238,7 @@ const showRefreshNotification = () => {
 const selectFile = (path: string) => {
   actor.send({
     type: 'UPDATE_STATE',
-    updates: { activeFilePath: path, tabViewHistory: pushTabViewHistory(tabViewHistory.value, path) }
+    updates: { activeFilePath: path }
   })
 }
 
@@ -258,9 +258,8 @@ const closeFile = (path: string) => {
 
   // Update UI state - remove tab from open files
   const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const updatedHistory = removeFromTabViewHistory(tabViewHistory.value, path)
   const newActiveFilePath = activeFilePath.value === path
-    ? nextActiveFromHistory(updatedHistory, newOpenFiles)
+    ? nextActiveFromHistory(tabViewHistory.value, newOpenFiles)
     : activeFilePath.value
 
   // Check if the closed tab was in a group and if the group is now empty
@@ -279,7 +278,7 @@ const closeFile = (path: string) => {
 
   actor.send({
     type: 'UPDATE_STATE',
-    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups, tabViewHistory: updatedHistory }
+    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
   })
 
   explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })

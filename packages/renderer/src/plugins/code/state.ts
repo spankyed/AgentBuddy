@@ -4,7 +4,7 @@ import { trpc } from '@/core/trpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
-import { removeFromTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
+import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
@@ -265,6 +265,23 @@ const codeState = setup({
         if (reorderedFiles) {
           updates.openFiles = reorderedFiles
           updates.pendingTabOrder = undefined // Clear pending order after applying
+        }
+      }
+
+      // Auto-clean history when tabs are removed
+      if (ev.updates.openFiles && ev.updates.openFiles.length < context.openFiles.length) {
+        const openPaths = new Set(updates.openFiles.map((f: any) => f.path))
+        updates.tabViewHistory = (updates.tabViewHistory ?? context.tabViewHistory)
+          .filter((p: string) => openPaths.has(p))
+      }
+
+      // Auto-push to history when active tab changes
+      if (updates.activeFilePath && updates.activeFilePath !== context.activeFilePath) {
+        if (!ev.updates.tabViewHistory) {
+          updates.tabViewHistory = pushTabViewHistory(
+            updates.tabViewHistory ?? context.tabViewHistory,
+            updates.activeFilePath
+          )
         }
       }
 
@@ -740,18 +757,12 @@ const codeState = setup({
             ('groupId' in file && file.groupId === ev.groupId) ? { ...file, groupId: undefined } : file
           )
 
-      // Update active file and history if tabs were closed
-      const activeWasRemoved = ev.closeTabsInGroup && context.activeFilePath
-        && !updatedFiles.some(f => f.path === context.activeFilePath)
+      // Clean history and select next active tab if tabs were closed
+      const openPaths = new Set(updatedFiles.map(f => f.path))
+      const updatedHistory = context.tabViewHistory.filter(p => openPaths.has(p))
 
-      // Remove closed tabs from history
-      const closedPaths = ev.closeTabsInGroup
-        ? context.openFiles.filter(file => 'groupId' in file && file.groupId === ev.groupId).map(f => f.path)
-        : []
-      let updatedHistory = context.tabViewHistory
-      for (const p of closedPaths) {
-        updatedHistory = removeFromTabViewHistory(updatedHistory, p)
-      }
+      const activeWasRemoved = ev.closeTabsInGroup && context.activeFilePath
+        && !openPaths.has(context.activeFilePath)
 
       const newActiveFilePath = activeWasRemoved
         ? nextActiveFromHistory(updatedHistory, updatedFiles)
