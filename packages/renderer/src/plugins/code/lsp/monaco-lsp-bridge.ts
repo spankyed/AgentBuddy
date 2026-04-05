@@ -3,6 +3,7 @@ import type { LspClient } from './lsp-client'
 import {
   CompletionItemKind,
   DiagnosticSeverity,
+  DiagnosticTag,
   type CompletionItem,
   type CompletionList,
   type Hover,
@@ -27,6 +28,7 @@ const DIDCHANGE_DEBOUNCE_MS = 100
 export class MonacoLspBridge {
   private disposables: IDisposable[] = []
   private trackedModels = new Map<string, { contentDisposable: IDisposable; debounceTimer: ReturnType<typeof setTimeout> | null }>()
+  private lspItemMap = new WeakMap<languages.CompletionItem, CompletionItem>()
   private supportedLanguages: string[]
 
   constructor(
@@ -71,6 +73,18 @@ export class MonacoLspBridge {
             )
             if (!result) return undefined
             return this.convertCompletionResult(result, model)
+          },
+          resolveCompletionItem: async (item: any) => {
+            const lspItem = this.lspItemMap.get(item)
+            if (!lspItem) return item
+            const resolved = await this.client.resolveCompletionItem(lspItem)
+            if (resolved.documentation) {
+              item.documentation = this.convertDocumentation(resolved.documentation)
+            }
+            if (resolved.detail) {
+              item.detail = resolved.detail
+            }
+            return item
           }
         })
       )
@@ -195,6 +209,19 @@ export class MonacoLspBridge {
       endLineNumber: d.range.end.line + 1,
       endColumn: d.range.end.character + 1,
       code: d.code != null ? String(d.code) : undefined,
+      tags: d.tags?.map(t => {
+        if (t === DiagnosticTag.Unnecessary) return this.monaco.MarkerTag.Unnecessary
+        if (t === DiagnosticTag.Deprecated) return this.monaco.MarkerTag.Deprecated
+        return undefined
+      }).filter((t): t is number => t != null),
+      relatedInformation: d.relatedInformation?.map(ri => ({
+        resource: this.monaco.Uri.parse(ri.location.uri),
+        message: ri.message,
+        startLineNumber: ri.location.range.start.line + 1,
+        startColumn: ri.location.range.start.character + 1,
+        endLineNumber: ri.location.range.end.line + 1,
+        endColumn: ri.location.range.end.character + 1,
+      })),
     }))
 
     this.monaco.editor.setModelMarkers(model, 'lsp', markers)
@@ -242,6 +269,9 @@ export class MonacoLspBridge {
       range: this.getCompletionRange(item, model),
       additionalTextEdits: item.additionalTextEdits?.map(edit => this.convertTextEdit(edit)),
     }
+
+    // Store original LSP item for resolve
+    this.lspItemMap.set(monacoItem, item)
 
     return monacoItem
   }
@@ -337,15 +367,23 @@ export class MonacoLspBridge {
     }
   }
 
-  private convertDocumentation(doc: string | MarkupContent): string | { value: string } {
+  private convertDocumentation(doc: string | MarkupContent): string | languages.IMarkdownString {
     if (typeof doc === 'string') return doc
-    return { value: doc.value }
+    return { value: doc.value, isTrusted: true }
   }
 
   private convertTextEdit(edit: TextEdit): languages.TextEdit {
     return {
       range: toMonacoRange(edit.range),
       text: edit.newText,
+    }
+  }
+
+  // --- Save Notification ---
+
+  notifySave(uri: string, text: string): void {
+    if (this.trackedModels.has(uri)) {
+      this.client.didSave(uri, text)
     }
   }
 

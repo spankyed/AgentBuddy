@@ -122,15 +122,22 @@ export class LspClient {
   async initialize(rootUri: string, capabilities?: ClientCapabilities): Promise<ServerCapabilities> {
     const defaultCapabilities: ClientCapabilities = {
       textDocument: {
+        synchronization: {
+          didSave: true,
+        },
         completion: {
           completionItem: {
             snippetSupport: true,
             documentationFormat: ['markdown', 'plaintext'],
+            resolveSupport: {
+              properties: ['documentation', 'detail', 'additionalTextEdits'],
+            },
           },
         },
         hover: {
           contentFormat: ['markdown', 'plaintext'],
         },
+        definition: {},
         signatureHelp: {
           signatureInformation: {
             documentationFormat: ['markdown', 'plaintext'],
@@ -138,6 +145,10 @@ export class LspClient {
               labelOffsetSupport: true,
             },
           },
+        },
+        publishDiagnostics: {
+          relatedInformation: true,
+          tagSupport: { valueSet: [1, 2] },
         },
       },
     }
@@ -249,6 +260,14 @@ export class LspClient {
       })
     } catch {
       return null
+    }
+  }
+
+  async resolveCompletionItem(item: any): Promise<any> {
+    try {
+      return await this.request('completionItem/resolve', item)
+    } catch {
+      return item
     }
   }
 

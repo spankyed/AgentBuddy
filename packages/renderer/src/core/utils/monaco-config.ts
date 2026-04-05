@@ -205,9 +205,9 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
   // Code editor preset for regular code files
   codeEditor: {
     ...baseEditorOptions,
-    quickSuggestions: false,
-    parameterHints: { enabled: false },
-    suggestOnTriggerCharacters: false,
+    quickSuggestions: true,
+    parameterHints: { enabled: true },
+    suggestOnTriggerCharacters: true,
     wordBasedSuggestions: 'currentDocument',
   },
 }

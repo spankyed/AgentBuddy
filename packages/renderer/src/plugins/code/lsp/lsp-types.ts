@@ -81,12 +81,18 @@ export enum DiagnosticSeverity {
   Hint = 4,
 }
 
+export enum DiagnosticTag {
+  Unnecessary = 1,
+  Deprecated = 2,
+}
+
 export interface Diagnostic {
   range: Range
   severity?: DiagnosticSeverity
   code?: number | string
   source?: string
   message: string
+  tags?: DiagnosticTag[]
   relatedInformation?: DiagnosticRelatedInformation[]
 }
 
@@ -116,15 +122,22 @@ export interface ParameterInformation {
 // Capabilities
 export interface ClientCapabilities {
   textDocument?: {
+    synchronization?: {
+      didSave?: boolean
+    }
     completion?: {
       completionItem?: {
         snippetSupport?: boolean
         documentationFormat?: string[]
+        resolveSupport?: {
+          properties: string[]
+        }
       }
     }
     hover?: {
       contentFormat?: string[]
     }
+    definition?: Record<string, unknown>
     signatureHelp?: {
       signatureInformation?: {
         documentationFormat?: string[]
@@ -132,6 +145,10 @@ export interface ClientCapabilities {
           labelOffsetSupport?: boolean
         }
       }
+    }
+    publishDiagnostics?: {
+      relatedInformation?: boolean
+      tagSupport?: { valueSet: number[] }
     }
   }
 }
