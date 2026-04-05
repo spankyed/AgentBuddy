@@ -1722,7 +1722,7 @@ const emojiKeywords: Record<string, string> = {
   '⭕': 'circle red hollow ring',
 }
 
-const allEmojis = computed(() => categories.flatMap(c => c.emojis))
+const allEmojis = computed(() => [...new Set(categories.flatMap(c => c.emojis))])
 
 const filteredEmojis = computed(() => {
   const q = searchQuery.value.toLowerCase().trim()
