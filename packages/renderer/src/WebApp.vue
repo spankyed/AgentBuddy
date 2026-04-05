@@ -43,6 +43,7 @@
         <PanelResizer
             v-if="canShowPanel"
             orientation="horizontal"
+            :collapsed="!isPanelOpen"
             @resize="handleInspectionResize"
             @double-click="handleInspectionDoubleClick"
         />

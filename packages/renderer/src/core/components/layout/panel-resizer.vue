@@ -3,7 +3,7 @@
     :class="[
       'panel-resizer',
       `panel-resizer--${orientation}`,
-      { 'panel-resizer--dragging': isDragging }
+      { 'panel-resizer--dragging': isDragging, 'panel-resizer--collapsed': collapsed }
     ]"
     @mousedown="startDrag"
     @dblclick="handleDoubleClick"
@@ -19,11 +19,13 @@ interface Props {
   orientation: 'horizontal' | 'vertical'
   min?: number
   max?: number
+  collapsed?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   min: 200,
-  max: Infinity
+  max: Infinity,
+  collapsed: false
 })
 
 const emit = defineEmits<{
@@ -102,9 +104,14 @@ onUnmounted(() => {
 
 .panel-resizer--horizontal .panel-resizer__handle {
   top: 0;
-  left: -8px;
-  right: 0px;
+  left: 0;
+  right: -8px;
   bottom: 0;
+}
+
+.panel-resizer--horizontal.panel-resizer--collapsed .panel-resizer__handle {
+  left: -8px;
+  right: 0;
 }
 
 .panel-resizer--vertical .panel-resizer__handle {
