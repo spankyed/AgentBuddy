@@ -68,7 +68,11 @@ class LspService {
     // Listen for parsed JSON-RPC messages from stdout
     if (reader) {
       server.readerDisposable = reader.listen((message) => {
-        server.messageCallback?.(JSON.stringify(message))
+        const msgStr = JSON.stringify(message)
+        const method = (message as any).method
+        const id = (message as any).id
+        logger.info(`[LSP:Process] message received — ${method ? `method: ${method}` : `response id: ${id}`}`)
+        server.messageCallback?.(msgStr)
       })
       reader.onError((error) => {
         logger.warn(`[${config.id}] reader error: ${error.message}`)
@@ -121,6 +125,11 @@ class LspService {
 
     const contentLength = Buffer.byteLength(message, 'utf-8')
     const header = `${CONTENT_LENGTH_HEADER}${contentLength}${HEADER_DELIMITER}`
+
+    try {
+      const parsed = JSON.parse(message)
+      logger.info(`[LSP:Process] send — ${parsed.method || `response id:${parsed.id}`} (${contentLength} bytes)`)
+    } catch { /* ignore */ }
 
     try {
       stdin.write(header + message, 'utf-8')

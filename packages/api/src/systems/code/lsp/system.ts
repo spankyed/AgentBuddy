@@ -67,6 +67,7 @@ export const lspSystem = setup({
     startServer: ({ event, context }) => {
       const ev = event as { type: 'lsp.START_SERVER'; languageId: string }
       const config = findConfigForLanguage(ev.languageId)
+      console.log('[LSP:Backend] startServer — languageId:', ev.languageId, 'configFound:', !!config, 'baseDirectory:', context.baseDirectory)
 
       if (!config) {
         const wrapped = emit(pluginId, {
@@ -149,6 +150,10 @@ export const lspSystem = setup({
 
     forwardToServer: ({ event }) => {
       const ev = event as { type: 'lsp.TO_SERVER'; serverId: string; message: string }
+      try {
+        const parsed = JSON.parse(ev.message)
+        console.log('[LSP:Backend] forwardToServer — serverId:', ev.serverId, 'method:', parsed.method || `response id:${parsed.id}`)
+      } catch { /* ignore */ }
       const success = lspService.send(ev.serverId, ev.message)
       if (!success) {
         const wrapped = emit(pluginId, {

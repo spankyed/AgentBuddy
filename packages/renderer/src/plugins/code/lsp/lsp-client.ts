@@ -41,13 +41,14 @@ export class LspClient {
     try {
       message = JSON.parse(messageStr)
     } catch {
-      console.warn('[LSP Client] Failed to parse server message:', messageStr.slice(0, 200))
+      console.warn('[LSP:Client] Failed to parse server message:', messageStr.slice(0, 200))
       return
     }
 
     // Response to a request we sent
     if ('id' in message && message.id != null && this.pendingRequests.has(message.id)) {
-      const { resolve, reject, timeout } = this.pendingRequests.get(message.id)!
+      const { resolve, reject, timeout, method } = this.pendingRequests.get(message.id)!
+      console.log('[LSP:Client] handleServerMessage — response id:', message.id, `(${method})`, message.error ? 'ERROR' : 'OK')
       clearTimeout(timeout)
       this.pendingRequests.delete(message.id)
       if (message.error) {
@@ -60,6 +61,7 @@ export class LspClient {
 
     // Server-initiated notification
     if (message.method) {
+      console.log('[LSP:Client] handleServerMessage — notification:', message.method)
       this.handleNotification(message.method, message.params)
     }
   }
@@ -83,6 +85,10 @@ export class LspClient {
 
   private send(message: string): void {
     if (!this.serverId) return
+    try {
+      const parsed = JSON.parse(message)
+      console.log('[LSP:Client] send —', parsed.method || 'response', parsed.id ? `id: ${parsed.id}` : '')
+    } catch { /* ignore */ }
     trpc.bus.send.mutate({
       systemId: 'code' as any,
       type: 'lsp.TO_SERVER' as any,
@@ -122,6 +128,7 @@ export class LspClient {
   // --- LSP Lifecycle ---
 
   async initialize(rootUri: string, capabilities?: ClientCapabilities): Promise<ServerCapabilities> {
+    console.log('[LSP:Client] initialize — rootUri:', rootUri)
     const defaultCapabilities: ClientCapabilities = {
       textDocument: {
         synchronization: {

@@ -90,32 +90,34 @@ export class MonacoLspBridge {
 
   private registerProviders(): void {
     for (const lang of this.supportedLanguages) {
-      // Completion
+      // Completion — exclusive for file:// URIs so built-in TS completions are suppressed
       this.disposables.push(
-        this.monaco.languages.registerCompletionItemProvider(lang, {
-          triggerCharacters: ['.', '"', "'", '/', '<', '@'],
-          provideCompletionItems: async (model, position) => {
-            if (!this.isFileUri(model.uri)) return undefined
-            const result = await this.client.completion(
-              model.uri.toString(),
-              toLspPosition(position)
-            )
-            if (!result) return undefined
-            return this.convertCompletionResult(result, model)
-          },
-          resolveCompletionItem: async (item: any) => {
-            const lspItem = this.lspItemMap.get(item)
-            if (!lspItem) return item
-            const resolved = await this.client.resolveCompletionItem(lspItem)
-            if (resolved.documentation) {
-              item.documentation = this.convertDocumentation(resolved.documentation)
+        this.monaco.languages.registerCompletionItemProvider(
+          { language: lang, scheme: 'file', exclusive: true },
+          {
+            triggerCharacters: ['.', '"', "'", '/', '<', '@'],
+            provideCompletionItems: async (model, position) => {
+              const result = await this.client.completion(
+                model.uri.toString(),
+                toLspPosition(position)
+              )
+              if (!result) return { suggestions: [] }
+              return this.convertCompletionResult(result, model)
+            },
+            resolveCompletionItem: async (item: any) => {
+              const lspItem = this.lspItemMap.get(item)
+              if (!lspItem) return item
+              const resolved = await this.client.resolveCompletionItem(lspItem)
+              if (resolved.documentation) {
+                item.documentation = this.convertDocumentation(resolved.documentation)
+              }
+              if (resolved.detail) {
+                item.detail = resolved.detail
+              }
+              return item
             }
-            if (resolved.detail) {
-              item.detail = resolved.detail
-            }
-            return item
           }
-        })
+        )
       )
 
       // Hover

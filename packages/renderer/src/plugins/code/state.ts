@@ -387,6 +387,9 @@ const codeState = setup({
       // Route based on prefix - prefix matches system ID
       if (eventType.includes('.')) {
         const [prefix] = eventType.split('.');
+        if (prefix === 'lsp') {
+          console.log('[LSP:Route] routing to lsp actor:', eventType)
+        }
         system.get(prefix)?.send(event);
       }
     },

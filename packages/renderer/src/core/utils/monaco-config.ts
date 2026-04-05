@@ -20,9 +20,9 @@ const MONO_FONT_STACK = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consola
 const LANGUAGE_MAP: Record<string, string> = {
   // TypeScript/JavaScript
   ts: 'typescript',
-  tsx: 'typescript',
+  tsx: 'typescriptreact',
   js: 'javascript',
-  jsx: 'javascript',
+  jsx: 'javascriptreact',
   mjs: 'javascript',
   cjs: 'javascript',
   // Vue
@@ -208,7 +208,7 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
     quickSuggestions: true,
     parameterHints: { enabled: true },
     suggestOnTriggerCharacters: true,
-    wordBasedSuggestions: 'currentDocument',
+    wordBasedSuggestions: 'off',
   },
 }
 
@@ -219,6 +219,54 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
 let monacoInitialized = false
 const registeredDslLibs = new Set<string>()
 const initializedLanguages = new Set<string>()
+
+// ============================================================================
+// BUILT-IN TS PROVIDER INTERCEPTION
+// ============================================================================
+
+let _lspCompletionsActive = false
+let _interceptInstalled = false
+
+/**
+ * Toggle whether LSP completions are active.
+ * When true, built-in TS/JS completion providers are suppressed for file:// models
+ * so LSP completions are the sole source. inmemory:// models (DSL) are unaffected.
+ */
+export function setLspCompletionsActive(active: boolean): void {
+  _lspCompletionsActive = active
+}
+
+/**
+ * Intercept built-in TS/JS completion provider registrations.
+ * Must be called BEFORE the TS mode lazily loads (before any TS model is created).
+ * Wraps built-in providers to suppress them for file:// models when LSP is active.
+ */
+function interceptBuiltinTsProviders(monaco: Monaco): void {
+  if (_interceptInstalled) return
+  _interceptInstalled = true
+
+  const tsLanguages = new Set(['typescript', 'javascript', 'typescriptreact', 'javascriptreact'])
+  const original = monaco.languages.registerCompletionItemProvider.bind(monaco.languages)
+
+  monaco.languages.registerCompletionItemProvider = ((selector: any, provider: any) => {
+    if (typeof selector === 'string' && tsLanguages.has(selector)) {
+      const wrappedProvider = {
+        triggerCharacters: provider.triggerCharacters,
+        provideCompletionItems: (model: any, position: any, context: any, token: any) => {
+          if (_lspCompletionsActive && model.uri.scheme === 'file') {
+            return undefined
+          }
+          return provider.provideCompletionItems(model, position, context, token)
+        },
+        resolveCompletionItem: provider.resolveCompletionItem
+          ? (item: any, token: any) => provider.resolveCompletionItem(item, token)
+          : undefined,
+      }
+      return original(selector, wrappedProvider)
+    }
+    return original(selector, provider)
+  }) as typeof monaco.languages.registerCompletionItemProvider
+}
 
 // ============================================================================
 // FILE TYPE DETECTION
@@ -533,10 +581,13 @@ export interface InitializeMonacoOptions {
  */
 export function initializeMonaco(options: InitializeMonacoOptions = {}): void {
   if (monacoInitialized) return
-  
+
   const monaco = (window as any).monaco as Monaco
   if (!monaco) return
-  
+
+  // Install interception before TS mode loads (must happen before any model is created)
+  interceptBuiltinTsProviders(monaco)
+
   monacoInitialized = true
   
   const {

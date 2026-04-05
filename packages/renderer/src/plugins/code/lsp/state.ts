@@ -1,5 +1,6 @@
 import { setup, assign, enqueueActions } from 'xstate'
 import { trpc } from '@/core/trpc'
+import { setLspCompletionsActive } from '@/core/utils/monaco-config'
 import { LspClient } from './lsp-client'
 import { MonacoLspBridge } from './monaco-lsp-bridge'
 
@@ -55,6 +56,8 @@ export const lspState = setup({
       const ev = event as { type: 'lsp.INIT'; baseDirectory: string }
       if (!ev.baseDirectory) return
 
+      console.log('[LSP:State] initializeLsp — baseDirectory:', ev.baseDirectory)
+
       enqueue.assign({
         lspClient: () => new LspClient(),
         baseDirectory: () => ev.baseDirectory,
@@ -66,6 +69,7 @@ export const lspState = setup({
 
     handleServerStarted: enqueueActions(({ context, self, event, enqueue }) => {
       const ev = event as { type: 'lsp.SERVER_STARTED'; data: { serverId: string; languageId: string } }
+      console.log('[LSP:State] handleServerStarted — serverId:', ev.data.serverId, 'languageId:', ev.data.languageId, 'clientExists:', !!context.lspClient, 'baseDir:', context.baseDirectory)
       if (!context.lspClient || !context.baseDirectory) return
 
       const client = context.lspClient
@@ -91,15 +95,26 @@ export const lspState = setup({
       })
     }),
 
-    handleInitialized: assign(() => ({ handshakeComplete: true })),
+    handleInitialized: assign(() => {
+      console.log('[LSP:State] handleInitialized — handshake complete')
+      return { handshakeComplete: true }
+    }),
 
     attemptBridgeCreation: assign(({ context, self }) => {
+      const hasClient = !!context.lspClient
+      const hasHandshake = context.handshakeComplete
+      const hasBridge = !!context.monacoLspBridge
+      const hasMonaco = !!(window as any).monaco
+      console.log('[LSP:State] attemptBridgeCreation — client:', hasClient, 'handshake:', hasHandshake, 'bridgeExists:', hasBridge, 'monaco:', hasMonaco)
+
       if (!context.lspClient || !context.handshakeComplete) return {}
       if (context.monacoLspBridge) return {} // already created
       const monaco = (window as any).monaco as Monaco
       if (!monaco) return {}
 
+      console.log('[LSP:State] attemptBridgeCreation → CREATING bridge')
       disableBuiltinTsDiagnostics(monaco)
+      setLspCompletionsActive(true)
       const supportedLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
       const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages, (filePath, line, column) => {
         // Access the parent code plugin's explorer actor to open files
@@ -117,6 +132,10 @@ export const lspState = setup({
 
     forwardServerMessage: ({ context, event }) => {
       const ev = event as { type: 'lsp.FROM_SERVER'; data: { serverId: string; message: string } }
+      try {
+        const parsed = JSON.parse(ev.data.message)
+        console.log('[LSP:State] forwardServerMessage —', parsed.method ? `notification: ${parsed.method}` : `response id: ${parsed.id}`)
+      } catch { /* ignore parse errors for logging */ }
       context.lspClient?.handleServerMessage(ev.data.message)
     },
 
@@ -127,6 +146,7 @@ export const lspState = setup({
       if (wasActive) {
         context.monacoLspBridge?.dispose()
         context.lspClient?.dispose()
+        setLspCompletionsActive(false)
         const monaco = (window as any).monaco as Monaco
         if (monaco) enableBuiltinTsDiagnostics(monaco)
 
@@ -158,6 +178,7 @@ export const lspState = setup({
     cleanup: enqueueActions(({ context, enqueue }) => {
       context.monacoLspBridge?.dispose()
       context.lspClient?.dispose()
+      setLspCompletionsActive(false)
       const monaco = (window as any).monaco as Monaco
       if (monaco) enableBuiltinTsDiagnostics(monaco)
 
@@ -234,7 +255,7 @@ function disableBuiltinTsDiagnostics(monaco: Monaco): void {
     const diagnosticsOff = {
       noSemanticValidation: true,
       noSuggestionDiagnostics: true,
-      noSyntaxValidation: false, // Keep syntax validation
+      noSyntaxValidation: false,
     }
     monaco.languages.typescript?.typescriptDefaults?.setDiagnosticsOptions(diagnosticsOff)
     monaco.languages.typescript?.javascriptDefaults?.setDiagnosticsOptions(diagnosticsOff)
