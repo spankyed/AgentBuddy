@@ -215,7 +215,7 @@ const favoritesExpanded = ref(true)
 watch(dropdownOpen, onMenuOpenChange)
 
 const createMenuItems = computed<MenuItem[]>(() => [
-  { label: 'New Task List', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
+  { label: 'New TaskList', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
   { label: 'Trash', icon: Trash2, class: 'text-neutral-300', action: () => handleShowTrash() },
 ])
 const notes = useSelector(actor, (s) => s.context.notes)
