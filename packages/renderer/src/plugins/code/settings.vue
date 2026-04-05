@@ -32,6 +32,34 @@
       </div>
     </CollapsibleSection>
 
+    <!-- Editor Settings Section -->
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Editor Settings" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Configure editor behavior and preferences
+      </p>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="md-editor-default" class="text-sm font-medium text-neutral-200">
+              Use rich text editor for Markdown files
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Open .md files in the Tiptap rich text editor by default instead of the Monaco code editor
+            </p>
+          </div>
+          <input
+            id="md-editor-default"
+            v-model="mdEditorDefault"
+            type="checkbox"
+            @change="saveMdEditorDefaultSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+      </div>
+    </CollapsibleSection>
+    </div>
+
     <!-- Terminal Settings Section -->
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
@@ -226,6 +254,7 @@ const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
 const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
 const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
+const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
 
 // Get projects from general settings
@@ -273,6 +302,13 @@ const saveCloseTerminalOnTabCloseSetting = () => {
   emit('update-setting', {
     path: ['closeTerminalOnTabClose'],
     value: closeTerminalOnTabClose.value
+  })
+}
+
+const saveMdEditorDefaultSetting = () => {
+  emit('update-setting', {
+    path: ['mdEditorDefault'],
+    value: mdEditorDefault.value
   })
 }
 

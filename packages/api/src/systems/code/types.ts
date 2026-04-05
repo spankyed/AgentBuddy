@@ -174,6 +174,7 @@ export interface CodeSettings {
   enableShellIntegration?: boolean;
   confirmTerminalClose?: boolean;
   closeTerminalOnTabClose?: boolean;
+  mdEditorDefault?: boolean;
 }
 
 export type CodeConnectedData = {

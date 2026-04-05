@@ -56,6 +56,7 @@ export interface Context {
   selectedPaths: string[]
   revealPath: string | null
   pendingRichTextPaths: Set<string>
+  pendingPlainTextPaths: Set<string>
 }
 
 // Quick open types
@@ -77,6 +78,7 @@ export type Event =
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
   | { type: 'explorer.OPEN_FILE'; path: string }
   | { type: 'explorer.OPEN_FILE_AS_RICH_TEXT'; path: string }
+  | { type: 'explorer.OPEN_FILE_AS_PLAIN_TEXT'; path: string }
   | { type: 'explorer.OPEN_FILES'; paths: string[] }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
@@ -123,9 +125,14 @@ export const explorerState = setup({
       const openFiles = parentContext?.openFiles || []
       const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
 
-      // Check if this file was requested as rich text
-      const isRichText = context.pendingRichTextPaths.has(ev.data.path)
-      const newPending = isRichText ? (() => { const s = new Set(context.pendingRichTextPaths); s.delete(ev.data.path); return s })() : context.pendingRichTextPaths
+      // Check if this file was explicitly requested as rich text or plain text
+      const ext = ev.data.path.split('.').pop()?.toLowerCase() || ''
+      const pendingRichText = context.pendingRichTextPaths.has(ev.data.path)
+      const pendingPlainText = context.pendingPlainTextPaths.has(ev.data.path)
+      const mdEditorDefault = parentContext?.settings?.mdEditorDefault ?? false
+      const isRichText = pendingPlainText ? false : (pendingRichText || (mdEditorDefault && ext === 'md'))
+      const newPendingRich = pendingRichText ? (() => { const s = new Set(context.pendingRichTextPaths); s.delete(ev.data.path); return s })() : context.pendingRichTextPaths
+      const newPendingPlain = pendingPlainText ? (() => { const s = new Set(context.pendingPlainTextPaths); s.delete(ev.data.path); return s })() : context.pendingPlainTextPaths
 
       // Track the file as recently opened
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
@@ -143,7 +150,7 @@ export const explorerState = setup({
                 externallyModified: false,
                 externalModificationTime: undefined,
                 pendingSaveConflict: false,
-                ...(isRichText ? { isRichText: true } : {}),
+                isRichText,
               }
             : f
         )
@@ -155,7 +162,6 @@ export const explorerState = setup({
         })
       } else {
         // Add new file
-        const ext = ev.data.path.split('.').pop()?.toLowerCase() || ''
         const isImageFile = imageExtensions.includes(ext)
         const newTab = {
           path: ev.data.path,
@@ -179,7 +185,7 @@ export const explorerState = setup({
 
       self.send({ type: 'explorer.REVEAL_IN_TREE', path: ev.data.path })
 
-      return { pendingRichTextPaths: newPending }
+      return { pendingRichTextPaths: newPendingRich, pendingPlainTextPaths: newPendingPlain }
     }),
 
     handleFileSaved: ({ event, self }) => {
@@ -314,6 +320,14 @@ export const explorerState = setup({
       return { pendingRichTextPaths: newPending }
     }),
 
+    openFileAsPlainText: assign(({ event, context }) => {
+      const ev = event as { type: 'explorer.OPEN_FILE_AS_PLAIN_TEXT'; path: string }
+      const newPending = new Set(context.pendingPlainTextPaths)
+      newPending.add(ev.path)
+      sendToBackend('explorer.READ_FILE', { path: ev.path })
+      return { pendingPlainTextPaths: newPending }
+    }),
+
     openFiles: enqueueActions(({ enqueue, event }) => {
       const ev = event as { type: 'explorer.OPEN_FILES'; paths: string[] }
       ev.paths.forEach(path => {
@@ -344,6 +358,7 @@ export const explorerState = setup({
         selectedPaths: [] as string[],
         revealPath: null as string | null,
         pendingRichTextPaths: new Set<string>(),
+        pendingPlainTextPaths: new Set<string>(),
       }
     }),
 
@@ -541,6 +556,7 @@ export const explorerState = setup({
     selectedPaths: [],
     revealPath: null,
     pendingRichTextPaths: new Set<string>(),
+    pendingPlainTextPaths: new Set<string>(),
   },
   states: {
     idle: {
@@ -571,6 +587,9 @@ export const explorerState = setup({
         },
         'explorer.OPEN_FILE_AS_RICH_TEXT': {
           actions: 'openFileAsRichText'
+        },
+        'explorer.OPEN_FILE_AS_PLAIN_TEXT': {
+          actions: 'openFileAsPlainText'
         },
         'explorer.OPEN_FILES': {
           actions: 'openFiles'

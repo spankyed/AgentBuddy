@@ -618,6 +618,7 @@ interface CodeSettings {
     enableShellIntegration?: boolean;
     confirmTerminalClose?: boolean;
     closeTerminalOnTabClose?: boolean;
+    mdEditorDefault?: boolean;
 }
 type CodeConnectedData = {
     baseDirectory: string | null;

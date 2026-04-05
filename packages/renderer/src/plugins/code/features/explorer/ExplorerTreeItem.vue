@@ -88,12 +88,21 @@
         </ContextMenuItem>
 
         <ContextMenuItem
-          v-if="file.type !== 'directory' && file.extension === 'md'"
+          v-if="file.type !== 'directory' && file.extension === 'md' && !getMdEditorDefault()"
           @select="openAsRichText"
           :class="MENU_ITEM_CLASS"
         >
           <FileText class="w-4 h-4" />
           Open as Rich Text
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          v-if="file.type !== 'directory' && file.extension === 'md' && getMdEditorDefault()"
+          @select="openAsPlainText"
+          :class="MENU_ITEM_CLASS"
+        >
+          <FileText class="w-4 h-4" />
+          Open as Plain Text
         </ContextMenuItem>
 
         <ContextMenuItem
@@ -202,6 +211,8 @@ const expandDir = inject<(path: string) => void>('explorer-expand-dir')!
 const collapseDir = inject<(path: string) => void>('explorer-collapse-dir')!
 const openFile = inject<(path: string) => void>('explorer-open-file')!
 const openFileAsRichText = inject<(path: string) => void>('explorer-open-file-rich-text')!
+const openFileAsPlainText = inject<(path: string) => void>('explorer-open-file-plain-text')!
+const getMdEditorDefault = inject<() => boolean>('explorer-md-editor-default')!
 const onRename = inject<(oldPath: string, newName: string) => void>('explorer-rename')!
 const onDelete = inject<(file: FileInfo) => void>('explorer-delete')!
 const onOpenTerminal = inject<(path: string) => void>('explorer-open-terminal')!
@@ -292,11 +303,19 @@ function toggleExpand() {
   }
 }
 
+function openFileDefault(path: string) {
+  if (getMdEditorDefault() && props.file.extension === 'md') {
+    openFileAsRichText(path)
+  } else {
+    openFile(path)
+  }
+}
+
 function handleClick(event: MouseEvent) {
   if (isEditing.value) return
   selectItem(props.file.path, event)
   if (props.file.type !== 'directory' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-    openFile(props.file.path)
+    openFileDefault(props.file.path)
   }
 }
 
@@ -308,7 +327,7 @@ function handleDoubleClick(e: MouseEvent) {
     toggleExpand()
   } else {
     // Open file on double-click
-    openFile(props.file.path)
+    openFileDefault(props.file.path)
   }
 }
 
@@ -347,6 +366,10 @@ function searchInFolder() {
 
 function openAsRichText() {
   openFileAsRichText(props.file.path)
+}
+
+function openAsPlainText() {
+  openFileAsPlainText(props.file.path)
 }
 
 async function copyAbsolutePath() {
