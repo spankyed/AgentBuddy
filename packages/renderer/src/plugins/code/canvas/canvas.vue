@@ -1,5 +1,21 @@
 <template>
-  <div class="flex flex-col h-full bg-neutral-900">
+  <div
+    class="relative flex flex-col h-full bg-neutral-900"
+    @dragenter="handleDragEnter"
+    @dragleave="handleDragLeave"
+    @dragover.prevent
+    @drop="handleDrop"
+  >
+    <!-- Drop overlay -->
+    <div
+      v-if="isDraggingOver"
+      class="absolute inset-0 z-50 flex items-center justify-center bg-blue-500/10 border-2 border-dashed border-blue-500/50 pointer-events-none"
+    >
+      <div class="px-6 py-3 text-sm font-medium rounded-lg bg-neutral-800/90 text-blue-400">
+        Drop to open file
+      </div>
+    </div>
+
     <!-- Quick Open Palette -->
     <QuickOpenPalette />
 
@@ -107,6 +123,60 @@ const { closeTerminal: closeTerminalProcess } = useTerminalActions(
 const activeFile = computed(() =>
   openFiles.value.find(f => f.path === activeFilePath.value)
 )
+
+// External file drop
+const binaryExtensions = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif',
+  'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a',
+  'mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv',
+  'zip', 'tar', 'gz', 'bz2', 'rar', '7z', 'dmg', 'iso',
+  'exe', 'dll', 'so', 'dylib', 'bin', 'o', 'a',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'ttf', 'otf', 'woff', 'woff2', 'eot',
+  'sqlite', 'db', 'mdb',
+])
+
+const isDraggingOver = ref(false)
+let dragCounter = 0
+
+const handleDragEnter = (e: DragEvent) => {
+  // Only react to external file drops (not internal tab drags)
+  if (e.dataTransfer?.types.includes('Files')) {
+    dragCounter++
+    isDraggingOver.value = true
+  }
+}
+
+const handleDragLeave = () => {
+  dragCounter--
+  if (dragCounter <= 0) {
+    dragCounter = 0
+    isDraggingOver.value = false
+  }
+}
+
+const handleDrop = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounter = 0
+  isDraggingOver.value = false
+
+  const files = e.dataTransfer?.files
+  if (!files?.length) return
+
+  for (const file of files) {
+    const filePath = (file as any).path as string | undefined
+    if (!filePath) continue
+
+    // Skip directories (size 0 and no extension is ambiguous, but Electron File objects from dirs typically have size 0)
+    // The backend will handle the error gracefully if it turns out to be a directory
+
+    // Skip known binary extensions
+    const ext = filePath.split('.').pop()?.toLowerCase()
+    if (ext && binaryExtensions.has(ext)) continue
+
+    explorerActor?.send({ type: 'explorer.OPEN_FILE', path: filePath })
+  }
+}
 
 // Notification state
 const refreshNotification = ref(false)
