@@ -1,6 +1,6 @@
 import {sha256sum} from './nodeCrypto.js';
 import {versions} from './versions.js';
-import {ipcRenderer, contextBridge, webFrame} from 'electron';
+import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
 import type {SpeechEvent} from '../../../types/speech.js';
 
 function send(channel: string, message: string) {
@@ -34,6 +34,7 @@ const fileUtils = {
   }) => ipcRenderer.invoke('dialog:select-path', options),
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
   readFileBase64: (filePath: string) => ipcRenderer.invoke('file:read-base64', filePath) as Promise<string>,
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
 };
 
 // Get the API port

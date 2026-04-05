@@ -4,7 +4,7 @@
     @dragenter="handleDragEnter"
     @dragleave="handleDragLeave"
     @dragover.prevent
-    @drop="handleDrop"
+    @drop.capture="handleDrop"
   >
     <!-- Drop overlay -->
     <div
@@ -156,24 +156,35 @@ const handleDragLeave = () => {
 }
 
 const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
+  // Always reset overlay state on any drop
   dragCounter = 0
   isDraggingOver.value = false
 
   const files = e.dataTransfer?.files
   if (!files?.length) return
 
+  // Collect valid file paths using Electron's webUtils API (File.path was removed in Electron 32)
+  const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+  if (!getPath) return
+
+  const filePaths: string[] = []
   for (const file of files) {
-    const filePath = (file as any).path as string | undefined
+    const filePath: string = getPath(file)
     if (!filePath) continue
 
-    // Skip directories (size 0 and no extension is ambiguous, but Electron File objects from dirs typically have size 0)
-    // The backend will handle the error gracefully if it turns out to be a directory
-
-    // Skip known binary extensions
     const ext = filePath.split('.').pop()?.toLowerCase()
     if (ext && binaryExtensions.has(ext)) continue
 
+    filePaths.push(filePath)
+  }
+
+  if (filePaths.length === 0) return
+
+  // Prevent Monaco from also processing this drop
+  e.preventDefault()
+  e.stopPropagation()
+
+  for (const filePath of filePaths) {
     explorerActor?.send({ type: 'explorer.OPEN_FILE', path: filePath })
   }
 }
