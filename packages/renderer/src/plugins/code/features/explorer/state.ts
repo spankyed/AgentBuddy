@@ -3,6 +3,7 @@ import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs, removeTabs } from '../../utils/tab-management';
 import { addRecentFile } from '../../utils/recent-files';
+import { imageExtensions } from '../../utils/file-icons';
 
 // File types
 export interface FileInfo {
@@ -147,11 +148,14 @@ export const explorerState = setup({
         })
       } else {
         // Add new file
+        const ext = ev.data.path.split('.').pop()?.toLowerCase() || ''
+        const isImage = imageExtensions.includes(ext)
         const newTab = {
           path: ev.data.path,
           content: ev.data.content,
           originalContent: ev.data.content,
-          modified: false
+          modified: false,
+          ...(isImage && { isImage: true }),
         }
         const result = mergeTabs(
           openFiles,

@@ -2,7 +2,7 @@ import { FileCode, FileJson, FileText, Image, File } from 'lucide-vue-next'
 
 const codeExtensions = ['js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'rb', 'swift']
 const textExtensions = ['txt', 'md', 'log', 'csv', 'xml', 'yaml', 'yml']
-const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
+export const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'webp']
 
 export function getFileIcon(extension?: string) {
   if (!extension) return File

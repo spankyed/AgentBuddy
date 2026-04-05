@@ -6,6 +6,19 @@ import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  svg: 'image/svg+xml',
+  ico: 'image/x-icon',
+  webp: 'image/webp',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+  bmp: 'image/bmp',
+}
+
 export class FileSystemRepository {
   private projectRoot: string
   
@@ -102,8 +115,21 @@ export class FileSystemRepository {
         throw this.createError('FILE_TOO_LARGE', `File size exceeds ${MAX_FILE_SIZE} bytes`, filePath)
       }
       
+      const ext = path.extname(validPath).slice(1).toLowerCase()
+      const mimeType = IMAGE_MIME_TYPES[ext]
+
+      if (mimeType) {
+        const buffer = await fs.readFile(validPath)
+        const base64 = buffer.toString('base64')
+        return {
+          path: validPath,
+          content: `data:${mimeType};base64,${base64}`,
+          encoding: 'base64',
+        }
+      }
+
       const content = await fs.readFile(validPath, 'utf-8')
-      
+
       return {
         path: validPath,
         content,

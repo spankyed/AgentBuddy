@@ -126,7 +126,6 @@ const activeFile = computed(() =>
 
 // External file drop
 const binaryExtensions = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif',
   'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a',
   'mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv',
   'zip', 'tar', 'gz', 'bz2', 'rar', '7z', 'dmg', 'iso',

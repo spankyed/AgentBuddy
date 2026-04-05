@@ -31,6 +31,7 @@ export interface OpenFile {
   externallyModified?: boolean
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
+  isImage?: boolean
   isPinned?: boolean
   groupId?: string
 }

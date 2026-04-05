@@ -46,10 +46,20 @@
           />
         </div>
 
+        <!-- Image preview -->
+        <div v-show="isImage(activeFile)" class="flex items-center justify-center h-full overflow-auto bg-neutral-950 p-4">
+          <img
+            v-if="isImage(activeFile)"
+            :src="activeFile.content"
+            :alt="activeFile.path.split('/').pop()"
+            class="max-w-full max-h-full object-contain"
+          />
+        </div>
+
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile)" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile)" class="h-full overflow-hidden">
           <MonacoEditor
-            v-if="!isTerminal(activeFile)"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile)"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -112,6 +122,11 @@ const emit = defineEmits<{
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
+}
+
+// Helper to check if a file is an image
+const isImage = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
+  return 'isImage' in file && file.isImage === true
 }
 
 // Helper to check if file is a diff
