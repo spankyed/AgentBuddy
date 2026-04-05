@@ -168,6 +168,8 @@ export const explorerState = setup({
           recentlyOpenedFiles: updatedRecentFiles
         })
       }
+
+      self.send({ type: 'explorer.REVEAL_IN_TREE', path: ev.data.path })
     },
 
     handleFileSaved: ({ event, self }) => {

@@ -242,7 +242,7 @@
                 class="p-0.5 hover:bg-neutral-700 rounded"
                 title="Open file"
               >
-                <FileText class="w-3 h-3 text-neutral-400" />
+                <File class="w-3 h-3 text-neutral-400" />
               </button>
 
               <button @click.stop="unstageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage">

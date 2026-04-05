@@ -152,11 +152,6 @@ export const pullRequestState = setup({
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })
-
-      system.get('explorer')?.send({
-        type: 'explorer.REVEAL_IN_TREE',
-        path: fullPath
-      })
     },
 
     handleCodeStartup: ({ self }) => {
