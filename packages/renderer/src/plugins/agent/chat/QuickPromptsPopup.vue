@@ -32,7 +32,7 @@
         </div>
 
         <!-- Prompt list -->
-        <div class="max-h-60 overflow-y-auto">
+        <div class="max-h-60 overflow-y-auto select-none">
           <template v-if="!editing">
             <div
               v-for="prompt in prompts"
@@ -63,37 +63,53 @@
           </template>
 
           <template v-else>
-            <div
-              v-for="prompt in localPrompts"
-              :key="prompt.id"
-              class="flex items-start gap-2 px-3 pb-1 pt-2"
+            <ArrangeableList
+              :identifier="'quick-prompts'"
+              :group="reorderGroup"
+              :targets="[reorderGroup]"
+              :list="localPrompts"
+              :options="arrangeableOptions"
+              class="quick-prompts-list"
+              @drop-item="reorderPrompt"
             >
-              <textarea
-                v-if="editingId === prompt.id"
-                ref="editPromptRefs"
-                v-model="editingText"
-                rows="1"
-                class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-y-hidden"
-                style="max-height: calc(1.5em * 3 + 12px)"
-                @input="autoResize($event)"
-                @blur="commitEdit(prompt.id)"
-                @keydown.enter.exact.prevent="commitEdit(prompt.id)"
-                @keydown.escape.prevent="cancelEdit"
-              />
-              <span
-                v-else
-                class="flex-1 min-w-0 text-sm text-neutral-300 truncate cursor-text hover:text-white transition-colors"
-                :title="prompt.text"
-                @click="startEdit(prompt)"
-              >{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span></span>
-              <button
-                type="button"
-                class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
-                @click="deletePrompt(prompt.id)"
-              >
-                <X :size="14" />
-              </button>
-            </div>
+              <template #default="{ item: prompt }">
+                <div class="flex items-start gap-1 px-1 pr-3 pb-1 pt-2 bg-neutral-900 rounded">
+                  <span
+                    data-handle
+                    class="flex-shrink-0 cursor-grab text-neutral-600 hover:text-neutral-400 transition-colors p-1 mt-0.5 pointer-events-auto"
+                    title="Drag to reorder"
+                    @click.stop
+                  >
+                    <GripVertical :size="12" class="pointer-events-none" />
+                  </span>
+                  <textarea
+                    v-if="editingId === prompt.id"
+                    ref="editPromptRefs"
+                    v-model="editingText"
+                    rows="1"
+                    class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-y-hidden"
+                    style="max-height: calc(1.5em * 3 + 12px)"
+                    @input="autoResize($event)"
+                    @blur="commitEdit(prompt.id)"
+                    @keydown.enter.exact.prevent="commitEdit(prompt.id)"
+                    @keydown.escape.prevent="cancelEdit"
+                  />
+                  <span
+                    v-else
+                    class="flex-1 min-w-0 text-sm text-neutral-300 truncate cursor-text hover:text-white transition-colors"
+                    :title="prompt.text"
+                    @click="startEdit(prompt)"
+                  >{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span></span>
+                  <button
+                    type="button"
+                    class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
+                    @click="deletePrompt(prompt.id)"
+                  >
+                    <X :size="14" />
+                  </button>
+                </div>
+              </template>
+            </ArrangeableList>
           </template>
         </div>
 
@@ -126,8 +142,9 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import { Sparkle, Pencil, X, Plus, Copy, Check } from 'lucide-vue-next'
+import { Sparkle, Pencil, X, Plus, Copy, Check, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
+import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '@app/api'
 
 const props = defineProps<{
@@ -150,7 +167,19 @@ const editingId = ref<string | null>(null)
 const editingText = ref('')
 const copiedId = ref<string | null>(null)
 
+const reorderGroup = Symbol('quick-prompts')
+const arrangeableOptions = {
+  hoverClass: 'opacity-90 cursor-grabbing',
+  handle: true,
+}
+
+let droppingItem = false
+
 watch(() => props.prompts, (val) => {
+  if (droppingItem) {
+    droppingItem = false
+    return
+  }
   localPrompts.value = [...val]
 }, { deep: true })
 
@@ -166,6 +195,14 @@ watch(open, (isOpen) => {
 function selectPrompt(text: string) {
   emit('select', text)
   open.value = false
+}
+
+function reorderPrompt(moving: MovingItem<QuickPrompt>) {
+  if (!moving.destination?.listItems) return
+  droppingItem = true
+  const updated = [...moving.destination.listItems]
+  localPrompts.value = updated
+  emit('update', updated)
 }
 
 function copyPrompt(id: string, text: string) {
@@ -219,10 +256,6 @@ function autoResize(event: Event) {
   el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
 }
 
-function emitUpdate() {
-  emit('update', [...localPrompts.value])
-}
-
 function addPrompt() {
   const text = newPromptText.value.trim()
   if (!text) return
@@ -240,3 +273,15 @@ function addPrompt() {
   emit('update', updated)
 }
 </script>
+
+<style scoped>
+.quick-prompts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+:deep(.cursor-grabbing) {
+  position: fixed !important;
+}
+</style>
