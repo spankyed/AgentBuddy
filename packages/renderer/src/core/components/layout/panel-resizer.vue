@@ -105,13 +105,25 @@ onUnmounted(() => {
 .panel-resizer--horizontal .panel-resizer__handle {
   top: 0;
   left: 0;
-  right: -8px;
+  right: -7px;
   bottom: 0;
 }
 
 .panel-resizer--horizontal.panel-resizer--collapsed .panel-resizer__handle {
-  left: -8px;
+  left: -7px;
   right: 0;
+  pointer-events: none;
+}
+
+.panel-resizer--horizontal.panel-resizer--collapsed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: 0;
+  z-index: 12;
+  cursor: col-resize;
 }
 
 .panel-resizer--vertical .panel-resizer__handle {
