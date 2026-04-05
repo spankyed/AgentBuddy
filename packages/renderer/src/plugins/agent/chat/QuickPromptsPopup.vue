@@ -73,7 +73,7 @@
               @drop-item="reorderPrompt"
             >
               <template #default="{ item: prompt }">
-                <div class="flex items-start gap-1 px-1 pr-3 pb-1 pt-2 bg-neutral-900 rounded">
+                <div class="flex items-start gap-1 px-1 pr-3 pb-1 pt-2 bg-neutral-900 rounded-md">
                   <span
                     data-handle
                     class="flex-shrink-0 cursor-grab text-neutral-600 hover:text-neutral-400 transition-colors p-1 mt-0.5 pointer-events-auto"
@@ -169,8 +169,10 @@ const copiedId = ref<string | null>(null)
 
 const reorderGroup = Symbol('quick-prompts')
 const arrangeableOptions = {
-  hoverClass: 'opacity-90 cursor-grabbing',
   handle: true,
+  liftDelay: 100,
+  hoverClass: 'shadow-lg shadow-black/40 scale-[1.02] cursor-grabbing',
+  pickedItemClass: 'opacity-30',
 }
 
 let droppingItem = false
@@ -283,5 +285,10 @@ function addPrompt() {
 
 :deep(.cursor-grabbing) {
   position: fixed !important;
+  border-radius: 0.375rem;
+}
+
+:deep(.arrangeable-list__transition-all) {
+  transition-duration: 0.2s;
 }
 </style>
