@@ -93,42 +93,20 @@
             </ContextMenuTrigger>
 
             <ContextMenuPortal>
-              <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-                <ContextMenuItem
-                  v-if="isTerminal(tab)"
-                  @select="startTabRename(tab)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <Pencil class="w-4 h-4" />
-                  Rename
-                </ContextMenuItem>
-
-                <ContextMenuItem
-                  @select="$emit('remove-tab-from-group', tab.path)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <FolderMinus class="w-4 h-4" />
-                  Remove from group
-                </ContextMenuItem>
-
-                <ContextMenuItem
-                  v-if="shouldShowFileOperations(tab)"
-                  @select="copyRelativePath(tab)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <Copy class="w-4 h-4" />
-                  Copy relative path
-                </ContextMenuItem>
-
-                <ContextMenuItem
-                  v-if="shouldShowFileOperations(tab)"
-                  @select="revealInExplorer(tab)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <FolderOpen class="w-4 h-4" />
-                  Reveal in explorer
-                </ContextMenuItem>
-              </ContextMenuContent>
+              <TabContextMenu
+                :tab="tab"
+                :tab-groups="tabGroups"
+                :group-id="group.id"
+                @rename="startTabRename(tab)"
+                @pin-tab="pinTab(tab)"
+                @unpin-tab="unpinTab(tab)"
+                @remove-tab-from-group="$emit('remove-tab-from-group', $event)"
+                @add-tab-to-group="$emit('add-tab-to-group', $event[0] ?? $event, $event[1])"
+                @create-group="createNewGroupWithTab(tab)"
+                @copy-path="copyRelativePath(tab)"
+                @reveal-in-explorer="revealInExplorer(tab)"
+                @kill-terminal="$emit('kill-terminal', $event)"
+              />
             </ContextMenuPortal>
           </ContextMenuRoot>
         </template>
@@ -182,97 +160,19 @@
         </ContextMenuTrigger>
 
         <ContextMenuPortal>
-          <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-            <ContextMenuItem
-              v-if="isTerminal(tab)"
-              @select="startTabRename(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Pencil class="w-4 h-4" />
-              Rename
-            </ContextMenuItem>
-
-            <ContextMenuItem
-              v-if="tab.isPinned"
-              @select="unpinTab(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Pin class="w-4 h-4" />
-              Unpin tab
-            </ContextMenuItem>
-
-            <ContextMenuSub v-if="tabGroups.length > 0">
-              <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
-                <FolderPlus class="w-4 h-4" />
-                Add to Group
-                <ChevronRight class="w-3 h-3 ml-auto" />
-              </ContextMenuSubTrigger>
-              <ContextMenuPortal>
-                <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-                  <ContextMenuItem
-                    v-for="group in tabGroups"
-                    :key="group.id"
-                    @select="$emit('add-tab-to-group', tab.path, group.id)"
-                    class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                  >
-                    <div
-                      class="w-3 h-3 rounded-full"
-                      :style="{ backgroundColor: `var(--color-${group.color})` }"
-                    />
-                    <span>{{ group.name }}</span>
-                  </ContextMenuItem>
-                  <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-                  <ContextMenuItem
-                    @select="createNewGroupWithTab(tab)"
-                    class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                  >
-                    <FolderPlus class="w-4 h-4" />
-                    New Group
-                  </ContextMenuItem>
-                </ContextMenuSubContent>
-              </ContextMenuPortal>
-            </ContextMenuSub>
-
-            <ContextMenuItem
-              v-else
-              @select="createNewGroupWithTab(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderPlus class="w-4 h-4" />
-              Add to New Group
-            </ContextMenuItem>
-
-            <template v-if="shouldShowFileOperations(tab)">
-              <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-              <ContextMenuItem
-                @select="copyRelativePath(tab)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <Copy class="w-4 h-4" />
-                Copy relative path
-              </ContextMenuItem>
-
-              <ContextMenuItem
-                @select="revealInExplorer(tab)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <FolderOpen class="w-4 h-4" />
-                Reveal in explorer
-              </ContextMenuItem>
-            </template>
-
-            <template v-if="isTerminal(tab)">
-              <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-              <ContextMenuItem
-                @select="$emit('kill-terminal', tab.path)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <X class="w-4 h-4" />
-                Kill Terminal
-              </ContextMenuItem>
-            </template>
-          </ContextMenuContent>
+          <TabContextMenu
+            :tab="tab"
+            :tab-groups="tabGroups"
+            @rename="startTabRename(tab)"
+            @pin-tab="pinTab(tab)"
+            @unpin-tab="unpinTab(tab)"
+            @remove-tab-from-group="$emit('remove-tab-from-group', $event)"
+            @add-tab-to-group="$emit('add-tab-to-group', $event[0] ?? $event, $event[1])"
+            @create-group="createNewGroupWithTab(tab)"
+            @copy-path="copyRelativePath(tab)"
+            @reveal-in-explorer="revealInExplorer(tab)"
+            @kill-terminal="$emit('kill-terminal', $event)"
+          />
         </ContextMenuPortal>
       </ContextMenuRoot>
     </div>
@@ -359,43 +259,20 @@
           </ContextMenuTrigger>
 
           <ContextMenuPortal>
-            <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-              <ContextMenuItem
-                @select="$emit('remove-tab-from-group', tab.path)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <FolderOpen class="w-4 h-4" />
-                Remove from group
-              </ContextMenuItem>
-
-              <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-              <ContextMenuItem
-                @select="pinTab(tab)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <Pin class="w-4 h-4" />
-                Pin tab
-              </ContextMenuItem>
-
-              <ContextMenuItem
-                v-if="shouldShowFileOperations(tab)"
-                @select="copyRelativePath(tab)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <Copy class="w-4 h-4" />
-                Copy relative path
-              </ContextMenuItem>
-
-              <ContextMenuItem
-                v-if="shouldShowFileOperations(tab)"
-                @select="revealInExplorer(tab)"
-                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              >
-                <FolderOpen class="w-4 h-4" />
-                Reveal in explorer
-              </ContextMenuItem>
-            </ContextMenuContent>
+            <TabContextMenu
+              :tab="tab"
+              :tab-groups="tabGroups"
+              :group-id="group.id"
+              @rename="startTabRename(tab)"
+              @pin-tab="pinTab(tab)"
+              @unpin-tab="unpinTab(tab)"
+              @remove-tab-from-group="$emit('remove-tab-from-group', $event)"
+              @add-tab-to-group="$emit('add-tab-to-group', $event[0] ?? $event, $event[1])"
+              @create-group="createNewGroupWithTab(tab)"
+              @copy-path="copyRelativePath(tab)"
+              @reveal-in-explorer="revealInExplorer(tab)"
+              @kill-terminal="$emit('kill-terminal', $event)"
+            />
           </ContextMenuPortal>
         </ContextMenuRoot>
       </template>
@@ -449,97 +326,19 @@
       </ContextMenuTrigger>
 
       <ContextMenuPortal>
-        <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-          <ContextMenuItem
-            v-if="isTerminal(tab)"
-            @select="startTabRename(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <Pencil class="w-4 h-4" />
-            Rename
-          </ContextMenuItem>
-
-          <ContextMenuItem
-            @select="pinTab(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <Pin class="w-4 h-4" />
-            Pin tab
-          </ContextMenuItem>
-
-          <ContextMenuSub v-if="tabGroups.length > 0">
-            <ContextMenuSubTrigger class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none">
-              <FolderPlus class="w-4 h-4" />
-              Add to Group
-              <ChevronRight class="w-3 h-3 ml-auto" />
-            </ContextMenuSubTrigger>
-            <ContextMenuPortal>
-              <ContextMenuSubContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
-                <ContextMenuItem
-                  v-for="group in tabGroups"
-                  :key="group.id"
-                  @select="$emit('add-tab-to-group', tab.path, group.id)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <div
-                    class="w-3 h-3 rounded-full"
-                    :style="{ backgroundColor: `var(--color-${group.color})` }"
-                  />
-                  <span>{{ group.name }}</span>
-                </ContextMenuItem>
-                <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-                <ContextMenuItem
-                  @select="createNewGroupWithTab(tab)"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <FolderPlus class="w-4 h-4" />
-                  New Group
-                </ContextMenuItem>
-              </ContextMenuSubContent>
-            </ContextMenuPortal>
-          </ContextMenuSub>
-
-          <ContextMenuItem
-            v-else
-            @select="createNewGroupWithTab(tab)"
-            class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          >
-            <FolderPlus class="w-4 h-4" />
-            Add to New Group
-          </ContextMenuItem>
-
-          <template v-if="shouldShowFileOperations(tab)">
-            <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-
-            <ContextMenuItem
-              @select="copyRelativePath(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Copy class="w-4 h-4" />
-              Copy relative path
-            </ContextMenuItem>
-
-            <ContextMenuItem
-              @select="revealInExplorer(tab)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderOpen class="w-4 h-4" />
-              Reveal in explorer
-            </ContextMenuItem>
-          </template>
-
-          <template v-if="isTerminal(tab)">
-            <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
-            <ContextMenuItem
-              @select="$emit('kill-terminal', tab.path)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <X class="w-4 h-4" />
-              Kill Terminal
-            </ContextMenuItem>
-          </template>
-
-        </ContextMenuContent>
+          <TabContextMenu
+            :tab="tab"
+            :tab-groups="tabGroups"
+            @rename="startTabRename(tab)"
+            @pin-tab="pinTab(tab)"
+            @unpin-tab="unpinTab(tab)"
+            @remove-tab-from-group="$emit('remove-tab-from-group', $event)"
+            @add-tab-to-group="$emit('add-tab-to-group', $event[0] ?? $event, $event[1])"
+            @create-group="createNewGroupWithTab(tab)"
+            @copy-path="copyRelativePath(tab)"
+            @reveal-in-explorer="revealInExplorer(tab)"
+            @kill-terminal="$emit('kill-terminal', $event)"
+          />
       </ContextMenuPortal>
     </ContextMenuRoot>
     </div>
@@ -550,17 +349,11 @@
 import { ref, computed, nextTick } from 'vue'
 import {
   X,
-  FolderMinus,
   GitCompare,
   Terminal,
   Play,
   Sparkle,
-  Copy,
-  FolderOpen,
-  FolderPlus,
   Pin,
-  ChevronRight,
-  Pencil
 } from 'lucide-vue-next'
 import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
@@ -568,17 +361,12 @@ import type { PromptTab } from '@/plugins/code/features/prompts/state'
 import { groupTabs } from '../utils/tab-management'
 import { getFileIcon } from '../utils/file-icons'
 import GroupLabel from '../components/GroupLabel.vue'
+import TabContextMenu from '../components/TabContextMenu.vue'
 import { useTabDragDrop } from '../composables/useTabDragDrop'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
-  ContextMenuContent,
-  ContextMenuItem,
   ContextMenuPortal,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
 } from 'reka-ui'
 
 // Props
@@ -786,14 +574,6 @@ const cancelTabRename = () => {
 // Helper to check if a file is a terminal
 const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file is TerminalTab => {
   return 'isTerminal' in file && file.isTerminal === true
-}
-
-// Helper to check if we should show file operations
-const shouldShowFileOperations = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
-  if (isTerminal(file)) return false
-  if ('isAction' in file && file.isAction) return false
-  if ('isPrompt' in file && file.isPrompt) return false
-  return !file.path.includes(':')
 }
 
 // Helper functions
