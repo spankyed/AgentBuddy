@@ -138,11 +138,27 @@ const binaryExtensions = new Set([
 const isDraggingOver = ref(false)
 let dragCounter = 0
 
+const hasOpenableFile = (dataTransfer: DataTransfer): boolean => {
+  const items = dataTransfer.items
+  if (!items?.length) return false
+  for (const item of items) {
+    if (item.kind !== 'file') continue
+    const name = item.type ? item.getAsFile()?.name : undefined
+    // If we can't determine the name/extension, assume it's openable
+    if (!name) return true
+    const ext = name.split('.').pop()?.toLowerCase()
+    if (!ext || !binaryExtensions.has(ext)) return true
+  }
+  return false
+}
+
 const handleDragEnter = (e: DragEvent) => {
-  // Only react to external file drops (not internal tab drags)
+  // Only react to external file drops with openable file types
   if (e.dataTransfer?.types.includes('Files')) {
     dragCounter++
-    isDraggingOver.value = true
+    if (dragCounter === 1 && hasOpenableFile(e.dataTransfer)) {
+      isDraggingOver.value = true
+    }
   }
 }
 
