@@ -5179,7 +5179,7 @@ declare class BrowserService {
     getAttribute(selector: string, attribute: string): Promise<string | null>;
     isVisible(selector: string): Promise<boolean>;
     isEnabled(selector: string): Promise<boolean>;
-    waitForSelector(selector: string, timeout?: number): Promise<ElementHandle<Element> | null>;
+    waitForSelector(selector: string, timeout?: number): Promise<ElementHandle | null>;
     waitForTimeout(timeout: number): Promise<void>;
     waitForLoadState(state?: 'load' | 'domcontentloaded' | 'networkidle'): Promise<void>;
     screenshot(path?: string): Promise<Buffer>;
