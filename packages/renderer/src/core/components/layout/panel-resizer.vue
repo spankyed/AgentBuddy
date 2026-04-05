@@ -39,6 +39,12 @@ let startSize = 0
 
 const startDrag = (e: MouseEvent) => {
   e.preventDefault()
+
+  if (props.collapsed) {
+    emit('double-click')
+    return
+  }
+
   isDragging.value = true
   startPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
 
@@ -105,12 +111,12 @@ onUnmounted(() => {
 .panel-resizer--horizontal .panel-resizer__handle {
   top: 0;
   left: 0;
-  right: -7px;
+  right: -8px;
   bottom: 0;
 }
 
 .panel-resizer--horizontal.panel-resizer--collapsed .panel-resizer__handle {
-  left: -7px;
+  left: -8px;
   right: 0;
   pointer-events: none;
 }

@@ -9,7 +9,7 @@
     />
 
     <!-- Main Area -->
-    <div class="flex flex-grow overflow-hidden">
+    <div class="flex flex-grow overflow-hidden" :style="{ paddingRight: canShowPanel && panelSizes.inspectionWidth === 0 ? '2px' : '0' }">
         <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
             <!-- Canvas Area -->
             <CanvasArea
@@ -29,6 +29,7 @@
             <!-- Vertical Resizer -->
             <PanelResizer
                 orientation="vertical"
+                :collapsed="panelSizes.canvasHeight >= 93"
                 @resize="handleCanvasResize"
                 @double-click="handleCanvasDoubleClick"
             />
