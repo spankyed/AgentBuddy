@@ -261,6 +261,17 @@
                 Reveal in explorer
               </ContextMenuItem>
             </template>
+
+            <template v-if="isTerminal(tab)">
+              <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+              <ContextMenuItem
+                @select="$emit('kill-terminal', tab.path)"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <X class="w-4 h-4" />
+                Kill Terminal
+              </ContextMenuItem>
+            </template>
           </ContextMenuContent>
         </ContextMenuPortal>
       </ContextMenuRoot>
@@ -514,6 +525,17 @@
             >
               <FolderOpen class="w-4 h-4" />
               Reveal in explorer
+            </ContextMenuItem>
+          </template>
+
+          <template v-if="isTerminal(tab)">
+            <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+            <ContextMenuItem
+              @select="$emit('kill-terminal', tab.path)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <X class="w-4 h-4" />
+              Kill Terminal
             </ContextMenuItem>
           </template>
 
