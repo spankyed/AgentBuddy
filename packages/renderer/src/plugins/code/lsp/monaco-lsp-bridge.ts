@@ -246,7 +246,7 @@ export class MonacoLspBridge {
     return monacoItem
   }
 
-  private getCompletionRange(item: CompletionItem, model: editor.ITextModel): languages.CompletionItem['range'] {
+  private getCompletionRange(item: CompletionItem, model: editor.ITextModel): languages.CompletionItem['range'] | undefined {
     if (item.textEdit) {
       if ('range' in item.textEdit) {
         return toMonacoRange(item.textEdit.range)
@@ -258,8 +258,8 @@ export class MonacoLspBridge {
         replace: toMonacoRange(edit.replace),
       }
     }
-    // Use a default empty range — Monaco will compute word range
-    return undefined as any
+    // No explicit range — Monaco will compute word range
+    return undefined
   }
 
   private convertCompletionKind(kind?: CompletionItemKind): languages.CompletionItemKind {

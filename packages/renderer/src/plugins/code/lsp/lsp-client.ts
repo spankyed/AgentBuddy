@@ -15,7 +15,7 @@ type LogCallback = (message: string) => void
 
 export class LspClient {
   private nextId = 1
-  private pendingRequests = new Map<number, { resolve: (value: any) => void; reject: (error: any) => void; method: string }>()
+  private pendingRequests = new Map<number, { resolve: (value: any) => void; reject: (error: any) => void; method: string; timeout: ReturnType<typeof setTimeout> }>()
   private documentVersions = new Map<string, number>()
   private serverId: string | null = null
   private diagnosticsCallback: DiagnosticsCallback | null = null
@@ -45,7 +45,8 @@ export class LspClient {
 
     // Response to a request we sent
     if ('id' in message && message.id != null && this.pendingRequests.has(message.id)) {
-      const { resolve, reject } = this.pendingRequests.get(message.id)!
+      const { resolve, reject, timeout } = this.pendingRequests.get(message.id)!
+      clearTimeout(timeout)
       this.pendingRequests.delete(message.id)
       if (message.error) {
         reject(message.error)
@@ -97,15 +98,14 @@ export class LspClient {
     this.send(message)
 
     return new Promise<T>((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve, reject, method })
-
-      // Timeout pending requests after 30 seconds
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id)
           reject(new Error(`LSP request "${method}" timed out`))
         }
       }, 30000)
+
+      this.pendingRequests.set(id, { resolve, reject, method, timeout })
     })
   }
 
@@ -266,7 +266,8 @@ export class LspClient {
 
   dispose(): void {
     // Reject all pending requests
-    for (const [id, { reject, method }] of this.pendingRequests) {
+    for (const [id, { reject, method, timeout }] of this.pendingRequests) {
+      clearTimeout(timeout)
       reject(new Error(`LSP client disposed while "${method}" was pending`))
     }
     this.pendingRequests.clear()

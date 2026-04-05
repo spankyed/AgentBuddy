@@ -13,7 +13,7 @@ interface LanguageServer {
   process: ChildProcess
   serverId: string
   status: 'starting' | 'running' | 'stopped' | 'error'
-  messageBuffer: string
+  messageBuffer: Buffer
   messageCallback?: (message: string) => void
   errorCallback?: (error: string) => void
   exitCallback?: (code: number | null) => void
@@ -54,14 +54,14 @@ class LspService {
       process: child,
       serverId,
       status: 'starting',
-      messageBuffer: '',
+      messageBuffer: Buffer.alloc(0),
     }
 
     this.servers.set(serverId, server)
 
     // Handle stdout — JSON-RPC framing with Content-Length headers
     child.stdout?.on('data', (chunk: Buffer) => {
-      this.handleStdoutData(serverId, chunk.toString('utf-8'))
+      this.handleStdoutData(serverId, chunk)
     })
 
     // Handle stderr — log as warnings
@@ -196,58 +196,45 @@ class LspService {
   /**
    * Parse JSON-RPC messages from stdout using Content-Length framing.
    * Messages arrive as: Content-Length: N\r\n\r\n{...json...}
+   * Operates on raw Buffers to avoid corrupting multi-byte UTF-8 sequences
+   * that may be split across chunks.
    */
-  private handleStdoutData(serverId: string, data: string): void {
+  private handleStdoutData(serverId: string, chunk: Buffer): void {
     const server = this.servers.get(serverId)
     if (!server) return
 
-    server.messageBuffer += data
+    server.messageBuffer = Buffer.concat([server.messageBuffer, chunk])
+
+    const headerDelimiter = Buffer.from(HEADER_DELIMITER)
 
     while (true) {
-      // Look for the header delimiter
-      const headerEnd = server.messageBuffer.indexOf(HEADER_DELIMITER)
+      // Look for the header delimiter in raw bytes
+      const headerEnd = server.messageBuffer.indexOf(headerDelimiter)
       if (headerEnd === -1) break
 
-      // Extract headers
-      const headerSection = server.messageBuffer.slice(0, headerEnd)
+      // Extract and parse the header section (ASCII-safe)
+      const headerSection = server.messageBuffer.subarray(0, headerEnd).toString('utf-8')
       const contentLengthMatch = headerSection.match(/Content-Length:\s*(\d+)/i)
       if (!contentLengthMatch) {
         // Malformed header — skip past the delimiter and try again
         logger.warn(`[${server.config.id}] Malformed LSP header: ${headerSection}`)
-        server.messageBuffer = server.messageBuffer.slice(headerEnd + HEADER_DELIMITER.length)
+        server.messageBuffer = server.messageBuffer.subarray(headerEnd + headerDelimiter.length)
         continue
       }
 
       const contentLength = parseInt(contentLengthMatch[1], 10)
-      const messageStart = headerEnd + HEADER_DELIMITER.length
+      const messageStart = headerEnd + headerDelimiter.length
 
-      // Check if we have the full message body
-      // Use byte length for accurate Content-Length comparison
-      const remaining = server.messageBuffer.slice(messageStart)
-      const remainingBytes = Buffer.byteLength(remaining, 'utf-8')
-
-      if (remainingBytes < contentLength) {
-        // Not enough data yet — wait for more
+      // Check if we have the full message body (byte-accurate)
+      if (server.messageBuffer.length - messageStart < contentLength) {
         break
       }
 
-      // Extract the message body by byte length
-      const bodyBuffer = Buffer.from(remaining, 'utf-8')
-      const messageBody = bodyBuffer.slice(0, contentLength).toString('utf-8')
-      const consumedChars = Buffer.from(
-        server.messageBuffer.slice(0, messageStart), 'utf-8'
-      ).length
+      // Extract the message body and decode to string only now
+      const messageBody = server.messageBuffer.subarray(messageStart, messageStart + contentLength).toString('utf-8')
 
       // Advance buffer past this message
-      // We need to figure out how many characters correspond to contentLength bytes
-      let charCount = 0
-      let byteCount = 0
-      for (const char of remaining) {
-        if (byteCount >= contentLength) break
-        byteCount += Buffer.byteLength(char, 'utf-8')
-        charCount++
-      }
-      server.messageBuffer = remaining.slice(charCount)
+      server.messageBuffer = server.messageBuffer.subarray(messageStart + contentLength)
 
       // Fire the callback
       server.messageCallback?.(messageBody)

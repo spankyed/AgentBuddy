@@ -1,8 +1,7 @@
-import { setup, assign } from 'xstate'
+import { setup, assign, enqueueActions } from 'xstate'
 import { trpc } from '@/core/trpc'
 import { LspClient } from './lsp-client'
 import { MonacoLspBridge } from './monaco-lsp-bridge'
-import { getParentContext } from '../utils/parent-communication'
 
 type Monaco = typeof import('monaco-editor')
 
@@ -23,6 +22,7 @@ interface LspServerInfo {
 export interface Context {
   lspClient: LspClient | null
   monacoLspBridge: MonacoLspBridge | null
+  baseDirectory: string | null
   servers: LspServerInfo[]
   initialized: boolean
   error: string | null
@@ -37,102 +37,106 @@ export type Event =
   | { type: 'lsp.SERVERS_LISTED'; data: LspServerInfo[] }
   | { type: 'lsp.INITIALIZED' }
 
+function buildFileUri(path: string): string {
+  const url = new URL('file:///')
+  url.pathname = path
+  return url.href
+}
+
 export const lspState = setup({
   types: {
     context: {} as Context,
     events: {} as Event
   },
   actions: {
-    initializeLsp: ({ context, self }) => {
-      const parentContext = getParentContext(self)
-      const baseDirectory = parentContext?.baseDirectory
-      if (!baseDirectory) return
+    initializeLsp: enqueueActions(({ event, enqueue }) => {
+      const ev = event as { type: 'lsp.INIT'; baseDirectory: string }
+      if (!ev.baseDirectory) return
 
-      // Create LspClient
-      const client = new LspClient()
+      enqueue.assign({
+        lspClient: () => new LspClient(),
+        baseDirectory: () => ev.baseDirectory,
+        error: () => null,
+      })
 
-      // Update context manually since assign can't be used inside action bodies with side effects
-      context.lspClient = client
-      context.error = null
-
-      // Request the TypeScript language server
       sendToBackend('lsp.START_SERVER', { languageId: 'typescript' })
-    },
+    }),
 
-    handleServerStarted: ({ context, self, event }) => {
+    handleServerStarted: enqueueActions(({ context, self, event, enqueue }) => {
       const ev = event as { type: 'lsp.SERVER_STARTED'; data: { serverId: string; languageId: string } }
-      const parentContext = getParentContext(self)
-      const baseDirectory = parentContext?.baseDirectory
-
-      if (!context.lspClient || !baseDirectory) return
+      if (!context.lspClient || !context.baseDirectory) return
 
       const client = context.lspClient
       client.setServerId(ev.data.serverId)
 
-      // Track server
-      context.servers = [...context.servers, {
-        serverId: ev.data.serverId,
-        languageId: ev.data.languageId,
-        status: 'running'
-      }]
+      enqueue.assign({
+        servers: ({ context: ctx }) => [...ctx.servers, {
+          serverId: ev.data.serverId,
+          languageId: ev.data.languageId,
+          status: 'running'
+        }]
+      })
 
-      // Kick off async LSP initialize handshake — send internal event when done
-      const rootUri = `file://${baseDirectory}`
+      const rootUri = buildFileUri(context.baseDirectory)
       client.initialize(rootUri).then(() => {
         self.send({ type: 'lsp.INITIALIZED' })
       }).catch((err: any) => {
         console.error('[LSP] Initialize handshake failed:', err)
-        context.error = err.message || 'Failed to initialize language server'
+        self.send({
+          type: 'lsp.SERVER_ERROR',
+          data: { serverId: ev.data.serverId, error: err.message || 'Failed to initialize' }
+        })
       })
-    },
+    }),
 
-    handleInitialized: ({ context }) => {
-      if (!context.lspClient) return
-
+    handleInitialized: assign(({ context }) => {
+      if (!context.lspClient) return {}
       const monaco = (window as any).monaco as Monaco
-      if (!monaco) return
+      if (!monaco) return {}
 
-      // Disable Monaco's built-in TS diagnostics to avoid duplicates with LSP
       disableBuiltinTsDiagnostics(monaco)
-
       const supportedLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
       const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages)
-      bridge.start() // Begin tracking models now that server is ready
-      context.monacoLspBridge = bridge
-      context.initialized = true
-    },
+      bridge.start()
+
+      return {
+        monacoLspBridge: bridge,
+        initialized: true,
+      }
+    }),
 
     forwardServerMessage: ({ context, event }) => {
       const ev = event as { type: 'lsp.FROM_SERVER'; data: { serverId: string; message: string } }
       context.lspClient?.handleServerMessage(ev.data.message)
     },
 
-    handleServerStopped: ({ context, event }) => {
+    handleServerStopped: enqueueActions(({ context, event, enqueue }) => {
       const ev = event as { type: 'lsp.SERVER_STOPPED'; data: { serverId: string; languageId: string } }
+      const wasActive = context.lspClient?.getServerId() === ev.data.serverId
 
-      // Dispose bridge if the stopped server was the active one
-      if (context.lspClient?.getServerId() === ev.data.serverId) {
+      if (wasActive) {
         context.monacoLspBridge?.dispose()
-        context.monacoLspBridge = null
         context.lspClient?.dispose()
-        context.lspClient = null
-        context.initialized = false
-
-        // Re-enable Monaco's built-in TS diagnostics
         const monaco = (window as any).monaco as Monaco
-        if (monaco) {
-          enableBuiltinTsDiagnostics(monaco)
-        }
+        if (monaco) enableBuiltinTsDiagnostics(monaco)
+
+        enqueue.assign({
+          monacoLspBridge: () => null,
+          lspClient: () => null,
+          initialized: () => false,
+        })
       }
 
-      context.servers = context.servers.filter(s => s.serverId !== ev.data.serverId)
-    },
+      enqueue.assign({
+        servers: ({ context: ctx }) => ctx.servers.filter(s => s.serverId !== ev.data.serverId),
+      })
+    }),
 
-    handleServerError: ({ context, event }) => {
+    handleServerError: assign(({ event }) => {
       const ev = event as { type: 'lsp.SERVER_ERROR'; data: { serverId: string; error: string } }
       console.warn('[LSP] Server error:', ev.data.error)
-      context.error = ev.data.error
-    },
+      return { error: ev.data.error }
+    }),
 
     handleServersListed: assign({
       servers: ({ event }) => {
@@ -141,18 +145,18 @@ export const lspState = setup({
       }
     }),
 
-    cleanup: ({ context }) => {
+    cleanup: enqueueActions(({ context, enqueue }) => {
       context.monacoLspBridge?.dispose()
-      context.monacoLspBridge = null
       context.lspClient?.dispose()
-      context.lspClient = null
-      context.initialized = false
-
       const monaco = (window as any).monaco as Monaco
-      if (monaco) {
-        enableBuiltinTsDiagnostics(monaco)
-      }
-    }
+      if (monaco) enableBuiltinTsDiagnostics(monaco)
+
+      enqueue.assign({
+        monacoLspBridge: () => null,
+        lspClient: () => null,
+        initialized: () => false,
+      })
+    })
   }
 }).createMachine({
   id: 'lsp',
@@ -160,6 +164,7 @@ export const lspState = setup({
   context: {
     lspClient: null,
     monacoLspBridge: null,
+    baseDirectory: null,
     servers: [],
     initialized: false,
     error: null,
