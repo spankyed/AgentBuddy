@@ -297,9 +297,6 @@ class TerminalService {
       delete sanitized[blocked]
     }
 
-    // Add security-related environment variables
-    sanitized['NODE_ENV'] = 'production'
-
     return sanitized
   }
 

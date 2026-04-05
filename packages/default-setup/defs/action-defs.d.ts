@@ -2578,24 +2578,6 @@ declare const events: {
         ids: string[];
         targetFolderId: string | null;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REORDER_ITEMS">;
-        systemId: zod.ZodLiteral<"library">;
-        itemIds: zod.ZodArray<zod.ZodString, "many">;
-        targetIndex: zod.ZodNumber;
-        targetFolderId: zod.ZodNullable<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REORDER_ITEMS";
-        systemId: "library";
-        targetFolderId: string | null;
-        itemIds: string[];
-        targetIndex: number;
-    }, {
-        type: "REORDER_ITEMS";
-        systemId: "library";
-        targetFolderId: string | null;
-        itemIds: string[];
-        targetIndex: number;
-    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_SYMLINK_COLLECTION">;
         systemId: zod.ZodLiteral<"library">;
         name: zod.ZodString;
@@ -3974,13 +3956,6 @@ declare const events: {
         type: "ITEMS_MOVED";
         data: {
             ids: string[];
-            targetFolderId: string | null;
-        };
-        pluginId: "library";
-    } | {
-        type: "ITEMS_REORDERED";
-        data: {
-            itemIds: string[];
             targetFolderId: string | null;
         };
         pluginId: "library";
@@ -5815,7 +5790,6 @@ declare const services: {
             readonly renameItem: (id: EARS.EntityId, name: string, type: "document" | "folder") => LibraryItem;
             readonly deleteItems: (ids: EARS.EntityId[]) => void;
             readonly moveItems: (ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null) => void;
-            readonly reorderItems: (itemIds: EARS.EntityId[], targetIndex: number, targetFolderId: EARS.EntityId | null) => void;
             readonly migrateDocumentShortCodes: () => void;
             readonly migrateDisplayOrders: () => void;
             readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId) => CollectionDTO;

@@ -188,7 +188,7 @@ function importMarkdownDir(
 
     if (entry.isDirectory()) {
       // Subdirectory → document with children
-      const fallbackName = toDisplayName(entry.name)
+      let name = toDisplayName(entry.name)
 
       try {
         // Check for index.md in subdirectory
@@ -199,7 +199,6 @@ function importMarkdownDir(
         let hideCompletedChildren = false
         let noteType: 'document' | 'tasklist' | 'task' = 'document'
         let completed = false
-        let name = fallbackName
 
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
@@ -244,11 +243,12 @@ function importMarkdownDir(
       }
     } else if (entry.name.endsWith('.md') && entry.name !== 'index.md') {
       const basename = entry.name.slice(0, -3)
+      let name = toDisplayName(basename)
 
       try {
         const raw = fs.readFileSync(fullPath, 'utf-8')
         const parsed = parseFrontmatter(raw)
-        const name = parsed.title || toDisplayName(basename)
+        name = parsed.title || name
 
         const note = repository.noteCommands.create({
           title: name,
