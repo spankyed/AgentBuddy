@@ -340,8 +340,8 @@
     </div>
 
     <!-- Stashes Section (pinned to bottom) -->
-    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
-      <div class="flex items-center justify-between px-5 py-2">
+    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800 bg-neutral-800/40">
+      <div class="flex items-center justify-between p-3 px-5">
         <button @click="isStashesExpanded = !isStashesExpanded" class="flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-300">
           <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
           <ChevronDown v-else class="w-3 h-3" />
@@ -351,12 +351,12 @@
           <Trash2 class="w-3 h-3 text-red-400" />
         </button>
       </div>
-      <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 px-3 pb-2">
+      <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 px-2 pb-3">
         <div class="space-y-1">
           <div
             v-for="stash in stashList"
             :key="stash.ref"
-            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors"
+            class="group px-2 py-1.5 rounded hover:bg-neutral-800 transition-colors"
           >
             <div class="flex items-center justify-between">
               <div class="flex-1 min-w-0">
