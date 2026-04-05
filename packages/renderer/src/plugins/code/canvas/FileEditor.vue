@@ -56,10 +56,22 @@
           />
         </div>
 
+        <!-- Rich text editor for markdown files -->
+        <div v-show="isRichText(activeFile)" class="h-full overflow-auto file-rich-text" style="background: #1e1e1e">
+          <TiptapEditor
+            v-if="isRichText(activeFile)"
+            :key="activeFile.path"
+            mode="editor"
+            :model-value="activeFile.content"
+            @update:model-value="handleContentChange"
+            class="h-full p-4 ml-2"
+          />
+        </div>
+
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile) && !isImage(activeFile)" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile)" class="h-full overflow-hidden">
           <MonacoEditor
-            v-if="!isTerminal(activeFile) && !isImage(activeFile)"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile)"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -82,6 +94,7 @@ import { computed } from 'vue'
 import { FileCode } from 'lucide-vue-next'
 import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import Tabs from './Tabs.vue'
 import type { OpenFile, TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
@@ -127,6 +140,11 @@ const isTerminal = (file: OpenFile | TerminalTab | ActionTab | PromptTab): file 
 // Helper to check if a file is an image
 const isImage = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
   return 'isImage' in file && file.isImage === true
+}
+
+// Helper to check if a file should use rich text editor
+const isRichText = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boolean => {
+  return 'isRichText' in file && file.isRichText === true
 }
 
 // Helper to check if file is a diff
@@ -183,3 +201,13 @@ const handleContentChange = (value: string) => {
   }
 }
 </script>
+
+<style>
+.file-rich-text .tiptap-editor .ProseMirror {
+  padding-left: 2.4rem;
+}
+
+.file-rich-text .tiptap-editor .block-drop-indicator {
+  left: 2.4rem;
+}
+</style>

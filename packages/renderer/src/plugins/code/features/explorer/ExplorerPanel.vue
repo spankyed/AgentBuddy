@@ -182,6 +182,9 @@ provide('explorer-collapse-dir', (path: string) => {
 provide('explorer-open-file', (path: string) => {
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path })
 })
+provide('explorer-open-file-rich-text', (path: string) => {
+  explorerActor?.send({ type: 'explorer.OPEN_FILE_AS_RICH_TEXT', path })
+})
 provide('explorer-rename', (oldPath: string, newName: string) => {
   const pathParts = oldPath.split('/')
   pathParts[pathParts.length - 1] = newName

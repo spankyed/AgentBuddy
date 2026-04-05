@@ -88,6 +88,15 @@
         </ContextMenuItem>
 
         <ContextMenuItem
+          v-if="file.type !== 'directory' && file.extension === 'md'"
+          @select="openAsRichText"
+          :class="MENU_ITEM_CLASS"
+        >
+          <FileText class="w-4 h-4" />
+          Open as Rich Text
+        </ContextMenuItem>
+
+        <ContextMenuItem
           v-if="file.type === 'directory'"
           @select="openTerminalHere"
           :class="MENU_ITEM_CLASS"
@@ -161,6 +170,7 @@ import {
   Copy,
   Terminal,
   Search,
+  FileText,
 } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
@@ -191,6 +201,7 @@ const selectItem = inject<(path: string, event: MouseEvent) => void>('explorer-s
 const expandDir = inject<(path: string) => void>('explorer-expand-dir')!
 const collapseDir = inject<(path: string) => void>('explorer-collapse-dir')!
 const openFile = inject<(path: string) => void>('explorer-open-file')!
+const openFileAsRichText = inject<(path: string) => void>('explorer-open-file-rich-text')!
 const onRename = inject<(oldPath: string, newName: string) => void>('explorer-rename')!
 const onDelete = inject<(file: FileInfo) => void>('explorer-delete')!
 const onOpenTerminal = inject<(path: string) => void>('explorer-open-terminal')!
@@ -332,6 +343,10 @@ function openTerminalHere() {
 
 function searchInFolder() {
   onSearchInFolder(props.file.path)
+}
+
+function openAsRichText() {
+  openFileAsRichText(props.file.path)
 }
 
 async function copyAbsolutePath() {
