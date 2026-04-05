@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+  <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg z-50">
     <!-- Rename (terminal only) -->
     <ContextMenuItem
       v-if="isTerminalTab"
@@ -60,7 +60,7 @@
               />
               <span>{{ group.name }}</span>
             </ContextMenuItem>
-            <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+            <ContextMenuSeparator class="h-px bg-neutral-700" />
             <ContextMenuItem
               @select="$emit('create-group', tab.path)"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -84,7 +84,7 @@
 
     <!-- File operations -->
     <template v-if="showFileOperations">
-      <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+      <ContextMenuSeparator class="h-px bg-neutral-700" />
 
       <ContextMenuItem
         @select="$emit('copy-path', tab.path)"
@@ -105,10 +105,10 @@
 
     <!-- Kill terminal -->
     <template v-if="isTerminalTab">
-      <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
+      <ContextMenuSeparator class="h-px bg-neutral-700" />
       <ContextMenuItem
         @select="$emit('kill-terminal', tab.path)"
-        class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+        class="flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
       >
         <X class="w-4 h-4" />
         Kill Terminal
