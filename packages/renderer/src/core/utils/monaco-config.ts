@@ -224,20 +224,21 @@ const initializedLanguages = new Set<string>()
 // BUILT-IN TS PROVIDER INTERCEPTION
 // ============================================================================
 
-let _lspCompletionsActive = false
+let _lspActive = false
 let _interceptInstalled = false
 
 /**
- * Toggle whether LSP completions are active.
- * When true, built-in TS/JS completion providers are suppressed for file:// models
- * so LSP completions are the sole source. inmemory:// models (DSL) are unaffected.
+ * Toggle whether LSP is active.
+ * When true, built-in TS/JS providers (completions, hover, definition, signature help)
+ * are suppressed for file:// models so LSP is the sole source.
+ * inmemory:// models (DSL) are unaffected.
  */
-export function setLspCompletionsActive(active: boolean): void {
-  _lspCompletionsActive = active
+export function setLspActive(active: boolean): void {
+  _lspActive = active
 }
 
 /**
- * Intercept built-in TS/JS completion provider registrations.
+ * Intercept built-in TS/JS provider registrations.
  * Must be called BEFORE the TS mode lazily loads (before any TS model is created).
  * Wraps built-in providers to suppress them for file:// models when LSP is active.
  */
@@ -246,26 +247,74 @@ function interceptBuiltinTsProviders(monaco: Monaco): void {
   _interceptInstalled = true
 
   const tsLanguages = new Set(['typescript', 'javascript', 'typescriptreact', 'javascriptreact'])
-  const original = monaco.languages.registerCompletionItemProvider.bind(monaco.languages)
+  const isTsSelector = (selector: any) => typeof selector === 'string' && tsLanguages.has(selector)
+  const isLspModel = (model: any) => _lspActive && model.uri.scheme === 'file'
 
+  // Wrap registerCompletionItemProvider
+  const origCompletion = monaco.languages.registerCompletionItemProvider.bind(monaco.languages)
   monaco.languages.registerCompletionItemProvider = ((selector: any, provider: any) => {
-    if (typeof selector === 'string' && tsLanguages.has(selector)) {
+    if (isTsSelector(selector)) {
       const wrappedProvider = {
         triggerCharacters: provider.triggerCharacters,
         provideCompletionItems: (model: any, position: any, context: any, token: any) => {
-          if (_lspCompletionsActive && model.uri.scheme === 'file') {
-            return undefined
-          }
+          if (isLspModel(model)) return undefined
           return provider.provideCompletionItems(model, position, context, token)
         },
         resolveCompletionItem: provider.resolveCompletionItem
           ? (item: any, token: any) => provider.resolveCompletionItem(item, token)
           : undefined,
       }
-      return original(selector, wrappedProvider)
+      return origCompletion(selector, wrappedProvider)
     }
-    return original(selector, provider)
+    return origCompletion(selector, provider)
   }) as typeof monaco.languages.registerCompletionItemProvider
+
+  // Wrap registerHoverProvider
+  const origHover = monaco.languages.registerHoverProvider.bind(monaco.languages)
+  monaco.languages.registerHoverProvider = ((selector: any, provider: any) => {
+    if (isTsSelector(selector)) {
+      const wrappedProvider = {
+        provideHover: (model: any, position: any, token: any) => {
+          if (isLspModel(model)) return undefined
+          return provider.provideHover(model, position, token)
+        },
+      }
+      return origHover(selector, wrappedProvider)
+    }
+    return origHover(selector, provider)
+  }) as typeof monaco.languages.registerHoverProvider
+
+  // Wrap registerDefinitionProvider
+  const origDefinition = monaco.languages.registerDefinitionProvider.bind(monaco.languages)
+  monaco.languages.registerDefinitionProvider = ((selector: any, provider: any) => {
+    if (isTsSelector(selector)) {
+      const wrappedProvider = {
+        provideDefinition: (model: any, position: any, token: any) => {
+          if (isLspModel(model)) return undefined
+          return provider.provideDefinition(model, position, token)
+        },
+      }
+      return origDefinition(selector, wrappedProvider)
+    }
+    return origDefinition(selector, provider)
+  }) as typeof monaco.languages.registerDefinitionProvider
+
+  // Wrap registerSignatureHelpProvider
+  const origSignature = monaco.languages.registerSignatureHelpProvider.bind(monaco.languages)
+  monaco.languages.registerSignatureHelpProvider = ((selector: any, provider: any) => {
+    if (isTsSelector(selector)) {
+      const wrappedProvider = {
+        signatureHelpTriggerCharacters: provider.signatureHelpTriggerCharacters,
+        signatureHelpRetriggerCharacters: provider.signatureHelpRetriggerCharacters,
+        provideSignatureHelp: (model: any, position: any, token: any, context: any) => {
+          if (isLspModel(model)) return undefined
+          return provider.provideSignatureHelp(model, position, token, context)
+        },
+      }
+      return origSignature(selector, wrappedProvider)
+    }
+    return origSignature(selector, provider)
+  }) as typeof monaco.languages.registerSignatureHelpProvider
 }
 
 // ============================================================================

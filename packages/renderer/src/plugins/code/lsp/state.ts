@@ -1,6 +1,6 @@
 import { setup, assign, enqueueActions } from 'xstate'
 import { trpc } from '@/core/trpc'
-import { setLspCompletionsActive } from '@/core/utils/monaco-config'
+import { setLspActive } from '@/core/utils/monaco-config'
 import { LspClient } from './lsp-client'
 import { MonacoLspBridge } from './monaco-lsp-bridge'
 
@@ -114,7 +114,7 @@ export const lspState = setup({
 
       console.log('[LSP:State] attemptBridgeCreation → CREATING bridge')
       disableBuiltinTsDiagnostics(monaco)
-      setLspCompletionsActive(true)
+      setLspActive(true)
       const supportedLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
       const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages, (filePath, line, column) => {
         // Access the parent code plugin's explorer actor to open files
@@ -146,7 +146,7 @@ export const lspState = setup({
       if (wasActive) {
         context.monacoLspBridge?.dispose()
         context.lspClient?.dispose()
-        setLspCompletionsActive(false)
+        setLspActive(false)
         const monaco = (window as any).monaco as Monaco
         if (monaco) enableBuiltinTsDiagnostics(monaco)
 
@@ -178,7 +178,7 @@ export const lspState = setup({
     cleanup: enqueueActions(({ context, enqueue }) => {
       context.monacoLspBridge?.dispose()
       context.lspClient?.dispose()
-      setLspCompletionsActive(false)
+      setLspActive(false)
       const monaco = (window as any).monaco as Monaco
       if (monaco) enableBuiltinTsDiagnostics(monaco)
 
