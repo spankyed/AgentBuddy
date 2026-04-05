@@ -316,6 +316,17 @@ const handleDiffMount = (diffEditor: editor.IStandaloneDiffEditor) => {
       emit('change', value)
     }
   })
+
+  // Auto-scroll to first change when diff is computed
+  const disposable = diffEditor.onDidUpdateDiff(() => {
+    const changes = diffEditor.getLineChanges()
+    if (changes && changes.length > 0) {
+      const firstChange = changes[0]
+      const line = firstChange.modifiedStartLineNumber
+      modifiedEditor.revealLineInCenter(line)
+    }
+    disposable.dispose()
+  })
 }
 
 // Watch for file/content changes in multi-file mode
