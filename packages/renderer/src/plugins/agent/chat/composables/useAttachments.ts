@@ -39,13 +39,12 @@ export function useAttachments() {
   const hasAttachments = computed(() => pendingImages.value.length > 0 || pendingFiles.value.length > 0)
 
   const getUniqueName = (proposed: string, existing: Set<string>): string => {
-    if (!existing.has(proposed)) return proposed
     const dotIdx = proposed.lastIndexOf('.')
     const base = dotIdx > 0 ? proposed.slice(0, dotIdx) : proposed
     const ext = dotIdx > 0 ? proposed.slice(dotIdx) : ''
-    let counter = 2
-    while (existing.has(`${base} (${counter})${ext}`)) counter++
-    return `${base} (${counter})${ext}`
+    let counter = 1
+    while (existing.has(`${base} ${counter}${ext}`)) counter++
+    return `${base} ${counter}${ext}`
   }
 
   const handlePaste = (event: ClipboardEvent) => {
