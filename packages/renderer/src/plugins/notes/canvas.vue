@@ -193,6 +193,7 @@
         @toggle-expand="(nodeId: string) => actor.send({ type: 'TASK.TOGGLE_EXPAND', nodeId })"
         @move-task="(noteIds: string[], newParentId: string | null) => actor.send({ type: 'NOTE.MOVE', noteIds, newParentId })"
         @reorder-task="(noteId: string, newParentId: string | null, newIndex: number) => actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })"
+        @update-icon="(noteId: string, icon: string | null) => actor.send({ type: 'NOTE.UPDATE_ICON', noteId, icon })"
         @open-note="(noteId: string) => actor.send({ type: 'NOTE.OPEN', noteId })"
         @delete-tasklist="actor.send({ type: 'NOTE.DELETE', noteId: currentNote.id })"
       />

@@ -88,6 +88,7 @@
         @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
         @delete="(id: string) => $emit('delete-task', id)"
         @toggle-complete="(id: string) => $emit('toggle-complete', id)"
+        @update-icon="(noteId: string, icon: string | null) => $emit('update-icon', noteId, icon)"
         @create-task="(parentId: string) => $emit('create-task-child', parentId)"
         @create="(parentId: string) => $emit('create-subnote', parentId)"
         @open="(noteId: string) => $emit('open-note', noteId)"
@@ -113,13 +114,14 @@
           :get-item-class="getItemClass"
           :task-mode="true"
           :muted="true"
-  
+
           :drop-indicator-note-id="dropIndicator?.noteId ?? null"
           :drop-indicator-position="dropIndicator?.position ?? null"
           @select="(id: string) => $emit('select-task', id)"
           @toggle-expand="(nodeId: string) => $emit('toggle-expand', nodeId)"
           @delete="(id: string) => $emit('delete-task', id)"
           @toggle-complete="(id: string) => $emit('toggle-complete', id)"
+          @update-icon="(noteId: string, icon: string | null) => $emit('update-icon', noteId, icon)"
           @create-task="(parentId: string) => $emit('create-task-child', parentId)"
           @create="(parentId: string) => $emit('create-subnote', parentId)"
           @open="(noteId: string) => $emit('open-note', noteId)"
@@ -183,6 +185,7 @@ const emit = defineEmits<{
   (e: 'create-subnote', parentId: string): void
   (e: 'open-note', noteId: string): void
   (e: 'toggle-hide-completed', nodeId: string): void
+  (e: 'update-icon', noteId: string, icon: string | null): void
   (e: 'delete-tasklist'): void
 }>()
 
