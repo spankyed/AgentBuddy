@@ -109,6 +109,7 @@ const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
+const tabViewHistory = useSelector(actor, (state) => state.context.tabViewHistory)
 const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
 
@@ -235,9 +236,10 @@ const showRefreshNotification = () => {
 
 // Event handlers
 const selectFile = (path: string) => {
+  const updatedHistory = [...tabViewHistory.value.filter(p => p !== path), path]
   actor.send({
     type: 'UPDATE_STATE',
-    updates: { activeFilePath: path }
+    updates: { activeFilePath: path, tabViewHistory: updatedHistory }
   })
 }
 
@@ -257,9 +259,14 @@ const closeFile = (path: string) => {
 
   // Update UI state - remove tab from open files
   const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const newActiveFilePath = activeFilePath.value === path
-    ? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
-    : activeFilePath.value
+  const updatedHistory = tabViewHistory.value.filter(p => p !== path)
+  let newActiveFilePath = activeFilePath.value
+  if (activeFilePath.value === path) {
+    // Find most recently viewed tab that's still open
+    const openPaths = new Set(newOpenFiles.map(f => f.path))
+    const recentTab = [...updatedHistory].reverse().find(p => openPaths.has(p))
+    newActiveFilePath = recentTab ?? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
+  }
 
   // Check if the closed tab was in a group and if the group is now empty
   const groupId = file && 'groupId' in file ? file.groupId : undefined
@@ -277,7 +284,7 @@ const closeFile = (path: string) => {
 
   actor.send({
     type: 'UPDATE_STATE',
-    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
+    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups, tabViewHistory: updatedHistory }
   })
 
   explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })

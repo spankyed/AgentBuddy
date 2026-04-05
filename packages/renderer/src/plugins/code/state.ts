@@ -82,6 +82,7 @@ export type Context = {
   quickOpenSelectedIndex: number
   quickOpenLoading: boolean
   recentlyOpenedFiles: string[]
+  tabViewHistory: string[]
   hotkeys: HotkeysMap
   settings?: CodeSettings
 }
@@ -847,6 +848,7 @@ const codeState = setup({
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
     recentlyOpenedFiles: loadRecentFiles(),
+    tabViewHistory: [],
     // Default hotkeys for code plugin (will be overridden by settings)
     hotkeys: {},
   },

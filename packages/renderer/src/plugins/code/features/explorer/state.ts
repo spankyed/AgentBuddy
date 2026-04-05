@@ -125,6 +125,10 @@ export const explorerState = setup({
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
       const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
 
+      // Track in tab view history
+      const tabViewHistory: string[] = parentContext?.tabViewHistory || []
+      const updatedTabViewHistory = [...tabViewHistory.filter((p: string) => p !== ev.data.path), ev.data.path]
+
       if (existingFile) {
         // Update content for existing file
         const updatedFiles = openFiles.map((f: any) =>
@@ -144,7 +148,8 @@ export const explorerState = setup({
           openFiles: updatedFiles,
           activeFilePath: ev.data.path,
           isLoading: false,
-          recentlyOpenedFiles: updatedRecentFiles
+          recentlyOpenedFiles: updatedRecentFiles,
+          tabViewHistory: updatedTabViewHistory
         })
       } else {
         // Add new file
@@ -165,7 +170,8 @@ export const explorerState = setup({
         updateParentState(self, {
           ...result,
           isLoading: false,
-          recentlyOpenedFiles: updatedRecentFiles
+          recentlyOpenedFiles: updatedRecentFiles,
+          tabViewHistory: updatedTabViewHistory
         })
       }
 
