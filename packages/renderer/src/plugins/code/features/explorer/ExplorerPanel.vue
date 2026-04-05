@@ -179,14 +179,8 @@ provide('explorer-expand-dir', (path: string) => {
 provide('explorer-collapse-dir', (path: string) => {
   explorerActor?.send({ type: 'explorer.COLLAPSE_DIRECTORY', path })
 })
-provide('explorer-open-file', (path: string) => {
-  explorerActor?.send({ type: 'explorer.OPEN_FILE', path })
-})
-provide('explorer-open-file-rich-text', (path: string) => {
-  explorerActor?.send({ type: 'explorer.OPEN_FILE_AS_RICH_TEXT', path })
-})
-provide('explorer-open-file-plain-text', (path: string) => {
-  explorerActor?.send({ type: 'explorer.OPEN_FILE_AS_PLAIN_TEXT', path })
+provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainText') => {
+  explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
 const settingsActor = applicationState.system.get('settings')

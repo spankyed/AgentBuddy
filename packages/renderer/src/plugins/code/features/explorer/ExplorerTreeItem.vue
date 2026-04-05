@@ -88,21 +88,12 @@
         </ContextMenuItem>
 
         <ContextMenuItem
-          v-if="file.type !== 'directory' && file.extension === 'md' && !getMdEditorDefault()"
-          @select="openAsRichText"
+          v-if="file.type !== 'directory' && file.extension === 'md'"
+          @select="openFile(file.path, getMdEditorDefault() ? 'plainText' : 'richText')"
           :class="MENU_ITEM_CLASS"
         >
           <FileText class="w-4 h-4" />
-          Open as Rich Text
-        </ContextMenuItem>
-
-        <ContextMenuItem
-          v-if="file.type !== 'directory' && file.extension === 'md' && getMdEditorDefault()"
-          @select="openAsPlainText"
-          :class="MENU_ITEM_CLASS"
-        >
-          <FileText class="w-4 h-4" />
-          Open as Plain Text
+          {{ getMdEditorDefault() ? 'Open as Plain Text' : 'Open as Rich Text' }}
         </ContextMenuItem>
 
         <ContextMenuItem
@@ -209,9 +200,7 @@ const props = defineProps<{
 const selectItem = inject<(path: string, event: MouseEvent) => void>('explorer-select-item')!
 const expandDir = inject<(path: string) => void>('explorer-expand-dir')!
 const collapseDir = inject<(path: string) => void>('explorer-collapse-dir')!
-const openFile = inject<(path: string) => void>('explorer-open-file')!
-const openFileAsRichText = inject<(path: string) => void>('explorer-open-file-rich-text')!
-const openFileAsPlainText = inject<(path: string) => void>('explorer-open-file-plain-text')!
+const openFile = inject<(path: string, editorMode?: 'richText' | 'plainText') => void>('explorer-open-file')!
 const getMdEditorDefault = inject<() => boolean>('explorer-md-editor-default')!
 const onRename = inject<(oldPath: string, newName: string) => void>('explorer-rename')!
 const onDelete = inject<(file: FileInfo) => void>('explorer-delete')!
@@ -303,19 +292,11 @@ function toggleExpand() {
   }
 }
 
-function openFileDefault(path: string) {
-  if (getMdEditorDefault() && props.file.extension === 'md') {
-    openFileAsRichText(path)
-  } else {
-    openFile(path)
-  }
-}
-
 function handleClick(event: MouseEvent) {
   if (isEditing.value) return
   selectItem(props.file.path, event)
   if (props.file.type !== 'directory' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-    openFileDefault(props.file.path)
+    openFile(props.file.path)
   }
 }
 
@@ -323,11 +304,9 @@ function handleDoubleClick(e: MouseEvent) {
   e.preventDefault()
   e.stopPropagation()
   if (props.file.type === 'directory') {
-    // Toggle expand on double-click for directories
     toggleExpand()
   } else {
-    // Open file on double-click
-    openFileDefault(props.file.path)
+    openFile(props.file.path)
   }
 }
 
@@ -362,14 +341,6 @@ function openTerminalHere() {
 
 function searchInFolder() {
   onSearchInFolder(props.file.path)
-}
-
-function openAsRichText() {
-  openFileAsRichText(props.file.path)
-}
-
-function openAsPlainText() {
-  openFileAsPlainText(props.file.path)
 }
 
 async function copyAbsolutePath() {
