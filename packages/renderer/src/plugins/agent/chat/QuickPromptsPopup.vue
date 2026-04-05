@@ -34,16 +34,29 @@
         <!-- Prompt list -->
         <div class="max-h-60 overflow-y-auto">
           <template v-if="!editing">
-            <button
+            <div
               v-for="prompt in prompts"
               :key="prompt.id"
-              type="button"
-              class="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
-              :title="prompt.text"
-              @click="selectPrompt(prompt.text)"
+              class="group relative"
             >
-              {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
-            </button>
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 pr-8 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
+                :title="prompt.text"
+                @click="selectPrompt(prompt.text)"
+              >
+                {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
+              </button>
+              <button
+                type="button"
+                class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                title="Copy prompt"
+                @click.stop="copyPrompt(prompt.id, prompt.text)"
+              >
+                <Check v-if="copiedId === prompt.id" :size="14" class="text-green-400" />
+                <Copy v-else :size="14" />
+              </button>
+            </div>
             <div v-if="prompts.length === 0" class="px-3 py-4 text-sm text-neutral-600 text-center">
               No quick prompts
             </div>
@@ -113,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import { Sparkle, Pencil, X, Plus } from 'lucide-vue-next'
+import { Sparkle, Pencil, X, Plus, Copy, Check } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { QuickPrompt } from '@app/api'
 
@@ -135,6 +148,7 @@ const addPromptRef = ref<HTMLTextAreaElement | null>(null)
 const editPromptRefs = ref<HTMLTextAreaElement[]>([])
 const editingId = ref<string | null>(null)
 const editingText = ref('')
+const copiedId = ref<string | null>(null)
 
 watch(() => props.prompts, (val) => {
   localPrompts.value = [...val]
@@ -152,6 +166,14 @@ watch(open, (isOpen) => {
 function selectPrompt(text: string) {
   emit('select', text)
   open.value = false
+}
+
+function copyPrompt(id: string, text: string) {
+  navigator.clipboard.writeText(text)
+  copiedId.value = id
+  setTimeout(() => {
+    copiedId.value = null
+  }, 1500)
 }
 
 async function startEdit(prompt: QuickPrompt) {
