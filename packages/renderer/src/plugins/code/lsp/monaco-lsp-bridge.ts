@@ -120,11 +120,10 @@ export class MonacoLspBridge {
         )
       )
 
-      // Hover
+      // Hover — exclusive for file:// URIs so built-in TS hover is suppressed
       this.disposables.push(
-        this.monaco.languages.registerHoverProvider(lang, {
+        this.monaco.languages.registerHoverProvider({ language: lang, scheme: 'file', exclusive: true }, {
           provideHover: async (model, position) => {
-            if (!this.isFileUri(model.uri)) return undefined
             const result = await this.client.hover(
               model.uri.toString(),
               toLspPosition(position)
@@ -135,11 +134,10 @@ export class MonacoLspBridge {
         })
       )
 
-      // Definition
+      // Definition — exclusive for file:// URIs so built-in TS definition is suppressed
       this.disposables.push(
-        this.monaco.languages.registerDefinitionProvider(lang, {
+        this.monaco.languages.registerDefinitionProvider({ language: lang, scheme: 'file', exclusive: true }, {
           provideDefinition: async (model, position) => {
-            if (!this.isFileUri(model.uri)) return undefined
             const result = await this.client.definition(
               model.uri.toString(),
               toLspPosition(position)
@@ -150,12 +148,11 @@ export class MonacoLspBridge {
         })
       )
 
-      // Signature Help
+      // Signature Help — exclusive for file:// URIs so built-in TS signature help is suppressed
       this.disposables.push(
-        this.monaco.languages.registerSignatureHelpProvider(lang, {
+        this.monaco.languages.registerSignatureHelpProvider({ language: lang, scheme: 'file', exclusive: true }, {
           signatureHelpTriggerCharacters: ['(', ','],
           provideSignatureHelp: async (model, position) => {
-            if (!this.isFileUri(model.uri)) return undefined
             const result = await this.client.signatureHelp(
               model.uri.toString(),
               toLspPosition(position)

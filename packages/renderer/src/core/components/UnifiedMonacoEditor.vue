@@ -9,10 +9,11 @@
       :modified="diffModified || modelValue"
       :language="resolvedLanguage"
       :options="resolvedOptions"
+      @beforeMount="handleBeforeMount"
       @mount="handleDiffMount"
       class="h-full"
     />
-    
+
     <!-- Standard Editor Mode -->
     <VueMonacoEditor
       v-else
@@ -20,6 +21,7 @@
       :value="currentValue"
       :language="resolvedLanguage"
       :options="resolvedOptions"
+      @beforeMount="handleBeforeMount"
       @mount="handleMount"
       @update:value="handleUpdate"
       class="h-full"
@@ -209,6 +211,20 @@ const switchToFile = (filePath: string, content: string) => {
 }
 
 // Event handlers
+
+/**
+ * Called by vue-monaco-editor BEFORE model creation.
+ * Installs the built-in TS provider interception early enough to wrap
+ * providers that register during the TS mode's lazy initialization.
+ */
+const handleBeforeMount = (_monaco: any) => {
+  initializeMonaco({
+    enableTypeChecking: isDslMode.value,
+    enableSuggestions: isDslMode.value,
+    setupLanguages: true
+  })
+}
+
 const handleUpdate = (value: string | undefined) => {
   const newValue = value || ''
   currentValue.value = newValue
