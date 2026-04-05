@@ -24,6 +24,7 @@
       @pin-group="(groupId) => $emit('pin-group', groupId)"
       @unpin-group="(groupId) => $emit('unpin-group', groupId)"
       @rename-terminal="(path, customTitle) => $emit('rename-terminal', path, customTitle)"
+      @kill-terminal="(path) => $emit('kill-terminal', path)"
     />
 
     <!-- Editor -->
@@ -130,6 +131,7 @@ const emit = defineEmits<{
   'pin-group': [groupId: string]
   'unpin-group': [groupId: string]
   'rename-terminal': [path: string, customTitle: string]
+  'kill-terminal': [path: string]
 }>()
 
 // Helper to check if a file is a terminal

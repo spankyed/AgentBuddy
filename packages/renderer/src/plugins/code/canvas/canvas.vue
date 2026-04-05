@@ -44,6 +44,7 @@
       @pin-group="pinGroup"
       @unpin-group="unpinGroup"
       @rename-terminal="renameTerminal"
+      @kill-terminal="killTerminal"
       class="flex-1 min-h-0"
     />
 
@@ -242,6 +243,43 @@ const selectFile = (path: string) => {
   })
 }
 
+const killTerminal = (path: string) => {
+  const file = openFiles.value.find(f => f.path === path)
+  if (!file || !('isTerminal' in file) || !file.isTerminal) return
+  const terminalInfo = (file as any).terminalInfo
+  // Kill the terminal process (skip confirmation — user explicitly chose "Kill")
+  closeTerminalProcess(terminalInfo, { skipConfirmation: true })
+  // Remove the tab
+  removeTab(path, file)
+}
+
+const removeTab = (path: string, file?: any) => {
+  file ??= openFiles.value.find(f => f.path === path)
+  const newOpenFiles = openFiles.value.filter(f => f.path !== path)
+  const newActiveFilePath = activeFilePath.value === path
+    ? nextActiveFromHistory(tabViewHistory.value, newOpenFiles)
+    : activeFilePath.value
+
+  const groupId = file && 'groupId' in file ? file.groupId : undefined
+  let newTabGroups = tabGroups.value
+
+  if (groupId) {
+    const remainingTabsInGroup = newOpenFiles.filter(
+      f => 'groupId' in f && f.groupId === groupId
+    )
+    if (remainingTabsInGroup.length === 0) {
+      newTabGroups = tabGroups.value.filter(g => g.id !== groupId)
+    }
+  }
+
+  actor.send({
+    type: 'UPDATE_STATE',
+    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
+  })
+
+  explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })
+}
+
 const closeFile = (path: string) => {
   const file = openFiles.value.find(f => f.path === path)
   const isTerminal = file && 'isTerminal' in file && file.isTerminal
@@ -256,32 +294,7 @@ const closeFile = (path: string) => {
     }
   }
 
-  // Update UI state - remove tab from open files
-  const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const newActiveFilePath = activeFilePath.value === path
-    ? nextActiveFromHistory(tabViewHistory.value, newOpenFiles)
-    : activeFilePath.value
-
-  // Check if the closed tab was in a group and if the group is now empty
-  const groupId = file && 'groupId' in file ? file.groupId : undefined
-  let newTabGroups = tabGroups.value
-
-  if (groupId) {
-    const remainingTabsInGroup = newOpenFiles.filter(
-      f => 'groupId' in f && f.groupId === groupId
-    )
-    if (remainingTabsInGroup.length === 0) {
-      // Group is now empty, remove it
-      newTabGroups = tabGroups.value.filter(g => g.id !== groupId)
-    }
-  }
-
-  actor.send({
-    type: 'UPDATE_STATE',
-    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
-  })
-
-  explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })
+  removeTab(path, file)
 }
 
 const handleContentChange = (path: string, content: string) => {
