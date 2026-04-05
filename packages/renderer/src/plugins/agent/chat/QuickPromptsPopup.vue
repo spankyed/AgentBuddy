@@ -84,11 +84,9 @@
                   </span>
                   <textarea
                     v-if="editingId === prompt.id"
-                    ref="editPromptRefs"
                     v-model="editingText"
                     rows="1"
-                    class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-y-hidden"
-                    style="max-height: calc(1.5em * 3 + 12px)"
+                    class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-hidden"
                     @input="autoResize($event)"
                     @blur="commitEdit(prompt.id)"
                     @keydown.enter.exact.prevent="commitEdit(prompt.id)"
@@ -162,7 +160,6 @@ const editing = ref(false)
 const newPromptText = ref('')
 const localPrompts = ref<QuickPrompt[]>([...props.prompts])
 const addPromptRef = ref<HTMLTextAreaElement | null>(null)
-const editPromptRefs = ref<HTMLTextAreaElement[]>([])
 const editingId = ref<string | null>(null)
 const editingText = ref('')
 const copiedId = ref<string | null>(null)
@@ -219,13 +216,14 @@ async function startEdit(prompt: QuickPrompt) {
   editingId.value = prompt.id
   editingText.value = prompt.text
   await nextTick()
-  const el = editPromptRefs.value?.[0]
-  if (el) {
-    el.style.height = 'auto'
-    el.style.height = el.scrollHeight + 'px'
-    el.focus()
-    el.setSelectionRange(el.value.length, el.value.length)
-  }
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLTextAreaElement>('.quick-prompts-list textarea')
+    if (el) {
+      resizeTextarea(el)
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }
+  })
 }
 
 function commitEdit(id: string) {
@@ -250,12 +248,16 @@ function deletePrompt(id: string) {
   emit('update', updated)
 }
 
-function autoResize(event: Event) {
-  const el = event.target as HTMLTextAreaElement
+function resizeTextarea(el: HTMLTextAreaElement) {
+  el.style.overflow = 'auto'
   el.style.height = 'auto'
-  el.style.height = el.scrollHeight + 'px'
-  const maxHeight = parseFloat(getComputedStyle(el).maxHeight)
-  el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  const height = el.scrollHeight
+  el.style.height = height + 1 + 'px'
+  el.style.overflow = 'hidden'
+}
+
+function autoResize(event: Event) {
+  resizeTextarea(event.target as HTMLTextAreaElement)
 }
 
 function addPrompt() {
