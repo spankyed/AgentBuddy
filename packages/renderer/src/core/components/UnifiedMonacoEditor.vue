@@ -107,6 +107,7 @@ const diffEditorInstance = shallowRef<editor.IStandaloneDiffEditor>()
 const currentValue = ref(props.modelValue)
 const models = new Map<string, editor.ITextModel>()
 const viewStates = new Map<string, editor.ICodeEditorViewState | null>()
+let pendingScrollLine: number | null = null
 
 // Computed properties
 const resolvedLanguage = computed(() => {
@@ -204,7 +205,16 @@ const switchToFile = (filePath: string, content: string) => {
       editorInstance.value.restoreViewState(savedState)
     }
   }
-  
+
+  // Apply scroll position carried over from diff editor
+  if (pendingScrollLine !== null) {
+    const savedState = viewStates.get(model.uri.toString())
+    if (!savedState) {
+      editorInstance.value.revealLineInCenter(pendingScrollLine)
+    }
+    pendingScrollLine = null
+  }
+
   currentValue.value = content
 }
 
@@ -324,6 +334,16 @@ watch(
 // Watch for mode changes to clean up stale references
 watch(() => props.mode, (newMode, oldMode) => {
   if (oldMode === 'diff') {
+    // Capture scroll position from diff's modified editor before destroying
+    if (diffEditorInstance.value) {
+      try {
+        const modifiedEditor = diffEditorInstance.value.getModifiedEditor()
+        const visibleRanges = modifiedEditor.getVisibleRanges()
+        if (visibleRanges.length > 0) {
+          pendingScrollLine = visibleRanges[0].startLineNumber
+        }
+      } catch {}
+    }
     // Detach models before v-if unmounts the library component —
     // prevents library's onUnmounted from disposing models before the editor
     try { diffEditorInstance.value?.setModel(null) } catch {}
