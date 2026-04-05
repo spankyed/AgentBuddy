@@ -4,6 +4,7 @@ import { trpc } from '@/core/trpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
 import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
+import { removeFromTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
 import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@app/api';
 
@@ -739,18 +740,29 @@ const codeState = setup({
             ('groupId' in file && file.groupId === ev.groupId) ? { ...file, groupId: undefined } : file
           )
 
-      // Update active file if it was closed
-      const newActiveFilePath = ev.closeTabsInGroup && context.activeFilePath
-        ? (updatedFiles.some(f => f.path === context.activeFilePath)
-            ? context.activeFilePath
-            : (updatedFiles.length > 0 ? updatedFiles[0].path : null))
+      // Update active file and history if tabs were closed
+      const activeWasRemoved = ev.closeTabsInGroup && context.activeFilePath
+        && !updatedFiles.some(f => f.path === context.activeFilePath)
+
+      // Remove closed tabs from history
+      const closedPaths = ev.closeTabsInGroup
+        ? context.openFiles.filter(file => 'groupId' in file && file.groupId === ev.groupId).map(f => f.path)
+        : []
+      let updatedHistory = context.tabViewHistory
+      for (const p of closedPaths) {
+        updatedHistory = removeFromTabViewHistory(updatedHistory, p)
+      }
+
+      const newActiveFilePath = activeWasRemoved
+        ? nextActiveFromHistory(updatedHistory, updatedFiles)
         : context.activeFilePath
 
       return {
         ...context,
         tabGroups: updatedGroups,
         openFiles: updatedFiles,
-        activeFilePath: newActiveFilePath
+        activeFilePath: newActiveFilePath,
+        tabViewHistory: updatedHistory
       }
     }),
 

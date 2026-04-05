@@ -1,7 +1,7 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs, removeTabs } from '../../utils/tab-management';
+import { mergeTabs, removeTabs, pushTabViewHistory, renameInTabViewHistory } from '../../utils/tab-management';
 import { addRecentFile } from '../../utils/recent-files';
 import { imageExtensions } from '../../utils/file-icons';
 
@@ -126,8 +126,7 @@ export const explorerState = setup({
       const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
 
       // Track in tab view history
-      const tabViewHistory: string[] = parentContext?.tabViewHistory || []
-      const updatedTabViewHistory = [...tabViewHistory.filter((p: string) => p !== ev.data.path), ev.data.path]
+      const updatedTabViewHistory = pushTabViewHistory(parentContext?.tabViewHistory || [], ev.data.path)
 
       if (existingFile) {
         // Update content for existing file
@@ -436,7 +435,8 @@ export const explorerState = setup({
 
         updateParentState(self, {
           openFiles: newOpenFiles,
-          activeFilePath: newActiveFile
+          activeFilePath: newActiveFile,
+          tabViewHistory: renameInTabViewHistory(parentContext?.tabViewHistory || [], ev.data.oldPath, ev.data.newPath)
         })
       }
     },

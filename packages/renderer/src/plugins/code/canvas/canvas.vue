@@ -92,7 +92,7 @@ import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
-import { reorderTabs } from '../utils/tab-management'
+import { reorderTabs, pushTabViewHistory, removeFromTabViewHistory, nextActiveFromHistory } from '../utils/tab-management'
 import { useTerminalActions } from '../composables/useTerminalActions'
 
 const actor: CodeState = applicationState.system.get(id)
@@ -236,10 +236,9 @@ const showRefreshNotification = () => {
 
 // Event handlers
 const selectFile = (path: string) => {
-  const updatedHistory = [...tabViewHistory.value.filter(p => p !== path), path]
   actor.send({
     type: 'UPDATE_STATE',
-    updates: { activeFilePath: path, tabViewHistory: updatedHistory }
+    updates: { activeFilePath: path, tabViewHistory: pushTabViewHistory(tabViewHistory.value, path) }
   })
 }
 
@@ -259,14 +258,10 @@ const closeFile = (path: string) => {
 
   // Update UI state - remove tab from open files
   const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const updatedHistory = tabViewHistory.value.filter(p => p !== path)
-  let newActiveFilePath = activeFilePath.value
-  if (activeFilePath.value === path) {
-    // Find most recently viewed tab that's still open
-    const openPaths = new Set(newOpenFiles.map(f => f.path))
-    const recentTab = [...updatedHistory].reverse().find(p => openPaths.has(p))
-    newActiveFilePath = recentTab ?? (newOpenFiles.length > 0 ? newOpenFiles[0].path : null)
-  }
+  const updatedHistory = removeFromTabViewHistory(tabViewHistory.value, path)
+  const newActiveFilePath = activeFilePath.value === path
+    ? nextActiveFromHistory(updatedHistory, newOpenFiles)
+    : activeFilePath.value
 
   // Check if the closed tab was in a group and if the group is now empty
   const groupId = file && 'groupId' in file ? file.groupId : undefined

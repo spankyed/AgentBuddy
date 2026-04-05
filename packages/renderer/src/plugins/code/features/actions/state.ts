@@ -1,7 +1,7 @@
 import { setup } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { mergeTabs, pushTabViewHistory } from '../../utils/tab-management';
 import type { ActionEntity } from '@app/api';
 
 const sendToBackend = (type: string, data: any) => {
@@ -64,10 +64,13 @@ export const actionsState = setup({
       // Check if action tab already exists
       const existingTab = openFiles.find((f: any) => f.path === actionPath)
 
+      const history = pushTabViewHistory(parentContext?.tabViewHistory || [], actionPath)
+
       if (existingTab) {
         // Tab already exists, just activate it
         updateParentState(self, {
-          activeFilePath: actionPath
+          activeFilePath: actionPath,
+          tabViewHistory: history
         })
       } else {
         // Create new action tab
@@ -84,7 +87,8 @@ export const actionsState = setup({
 
         updateParentState(self, {
           openFiles: updatedFiles,
-          activeFilePath: activeFilePath
+          activeFilePath: activeFilePath,
+          tabViewHistory: history
         })
       }
     },

@@ -2,7 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs, removeTabs } from '../../utils/tab-management';
+import { mergeTabs, removeTabs, pushTabViewHistory, removeFromTabViewHistory, nextActiveFromHistory } from '../../utils/tab-management';
 
 export interface TerminalInfo {
   id: string
@@ -257,6 +257,7 @@ export const terminalState = setup({
 
         const parentContext = getParentContext(self)
         const terminalPath = `terminal:${terminalId}`
+        const history = removeFromTabViewHistory(parentContext?.tabViewHistory || [], terminalPath)
 
         const result = removeTabs(
           parentContext?.openFiles || [],
@@ -264,7 +265,12 @@ export const terminalState = setup({
           parentContext?.activeFilePath
         )
 
-        updateParentState(self, result)
+        // Use history-based fallback if removeTabs selected a new active tab
+        if (parentContext?.activeFilePath === terminalPath && result.openFiles.length > 0) {
+          result.activeFilePath = nextActiveFromHistory(history, result.openFiles)
+        }
+
+        updateParentState(self, { ...result, tabViewHistory: history })
       })
     }),
 
@@ -288,10 +294,13 @@ export const terminalState = setup({
       // Check if terminal tab already exists
       const existingTab = openFiles.find((f: any) => f.path === terminalPath)
 
+      const history = pushTabViewHistory(parentContext?.tabViewHistory || [], terminalPath)
+
       if (existingTab) {
         // Tab already exists, just activate it
         updateParentState(self, {
-          activeFilePath: terminalPath
+          activeFilePath: terminalPath,
+          tabViewHistory: history
         })
       } else {
         // Create terminal tab object
@@ -309,7 +318,7 @@ export const terminalState = setup({
           terminalTab.path // Always set this terminal as active
         )
 
-        updateParentState(self, result)
+        updateParentState(self, { ...result, tabViewHistory: history })
       }
     },
 

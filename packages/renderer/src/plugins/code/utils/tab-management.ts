@@ -123,6 +123,55 @@ export function removeTabs<T extends BaseTab>(
   }
 }
 
+// --- Tab view history utilities ---
+
+const MAX_TAB_VIEW_HISTORY = 100
+
+/**
+ * Records a tab path as most recently viewed (deduplicates and appends)
+ */
+export function pushTabViewHistory(history: string[], path: string): string[] {
+  const updated = [...history.filter(p => p !== path), path]
+  return updated.length > MAX_TAB_VIEW_HISTORY ? updated.slice(-MAX_TAB_VIEW_HISTORY) : updated
+}
+
+/**
+ * Removes a path from tab view history
+ */
+export function removeFromTabViewHistory(history: string[], path: string): string[] {
+  return history.filter(p => p !== path)
+}
+
+/**
+ * Replaces an old path with a new path in tab view history (e.g. after rename)
+ */
+export function renameInTabViewHistory(history: string[], oldPath: string, newPath: string): string[] {
+  return history.map(p => p === oldPath ? newPath : p)
+}
+
+/**
+ * Finds the most recently viewed tab that exists in the given set of open paths.
+ * Returns undefined if no match found.
+ */
+export function findMostRecentTab(history: string[], openPaths: Set<string>): string | undefined {
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (openPaths.has(history[i])) return history[i]
+  }
+}
+
+/**
+ * Determines the next active tab after closing one or more tabs, using view history.
+ * Falls back to the first remaining tab if history has no match.
+ */
+export function nextActiveFromHistory<T extends BaseTab>(
+  history: string[],
+  remainingTabs: T[],
+): string | null {
+  if (remainingTabs.length === 0) return null
+  const openPaths = new Set(remainingTabs.map(f => f.path))
+  return findMostRecentTab(history, openPaths) ?? remainingTabs[0].path
+}
+
 /**
  * Updates properties of tabs matching the given path
  * @param openFiles - Current array of open tabs
