@@ -348,7 +348,7 @@
           STASHES ({{ stashList.length }})
         </button>
         <button @click="openClearStashesDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Clear All Stashes">
-          <Trash2 class="w-3 h-3 text-red-400" />
+          <Trash2 class="w-3 h-3 text-gray-400" />
         </button>
       </div>
       <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 px-2 pb-3">
