@@ -46,6 +46,15 @@ export interface Context {
   isPushing: boolean
   isPulling: boolean
   isGeneratingMessage: boolean
+  stashList: StashEntry[]
+  isStashing: boolean
+}
+
+export interface StashEntry {
+  index: number
+  ref: string
+  message: string
+  date: string
 }
 
 export type Event =
@@ -80,6 +89,14 @@ export type Event =
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
   | { type: 'commit.GENERATE_MESSAGE' }
   | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
+  | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
+  | { type: 'commit.STASH_LIST' }
+  | { type: 'commit.STASH_APPLY'; index: number }
+  | { type: 'commit.STASH_POP'; index: number }
+  | { type: 'commit.STASH_DROP'; index: number }
+  | { type: 'commit.STASH_CLEAR' }
+  | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
+  | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
   | { type: 'CODE_STARTUP' };
 
 export const commitState = setup({
@@ -333,7 +350,50 @@ export const commitState = setup({
       if (parentContext?.baseDirectory) {
         // Refresh git status when directory is available
         self.send({ type: 'commit.REFRESH_STATUS' })
+        sendToBackend('commit.STASH_LIST', {})
       }
+    },
+
+    stashPush: ({ event, context }) => {
+      const ev = event as { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
+      sendToBackend('commit.STASH_PUSH', { message: ev.message, stagedOnly: ev.stagedOnly })
+    },
+
+    setStashing: assign({ isStashing: true }),
+
+    requestStashList: () => {
+      sendToBackend('commit.STASH_LIST', {})
+    },
+
+    handleStashListReceived: assign({
+      stashList: ({ event }) => {
+        const ev = event as { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
+        return ev.data.stashes
+      }
+    }),
+
+    handleStashSuccess: assign({
+      isStashing: false,
+      commitMessage: ''
+    }),
+
+    stashApply: ({ event }) => {
+      const ev = event as { type: 'commit.STASH_APPLY'; index: number }
+      sendToBackend('commit.STASH_APPLY', { index: ev.index })
+    },
+
+    stashPop: ({ event }) => {
+      const ev = event as { type: 'commit.STASH_POP'; index: number }
+      sendToBackend('commit.STASH_POP', { index: ev.index })
+    },
+
+    stashDrop: ({ event }) => {
+      const ev = event as { type: 'commit.STASH_DROP'; index: number }
+      sendToBackend('commit.STASH_DROP', { index: ev.index })
+    },
+
+    stashClear: () => {
+      sendToBackend('commit.STASH_CLEAR', {})
     }
   }
 }).createMachine({
@@ -356,7 +416,9 @@ export const commitState = setup({
     commitsBehind: 0,
     isPushing: false,
     isPulling: false,
-    isGeneratingMessage: false
+    isGeneratingMessage: false,
+    stashList: [],
+    isStashing: false
   },
   states: {
     idle: {
@@ -453,6 +515,30 @@ export const commitState = setup({
         },
         'commit.MESSAGE_GENERATED': {
           actions: 'handleMessageGenerated'
+        },
+        'commit.STASH_PUSH': {
+          actions: ['setStashing', 'stashPush']
+        },
+        'commit.STASH_LIST': {
+          actions: 'requestStashList'
+        },
+        'commit.STASH_LIST_RECEIVED': {
+          actions: 'handleStashListReceived'
+        },
+        'commit.STASH_SUCCESS': {
+          actions: ['handleStashSuccess', 'refreshGitStatus']
+        },
+        'commit.STASH_APPLY': {
+          actions: 'stashApply'
+        },
+        'commit.STASH_POP': {
+          actions: 'stashPop'
+        },
+        'commit.STASH_DROP': {
+          actions: 'stashDrop'
+        },
+        'commit.STASH_CLEAR': {
+          actions: 'stashClear'
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

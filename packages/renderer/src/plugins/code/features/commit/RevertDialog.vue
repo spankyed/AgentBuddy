@@ -7,12 +7,15 @@
     >
       <div class="overflow-hidden border rounded-lg shadow-xl bg-neutral-900 border-neutral-700 w-96">
         <div class="p-4 border-b border-neutral-800">
-          <h3 class="text-lg font-semibold text-neutral-100">Discard Changes</h3>
+          <h3 class="text-lg font-semibold text-neutral-100">{{ customTitle || 'Discard Changes' }}</h3>
         </div>
-        
+
         <div class="p-4">
           <p class="mb-4 text-sm text-neutral-300">
-            <template v-if="fileCount != null && !file">
+            <template v-if="customMessage">
+              {{ customMessage }}
+            </template>
+            <template v-else-if="fileCount != null && !file">
               Are you sure you want to discard unstaged changes to <strong>{{ fileCount }} files</strong>?
             </template>
             <template v-else>
@@ -29,7 +32,7 @@
             This action cannot be undone.
           </p>
         </div>
-        
+
         <div class="flex justify-end gap-2 p-4 border-t border-neutral-800">
           <button
             @click="onCancel"
@@ -41,7 +44,7 @@
             @click="onConfirm"
             class="px-4 py-2 text-sm font-medium text-white transition-colors bg-red-600 rounded hover:bg-red-700"
           >
-            Discard Changes
+            {{ customTitle ? 'Confirm' : 'Discard Changes' }}
           </button>
         </div>
       </div>
@@ -53,10 +56,12 @@
 import { AlertCircle } from 'lucide-vue-next'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
-defineProps<{
+const props = defineProps<{
   show: boolean
   file: GitStatusFile | null
   fileCount?: number
+  customTitle?: string
+  customMessage?: string
 }>()
 
 const emit = defineEmits<{

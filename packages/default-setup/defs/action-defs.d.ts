@@ -579,6 +579,12 @@ interface GitDiff {
     originalContent?: string;
     modifiedContent?: string;
 }
+interface StashEntry {
+    index: number;
+    ref: string;
+    message: string;
+    date: string;
+}
 interface TerminalInfo {
     id: EARS.EntityId;
     title: string;
@@ -2950,6 +2956,75 @@ declare const events: {
         type: "commit.GENERATE_MESSAGE";
         systemId: "code";
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.STASH_PUSH">;
+        systemId: zod.ZodLiteral<"code">;
+        message: zod.ZodOptional<zod.ZodString>;
+        stagedOnly: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.STASH_PUSH";
+        systemId: "code";
+        message?: string | undefined;
+        stagedOnly?: boolean | undefined;
+    }, {
+        type: "commit.STASH_PUSH";
+        systemId: "code";
+        message?: string | undefined;
+        stagedOnly?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.STASH_LIST">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.STASH_LIST";
+        systemId: "code";
+    }, {
+        type: "commit.STASH_LIST";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.STASH_APPLY">;
+        systemId: zod.ZodLiteral<"code">;
+        index: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.STASH_APPLY";
+        systemId: "code";
+        index: number;
+    }, {
+        type: "commit.STASH_APPLY";
+        systemId: "code";
+        index: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.STASH_POP">;
+        systemId: zod.ZodLiteral<"code">;
+        index: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.STASH_POP";
+        systemId: "code";
+        index: number;
+    }, {
+        type: "commit.STASH_POP";
+        systemId: "code";
+        index: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.STASH_DROP">;
+        systemId: zod.ZodLiteral<"code">;
+        index: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.STASH_DROP";
+        systemId: "code";
+        index: number;
+    }, {
+        type: "commit.STASH_DROP";
+        systemId: "code";
+        index: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.STASH_CLEAR">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.STASH_CLEAR";
+        systemId: "code";
+    }, {
+        type: "commit.STASH_CLEAR";
+        systemId: "code";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"pr.GET_BASE_BRANCH">;
         systemId: zod.ZodLiteral<"code">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -4143,6 +4218,18 @@ declare const events: {
         pluginId: "code";
     } | {
         type: "commit.MESSAGE_GENERATED";
+        data: {
+            message: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "commit.STASH_LIST_RECEIVED";
+        data: {
+            stashes: StashEntry[];
+        };
+        pluginId: "code";
+    } | {
+        type: "commit.STASH_SUCCESS";
         data: {
             message: string;
         };

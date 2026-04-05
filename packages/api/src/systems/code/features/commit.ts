@@ -5,7 +5,7 @@ import { systemBus } from '@/core/helpers/event-helpers'
 import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
-import { GitStatusFile, GitDiff } from '../types'
+import { GitStatusFile, GitDiff, StashEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
 import * as copilotCli from '../services/copilot-cli'
 
@@ -27,6 +27,12 @@ export const IncomingCommitEvents = [
   busEvent('commit.PUBLISH_BRANCH', {}),
   busEvent('commit.PULL_BRANCH', {}),
   busEvent('commit.GENERATE_MESSAGE', {}),
+  busEvent('commit.STASH_PUSH', { message: z.string().optional(), stagedOnly: z.boolean().optional() }),
+  busEvent('commit.STASH_LIST', {}),
+  busEvent('commit.STASH_APPLY', { index: z.number() }),
+  busEvent('commit.STASH_POP', { index: z.number() }),
+  busEvent('commit.STASH_DROP', { index: z.number() }),
+  busEvent('commit.STASH_CLEAR', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -45,6 +51,8 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
   | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
+  | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
+  | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -65,6 +73,12 @@ export type Event =
   | { type: 'commit.PUBLISH_BRANCH' }
   | { type: 'commit.PULL_BRANCH' }
   | { type: 'commit.GENERATE_MESSAGE' }
+  | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
+  | { type: 'commit.STASH_LIST' }
+  | { type: 'commit.STASH_APPLY'; index: number }
+  | { type: 'commit.STASH_POP'; index: number }
+  | { type: 'commit.STASH_DROP'; index: number }
+  | { type: 'commit.STASH_CLEAR' }
   | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
@@ -549,6 +563,125 @@ export const commitSystem = setup({
 
     selfRefreshGitStatus: ({ self }) => {
       self.send({ type: 'commit.GET_GIT_STATUS' })
+    },
+
+    stashPush: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        const result = await context.gitRepository.stashPush(ev.message, ev.stagedOnly)
+        const wrapped = emit(pluginId, {
+          type: 'commit.STASH_SUCCESS',
+          data: { message: result }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+        self.send({ type: 'commit.STASH_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    stashList: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+
+      try {
+        const stashes = await context.gitRepository.stashList()
+        const wrapped = emit(pluginId, {
+          type: 'commit.STASH_LIST_RECEIVED',
+          data: { stashes }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    stashApply: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.STASH_APPLY'; index: number }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.stashApply(ev.index)
+        const wrapped = emit(pluginId, {
+          type: 'commit.STASH_SUCCESS',
+          data: { message: 'Stash applied successfully' }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    stashPop: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.STASH_POP'; index: number }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.stashPop(ev.index)
+        const wrapped = emit(pluginId, {
+          type: 'commit.STASH_SUCCESS',
+          data: { message: 'Stash popped successfully' }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+        self.send({ type: 'commit.STASH_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    stashDrop: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.STASH_DROP'; index: number }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.stashDrop(ev.index)
+        self.send({ type: 'commit.STASH_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    stashClear: async ({ context, self }) => {
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.stashClear()
+        self.send({ type: 'commit.STASH_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
     }
   }
 }).createMachine({
@@ -611,6 +744,24 @@ export const commitSystem = setup({
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
+        },
+        'commit.STASH_PUSH': {
+          actions: 'stashPush'
+        },
+        'commit.STASH_LIST': {
+          actions: 'stashList'
+        },
+        'commit.STASH_APPLY': {
+          actions: 'stashApply'
+        },
+        'commit.STASH_POP': {
+          actions: 'stashPop'
+        },
+        'commit.STASH_DROP': {
+          actions: 'stashDrop'
+        },
+        'commit.STASH_CLEAR': {
+          actions: 'stashClear'
         }
       }
     }

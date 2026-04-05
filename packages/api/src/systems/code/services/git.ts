@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import { GitStatusFile } from '../types'
+import { GitStatusFile, StashEntry } from '../types'
 
 const execFileAsync = promisify(execFile)
 
@@ -900,5 +900,73 @@ export class GitRepository {
     
     // Clear cache after pulling
     this.clearCache()
+  }
+
+  // --- Stash operations ---
+
+  async stashPush(message?: string, stagedOnly?: boolean): Promise<string> {
+    const args = ['stash', 'push']
+    if (message) {
+      args.push('-m', message)
+    }
+    if (stagedOnly) {
+      args.push('--staged')
+    }
+    const result = await this.executeGitCommand(args)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to stash changes')
+    }
+    this.clearCache()
+    return result.output || 'Changes stashed'
+  }
+
+  async stashList(): Promise<StashEntry[]> {
+    const result = await this.executeGitCommand(['stash', 'list', '--format=%gd|||%s|||%ai'])
+    if (!result.success) {
+      // Empty stash list is not an error
+      if (result.error?.includes('unknown revision')) return []
+      throw new Error(result.error || 'Failed to list stashes')
+    }
+    if (!result.output?.trim()) return []
+
+    return result.output.trim().split('\n').map((line, i) => {
+      const parts = line.split('|||')
+      return {
+        index: i,
+        ref: parts[0] || `stash@{${i}}`,
+        message: parts[1] || '',
+        date: parts[2] || ''
+      }
+    })
+  }
+
+  async stashApply(index: number): Promise<void> {
+    const result = await this.executeGitCommand(['stash', 'apply', `stash@{${index}}`])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to apply stash')
+    }
+    this.clearCache()
+  }
+
+  async stashPop(index: number): Promise<void> {
+    const result = await this.executeGitCommand(['stash', 'pop', `stash@{${index}}`])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to pop stash')
+    }
+    this.clearCache()
+  }
+
+  async stashDrop(index: number): Promise<void> {
+    const result = await this.executeGitCommand(['stash', 'drop', `stash@{${index}}`])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to drop stash')
+    }
+  }
+
+  async stashClear(): Promise<void> {
+    const result = await this.executeGitCommand(['stash', 'clear'])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to clear stashes')
+    }
   }
 }

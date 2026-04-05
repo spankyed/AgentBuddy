@@ -93,6 +93,13 @@ export interface GitDiff {
   modifiedContent?: string
 }
 
+export interface StashEntry {
+  index: number
+  ref: string
+  message: string
+  date: string
+}
+
 // Terminal types
 export interface TerminalInfo {
   id: EARS.EntityId

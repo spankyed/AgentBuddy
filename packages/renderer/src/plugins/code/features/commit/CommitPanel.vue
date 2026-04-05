@@ -149,20 +149,52 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="text-sm text-neutral-400">Commit Message</label>
-          <button
-            @click="generateMessage"
-            :disabled="isGeneratingMessage || gitStatus.length === 0"
-            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Generate commit message with AI"
-          >
-            <Sparkles v-if="!isGeneratingMessage" :size="14" />
-            <Loader2 v-else :size="14" class="animate-spin" />
-          </button>
+          <div class="flex items-center gap-0.5">
+            <button
+              @click="generateMessage"
+              :disabled="isGeneratingMessage || gitStatus.length === 0"
+              class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Generate commit message with AI"
+            >
+              <Sparkles v-if="!isGeneratingMessage" :size="14" />
+              <Loader2 v-else :size="14" class="animate-spin" />
+            </button>
+            <div class="relative">
+              <button
+                @click="showStashMenu = !showStashMenu"
+                @blur="hideStashMenu"
+                :disabled="gitStatus.length === 0 && !isStashing"
+                class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="More actions"
+              >
+                <Loader2 v-if="isStashing" :size="14" class="animate-spin" />
+                <MoreVertical v-else :size="14" />
+              </button>
+              <div
+                v-if="showStashMenu"
+                class="absolute right-0 z-10 mt-1 w-44 bg-neutral-900 border border-neutral-700 rounded shadow-lg"
+              >
+                <button
+                  @mousedown.prevent="stashAll"
+                  class="w-full px-3 py-2 text-left text-xs text-neutral-300 hover:bg-neutral-800 transition-colors"
+                >
+                  Stash All Changes
+                </button>
+                <button
+                  @mousedown.prevent="stashStaged"
+                  :disabled="stagedFiles.length === 0"
+                  class="w-full px-3 py-2 text-left text-xs text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Stash Staged Only
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <textarea
           v-model="commitMessage"
           @input="updateCommitMessage"
-          placeholder="Enter commit message..."
+          :placeholder="`Message (currently on ${gitBranch || 'unknown'})`"
           class="w-full px-3 py-2 text-sm border rounded resize-none bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
           rows="3"
         />
@@ -306,6 +338,68 @@
         </div>
       </div>
     </div>
+
+    <!-- Stashes Section (pinned to bottom) -->
+    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+      <div class="flex items-center justify-between px-5 py-2">
+        <button @click="isStashesExpanded = !isStashesExpanded" class="flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-300">
+          <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
+          <ChevronDown v-else class="w-3 h-3" />
+          STASHES ({{ stashList.length }})
+        </button>
+        <button @click="openClearStashesDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Clear All Stashes">
+          <Trash2 class="w-3 h-3 text-red-400" />
+        </button>
+      </div>
+      <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 px-3 pb-2">
+        <div class="space-y-1">
+          <div
+            v-for="stash in stashList"
+            :key="stash.ref"
+            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-neutral-300 truncate">{{ stash.ref }}</div>
+                <div v-if="stash.message" class="text-xs text-neutral-500 truncate">{{ stash.message }}</div>
+              </div>
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
+                <button @click="applyStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Apply (keep stash)">
+                  <Play class="w-3 h-3 text-neutral-400" />
+                </button>
+                <button @click="popStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Pop (apply & remove)">
+                  <PackageCheck class="w-3 h-3 text-green-400" />
+                </button>
+                <button @click="openDropStashDialog(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Drop (delete)">
+                  <Trash2 class="w-3 h-3 text-red-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop Stash Dialog -->
+    <RevertDialog
+      :show="showDropStashDialog"
+      :file="null"
+      :customTitle="'Drop Stash'"
+      :customMessage="'Are you sure you want to drop this stash? This action cannot be undone.'"
+      @confirm="confirmDropStash"
+      @cancel="cancelDropStash"
+    />
+
+    <!-- Clear All Stashes Dialog -->
+    <RevertDialog
+      :show="showClearStashesDialog"
+      :file="null"
+      :customTitle="'Clear All Stashes'"
+      :customMessage="'Are you sure you want to clear all stashes? This action cannot be undone.'"
+      @confirm="confirmClearStashes"
+      @cancel="cancelClearStashes"
+    />
+
     </template>
   </div>
 </template>
@@ -316,7 +410,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, MoreVertical, Play, PackageCheck, Trash2 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
@@ -343,6 +437,8 @@ const commitsBehind = useSelector(commitActor, (state: any) => state.context.com
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
 const isPulling = useSelector(commitActor, (state: any) => state.context.isPulling)
 const isGeneratingMessage = useSelector(commitActor, (state: any) => state.context.isGeneratingMessage)
+const stashList = useSelector(commitActor, (state: any) => state.context.stashList)
+const isStashing = useSelector(commitActor, (state: any) => state.context.isStashing)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 // Local state
@@ -351,6 +447,11 @@ const showBranchDropdown = ref(false)
 const isCreatingBranch = ref(false)
 const newBranchName = ref('')
 const newBranchInput = ref<HTMLInputElement | null>(null)
+const showStashMenu = ref(false)
+const isStashesExpanded = ref(false)
+const showDropStashDialog = ref(false)
+const pendingDropIndex = ref<number | null>(null)
+const showClearStashesDialog = ref(false)
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
@@ -522,6 +623,62 @@ const cancelCreateBranch = () => {
   newBranchName.value = ''
 }
 
+// Stash handlers
+const hideStashMenu = () => {
+  setTimeout(() => {
+    showStashMenu.value = false
+  }, 200)
+}
+
+const stashAll = () => {
+  showStashMenu.value = false
+  commitActor?.send({ type: 'commit.STASH_PUSH', message: commitMessage.value || undefined, stagedOnly: false })
+}
+
+const stashStaged = () => {
+  showStashMenu.value = false
+  commitActor?.send({ type: 'commit.STASH_PUSH', message: commitMessage.value || undefined, stagedOnly: true })
+}
+
+const applyStash = (index: number) => {
+  commitActor?.send({ type: 'commit.STASH_APPLY', index })
+}
+
+const popStash = (index: number) => {
+  commitActor?.send({ type: 'commit.STASH_POP', index })
+}
+
+const openDropStashDialog = (index: number) => {
+  pendingDropIndex.value = index
+  showDropStashDialog.value = true
+}
+
+const confirmDropStash = () => {
+  if (pendingDropIndex.value !== null) {
+    commitActor?.send({ type: 'commit.STASH_DROP', index: pendingDropIndex.value })
+  }
+  showDropStashDialog.value = false
+  pendingDropIndex.value = null
+}
+
+const cancelDropStash = () => {
+  showDropStashDialog.value = false
+  pendingDropIndex.value = null
+}
+
+const openClearStashesDialog = () => {
+  showClearStashesDialog.value = true
+}
+
+const confirmClearStashes = () => {
+  commitActor?.send({ type: 'commit.STASH_CLEAR' })
+  showClearStashesDialog.value = false
+}
+
+const cancelClearStashes = () => {
+  showClearStashesDialog.value = false
+}
+
 const hideBranchDropdown = () => {
   // Small delay to allow click events to fire
   setTimeout(() => {
@@ -576,7 +733,8 @@ const getStatusColor = (status: GitStatusFile['status']) => {
 // Trigger initial load when panel is mounted
 // Git watcher will handle subsequent updates
 refreshStatus()
-// Also get available branches
+// Also get available branches and stash list
 commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
+commitActor?.send({ type: 'commit.STASH_LIST' })
 </script>
 
