@@ -51,7 +51,7 @@
                   :side-offset="4"
                 >
                   <template v-for="({ project }, idx) in allProjects" :key="project.name">
-                    <DropdownMenuSeparator v-if="idx > 0" class="h-px my-1 bg-neutral-700" />
+                    <DropdownMenuSeparator v-if="Number(idx) > 0" class="h-px my-1 bg-neutral-700" />
                     <DropdownMenuLabel class="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-neutral-400">
                       <div
                         class="w-2 h-2 rounded-full flex-shrink-0"

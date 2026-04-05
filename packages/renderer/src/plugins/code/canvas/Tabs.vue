@@ -397,6 +397,7 @@ const emit = defineEmits<{
   'pin-group': [groupId: string]
   'unpin-group': [groupId: string]
   'rename-terminal': [path: string, customTitle: string]
+  'kill-terminal': [path: string]
 }>()
 
 // Categorize tabs using utility function - must be reactive!

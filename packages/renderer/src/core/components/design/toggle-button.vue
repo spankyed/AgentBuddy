@@ -11,7 +11,6 @@
 
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { defineEmits } from 'vue'
 
 const props = defineProps<{
   active?: boolean

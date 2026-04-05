@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, withDefaults } from 'vue';
+import { ref } from 'vue';
 import { ChevronRight, Copy, Check, Maximize2 } from 'lucide-vue-next';
 import JsonViewerDialog from './components/json-viewer-dialog.vue';
 

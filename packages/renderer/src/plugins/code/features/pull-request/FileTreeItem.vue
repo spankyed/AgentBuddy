@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, withDefaults, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ChevronRight, Folder, FileCode, File } from 'lucide-vue-next'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 
