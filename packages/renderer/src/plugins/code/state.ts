@@ -215,6 +215,7 @@ const codeState = setup({
     notifyDirectoryChange: ({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
+        console.log('[Code] notifyDirectoryChange — sending lsp.INIT with:', ev.updates.baseDirectory, 'lspActor:', !!system.get('lsp'))
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
         system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
@@ -507,8 +508,10 @@ const codeState = setup({
 
     initializeLsp: ({ event, system }) => {
       const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } }
+      const lspActor = system.get('lsp')
+      console.log('[Code] initializeLsp — baseDirectory:', ev.data.baseDirectory, 'lspActor:', !!lspActor)
       if (ev.data.baseDirectory) {
-        system.get('lsp')?.send({ type: 'lsp.INIT', baseDirectory: ev.data.baseDirectory })
+        lspActor?.send({ type: 'lsp.INIT', baseDirectory: ev.data.baseDirectory })
       }
     },
 
