@@ -5,10 +5,12 @@ import type {
   Hover,
   Location,
   SignatureHelp,
+  Diagnostic,
+} from 'vscode-languageserver-types'
+import type {
   ClientCapabilities,
   ServerCapabilities,
-  Diagnostic,
-} from './lsp-types'
+} from 'vscode-languageserver-protocol'
 
 type DiagnosticsCallback = (uri: string, diagnostics: Diagnostic[]) => void
 type LogCallback = (message: string) => void

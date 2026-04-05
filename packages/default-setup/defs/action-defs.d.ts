@@ -3145,6 +3145,45 @@ declare const events: {
         promptId: string;
         templateFn: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"lsp.TO_SERVER">;
+        systemId: zod.ZodLiteral<"code">;
+        serverId: zod.ZodString;
+        message: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "lsp.TO_SERVER";
+        systemId: "code";
+        message: string;
+        serverId: string;
+    }, {
+        type: "lsp.TO_SERVER";
+        systemId: "code";
+        message: string;
+        serverId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"lsp.START_SERVER">;
+        systemId: zod.ZodLiteral<"code">;
+        languageId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "lsp.START_SERVER";
+        systemId: "code";
+        languageId: string;
+    }, {
+        type: "lsp.START_SERVER";
+        systemId: "code";
+        languageId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"lsp.STOP_SERVER">;
+        systemId: zod.ZodLiteral<"code">;
+        serverId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "lsp.STOP_SERVER";
+        systemId: "code";
+        serverId: string;
+    }, {
+        type: "lsp.STOP_SERVER";
+        systemId: "code";
+        serverId: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SET_BASE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
@@ -4245,6 +4284,42 @@ declare const events: {
         data: {
             message: string;
         };
+        pluginId: "code";
+    } | {
+        type: "lsp.FROM_SERVER";
+        data: {
+            serverId: string;
+            message: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "lsp.SERVER_STARTED";
+        data: {
+            serverId: string;
+            languageId: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "lsp.SERVER_STOPPED";
+        data: {
+            serverId: string;
+            languageId: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "lsp.SERVER_ERROR";
+        data: {
+            serverId: string;
+            error: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "lsp.SERVERS_LISTED";
+        data: Array<{
+            serverId: string;
+            languageId: string;
+            status: string;
+        }>;
         pluginId: "code";
     } | {
         type: "CODE_CONNECTED";

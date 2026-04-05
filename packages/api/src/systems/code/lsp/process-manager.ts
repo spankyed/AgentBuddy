@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { randomUUID } from 'crypto'
 import { createLogger } from '@/core/helpers/debug/logger'
+import { StreamMessageReader, type Disposable } from 'vscode-jsonrpc/node.js'
 import type { LanguageServerConfig } from './config'
 
 const logger = createLogger('LspService')
@@ -13,7 +14,8 @@ interface LanguageServer {
   process: ChildProcess
   serverId: string
   status: 'starting' | 'running' | 'stopped' | 'error'
-  messageBuffer: Buffer
+  reader: StreamMessageReader | null
+  readerDisposable: Disposable | null
   messageCallback?: (message: string) => void
   errorCallback?: (error: string) => void
   exitCallback?: (code: number | null) => void
@@ -49,20 +51,29 @@ class LspService {
       throw new Error(`Failed to spawn language server "${command}": ${err.message}`)
     }
 
+    // Set up StreamMessageReader for stdout (handles Content-Length framing)
+    const reader = child.stdout ? new StreamMessageReader(child.stdout) : null
+
     const server: LanguageServer = {
       config,
       process: child,
       serverId,
       status: 'starting',
-      messageBuffer: Buffer.alloc(0),
+      reader,
+      readerDisposable: null,
     }
 
     this.servers.set(serverId, server)
 
-    // Handle stdout — JSON-RPC framing with Content-Length headers
-    child.stdout?.on('data', (chunk: Buffer) => {
-      this.handleStdoutData(serverId, chunk)
-    })
+    // Listen for parsed JSON-RPC messages from stdout
+    if (reader) {
+      server.readerDisposable = reader.listen((message) => {
+        server.messageCallback?.(JSON.stringify(message))
+      })
+      reader.onError((error) => {
+        logger.warn(`[${config.id}] reader error: ${error.message}`)
+      })
+    }
 
     // Handle stderr — log as warnings
     child.stderr?.on('data', (chunk: Buffer) => {
@@ -147,6 +158,8 @@ class LspService {
 
     logger.info(`Killing language server ${server.config.id} (${serverId})`)
     server.status = 'stopped'
+    server.readerDisposable?.dispose()
+    server.reader?.dispose()
 
     try {
       // Try graceful shutdown first
@@ -193,53 +206,6 @@ class LspService {
     return null
   }
 
-  /**
-   * Parse JSON-RPC messages from stdout using Content-Length framing.
-   * Messages arrive as: Content-Length: N\r\n\r\n{...json...}
-   * Operates on raw Buffers to avoid corrupting multi-byte UTF-8 sequences
-   * that may be split across chunks.
-   */
-  private handleStdoutData(serverId: string, chunk: Buffer): void {
-    const server = this.servers.get(serverId)
-    if (!server) return
-
-    server.messageBuffer = Buffer.concat([server.messageBuffer, chunk])
-
-    const headerDelimiter = Buffer.from(HEADER_DELIMITER)
-
-    while (true) {
-      // Look for the header delimiter in raw bytes
-      const headerEnd = server.messageBuffer.indexOf(headerDelimiter)
-      if (headerEnd === -1) break
-
-      // Extract and parse the header section (ASCII-safe)
-      const headerSection = server.messageBuffer.subarray(0, headerEnd).toString('utf-8')
-      const contentLengthMatch = headerSection.match(/Content-Length:\s*(\d+)/i)
-      if (!contentLengthMatch) {
-        // Malformed header — skip past the delimiter and try again
-        logger.warn(`[${server.config.id}] Malformed LSP header: ${headerSection}`)
-        server.messageBuffer = server.messageBuffer.subarray(headerEnd + headerDelimiter.length)
-        continue
-      }
-
-      const contentLength = parseInt(contentLengthMatch[1], 10)
-      const messageStart = headerEnd + headerDelimiter.length
-
-      // Check if we have the full message body (byte-accurate)
-      if (server.messageBuffer.length - messageStart < contentLength) {
-        break
-      }
-
-      // Extract the message body and decode to string only now
-      const messageBody = server.messageBuffer.subarray(messageStart, messageStart + contentLength).toString('utf-8')
-
-      // Advance buffer past this message
-      server.messageBuffer = server.messageBuffer.subarray(messageStart + contentLength)
-
-      // Fire the callback
-      server.messageCallback?.(messageBody)
-    }
-  }
 }
 
 export const lspService = new LspService()

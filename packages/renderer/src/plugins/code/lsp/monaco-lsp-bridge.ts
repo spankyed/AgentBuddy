@@ -14,7 +14,7 @@ import {
   type SignatureHelp,
   type TextEdit,
   type InsertReplaceEdit,
-} from './lsp-types'
+} from 'vscode-languageserver-types'
 
 type Monaco = typeof import('monaco-editor')
 
