@@ -34,10 +34,12 @@ export class MonacoLspBridge {
   constructor(
     private monaco: Monaco,
     private client: LspClient,
-    supportedLanguages: string[]
+    supportedLanguages: string[],
+    private onOpenFile?: (filePath: string, line?: number, column?: number) => void
   ) {
     this.supportedLanguages = supportedLanguages
     this.registerProviders()
+    this.registerEditorOpener()
     this.client.onDiagnostics((uri, diagnostics) => this.applyDiagnostics(uri, diagnostics))
   }
 
@@ -47,6 +49,33 @@ export class MonacoLspBridge {
    */
   start(): void {
     this.trackModels()
+  }
+
+  private registerEditorOpener(): void {
+    if (!this.onOpenFile) return
+
+    this.disposables.push(
+      this.monaco.editor.registerEditorOpener({
+        openCodeEditor: (_source, resource, selectionOrPosition) => {
+          if (resource.scheme !== 'file' || !this.onOpenFile) return false
+
+          let line: number | undefined
+          let column: number | undefined
+          if (selectionOrPosition) {
+            if ('startLineNumber' in selectionOrPosition) {
+              line = selectionOrPosition.startLineNumber
+              column = selectionOrPosition.startColumn
+            } else {
+              line = selectionOrPosition.lineNumber
+              column = selectionOrPosition.column
+            }
+          }
+
+          this.onOpenFile(resource.path, line, column)
+          return true
+        }
+      })
+    )
   }
 
   private isFileUri(uri: Uri): boolean {

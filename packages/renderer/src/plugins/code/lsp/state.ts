@@ -93,7 +93,7 @@ export const lspState = setup({
 
     handleInitialized: assign(() => ({ handshakeComplete: true })),
 
-    attemptBridgeCreation: assign(({ context }) => {
+    attemptBridgeCreation: assign(({ context, self }) => {
       if (!context.lspClient || !context.handshakeComplete) return {}
       if (context.monacoLspBridge) return {} // already created
       const monaco = (window as any).monaco as Monaco
@@ -101,7 +101,15 @@ export const lspState = setup({
 
       disableBuiltinTsDiagnostics(monaco)
       const supportedLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact']
-      const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages)
+      const bridge = new MonacoLspBridge(monaco, context.lspClient, supportedLanguages, (filePath, line, column) => {
+        // Access the parent code plugin's explorer actor to open files
+        try {
+          const explorerActor = (self as any)._parent?.system?.get('explorer')
+          explorerActor?.send({ type: 'explorer.OPEN_FILE', path: filePath, line, column })
+        } catch {
+          sendToBackend('explorer.READ_FILE', { path: filePath })
+        }
+      })
       bridge.start()
 
       return { monacoLspBridge: bridge, initialized: true }
