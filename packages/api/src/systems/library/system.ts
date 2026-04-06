@@ -10,6 +10,7 @@ import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
 import * as path from 'path'
 import * as os from 'os'
+import * as fs from 'fs/promises'
 import { libraryService } from '@/services/library'
 import * as symlink from './repository/symlink'
 import type { MergeReceivable } from '@/core/helpers/event-helpers'
@@ -200,6 +201,10 @@ const IncomingLibraryEvents = [
     symlinkPath: z.string(),
     parentId: z.string().optional(),
   }),
+  busEvent('UPDATE_SYMLINK_PATH', {
+    collectionId: z.string(),
+    newPath: z.string(),
+  }),
   // Import/Export events
   busEvent('IMPORT_LIBRARY', { directory: z.string() }),
   busEvent('EXPORT_LIBRARY', { directory: z.string(), format: z.enum(['markdown', 'json']) }),
@@ -217,6 +222,8 @@ export type OutgoingLibraryEvents =
   | { type: 'COLLECTION_UPDATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_DELETED'; data: { collectionId: string } }
   | { type: 'LIBRARY_ERROR'; data: { error: string } }
+  // Symlink events
+  | { type: 'SYMLINK_UPDATED'; data: { collection: CollectionDTO } }
   // File browser events
   | { type: 'FOLDER_CONTENTS_LOADED'; data: FolderContents }
   | { type: 'NAVIGATION_CHANGED'; data: { folderId: string | null; path: string[] } }
@@ -242,6 +249,13 @@ type LibraryInternalEvents =
   | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
 type ReceivableEvents = MergeReceivable<typeof IncomingLibraryEvents, LibraryInternalEvents>
 const typeOf = safeEvents<ReceivableEvents>()
+
+function resolveHomePath(inputPath: string): string {
+  const trimmed = inputPath.trim()
+  if (trimmed.startsWith('~/')) return path.join(os.homedir(), trimmed.slice(2))
+  if (trimmed === '~') return os.homedir()
+  return trimmed
+}
 
 export const librarySystem = setup({
   types: {
@@ -425,18 +439,18 @@ export const librarySystem = setup({
       // Run migrations
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
-      
+
       const documents = repository.libraryQueries.getDocuments()
       const collections = repository.libraryQueries.getCollections()
       const librarySettings = repository.settingsQueries.getPluginSettings('library')
-      
+
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
           type: 'LIBRARY_CONNECTED' as const,
           pluginId: 'library',
-          data: { 
-            documents, 
+          data: {
+            documents,
             collections,
             settings: librarySettings || null
           },
@@ -607,12 +621,7 @@ export const librarySystem = setup({
     // Symlink actions
     createSymlinkCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_SYMLINK_COLLECTION'; name: string; symlinkPath: string; parentId?: string }
-      let resolvedPath = ev.symlinkPath.trim()
-      if (resolvedPath.startsWith('~/')) {
-        resolvedPath = path.join(os.homedir(), resolvedPath.slice(2))
-      } else if (resolvedPath === '~') {
-        resolvedPath = os.homedir()
-      }
+      const resolvedPath = resolveHomePath(ev.symlinkPath)
       const collection = repository.libraryCommands.createSymlinkCollection(
         ev.name,
         resolvedPath,
@@ -622,6 +631,41 @@ export const librarySystem = setup({
         type: 'OUTGOING' as const,
         event: {
           type: 'COLLECTION_CREATED' as const,
+          pluginId: 'library',
+          data: { collection },
+        },
+      })
+
+    },
+    updateSymlinkPath: async ({ system, event }) => {
+      const ev = event as { type: 'UPDATE_SYMLINK_PATH'; collectionId: string; newPath: string }
+      const resolvedPath = resolveHomePath(ev.newPath)
+
+      // Validate the new path exists and is a directory
+      try {
+        const stat = await fs.stat(resolvedPath)
+        if (!stat.isDirectory()) throw new Error('Not a directory')
+      } catch {
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_ERROR' as const,
+            pluginId: 'library',
+            data: { error: `Path does not exist: ${resolvedPath}` },
+          },
+        })
+        return
+      }
+
+      const collection = repository.libraryCommands.updateSymlinkPath(
+        ev.collectionId as EARS.EntityId,
+        resolvedPath
+      )
+
+      system.get(bus).send({
+        type: 'OUTGOING' as const,
+        event: {
+          type: 'SYMLINK_UPDATED' as const,
           pluginId: 'library',
           data: { collection },
         },
@@ -826,6 +870,9 @@ export const librarySystem = setup({
         // Symlink events
         CREATE_SYMLINK_COLLECTION: {
           actions: ['createSymlinkCollection'],
+        },
+        UPDATE_SYMLINK_PATH: {
+          actions: ['updateSymlinkPath'],
         },
         // Import/Export events
         IMPORT_LIBRARY: {

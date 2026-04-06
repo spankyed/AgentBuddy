@@ -215,8 +215,20 @@
       </div>
     </div>
 
+    <!-- Broken Symlink View -->
+    <BrokenSymlinkView
+      v-if="isBroken"
+      :last-known-path="lastKnownPath || null"
+      :collection-id="currentSymlinkRootId || currentFolderId"
+      @relink="(payload) => emit('RELINK_SYMLINK', payload)"
+      @remove="() => {
+        const collId = currentSymlinkRootId || currentFolderId
+        if (collId) emit('REMOVE_BROKEN_SYMLINK', { collectionId: collId })
+      }"
+    />
+
     <!-- File Table -->
-    <div class="flex-1 overflow-hidden" @click="handleTableContainerClick">
+    <div v-else class="flex-1 overflow-hidden" @click="handleTableContainerClick">
       <div class="h-full overflow-y-auto overflow-x-auto custom-scrollbar" @click="handleScrollAreaClick">
         <table class="w-full min-w-[480px]"  data-onboarding-id="library-table">
           <thead class="sticky top-0 z-10 bg-neutral-900 shadow-[inset_0_-1px_0_0_theme(colors.neutral.800)]">
@@ -297,6 +309,7 @@ import {
 } from 'reka-ui'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import BrokenSymlinkView from './BrokenSymlinkView.vue'
 import TableHeader from './TableHeader.vue'
 import TreeTableRow from './TreeTableRow.vue'
 import type { LibraryItem, BreadcrumbItem } from '@app/api'
@@ -320,6 +333,8 @@ const props = defineProps<{
   isInSymlinkContext: boolean
   currentSymlinkRootId?: string | null
   symlinkBasePath?: string | null
+  isBroken?: boolean
+  lastKnownPath?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -343,6 +358,8 @@ const emit = defineEmits<{
   CREATE_SYMLINK: [{ symlinkPath: string }]
   CREATE_SYMLINK_FILE: [{ name: string }]
   CREATE_SYMLINK_FOLDER: [{ name: string }]
+  RELINK_SYMLINK: [{ collectionId: string; newPath: string }]
+  REMOVE_BROKEN_SYMLINK: [{ collectionId: string }]
 }>()
 
 // Composables
@@ -398,6 +415,7 @@ provide('tree-collapse-folder', (folderId: string) => emit('COLLAPSE_FOLDER', { 
 provide('tree-rename-item', (item: LibraryItem) => renameItem(item))
 provide('tree-delete-item', (item: LibraryItem) => deleteItem(item))
 provide('tree-refresh-folder', (folderId: string) => emit('REFRESH_FOLDER', { folderId }))
+provide('tree-relink-symlink', (collectionId: string, newPath: string) => emit('RELINK_SYMLINK', { collectionId, newPath }))
 provide('tree-copy-folder-path', (item: LibraryItem) => {
   const fullPath = getSymlinkItemFullPath(item)
   if (fullPath) navigator.clipboard.writeText(fullPath)

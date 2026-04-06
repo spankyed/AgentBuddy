@@ -1,3 +1,4 @@
+import * as path from 'path'
 import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
 import { edgeStore } from '@/core/ears/helpers/edge-store'
@@ -482,6 +483,32 @@ export const libraryCommands = {
       displayOrder,
       createdAt: new Date(now).toISOString(),
       updatedAt: new Date(now).toISOString(),
+      symlinkPath,
+    }
+  },
+
+  updateSymlinkPath(collectionId: EARS.EntityId, newPath: string): CollectionDTO {
+    const now = Date.now()
+    const newName = path.basename(newPath) || 'Symlink'
+    tx(collectionId).update('symlinkPath', newPath)
+    tx(collectionId).update('name', newName)
+    tx(collectionId).update('updatedAt', now)
+
+    const col = qx(collectionId).pickAll()[0]
+    const colPath = getCollectionPath(collectionId)
+    const parentId = findParentCollection(collectionId) || undefined
+
+    return {
+      id: collectionId,
+      name: newName,
+      parentId,
+      path: colPath,
+      documentCount: 0,
+      childCollections: [],
+      displayOrder: (col.displayOrder as number) || 0,
+      createdAt: new Date(col.createdAt as number).toISOString(),
+      updatedAt: new Date(now).toISOString(),
+      symlinkPath: newPath,
     }
   },
 

@@ -62,6 +62,8 @@ const currentProps = computed(() => {
         isInSymlinkContext: context.value.isInSymlinkContext,
         currentSymlinkRootId: context.value.currentSymlinkRootId,
         symlinkBasePath: context.value.symlinkBasePath,
+        isBroken: context.value.isBroken,
+        lastKnownPath: context.value.lastKnownPath,
       }
     case 'create':
       return {
@@ -143,6 +145,13 @@ const currentEvents = computed(() => {
     },
     REFRESH_FOLDER: (payload: { folderId: string }) => {
       send({ type: 'REFRESH_FOLDER', ...payload })
+    },
+    RELINK_SYMLINK: (payload: { collectionId: string; newPath: string }) => {
+      send({ type: 'RELINK_SYMLINK', ...payload })
+    },
+    REMOVE_BROKEN_SYMLINK: (payload: { collectionId: string }) => {
+      send({ type: 'REMOVE_BROKEN_SYMLINK', ...payload } as any)
+      send({ type: 'NAVIGATE_TO_FOLDER', folderId: null })
     },
   }
 

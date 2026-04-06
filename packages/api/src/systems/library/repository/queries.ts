@@ -1,3 +1,4 @@
+import * as fs from 'fs/promises'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
@@ -105,7 +106,7 @@ export const libraryQueries = {
 
   getCollections(): CollectionDTO[] {
     const rootCollections = qx(EARS.Entity.Collection)
-      .pick(['name', 'description', 'createdAt', 'updatedAt'])
+      .pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])
       .filter(col => isRootCollection(col.id as EARS.EntityId))
 
     const buildTree = (cols: any[]): CollectionDTO[] =>
@@ -115,10 +116,11 @@ export const libraryQueries = {
         description: col.description as string | undefined,
         path: getCollectionPath(col.id as EARS.EntityId),
         documentCount: qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().length,
-        childCollections: buildTree(qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt'])),
+        childCollections: buildTree(qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.PARENT_OF, EARS.Entity.Collection).pick(['name', 'description', 'createdAt', 'updatedAt', 'symlinkPath'])),
         displayOrder: getDisplayOrder(col),
         createdAt: new Date(col.createdAt as number).toISOString(),
         updatedAt: new Date(col.updatedAt as number || col.createdAt as number).toISOString(),
+        ...(col.symlinkPath ? { symlinkPath: col.symlinkPath as string } : {}),
       }))
 
     return buildTree(rootCollections)
@@ -182,6 +184,11 @@ export const libraryQueries = {
         folderItem.isSymlink = true
         folderItem.symlinkPath = folderSymlinkPath
         folderItem.size = '--'
+        try {
+          await fs.access(folderSymlinkPath)
+        } catch {
+          folderItem.isBroken = true
+        }
       }
 
       items.push(folderItem)

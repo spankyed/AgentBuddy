@@ -96,6 +96,8 @@ export interface LibraryContext {
   isInSymlinkContext: boolean
   currentSymlinkRootId: string | null
   symlinkBasePath: string | null
+  isBroken: boolean
+  lastKnownPath: string | null
 
   // Settings
   settings?: any
@@ -155,6 +157,10 @@ export type LibraryEvents =
   // Symlink events
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
   | { type: 'REFRESH_FOLDER'; folderId: string }
+  | { type: 'RELINK_SYMLINK'; collectionId: string; newPath: string }
+  | { type: 'REMOVE_BROKEN_SYMLINK'; collectionId: string }
+  // Symlink update event (from backend, after re-link)
+  | { type: 'SYMLINK_UPDATED'; data: { collection: CollectionDTO } }
   // Import/Export events
   | { type: 'LIBRARY.IMPORT'; directory: string }
   | { type: 'LIBRARY.RESET_IMPORT_STATUS' }
@@ -347,9 +353,13 @@ export const librarySystem = setup({
         .map(documentItemToDTO)
       tagStorage.updateTagsFromDocuments(documents)
 
+      // Detect broken symlink state
+      const isBroken = data.isBroken ?? false
+      const lastKnownPath = data.lastKnownPath ?? null
+
       // Detect symlink context
       const hasSymlinkedItems = items.some(item => (item as any).isSymlinked)
-      const isInSymlinkContext = hasSymlinkedItems || (responseFolderId?.startsWith('symlink:') ?? false)
+      const isInSymlinkContext = isBroken || hasSymlinkedItems || (responseFolderId?.startsWith('symlink:') ?? false)
 
       // Find the symlink root ID
       let currentSymlinkRootId: string | null = null
@@ -388,6 +398,8 @@ export const librarySystem = setup({
         isInSymlinkContext,
         currentSymlinkRootId,
         symlinkBasePath,
+        isBroken,
+        lastKnownPath,
       }
     }),
     updateNavigation: assign({
@@ -671,6 +683,25 @@ export const librarySystem = setup({
         })
       }
     },
+    relinkSymlink: ({ event }) => {
+      if (event.type === 'RELINK_SYMLINK') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'UPDATE_SYMLINK_PATH',
+          collectionId: event.collectionId,
+          newPath: event.newPath,
+        } as any)
+      }
+    },
+    removeBrokenSymlink: ({ event }) => {
+      if (event.type === 'REMOVE_BROKEN_SYMLINK') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'DELETE_ITEMS',
+          ids: [event.collectionId],
+        } as any)
+      }
+    },
     /* ── Library Import actions ────────────────────────────── */
     setImportingLibrary: assign(({ context }) => ({
       libraryImport: {
@@ -845,6 +876,8 @@ export const librarySystem = setup({
     isInSymlinkContext: false,
     currentSymlinkRootId: null,
     symlinkBasePath: null,
+    isBroken: false,
+    lastKnownPath: null,
 
     // Settings
     settings: undefined,
@@ -924,6 +957,15 @@ export const librarySystem = setup({
     },
     REFRESH_FOLDER: {
       actions: ['refreshFolder', 'requestRefreshFolder'],
+    },
+    RELINK_SYMLINK: {
+      actions: ['relinkSymlink'],
+    },
+    REMOVE_BROKEN_SYMLINK: {
+      actions: ['removeBrokenSymlink', assign({ isBroken: false, lastKnownPath: null })],
+    },
+    SYMLINK_UPDATED: {
+      actions: ['requestFolderContents', 'requestCollections'],
     },
 
     // Import/Export events

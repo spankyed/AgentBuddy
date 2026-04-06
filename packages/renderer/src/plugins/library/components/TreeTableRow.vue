@@ -22,19 +22,21 @@
       >
         <td class="px-4 py-1 relative">
           <div class="flex items-center gap-2" :style="{ paddingLeft: `${depth * 24}px` }">
-            <!-- Disclosure triangle for folders -->
+            <!-- Disclosure triangle for folders (hidden for broken symlinks) -->
             <button
-              v-if="item.type === 'folder'"
+              v-if="item.type === 'folder' && !isBrokenSymlink"
               @click.stop="toggleExpand"
               class="w-4 h-4 flex items-center justify-center text-neutral-400 hover:text-neutral-200 transition-transform duration-150 flex-shrink-0"
               :class="{ 'rotate-90': isExpanded }"
             >
               <ChevronRight class="w-3 h-3" />
             </button>
+            <div v-else-if="item.type === 'folder'" class="w-4 flex-shrink-0" />
             <!-- Spacer for documents to align with folder names -->
             <div v-else class="w-4 flex-shrink-0" />
 
-            <Link v-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
+            <Link2Off v-if="isBrokenSymlink" class="w-5 h-5 text-neutral-600 flex-shrink-0" />
+            <Link2 v-else-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
             <Folder v-else-if="item.type === 'folder'" class="w-5 h-5 text-blue-400 flex-shrink-0" />
             <FileText v-else class="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <div class="min-w-0 relative">
@@ -44,7 +46,7 @@
                 :class="[
                   item.type === 'folder' ? 'font-medium' : 'font-normal',
                   isEditing ? 'invisible' : 'cursor-pointer',
-                  !isEditing && (item.type === 'folder' ? 'text-neutral-100' : 'text-neutral-200')
+                  isBrokenSymlink ? 'text-neutral-600' : (!isEditing && (item.type === 'folder' ? 'text-neutral-100' : 'text-neutral-200'))
                 ]"
               >
                 {{ item.name }}
@@ -107,6 +109,13 @@
         </template>
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
         <ContextMenuItem
+          v-if="isBrokenSymlink"
+          @select="showRelinkForm"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-400 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+        >
+          <Link2 class="w-4 h-4" /> Re-link
+        </ContextMenuItem>
+        <ContextMenuItem
           @select="onDelete"
           class="flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer hover:bg-neutral-700 outline-none"
           :class="isSymlinkFolder ? 'text-purple-400' : 'text-red-400'"
@@ -118,6 +127,29 @@
       </ContextMenuContent>
     </ContextMenuPortal>
   </ContextMenuRoot>
+
+  <!-- Inline re-link form for broken symlinks -->
+  <tr v-if="isBrokenSymlink && relinkForm.show">
+    <td colspan="4" class="px-4 py-1.5">
+      <div class="flex items-center gap-2" :style="{ paddingLeft: `${depth * 24 + 20}px` }">
+        <input
+          :id="`relink-input-${item.id}`"
+          v-model="relinkForm.path"
+          type="text"
+          class="flex-1 min-w-0 px-2.5 py-1 text-sm border rounded-md bg-neutral-900/60 border-neutral-700 text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-blue-500/70"
+          placeholder="Enter directory path"
+          @keydown.enter.stop="confirmRelink"
+          @keydown.escape.stop="relinkForm.show = false"
+          @click.stop
+        />
+        <Button @click.stop="browseRelinkPath" variant="transparent" size="sm">Browse</Button>
+        <Button @click.stop="confirmRelink" variant="primary" size="sm" :disabled="!relinkForm.path.trim()">Re-link</Button>
+        <button @click.stop="relinkForm.show = false" class="p-1 text-neutral-500 hover:text-neutral-300">
+          <span class="text-xs">&#x2715;</span>
+        </button>
+      </div>
+    </td>
+  </tr>
 
   <!-- Loading indicator row -->
   <tr v-if="item.type === 'folder' && isExpanded && isLoading">
@@ -141,8 +173,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
+import { computed, inject, ref, reactive, nextTick } from 'vue'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link2, Link2Off, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
+import Button from '@/core/components/design/button.vue'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal, ContextMenuSeparator,
@@ -184,8 +217,12 @@ const dragEnd = inject<() => void>('tree-drag-end')!
 const getItemClass = inject<(item: LibraryItem) => string>('tree-get-item-class')!
 const sortItems = inject<(items: LibraryItem[]) => LibraryItem[]>('tree-sort-items')!
 
+const relinkSymlink = inject<(collectionId: string, newPath: string) => void>('tree-relink-symlink')!
+
 const contextMenuOpen = ref(false)
+const relinkForm = reactive({ show: false, path: '' })
 const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
+const isBrokenSymlink = computed(() => isSymlinkFolder.value && (props.item as any).isBroken)
 const isSymlinkedItem = computed(() => (props.item as any).isSymlinked || (props.item as any).isSymlink)
 const isSelected = computed(() => selectedItems().includes(props.item.id))
 const isExpanded = computed(() => expandedFolderIds().includes(props.item.id))
@@ -239,6 +276,36 @@ function onDelete() {
 function copyId() {
   const text = props.item.type === 'document' ? props.item.shortCode : props.item.id
   navigator.clipboard.writeText(text)
+}
+
+function showRelinkForm() {
+  relinkForm.path = ''
+  relinkForm.show = true
+  // Delay focus to let the context menu finish closing
+  setTimeout(() => {
+    document.getElementById(`relink-input-${props.item.id}`)?.focus()
+  }, 50)
+}
+
+async function browseRelinkPath() {
+  if (!window.electronAPI?.fileUtils.selectDirectory) return
+  try {
+    const dir = await window.electronAPI.fileUtils.selectDirectory()
+    if (dir) {
+      relinkForm.path = dir
+      confirmRelink()
+    }
+  } catch {
+    // User cancelled
+  }
+}
+
+function confirmRelink() {
+  const path = relinkForm.path.trim()
+  if (!path) return
+  relinkSymlink(props.item.id, path)
+  relinkForm.show = false
+  relinkForm.path = ''
 }
 
 // Drag-drop handlers
