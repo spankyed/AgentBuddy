@@ -23,14 +23,23 @@
 
         <!-- Centered content column -->
         <div class="w-full max-w-2xl mx-auto px-6">
-          <!-- Search bar -->
-          <div class="relative mb-6">
-            <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-            <input
-              v-model="searchQuery"
-              placeholder="Search notes..."
-              class="w-full pl-9 pr-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-500"
-            />
+          <!-- Search bar + New note -->
+          <div class="flex items-center gap-2 mb-6">
+            <div class="relative flex-1">
+              <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                v-model="searchQuery"
+                placeholder="Search notes..."
+                class="w-full pl-9 pr-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-500"
+              />
+            </div>
+            <button
+              class="flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors shrink-0"
+              @click="handleCreateNote()"
+            >
+              <Plus :size="16" />
+              <span>New note</span>
+            </button>
           </div>
 
           <!-- Search results (when typing) -->
@@ -257,7 +266,7 @@ import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@/core/components/tiptap/injection-keys'
-import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-vue-next'
+import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star, Plus } from 'lucide-vue-next'
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
