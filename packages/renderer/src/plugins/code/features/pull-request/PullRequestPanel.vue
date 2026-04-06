@@ -39,17 +39,77 @@
         <span>GitHub CLI not available. Install <code class="px-1 py-0.5 rounded bg-neutral-800">gh</code> and run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth login</code> for PR features.</span>
       </div>
 
-      <!-- PR Selector (only when gh is available) -->
-      <PRSelector
-        v-if="isGhAvailable"
-        :openPRs="openPRs"
-        :selectedPR="selectedPR"
-        @select-pr="handleSelectPR"
-        @switch-branch="handleSwitchBranch"
-        @new-pr="handleShowCreate"
-      />
+      <!-- Top action row (when gh is available) -->
+      <div v-if="isGhAvailable" class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800 bg-neutral-800/50">
+        <!-- Selector mode -->
+        <template v-if="showSelector">
+          <PRSelector
+            :openPRs="openPRs"
+            :selectedPR="selectedPR"
+            @select-pr="handleSelectPRFromDropdown"
+          />
+          <button
+            @click="showSelector = false"
+            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 shrink-0"
+            title="Close selector"
+          >
+            <X :size="14" />
+          </button>
+        </template>
 
-      <!-- Cannot determine base branch error -->
+        <!-- Default mode -->
+        <template v-else>
+          <!-- Unpublished branch -->
+          <button
+            v-if="!hasUpstream"
+            @click="handlePublishBranch()"
+            :disabled="isPushing"
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700 transition-colors disabled:opacity-50 flex-1 min-w-0"
+          >
+            <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
+            <AlertTriangle v-else :size="12" class="shrink-0" />
+            <span class="truncate">Publish Branch</span>
+          </button>
+
+          <!-- Published, no PR -->
+          <button
+            v-else-if="!selectedPR"
+            @click="handleCreatePR()"
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors flex-1 min-w-0"
+          >
+            <Plus :size="12" class="shrink-0" />
+            <span class="truncate">Create PR</span>
+          </button>
+
+          <!-- Has PR -->
+          <div v-else class="flex items-center gap-1.5 flex-1 min-w-0">
+            <GitPullRequest :size="12" class="text-green-400 shrink-0" />
+            <span class="text-xs text-neutral-200 truncate">#{{ selectedPR.number }} {{ selectedPR.title }}</span>
+            <span
+              v-if="selectedPR.isDraft"
+              class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
+            >DRAFT</span>
+            <button
+              @click="handleViewPRInfo()"
+              class="p-0.5 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700 shrink-0 ml-auto"
+              title="View PR details"
+            >
+              <Info :size="13" />
+            </button>
+          </div>
+
+          <!-- PR select toggle -->
+          <button
+            @click="showSelector = true"
+            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 shrink-0"
+            title="Select pull request"
+          >
+            <List :size="14" />
+          </button>
+        </template>
+      </div>
+
+      <!-- Error states -->
       <EmptyState
         v-if="isNoBaseBranchError"
         :icon="GitBranch"
@@ -57,114 +117,75 @@
         subtitle="Unable to determine the base branch for comparison. Check that the repository has a default branch configured."
       />
 
-      <!-- Generic error -->
       <div v-else-if="prError && !isNoGitRepoError" class="flex items-center justify-center gap-2 p-4">
         <AlertCircle class="w-4 h-4 text-red-500" />
         <span class="text-sm text-red-500">{{ prError }}</span>
       </div>
 
-      <!-- Create PR form -->
-      <CreatePRForm
-        v-else-if="panelMode === 'create' && isGhAvailable"
-        :title="createTitle"
-        :body="createBody"
-        :baseBranch="createBaseBranch"
-        :draft="createDraft"
-        :defaultBaseBranch="prBaseBranch"
-        :hasUpstream="hasUpstream"
-        :isCreating="isCreating"
-        :isPublishing="isPushing"
-        @update-field="handleUpdateField"
-        @submit="handleSubmitCreate"
-        @cancel="handleCancelCreate"
-        @publish-branch="handlePublishBranch"
-      />
+      <!-- PR view (create form or info) -->
+      <template v-else-if="viewMode === 'pr'">
+        <!-- Back to files bar -->
+        <button
+          @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'files' })"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-neutral-500 hover:text-neutral-300 border-b border-neutral-800 transition-colors"
+        >
+          <ArrowLeft :size="11" />
+          Back to files
+        </button>
 
-      <!-- Existing PR view -->
-      <template v-else-if="panelMode === 'existing' || !isGhAvailable">
-        <!-- Empty state when no PR selected -->
-        <EmptyState
-          v-if="!selectedPR && isGhAvailable && prFiles.length === 0 && !isPrLoading"
-          :icon="GitPullRequest"
-          title="No pull request selected"
-          subtitle="Select a pull request from the dropdown above"
+        <!-- No PR → create form -->
+        <CreatePRForm
+          v-if="!selectedPR"
+          :title="createTitle"
+          :body="createBody"
+          :baseBranch="createBaseBranch"
+          :draft="createDraft"
+          :defaultBaseBranch="prBaseBranch"
+          :isCreating="isCreating"
+          @update-field="handleUpdateField"
+          @submit="handleSubmitCreate"
         />
 
-        <!-- View toggle bar -->
-        <div v-if="selectedPR" class="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-800 bg-neutral-800/30">
-          <button
-            @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'comparison' })"
-            class="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded transition-colors"
-            :class="viewMode === 'comparison'
-              ? 'bg-neutral-700 text-neutral-200'
-              : 'text-neutral-500 hover:text-neutral-300'"
-          >
-            <Files :size="11" />
-            Files
-          </button>
-          <button
-            @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'info' })"
-            class="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded transition-colors"
-            :class="viewMode === 'info'
-              ? 'bg-neutral-700 text-neutral-200'
-              : 'text-neutral-500 hover:text-neutral-300'"
-          >
-            <Info :size="11" />
-            Info
-          </button>
-          <div class="flex-1" />
-          <a
-            v-if="selectedPR?.url"
-            :href="selectedPR.url"
-            target="_blank"
-            class="p-0.5 rounded text-neutral-500 hover:text-neutral-300 transition-colors"
-            title="Open in GitHub"
-          >
-            <ExternalLink :size="12" />
-          </a>
-        </div>
-
-        <!-- Comparison view -->
-        <PRComparison
-          v-if="viewMode === 'comparison'"
-          :files="prFiles"
-          :baseBranch="prBaseBranch"
-          :isLoading="isPrLoading"
-          @select-file="handleFileSelect"
-          @open-file="handleOpenFile"
-        />
-
-        <!-- Info view -->
-        <PRInfo
-          v-else-if="viewMode === 'info'"
-          :pr="selectedPR"
-          :comments="prComments"
-        />
-
-        <!-- Action bar -->
-        <PRActionBar
-          v-if="selectedPR && isGhAvailable"
-          :pr="selectedPR"
-          :isMerging="isMerging"
-          :isClosing="isClosing"
-          :isTogglingDraft="isTogglingDraft"
-          @merge="handleMerge"
-          @close="handleClose"
-          @toggle-draft="handleToggleDraft"
-        />
+        <!-- Existing PR → info + action bar -->
+        <template v-else>
+          <PRInfo
+            :pr="selectedPR"
+            :comments="prComments"
+          />
+          <PRActionBar
+            :pr="selectedPR"
+            :isMerging="isMerging"
+            :isClosing="isClosing"
+            :isTogglingDraft="isTogglingDraft"
+            @merge="handleMerge"
+            @close="handleClose"
+            @toggle-draft="handleToggleDraft"
+          />
+        </template>
       </template>
+
+      <!-- Files view (diff tree) — default -->
+      <PRComparison
+        v-else
+        :files="prFiles"
+        :baseBranch="prBaseBranch"
+        :currentBranch="currentBranch"
+        :isLoading="isPrLoading"
+        @select-file="handleFileSelect"
+        @open-file="handleOpenFile"
+      />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
-  Files, Info, ExternalLink
+  Info, ExternalLink, Loader2, Plus, List, X, ArrowLeft
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
@@ -182,6 +203,9 @@ const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
 const commitActor = codeActor.system.get('commit')!
 
+// Local UI state
+const showSelector = ref(false)
+
 // State selectors
 const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
 const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
@@ -192,7 +216,6 @@ const openPRs = useSelector(prActor, (state: any) => state.context.openPRs)
 const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR)
 const prComments = useSelector(prActor, (state: any) => state.context.prComments)
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
-const panelMode = useSelector(prActor, (state: any) => state.context.panelMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
 const createBody = useSelector(prActor, (state: any) => state.context.createBody)
@@ -204,6 +227,7 @@ const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
 const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
+const currentBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
 
 // Computed
 const isNoGitRepoError = computed(() =>
@@ -235,20 +259,17 @@ const handleFileSelect = (file: TreeNode) => {
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
 }
 
-const handleSelectPR = (number: number) => {
+const handleSelectPRFromDropdown = (number: number) => {
+  showSelector.value = false
   prActor?.send({ type: 'pr.SELECT_PR_BY_NUMBER', number })
 }
 
-const handleSwitchBranch = (branch: string) => {
-  prActor?.send({ type: 'pr.SWITCH_TO_PR_BRANCH', branchName: branch })
+const handleCreatePR = () => {
+  prActor?.send({ type: 'pr.NEW_PR' })
 }
 
-const handleShowCreate = () => {
-  prActor?.send({ type: 'pr.SHOW_CREATE_FORM' })
-}
-
-const handleCancelCreate = () => {
-  prActor?.send({ type: 'pr.CANCEL_CREATE' })
+const handleViewPRInfo = () => {
+  prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'pr' })
 }
 
 const handleUpdateField = (field: string, value: any) => {

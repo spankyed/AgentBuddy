@@ -12,22 +12,22 @@
   />
 
   <div v-else class="flex flex-col flex-1 overflow-hidden">
-    <div class="flex items-center gap-2 px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
-      <GitBranch class="w-3 h-3 text-neutral-500" />
-      <span class="text-xs text-neutral-400">
-        Comparing with {{ baseBranch }}
-      </span>
+    <div class="flex items-center gap-2 px-3 py-1.5 border-b border-neutral-800 bg-neutral-800/50">
+      <div class="flex items-center gap-1.5" :title="`Comparing with ${baseBranch}`">
+        <GitBranch class="w-3 h-3 text-neutral-500" />
+        <span class="text-xs text-neutral-300">{{ currentBranch || baseBranch }}</span>
+      </div>
       <div class="flex items-center gap-1 ml-auto">
         <button
           @click="expandAll()"
-          class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Expand all folders"
         >
           <UnfoldVertical :size="14" />
         </button>
         <button
           @click="collapseAll()"
-          class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+          class="p-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
           title="Collapse all folders"
         >
           <FoldVertical :size="14" />
@@ -56,6 +56,7 @@ import type { TreeNode } from './types'
 defineProps<{
   files: GitStatusFile[]
   baseBranch: string
+  currentBranch?: string
   isLoading: boolean
 }>()
 

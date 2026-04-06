@@ -26,7 +26,7 @@ const defaultLoadingStates = {
 }
 
 export interface Context {
-  // Existing
+  // Branch comparison
   prFiles: GitStatusFile[]
   prBaseBranch: string
   prError: string | null
@@ -39,8 +39,7 @@ export interface Context {
   selectedPR: GhPullRequest | null
   branchPR: GhPullRequest | null
   prComments: GhPRComment[]
-  viewMode: 'comparison' | 'info'
-  panelMode: 'existing' | 'create'
+  viewMode: 'files' | 'pr'
   isGhAvailable: boolean
 
   // Create form
@@ -59,7 +58,7 @@ export interface Context {
 }
 
 export type Event =
-  // Existing
+  // Branch comparison
   | { type: 'pr.REFRESH_STATUS' }
   | { type: 'pr.SELECT_FILE'; file: GitStatusFile }
   | { type: 'pr.VIEW_DIFF'; path: string }
@@ -83,9 +82,8 @@ export type Event =
   | { type: 'pr.LIST_PRS' }
   | { type: 'pr.SELECT_PR_BY_NUMBER'; number: number }
   | { type: 'pr.SWITCH_TO_PR_BRANCH'; branchName: string }
-  | { type: 'pr.SET_VIEW_MODE'; mode: 'comparison' | 'info' }
-  | { type: 'pr.SHOW_CREATE_FORM' }
-  | { type: 'pr.CANCEL_CREATE' }
+  | { type: 'pr.SET_VIEW_MODE'; mode: 'files' | 'pr' }
+  | { type: 'pr.NEW_PR' }
   | { type: 'pr.UPDATE_CREATE_FIELD'; field: string; value: any }
   | { type: 'pr.SUBMIT_CREATE' }
   | { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
@@ -243,16 +241,9 @@ export const pullRequestState = setup({
       },
       selectedPR: ({ event, context }) => {
         const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-        // Auto-select the branch PR if no PR is currently selected
         if (ev.data.pr && !context.selectedPR) return ev.data.pr
         return context.selectedPR
       },
-      panelMode: ({ event, context }) => {
-        const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-        // Only auto-switch to create if no PR is selected at all
-        if (!ev.data.pr && !context.selectedPR) return 'create' as const
-        return context.panelMode
-      }
     }),
 
     handlePRCreated: assign({
@@ -260,7 +251,6 @@ export const pullRequestState = setup({
         const ev = event as { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
         return ev.data.pr
       },
-      panelMode: 'existing' as const,
       isCreating: false,
       createTitle: '',
       createBody: '',
@@ -270,13 +260,11 @@ export const pullRequestState = setup({
     handlePRMerged: assign({
       selectedPR: null,
       isMerging: false,
-      panelMode: 'create' as const,
     }),
 
     handlePRClosed: assign({
       selectedPR: null,
       isClosing: false,
-      panelMode: 'create' as const,
     }),
 
     handlePRDraftToggled: assign({
@@ -297,25 +285,19 @@ export const pullRequestState = setup({
 
     switchToPRBranch: ({ event }) => {
       const ev = event as { type: 'pr.SWITCH_TO_PR_BRANCH'; branchName: string }
-      // Send directly to backend (the commit FE machine uses context.branchInput, not event data)
       sendToBackend('commit.CHECKOUT_BRANCH', { branchName: ev.branchName })
     },
 
     setViewMode: assign({
       viewMode: ({ event }) => {
-        const ev = event as { type: 'pr.SET_VIEW_MODE'; mode: 'comparison' | 'info' }
+        const ev = event as { type: 'pr.SET_VIEW_MODE'; mode: 'files' | 'pr' }
         return ev.mode
       }
     }),
 
-    showCreateForm: assign({
-      panelMode: 'create' as const,
+    newPR: assign({
       selectedPR: null,
-    }),
-
-    cancelCreate: assign({
-      panelMode: ({ context }) => context.branchPR ? 'existing' as const : 'create' as const,
-      selectedPR: ({ context }) => context.branchPR,
+      viewMode: 'pr' as const,
     }),
 
     updateCreateField: assign({
@@ -368,7 +350,6 @@ export const pullRequestState = setup({
       })
     },
 
-    // After merge/close/create, refresh PR list
     refreshPRList: () => {
       sendToBackend('pr.LIST_OPEN_PRS', {})
       sendToBackend('pr.CHECK_BRANCH_PR', {})
@@ -378,8 +359,7 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.SELECT_PR_BY_NUMBER'; number: number }
       enqueue.assign({
         isLoadingDetails: true,
-        panelMode: 'existing' as const,
-        viewMode: 'comparison' as const,
+        viewMode: 'files' as const,
       })
       enqueue(() => {
         sendToBackend('pr.SELECT_PR', { number: ev.number })
@@ -406,8 +386,7 @@ export const pullRequestState = setup({
     selectedPR: null,
     branchPR: null,
     prComments: [],
-    viewMode: 'comparison',
-    panelMode: 'create',
+    viewMode: 'files',
     isGhAvailable: false,
 
     createTitle: '',
@@ -453,8 +432,7 @@ export const pullRequestState = setup({
         'pr.SELECT_PR_BY_NUMBER': { actions: 'selectPRAndLoadDiff' },
         'pr.SWITCH_TO_PR_BRANCH': { actions: 'switchToPRBranch' },
         'pr.SET_VIEW_MODE': { actions: 'setViewMode' },
-        'pr.SHOW_CREATE_FORM': { actions: 'showCreateForm' },
-        'pr.CANCEL_CREATE': { actions: 'cancelCreate' },
+        'pr.NEW_PR': { actions: 'newPR' },
         'pr.UPDATE_CREATE_FIELD': { actions: 'updateCreateField' },
         'pr.SUBMIT_CREATE': { actions: ['submitCreate', assign({ isCreating: true })] },
         'pr.MERGE': { actions: ['requestMerge', assign({ isMerging: true })] },
