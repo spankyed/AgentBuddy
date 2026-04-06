@@ -265,6 +265,30 @@ const editor = useEditor({
         }
       }
 
+      // ⌘/Ctrl+X on empty selection → cut entire line
+      if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
+        event.preventDefault()
+        const { $from } = view.state.selection
+        const start = $from.start()
+        const end = $from.end()
+        const text = view.state.doc.textBetween(start, end)
+        navigator.clipboard.writeText(text)
+        const tr = view.state.tr.deleteRange($from.before(), $from.after())
+        view.dispatch(tr)
+        return true
+      }
+
+      if (event.key === 'Tab') {
+        if (event.shiftKey) {
+          editor.value?.commands.liftListItem('listItem')
+          editor.value?.commands.liftListItem('taskItem')
+        } else {
+          editor.value?.commands.sinkListItem('listItem')
+          editor.value?.commands.sinkListItem('taskItem')
+        }
+        return true
+      }
+
       if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
         emit('focusTitle')
         return true
