@@ -53,20 +53,35 @@
         <GitBranch :size="14" class="text-neutral-400" />
         <span class="text-xs text-neutral-300">Branch</span>
         <div class="ml-auto flex items-center gap-1">
-          <span v-if="pullFeedback" class="text-[10px] text-neutral-500">{{ pullFeedback }}</span>
-          <button
-            @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
-            :disabled="isPulling || !hasUpstream"
-            class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Pull latest"
-          >
-            <Loader2 v-if="isPulling" :size="14" class="animate-spin" />
-            <ArrowDownToLine v-else :size="14" />
-            <span
-              v-if="commitsBehind > 0"
-              class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
-            >{{ commitsBehind }}</span>
-          </button>
+          <span v-if="syncFeedback" class="text-[10px] text-neutral-500">{{ syncFeedback }}</span>
+          <ContextMenuRoot>
+            <ContextMenuTrigger as-child>
+              <button
+                @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
+                :disabled="isPulling || isPushing || !hasUpstream"
+                class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Pull latest"
+              >
+                <Loader2 v-if="isPulling || isPushing" :size="14" class="animate-spin" />
+                <ArrowDownToLine v-else :size="14" />
+                <span
+                  v-if="commitsBehind > 0"
+                  class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+                >{{ commitsBehind }}</span>
+              </button>
+            </ContextMenuTrigger>
+            <ContextMenuPortal>
+              <ContextMenuContent class="min-w-[120px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50">
+                <ContextMenuItem
+                  @select="commitActor?.send({ type: 'commit.PUSH_BRANCH' })"
+                  :disabled="isPushing || !hasUpstream || commitsAhead <= 0"
+                  class="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+                >
+                  <ArrowUpFromLine :size="14" /> Push
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenuPortal>
+          </ContextMenuRoot>
         </div>
       </div>
 
@@ -414,7 +429,8 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, MoreVertical, Trash2 } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2 } from 'lucide-vue-next'
+import { ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal } from 'reka-ui'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
@@ -458,28 +474,41 @@ const showDropStashDialog = ref(false)
 const pendingDropIndex = ref<number | null>(null)
 const showClearStashesDialog = ref(false)
 const toast = ref<InstanceType<typeof ToastNotification>>()
-const pullFeedback = ref<string | null>(null)
-let pullClearTimer: ReturnType<typeof setTimeout> | undefined
-let commitsBehindAtPullStart = 0
+const syncFeedback = ref<string | null>(null)
+let syncClearTimer: ReturnType<typeof setTimeout> | undefined
 
-watch(isPulling, (pulling, wasPulling) => {
-  if (pulling) {
-    commitsBehindAtPullStart = commitsBehind.value
-    clearTimeout(pullClearTimer)
-    pullFeedback.value = null
-  } else if (wasPulling) {
-    if (gitError.value) {
-      toast.value?.error('Pull failed', gitError.value)
-    } else if (commitsBehindAtPullStart > 0) {
-      pullFeedback.value = `Pulled ${commitsBehindAtPullStart} commit${commitsBehindAtPullStart !== 1 ? 's' : ''}`
-    } else {
-      pullFeedback.value = 'Already up to date'
+const showSyncFeedback = (message: string) => {
+  syncFeedback.value = message
+  clearTimeout(syncClearTimer)
+  syncClearTimer = setTimeout(() => { syncFeedback.value = null }, 3000)
+}
+
+const watchSyncOp = (
+  flag: typeof isPulling,
+  getCount: () => number,
+  label: string,
+  noopMessage: string
+) => {
+  let snapshotCount = 0
+  watch(flag, (active, wasActive) => {
+    if (active) {
+      snapshotCount = getCount()
+      clearTimeout(syncClearTimer)
+      syncFeedback.value = null
+    } else if (wasActive) {
+      if (gitError.value) {
+        toast.value?.error(`${label} failed`, gitError.value)
+      } else {
+        showSyncFeedback(snapshotCount > 0
+          ? `${label}ed ${snapshotCount} commit${snapshotCount !== 1 ? 's' : ''}`
+          : noopMessage)
+      }
     }
-    if (pullFeedback.value) {
-      pullClearTimer = setTimeout(() => { pullFeedback.value = null }, 3000)
-    }
-  }
-})
+  })
+}
+
+watchSyncOp(isPulling, () => commitsBehind.value, 'Pull', 'Already up to date')
+watchSyncOp(isPushing, () => commitsAhead.value, 'Push', 'Nothing to push')
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
