@@ -149,7 +149,7 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1">
-            <div class="relative">
+            <div class="relative -ml-1">
               <button
                 @click="showStashMenu = !showStashMenu"
                 @blur="hideStashMenu"
