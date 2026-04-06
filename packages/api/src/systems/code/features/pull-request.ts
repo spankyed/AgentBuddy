@@ -5,7 +5,6 @@ import { systemBus } from '@/core/helpers/event-helpers'
 import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment } from '../types'
-import { requireGitRepository } from '../utils/git-helpers'
 import * as ghCli from '../services/gh-cli'
 
 const pluginId = 'code' as const
@@ -65,9 +64,7 @@ export type Event =
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
 function humanizeBranchName(branch: string): string {
-  // Strip common prefixes
   const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[\/_]/i, '')
-  // Replace separators with spaces, then title case
   return stripped
     .replace(/[-_/]/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
@@ -83,6 +80,17 @@ function emitError(message: string) {
   emitToFrontend({ type: 'pr.ERROR', message })
 }
 
+/** Run async work that requires a git repository. Guards null repo, handles errors. */
+function withRepo<T>(
+  context: Context,
+  work: (repo: GitRepository) => Promise<T>,
+  onSuccess: (result: T) => void,
+  onError: (error: any) => void = (e) => emitError(e.message)
+) {
+  if (!context.gitRepository) { emitError('No git repository available'); return }
+  work(context.gitRepository).then(onSuccess).catch(onError)
+}
+
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
@@ -90,180 +98,145 @@ export const pullRequestSystem = setup({
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null }
   },
   actions: {
-    getBaseBranch: async ({ context }) => {
-      if (!requireGitRepository(context, 'pr.ERROR')) return
-
-      try {
-        const branch = await context.gitRepository!.getPRBaseBranch()
-        emitToFrontend({ type: 'pr.BASE_BRANCH_RECEIVED', data: { branch } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+    getBaseBranch: ({ context }) => {
+      withRepo(context,
+        repo => repo.getPRBaseBranch(),
+        branch => emitToFrontend({ type: 'pr.BASE_BRANCH_RECEIVED', data: { branch } })
+      )
     },
 
-    getBranchDiff: async ({ event, context }) => {
+    getBranchDiff: ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
-      if (!requireGitRepository(context, 'pr.ERROR')) return
-
-      try {
-        const { gitRepository } = context
-        const baseBranch = ev.baseBranch || await gitRepository!.getPRBaseBranch()
-        const files = await gitRepository!.getBranchDiff(baseBranch)
-        emitToFrontend({ type: 'pr.BRANCH_DIFF_RECEIVED', data: { files, baseBranch } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      withRepo(context,
+        repo => {
+          const base = ev.baseBranch ? Promise.resolve(ev.baseBranch) : repo.getPRBaseBranch()
+          return base.then(baseBranch =>
+            repo.getBranchDiff(baseBranch).then(files => ({ files, baseBranch }))
+          )
+        },
+        ({ files, baseBranch }) => emitToFrontend({ type: 'pr.BRANCH_DIFF_RECEIVED', data: { files, baseBranch } })
+      )
     },
 
-    getBranchFileDiff: async ({ event, context }) => {
+    getBranchFileDiff: ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
-      if (!requireGitRepository(context, 'pr.ERROR')) return
-
-      try {
-        const { gitRepository } = context
-        const diff = await gitRepository!.getFileDiffBetweenBranches(ev.path, ev.baseBranch)
-        const originalContent = await gitRepository!.getFileContentFromBranch(ev.path, ev.baseBranch)
-        const modifiedContent = await gitRepository!.getFileContentFromBranch(ev.path, 'HEAD')
-
-        emitToFrontend({
+      withRepo(context,
+        repo => Promise.all([
+          repo.getFileDiffBetweenBranches(ev.path, ev.baseBranch),
+          repo.getFileContentFromBranch(ev.path, ev.baseBranch),
+          repo.getFileContentFromBranch(ev.path, 'HEAD'),
+        ]),
+        ([diff, originalContent, modifiedContent]) => emitToFrontend({
           type: 'pr.FILE_DIFF_RECEIVED',
           data: { path: ev.path, diff, staged: false, originalContent, modifiedContent }
         })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      )
     },
 
     // --- GitHub CLI actions ---
 
-    checkGhAuth: async ({ context }) => {
+    checkGhAuth: ({ context }) => {
       if (!context.gitRepository) {
         emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false } })
         return
       }
-      const available = await ghCli.checkAuth(context.gitRepository.getWorkingDir())
-      emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available } })
+      withRepo(context,
+        repo => ghCli.checkAuth(repo.getWorkingDir()),
+        available => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available } }),
+        () => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false } })
+      )
     },
 
-    listOpenPRs: async ({ context }) => {
-      if (!context.gitRepository) { emitError('No git repository available'); return }
-      try {
-        const prs = await ghCli.listOpenPRs(context.gitRepository.getWorkingDir())
-        emitToFrontend({ type: 'pr.OPEN_PRS_RECEIVED', data: { prs } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+    listOpenPRs: ({ context }) => {
+      withRepo(context,
+        repo => ghCli.listOpenPRs(repo.getWorkingDir()),
+        prs => emitToFrontend({ type: 'pr.OPEN_PRS_RECEIVED', data: { prs } })
+      )
     },
 
-    selectPR: async ({ event, context }) => {
+    selectPR: ({ event, context }) => {
       const ev = event as { type: 'pr.SELECT_PR'; number: number }
-      if (!context.gitRepository) { emitError('No git repository available'); return }
-      try {
-        const details = await ghCli.getPRDetails(context.gitRepository.getWorkingDir(), ev.number)
-        const { comments, ...pr } = details
-        emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments: comments || [] } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      withRepo(context,
+        repo => ghCli.getPRDetails(repo.getWorkingDir(), ev.number),
+        details => {
+          const { comments, ...pr } = details
+          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments: comments || [] } })
+        }
+      )
     },
 
-    createPR: async ({ event, context }) => {
+    createPR: ({ event, context }) => {
       const ev = event as { type: 'pr.CREATE_PR'; title: string; body: string; base?: string; draft?: boolean }
-      if (!context.gitRepository) return
-      try {
-        const currentBranch = await context.gitRepository.getCurrentBranch()
-        const pr = await ghCli.createPR(context.gitRepository.getWorkingDir(), {
-          title: ev.title,
-          body: ev.body,
-          base: ev.base,
-          head: currentBranch,
-          draft: ev.draft,
-        })
-        emitToFrontend({ type: 'pr.PR_CREATED', data: { pr } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      withRepo(context,
+        repo => repo.getCurrentBranch().then(head =>
+          ghCli.createPR(repo.getWorkingDir(), { title: ev.title, body: ev.body, base: ev.base, head, draft: ev.draft })
+        ),
+        pr => emitToFrontend({ type: 'pr.PR_CREATED', data: { pr } })
+      )
     },
 
-    mergePR: async ({ event, context }) => {
+    mergePR: ({ event, context }) => {
       const ev = event as { type: 'pr.MERGE_PR'; number: number; method?: 'merge' | 'squash' | 'rebase' }
-      if (!context.gitRepository) return
-      try {
-        await ghCli.mergePR(context.gitRepository.getWorkingDir(), ev.number, ev.method)
-        emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      withRepo(context,
+        repo => ghCli.mergePR(repo.getWorkingDir(), ev.number, ev.method),
+        () => emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } })
+      )
     },
 
-    closePR: async ({ event, context }) => {
+    closePR: ({ event, context }) => {
       const ev = event as { type: 'pr.CLOSE_PR'; number: number }
-      if (!context.gitRepository) return
-      try {
-        await ghCli.closePR(context.gitRepository.getWorkingDir(), ev.number)
-        emitToFrontend({ type: 'pr.PR_CLOSED', data: { number: ev.number } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      withRepo(context,
+        repo => ghCli.closePR(repo.getWorkingDir(), ev.number),
+        () => emitToFrontend({ type: 'pr.PR_CLOSED', data: { number: ev.number } })
+      )
     },
 
-    toggleDraft: async ({ event, context }) => {
+    toggleDraft: ({ event, context }) => {
       const ev = event as { type: 'pr.TOGGLE_DRAFT'; number: number; isDraft: boolean }
-      if (!context.gitRepository) { emitError('No git repository available'); return }
-      try {
-        if (ev.isDraft) {
-          // Currently draft → mark ready
-          await ghCli.markReady(context.gitRepository.getWorkingDir(), ev.number)
-        } else {
-          // Currently ready → mark draft
-          await ghCli.markDraft(context.gitRepository.getWorkingDir(), ev.number)
-        }
-        emitToFrontend({ type: 'pr.PR_DRAFT_TOGGLED', data: { number: ev.number, isDraft: !ev.isDraft } })
-      } catch (error: any) {
-        emitError(error.message)
-      }
+      withRepo(context,
+        repo => {
+          const cwd = repo.getWorkingDir()
+          return ev.isDraft ? ghCli.markReady(cwd, ev.number) : ghCli.markDraft(cwd, ev.number)
+        },
+        () => emitToFrontend({ type: 'pr.PR_DRAFT_TOGGLED', data: { number: ev.number, isDraft: !ev.isDraft } })
+      )
     },
 
-    checkBranchPR: async ({ context }) => {
-      if (!context.gitRepository) { emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr: null } }); return }
-      try {
-        const branch = await context.gitRepository.getCurrentBranch()
-        const pr = await ghCli.getPRForBranch(context.gitRepository.getWorkingDir(), branch)
-        emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr } })
-      } catch (error: any) {
+    checkBranchPR: ({ context }) => {
+      if (!context.gitRepository) {
         emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr: null } })
+        return
       }
+      withRepo(context,
+        repo => repo.getCurrentBranch().then(branch => ghCli.getPRForBranch(repo.getWorkingDir(), branch)),
+        pr => emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr } }),
+        () => emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr: null } })
+      )
     },
 
-    getPRAutofill: async ({ context }) => {
-      if (!context.gitRepository) { emitError('No git repository available'); return }
-      try {
-        const { gitRepository } = context
-        const baseBranch = await gitRepository.getPRBaseBranch()
-        const currentBranch = await gitRepository.getCurrentBranch()
-        const commits = await gitRepository.getCommitsBetweenBranches(baseBranch)
-
-        let title = ''
-        let body = ''
-
-        if (commits.length === 1) {
-          // Single commit: use commit message
-          title = commits[0].subject
-          body = commits[0].body
-        } else if (commits.length > 1) {
-          // Multiple commits: humanize branch name for title, bullet list for body
-          title = humanizeBranchName(currentBranch)
-          body = commits.map(c => `- ${c.subject}`).join('\n')
-        }
-
-        emitToFrontend({ type: 'pr.AUTOFILL_RECEIVED', data: { title, body } })
-      } catch (error: any) {
-        // Non-critical — just don't autofill
-        emitToFrontend({ type: 'pr.AUTOFILL_RECEIVED', data: { title: '', body: '' } })
-      }
+    getPRAutofill: ({ context }) => {
+      withRepo(context,
+        repo => Promise.all([repo.getPRBaseBranch(), repo.getCurrentBranch()])
+          .then(([baseBranch, currentBranch]) =>
+            repo.getCommitsBetweenBranches(baseBranch).then(commits => ({ currentBranch, commits }))
+          ),
+        ({ currentBranch, commits }) => {
+          let title = ''
+          let body = ''
+          if (commits.length === 1) {
+            title = commits[0].subject
+            body = commits[0].body
+          } else if (commits.length > 1) {
+            title = humanizeBranchName(currentBranch)
+            body = commits.map(c => `- ${c.subject}`).join('\n')
+          }
+          emitToFrontend({ type: 'pr.AUTOFILL_RECEIVED', data: { title, body } })
+        },
+        () => emitToFrontend({ type: 'pr.AUTOFILL_RECEIVED', data: { title: '', body: '' } })
+      )
     },
 
-    handleGitStatusChanged: async () => {
+    handleGitStatusChanged: () => {
       emitToFrontend({ type: 'pr.STATUS_CHANGED', data: { timestamp: new Date() } })
     },
 

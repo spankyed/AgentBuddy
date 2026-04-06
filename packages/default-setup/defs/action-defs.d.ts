@@ -585,6 +585,31 @@ interface StashEntry {
     message: string;
     date: string;
 }
+interface GhPullRequest {
+    number: number;
+    title: string;
+    body: string;
+    headRefName: string;
+    baseRefName: string;
+    state: 'OPEN' | 'CLOSED' | 'MERGED';
+    url: string;
+    isDraft: boolean;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+    commits?: {
+        totalCount: number;
+    };
+}
+interface GhPRComment {
+    author: {
+        login: string;
+    };
+    body: string;
+    createdAt: string;
+}
 interface TerminalInfo {
     id: EARS.EntityId;
     title: string;
@@ -3081,6 +3106,117 @@ declare const events: {
         path: string;
         baseBranch: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.LIST_OPEN_PRS">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.LIST_OPEN_PRS";
+        systemId: "code";
+    }, {
+        type: "pr.LIST_OPEN_PRS";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.SELECT_PR">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.SELECT_PR";
+        systemId: "code";
+    }, {
+        number: number;
+        type: "pr.SELECT_PR";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.CREATE_PR">;
+        systemId: zod.ZodLiteral<"code">;
+        title: zod.ZodString;
+        body: zod.ZodString;
+        base: zod.ZodOptional<zod.ZodString>;
+        draft: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        title: string;
+        type: "pr.CREATE_PR";
+        systemId: "code";
+        body: string;
+        base?: string | undefined;
+        draft?: boolean | undefined;
+    }, {
+        title: string;
+        type: "pr.CREATE_PR";
+        systemId: "code";
+        body: string;
+        base?: string | undefined;
+        draft?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.MERGE_PR">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+        method: zod.ZodOptional<zod.ZodEnum<["merge", "squash", "rebase"]>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.MERGE_PR";
+        systemId: "code";
+        method?: "merge" | "squash" | "rebase" | undefined;
+    }, {
+        number: number;
+        type: "pr.MERGE_PR";
+        systemId: "code";
+        method?: "merge" | "squash" | "rebase" | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.CLOSE_PR">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.CLOSE_PR";
+        systemId: "code";
+    }, {
+        number: number;
+        type: "pr.CLOSE_PR";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.TOGGLE_DRAFT">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+        isDraft: zod.ZodBoolean;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.TOGGLE_DRAFT";
+        systemId: "code";
+        isDraft: boolean;
+    }, {
+        number: number;
+        type: "pr.TOGGLE_DRAFT";
+        systemId: "code";
+        isDraft: boolean;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.CHECK_BRANCH_PR">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.CHECK_BRANCH_PR";
+        systemId: "code";
+    }, {
+        type: "pr.CHECK_BRANCH_PR";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.CHECK_GH_AUTH">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.CHECK_GH_AUTH";
+        systemId: "code";
+    }, {
+        type: "pr.CHECK_GH_AUTH";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.GET_PR_AUTOFILL">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.GET_PR_AUTOFILL";
+        systemId: "code";
+    }, {
+        type: "pr.GET_PR_AUTOFILL";
+        systemId: "code";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.CREATE_TERMINAL">;
         systemId: zod.ZodLiteral<"code">;
         title: zod.ZodOptional<zod.ZodString>;
@@ -4285,6 +4421,63 @@ declare const events: {
         type: "pr.STATUS_CHANGED";
         data: {
             timestamp: Date;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.OPEN_PRS_RECEIVED";
+        data: {
+            prs: GhPullRequest[];
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.PR_DETAILS_RECEIVED";
+        data: {
+            pr: GhPullRequest;
+            comments: GhPRComment[];
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.PR_CREATED";
+        data: {
+            pr: GhPullRequest;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.PR_MERGED";
+        data: {
+            number: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.PR_CLOSED";
+        data: {
+            number: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.PR_DRAFT_TOGGLED";
+        data: {
+            number: number;
+            isDraft: boolean;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.BRANCH_PR_CHECKED";
+        data: {
+            pr: GhPullRequest | null;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.GH_AUTH_CHECKED";
+        data: {
+            available: boolean;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.AUTOFILL_RECEIVED";
+        data: {
+            title: string;
+            body: string;
         };
         pluginId: "code";
     } | {
