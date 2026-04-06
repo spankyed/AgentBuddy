@@ -39,8 +39,8 @@
         <span>GitHub CLI not available. Install <code class="px-1 py-0.5 rounded bg-neutral-800">gh</code> and run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth login</code> for PR features.</span>
       </div>
 
-      <!-- Top action row (when gh is available) -->
-      <div v-if="isGhAvailable" class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800 bg-neutral-800/50">
+      <!-- Top action row (when gh is available, hidden in PR view) -->
+      <div v-if="isGhAvailable && viewMode !== 'pr'" class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800 bg-neutral-800/50">
         <!-- Selector mode -->
         <template v-if="showSelector">
           <PRSelector
@@ -141,6 +141,7 @@
           :baseBranch="createBaseBranch"
           :draft="createDraft"
           :defaultBaseBranch="prBaseBranch"
+          :branches="availableBranches"
           :isCreating="isCreating"
           @update-field="handleUpdateField"
           @submit="handleSubmitCreate"
@@ -228,6 +229,7 @@ const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTog
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
 const currentBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
+const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
 
 // Computed
 const isNoGitRepoError = computed(() =>
@@ -266,6 +268,8 @@ const handleSelectPRFromDropdown = (number: number) => {
 
 const handleCreatePR = () => {
   prActor?.send({ type: 'pr.NEW_PR' })
+  // Ensure branches are loaded for the base branch select
+  commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 }
 
 const handleViewPRInfo = () => {
