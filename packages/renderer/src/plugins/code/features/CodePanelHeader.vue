@@ -101,7 +101,7 @@ import BaseDirectoryMenu from '@/plugins/code/features/explorer/components/BaseD
 import {
   FolderOpen,
   Search,
-  GitCommit,
+  GitCommitVertical,
   GitPullRequest,
   Terminal,
   Play,
@@ -154,7 +154,7 @@ const handleProjectDirectorySelect = (path: string) => {
 
 const codePanels = [
   { id: 'explorer', label: 'Explorer', icon: FolderOpen },
-  { id: 'commit', label: 'Commit Changes', icon: GitCommit },
+  { id: 'commit', label: 'Commit Changes', icon: GitCommitVertical },
   { id: 'pr', label: 'Pull Request', icon: GitPullRequest },
   { id: 'search', label: 'Search', icon: Search },
 ] as const
