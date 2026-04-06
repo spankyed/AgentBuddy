@@ -39,7 +39,7 @@
           :key="panel.id"
           @click="selectPanel(panel.id)"
           :class="[
-            'p-1.5 rounded transition-colors',
+            'relative p-1.5 rounded transition-colors',
             selectedPanel === panel.id
               ? 'bg-primary-700 text-neutral-100'
               : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
@@ -47,6 +47,10 @@
           :title="panel.label"
         >
           <component :is="panel.icon" class="w-4 h-4" />
+          <span
+            v-if="panel.id === 'commit' && changeCount > 0"
+            class="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[14px] h-3.5 px-[2px] text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+          >{{ changeCount }}</span>
         </button>
 
         <div class="h-5 w-px bg-neutral-700 mx-1"></div>
@@ -117,6 +121,9 @@ defineEmits<{
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')!
 const terminalActor = actor.system.get('terminal')!
+const commitActor = actor.system.get('commit')!
+
+const changeCount = useSelector(commitActor, (state: any) => state.context.gitStatus?.length ?? 0)
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
