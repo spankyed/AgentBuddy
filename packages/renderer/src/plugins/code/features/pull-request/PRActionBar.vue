@@ -24,7 +24,7 @@
       <!-- Merge method dropdown -->
       <div
         v-if="showMergeOptions"
-        class="absolute bottom-full left-0 mb-1 rounded border border-neutral-700 bg-neutral-800 shadow-lg z-50"
+        class="absolute bottom-full left-0 mb-1 rounded border border-neutral-700 bg-neutral-800 shadow-lg z-50 whitespace-nowrap"
       >
         <button
           v-for="method in mergeMethodList"
