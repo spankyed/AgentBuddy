@@ -700,6 +700,9 @@ function handleKeyDown(event: KeyboardEvent) {
   if (editingItemId.value) return
   if (!containerRef.value?.contains(event.target as Node)) return
 
+  const target = event.target as HTMLElement
+  if (target.matches('input, textarea, [contenteditable="true"]')) return
+
   const hasSelection = props.selectedItems.length > 0
   const isModified = event.metaKey || event.ctrlKey
 
