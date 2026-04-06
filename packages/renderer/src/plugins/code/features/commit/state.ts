@@ -3,6 +3,7 @@ import { trpc } from '@/core/trpc';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs } from '../../utils/tab-management';
 
+
 // Git types
 export interface GitStatusFile {
   path: string
@@ -187,15 +188,30 @@ export const commitState = setup({
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory || ''
 
+      // For deleted files, show a deleted file view instead of trying to open
+      if (ev.file.status === 'deleted') {
+        const deletedTab = {
+          path: `deleted:${ev.file.path}`,
+          content: '',
+          modified: false,
+          isDeleted: true,
+          deletedFilePath: ev.file.path,
+        }
+        const result = mergeTabs(
+          parentContext?.openFiles || [],
+          [deletedTab],
+          deletedTab.path
+        )
+        updateParentState(self, result)
+        return
+      }
+
       // Git paths are relative to the repository root
       // We need to construct the absolute path correctly
       let fullPath: string
       if (ev.file.path.startsWith('/')) {
-        // Path is already absolute
         fullPath = ev.file.path
       } else {
-        // For git files, the path is relative to the git repository root
-        // which should be the same as our baseDirectory
         fullPath = baseDirectory.endsWith('/')
           ? baseDirectory + ev.file.path
           : baseDirectory + '/' + ev.file.path

@@ -270,6 +270,7 @@
                 {{ getStatusIcon(file.status) }}
               </span>
               <button
+                v-if="file.status !== 'deleted'"
                 @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded"
                 title="Open file"
@@ -321,6 +322,7 @@
                 {{ getStatusIcon(file.status) }}
               </span>
               <button
+                v-if="file.status !== 'deleted'"
                 @click.stop="openFile(file)"
                 class="p-0.5 hover:bg-neutral-700 rounded"
                 title="Open file"

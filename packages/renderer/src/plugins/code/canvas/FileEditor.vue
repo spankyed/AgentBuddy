@@ -57,6 +57,14 @@
           />
         </div>
 
+        <!-- Deleted file view -->
+        <div v-if="isDeletedFile" class="h-full">
+          <DeletedFileView
+            :file-path="(activeFile as any).deletedFilePath"
+            @close="closeFile(activeFilePath!)"
+          />
+        </div>
+
         <!-- Rich text editor for markdown files -->
         <div v-show="isRichText(activeFile)" class="h-full overflow-auto file-rich-text" style="background: #1e1e1e">
           <TiptapEditor
@@ -70,9 +78,9 @@
         </div>
 
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile)" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile" class="h-full overflow-hidden">
           <MonacoEditor
-            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile)"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -96,6 +104,7 @@ import { FileCode } from 'lucide-vue-next'
 import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import DeletedFileView from './DeletedFileView.vue'
 import Tabs from './Tabs.vue'
 import type { OpenFile, TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
@@ -152,6 +161,11 @@ const isRichText = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boole
 // Helper to check if file is a diff
 const isDiffFile = computed(() => {
   return activeFile.value && 'isDiff' in activeFile.value && activeFile.value.isDiff === true
+})
+
+// Helper to check if file is a deleted file placeholder
+const isDeletedFile = computed(() => {
+  return activeFile.value && 'isDeleted' in activeFile.value && activeFile.value.isDeleted === true
 })
 
 // Get diff content
