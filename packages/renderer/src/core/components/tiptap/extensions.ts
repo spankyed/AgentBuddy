@@ -21,7 +21,7 @@ import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
 import { CommandViewerDecoration } from './command-viewer-decoration'
-import { ListBackspace } from './list-backspace'
+import { ListKeymap } from './list-keymap'
 
 const lowlight = createLowlight(common)
 
@@ -307,7 +307,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
   ]
 
   if (mode !== 'viewer') {
-    extensions.push(ListBackspace)
+    extensions.push(ListKeymap)
 
     if (placeholder) {
       extensions.push(

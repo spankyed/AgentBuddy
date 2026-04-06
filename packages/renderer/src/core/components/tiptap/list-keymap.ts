@@ -3,8 +3,8 @@ import { Extension, isAtStartOfNode, isNodeActive } from '@tiptap/core'
 const LIST_ITEMS = ['listItem', 'taskItem']
 const LIST_TYPES = ['bulletList', 'orderedList', 'taskList']
 
-export const ListBackspace = Extension.create({
-  name: 'listBackspace',
+export const ListKeymap = Extension.create({
+  name: 'listKeymap',
   addKeyboardShortcuts() {
     const handleBackspace = () => {
       const { editor } = this
