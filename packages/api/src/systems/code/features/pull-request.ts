@@ -234,6 +234,9 @@ export const pullRequestSystem = setup({
     selfRefreshPrStatus: ({ self }) => {
       self.send({ type: 'pr.GET_BASE_BRANCH' })
       self.send({ type: 'pr.GET_BRANCH_DIFF' })
+      self.send({ type: 'pr.CHECK_GH_AUTH' })
+      self.send({ type: 'pr.LIST_OPEN_PRS' })
+      self.send({ type: 'pr.CHECK_BRANCH_PR' })
     }
   }
 }).createMachine({
