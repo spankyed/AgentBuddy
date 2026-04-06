@@ -36,7 +36,7 @@
             <div v-else class="w-4 flex-shrink-0" />
 
             <Link2Off v-if="isBrokenSymlink" class="w-5 h-5 text-neutral-600 flex-shrink-0" />
-            <Link v-else-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
+            <Link2 v-else-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
             <Folder v-else-if="item.type === 'folder'" class="w-5 h-5 text-blue-400 flex-shrink-0" />
             <FileText v-else class="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <div class="min-w-0 relative">
@@ -144,7 +144,7 @@
 
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Link2Off, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link2, Link2Off, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal, ContextMenuSeparator,
