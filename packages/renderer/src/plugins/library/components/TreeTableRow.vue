@@ -22,19 +22,21 @@
       >
         <td class="px-4 py-1 relative">
           <div class="flex items-center gap-2" :style="{ paddingLeft: `${depth * 24}px` }">
-            <!-- Disclosure triangle for folders -->
+            <!-- Disclosure triangle for folders (hidden for broken symlinks) -->
             <button
-              v-if="item.type === 'folder'"
+              v-if="item.type === 'folder' && !isBrokenSymlink"
               @click.stop="toggleExpand"
               class="w-4 h-4 flex items-center justify-center text-neutral-400 hover:text-neutral-200 transition-transform duration-150 flex-shrink-0"
               :class="{ 'rotate-90': isExpanded }"
             >
               <ChevronRight class="w-3 h-3" />
             </button>
+            <div v-else-if="item.type === 'folder'" class="w-4 flex-shrink-0" />
             <!-- Spacer for documents to align with folder names -->
             <div v-else class="w-4 flex-shrink-0" />
 
-            <Link v-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
+            <Link2Off v-if="isBrokenSymlink" class="w-5 h-5 text-neutral-600 flex-shrink-0" />
+            <Link v-else-if="item.type === 'folder' && (item as any).isSymlink" class="w-5 h-5 text-purple-400 flex-shrink-0" />
             <Folder v-else-if="item.type === 'folder'" class="w-5 h-5 text-blue-400 flex-shrink-0" />
             <FileText v-else class="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <div class="min-w-0 relative">
@@ -44,7 +46,7 @@
                 :class="[
                   item.type === 'folder' ? 'font-medium' : 'font-normal',
                   isEditing ? 'invisible' : 'cursor-pointer',
-                  !isEditing && (item.type === 'folder' ? 'text-neutral-100' : 'text-neutral-200')
+                  isBrokenSymlink ? 'text-neutral-600' : (!isEditing && (item.type === 'folder' ? 'text-neutral-100' : 'text-neutral-200'))
                 ]"
               >
                 {{ item.name }}
@@ -142,7 +144,7 @@
 
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link, Link2Off, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal, ContextMenuSeparator,
@@ -186,6 +188,7 @@ const sortItems = inject<(items: LibraryItem[]) => LibraryItem[]>('tree-sort-ite
 
 const contextMenuOpen = ref(false)
 const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
+const isBrokenSymlink = computed(() => isSymlinkFolder.value && (props.item as any).isBroken)
 const isSymlinkedItem = computed(() => (props.item as any).isSymlinked || (props.item as any).isSymlink)
 const isSelected = computed(() => selectedItems().includes(props.item.id))
 const isExpanded = computed(() => expandedFolderIds().includes(props.item.id))

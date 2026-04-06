@@ -1,3 +1,4 @@
+import * as fs from 'fs/promises'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem, DocumentShortCode, ContentSection } from '../types'
@@ -183,6 +184,11 @@ export const libraryQueries = {
         folderItem.isSymlink = true
         folderItem.symlinkPath = folderSymlinkPath
         folderItem.size = '--'
+        try {
+          await fs.access(folderSymlinkPath)
+        } catch {
+          folderItem.isBroken = true
+        }
       }
 
       items.push(folderItem)

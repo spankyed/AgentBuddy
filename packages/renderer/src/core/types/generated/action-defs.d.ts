@@ -692,6 +692,7 @@ interface FolderItem {
     isSymlink?: boolean;
     symlinkPath?: string;
     isSymlinked?: boolean;
+    isBroken?: boolean;
 }
 interface DocumentItem {
     type: 'document';

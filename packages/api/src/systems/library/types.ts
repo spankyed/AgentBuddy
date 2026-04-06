@@ -105,6 +105,7 @@ export interface FolderItem {
   isSymlink?: boolean
   symlinkPath?: string
   isSymlinked?: boolean
+  isBroken?: boolean
 }
 
 export interface DocumentItem {
