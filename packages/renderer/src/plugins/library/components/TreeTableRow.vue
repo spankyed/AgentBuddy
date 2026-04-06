@@ -281,9 +281,10 @@ function copyId() {
 function showRelinkForm() {
   relinkForm.path = ''
   relinkForm.show = true
-  nextTick(() => {
+  // Delay focus to let the context menu finish closing
+  setTimeout(() => {
     document.getElementById(`relink-input-${props.item.id}`)?.focus()
-  })
+  }, 50)
 }
 
 async function browseRelinkPath() {
