@@ -342,37 +342,35 @@
     </div>
 
     <!-- Stashes Section (pinned to bottom) -->
-    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800 bg-neutral-800/40">
-      <div class="flex items-center justify-between p-3 px-5">
-        <button @click="isStashesExpanded = !isStashesExpanded" class="flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-300">
+    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+      <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isStashesExpanded = !isStashesExpanded">
+        <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
           <ChevronDown v-else class="w-3 h-3" />
           STASHES ({{ stashList.length }})
-        </button>
-        <button @click="openClearStashesDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Clear All Stashes">
+        </div>
+        <button @click.stop="openClearStashesDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Clear All Stashes">
           <Trash2 class="w-3 h-3 text-gray-400" />
         </button>
       </div>
-      <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 px-2 pb-3">
-        <div class="space-y-1">
+      <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 pb-3">
+        <div class="space-y-0.5 pl-3">
           <div
             v-for="stash in stashList"
             :key="stash.ref"
-            class="group px-2 py-1.5 rounded hover:bg-neutral-800 transition-colors"
+            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors cursor-pointer"
+            @click="applyStash(stash.index)"
           >
-            <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
               <div class="flex-1 min-w-0">
-                <div class="text-xs text-neutral-300 truncate">{{ stash.ref }}</div>
-                <div v-if="stash.message" class="text-xs text-neutral-500 truncate">{{ stash.message }}</div>
+                <div class="text-xs text-neutral-200 truncate">{{ formatStashMessage(stash) }}</div>
+                <div class="text-[11px] text-neutral-500 truncate">{{ stash.ref }} · {{ formatStashBranch(stash.message) }} · {{ formatStashDate(stash.date) }}</div>
               </div>
-              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
-                <button @click="applyStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Apply (keep stash)">
-                  <Play class="w-3 h-3 text-neutral-400" />
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <button @click.stop="popStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Pop (apply & remove)">
+                  <ArrowDownToLine class="w-3 h-3 text-neutral-400" />
                 </button>
-                <button @click="popStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Pop (apply & remove)">
-                  <PackageCheck class="w-3 h-3 text-green-400" />
-                </button>
-                <button @click="openDropStashDialog(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Drop (delete)">
+                <button @click.stop="openDropStashDialog(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Drop">
                   <Trash2 class="w-3 h-3 text-red-400" />
                 </button>
               </div>
@@ -412,7 +410,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, MoreVertical, Play, PackageCheck, Trash2 } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, MoreVertical, Trash2 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
@@ -731,6 +729,39 @@ const getStatusColor = (status: GitStatusFile['status']) => {
   }
 }
 
+
+const formatStashMessage = (stash: any) => {
+  if (stash.message) {
+    // Strip the "On branch: " or "WIP on branch:" prefix that git adds
+    const cleaned = stash.message
+      .replace(/^On \S+:\s*/, '')
+      .replace(/^WIP on \S+\s*/, '')
+    return cleaned || `stash@{${stash.index}}`
+  }
+  return `stash@{${stash.index}}`
+}
+
+const formatStashBranch = (message: string) => {
+  // Extract branch name from "On branch:" or "WIP on branch" prefix
+  const match = message?.match(/^(?:On|WIP on)\s+(\S+?)[:,\s]/)
+  return match ? match[1] : 'unknown'
+}
+
+const formatStashDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 30) return `${diffDays}d ago`
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 // Trigger initial load when panel is mounted
 // Git watcher will handle subsequent updates
