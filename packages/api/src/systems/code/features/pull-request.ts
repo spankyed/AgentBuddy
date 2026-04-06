@@ -24,6 +24,7 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.TOGGLE_DRAFT', { number: z.number(), isDraft: z.boolean() }),
   busEvent('pr.CHECK_BRANCH_PR', {}),
   busEvent('pr.CHECK_GH_AUTH', {}),
+  busEvent('pr.GET_PR_AUTOFILL', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -41,6 +42,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
   | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
+  | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -58,8 +60,19 @@ export type Event =
   | { type: 'pr.TOGGLE_DRAFT'; number: number; isDraft: boolean }
   | { type: 'pr.CHECK_BRANCH_PR' }
   | { type: 'pr.CHECK_GH_AUTH' }
+  | { type: 'pr.GET_PR_AUTOFILL' }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
+
+function humanizeBranchName(branch: string): string {
+  // Strip common prefixes
+  const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[\/_]/i, '')
+  // Replace separators with spaces, then title case
+  return stripped
+    .replace(/[-_/]/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .trim()
+}
 
 function emitToFrontend(event: OutgoingPullRequestEvents) {
   const wrapped = emit(pluginId, event)
@@ -220,6 +233,34 @@ export const pullRequestSystem = setup({
       }
     },
 
+    getPRAutofill: async ({ context }) => {
+      if (!context.gitRepository) { emitError('No git repository available'); return }
+      try {
+        const { gitRepository } = context
+        const baseBranch = await gitRepository.getPRBaseBranch()
+        const currentBranch = await gitRepository.getCurrentBranch()
+        const commits = await gitRepository.getCommitsBetweenBranches(baseBranch)
+
+        let title = ''
+        let body = ''
+
+        if (commits.length === 1) {
+          // Single commit: use commit message
+          title = commits[0].subject
+          body = commits[0].body
+        } else if (commits.length > 1) {
+          // Multiple commits: humanize branch name for title, bullet list for body
+          title = humanizeBranchName(currentBranch)
+          body = commits.map(c => `- ${c.subject}`).join('\n')
+        }
+
+        emitToFrontend({ type: 'pr.AUTOFILL_RECEIVED', data: { title, body } })
+      } catch (error: any) {
+        // Non-critical — just don't autofill
+        emitToFrontend({ type: 'pr.AUTOFILL_RECEIVED', data: { title: '', body: '' } })
+      }
+    },
+
     handleGitStatusChanged: async () => {
       emitToFrontend({ type: 'pr.STATUS_CHANGED', data: { timestamp: new Date() } })
     },
@@ -259,6 +300,7 @@ export const pullRequestSystem = setup({
         'pr.TOGGLE_DRAFT': { actions: 'toggleDraft' },
         'pr.CHECK_BRANCH_PR': { actions: 'checkBranchPR' },
         'pr.CHECK_GH_AUTH': { actions: 'checkGhAuth' },
+        'pr.GET_PR_AUTOFILL': { actions: 'getPRAutofill' },
         'pr.GIT_STATUS_CHANGED': { actions: 'handleGitStatusChanged' },
         'pr.UPDATE_BASE_DIRECTORY': { actions: ['updateBaseDirectory', 'selfRefreshPrStatus'] }
       }

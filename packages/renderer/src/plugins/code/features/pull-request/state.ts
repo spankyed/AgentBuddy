@@ -78,6 +78,7 @@ export type Event =
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
   | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
+  | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   // User actions
   | { type: 'pr.LIST_PRS' }
   | { type: 'pr.SELECT_PR_BY_NUMBER'; number: number }
@@ -295,9 +296,28 @@ export const pullRequestState = setup({
       }
     }),
 
-    newPR: assign({
-      selectedPR: null,
-      viewMode: 'pr' as const,
+    newPR: enqueueActions(({ enqueue }) => {
+      enqueue.assign({
+        selectedPR: null,
+        viewMode: 'pr' as const,
+        createTitle: '',
+        createBody: '',
+        createDraft: false,
+      })
+      enqueue(() => {
+        sendToBackend('pr.GET_PR_AUTOFILL', {})
+      })
+    }),
+
+    handleAutofillReceived: assign({
+      createTitle: ({ event, context }) => {
+        const ev = event as { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
+        return context.createTitle || ev.data.title
+      },
+      createBody: ({ event, context }) => {
+        const ev = event as { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
+        return context.createBody || ev.data.body
+      },
     }),
 
     updateCreateField: assign({
@@ -422,6 +442,7 @@ export const pullRequestState = setup({
         'pr.OPEN_PRS_RECEIVED': { actions: 'handleOpenPRsReceived' },
         'pr.PR_DETAILS_RECEIVED': { actions: ['handlePRDetailsReceived', 'loadDiffForSelectedPR'] },
         'pr.BRANCH_PR_CHECKED': { actions: 'handleBranchPRChecked' },
+        'pr.AUTOFILL_RECEIVED': { actions: 'handleAutofillReceived' },
         'pr.PR_CREATED': { actions: ['handlePRCreated', 'refreshPRList'] },
         'pr.PR_MERGED': { actions: ['handlePRMerged', 'refreshPRList'] },
         'pr.PR_CLOSED': { actions: ['handlePRClosed', 'refreshPRList'] },

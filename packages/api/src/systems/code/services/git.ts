@@ -969,4 +969,26 @@ export class GitRepository {
       throw new Error(result.error || 'Failed to clear stashes')
     }
   }
+
+  async getCommitsBetweenBranches(baseBranch: string, targetBranch = 'HEAD'): Promise<{ subject: string; body: string }[]> {
+    const separator = '---COMMIT_SEP---'
+    const result = await this.executeGitCommand([
+      'log', `${baseBranch}..${targetBranch}`,
+      `--format=%s${separator}%b${separator}`,
+      '--reverse'
+    ])
+    if (!result.success || !result.output?.trim()) return []
+
+    return result.output
+      .split(separator + '\n')
+      .filter(chunk => chunk.trim())
+      .map(chunk => {
+        const parts = chunk.split(separator)
+        return {
+          subject: (parts[0] || '').trim(),
+          body: (parts[1] || '').trim()
+        }
+      })
+      .filter(c => c.subject)
+  }
 }
