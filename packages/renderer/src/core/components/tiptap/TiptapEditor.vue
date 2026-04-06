@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { Selection } from '@tiptap/pm/state'
+import { Selection, TextSelection } from '@tiptap/pm/state'
 import { splitBlock } from '@tiptap/pm/commands'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
@@ -265,17 +265,21 @@ const editor = useEditor({
         }
       }
 
-      // ⌘/Ctrl+X on empty selection → cut entire line
+      // ⌘/Ctrl+X on empty selection → select line, let ProseMirror handle cut
       if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
-        event.preventDefault()
         const { $from } = view.state.selection
-        const start = $from.start()
-        const end = $from.end()
-        const text = view.state.doc.textBetween(start, end)
-        navigator.clipboard.writeText(text)
-        const tr = view.state.tr.deleteRange($from.before(), $from.after())
-        view.dispatch(tr)
-        return true
+        view.dispatch(
+          view.state.tr.setSelection(TextSelection.create(view.state.doc, $from.start(), $from.end()))
+        )
+        setTimeout(() => {
+          const { $from: $pos } = view.state.selection
+          if ($pos.parent.content.size === 0) {
+            let depth = $pos.depth
+            while (depth > 1 && $pos.node(depth - 1).childCount === 1) depth--
+            view.dispatch(view.state.tr.deleteRange($pos.before(depth), $pos.after(depth)))
+          }
+        })
+        return false
       }
 
       if (event.key === 'Tab') {
