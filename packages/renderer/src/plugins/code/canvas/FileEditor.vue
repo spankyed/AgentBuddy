@@ -75,6 +75,7 @@
             v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile)"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
+            @mount="handleEditorMount"
             :file-path="activeFilePath || undefined"
             theme="vs-dark"
             :diff-mode="isDiffFile"
@@ -97,6 +98,7 @@ import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import Tabs from './Tabs.vue'
+import { applicationState } from '@/main'
 import type { OpenFile, TerminalTab } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
@@ -201,6 +203,11 @@ const handleContentChange = (value: string) => {
   if (props.activeFilePath) {
     emit('contentChange', props.activeFilePath, value)
   }
+}
+
+const handleEditorMount = () => {
+  // Monaco is now loaded — notify LSP actor so it can create the bridge
+  applicationState.system.get('lsp')?.send({ type: 'lsp.MONACO_READY' })
 }
 </script>
 

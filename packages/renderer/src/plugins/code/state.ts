@@ -16,6 +16,7 @@ import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
 import { actionsState, type ActionTab } from './features/actions/state';
 import { promptsState, type PromptTab } from './features/prompts/state';
+import { lspState } from './lsp/state';
 
 export const id = 'code' as const;
 
@@ -199,7 +200,8 @@ const codeState = setup({
     pullRequestState,
     terminalState,
     actionsState,
-    promptsState
+    promptsState,
+    lspState
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
@@ -211,14 +213,17 @@ const codeState = setup({
         enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
         enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
         enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
+        enqueue.spawnChild('lspState', { systemId: 'lsp', input: { baseDirectory: context.baseDirectory } });
     }),
 
     notifyDirectoryChange: ({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
+        console.log('[Code] notifyDirectoryChange — sending lsp.INIT with:', ev.updates.baseDirectory, 'lspActor:', !!system.get('lsp'))
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
         system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
+        system.get('lsp')?.send({ type: 'lsp.INIT', baseDirectory: ev.updates.baseDirectory });
       }
     },
     saveTabsAction: ({ context }) => {
@@ -404,6 +409,9 @@ const codeState = setup({
       // Route based on prefix - prefix matches system ID
       if (eventType.includes('.')) {
         const [prefix] = eventType.split('.');
+        if (prefix === 'lsp') {
+          console.log('[LSP:Route] routing to lsp actor:', eventType)
+        }
         system.get(prefix)?.send(event);
       }
     },
@@ -518,6 +526,15 @@ const codeState = setup({
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
     }),
+
+    initializeLsp: ({ event, system }) => {
+      const ev = event as { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } }
+      const lspActor = system.get('lsp')
+      console.log('[Code] initializeLsp — baseDirectory:', ev.data.baseDirectory, 'lspActor:', !!lspActor)
+      if (ev.data.baseDirectory) {
+        lspActor?.send({ type: 'lsp.INIT', baseDirectory: ev.data.baseDirectory })
+      }
+    },
 
     handleSettingsUpdate: assign(({ event, context }) => {
       const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
@@ -882,7 +899,7 @@ const codeState = setup({
       on: {
         // Broadcast CODE_CONNECTED to all features
         CODE_CONNECTED: {
-          actions: ['handleCodeConnected', 'broadcastToAllFeatures']
+          actions: ['handleCodeConnected', 'broadcastToAllFeatures', 'initializeLsp']
         },
         // Handle settings updates
         CODE_SETTINGS_UPDATED: {

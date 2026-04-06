@@ -20,9 +20,9 @@ const MONO_FONT_STACK = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consola
 const LANGUAGE_MAP: Record<string, string> = {
   // TypeScript/JavaScript
   ts: 'typescript',
-  tsx: 'typescript',
+  tsx: 'typescriptreact',
   js: 'javascript',
-  jsx: 'javascript',
+  jsx: 'javascriptreact',
   mjs: 'javascript',
   cjs: 'javascript',
   // Vue
@@ -205,10 +205,10 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
   // Code editor preset for regular code files
   codeEditor: {
     ...baseEditorOptions,
-    quickSuggestions: false,
-    parameterHints: { enabled: false },
-    suggestOnTriggerCharacters: false,
-    wordBasedSuggestions: 'currentDocument',
+    quickSuggestions: true,
+    parameterHints: { enabled: true },
+    suggestOnTriggerCharacters: true,
+    wordBasedSuggestions: 'off',
   },
 }
 
@@ -220,6 +220,7 @@ let monacoInitialized = false
 const registeredDslLibs = new Set<string>()
 const initializedLanguages = new Set<string>()
 
+// ============================================================================
 // ============================================================================
 // FILE TYPE DETECTION
 // ============================================================================
@@ -533,10 +534,10 @@ export interface InitializeMonacoOptions {
  */
 export function initializeMonaco(options: InitializeMonacoOptions = {}): void {
   if (monacoInitialized) return
-  
+
   const monaco = (window as any).monaco as Monaco
   if (!monaco) return
-  
+
   monacoInitialized = true
   
   const {

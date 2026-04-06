@@ -33,6 +33,7 @@ import { pullRequestSystem, IncomingPullRequestEvents, OutgoingPullRequestEvents
 import { terminalSystem, IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal'
 import { actionsSystem, IncomingActionsEvents, OutgoingActionsEvents } from './features/actions'
 import { promptsSystem, IncomingPromptsEvents, OutgoingPromptsEvents } from './features/prompts'
+import { lspSystem, IncomingLspEvents, type OutgoingLspEvents } from './lsp/system'
 
 export const id = 'code' as const
 
@@ -47,6 +48,7 @@ const IncomingCodeEvents = [
   ...IncomingTerminalEvents,
   ...IncomingActionsEvents,
   ...IncomingPromptsEvents,
+  ...IncomingLspEvents,
   // Special root-level events
   busEvent('SET_BASE_DIRECTORY', { path: z.string(), fromUserNavigation: z.boolean().optional() }),
 ] as const
@@ -59,6 +61,7 @@ export type OutgoingCodeEvents =
   | OutgoingPullRequestEvents
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
+  | OutgoingLspEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
   | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
@@ -119,7 +122,8 @@ export const systemMachine = setup({
     pullRequestSystem,
     terminalSystem,
     actionsSystem,
-    promptsSystem
+    promptsSystem,
+    lspSystem
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
@@ -160,6 +164,12 @@ export const systemMachine = setup({
       });
       enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
       enqueue.spawnChild('promptsSystem', { systemId: 'codePrompts' });
+      enqueue.spawnChild('lspSystem', {
+        systemId: 'lsp',
+        input: {
+          baseDirectory: context.baseDirectory
+        }
+      });
     }),
 
 
@@ -227,6 +237,7 @@ export const systemMachine = setup({
       // Note: Updates terminal's base directory for new terminal creation.
       // Individual terminal processes track their own cwd independently.
       system.get('terminal')?.send({ type: 'terminal.UPDATE_BASE_DIRECTORY', path: newPath });
+      system.get('lsp')?.send({ type: 'lsp.UPDATE_BASE_DIRECTORY', path: newPath });
     },
 
     updateSettings: ({ event, context, self }) => {
@@ -258,6 +269,7 @@ export const systemMachine = setup({
       system.get('terminal')?.send({ type: 'CODE_CONNECTED' });
       system.get('codeActions')?.send({ type: 'CODE_CONNECTED' });
       system.get('codePrompts')?.send({ type: 'CODE_CONNECTED' });
+      system.get('lsp')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
       const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
