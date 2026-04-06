@@ -2,31 +2,35 @@
   <div class="flex flex-col flex-1 overflow-y-auto">
     <div v-if="pr" class="p-3 space-y-3">
       <!-- PR Header -->
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-medium text-neutral-200">{{ pr.title }}</span>
+      <div class="pb-3 border-b border-neutral-800">
+        <div class="flex items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <span class="text-sm font-medium text-neutral-100 leading-snug">{{ pr.title }}</span>
+            <div class="flex items-center gap-1 mt-0.5 text-[11px] text-neutral-600">
+              <GitBranch :size="10" class="shrink-0" />
+              <span class="truncate">{{ pr.headRefName }}</span>
+              <ArrowRight :size="10" class="shrink-0" />
+              <span class="truncate">{{ pr.baseRefName }}</span>
+            </div>
+          </div>
+          <span class="text-[11px] text-neutral-400 shrink-0 mt-0.5">#{{ pr.number }}</span>
+        </div>
+        <div class="flex items-center gap-1.5 mt-2 text-[11px] text-neutral-500">
           <span class="text-[10px] px-1.5 py-0.5 rounded-full shrink-0" :class="statusBadgeClass">
             {{ statusLabel }}
           </span>
-        </div>
-        <div class="flex items-center gap-2 text-[10px] text-neutral-500">
-          <span>#{{ pr.number }}</span>
-          <span>by {{ pr.author.login }}</span>
+          <span>&middot;</span>
+          <span>{{ pr.author.login }}</span>
+          <span>&middot;</span>
           <span>{{ formatDate(pr.createdAt) }}</span>
-        </div>
-        <div class="flex items-center gap-1 mt-1 text-[10px] text-neutral-500">
-          <GitBranch :size="10" />
-          <span>{{ pr.headRefName }}</span>
-          <ArrowRight :size="10" />
-          <span>{{ pr.baseRefName }}</span>
         </div>
       </div>
 
       <!-- PR Body -->
-      <div v-if="pr.body" class="pr-body text-xs text-neutral-300 border-t border-neutral-800 pt-3">
+      <div v-if="pr.body" class="pr-body text-xs text-neutral-300">
         <div v-html="renderedBody" class="prose prose-invert prose-xs max-w-none" />
       </div>
-      <div v-else class="text-xs text-neutral-500 italic border-t border-neutral-800 pt-3">
+      <div v-else class="text-xs text-neutral-500 italic">
         No description provided.
       </div>
 
