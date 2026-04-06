@@ -33,7 +33,7 @@
       <div class="flex-1 min-w-0">
         <slot name="toolbar" />
       </div>
-      <div class="flex items-center gap-1 p-2 flex-shrink-0">
+      <div class="flex items-center gap-1 px-2 py-1.5 flex-shrink-0">
         <button
           v-for="panel in codePanels"
           :key="panel.id"
