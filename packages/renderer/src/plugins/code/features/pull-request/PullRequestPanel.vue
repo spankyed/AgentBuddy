@@ -144,7 +144,6 @@
           :title="createTitle"
           :body="createBody"
           :baseBranch="createBaseBranch"
-          :draft="createDraft"
           :defaultBaseBranch="prBaseBranch"
           :branches="availableBranches"
           :isCreating="isCreating"
@@ -207,7 +206,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
-  ExternalLink, Loader2, Plus, List, X, ArrowLeft
+  Loader2, Plus, List, X, ArrowLeft
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
@@ -242,7 +241,7 @@ const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAva
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
 const createBody = useSelector(prActor, (state: any) => state.context.createBody)
 const createBaseBranch = useSelector(prActor, (state: any) => state.context.createBaseBranch)
-const createDraft = useSelector(prActor, (state: any) => state.context.createDraft)
+
 const isCreating = useSelector(prActor, (state: any) => state.context.isCreating)
 const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
 const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)

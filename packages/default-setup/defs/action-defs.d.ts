@@ -600,8 +600,9 @@ interface GhPullRequest {
     createdAt: string;
     updatedAt: string;
     commits?: {
-        totalCount: number;
-    };
+        oid: string;
+        messageHeadline: string;
+    }[];
 }
 interface GhPRComment {
     author: {

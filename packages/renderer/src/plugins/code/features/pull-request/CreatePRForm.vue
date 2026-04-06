@@ -69,7 +69,6 @@ const props = defineProps<{
   title: string
   body: string
   baseBranch: string
-  draft: boolean
   defaultBaseBranch: string
   branches: string[]
   isCreating: boolean

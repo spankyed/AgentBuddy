@@ -356,17 +356,14 @@ export const pullRequestState = setup({
       })
     },
 
-    submitCreateDraft: enqueueActions(({ enqueue, context }) => {
-      enqueue.assign({ createDraft: true })
-      enqueue(() => {
-        sendToBackend('pr.CREATE_PR', {
-          title: context.createTitle,
-          body: context.createBody,
-          base: context.createBaseBranch || undefined,
-          draft: true,
-        })
+    submitCreateDraft: ({ context }) => {
+      sendToBackend('pr.CREATE_PR', {
+        title: context.createTitle,
+        body: context.createBody,
+        base: context.createBaseBranch || undefined,
+        draft: true,
       })
-    }),
+    },
 
     requestMerge: ({ event, context }) => {
       if (!context.selectedPR) return
