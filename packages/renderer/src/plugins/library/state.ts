@@ -158,6 +158,7 @@ export type LibraryEvents =
   | { type: 'CREATE_SYMLINK'; symlinkPath: string }
   | { type: 'REFRESH_FOLDER'; folderId: string }
   | { type: 'RELINK_SYMLINK'; collectionId: string; newPath: string }
+  | { type: 'REMOVE_BROKEN_SYMLINK'; collectionId: string }
   // Symlink update event (from backend, after re-link)
   | { type: 'SYMLINK_UPDATED'; data: { collection: CollectionDTO } }
   // Import/Export events
@@ -692,6 +693,15 @@ export const librarySystem = setup({
         } as any)
       }
     },
+    removeBrokenSymlink: ({ event }) => {
+      if (event.type === 'REMOVE_BROKEN_SYMLINK') {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'DELETE_ITEMS',
+          ids: [event.collectionId],
+        } as any)
+      }
+    },
     /* ── Library Import actions ────────────────────────────── */
     setImportingLibrary: assign(({ context }) => ({
       libraryImport: {
@@ -950,6 +960,9 @@ export const librarySystem = setup({
     },
     RELINK_SYMLINK: {
       actions: ['relinkSymlink'],
+    },
+    REMOVE_BROKEN_SYMLINK: {
+      actions: ['removeBrokenSymlink', assign({ isBroken: false, lastKnownPath: null })],
     },
     SYMLINK_UPDATED: {
       actions: ['requestFolderContents', 'requestCollections'],

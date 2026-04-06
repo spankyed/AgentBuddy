@@ -10,6 +10,7 @@ import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
 import * as path from 'path'
 import * as os from 'os'
+import * as fs from 'fs/promises'
 import { libraryService } from '@/services/library'
 import * as symlink from './repository/symlink'
 import type { MergeReceivable } from '@/core/helpers/event-helpers'
@@ -248,6 +249,13 @@ type LibraryInternalEvents =
   | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
 type ReceivableEvents = MergeReceivable<typeof IncomingLibraryEvents, LibraryInternalEvents>
 const typeOf = safeEvents<ReceivableEvents>()
+
+function resolveHomePath(inputPath: string): string {
+  const trimmed = inputPath.trim()
+  if (trimmed.startsWith('~/')) return path.join(os.homedir(), trimmed.slice(2))
+  if (trimmed === '~') return os.homedir()
+  return trimmed
+}
 
 export const librarySystem = setup({
   types: {
@@ -613,12 +621,7 @@ export const librarySystem = setup({
     // Symlink actions
     createSymlinkCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_SYMLINK_COLLECTION'; name: string; symlinkPath: string; parentId?: string }
-      let resolvedPath = ev.symlinkPath.trim()
-      if (resolvedPath.startsWith('~/')) {
-        resolvedPath = path.join(os.homedir(), resolvedPath.slice(2))
-      } else if (resolvedPath === '~') {
-        resolvedPath = os.homedir()
-      }
+      const resolvedPath = resolveHomePath(ev.symlinkPath)
       const collection = repository.libraryCommands.createSymlinkCollection(
         ev.name,
         resolvedPath,
@@ -636,11 +639,22 @@ export const librarySystem = setup({
     },
     updateSymlinkPath: async ({ system, event }) => {
       const ev = event as { type: 'UPDATE_SYMLINK_PATH'; collectionId: string; newPath: string }
-      let resolvedPath = ev.newPath.trim()
-      if (resolvedPath.startsWith('~/')) {
-        resolvedPath = path.join(os.homedir(), resolvedPath.slice(2))
-      } else if (resolvedPath === '~') {
-        resolvedPath = os.homedir()
+      const resolvedPath = resolveHomePath(ev.newPath)
+
+      // Validate the new path exists and is a directory
+      try {
+        const stat = await fs.stat(resolvedPath)
+        if (!stat.isDirectory()) throw new Error('Not a directory')
+      } catch {
+        system.get(bus).send({
+          type: 'OUTGOING' as const,
+          event: {
+            type: 'LIBRARY_ERROR' as const,
+            pluginId: 'library',
+            data: { error: `Path does not exist: ${resolvedPath}` },
+          },
+        })
+        return
       }
 
       const collection = repository.libraryCommands.updateSymlinkPath(

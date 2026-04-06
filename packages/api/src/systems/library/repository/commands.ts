@@ -492,13 +492,14 @@ export const libraryCommands = {
     tx(collectionId).update('updatedAt', now)
 
     const col = qx(collectionId).pickAll()[0]
-    const path = getCollectionPath(collectionId)
+    const colPath = getCollectionPath(collectionId)
+    const parentId = findParentCollection(collectionId) || undefined
 
     return {
       id: collectionId,
       name: col.name as string,
-      parentId: undefined,
-      path,
+      parentId,
+      path: colPath,
       documentCount: 0,
       childCollections: [],
       displayOrder: (col.displayOrder as number) || 0,
