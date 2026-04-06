@@ -35,6 +35,7 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
 }
 
 const PR_JSON_FIELDS = 'number,title,headRefName,baseRefName,state,body,url,isDraft,author,createdAt,updatedAt'
+const PR_DETAIL_FIELDS = `${PR_JSON_FIELDS},commits`
 
 export async function checkAuth(cwd: string): Promise<boolean> {
   try {
@@ -67,7 +68,7 @@ export async function listOpenPRs(cwd: string): Promise<GhPullRequest[]> {
 export async function getPRDetails(cwd: string, number: number): Promise<GhPullRequest & { comments: GhPRComment[] }> {
   const output = await runGh([
     'pr', 'view', String(number),
-    '--json', `${PR_JSON_FIELDS},comments`,
+    '--json', `${PR_DETAIL_FIELDS},comments`,
   ], cwd)
   return parseJson<GhPullRequest & { comments: GhPRComment[] }>(output, `PR #${number}`)
 }

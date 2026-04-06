@@ -302,6 +302,10 @@ const handleRefreshPR = () => {
 
 const handleViewPRInfo = () => {
   prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'pr' })
+  // Fetch full details (including commits/comments) if viewing an auto-detected PR
+  if (selectedPR.value && !selectedPR.value.commits) {
+    prActor?.send({ type: 'pr.REFRESH_PR', number: selectedPR.value.number })
+  }
 }
 
 const handleUpdateField = (field: string, value: any) => {

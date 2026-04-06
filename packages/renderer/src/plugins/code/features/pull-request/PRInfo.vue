@@ -23,6 +23,10 @@
           <span>{{ pr.author.login }}</span>
           <span>&middot;</span>
           <span>{{ formatDate(pr.createdAt) }}</span>
+          <template v-if="pr.commits?.length">
+            <span>&middot;</span>
+            <span>{{ pr.commits.length }} commit{{ pr.commits.length !== 1 ? 's' : '' }}</span>
+          </template>
         </div>
       </div>
 

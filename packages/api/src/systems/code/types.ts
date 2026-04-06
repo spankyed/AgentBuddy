@@ -113,6 +113,7 @@ export interface GhPullRequest {
   author: { login: string }
   createdAt: string
   updatedAt: string
+  commits?: { oid: string; messageHeadline: string }[]
 }
 
 export interface GhPRComment {
