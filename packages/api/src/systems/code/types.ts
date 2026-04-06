@@ -100,6 +100,27 @@ export interface StashEntry {
   date: string
 }
 
+// GitHub PR types
+export interface GhPullRequest {
+  number: number
+  title: string
+  body: string
+  headRefName: string
+  baseRefName: string
+  state: 'OPEN' | 'CLOSED' | 'MERGED'
+  url: string
+  isDraft: boolean
+  author: { login: string }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GhPRComment {
+  author: { login: string }
+  body: string
+  createdAt: string
+}
+
 // Terminal types
 export interface TerminalInfo {
   id: EARS.EntityId
