@@ -91,6 +91,7 @@ export type Event =
   | { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
   | { type: 'pr.CLOSE' }
   | { type: 'pr.TOGGLE_DRAFT' }
+  | { type: 'pr.REFRESH_PR'; number: number }
   | { type: 'pr.CLEAR_ERROR' };
 
 export const pullRequestState = setup({
@@ -389,6 +390,11 @@ export const pullRequestState = setup({
       sendToBackend('pr.CHECK_BRANCH_PR', {})
     },
 
+    refreshPRDetails: ({ event }) => {
+      const ev = event as { type: 'pr.REFRESH_PR'; number: number }
+      sendToBackend('pr.SELECT_PR', { number: ev.number })
+    },
+
     selectPRAndLoadDiff: enqueueActions(({ enqueue, event }) => {
       const ev = event as { type: 'pr.SELECT_PR_BY_NUMBER'; number: number }
       enqueue.assign({
@@ -474,6 +480,7 @@ export const pullRequestState = setup({
         'pr.MERGE': { actions: ['requestMerge', assign({ isMerging: true })] },
         'pr.CLOSE': { actions: ['requestClose', assign({ isClosing: true })] },
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
+        'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
       }
     }

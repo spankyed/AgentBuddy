@@ -119,13 +119,24 @@
       <!-- PR view (create form or info) -->
       <template v-if="viewMode === 'pr'">
         <!-- Back to files bar -->
-        <button
+        <div
           @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'files' })"
-          class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-neutral-500 hover:text-neutral-300 border-b border-neutral-800 transition-colors"
+          class="flex items-center px-3 py-1.5 border-b border-neutral-800 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors"
         >
-          <ArrowLeft :size="11" />
-          Back to files
-        </button>
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <ArrowLeft :size="11" />
+            Back to files
+          </div>
+          <button
+            v-if="selectedPR"
+            @click.stop="handleRefreshPR()"
+            :disabled="isLoadingDetails"
+            class="ml-auto p-0.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700 transition-colors disabled:opacity-50"
+            title="Refresh PR details"
+          >
+            <RefreshCw :size="12" :class="{ 'animate-spin': isLoadingDetails }" />
+          </button>
+        </div>
 
         <!-- No PR → create form -->
         <CreatePRForm
@@ -236,6 +247,7 @@ const isCreating = useSelector(prActor, (state: any) => state.context.isCreating
 const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
 const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
 const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
+const isLoadingDetails = useSelector(prActor, (state: any) => state.context.isLoadingDetails)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
 const currentBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
@@ -280,6 +292,12 @@ const handleCreatePR = () => {
   prActor?.send({ type: 'pr.NEW_PR' })
   // Ensure branches are loaded for the base branch select
   commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
+}
+
+const handleRefreshPR = () => {
+  if (selectedPR.value) {
+    prActor?.send({ type: 'pr.REFRESH_PR', number: selectedPR.value.number })
+  }
 }
 
 const handleViewPRInfo = () => {
