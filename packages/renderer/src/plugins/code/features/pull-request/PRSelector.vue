@@ -66,9 +66,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 import { GitPullRequest, GitBranch, ChevronDown, Plus, Check } from 'lucide-vue-next'
-import type { GhPullRequest } from './state'
+import { useClickOutside } from '@/core/composables/useClickOutside'
+import type { GhPullRequest } from '@app/api'
 
 defineProps<{
   openPRs: GhPullRequest[]
@@ -84,21 +85,12 @@ const emit = defineEmits<{
 const isDropdownOpen = ref(false)
 const dropdownContainer = useTemplateRef<HTMLElement>('dropdownContainer')
 
+useClickOutside(dropdownContainer, () => {
+  isDropdownOpen.value = false
+})
+
 const selectPR = (number: number) => {
   isDropdownOpen.value = false
   emit('select-pr', number)
 }
-
-const handleClickOutside = (e: MouseEvent) => {
-  if (isDropdownOpen.value && dropdownContainer.value && !dropdownContainer.value.contains(e.target as Node)) {
-    isDropdownOpen.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>

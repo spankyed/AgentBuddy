@@ -11,7 +11,7 @@
         >
           <Loader2 v-if="isMerging" :size="11" class="animate-spin" />
           <GitMerge v-else :size="11" />
-          <span>{{ methodLabels[selectedMethod] }}</span>
+          <span>{{ mergeMethodList.find(m => m.value === selectedMethod)?.shortLabel }}</span>
         </button>
         <button
           @click="showMergeOptions = !showMergeOptions"
@@ -72,9 +72,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 import { GitMerge, ChevronDown, Check, XCircle, FileEdit, Loader2 } from 'lucide-vue-next'
-import type { GhPullRequest } from './state'
+import { useClickOutside } from '@/core/composables/useClickOutside'
+import type { GhPullRequest } from '@app/api'
 
 defineProps<{
   pr: GhPullRequest | null
@@ -93,33 +94,18 @@ const showMergeOptions = ref(false)
 const selectedMethod = ref<'merge' | 'squash' | 'rebase'>('merge')
 const mergeContainer = useTemplateRef<HTMLElement>('mergeContainer')
 
-const methodLabels: Record<string, string> = {
-  merge: 'Merge',
-  squash: 'Squash',
-  rebase: 'Rebase',
-}
+useClickOutside(mergeContainer, () => {
+  showMergeOptions.value = false
+})
 
 const mergeMethodList = [
-  { value: 'merge' as const, label: 'Create a merge commit' },
-  { value: 'squash' as const, label: 'Squash and merge' },
-  { value: 'rebase' as const, label: 'Rebase and merge' },
+  { value: 'merge' as const, label: 'Create a merge commit', shortLabel: 'Merge' },
+  { value: 'squash' as const, label: 'Squash and merge', shortLabel: 'Squash' },
+  { value: 'rebase' as const, label: 'Rebase and merge', shortLabel: 'Rebase' },
 ]
 
 const selectMethod = (method: 'merge' | 'squash' | 'rebase') => {
   selectedMethod.value = method
   showMergeOptions.value = false
 }
-
-const handleClickOutside = (e: MouseEvent) => {
-  if (showMergeOptions.value && mergeContainer.value && !mergeContainer.value.contains(e.target as Node)) {
-    showMergeOptions.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>

@@ -60,15 +60,7 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronRight, Folder, FileCode, File } from 'lucide-vue-next'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-
-interface TreeNode {
-  name: string
-  path: string
-  type: 'file' | 'folder'
-  status?: GitStatusFile['status']
-  children?: TreeNode[]
-  fileCount?: number
-}
+import type { TreeNode } from './types'
 
 const props = withDefaults(defineProps<{
   item: TreeNode

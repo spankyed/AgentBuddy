@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { GitBranch, ArrowRight, MessageSquare } from 'lucide-vue-next'
-import type { GhPullRequest, GhPRComment } from './state'
+import type { GhPullRequest, GhPRComment } from '@app/api'
 
 const props = defineProps<{
   pr: GhPullRequest | null

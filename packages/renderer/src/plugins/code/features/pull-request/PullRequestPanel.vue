@@ -125,52 +125,14 @@
         </div>
 
         <!-- Comparison view -->
-        <template v-if="viewMode === 'comparison'">
-          <div v-if="isPrLoading && prFiles.length === 0" class="flex items-center justify-center gap-2 p-4">
-            <Loader2 class="w-5 h-5 animate-spin" />
-            <span class="text-sm text-neutral-400">Loading changes...</span>
-          </div>
-
-          <EmptyState
-            v-else-if="prFiles.length === 0 && !prError"
-            :icon="GitBranch"
-            title="No changes found"
-            :subtitle="`Comparing with ${prBaseBranch || 'base branch'}`"
-          />
-
-          <div v-else class="pr-content">
-            <div class="branch-info bg-neutral-800/50">
-              <GitBranch class="w-3 h-3 text-neutral-500" />
-              <span class="text-xs text-neutral-400">
-                Comparing with {{ prBaseBranch }}
-              </span>
-              <div class="flex items-center gap-1 ml-auto">
-                <button
-                  @click="expandAll()"
-                  class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-                  title="Expand all folders"
-                >
-                  <UnfoldVertical :size="14" />
-                </button>
-                <button
-                  @click="collapseAll()"
-                  class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-                  title="Collapse all folders"
-                >
-                  <FoldVertical :size="14" />
-                </button>
-              </div>
-            </div>
-
-            <FileTree
-              :files="prFiles"
-              :all-collapsed="allCollapsed"
-              :all-expanded="allExpanded"
-              @select-file="handleFileSelect"
-              @open-file="handleOpenFile"
-            />
-          </div>
-        </template>
+        <PRComparison
+          v-if="viewMode === 'comparison'"
+          :files="prFiles"
+          :baseBranch="prBaseBranch"
+          :isLoading="isPrLoading"
+          @select-file="handleFileSelect"
+          @open-file="handleOpenFile"
+        />
 
         <!-- Info view -->
         <PRInfo
@@ -196,61 +158,50 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
-  AlertCircle, AlertTriangle, Loader2, GitBranch, GitPullRequest, RefreshCw,
-  UnfoldVertical, FoldVertical, Files, Info, ExternalLink
+  AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
+  Files, Info, ExternalLink
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
-import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import PRSelector from '@/plugins/code/features/pull-request/PRSelector.vue'
+import PRComparison from '@/plugins/code/features/pull-request/PRComparison.vue'
 import CreatePRForm from '@/plugins/code/features/pull-request/CreatePRForm.vue'
 import PRInfo from '@/plugins/code/features/pull-request/PRInfo.vue'
 import PRActionBar from '@/plugins/code/features/pull-request/PRActionBar.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import type { TreeNode } from './types'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
 const commitActor = codeActor.system.get('commit')!
 
-// Collapse/Expand state management
-const allCollapsed = ref(false)
-const allExpanded = ref(false)
-
-// Existing state selectors
+// State selectors
 const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
 const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
 const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
-
-// GitHub PR state selectors
 const openPRs = useSelector(prActor, (state: any) => state.context.openPRs)
 const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR)
 const prComments = useSelector(prActor, (state: any) => state.context.prComments)
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const panelMode = useSelector(prActor, (state: any) => state.context.panelMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
-
-// Create form state
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
 const createBody = useSelector(prActor, (state: any) => state.context.createBody)
 const createBaseBranch = useSelector(prActor, (state: any) => state.context.createBaseBranch)
 const createDraft = useSelector(prActor, (state: any) => state.context.createDraft)
-
-// Loading states
 const isCreating = useSelector(prActor, (state: any) => state.context.isCreating)
 const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
 const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
 const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
-
-// Commit state (for hasUpstream + publish)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
 
@@ -269,28 +220,6 @@ const refreshStatus = () => {
   prActor?.send({ type: 'pr.REFRESH_STATUS' })
 }
 
-const toggleAllFolders = (expand: boolean) => {
-  if (expand) {
-    allExpanded.value = true
-    setTimeout(() => allExpanded.value = false, 100)
-  } else {
-    allCollapsed.value = true
-    setTimeout(() => allCollapsed.value = false, 100)
-  }
-}
-
-const collapseAll = () => toggleAllFolders(false)
-const expandAll = () => toggleAllFolders(true)
-
-interface TreeNode {
-  name: string
-  path: string
-  type: 'file' | 'folder'
-  status?: GitStatusFile['status']
-  children?: TreeNode[]
-  fileCount?: number
-}
-
 const handleOpenFile = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
   prActor?.send({
@@ -306,7 +235,6 @@ const handleFileSelect = (file: TreeNode) => {
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
 }
 
-// GitHub PR handlers
 const handleSelectPR = (number: number) => {
   prActor?.send({ type: 'pr.SELECT_PR_BY_NUMBER', number })
 }
@@ -347,20 +275,3 @@ const handleToggleDraft = () => {
   prActor?.send({ type: 'pr.TOGGLE_DRAFT' })
 }
 </script>
-
-<style scoped>
-.pr-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.branch-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #27272a;
-}
-</style>

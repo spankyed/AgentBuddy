@@ -22,15 +22,7 @@
 import { computed } from 'vue'
 import FileTreeItem from '@/plugins/code/features/pull-request/FileTreeItem.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-
-interface TreeNode {
-  name: string
-  path: string
-  type: 'file' | 'folder'
-  status?: GitStatusFile['status']
-  children?: TreeNode[]
-  fileCount?: number
-}
+import type { TreeNode } from './types'
 
 const props = defineProps<{
   files: GitStatusFile[]

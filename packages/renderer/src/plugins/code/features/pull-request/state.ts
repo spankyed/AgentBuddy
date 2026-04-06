@@ -1,8 +1,11 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
+import type { GhPullRequest, GhPRComment } from '@app/api';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs } from '../../utils/tab-management';
+
+export type { GhPullRequest, GhPRComment }
 
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
@@ -12,25 +15,14 @@ const sendToBackend = (type: string, data: any) => {
   } as any)
 }
 
-// GitHub PR types (mirrors backend types)
-export interface GhPullRequest {
-  number: number
-  title: string
-  body: string
-  headRefName: string
-  baseRefName: string
-  state: 'OPEN' | 'CLOSED' | 'MERGED'
-  url: string
-  isDraft: boolean
-  author: { login: string }
-  createdAt: string
-  updatedAt: string
-}
-
-export interface GhPRComment {
-  author: { login: string }
-  body: string
-  createdAt: string
+const defaultLoadingStates = {
+  isPrLoading: false,
+  isCreating: false,
+  isMerging: false,
+  isClosing: false,
+  isTogglingDraft: false,
+  isLoadingDetails: false,
+  isLoadingPRs: false,
 }
 
 export interface Context {
@@ -139,13 +131,7 @@ export const pullRequestState = setup({
         const ev = event as { type: 'pr.ERROR'; message: string }
         return ev.message
       },
-      isPrLoading: false,
-      isCreating: false,
-      isMerging: false,
-      isClosing: false,
-      isTogglingDraft: false,
-      isLoadingDetails: false,
-      isLoadingPRs: false,
+      ...defaultLoadingStates,
     }),
 
     setPrLoading: assign({ isPrLoading: true }),
