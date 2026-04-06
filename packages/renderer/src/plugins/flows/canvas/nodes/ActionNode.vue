@@ -1,5 +1,5 @@
 <template>
-  <BaseNode v-bind="props">
+  <BaseNode v-bind="props" v-slot="{ dividerClass }">
     <!-- <div v-if="data.actionId" class="flex items-center gap-1.5">
       <svg class="w-2.5 h-2.5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -7,7 +7,7 @@
       <span class="text-[10px] text-neutral-300 font-mono truncate">{{ data.actionId }}</span>
     </div> -->
     
-    <div v-if="data.params && Object.keys(data.params).length > 0" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+    <div v-if="data.params && Object.keys(data.params).length > 0" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
       <span class="text-[10px] text-neutral-400 uppercase tracking-wide">{{ Object.keys(data.params).length }} param{{ Object.keys(data.params).length !== 1 ? 's' : '' }}</span>
     </div>
   </BaseNode>

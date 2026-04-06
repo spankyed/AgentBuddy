@@ -5,6 +5,7 @@
     :show-source-handle="false"
     @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
     @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
+    v-slot="{ dividerClass }"
   >
     <!-- Branch conditions list -->
     <div :class="['switch-branches mt-2 pt-2 border-t', dividerClass]">
@@ -44,7 +45,6 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { SwitchNode, Condition } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
-import { getNodeDividerClass } from './node-config'
 import { NODE_DIMENSIONS } from './node-dimensions'
 
 interface Branch {
@@ -135,7 +135,6 @@ function branchDisplayText(branch: Branch, index: number): string {
   return branch.label || (branch.isElse ? 'Else' : branch.expression || `Branch ${index + 1}`)
 }
 
-const dividerClass = computed(() => getNodeDividerClass('switch'))
 </script>
 
 <style scoped>

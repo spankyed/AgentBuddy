@@ -9,13 +9,14 @@
     @create-connected="(nodeType, sourceHandle) => $emit('create-connected', nodeType, sourceHandle)"
     @handle-select="(nodeId, handleId) => $emit('handle-select', nodeId, handleId)"
     @remove-handle="(nodeId, handleId) => $emit('remove-handle', nodeId, handleId)"
+    v-slot="{ dividerClass }"
   >
-    <div v-if="data.eventType" class="mt-1.5 pt-1.5 border-t border-neutral-700/50 flex items-center justify-center">
+    <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
       <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
     </div>
 
     <!-- Exit rows — only shown when multiple exits exist -->
-    <div v-if="exitHandles.length > 1" :class="['exit-rows mt-1.5 pt-1.5 border-t', dividerClass]">
+    <div v-if="exitHandles.length > 1" class="exit-rows mt-1.5 pt-1.5 border-t border-neutral-700/50">
       <div
         v-for="(handle, i) in exitHandles"
         :key="handle.id"
@@ -39,7 +40,6 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import type { ListenerNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
-import { getNodeDividerClass } from './node-config'
 import { NODE_DIMENSIONS } from './node-dimensions'
 
 interface NodeData extends Partial<ListenerNode> {
@@ -103,7 +103,6 @@ const nodeStyle = computed(() => {
   return { minHeight: `${headerOffset.value + count * ROW_HEIGHT + 10}px` }
 })
 
-const dividerClass = computed(() => getNodeDividerClass('listener'))
 </script>
 
 <style scoped>

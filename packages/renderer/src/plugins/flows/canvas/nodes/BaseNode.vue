@@ -29,7 +29,7 @@
       </div>
 
       <!-- Custom content slot or auto-rendered content -->
-      <slot>
+      <slot :divider-class="dividerClass">
         <!-- Auto-render eventType if present -->
         <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
           <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
