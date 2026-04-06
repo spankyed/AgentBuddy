@@ -8,9 +8,9 @@
             <span class="text-sm font-medium text-neutral-100 leading-snug">{{ pr.title }}</span>
             <div class="flex items-center gap-1 mt-0.5 text-[11px] text-neutral-600">
               <GitBranch :size="10" class="shrink-0" />
-              <span class="truncate">{{ pr.headRefName }}</span>
+              <span class="truncate" :title="pr.headRefName">{{ pr.headRefName }}</span>
               <ArrowRight :size="10" class="shrink-0" />
-              <span class="truncate">{{ pr.baseRefName }}</span>
+              <span class="truncate" :title="pr.baseRefName">{{ pr.baseRefName }}</span>
             </div>
           </div>
           <span class="text-[11px] text-neutral-400 shrink-0 mt-0.5">#{{ pr.number }}</span>

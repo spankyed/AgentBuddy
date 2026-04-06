@@ -258,16 +258,19 @@ export const pullRequestState = setup({
       isCreating: false,
       createTitle: '',
       createBody: '',
+      createBaseBranch: '',
       createDraft: false,
     }),
 
     handlePRMerged: assign({
       selectedPR: null,
+      branchPR: null,
       isMerging: false,
     }),
 
     handlePRClosed: assign({
       selectedPR: null,
+      branchPR: null,
       isClosing: false,
     }),
 
@@ -296,13 +299,15 @@ export const pullRequestState = setup({
       viewMode: ({ event }) => {
         const ev = event as { type: 'pr.SET_VIEW_MODE'; mode: 'files' | 'pr' }
         return ev.mode
-      }
+      },
+      prError: null,
     }),
 
     newPR: enqueueActions(({ enqueue }) => {
       enqueue.assign({
         selectedPR: null,
         viewMode: 'pr' as const,
+        prError: null,
         createTitle: '',
         createBody: '',
         createDraft: false,
@@ -400,6 +405,7 @@ export const pullRequestState = setup({
       enqueue.assign({
         isLoadingDetails: true,
         viewMode: 'files' as const,
+        prComments: [],
       })
       enqueue(() => {
         sendToBackend('pr.SELECT_PR', { number: ev.number })
