@@ -132,10 +132,10 @@
         <!-- Back to files bar -->
         <div
           @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'files' })"
-          class="flex items-center px-3 py-1.5 border-b border-neutral-800 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors"
+          class="flex items-center px-3 border-b border-neutral-800 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors h-[38px]"
         >
-          <div class="flex items-center gap-1.5 text-[11px]">
-            <ArrowLeft :size="11" />
+          <div class="flex items-center gap-1.5 text-xs">
+            <ArrowLeft :size="12" />
             Back to files
           </div>
           <button
