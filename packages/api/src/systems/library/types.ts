@@ -87,6 +87,7 @@ export interface CollectionDTO {
   displayOrder: number
   createdAt: string
   updatedAt: string
+  symlinkPath?: string
 }
 
 // New unified file browser types
@@ -131,6 +132,8 @@ export interface FolderContents {
   currentFolderId: EARS.EntityId | null
   breadcrumbs: BreadcrumbItem[]
   searchIndices?: any[] // Will be properly typed on frontend via schema
+  isBroken?: boolean
+  lastKnownPath?: string
 }
 
 export interface BreadcrumbItem {

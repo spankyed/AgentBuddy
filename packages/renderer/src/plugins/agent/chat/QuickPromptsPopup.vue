@@ -40,12 +40,14 @@
                 :key="prompt.id"
                 class="group relative"
               >
-                <TooltipRoot>
+                <TooltipRoot :disabled="!truncatedIds.has(prompt.id)">
                   <TooltipTrigger as-child>
                     <button
                       type="button"
+                      :data-prompt-id="prompt.id"
                       class="w-full text-left px-3 py-2 pr-8 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
                       @click="selectPrompt(prompt.text)"
+                      @mouseenter="checkTruncation(prompt)"
                     >
                       {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
                     </button>
@@ -153,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { Sparkle, Pencil, X, Plus, Copy, Check, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
@@ -170,6 +172,7 @@ const emit = defineEmits<{
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
+const truncatedIds = reactive(new Set<string>())
 const editing = ref(false)
 const newPromptText = ref('')
 const localPrompts = ref<QuickPrompt[]>([...props.prompts])
@@ -196,14 +199,42 @@ watch(() => props.prompts, (val) => {
   localPrompts.value = [...val]
 }, { deep: true })
 
-// Reset edit mode when popover closes
-watch(open, (isOpen) => {
+// Reset edit mode when popover closes, check truncation when it opens
+watch(open, async (isOpen) => {
   if (!isOpen) {
     editing.value = false
     editingId.value = null
     newPromptText.value = ''
+    truncatedIds.clear()
+  } else {
+    await nextTick()
+    for (const prompt of props.prompts) {
+      if (prompt.text.includes('\n')) {
+        truncatedIds.add(prompt.id)
+        continue
+      }
+      const el = document.querySelector<HTMLButtonElement>(`[data-prompt-id="${prompt.id}"]`)
+      if (el && el.scrollWidth > el.clientWidth) {
+        truncatedIds.add(prompt.id)
+      }
+    }
   }
 })
+
+function checkTruncation(prompt: QuickPrompt) {
+  const isMultiline = prompt.text.includes('\n')
+  if (isMultiline) {
+    truncatedIds.add(prompt.id)
+    return
+  }
+  // Will be checked on next mouseenter after the element renders
+  const el = document.querySelector<HTMLButtonElement>(`[data-prompt-id="${prompt.id}"]`)
+  if (el && el.scrollWidth > el.clientWidth) {
+    truncatedIds.add(prompt.id)
+  } else {
+    truncatedIds.delete(prompt.id)
+  }
+}
 
 function selectPrompt(text: string) {
   emit('select', text)

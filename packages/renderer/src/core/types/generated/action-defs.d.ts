@@ -676,6 +676,7 @@ interface CollectionDTO {
     displayOrder: number;
     createdAt: string;
     updatedAt: string;
+    symlinkPath?: string;
 }
 interface FolderItem {
     type: 'folder';
@@ -715,6 +716,8 @@ interface FolderContents {
     currentFolderId: EARS.EntityId | null;
     breadcrumbs: BreadcrumbItem[];
     searchIndices?: any[];
+    isBroken?: boolean;
+    lastKnownPath?: string;
 }
 interface BreadcrumbItem {
     id: EARS.EntityId | null;
@@ -2605,6 +2608,21 @@ declare const events: {
         symlinkPath: string;
         parentId?: string | undefined;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_SYMLINK_PATH">;
+        systemId: zod.ZodLiteral<"library">;
+        collectionId: zod.ZodString;
+        newPath: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_SYMLINK_PATH";
+        systemId: "library";
+        collectionId: string;
+        newPath: string;
+    }, {
+        type: "UPDATE_SYMLINK_PATH";
+        systemId: "library";
+        collectionId: string;
+        newPath: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"IMPORT_LIBRARY">;
         systemId: zod.ZodLiteral<"library">;
         directory: zod.ZodString;
@@ -2705,13 +2723,13 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "explorer.RENAME_FILE";
         systemId: "code";
-        oldPath: string;
         newPath: string;
+        oldPath: string;
     }, {
         type: "explorer.RENAME_FILE";
         systemId: "code";
-        oldPath: string;
         newPath: string;
+        oldPath: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CREATE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
@@ -4005,6 +4023,12 @@ declare const events: {
         type: "LIBRARY_ERROR";
         data: {
             error: string;
+        };
+        pluginId: "library";
+    } | {
+        type: "SYMLINK_UPDATED";
+        data: {
+            collection: CollectionDTO;
         };
         pluginId: "library";
     } | {
@@ -5855,6 +5879,7 @@ declare const services: {
             readonly migrateDocumentShortCodes: () => void;
             readonly migrateDisplayOrders: () => void;
             readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId) => CollectionDTO;
+            readonly updateSymlinkPath: (collectionId: EARS.EntityId, newPath: string) => CollectionDTO;
             readonly updateDocumentTags: (documentId: EARS.EntityId, tags: string[]) => void;
         };
         readonly promptQueries: {

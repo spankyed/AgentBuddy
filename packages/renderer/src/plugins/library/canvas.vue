@@ -13,6 +13,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useState } from '@/core/composables/plugins'
+import { trpc } from '@/core/trpc'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
@@ -62,6 +63,8 @@ const currentProps = computed(() => {
         isInSymlinkContext: context.value.isInSymlinkContext,
         currentSymlinkRootId: context.value.currentSymlinkRootId,
         symlinkBasePath: context.value.symlinkBasePath,
+        isBroken: context.value.isBroken,
+        lastKnownPath: context.value.lastKnownPath,
       }
     case 'create':
       return {
@@ -143,6 +146,18 @@ const currentEvents = computed(() => {
     },
     REFRESH_FOLDER: (payload: { folderId: string }) => {
       send({ type: 'REFRESH_FOLDER', ...payload })
+    },
+    RELINK_SYMLINK: (payload: { collectionId: string; newPath: string }) => {
+      send({ type: 'RELINK_SYMLINK', ...payload })
+    },
+    REMOVE_BROKEN_SYMLINK: (payload: { collectionId: string }) => {
+      // Delete the broken symlink collection directly and navigate back
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'DELETE_ITEMS',
+        ids: [payload.collectionId],
+      } as any)
+      send({ type: 'NAVIGATE_TO_FOLDER', folderId: null })
     },
   }
 

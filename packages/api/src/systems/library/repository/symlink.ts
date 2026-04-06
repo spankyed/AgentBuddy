@@ -142,12 +142,28 @@ export async function getSymlinkFolderContents(folderId: string): Promise<Folder
 
   const { collectionId, absolutePath } = resolved
 
-  // Check if directory exists
+  // Check if directory exists — return broken state instead of null
   try {
     const stat = await fs.stat(absolutePath)
-    if (!stat.isDirectory()) return null
+    if (!stat.isDirectory()) {
+      return {
+        items: [],
+        currentPath: [],
+        currentFolderId: folderId as EARS.EntityId,
+        breadcrumbs: buildSymlinkBreadcrumbs(collectionId, ''),
+        isBroken: true,
+        lastKnownPath: absolutePath,
+      }
+    }
   } catch {
-    return null
+    return {
+      items: [],
+      currentPath: [],
+      currentFolderId: folderId as EARS.EntityId,
+      breadcrumbs: buildSymlinkBreadcrumbs(collectionId, ''),
+      isBroken: true,
+      lastKnownPath: absolutePath,
+    }
   }
 
   // Determine relative path for building child IDs

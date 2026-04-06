@@ -482,6 +482,29 @@ export const libraryCommands = {
       displayOrder,
       createdAt: new Date(now).toISOString(),
       updatedAt: new Date(now).toISOString(),
+      symlinkPath,
+    }
+  },
+
+  updateSymlinkPath(collectionId: EARS.EntityId, newPath: string): CollectionDTO {
+    const now = Date.now()
+    tx(collectionId).update('symlinkPath', newPath)
+    tx(collectionId).update('updatedAt', now)
+
+    const col = qx(collectionId).pickAll()[0]
+    const path = getCollectionPath(collectionId)
+
+    return {
+      id: collectionId,
+      name: col.name as string,
+      parentId: undefined,
+      path,
+      documentCount: 0,
+      childCollections: [],
+      displayOrder: (col.displayOrder as number) || 0,
+      createdAt: new Date(col.createdAt as number).toISOString(),
+      updatedAt: new Date(now).toISOString(),
+      symlinkPath: newPath,
     }
   },
 
