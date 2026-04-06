@@ -105,6 +105,11 @@ export function commandSuggestionPlugin(
         // Query phase: extract text after `/`
         const query = trimmedText.slice(1)
 
+        // Paths (e.g. `/Users/foo/bar`) contain extra slashes — not commands
+        if (query.includes('/')) {
+          return deactivateIf(prev.active)
+        }
+
         // `/` alone (length 0) → stay active, show all commands.
         // `/ ` (length 1, space) → falls through to space check below → deactivates.
         // Using `query.length` (not `query.trim().length`) avoids a feedback loop
