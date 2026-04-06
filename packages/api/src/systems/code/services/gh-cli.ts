@@ -91,10 +91,11 @@ export async function getPRForBranch(cwd: string, branch: string): Promise<GhPul
 
 export async function createPR(
   cwd: string,
-  opts: { title: string; body: string; base?: string; draft?: boolean }
+  opts: { title: string; body: string; base?: string; head?: string; draft?: boolean }
 ): Promise<GhPullRequest> {
   const args = ['pr', 'create', '--title', opts.title, '--body', opts.body]
   if (opts.base) args.push('--base', opts.base)
+  if (opts.head) args.push('--head', opts.head)
   if (opts.draft) args.push('--draft')
   // gh pr create outputs the URL, not JSON. We create then fetch details.
   const url = await runGh(args, cwd)

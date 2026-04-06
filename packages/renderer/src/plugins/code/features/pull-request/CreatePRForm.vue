@@ -50,7 +50,7 @@
         <span>Create PR</span>
       </button>
       <button
-        @click="$emit('update-field', 'draft', !draft); $emit('submit')"
+        @click="$emit('submit-draft')"
         :disabled="!title.trim() || isCreating"
         class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded border border-neutral-700 text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -89,5 +89,6 @@ const branchOptions = computed(() => {
 defineEmits<{
   'update-field': [field: string, value: any]
   'submit': []
+  'submit-draft': []
 }>()
 </script>

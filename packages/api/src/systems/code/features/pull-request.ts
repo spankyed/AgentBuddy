@@ -171,10 +171,12 @@ export const pullRequestSystem = setup({
       const ev = event as { type: 'pr.CREATE_PR'; title: string; body: string; base?: string; draft?: boolean }
       if (!context.gitRepository) return
       try {
+        const currentBranch = await context.gitRepository.getCurrentBranch()
         const pr = await ghCli.createPR(context.gitRepository.getWorkingDir(), {
           title: ev.title,
           body: ev.body,
           base: ev.base,
+          head: currentBranch,
           draft: ev.draft,
         })
         emitToFrontend({ type: 'pr.PR_CREATED', data: { pr } })

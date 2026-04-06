@@ -87,6 +87,7 @@ export type Event =
   | { type: 'pr.NEW_PR' }
   | { type: 'pr.UPDATE_CREATE_FIELD'; field: string; value: any }
   | { type: 'pr.SUBMIT_CREATE' }
+  | { type: 'pr.SUBMIT_CREATE_DRAFT' }
   | { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
   | { type: 'pr.CLOSE' }
   | { type: 'pr.TOGGLE_DRAFT' }
@@ -349,6 +350,18 @@ export const pullRequestState = setup({
       })
     },
 
+    submitCreateDraft: enqueueActions(({ enqueue, context }) => {
+      enqueue.assign({ createDraft: true })
+      enqueue(() => {
+        sendToBackend('pr.CREATE_PR', {
+          title: context.createTitle,
+          body: context.createBody,
+          base: context.createBaseBranch || undefined,
+          draft: true,
+        })
+      })
+    }),
+
     requestMerge: ({ event, context }) => {
       if (!context.selectedPR) return
       const ev = event as { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
@@ -457,6 +470,7 @@ export const pullRequestState = setup({
         'pr.NEW_PR': { actions: 'newPR' },
         'pr.UPDATE_CREATE_FIELD': { actions: 'updateCreateField' },
         'pr.SUBMIT_CREATE': { actions: ['submitCreate', assign({ isCreating: true })] },
+        'pr.SUBMIT_CREATE_DRAFT': { actions: ['submitCreateDraft', assign({ isCreating: true })] },
         'pr.MERGE': { actions: ['requestMerge', assign({ isMerging: true })] },
         'pr.CLOSE': { actions: ['requestClose', assign({ isClosing: true })] },
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },

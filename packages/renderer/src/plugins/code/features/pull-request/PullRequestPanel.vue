@@ -141,6 +141,7 @@
           :isCreating="isCreating"
           @update-field="handleUpdateField"
           @submit="handleSubmitCreate"
+          @submit-draft="handleSubmitDraft"
         />
 
         <!-- Existing PR → info + action bar -->
@@ -293,6 +294,10 @@ const handleUpdateField = (field: string, value: any) => {
 
 const handleSubmitCreate = () => {
   prActor?.send({ type: 'pr.SUBMIT_CREATE' })
+}
+
+const handleSubmitDraft = () => {
+  prActor?.send({ type: 'pr.SUBMIT_CREATE_DRAFT' })
 }
 
 const handlePublishBranch = () => {
