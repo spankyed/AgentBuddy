@@ -19,7 +19,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { Selection, TextSelection } from '@tiptap/pm/state'
+import { Selection } from '@tiptap/pm/state'
 import { splitBlock } from '@tiptap/pm/commands'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
@@ -268,9 +268,7 @@ const editor = useEditor({
       // ⌘/Ctrl+X on empty selection → select line, let ProseMirror handle cut
       if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
         const { $from } = view.state.selection
-        view.dispatch(
-          view.state.tr.setSelection(TextSelection.create(view.state.doc, $from.start(), $from.end()))
-        )
+        editor.value?.commands.setTextSelection({ from: $from.start(), to: $from.end() })
         setTimeout(() => {
           const { $from: $pos } = view.state.selection
           if ($pos.parent.content.size === 0) {
@@ -283,13 +281,8 @@ const editor = useEditor({
       }
 
       if (event.key === 'Tab') {
-        if (event.shiftKey) {
-          editor.value?.commands.liftListItem('listItem')
-          editor.value?.commands.liftListItem('taskItem')
-        } else {
-          editor.value?.commands.sinkListItem('listItem')
-          editor.value?.commands.sinkListItem('taskItem')
-        }
+        const cmd = event.shiftKey ? 'liftListItem' : 'sinkListItem'
+        editor.value?.commands[cmd]('listItem') || editor.value?.commands[cmd]('taskItem')
         return true
       }
 
