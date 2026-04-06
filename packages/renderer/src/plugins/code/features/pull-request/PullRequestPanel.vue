@@ -32,17 +32,28 @@
     <template v-else>
       <!-- gh CLI not available banner -->
       <div
-        v-if="!isGhAvailable && !isPrLoading"
+        v-if="!isGhAvailable && !isPrLoading && !isGhChecking"
         class="flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
       >
         <AlertTriangle :size="12" class="shrink-0" />
         <span>GitHub CLI not available. Install <code class="px-1 py-0.5 rounded bg-neutral-800">gh</code> and run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth login</code> for PR features.</span>
       </div>
 
-      <!-- Top action row (when gh is available, hidden in PR view) -->
-      <div v-if="isGhAvailable && viewMode !== 'pr'" class="flex items-center gap-1 px-1 border-b border-neutral-800 bg-neutral-800/50 h-[38px]">
+      <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
+      <div v-if="isGhAvailable || isGhChecking" class="flex items-center gap-1 px-1 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
+        <!-- Loading state while checking gh auth / upstream -->
+        <template v-if="isGhChecking">
+          <button
+            disabled
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+          >
+            <Loader2 :size="12" class="animate-spin shrink-0" />
+            <span class="truncate">Checking...</span>
+          </button>
+        </template>
+
         <!-- Selector mode -->
-        <template v-if="showSelector">
+        <template v-else-if="showSelector">
           <PRSelector
             :openPRs="openPRs"
             :selectedPR="selectedPR"
@@ -238,6 +249,7 @@ const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR
 const prComments = useSelector(prActor, (state: any) => state.context.prComments)
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
+const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
 const createBody = useSelector(prActor, (state: any) => state.context.createBody)
 const createBaseBranch = useSelector(prActor, (state: any) => state.context.createBaseBranch)

@@ -17,6 +17,7 @@ const sendToBackend = (type: string, data: any) => {
 
 const defaultLoadingStates = {
   isPrLoading: false,
+  isGhChecking: false,
   isCreating: false,
   isMerging: false,
   isClosing: false,
@@ -41,6 +42,7 @@ export interface Context {
   prComments: GhPRComment[]
   viewMode: 'files' | 'pr'
   isGhAvailable: boolean
+  isGhChecking: boolean
 
   // Create form
   createTitle: string
@@ -215,7 +217,8 @@ export const pullRequestState = setup({
       isGhAvailable: ({ event }) => {
         const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
         return ev.data.available
-      }
+      },
+      isGhChecking: false,
     }),
 
     handleOpenPRsReceived: assign({
@@ -431,6 +434,7 @@ export const pullRequestState = setup({
     prComments: [],
     viewMode: 'files',
     isGhAvailable: false,
+    isGhChecking: false,
 
     createTitle: '',
     createBody: '',
@@ -448,7 +452,7 @@ export const pullRequestState = setup({
     idle: {
       on: {
         'pr.REFRESH_STATUS': {
-          actions: ['setPrLoading', 'refreshPrStatus']
+          actions: ['setPrLoading', assign({ isGhChecking: true }), 'refreshPrStatus']
         },
         'pr.SELECT_FILE': { actions: 'selectPrFile' },
         'pr.VIEW_DIFF': { actions: 'viewPrDiff' },
