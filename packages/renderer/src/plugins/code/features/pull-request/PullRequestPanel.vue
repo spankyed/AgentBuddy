@@ -82,6 +82,16 @@
             <span class="truncate">Publish Branch</span>
           </button>
 
+          <!-- Published, error state (can't determine PR status) -->
+          <button
+            v-else-if="!selectedPR && prError"
+            disabled
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+          >
+            <AlertCircle :size="12" class="shrink-0" />
+            <span class="truncate">Unable to check PR status</span>
+          </button>
+
           <!-- Published, no PR -->
           <button
             v-else-if="!selectedPR"
