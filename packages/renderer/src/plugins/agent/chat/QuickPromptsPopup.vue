@@ -34,29 +34,43 @@
         <!-- Prompt list -->
         <div class="max-h-60 overflow-y-auto select-none">
           <template v-if="!editing">
-            <div
-              v-for="prompt in prompts"
-              :key="prompt.id"
-              class="group relative"
-            >
-              <button
-                type="button"
-                class="w-full text-left px-3 py-2 pr-8 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
-                :title="prompt.text"
-                @click="selectPrompt(prompt.text)"
+            <TooltipProvider :delay-duration="400">
+              <div
+                v-for="prompt in prompts"
+                :key="prompt.id"
+                class="group relative"
               >
-                {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
-              </button>
-              <button
-                type="button"
-                class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                title="Copy prompt"
-                @click.stop="copyPrompt(prompt.id, prompt.text)"
-              >
-                <Check v-if="copiedId === prompt.id" :size="14" class="text-green-400" />
-                <Copy v-else :size="14" />
-              </button>
-            </div>
+                <TooltipRoot>
+                  <TooltipTrigger as-child>
+                    <button
+                      type="button"
+                      class="w-full text-left px-3 py-2 pr-8 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
+                      @click="selectPrompt(prompt.text)"
+                    >
+                      {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipPortal>
+                    <TooltipContent
+                      side="right"
+                      :side-offset="8"
+                      class="max-w-xs px-3 py-2 text-sm text-neutral-200 bg-neutral-800 border border-neutral-600 rounded-lg shadow-xl z-[100] whitespace-pre-wrap"
+                    >
+                      {{ prompt.text }}
+                    </TooltipContent>
+                  </TooltipPortal>
+                </TooltipRoot>
+                <button
+                  type="button"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                  title="Copy prompt"
+                  @click.stop="copyPrompt(prompt.id, prompt.text)"
+                >
+                  <Check v-if="copiedId === prompt.id" :size="14" class="text-green-400" />
+                  <Copy v-else :size="14" />
+                </button>
+              </div>
+            </TooltipProvider>
             <div v-if="prompts.length === 0" class="px-3 py-4 text-sm text-neutral-600 text-center">
               No quick prompts
             </div>
@@ -141,7 +155,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import { Sparkle, Pencil, X, Plus, Copy, Check, GripVertical } from 'lucide-vue-next'
-import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
+import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '@app/api'
 
