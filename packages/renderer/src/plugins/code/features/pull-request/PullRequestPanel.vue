@@ -40,7 +40,7 @@
       </div>
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
-      <div v-if="isGhAvailable || isGhChecking" class="flex items-center gap-1 px-1 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
+      <div v-if="isGhAvailable || isGhChecking" class="flex items-center gap-1 pl-1 pr-3 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
         <!-- Loading state while checking gh auth / upstream -->
         <template v-if="isGhChecking">
           <button
