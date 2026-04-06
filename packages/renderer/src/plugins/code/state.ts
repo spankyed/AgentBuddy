@@ -216,8 +216,10 @@ const codeState = setup({
     notifyDirectoryChange: ({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
-        system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
-        system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
+        // Don't send commit.REFRESH_STATUS or pr.REFRESH_STATUS here.
+        // The backend handles refresh via notifyChildSystemsOfBaseChange after
+        // SET_BASE_DIRECTORY is processed, avoiding a race condition where these
+        // frontend-initiated refreshes hit the backend before the directory update.
         system.get('search')?.send({ type: 'search.DIRECTORY_CHANGED', baseDirectory: ev.updates.baseDirectory });
       }
     },
