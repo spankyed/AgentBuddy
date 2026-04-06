@@ -33,7 +33,6 @@
           v-if="pr.isDraft"
           class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
         >DRAFT</span>
-        <Check v-if="selectedPR?.number === pr.number" :size="12" class="shrink-0 text-blue-400" />
       </button>
       <div v-if="openPRs.length === 0" class="px-3 py-2 text-xs text-neutral-500">
         No open pull requests
@@ -44,7 +43,7 @@
 
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
-import { GitPullRequest, ChevronDown, Check } from 'lucide-vue-next'
+import { GitPullRequest, ChevronDown } from 'lucide-vue-next'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
 
