@@ -145,7 +145,6 @@ export const pullRequestState = setup({
         const ev = event as { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
         return ev.data.branch
       },
-      isPrLoading: false,
       prError: null
     }),
 
@@ -218,7 +217,6 @@ export const pullRequestState = setup({
         const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
         return ev.data.available
       },
-      isGhChecking: false,
     }),
 
     handleOpenPRsReceived: assign({
@@ -251,6 +249,7 @@ export const pullRequestState = setup({
         if (ev.data.pr && !context.selectedPR) return ev.data.pr
         return context.selectedPR
       },
+      isGhChecking: false,
     }),
 
     handlePRCreated: assign({
