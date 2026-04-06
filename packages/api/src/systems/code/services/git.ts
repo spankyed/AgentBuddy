@@ -392,7 +392,7 @@ export class GitRepository {
     // For untracked files, we need to show the file content as an addition
     if (filePath) {
       const status = await this.getStatus()
-      const fileStatus = status.find(f => f.path === filePath)
+      const fileStatus = status.find(f => f.path === filePath && f.staged === staged)
       
       if (fileStatus?.status === 'untracked') {
         const fullPath = path.join(this.workingDirectory, filePath)

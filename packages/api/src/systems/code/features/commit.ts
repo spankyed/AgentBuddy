@@ -156,7 +156,7 @@ export const commitSystem = setup({
 
         // Get the file status to determine what content to fetch
         const status = await context.gitRepository.getStatus()
-        const fileStatus = status.find(f => f.path === ev.path)
+        const fileStatus = status.find(f => f.path === ev.path && f.staged === (ev.staged || false))
 
         let originalContent = ''
         let modifiedContent = ''
