@@ -109,7 +109,7 @@
         </template>
       </div>
 
-      <!-- Error states -->
+      <!-- Fatal error: no base branch -->
       <EmptyState
         v-if="isNoBaseBranchError"
         :icon="GitBranch"
@@ -117,13 +117,9 @@
         subtitle="Unable to determine the base branch for comparison. Check that the repository has a default branch configured."
       />
 
-      <div v-else-if="prError && !isNoGitRepoError" class="flex items-center justify-center gap-2 p-4">
-        <AlertCircle class="w-4 h-4 text-red-500" />
-        <span class="text-sm text-red-500">{{ prError }}</span>
-      </div>
-
+      <template v-else>
       <!-- PR view (create form or info) -->
-      <template v-else-if="viewMode === 'pr'">
+      <template v-if="viewMode === 'pr'">
         <!-- Back to files bar -->
         <button
           @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'files' })"
@@ -175,6 +171,21 @@
         @select-file="handleFileSelect"
         @open-file="handleOpenFile"
       />
+        <!-- Non-fatal error banner (dismissible, pinned to bottom) -->
+        <div
+          v-if="prError && !isNoGitRepoError && !isNoBaseBranchError"
+          class="flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 bg-red-900/20 border-t border-red-800/30 mt-auto"
+        >
+          <AlertCircle :size="12" class="shrink-0" />
+          <span class="flex-1">{{ prError }}</span>
+          <button
+            @click="prActor?.send({ type: 'pr.CLEAR_ERROR' })"
+            class="p-0.5 rounded text-red-500 hover:text-red-300 hover:bg-red-900/30 transition-colors shrink-0"
+          >
+            <X :size="12" />
+          </button>
+        </div>
+      </template>
     </template>
   </div>
 </template>

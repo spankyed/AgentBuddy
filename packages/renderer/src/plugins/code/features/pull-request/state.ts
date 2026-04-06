@@ -89,7 +89,8 @@ export type Event =
   | { type: 'pr.SUBMIT_CREATE' }
   | { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
   | { type: 'pr.CLOSE' }
-  | { type: 'pr.TOGGLE_DRAFT' };
+  | { type: 'pr.TOGGLE_DRAFT' }
+  | { type: 'pr.CLEAR_ERROR' };
 
 export const pullRequestState = setup({
   types: {
@@ -459,6 +460,7 @@ export const pullRequestState = setup({
         'pr.MERGE': { actions: ['requestMerge', assign({ isMerging: true })] },
         'pr.CLOSE': { actions: ['requestClose', assign({ isClosing: true })] },
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
+        'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
       }
     }
   }
