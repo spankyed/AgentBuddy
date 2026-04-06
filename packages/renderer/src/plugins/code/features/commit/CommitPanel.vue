@@ -114,7 +114,7 @@
         </div>
         <button
           @click="startCreateBranch"
-          class="p-1.5 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
+          class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700"
           title="Create new branch"
         >
           <GitBranchPlus :size="14" />
@@ -145,20 +145,10 @@
     </div>
 
     <!-- Commit Message -->
-    <div class="p-3 border-b border-neutral-800">
+    <div class="px-4 py-3 border-b border-neutral-800">
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <label class="text-sm text-neutral-400">Commit Message</label>
-          <div class="flex items-center gap-0.5">
-            <button
-              @click="generateMessage"
-              :disabled="isGeneratingMessage || gitStatus.length === 0"
-              class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Generate commit message with AI"
-            >
-              <Sparkles v-if="!isGeneratingMessage" :size="14" />
-              <Loader2 v-else :size="14" class="animate-spin" />
-            </button>
+          <div class="flex items-center gap-1">
             <div class="relative">
               <button
                 @click="showStashMenu = !showStashMenu"
@@ -172,7 +162,7 @@
               </button>
               <div
                 v-if="showStashMenu"
-                class="absolute right-0 z-10 mt-1 w-44 bg-neutral-900 border border-neutral-700 rounded shadow-lg"
+                class="absolute left-0 z-10 mt-1 w-44 bg-neutral-900 border border-neutral-700 rounded shadow-lg"
               >
                 <button
                   @mousedown.prevent="stashAll"
@@ -189,7 +179,17 @@
                 </button>
               </div>
             </div>
+            <label class="text-sm text-neutral-400">Commit Message</label>
           </div>
+          <button
+            @click="generateMessage"
+            :disabled="isGeneratingMessage || gitStatus.length === 0"
+            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Generate commit message with AI"
+          >
+            <Sparkles v-if="!isGeneratingMessage" :size="14" />
+            <Loader2 v-else :size="14" class="animate-spin" />
+          </button>
         </div>
         <textarea
           v-model="commitMessage"
