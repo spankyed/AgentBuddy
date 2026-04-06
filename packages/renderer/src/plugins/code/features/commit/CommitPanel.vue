@@ -52,19 +52,22 @@
       <div class="flex items-center gap-2">
         <GitBranch :size="14" class="text-neutral-400" />
         <span class="text-xs text-neutral-300">Branch</span>
-        <button
-          @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
-          :disabled="isPulling || !hasUpstream"
-          class="relative ml-auto p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Pull latest"
-        >
-          <Loader2 v-if="isPulling" :size="14" class="animate-spin" />
-          <ArrowDownToLine v-else :size="14" />
-          <span
-            v-if="commitsBehind > 0"
-            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
-          >{{ commitsBehind }}</span>
-        </button>
+        <div class="ml-auto flex items-center gap-1">
+          <span v-if="pullFeedback" class="text-[10px] text-neutral-500">{{ pullFeedback }}</span>
+          <button
+            @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
+            :disabled="isPulling || !hasUpstream"
+            class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Pull latest"
+          >
+            <Loader2 v-if="isPulling" :size="14" class="animate-spin" />
+            <ArrowDownToLine v-else :size="14" />
+            <span
+              v-if="commitsBehind > 0"
+              class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+            >{{ commitsBehind }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Create Branch Mode -->
@@ -400,12 +403,13 @@
       @cancel="cancelClearStashes"
     />
 
+    <ToastNotification ref="toast" />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -415,6 +419,7 @@ import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
+import ToastNotification from '@/core/components/design/ToastNotification.vue'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -452,6 +457,29 @@ const isStashesExpanded = ref(false)
 const showDropStashDialog = ref(false)
 const pendingDropIndex = ref<number | null>(null)
 const showClearStashesDialog = ref(false)
+const toast = ref<InstanceType<typeof ToastNotification>>()
+const pullFeedback = ref<string | null>(null)
+let pullClearTimer: ReturnType<typeof setTimeout> | undefined
+let commitsBehindAtPullStart = 0
+
+watch(isPulling, (pulling, wasPulling) => {
+  if (pulling) {
+    commitsBehindAtPullStart = commitsBehind.value
+    clearTimeout(pullClearTimer)
+    pullFeedback.value = null
+  } else if (wasPulling) {
+    if (gitError.value) {
+      toast.value?.error('Pull failed', gitError.value)
+    } else if (commitsBehindAtPullStart > 0) {
+      pullFeedback.value = `Pulled ${commitsBehindAtPullStart} commit${commitsBehindAtPullStart !== 1 ? 's' : ''}`
+    } else {
+      pullFeedback.value = 'Already up to date'
+    }
+    if (pullFeedback.value) {
+      pullClearTimer = setTimeout(() => { pullFeedback.value = null }, 3000)
+    }
+  }
+})
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
