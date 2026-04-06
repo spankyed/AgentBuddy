@@ -12,10 +12,12 @@
   />
 
   <div v-else class="flex flex-col flex-1 overflow-hidden">
-    <div class="flex items-center gap-2 pl-3 pr-1 py-1.5 border-b border-neutral-800 bg-neutral-800/50">
-      <div class="flex items-center gap-1.5" :title="`Comparing with ${baseBranch}`">
-        <GitBranch class="w-3 h-3 text-neutral-500" />
-        <span class="text-xs text-neutral-300">{{ currentBranch || baseBranch }}</span>
+    <div class="flex items-center gap-2 pl-3 pr-1 py-1.5 border-b border-neutral-800">
+      <div class="flex items-center gap-1.5 min-w-0" :title="`${currentBranch} → ${baseBranch}`">
+        <GitBranch class="w-3 h-3 text-neutral-500 shrink-0" />
+        <span class="text-xs text-neutral-300 truncate">{{ currentBranch }}</span>
+        <ArrowRight class="w-2.5 h-2.5 text-neutral-600 shrink-0" />
+        <span class="text-xs text-neutral-500 truncate">{{ baseBranch }}</span>
       </div>
       <div class="ml-auto">
         <ContextMenuRoot>
@@ -63,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { GitBranch, Loader2, ChevronsUpDown, ChevronsDownUp } from 'lucide-vue-next'
+import { GitBranch, ArrowRight, Loader2, ChevronsUpDown, ChevronsDownUp } from 'lucide-vue-next'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal
