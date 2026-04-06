@@ -40,7 +40,7 @@
       </div>
 
       <!-- Top action row (when gh is available, hidden in PR view) -->
-      <div v-if="isGhAvailable && viewMode !== 'pr'" class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800 bg-neutral-800/50">
+      <div v-if="isGhAvailable && viewMode !== 'pr'" class="flex items-center gap-1 px-1 border-b border-neutral-800 bg-neutral-800/50 h-[38px]">
         <!-- Selector mode -->
         <template v-if="showSelector">
           <PRSelector
@@ -64,7 +64,7 @@
             v-if="!hasUpstream"
             @click="handlePublishBranch()"
             :disabled="isPushing"
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700 transition-colors disabled:opacity-50 flex-1 min-w-0"
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700 transition-colors disabled:opacity-50 flex-1 min-w-0"
           >
             <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
             <AlertTriangle v-else :size="12" class="shrink-0" />
@@ -75,28 +75,26 @@
           <button
             v-else-if="!selectedPR"
             @click="handleCreatePR()"
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors flex-1 min-w-0"
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors flex-1 min-w-0"
           >
             <Plus :size="12" class="shrink-0" />
             <span class="truncate">Create PR</span>
           </button>
 
           <!-- Has PR -->
-          <div v-else class="flex items-center gap-1.5 flex-1 min-w-0">
+          <button
+            v-else
+            @click="handleViewPRInfo()"
+            class="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded border border-transparent text-left transition-colors hover:bg-neutral-700"
+            title="View PR details"
+          >
             <GitPullRequest :size="12" class="text-green-400 shrink-0" />
             <span class="text-xs text-neutral-200 truncate">#{{ selectedPR.number }} {{ selectedPR.title }}</span>
             <span
               v-if="selectedPR.isDraft"
               class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
             >DRAFT</span>
-            <button
-              @click="handleViewPRInfo()"
-              class="p-0.5 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700 shrink-0 ml-auto"
-              title="View PR details"
-            >
-              <Info :size="13" />
-            </button>
-          </div>
+          </button>
 
           <!-- PR select toggle -->
           <button
@@ -198,7 +196,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
-  Info, ExternalLink, Loader2, Plus, List, X, ArrowLeft
+  ExternalLink, Loader2, Plus, List, X, ArrowLeft
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
