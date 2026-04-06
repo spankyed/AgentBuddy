@@ -415,6 +415,7 @@ provide('tree-collapse-folder', (folderId: string) => emit('COLLAPSE_FOLDER', { 
 provide('tree-rename-item', (item: LibraryItem) => renameItem(item))
 provide('tree-delete-item', (item: LibraryItem) => deleteItem(item))
 provide('tree-refresh-folder', (folderId: string) => emit('REFRESH_FOLDER', { folderId }))
+provide('tree-relink-symlink', (collectionId: string, newPath: string) => emit('RELINK_SYMLINK', { collectionId, newPath }))
 provide('tree-copy-folder-path', (item: LibraryItem) => {
   const fullPath = getSymlinkItemFullPath(item)
   if (fullPath) navigator.clipboard.writeText(fullPath)
