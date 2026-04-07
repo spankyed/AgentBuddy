@@ -37,7 +37,7 @@
               Open Terminal Here
             </DropdownMenuItem>
             <DropdownMenuItem
-              @select="navigator.clipboard.writeText(baseDirectory)"
+              @select="copyPath()"
               class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
             >
               <Copy class="w-4 h-4" />
@@ -129,6 +129,7 @@ defineEmits<{
   'open-project-directory': [path: string]
 }>()
 
+const copyPath = () => navigator.clipboard.writeText(props.baseDirectory)
 const menuOpen = ref(false)
 watch(menuOpen, onMenuOpenChange)
 
