@@ -41,8 +41,8 @@
         <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/60">
           <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
           <span class="text-xs text-neutral-600 flex-1">{{ formatDate(comment.createdAt) }}</span>
-          <!-- Actions for own comments -->
-          <template v-if="comment.viewerDidAuthor">
+          <!-- Actions for own comments (hide for pending/optimistic comments) -->
+          <template v-if="comment.viewerDidAuthor && getCommentDatabaseId(comment)">
             <button
               v-if="editingCommentId !== comment.id"
               @click="startEditComment(comment)"
@@ -160,7 +160,7 @@
             <div class="flex items-center gap-2 mb-1">
               <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
               <span class="text-xs text-neutral-600 flex-1">{{ formatDate(comment.createdAt) }}</span>
-              <template v-if="comment.viewerDidAuthor">
+              <template v-if="comment.viewerDidAuthor && comment.databaseId > 0">
                 <button
                   v-if="editingReviewCommentId !== comment.id"
                   @click="startEditReviewComment(comment)"
@@ -308,9 +308,9 @@ function submitNewComment() {
   newCommentBody.value = ''
 }
 
-function getCommentDatabaseId(comment: GhPRComment): number {
+function getCommentDatabaseId(comment: GhPRComment): number | null {
   const match = comment.url.match(/issuecomment-(\d+)/)
-  return match ? parseInt(match[1]) : 0
+  return match ? parseInt(match[1]) : null
 }
 
 // Edit comment
@@ -323,13 +323,16 @@ function startEditComment(comment: GhPRComment) {
 }
 
 function confirmDeleteComment(comment: GhPRComment) {
-  if (confirm('Delete this comment? This cannot be undone.')) {
-    emit('delete-comment', getCommentDatabaseId(comment))
+  const id = getCommentDatabaseId(comment)
+  if (id && confirm('Delete this comment? This cannot be undone.')) {
+    emit('delete-comment', id)
   }
 }
 
 function saveEditComment(comment: GhPRComment) {
-  emit('edit-comment', getCommentDatabaseId(comment), editCommentBody.value)
+  const id = getCommentDatabaseId(comment)
+  if (!id) return
+  emit('edit-comment', id, editCommentBody.value)
   editingCommentId.value = null
 }
 
