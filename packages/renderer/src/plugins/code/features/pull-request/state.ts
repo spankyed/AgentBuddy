@@ -60,6 +60,7 @@ export interface Context {
   isTogglingDraft: boolean
   isDeletingBranch: boolean
   isLoadingDetails: boolean
+  diffStale: boolean
 }
 
 export type Event =
@@ -114,7 +115,6 @@ export const pullRequestState = setup({
         self.send({ type: 'pr.ERROR', message: 'No directory selected. Please select a directory first.' })
         return
       }
-      sendToBackend('pr.CHECK_GH_AUTH', {})
       sendToBackend('pr.LIST_OPEN_PRS', {})
       sendToBackend('pr.CHECK_BRANCH_PR', {})
     },
@@ -157,7 +157,7 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
       const newBase = ev.data.branch
       enqueue.assign({ prBaseBranch: newBase })
-      if (newBase !== context.prBaseBranch || context.prFiles.length === 0) {
+      if (newBase !== context.prBaseBranch || context.prFiles.length === 0 || context.diffStale) {
         sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
       }
     }),
@@ -171,7 +171,8 @@ export const pullRequestState = setup({
         const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
         return ev.data.baseBranch
       },
-      isPrLoading: false
+      isPrLoading: false,
+      diffStale: false,
     }),
 
     handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
@@ -218,6 +219,7 @@ export const pullRequestState = setup({
     handleCodeStartup: ({ self }) => {
       const parentContext = getParentContext(self)
       if (parentContext?.baseDirectory) {
+        sendToBackend('pr.CHECK_GH_AUTH', {})
         self.send({ type: 'pr.REFRESH_STATUS' })
       } else {
         self.send({ type: 'pr.ERROR', message: 'No directory selected. Please select a directory first.' })
@@ -266,7 +268,7 @@ export const pullRequestState = setup({
       })
       if (ev.data.pr) {
         const newBase = ev.data.pr.baseRefName
-        if (newBase !== context.prBaseBranch || context.prFiles.length === 0) {
+        if (newBase !== context.prBaseBranch || context.prFiles.length === 0 || context.diffStale) {
           enqueue.assign({ prBaseBranch: newBase })
           sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
         }
@@ -488,6 +490,7 @@ export const pullRequestState = setup({
     isTogglingDraft: false,
     isDeletingBranch: false,
     isLoadingDetails: false,
+    diffStale: false,
   },
   states: {
     idle: {
@@ -509,7 +512,7 @@ export const pullRequestState = setup({
         'pr.BASE_BRANCH_RECEIVED': { actions: 'handleBaseBranchReceived' },
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
-        'pr.STATUS_CHANGED': { actions: [assign({ prFiles: [], prCheckCompleted: false, isGhChecking: true }), 'refreshPrStatus'] },
+        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true }), 'refreshPrStatus'] },
         'CODE_STARTUP': { actions: 'handleCodeStartup' },
 
         // GitHub PR events from backend
