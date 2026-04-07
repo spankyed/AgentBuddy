@@ -427,7 +427,7 @@ export const commitState = setup({
     availableBranches: [],
     branchInput: '',
     isCheckingOutBranch: false,
-    hasUpstream: false,
+    hasUpstream: true,
     commitsAhead: 0,
     commitsBehind: 0,
     isPushing: false,
