@@ -145,6 +145,11 @@ function formatDate(dateStr: string): string {
 :deep(.pr-markdown .tiptap) {
   padding: 0;
 }
+:deep(.pr-markdown img) {
+  max-height: 200px;
+  width: auto;
+  object-fit: contain;
+}
 :deep(.pr-markdown h1),
 :deep(.pr-markdown h2),
 :deep(.pr-markdown h3) {
