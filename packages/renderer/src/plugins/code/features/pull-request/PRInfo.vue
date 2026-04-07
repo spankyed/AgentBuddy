@@ -85,7 +85,7 @@
       </div>
       <div v-else-if="showCommits && pr.commits?.length" class="space-y-0.5">
         <button
-          v-for="commit in pr.commits"
+          v-for="commit in [...pr.commits].reverse()"
           :key="commit.oid"
           @click="openCommitOnGitHub(commit.oid)"
           class="flex items-center gap-2 text-sm w-full text-left px-1 py-0.5 rounded hover:bg-neutral-800 transition-colors"
