@@ -652,6 +652,17 @@ export class GitRepository {
   }
 
   async getPRBaseBranch(): Promise<string> {
+    // Check if upstream tracks a DIFFERENT branch (e.g., feature-B tracks origin/feature-A)
+    // If so, use it as the PR base — the user likely branched from that feature branch
+    try {
+      const currentBranch = await this.getCurrentBranch()
+      const upstream = await this.getUpstreamBranch()
+      if (upstream && upstream !== currentBranch) {
+        return upstream
+      }
+    } catch {
+      // Fall through to default detection
+    }
     return this.getBaseBranch({ preferUpstream: false })
   }
 
