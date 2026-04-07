@@ -6,6 +6,10 @@ import App from './App.vue'
 import './style.css'
 import plugins, { defaultPlugin } from '@/plugins';
 import { application, createApplicationState } from '@/core/actors/application';
+import { runFrontendMigrations } from '@/setup/migrations';
+
+// Run localStorage migrations before actor creation (keys are read during context init)
+runFrontendMigrations();
 
 // const { inspect } = createBrowserInspector();
 
