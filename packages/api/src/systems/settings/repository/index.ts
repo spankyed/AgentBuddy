@@ -4,6 +4,17 @@ import { tx } from '@/core/ears/helpers/transaction';
 import { SettingsEntity, SettingsData } from '../types';
 import { defaultSettings } from '../defaults';
 
+// Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
+function deepMerge(defaults: any, stored: any): any {
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return stored ?? defaults;
+  if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) return stored;
+  const result = { ...defaults };
+  for (const key of Object.keys(stored)) {
+    result[key] = deepMerge(defaults[key], stored[key]);
+  }
+  return result;
+}
+
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
@@ -22,10 +33,10 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
     return { id: SETTINGS_ID, data: defaultSettings };
   }
 
-  // Return existing data (might be undefined if entity exists but has no data)
+  // Merge defaults with stored data so new default fields backfill automatically
   return {
     id: SETTINGS_ID,
-    data: existing.data || defaultSettings
+    data: deepMerge(defaultSettings, existing.data)
   };
 };
 
