@@ -38,6 +38,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   editorClass?: string
   entityId?: string
+  disableImages?: boolean
   isCommand?: boolean
   inHistoryMode?: boolean
 }>(), {
@@ -47,6 +48,7 @@ const props = withDefaults(defineProps<{
   disabled: false,
   editorClass: '',
   entityId: undefined,
+  disableImages: false,
   isCommand: false,
   inHistoryMode: false,
 })
@@ -165,7 +167,7 @@ const editorOnlyProps = props.mode === 'editor' ? {
     return true
   },
   handlePaste: (_view: any, event: ClipboardEvent) => {
-    if (!props.entityId) return false
+    if (props.disableImages || !props.entityId) return false
     const items = event.clipboardData?.items
     if (!items) return false
 
@@ -181,7 +183,7 @@ const editorOnlyProps = props.mode === 'editor' ? {
     return handled
   },
   handleDrop: (view: any, event: DragEvent) => {
-    if (!props.entityId) return false
+    if (props.disableImages || !props.entityId) return false
     const files = event.dataTransfer?.files
     if (!files?.length) return false
 

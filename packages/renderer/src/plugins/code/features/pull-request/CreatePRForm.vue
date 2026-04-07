@@ -21,6 +21,7 @@
           @update:modelValue="$emit('update-field', 'body', $event)"
           placeholder="Describe your changes..."
           editorClass="pr-create-editor"
+          disableImages
         />
       </div>
     </div>
