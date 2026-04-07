@@ -941,7 +941,23 @@ export class GitRepository {
     }
   }
 
+  private _forceFetchNext = false
+
+  /**
+   * Force a fetch on the next getCommitsAheadBehind() call,
+   * regardless of the auto-fetch toggle or throttle timer.
+   */
+  forceFetchOnce(): void {
+    this._forceFetchNext = true
+  }
+
   private async fetchIfStale(): Promise<void> {
+    if (this._forceFetchNext) {
+      this._forceFetchNext = false
+      this._lastFetchTimestamp = Date.now()
+      await this.executeGitCommand(['fetch', '--quiet'])
+      return
+    }
     if (!this._autoFetchEnabled) return
     const now = Date.now()
     if (now - this._lastFetchTimestamp < this._fetchThrottleMs) return
@@ -1007,8 +1023,9 @@ export class GitRepository {
         }
       }
 
-      // Clear cache after pushing
+      // Clear cache and reset fetch timer (push updates remote refs)
       this.clearCache()
+      this._lastFetchTimestamp = Date.now()
     })
   }
 
@@ -1041,8 +1058,9 @@ export class GitRepository {
         }
       }
 
-      // Clear cache after pulling
+      // Clear cache and reset fetch timer (pull already fetched remote refs)
       this.clearCache()
+      this._lastFetchTimestamp = Date.now()
     })
   }
 
