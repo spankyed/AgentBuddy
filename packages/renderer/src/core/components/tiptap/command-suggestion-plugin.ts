@@ -168,9 +168,10 @@ export function commandSuggestionPlugin(
       const targetText = inQueryPhase ? firstText.trim() : firstText.trimStart()
       const needsTrim = targetText !== firstText && targetText.length > 0
 
-      // Determine if extra paragraphs should collapse (only if rest is whitespace-only)
+      // Collapse extra paragraphs only in query phase (e.g. pasted multi-line text).
+      // In selected phase, the body supports multiple lines via Shift+Enter.
       let needsCollapse = false
-      if (newState.doc.childCount > 1) {
+      if (inQueryPhase && newState.doc.childCount > 1) {
         const rest = newState.doc.textContent.slice(firstText.length)
         if (rest.trim().length === 0) needsCollapse = true
       }
