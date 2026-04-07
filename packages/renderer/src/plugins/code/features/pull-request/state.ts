@@ -24,6 +24,7 @@ const defaultLoadingStates = {
   isTogglingDraft: false,
   isLoadingDetails: false,
   isLoadingPRs: false,
+  isSubmittingComment: false,
 }
 
 export interface Context {
@@ -65,6 +66,10 @@ export interface Context {
   isSubmittingComment: boolean
   isLoadingDetails: boolean
   diffStale: boolean
+
+  // Optimistic update rollback
+  _commentSnapshot: GhPRComment[] | null
+  _threadSnapshot: GhReviewThread[] | null
 }
 
 export type Event =
@@ -165,6 +170,11 @@ export const pullRequestState = setup({
       },
       ...defaultLoadingStates,
       branchPRCheckFailed: true,
+      // Rollback optimistic updates
+      prComments: ({ context }) => context._commentSnapshot ?? context.prComments,
+      reviewThreads: ({ context }) => context._threadSnapshot ?? context.reviewThreads,
+      _commentSnapshot: null,
+      _threadSnapshot: null,
     }),
 
     setPrLoading: assign({ isPrLoading: true, branchPRCheckFailed: false }),
@@ -509,56 +519,128 @@ export const pullRequestState = setup({
       sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.pr.baseRefName })
     },
 
-    // --- Comment actions ---
+    // --- Comment actions (optimistic) ---
 
-    requestCreateComment: ({ event }) => {
+    optimisticCreateComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.CREATE_COMMENT'; number: number; body: string }
-      sendToBackend('pr.CREATE_COMMENT', { number: ev.number, body: ev.body })
-    },
-
-    requestEditComment: ({ event }) => {
-      const ev = event as { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
-      sendToBackend('pr.EDIT_COMMENT', { commentId: ev.commentId, body: ev.body })
-    },
-
-    requestDeleteComment: ({ event }) => {
-      const ev = event as { type: 'pr.DELETE_COMMENT'; commentId: number }
-      sendToBackend('pr.DELETE_COMMENT', { commentId: ev.commentId })
-    },
-
-    handleCommentMutated: ({ context }) => {
-      // Refresh PR details to get updated comments
-      if (context.selectedPR) {
-        sendToBackend('pr.SELECT_PR', { number: context.selectedPR.number })
+      const placeholder: GhPRComment = {
+        id: `pending-${Date.now()}`,
+        body: ev.body,
+        author: { login: '...' },
+        createdAt: new Date().toISOString(),
+        url: '',
+        viewerDidAuthor: true,
       }
-    },
+      enqueue.assign({
+        _commentSnapshot: context.prComments,
+        prComments: [...context.prComments, placeholder],
+        isSubmittingComment: true,
+      })
+      enqueue(() => sendToBackend('pr.CREATE_COMMENT', { number: ev.number, body: ev.body }))
+    }),
 
-    // --- Review thread actions ---
+    optimisticEditComment: enqueueActions(({ enqueue, event, context }) => {
+      const ev = event as { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
+      enqueue.assign({
+        _commentSnapshot: context.prComments,
+        prComments: context.prComments.map(c =>
+          c.url.includes(`issuecomment-${ev.commentId}`) ? { ...c, body: ev.body } : c
+        ),
+        isSubmittingComment: true,
+      })
+      enqueue(() => sendToBackend('pr.EDIT_COMMENT', { commentId: ev.commentId, body: ev.body }))
+    }),
 
-    requestReplyToThread: ({ event }) => {
+    optimisticDeleteComment: enqueueActions(({ enqueue, event, context }) => {
+      const ev = event as { type: 'pr.DELETE_COMMENT'; commentId: number }
+      enqueue.assign({
+        _commentSnapshot: context.prComments,
+        prComments: context.prComments.filter(c => !c.url.includes(`issuecomment-${ev.commentId}`)),
+        isSubmittingComment: true,
+      })
+      enqueue(() => sendToBackend('pr.DELETE_COMMENT', { commentId: ev.commentId }))
+    }),
+
+    handleCommentMutated: enqueueActions(({ enqueue, context }) => {
+      enqueue.assign({ _commentSnapshot: null })
+      if (context.selectedPR) {
+        enqueue(() => sendToBackend('pr.SELECT_PR', { number: context.selectedPR!.number }))
+      }
+    }),
+
+    // --- Review thread actions (optimistic) ---
+
+    optimisticReplyToThread: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
-      sendToBackend('pr.REPLY_TO_THREAD', { prNumber: ev.prNumber, commentId: ev.commentId, body: ev.body })
-    },
+      const placeholder = {
+        id: `pending-${Date.now()}`,
+        databaseId: 0,
+        body: ev.body,
+        author: { login: '...' },
+        createdAt: new Date().toISOString(),
+        viewerDidAuthor: true,
+      }
+      enqueue.assign({
+        _threadSnapshot: context.reviewThreads,
+        reviewThreads: context.reviewThreads.map(t => {
+          const hasComment = t.comments.some(c => c.databaseId === ev.commentId)
+          if (!hasComment) return t
+          return { ...t, comments: [...t.comments, placeholder] }
+        }),
+        isSubmittingComment: true,
+      })
+      enqueue(() => sendToBackend('pr.REPLY_TO_THREAD', { prNumber: ev.prNumber, commentId: ev.commentId, body: ev.body }))
+    }),
 
-    requestResolveThread: ({ event }) => {
+    optimisticResolveThread: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.RESOLVE_THREAD'; threadId: string }
-      sendToBackend('pr.RESOLVE_THREAD', { threadId: ev.threadId })
-    },
+      enqueue.assign({
+        _threadSnapshot: context.reviewThreads,
+        reviewThreads: context.reviewThreads.map(t =>
+          t.id === ev.threadId ? { ...t, isResolved: true } : t
+        ),
+      })
+      enqueue(() => sendToBackend('pr.RESOLVE_THREAD', { threadId: ev.threadId }))
+    }),
 
-    requestUnresolveThread: ({ event }) => {
+    optimisticUnresolveThread: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
-      sendToBackend('pr.UNRESOLVE_THREAD', { threadId: ev.threadId })
-    },
+      enqueue.assign({
+        _threadSnapshot: context.reviewThreads,
+        reviewThreads: context.reviewThreads.map(t =>
+          t.id === ev.threadId ? { ...t, isResolved: false } : t
+        ),
+      })
+      enqueue(() => sendToBackend('pr.UNRESOLVE_THREAD', { threadId: ev.threadId }))
+    }),
 
-    requestEditReviewComment: ({ event }) => {
+    optimisticEditReviewComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
-      sendToBackend('pr.EDIT_REVIEW_COMMENT', { commentId: ev.commentId, body: ev.body })
-    },
+      enqueue.assign({
+        _threadSnapshot: context.reviewThreads,
+        reviewThreads: context.reviewThreads.map(t => ({
+          ...t,
+          comments: t.comments.map(c =>
+            c.databaseId === ev.commentId ? { ...c, body: ev.body } : c
+          ),
+        })),
+        isSubmittingComment: true,
+      })
+      enqueue(() => sendToBackend('pr.EDIT_REVIEW_COMMENT', { commentId: ev.commentId, body: ev.body }))
+    }),
 
-    requestDeleteReviewComment: ({ event }) => {
+    optimisticDeleteReviewComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
-      sendToBackend('pr.DELETE_REVIEW_COMMENT', { commentId: ev.commentId })
-    },
+      enqueue.assign({
+        _threadSnapshot: context.reviewThreads,
+        reviewThreads: context.reviewThreads.map(t => ({
+          ...t,
+          comments: t.comments.filter(c => c.databaseId !== ev.commentId),
+        })),
+        isSubmittingComment: true,
+      })
+      enqueue(() => sendToBackend('pr.DELETE_REVIEW_COMMENT', { commentId: ev.commentId }))
+    }),
 
     handleReviewThreadsReceived: assign({
       reviewThreads: ({ event }) => {
@@ -567,12 +649,12 @@ export const pullRequestState = setup({
       },
     }),
 
-    handleThreadMutated: ({ context }) => {
-      // Refresh review threads
+    handleThreadMutated: enqueueActions(({ enqueue, context }) => {
+      enqueue.assign({ _threadSnapshot: null })
       if (context.selectedPR) {
-        sendToBackend('pr.GET_REVIEW_THREADS', { number: context.selectedPR.number })
+        enqueue(() => sendToBackend('pr.GET_REVIEW_THREADS', { number: context.selectedPR!.number }))
       }
-    },
+    }),
 
     fetchReviewThreads: ({ context }) => {
       if (context.selectedPR) {
@@ -618,6 +700,9 @@ export const pullRequestState = setup({
     isSubmittingComment: false,
     isLoadingDetails: false,
     diffStale: false,
+
+    _commentSnapshot: null,
+    _threadSnapshot: null,
   },
   states: {
     idle: {
@@ -679,14 +764,14 @@ export const pullRequestState = setup({
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
         'pr.DELETE_BRANCH': { actions: ['requestDeleteBranch', assign({ isDeletingBranch: true })] },
         'pr.UPDATE_PR': { actions: ['requestUpdatePR', assign({ isUpdatingPR: true })] },
-        'pr.CREATE_COMMENT': { actions: ['requestCreateComment', assign({ isSubmittingComment: true })] },
-        'pr.EDIT_COMMENT': { actions: ['requestEditComment', assign({ isSubmittingComment: true })] },
-        'pr.DELETE_COMMENT': { actions: ['requestDeleteComment', assign({ isSubmittingComment: true })] },
-        'pr.REPLY_TO_THREAD': { actions: ['requestReplyToThread', assign({ isSubmittingComment: true })] },
-        'pr.RESOLVE_THREAD': { actions: 'requestResolveThread' },
-        'pr.UNRESOLVE_THREAD': { actions: 'requestUnresolveThread' },
-        'pr.EDIT_REVIEW_COMMENT': { actions: ['requestEditReviewComment', assign({ isSubmittingComment: true })] },
-        'pr.DELETE_REVIEW_COMMENT': { actions: ['requestDeleteReviewComment', assign({ isSubmittingComment: true })] },
+        'pr.CREATE_COMMENT': { actions: 'optimisticCreateComment' },
+        'pr.EDIT_COMMENT': { actions: 'optimisticEditComment' },
+        'pr.DELETE_COMMENT': { actions: 'optimisticDeleteComment' },
+        'pr.REPLY_TO_THREAD': { actions: 'optimisticReplyToThread' },
+        'pr.RESOLVE_THREAD': { actions: 'optimisticResolveThread' },
+        'pr.UNRESOLVE_THREAD': { actions: 'optimisticUnresolveThread' },
+        'pr.EDIT_REVIEW_COMMENT': { actions: 'optimisticEditReviewComment' },
+        'pr.DELETE_REVIEW_COMMENT': { actions: 'optimisticDeleteReviewComment' },
         'pr.SET_COMMENT_TAB': { actions: assign({ commentTab: ({ event }) => (event as any).tab }) },
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
