@@ -159,6 +159,7 @@ export function commandSuggestionPlugin(
       if (!firstText.trimStart().startsWith('/')) return null
 
       const pluginState = commandSuggestionPluginKey.getState(newState)
+      if (!pluginState?.active) return null
       // Only strip trailing whitespace in query phase — in selected phase the
       // body after the command prefix is free-form and whitespace is intentional.
       const inQueryPhase = pluginState?.active && !pluginState.selectedCommand
