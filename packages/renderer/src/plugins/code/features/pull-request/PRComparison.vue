@@ -1,8 +1,5 @@
 <template>
-  <div v-if="isLoading && files.length === 0" class="flex items-center justify-center gap-2 p-4">
-    <Loader2 class="w-5 h-5 animate-spin" />
-    <span class="text-sm text-neutral-400">Loading changes...</span>
-  </div>
+  <FileTreeSkeleton v-if="isLoading && files.length === 0" />
 
   <EmptyState
     v-else-if="files.length === 0"
@@ -65,12 +62,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { GitBranch, ArrowRight, Loader2, ChevronsUpDown, ChevronsDownUp } from 'lucide-vue-next'
+import { GitBranch, ArrowRight, ChevronsUpDown, ChevronsDownUp } from 'lucide-vue-next'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal
 } from 'reka-ui'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
+import FileTreeSkeleton from '@/plugins/code/features/pull-request/FileTreeSkeleton.vue'
 import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import type { TreeNode } from './types'
