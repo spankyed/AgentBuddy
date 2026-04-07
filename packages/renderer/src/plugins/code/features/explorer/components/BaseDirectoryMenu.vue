@@ -36,6 +36,13 @@
               <Terminal class="w-4 h-4" />
               Open Terminal Here
             </DropdownMenuItem>
+            <DropdownMenuItem
+              @select="navigator.clipboard.writeText(baseDirectory)"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Copy class="w-4 h-4" />
+              Copy Path
+            </DropdownMenuItem>
             <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
             <DropdownMenuSub v-if="allProjects.length > 0">
               <DropdownMenuSubTrigger
@@ -107,7 +114,7 @@ import {
   DropdownMenuItemIndicator,
   DropdownMenuSeparator,
 } from 'reka-ui'
-import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal } from 'lucide-vue-next'
+import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal, Copy } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
 import { useProjectActions } from '../composables/useProjectActions'
 import { onMenuOpenChange } from '@/core/composables/useMenuState'
