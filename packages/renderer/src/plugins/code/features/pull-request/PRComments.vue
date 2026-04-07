@@ -196,7 +196,8 @@
           <div class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800">
             <button
               @click="startReply(thread.id)"
-              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
+              :disabled="isSubmitting"
+              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors disabled:opacity-50"
             >
               <Reply :size="10" />
               <span>Reply</span>
@@ -206,15 +207,15 @@
 
             <!-- Resolve/Unresolve -->
             <button
-              @click="thread.isResolved
-                ? $emit('unresolve-thread', thread.id)
-                : $emit('resolve-thread', thread.id)"
-              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors"
+              @click="handleResolveToggle(thread)"
+              :disabled="resolvingThreadId === thread.id"
+              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors disabled:opacity-50"
               :class="thread.isResolved
                 ? 'text-yellow-400 hover:bg-yellow-900/30'
                 : 'text-green-400 hover:bg-green-900/30'"
             >
-              <CheckCircle :size="10" />
+              <Loader2 v-if="resolvingThreadId === thread.id" :size="10" class="animate-spin" />
+              <CheckCircle v-else :size="10" />
               <span>{{ thread.isResolved ? 'Unresolve' : 'Resolve' }}</span>
             </button>
           </div>
@@ -225,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   MessageSquare, Code, Pencil, Trash2, Send, Loader2,
   ChevronRight, Reply, CheckCircle
@@ -287,7 +288,12 @@ function saveEditComment(comment: GhPRComment) {
 }
 
 // Review thread state
+const resolvingThreadId = ref<string | null>(null)
 const expandedThreads = ref(new Set<string>())
+
+watch(() => props.reviewThreads, () => {
+  resolvingThreadId.value = null
+})
 const replyingThreadId = ref<string | null>(null)
 const replyBody = ref('')
 
@@ -311,6 +317,15 @@ function submitReply(thread: GhReviewThread) {
   emit('reply-thread', props.prNumber, lastComment.databaseId, replyBody.value)
   replyingThreadId.value = null
   replyBody.value = ''
+}
+
+function handleResolveToggle(thread: GhReviewThread) {
+  resolvingThreadId.value = thread.id
+  if (thread.isResolved) {
+    emit('unresolve-thread', thread.id)
+  } else {
+    emit('resolve-thread', thread.id)
+  }
 }
 
 function formatDate(dateStr: string): string {
