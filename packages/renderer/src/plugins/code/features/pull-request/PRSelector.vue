@@ -2,7 +2,7 @@
   <div ref="dropdownContainer" class="relative flex-1 min-w-0">
     <button
       @click="isDropdownOpen = !isDropdownOpen"
-      class="flex items-center w-full gap-1.5 px-2 py-1 text-sm rounded text-neutral-300 hover:bg-neutral-700/50 transition-colors"
+      class="flex items-center w-full gap-1.5 px-2 py-1.5 text-sm rounded text-neutral-300 bg-neutral-700/50 hover:bg-neutral-600/50 transition-colors"
     >
       <GitPullRequest :size="12" :class="[prStatusColor(selectedPR), 'shrink-0']" />
       <span class="truncate min-w-0 text-left">
@@ -10,15 +10,15 @@
       </span>
       <span
         v-if="selectedPR?.state === 'MERGED'"
-        class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
+        class="text-[9px] px-1 leading-4 rounded bg-purple-600/50 text-purple-300 shrink-0"
       >MERGED</span>
       <span
         v-else-if="selectedPR?.state === 'CLOSED'"
-        class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
+        class="text-[9px] px-1 leading-4 rounded bg-red-600/50 text-red-300 shrink-0"
       >CLOSED</span>
       <span
         v-else-if="selectedPR?.isDraft"
-        class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
+        class="text-[9px] px-1 leading-4 rounded bg-neutral-600 text-neutral-300 shrink-0"
       >DRAFT</span>
     </button>
 
@@ -38,15 +38,15 @@
         <span class="truncate">#{{ pr.number }} {{ pr.title }}</span>
         <span
           v-if="pr.state === 'MERGED'"
-          class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
+          class="text-[9px] px-1 leading-4 rounded bg-purple-600/50 text-purple-300 shrink-0"
         >MERGED</span>
         <span
           v-else-if="pr.state === 'CLOSED'"
-          class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
+          class="text-[9px] px-1 leading-4 rounded bg-red-600/50 text-red-300 shrink-0"
         >CLOSED</span>
         <span
           v-else-if="pr.isDraft"
-          class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
+          class="text-[9px] px-1 leading-4 rounded bg-neutral-600 text-neutral-300 shrink-0"
         >DRAFT</span>
       </button>
       <div v-if="openPRs.length === 0" class="px-3 py-2 text-xs text-neutral-500">

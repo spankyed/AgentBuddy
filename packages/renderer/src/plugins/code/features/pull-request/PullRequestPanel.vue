@@ -54,7 +54,7 @@
         <button
           v-if="topRowStatus === 'checking'"
           disabled
-          class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+          class="flex items-center gap-1.5 px-2 py-1.5 text-sm rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
         >
           <Loader2 :size="12" class="animate-spin shrink-0" />
           <span class="truncate">Checking...</span>
