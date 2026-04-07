@@ -13,7 +13,7 @@ import { threads } from '@/systems/threads/system';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { seedData, type SeedResult } from '@/setup/seed/index';
-import { resolveCliPath, clearCliPathCache } from '@/core/helpers/resolve-cli';
+import { resolveCliPath, clearCliPathCache, type CliName } from '@/core/helpers/resolve-cli';
 
 const execFileAsync = promisify(execFile);
 
@@ -332,7 +332,7 @@ export const settingsSystem = setup({
       const storedPath = data.general.secrets.cliPaths?.[provider];
 
       (async () => {
-        const command = await resolveCliPath(provider as any, storedPath || cmd.command);
+        const command = await resolveCliPath(provider as CliName, storedPath || cmd.command);
         await execFileAsync(command, cmd.args, { timeout: 10000 });
         return command;
       })()
