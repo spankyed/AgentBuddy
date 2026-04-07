@@ -50,12 +50,13 @@
               :key="result.item.path"
               :ref="el => setResultRef(el, index)"
               class="flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer"
-              :class="{ 
+              :class="{
                 'bg-neutral-800': index === selectedIndex,
-                'hover:bg-neutral-800': !isKeyboardNavigation
+                'bg-neutral-700/50': index === hoveredIndex && index !== selectedIndex,
               }"
               @click="handleSelect(index)"
               @mouseenter="handleMouseEnter(index)"
+              @mouseleave="handleMouseLeave"
               @mousemove="handleMouseMove"
             >
               <!-- File Icon -->
@@ -173,6 +174,7 @@ const resultsContainer = ref<HTMLDivElement>()
 const searchQuery = ref('')
 const resultRefs = ref<(HTMLElement | null)[]>([])
 const isKeyboardNavigation = ref(false)
+const hoveredIndex = ref(-1)
 
 // Computed filtered results
 const filteredResults = computed<EnhancedSearchResult[]>(() => {
@@ -327,6 +329,7 @@ const handleKeydown = (e: KeyboardEvent) => {
     case 'ArrowDown':
       e.preventDefault()
       isKeyboardNavigation.value = true
+      hoveredIndex.value = -1
       if (filteredResults.value.length > 0) {
         const newIndex = Math.min(selectedIndex.value + 1, filteredResults.value.length - 1)
         codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index: newIndex })
@@ -337,6 +340,7 @@ const handleKeydown = (e: KeyboardEvent) => {
     case 'ArrowUp':
       e.preventDefault()
       isKeyboardNavigation.value = true
+      hoveredIndex.value = -1
       if (filteredResults.value.length > 0) {
         const newIndex = Math.max(selectedIndex.value - 1, 0)
         codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index: newIndex })
@@ -424,13 +428,20 @@ const getDirectory = (relativePath: string) => {
 }
 
 const handleMouseEnter = (index: number) => {
-  if (!isKeyboardNavigation.value) {
-    codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index })
+  hoveredIndex.value = index
+  if (isKeyboardNavigation.value) {
+    isKeyboardNavigation.value = false
   }
 }
 
+const handleMouseLeave = () => {
+  hoveredIndex.value = -1
+}
+
 const handleMouseMove = () => {
-  isKeyboardNavigation.value = false
+  if (isKeyboardNavigation.value) {
+    isKeyboardNavigation.value = false
+  }
 }
 
 const highlightedName = (result: any) => {
@@ -462,6 +473,8 @@ const highlightedName = (result: any) => {
 watch(isVisible, (visible) => {
   if (visible) {
     searchQuery.value = ''
+    hoveredIndex.value = -1
+    isKeyboardNavigation.value = false
     nextTick(() => {
       searchInput.value?.focus()
     })
@@ -472,6 +485,7 @@ watch(isVisible, (visible) => {
 watch(filteredResults, () => {
   codeActor.send({ type: 'SELECT_QUICK_OPEN_RESULT', index: 0 })
   resultRefs.value = []
+  hoveredIndex.value = -1
 })
 
 // Global escape key handler
