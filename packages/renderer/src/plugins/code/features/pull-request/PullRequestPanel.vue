@@ -73,10 +73,9 @@
             v-else-if="topRowStatus === 'publish'"
             @click="handlePublishBranch()"
             :disabled="isPushing"
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700 transition-colors disabled:opacity-50 flex-1 min-w-0"
+            class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 flex-1 min-w-0"
           >
-            <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
-            <AlertTriangle v-else :size="12" class="shrink-0" />
+            <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0 mr-1.5" />
             <span class="truncate">Publish Branch</span>
           </button>
 
@@ -94,9 +93,8 @@
           <button
             v-else-if="topRowStatus === 'no-pr'"
             @click="handleCreatePR()"
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors flex-1 min-w-0"
+            class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-green-600/80 text-white hover:bg-green-500 transition-colors flex-1 min-w-0"
           >
-            <Plus :size="12" class="shrink-0" />
             <span class="truncate">Create PR</span>
           </button>
 
@@ -107,10 +105,23 @@
             class="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded border border-transparent text-left transition-colors hover:bg-neutral-700"
             title="View PR details"
           >
-            <GitPullRequest :size="12" class="text-green-400 shrink-0" />
+            <GitPullRequest :size="12" :class="[
+              selectedPR.state === 'MERGED' ? 'text-purple-400' :
+              selectedPR.state === 'CLOSED' ? 'text-red-400' :
+              'text-green-400',
+              'shrink-0'
+            ]" />
             <span class="text-xs text-neutral-200 truncate">#{{ selectedPR.number }} {{ selectedPR.title }}</span>
             <span
-              v-if="selectedPR.isDraft"
+              v-if="selectedPR.state === 'MERGED'"
+              class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
+            >MERGED</span>
+            <span
+              v-else-if="selectedPR.state === 'CLOSED'"
+              class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
+            >CLOSED</span>
+            <span
+              v-else-if="selectedPR.isDraft"
               class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
             >DRAFT</span>
           </button>

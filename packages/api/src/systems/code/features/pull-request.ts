@@ -24,6 +24,7 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.CHECK_BRANCH_PR', {}),
   busEvent('pr.CHECK_GH_AUTH', {}),
   busEvent('pr.GET_PR_AUTOFILL', {}),
+  busEvent('pr.GET_SMART_BASE_BRANCH', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -42,6 +43,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
   | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
+  | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -60,6 +62,7 @@ export type Event =
   | { type: 'pr.CHECK_BRANCH_PR' }
   | { type: 'pr.CHECK_GH_AUTH' }
   | { type: 'pr.GET_PR_AUTOFILL' }
+  | { type: 'pr.GET_SMART_BASE_BRANCH' }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
@@ -100,8 +103,15 @@ export const pullRequestSystem = setup({
   actions: {
     getBaseBranch: ({ context }) => {
       withRepo(context,
-        repo => repo.getPRBaseBranch(),
+        repo => repo.getBaseBranch({ preferUpstream: false }),
         branch => emitToFrontend({ type: 'pr.BASE_BRANCH_RECEIVED', data: { branch } })
+      )
+    },
+
+    getSmartBaseBranch: ({ context }) => {
+      withRepo(context,
+        repo => repo.getPRBaseBranch(),
+        branch => emitToFrontend({ type: 'pr.SMART_BASE_BRANCH_RECEIVED', data: { branch } })
       )
     },
 
@@ -109,7 +119,7 @@ export const pullRequestSystem = setup({
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
       withRepo(context,
         repo => {
-          const base = ev.baseBranch ? Promise.resolve(ev.baseBranch) : repo.getPRBaseBranch()
+          const base = ev.baseBranch ? Promise.resolve(ev.baseBranch) : repo.getBaseBranch({ preferUpstream: false })
           return base.then(baseBranch =>
             repo.getBranchDiff(baseBranch).then(files => ({ files, baseBranch }))
           )
@@ -257,8 +267,6 @@ export const pullRequestSystem = setup({
     }),
 
     selfRefreshPrStatus: ({ self }) => {
-      self.send({ type: 'pr.GET_BASE_BRANCH' })
-      self.send({ type: 'pr.GET_BRANCH_DIFF' })
       self.send({ type: 'pr.CHECK_GH_AUTH' })
       self.send({ type: 'pr.LIST_OPEN_PRS' })
       self.send({ type: 'pr.CHECK_BRANCH_PR' })
@@ -283,6 +291,7 @@ export const pullRequestSystem = setup({
         'pr.CLOSE_PR': { actions: 'closePR' },
         'pr.TOGGLE_DRAFT': { actions: 'toggleDraft' },
         'pr.CHECK_BRANCH_PR': { actions: 'checkBranchPR' },
+        'pr.GET_SMART_BASE_BRANCH': { actions: 'getSmartBaseBranch' },
         'pr.CHECK_GH_AUTH': { actions: 'checkGhAuth' },
         'pr.GET_PR_AUTOFILL': { actions: 'getPRAutofill' },
         'pr.GIT_STATUS_CHANGED': { actions: 'handleGitStatusChanged' },
