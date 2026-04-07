@@ -177,7 +177,9 @@ export const pullRequestState = setup({
         return ev.message
       },
       ...defaultLoadingStates,
-      branchPRCheckFailed: true,
+      // Only mark branch PR check as failed if we don't already have a selected PR
+      // (otherwise a comment/mutation error would hide the PR selector)
+      branchPRCheckFailed: ({ context }) => !context.selectedPR,
       // Rollback optimistic updates
       prComments: ({ context }) => context._commentSnapshot ?? context.prComments,
       reviewThreads: ({ context }) => context._threadSnapshot ?? context.reviewThreads,
