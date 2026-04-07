@@ -5,7 +5,7 @@
       class="flex items-center w-full gap-1.5 px-2 py-1 text-sm rounded text-neutral-300 hover:bg-neutral-700/50 transition-colors"
     >
       <GitPullRequest :size="12" :class="[prStatusColor(selectedPR), 'shrink-0']" />
-      <span class="truncate flex-1 text-left">
+      <span class="truncate min-w-0 text-left">
         {{ selectedPR ? `#${selectedPR.number} ${selectedPR.title}` : 'Select a pull request...' }}
       </span>
       <span
