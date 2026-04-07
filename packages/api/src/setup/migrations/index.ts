@@ -13,7 +13,13 @@ import { migration as m003 } from './0.0.3';
 const migrations: Migration[] = [m003];
 
 export function runMigrations(): void {
-  const current = settingsQueries.getInternalSettings().version || '0.0.0';
+  let current = settingsQueries.getInternalSettings().version || '0.0.0';
+
+  // TODO: Remove after v0.0.3 — legacy normalization only needed for
+  // users who ran pre-release builds with internal-only version strings.
+  if (current === '0.1.0' || current === '0.2.0') {
+    current = '0.0.0';
+  }
 
   for (const m of migrations) {
     if (m.version > current) {
