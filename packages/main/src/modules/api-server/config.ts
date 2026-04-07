@@ -42,14 +42,28 @@ export const getApiPaths = () => {
 };
 
 // Environment Configuration
-export const getEnvironment = (port: number) => ({
-  ...process.env,
-  NODE_ENV: app.isPackaged ? 'production' : 'development',
-  API_PORT: port.toString(),
-  DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
-  USER_DATA_PATH: app.isPackaged ? app.getPath('userData') : undefined,
-  ELECTRON_RUN_AS_NODE: '1',
-});
+export const getEnvironment = (port: number) => {
+  const env = { ...process.env };
+
+  // Production Electron inherits a minimal PATH missing common binary locations
+  if (app.isPackaged && env.PATH) {
+    const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin', '/usr/local/sbin'];
+    const existing = env.PATH.split(':');
+    for (const p of extraPaths) {
+      if (!existing.includes(p)) existing.push(p);
+    }
+    env.PATH = existing.join(':');
+  }
+
+  return {
+    ...env,
+    NODE_ENV: app.isPackaged ? 'production' : 'development',
+    API_PORT: port.toString(),
+    DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
+    USER_DATA_PATH: app.isPackaged ? app.getPath('userData') : undefined,
+    ELECTRON_RUN_AS_NODE: '1',
+  };
+};
 
 // Node Executable Configuration
 export const getNodeExecutable = () => {
