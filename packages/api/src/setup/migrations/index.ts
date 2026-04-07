@@ -1,4 +1,5 @@
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
+import { APP_VERSION } from '@/version';
 
 export interface Migration {
   version: string;
@@ -7,9 +8,9 @@ export interface Migration {
 }
 
 // Register migrations in version order
-import { migration as m020 } from './0.2.0';
+import { migration as m003 } from './0.0.3';
 
-const migrations: Migration[] = [m020];
+const migrations: Migration[] = [m003];
 
 export function runMigrations(): void {
   const current = settingsQueries.getInternalSettings().version || '0.0.0';
@@ -18,7 +19,11 @@ export function runMigrations(): void {
     if (m.version > current) {
       console.log(`[migration] Running ${m.version}: ${m.description}`);
       m.up();
-      settingsCommands.updateSettings('internal', null, ['version'], m.version);
     }
+  }
+
+  // Stamp current app version after all migrations
+  if (current !== APP_VERSION) {
+    settingsCommands.updateSettings('internal', null, ['version'], APP_VERSION);
   }
 }

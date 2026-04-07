@@ -1,7 +1,7 @@
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 
 export const migration = {
-  version: '0.2.0',
+  version: '0.0.3',
   description: 'Migrate agent plugin settings to threads.chat',
   up: () => {
     const data = settingsQueries.getSettings();
