@@ -32,7 +32,8 @@ export class GitRepository {
   private _writeInProgress = 0
   private _writeCompleteCallbacks: (() => void)[] = []
   private _lastFetchTimestamp = 0
-  private readonly FETCH_THROTTLE_MS = 60_000 // 60 seconds
+  private _autoFetchEnabled = true
+  private _fetchThrottleMs = 60_000
 
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
@@ -40,6 +41,11 @@ export class GitRepository {
 
   getWorkingDir(): string {
     return this.workingDirectory
+  }
+
+  setFetchConfig(enabled: boolean, intervalSeconds: number): void {
+    this._autoFetchEnabled = enabled
+    this._fetchThrottleMs = intervalSeconds * 1000
   }
 
   get isWriteInProgress(): boolean {
@@ -936,8 +942,9 @@ export class GitRepository {
   }
 
   private async fetchIfStale(): Promise<void> {
+    if (!this._autoFetchEnabled) return
     const now = Date.now()
-    if (now - this._lastFetchTimestamp < this.FETCH_THROTTLE_MS) return
+    if (now - this._lastFetchTimestamp < this._fetchThrottleMs) return
     this._lastFetchTimestamp = now
     await this.executeGitCommand(['fetch', '--quiet'])
   }

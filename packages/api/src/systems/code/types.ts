@@ -218,6 +218,8 @@ export interface CodeSettings {
   confirmTerminalClose?: boolean;
   closeTerminalOnTabClose?: boolean;
   mdEditorDefault?: boolean;
+  autoFetchRemote?: boolean;
+  autoFetchIntervalSeconds?: number;
 }
 
 export type CodeConnectedData = {
