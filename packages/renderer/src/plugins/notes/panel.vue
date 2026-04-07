@@ -110,15 +110,15 @@
           :class="favoritesExpanded && 'mb-1'"
           @click="favoritesExpanded = !favoritesExpanded"
         >
-          <span class="relative shrink-0 w-[10px] h-[10px]">
-            <Star :size="10" class="absolute inset-0 text-yellow-500/60 transition-opacity group-hover:opacity-0" />
+          <span class="relative shrink-0 w-[12px] h-[12px]">
+            <Star :size="12" class="absolute inset-0 text-yellow-500/60 transition-opacity group-hover:opacity-0" />
             <ChevronRight
-              :size="10"
+              :size="12"
               class="absolute inset-0 text-neutral-500 opacity-0 transition-all duration-150 group-hover:opacity-100"
               :class="favoritesExpanded && 'rotate-90'"
             />
           </span>
-          <span class="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
+          <span class="text-xs font-semibold uppercase tracking-wider text-neutral-500">Favorites</span>
         </button>
         <template v-if="favoritesExpanded">
           <NoteTreeItem
