@@ -189,7 +189,13 @@ export const systemMachine = setup({
         if (context.gitRepository) {
           context.gitRepository.clearCache()
         }
-        return new GitRepository(ev.path)
+        const repo = new GitRepository(ev.path)
+        const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
+        repo.setFetchConfig(
+          codeSettings?.autoFetchRemote ?? false,
+          codeSettings?.autoFetchIntervalSeconds ?? 180
+        )
+        return repo
       },
       gitWatcher: ({ event, context }) => {
         const ev = typeOf('SET_BASE_DIRECTORY', event)
@@ -242,6 +248,14 @@ export const systemMachine = setup({
           path: ev.settings.defaultBaseDirectory,
           fromUserNavigation: false
         })
+      }
+
+      // Update git fetch config if repository exists
+      if (context.gitRepository) {
+        context.gitRepository.setFetchConfig(
+          ev.settings.autoFetchRemote ?? false,
+          ev.settings.autoFetchIntervalSeconds ?? 180
+        )
       }
 
       // Forward settings to frontend
@@ -328,9 +342,17 @@ export const systemMachine = setup({
     // Resolve initial directory using priority chain
     const baseDir = resolveInitialDirectory(codeSettings, projects)
 
+    const gitRepo = baseDir ? new GitRepository(baseDir) : null
+    if (gitRepo) {
+      gitRepo.setFetchConfig(
+        codeSettings?.autoFetchRemote ?? false,
+        codeSettings?.autoFetchIntervalSeconds ?? 180
+      )
+    }
+
     return {
       baseDirectory: baseDir,
-      gitRepository: baseDir ? new GitRepository(baseDir) : null,
+      gitRepository: gitRepo,
       gitWatcher: baseDir ? new GitWatcherService(baseDir) : null
     }
   },

@@ -75,6 +75,8 @@ export const defaultSettings: SettingsData = {
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,
       mdEditorDefault: true,
+      autoFetchRemote: false,
+      autoFetchIntervalSeconds: 180,
     },
     database: {
       hotkeys: {

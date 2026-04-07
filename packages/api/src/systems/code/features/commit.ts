@@ -540,13 +540,17 @@ export const commitSystem = setup({
       try {
         const currentBranch = await context.gitRepository.getCurrentBranch()
         await context.gitRepository.pullBranch()
-        
+
+        // Force a fetch on the next status check to get accurate ahead/behind
+        // counts after merge, regardless of auto-fetch setting
+        context.gitRepository.forceFetchOnce()
+
         const wrapped = emit(pluginId, {
           type: 'commit.BRANCH_PULLED',
           data: { branchName: currentBranch }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        
+
         // Debounced status refresh
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {

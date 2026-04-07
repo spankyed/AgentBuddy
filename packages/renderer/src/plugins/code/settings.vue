@@ -60,6 +60,52 @@
     </CollapsibleSection>
     </div>
 
+    <!-- Git Settings Section -->
+    <div class="border-t border-neutral-800 pt-8">
+    <CollapsibleSection label="Git Settings" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Configure git remote sync behavior
+      </p>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="auto-fetch-remote" class="text-sm font-medium text-neutral-200">
+              Auto-fetch remote
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Periodically fetch from the remote to detect new commits available to pull
+            </p>
+          </div>
+          <input
+            id="auto-fetch-remote"
+            v-model="autoFetchRemote"
+            type="checkbox"
+            @change="saveAutoFetchRemoteSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+        <div v-if="autoFetchRemote" class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="auto-fetch-interval" class="text-sm font-medium text-neutral-200">
+              Fetch interval (seconds)
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              How often to check the remote for new commits (minimum 60 seconds)
+            </p>
+          </div>
+          <input
+            id="auto-fetch-interval"
+            v-model.number="autoFetchIntervalSeconds"
+            type="number"
+            min="60"
+            @change="saveAutoFetchIntervalSetting"
+            class="w-20 px-2 py-1 text-sm bg-neutral-800 border border-neutral-600 rounded text-neutral-200 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
+    </CollapsibleSection>
+    </div>
+
     <!-- Terminal Settings Section -->
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
@@ -256,6 +302,8 @@ const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
 const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
+const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? false)
+const autoFetchIntervalSeconds = ref(props.settings?.autoFetchIntervalSeconds ?? 180)
 
 // Get projects from general settings
 const settingsActor = applicationState.system.get('settings')
@@ -309,6 +357,22 @@ const saveMdEditorDefaultSetting = () => {
   emit('update-setting', {
     path: ['mdEditorDefault'],
     value: mdEditorDefault.value
+  })
+}
+
+const saveAutoFetchRemoteSetting = () => {
+  emit('update-setting', {
+    path: ['autoFetchRemote'],
+    value: autoFetchRemote.value
+  })
+}
+
+const saveAutoFetchIntervalSetting = () => {
+  const value = Math.max(60, autoFetchIntervalSeconds.value || 180)
+  autoFetchIntervalSeconds.value = value
+  emit('update-setting', {
+    path: ['autoFetchIntervalSeconds'],
+    value
   })
 }
 
