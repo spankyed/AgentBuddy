@@ -283,16 +283,18 @@ export const pullRequestState = setup({
       isLoadingPRs: false
     }),
 
+    // Accept incoming PR details. Guard against stale responses from background refreshes
+    // (where a different PR's details arrive after the user already moved on), but always
+    // accept when isManualPRSelection is true (user explicitly picked this PR from the dropdown).
     handlePRDetailsReceived: assign({
       selectedPR: ({ event, context }) => {
         const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-        // Skip stale responses from a previously selected PR
-        if (context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.selectedPR
+        if (!context.isManualPRSelection && context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.selectedPR
         return ev.data.pr
       },
       prComments: ({ event, context }) => {
         const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-        if (context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.prComments
+        if (!context.isManualPRSelection && context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.prComments
         return ev.data.comments
       },
       isLoadingDetails: false
@@ -537,10 +539,12 @@ export const pullRequestState = setup({
       })
     }),
 
+    // Load diff for the PR whose details just arrived. Same stale-response guard as
+    // handlePRDetailsReceived — skip if this is a background refresh for a different PR,
+    // but always load when the user manually selected it from the dropdown.
     loadDiffForSelectedPR: ({ event, context }) => {
       const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-      // Skip if user already selected a different PR while this was in flight
-      if (context.selectedPR?.number !== ev.data.pr.number) return
+      if (!context.isManualPRSelection && context.selectedPR?.number !== ev.data.pr.number) return
       sendToBackend('pr.GET_BRANCH_DIFF', {
         baseBranch: ev.data.pr.baseRefName,
         headBranch: ev.data.pr.headRefName,
