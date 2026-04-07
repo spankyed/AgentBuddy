@@ -7,6 +7,8 @@ import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded'
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 import { seedData } from '@/setup/seed/index';
+import { runMigrations } from '@/setup/migrations';
+import { APP_VERSION } from '@/version';
 
 export async function setupBackend(): Promise<void> {
   // Initialize log capture first to catch all logs
@@ -16,12 +18,17 @@ export async function setupBackend(): Promise<void> {
   const logsActor = createActor(logsSystem).start();
   logsActor.subscribe(logErrors('Logs'));
 
+  console.log(`[app] AgentBuddy v${APP_VERSION}`);
+
   // Hydrate from LMDB using sharded approach (primary partition only by default)
   // Pass shardedPersistence to seed metadata caches
   await hydrateSharded({ envs, policy, shardedPersistence: persistence });
 
   // Initialize default settings if they don't exist
   createDefaultSettings();
+
+  // Run versioned data migrations
+  runMigrations();
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   seedData();

@@ -1,4 +1,5 @@
 import type { SETTINGS_SCOPE, SettingsData } from './types';
+import { APP_VERSION } from '@/version';
 
 export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) =>
 ({
@@ -174,7 +175,7 @@ export const defaultSettings: SettingsData = {
     hasOnboarded: false,
     tourComplete: false,
     lastInteractionTimestamp: null,
-    version: '0.1.0',
+    version: APP_VERSION,
     seedHash: null,
   },
   assistant: {

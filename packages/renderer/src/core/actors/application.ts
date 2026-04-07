@@ -238,12 +238,13 @@ export const createApplicationState = () => setup({
     syncLastActivePlugin: ({ event, self, context }) => {
       const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
 
-      // Sync localStorage with backend
+      // Validate plugin exists before persisting — stale IDs (e.g., removed plugins) must not overwrite localStorage
+      const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
+      if (!targetPlugin) return;
+
       localStorage.setItem('agentbuddy-last-active-plugin', lastActivePluginId);
 
-      // Only switch if plugin exists and differs from current
-      const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
-      if (targetPlugin && targetPlugin.id !== context.activePlugin.id) {
+      if (targetPlugin.id !== context.activePlugin.id) {
         self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
       }
     },

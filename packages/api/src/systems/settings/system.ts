@@ -95,16 +95,6 @@ export const settingsSystem = setup({
     }
   },
   actions: {
-    migrateAgentSettings: () => {
-      const data = settingsQueries.getSettings();
-      const agentSettings = data.plugins?.agent;
-      const existingChatSettings = (data.plugins as any)?.threads?.chat;
-
-      // One-time migration: move plugins.agent → plugins.threads.chat
-      if (agentSettings && !existingChatSettings) {
-        settingsCommands.updateSettings('plugin', 'threads', ['chat'], agentSettings);
-      }
-    },
     sendSettingsStartupData: ({ system }) => {
       const data = settingsQueries.getSettings();
 
@@ -397,7 +387,7 @@ export const settingsSystem = setup({
   id: settings,
   initial: 'idle',
   context: {},
-  entry: ['spawnSecretsActor', 'migrateAgentSettings'],
+  entry: ['spawnSecretsActor'],
   states: {
     idle: {
       on: {
