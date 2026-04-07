@@ -10,6 +10,14 @@
       <button
         type="button"
         class="p-1.5 rounded hover:bg-neutral-600 transition-colors text-neutral-400 hover:text-neutral-200"
+        title="View image"
+        @click="viewImage"
+      >
+        <Eye :size="15" />
+      </button>
+      <button
+        type="button"
+        class="p-1.5 rounded hover:bg-neutral-600 transition-colors text-neutral-400 hover:text-neutral-200"
         title="Copy image"
         @click="copyImage"
       >
@@ -53,11 +61,15 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
-import { Clipboard, Maximize2, Trash2 } from 'lucide-vue-next'
+import { Eye, Clipboard, Maximize2, Trash2 } from 'lucide-vue-next'
 import { NodeSelection } from '@tiptap/pm/state'
 import { getWidthFromSrc, setSrcWidth } from './resizable-image'
 
 const props = defineProps<{ editor: Editor }>()
+
+const emit = defineEmits<{
+  (e: 'viewImage', src: string): void
+}>()
 
 const resizeVisible = ref(false)
 const imageWidth = ref(100)
@@ -83,6 +95,11 @@ onMounted(() => {
 onBeforeUnmount(() => {
   props.editor.off('selectionUpdate', syncWidth)
 })
+
+function viewImage() {
+  const attrs = getSelectedImageAttrs()
+  if (attrs?.src) emit('viewImage', attrs.src)
+}
 
 async function copyImage() {
   const attrs = getSelectedImageAttrs()

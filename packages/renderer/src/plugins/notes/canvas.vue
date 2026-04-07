@@ -248,6 +248,7 @@
             class="h-full"
             @update:model-value="handleContentUpdate"
             @note-link-click="handleNoteLinkClick"
+            @image-click="openLightbox"
             @sub-document-link-deleted="handleSubDocumentLinkDeleted"
             @sub-document-link-restored="handleSubDocumentLinkRestored"
             @focus-title="focusTitleEnd()"
@@ -255,6 +256,8 @@
         </div>
       </div>
     </div>
+
+    <ImageLightbox v-model="lightboxOpen" :image-src="lightboxSrc" />
   </div>
 </template>
 
@@ -272,6 +275,7 @@ import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
 import { useSubDocumentInsert } from './composables/useSubDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
+import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 
 const actor: NotesState = applicationState.system.get(id)
 const state = useSelector(actor, (s) => s)
@@ -363,6 +367,13 @@ const canScrollRight = ref(false)
 const favCarouselRef = ref<HTMLDivElement | null>(null)
 const favCanScrollLeft = ref(false)
 const favCanScrollRight = ref(false)
+const lightboxOpen = ref(false)
+const lightboxSrc = ref('')
+
+function openLightbox(src: string) {
+  lightboxSrc.value = src
+  lightboxOpen.value = true
+}
 
 function updateScrollState() {
   const el = carouselRef.value

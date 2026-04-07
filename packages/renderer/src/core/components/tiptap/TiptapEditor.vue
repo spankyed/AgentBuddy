@@ -6,7 +6,7 @@
     <template v-if="editor">
       <template v-if="mode === 'editor' && variant === 'full' && !hideGutter">
         <TiptapBlockMenu :editor="editor" />
-        <TiptapImageBubbleMenu :editor="editor" />
+        <TiptapImageBubbleMenu :editor="editor" @view-image="(src: string) => emit('imageClick', src)" />
       </template>
       <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" />
     </template>
@@ -156,6 +156,14 @@ const editorOnlyProps = props.mode === 'editor' ? {
     if (href?.startsWith('document://')) {
       emit('noteLinkClick', href.slice('document://'.length))
       return true
+    }
+    // Cmd+click on image → open lightbox
+    if (event.metaKey || event.ctrlKey) {
+      const img = (event.target as HTMLElement).closest('img')
+      if (img?.src) {
+        emit('imageClick', img.src)
+        return true
+      }
     }
     // Other links require ctrl/cmd+click in editor mode
     if (!(event.ctrlKey || event.metaKey)) return false
