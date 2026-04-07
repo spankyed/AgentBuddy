@@ -285,13 +285,17 @@ export const pullRequestState = setup({
     }),
 
     handlePRMerged: assign({
-      selectedPR: null,
+      selectedPR: ({ context }) => context.selectedPR
+        ? { ...context.selectedPR, state: 'MERGED' as const }
+        : null,
       branchPR: null,
       isMerging: false,
     }),
 
     handlePRClosed: assign({
-      selectedPR: null,
+      selectedPR: ({ context }) => context.selectedPR
+        ? { ...context.selectedPR, state: 'CLOSED' as const }
+        : null,
       branchPR: null,
       isClosing: false,
     }),

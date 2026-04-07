@@ -105,10 +105,23 @@
             class="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded border border-transparent text-left transition-colors hover:bg-neutral-700"
             title="View PR details"
           >
-            <GitPullRequest :size="12" class="text-green-400 shrink-0" />
+            <GitPullRequest :size="12" :class="[
+              selectedPR.state === 'MERGED' ? 'text-purple-400' :
+              selectedPR.state === 'CLOSED' ? 'text-red-400' :
+              'text-green-400',
+              'shrink-0'
+            ]" />
             <span class="text-xs text-neutral-200 truncate">#{{ selectedPR.number }} {{ selectedPR.title }}</span>
             <span
-              v-if="selectedPR.isDraft"
+              v-if="selectedPR.state === 'MERGED'"
+              class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
+            >MERGED</span>
+            <span
+              v-else-if="selectedPR.state === 'CLOSED'"
+              class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
+            >CLOSED</span>
+            <span
+              v-else-if="selectedPR.isDraft"
               class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
             >DRAFT</span>
           </button>
