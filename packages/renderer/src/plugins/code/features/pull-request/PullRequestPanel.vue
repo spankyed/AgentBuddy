@@ -100,7 +100,7 @@
 
           <!-- Has PR -->
           <button
-            v-else
+            v-else-if="topRowStatus === 'has-pr'"
             @click="handleViewPRInfo()"
             class="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded border border-transparent text-left transition-colors hover:bg-neutral-700"
             title="View PR details"
@@ -330,9 +330,17 @@ const displayBranch = computed(() =>
   selectedPR.value?.headRefName ?? currentBranch.value
 )
 
+const isBaseBranch = computed(() => {
+  const branch = currentBranch.value
+  if (!branch) return false
+  if (prBaseBranch.value && branch === prBaseBranch.value) return true
+  return ['main', 'master', 'develop'].includes(branch)
+})
+
 const topRowStatus = computed(() => {
   if (isGhChecking.value) return 'checking' as const
   if (!isGhAvailable.value) return 'hidden' as const
+  if (isBaseBranch.value) return 'base-branch' as const
   if (!hasUpstream.value) return 'publish' as const
   if (selectedPR.value) return 'has-pr' as const
   if (branchPRCheckFailed.value) return 'check-failed' as const
