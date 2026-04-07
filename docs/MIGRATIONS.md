@@ -30,7 +30,7 @@ for (const m of migrations) {
 }
 ```
 
-- `m.target`: the app version that introduced this migration (e.g., `'0.0.3'`)
+- `m.target`: the app version that introduced this migration (e.g., `'0.1.0'`)
 - `current`: the user's stored `internal.version`
 - Strict `>` ensures a migration runs exactly once — when the stored version is less than the target
 - Migrations must be **idempotent** (safe to run even if the data is already in the expected state)
@@ -43,7 +43,7 @@ for (const m of migrations) {
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 
 export const migration = {
-  target: '0.0.4',  // the app version this ships with
+  target: '0.2.0',  // the app version this ships with
   description: 'Brief description of what this migration does',
   up: () => {
     // Migration logic here
@@ -56,9 +56,9 @@ export const migration = {
 2. Register it in `index.ts`:
 
 ```typescript
-import { migration as m004 } from './0.0.4';
+import { migration as m020 } from './0.2.0';
 
-const migrations: Migration[] = [m003, m004];  // maintain version order
+const migrations: Migration[] = [m010, m020];  // maintain version order
 ```
 
 3. Bump `package.json` version to match (via `build/release/release.sh`)
@@ -67,7 +67,7 @@ const migrations: Migration[] = [m003, m004];  // maintain version order
 
 | Version | File | Description |
 |---------|------|-------------|
-| 0.0.3 | `0.0.3.ts` | Migrate agent plugin settings to `threads.chat`, update stale `lastActivePlugin` |
+| 0.1.0 | `0.1.0.ts` | Migrate agent plugin settings to `threads.chat`, update stale `lastActivePlugin` |
 
 ## Frontend Migrations
 

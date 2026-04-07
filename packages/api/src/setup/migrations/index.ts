@@ -8,15 +8,17 @@ export interface Migration {
 }
 
 // Register migrations in version order
-import { migration as m003 } from './0.0.3';
+import { migration as m010 } from './0.1.0';
 
-const migrations: Migration[] = [m003];
+const migrations: Migration[] = [m010];
 
 export function runMigrations(): void {
   let current = settingsQueries.getInternalSettings().version || '0.0.0';
 
-  // TODO: Remove after v0.0.3 — legacy normalization only needed for
-  // users who ran pre-release builds with internal-only version strings.
+  // Legacy normalization: users who ran pre-release builds had phantom
+  // version strings from old defaults.ts (before migration system existed).
+  // These users have never run any migrations, so reset to force all to run.
+  // Safe because all migrations are idempotent.
   if (current === '0.1.0' || current === '0.2.0') {
     current = '0.0.0';
   }
