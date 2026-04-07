@@ -1,7 +1,7 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
-import type { GhPullRequest, GhPRComment } from '@app/api';
+import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs } from '../../utils/tab-management';
 
@@ -40,6 +40,8 @@ export interface Context {
   selectedPR: GhPullRequest | null
   branchPR: GhPullRequest | null
   prComments: GhPRComment[]
+  reviewThreads: GhReviewThread[]
+  commentTab: 'discussion' | 'reviews'
   viewMode: 'files' | 'pr'
   isGhAvailable: boolean
   isGhChecking: boolean
@@ -60,6 +62,7 @@ export interface Context {
   isTogglingDraft: boolean
   isDeletingBranch: boolean
   isUpdatingPR: boolean
+  isSubmittingComment: boolean
   isLoadingDetails: boolean
   diffStale: boolean
 }
@@ -88,6 +91,13 @@ export type Event =
   | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
   | { type: 'pr.PR_UPDATED'; data: { number: number; title?: string; body?: string; base?: string } }
+  | { type: 'pr.COMMENT_CREATED'; data: { number: number } }
+  | { type: 'pr.COMMENT_EDITED'; data: { commentId: number } }
+  | { type: 'pr.COMMENT_DELETED'; data: { commentId: number } }
+  | { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
+  | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
+  | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
+  | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   // User actions
   | { type: 'pr.LIST_PRS' }
@@ -103,6 +113,13 @@ export type Event =
   | { type: 'pr.TOGGLE_DRAFT' }
   | { type: 'pr.DELETE_BRANCH' }
   | { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
+  | { type: 'pr.CREATE_COMMENT'; number: number; body: string }
+  | { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
+  | { type: 'pr.DELETE_COMMENT'; commentId: number }
+  | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
+  | { type: 'pr.RESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.SET_COMMENT_TAB'; tab: 'discussion' | 'reviews' }
   | { type: 'pr.REFRESH_PR'; number: number }
   | { type: 'pr.CLEAR_ERROR' };
 
@@ -487,6 +504,67 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
       sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.pr.baseRefName })
     },
+
+    // --- Comment actions ---
+
+    requestCreateComment: ({ event }) => {
+      const ev = event as { type: 'pr.CREATE_COMMENT'; number: number; body: string }
+      sendToBackend('pr.CREATE_COMMENT', { number: ev.number, body: ev.body })
+    },
+
+    requestEditComment: ({ event }) => {
+      const ev = event as { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
+      sendToBackend('pr.EDIT_COMMENT', { commentId: ev.commentId, body: ev.body })
+    },
+
+    requestDeleteComment: ({ event }) => {
+      const ev = event as { type: 'pr.DELETE_COMMENT'; commentId: number }
+      sendToBackend('pr.DELETE_COMMENT', { commentId: ev.commentId })
+    },
+
+    handleCommentMutated: ({ context }) => {
+      // Refresh PR details to get updated comments
+      if (context.selectedPR) {
+        sendToBackend('pr.SELECT_PR', { number: context.selectedPR.number })
+      }
+    },
+
+    // --- Review thread actions ---
+
+    requestReplyToThread: ({ event }) => {
+      const ev = event as { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
+      sendToBackend('pr.REPLY_TO_THREAD', { prNumber: ev.prNumber, commentId: ev.commentId, body: ev.body })
+    },
+
+    requestResolveThread: ({ event }) => {
+      const ev = event as { type: 'pr.RESOLVE_THREAD'; threadId: string }
+      sendToBackend('pr.RESOLVE_THREAD', { threadId: ev.threadId })
+    },
+
+    requestUnresolveThread: ({ event }) => {
+      const ev = event as { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
+      sendToBackend('pr.UNRESOLVE_THREAD', { threadId: ev.threadId })
+    },
+
+    handleReviewThreadsReceived: assign({
+      reviewThreads: ({ event }) => {
+        const ev = event as { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
+        return ev.data.threads
+      },
+    }),
+
+    handleThreadMutated: ({ context }) => {
+      // Refresh review threads
+      if (context.selectedPR) {
+        sendToBackend('pr.GET_REVIEW_THREADS', { number: context.selectedPR.number })
+      }
+    },
+
+    fetchReviewThreads: ({ context }) => {
+      if (context.selectedPR) {
+        sendToBackend('pr.GET_REVIEW_THREADS', { number: context.selectedPR.number })
+      }
+    },
   }
 }).createMachine({
   id: 'pr',
@@ -503,6 +581,8 @@ export const pullRequestState = setup({
     selectedPR: null,
     branchPR: null,
     prComments: [],
+    reviewThreads: [],
+    commentTab: 'discussion',
     viewMode: 'files',
     isGhAvailable: false,
     isGhChecking: false,
@@ -521,6 +601,7 @@ export const pullRequestState = setup({
     isTogglingDraft: false,
     isDeletingBranch: false,
     isUpdatingPR: false,
+    isSubmittingComment: false,
     isLoadingDetails: false,
     diffStale: false,
   },
@@ -550,7 +631,7 @@ export const pullRequestState = setup({
         // GitHub PR events from backend
         'pr.GH_AUTH_CHECKED': { actions: 'handleGhAuthChecked' },
         'pr.OPEN_PRS_RECEIVED': { actions: 'handleOpenPRsReceived' },
-        'pr.PR_DETAILS_RECEIVED': { actions: ['handlePRDetailsReceived', 'loadDiffForSelectedPR'] },
+        'pr.PR_DETAILS_RECEIVED': { actions: ['handlePRDetailsReceived', 'loadDiffForSelectedPR', 'fetchReviewThreads'] },
         'pr.BRANCH_PR_CHECKED': { actions: 'handleBranchPRChecked' },
         'pr.SMART_BASE_BRANCH_RECEIVED': { actions: 'handleSmartBaseBranchReceived' },
         'pr.AUTOFILL_RECEIVED': { actions: 'handleAutofillReceived' },
@@ -560,6 +641,13 @@ export const pullRequestState = setup({
         'pr.PR_DRAFT_TOGGLED': { actions: 'handlePRDraftToggled' },
         'pr.BRANCH_DELETED': { actions: 'handleBranchDeleted' },
         'pr.PR_UPDATED': { actions: ['handlePRUpdated', 'refreshPrStatus'] },
+        'pr.COMMENT_CREATED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
+        'pr.COMMENT_EDITED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
+        'pr.COMMENT_DELETED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
+        'pr.REVIEW_THREADS_RECEIVED': { actions: 'handleReviewThreadsReceived' },
+        'pr.THREAD_REPLIED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
+        'pr.THREAD_RESOLVED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
+        'pr.THREAD_UNRESOLVED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
 
         // User actions
         'pr.LIST_PRS': { actions: ['requestListPRs', assign({ isLoadingPRs: true })] },
@@ -575,6 +663,13 @@ export const pullRequestState = setup({
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
         'pr.DELETE_BRANCH': { actions: ['requestDeleteBranch', assign({ isDeletingBranch: true })] },
         'pr.UPDATE_PR': { actions: ['requestUpdatePR', assign({ isUpdatingPR: true })] },
+        'pr.CREATE_COMMENT': { actions: ['requestCreateComment', assign({ isSubmittingComment: true })] },
+        'pr.EDIT_COMMENT': { actions: ['requestEditComment', assign({ isSubmittingComment: true })] },
+        'pr.DELETE_COMMENT': { actions: ['requestDeleteComment', assign({ isSubmittingComment: true })] },
+        'pr.REPLY_TO_THREAD': { actions: ['requestReplyToThread', assign({ isSubmittingComment: true })] },
+        'pr.RESOLVE_THREAD': { actions: 'requestResolveThread' },
+        'pr.UNRESOLVE_THREAD': { actions: 'requestUnresolveThread' },
+        'pr.SET_COMMENT_TAB': { actions: assign({ commentTab: ({ event }) => (event as any).tab }) },
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
       }

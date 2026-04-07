@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import https from 'https'
 import { settingsQueries } from '@/systems/settings/repository'
-import type { GhPullRequest, GhPRComment } from '../types'
+import type { GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 
 const execFileAsync = promisify(execFile)
 
@@ -141,6 +141,91 @@ export async function updatePR(
   if (opts.body !== undefined) args.push('--body', opts.body)
   if (opts.base) args.push('--base', opts.base)
   await runGh(args, cwd)
+}
+
+// --- Issue comment operations ---
+
+export async function createPRComment(cwd: string, number: number, body: string): Promise<void> {
+  await runGh(['pr', 'comment', String(number), '--body', body], cwd)
+}
+
+export async function editPRComment(cwd: string, commentId: number, body: string): Promise<void> {
+  const { owner, name } = await getRepoInfo(cwd)
+  await runGh(['api', `repos/${owner}/${name}/issues/comments/${commentId}`, '-X', 'PATCH', '-f', `body=${body}`], cwd)
+}
+
+export async function deletePRComment(cwd: string, commentId: number): Promise<void> {
+  const { owner, name } = await getRepoInfo(cwd)
+  await runGh(['api', `repos/${owner}/${name}/issues/comments/${commentId}`, '-X', 'DELETE'], cwd)
+}
+
+// --- Review thread operations ---
+
+export async function getReviewThreads(cwd: string, number: number): Promise<GhReviewThread[]> {
+  const { owner, name } = await getRepoInfo(cwd)
+  const query = `query($owner:String!,$name:String!,$number:Int!){
+    repository(owner:$owner,name:$name){
+      pullRequest(number:$number){
+        reviewThreads(first:100){
+          nodes{
+            id isResolved isOutdated path line
+            comments(first:50){
+              nodes{ id databaseId body author{login} createdAt }
+            }
+          }
+        }
+      }
+    }
+  }`
+  const output = await runGh([
+    'api', 'graphql',
+    '-f', `query=${query}`,
+    '-F', `owner=${owner}`,
+    '-F', `name=${name}`,
+    '-F', `number=${number}`,
+  ], cwd)
+  const data = parseJson<any>(output, 'review threads')
+  const nodes = data?.data?.repository?.pullRequest?.reviewThreads?.nodes || []
+  return nodes.map((t: any) => ({
+    id: t.id,
+    isResolved: t.isResolved,
+    isOutdated: t.isOutdated,
+    path: t.path,
+    line: t.line,
+    comments: (t.comments?.nodes || []).map((c: any) => ({
+      id: c.id,
+      databaseId: c.databaseId,
+      body: c.body,
+      author: c.author,
+      createdAt: c.createdAt,
+    })),
+  }))
+}
+
+export async function replyToReviewThread(cwd: string, prNumber: number, commentDatabaseId: number, body: string): Promise<void> {
+  const { owner, name } = await getRepoInfo(cwd)
+  await runGh([
+    'api', `repos/${owner}/${name}/pulls/${prNumber}/comments/${commentDatabaseId}/replies`,
+    '-X', 'POST', '-f', `body=${body}`,
+  ], cwd)
+}
+
+export async function resolveReviewThread(cwd: string, threadId: string): Promise<void> {
+  const mutation = `mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ clientMutationId } }`
+  await runGh(['api', 'graphql', '-f', `query=${mutation}`, '-F', `id=${threadId}`], cwd)
+}
+
+export async function unresolveReviewThread(cwd: string, threadId: string): Promise<void> {
+  const mutation = `mutation($id:ID!){ unresolveReviewThread(input:{threadId:$id}){ clientMutationId } }`
+  await runGh(['api', 'graphql', '-f', `query=${mutation}`, '-F', `id=${threadId}`], cwd)
+}
+
+// --- Helpers ---
+
+async function getRepoInfo(cwd: string): Promise<{ owner: string; name: string }> {
+  const output = await runGh(['repo', 'view', '--json', 'owner,name'], cwd, 5_000)
+  const data = parseJson<{ owner: { login: string }; name: string }>(output, 'repo info')
+  return { owner: data.owner.login, name: data.name }
 }
 
 // --- GitHub asset URL resolution ---

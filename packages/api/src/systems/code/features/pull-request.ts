@@ -4,7 +4,7 @@ import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/helpers/event-helpers'
 import { z } from 'zod'
 import { GitRepository } from '../services/git'
-import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment } from '../types'
+import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
 
 const pluginId = 'code' as const
@@ -27,6 +27,13 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.GET_SMART_BASE_BRANCH', {}),
   busEvent('pr.DELETE_BRANCH', { branch: z.string() }),
   busEvent('pr.UPDATE_PR', { number: z.number(), title: z.string().optional(), body: z.string().optional(), base: z.string().optional() }),
+  busEvent('pr.CREATE_COMMENT', { number: z.number(), body: z.string() }),
+  busEvent('pr.EDIT_COMMENT', { commentId: z.number(), body: z.string() }),
+  busEvent('pr.DELETE_COMMENT', { commentId: z.number() }),
+  busEvent('pr.GET_REVIEW_THREADS', { number: z.number() }),
+  busEvent('pr.REPLY_TO_THREAD', { prNumber: z.number(), commentId: z.number(), body: z.string() }),
+  busEvent('pr.RESOLVE_THREAD', { threadId: z.string() }),
+  busEvent('pr.UNRESOLVE_THREAD', { threadId: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -48,6 +55,13 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
   | { type: 'pr.PR_UPDATED'; data: { number: number; title?: string; body?: string; base?: string } }
+  | { type: 'pr.COMMENT_CREATED'; data: { number: number } }
+  | { type: 'pr.COMMENT_EDITED'; data: { commentId: number } }
+  | { type: 'pr.COMMENT_DELETED'; data: { commentId: number } }
+  | { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
+  | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
+  | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
+  | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -69,6 +83,13 @@ export type Event =
   | { type: 'pr.GET_SMART_BASE_BRANCH' }
   | { type: 'pr.DELETE_BRANCH'; branch: string }
   | { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
+  | { type: 'pr.CREATE_COMMENT'; number: number; body: string }
+  | { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
+  | { type: 'pr.DELETE_COMMENT'; commentId: number }
+  | { type: 'pr.GET_REVIEW_THREADS'; number: number }
+  | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
+  | { type: 'pr.RESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
@@ -277,6 +298,64 @@ export const pullRequestSystem = setup({
       )
     },
 
+    // --- Comment actions ---
+
+    createComment: ({ event, context }) => {
+      const ev = event as { type: 'pr.CREATE_COMMENT'; number: number; body: string }
+      withRepo(context,
+        repo => ghCli.createPRComment(repo.getWorkingDir(), ev.number, ev.body),
+        () => emitToFrontend({ type: 'pr.COMMENT_CREATED', data: { number: ev.number } })
+      )
+    },
+
+    editComment: ({ event, context }) => {
+      const ev = event as { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
+      withRepo(context,
+        repo => ghCli.editPRComment(repo.getWorkingDir(), ev.commentId, ev.body),
+        () => emitToFrontend({ type: 'pr.COMMENT_EDITED', data: { commentId: ev.commentId } })
+      )
+    },
+
+    deleteComment: ({ event, context }) => {
+      const ev = event as { type: 'pr.DELETE_COMMENT'; commentId: number }
+      withRepo(context,
+        repo => ghCli.deletePRComment(repo.getWorkingDir(), ev.commentId),
+        () => emitToFrontend({ type: 'pr.COMMENT_DELETED', data: { commentId: ev.commentId } })
+      )
+    },
+
+    getReviewThreads: ({ event, context }) => {
+      const ev = event as { type: 'pr.GET_REVIEW_THREADS'; number: number }
+      withRepo(context,
+        repo => ghCli.getReviewThreads(repo.getWorkingDir(), ev.number),
+        threads => emitToFrontend({ type: 'pr.REVIEW_THREADS_RECEIVED', data: { threads } })
+      )
+    },
+
+    replyToThread: ({ event, context }) => {
+      const ev = event as { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
+      withRepo(context,
+        repo => ghCli.replyToReviewThread(repo.getWorkingDir(), ev.prNumber, ev.commentId, ev.body),
+        () => emitToFrontend({ type: 'pr.THREAD_REPLIED', data: { prNumber: ev.prNumber } })
+      )
+    },
+
+    resolveThread: ({ event, context }) => {
+      const ev = event as { type: 'pr.RESOLVE_THREAD'; threadId: string }
+      withRepo(context,
+        _repo => ghCli.resolveReviewThread(_repo.getWorkingDir(), ev.threadId),
+        () => emitToFrontend({ type: 'pr.THREAD_RESOLVED', data: { threadId: ev.threadId } })
+      )
+    },
+
+    unresolveThread: ({ event, context }) => {
+      const ev = event as { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
+      withRepo(context,
+        _repo => ghCli.unresolveReviewThread(_repo.getWorkingDir(), ev.threadId),
+        () => emitToFrontend({ type: 'pr.THREAD_UNRESOLVED', data: { threadId: ev.threadId } })
+      )
+    },
+
     deleteBranch: ({ event, context }) => {
       const ev = event as { type: 'pr.DELETE_BRANCH'; branch: string }
       withRepo(context,
@@ -324,6 +403,13 @@ export const pullRequestSystem = setup({
         'pr.GET_SMART_BASE_BRANCH': { actions: 'getSmartBaseBranch' },
         'pr.DELETE_BRANCH': { actions: 'deleteBranch' },
         'pr.UPDATE_PR': { actions: 'updatePR' },
+        'pr.CREATE_COMMENT': { actions: 'createComment' },
+        'pr.EDIT_COMMENT': { actions: 'editComment' },
+        'pr.DELETE_COMMENT': { actions: 'deleteComment' },
+        'pr.GET_REVIEW_THREADS': { actions: 'getReviewThreads' },
+        'pr.REPLY_TO_THREAD': { actions: 'replyToThread' },
+        'pr.RESOLVE_THREAD': { actions: 'resolveThread' },
+        'pr.UNRESOLVE_THREAD': { actions: 'unresolveThread' },
         'pr.CHECK_GH_AUTH': { actions: 'checkGhAuth' },
         'pr.GET_PR_AUTOFILL': { actions: 'getPRAutofill' },
         'pr.GIT_STATUS_CHANGED': { actions: 'handleGitStatusChanged' },

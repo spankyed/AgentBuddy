@@ -71,6 +71,7 @@
       <div v-if="editing" class="min-h-[120px] max-h-[350px] overflow-y-auto rounded bg-neutral-800 border border-neutral-700 p-2">
         <TiptapEditor
           mode="editor"
+          hideGutter
           :modelValue="editBody"
           @update:modelValue="editBody = $event"
           placeholder="Describe your changes..."
@@ -101,31 +102,8 @@
         >Cancel</button>
       </div>
 
-      <!-- Comments -->
-      <div class="border-t border-neutral-800 pt-3">
-        <div class="flex items-center gap-1.5 mb-2">
-          <MessageSquare :size="12" class="text-neutral-500" />
-          <span class="text-xs text-neutral-400">
-            {{ comments.length }} comment{{ comments.length !== 1 ? 's' : '' }}
-          </span>
-        </div>
-
-        <div v-if="comments.length === 0" class="text-xs text-neutral-500 italic">
-          No comments yet.
-        </div>
-
-        <div
-          v-for="(comment, i) in comments"
-          :key="i"
-          class="mb-3 last:mb-0"
-        >
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
-            <span class="text-xs text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
-          </div>
-          <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-markdown" @imageClick="openLightbox" />
-        </div>
-      </div>
+      <!-- Comments slot -->
+      <slot />
       </template>
     </div>
 
@@ -139,7 +117,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { GitBranch, ArrowRight, MessageSquare, Loader2, Pencil } from 'lucide-vue-next'
+import { GitBranch, ArrowRight, Loader2, Pencil } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'

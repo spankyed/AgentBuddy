@@ -4,7 +4,7 @@
     :class="[`tiptap-${mode}`, $attrs.class]"
   >
     <template v-if="editor">
-      <template v-if="mode === 'editor' && variant === 'full'">
+      <template v-if="mode === 'editor' && variant === 'full' && !hideGutter">
         <TiptapBlockMenu :editor="editor" />
         <TiptapImageBubbleMenu :editor="editor" />
       </template>
@@ -39,6 +39,7 @@ const props = withDefaults(defineProps<{
   editorClass?: string
   entityId?: string
   disableImages?: boolean
+  hideGutter?: boolean
   isCommand?: boolean
   inHistoryMode?: boolean
 }>(), {

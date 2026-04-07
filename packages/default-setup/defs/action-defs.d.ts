@@ -605,10 +605,30 @@ interface GhPullRequest {
     }[];
 }
 interface GhPRComment {
+    id: string;
+    body: string;
     author: {
         login: string;
     };
+    createdAt: string;
+    url: string;
+    viewerDidAuthor: boolean;
+}
+interface GhReviewThread {
+    id: string;
+    isResolved: boolean;
+    isOutdated: boolean;
+    path: string;
+    line: number | null;
+    comments: GhReviewComment[];
+}
+interface GhReviewComment {
+    id: string;
+    databaseId: number;
     body: string;
+    author: {
+        login: string;
+    };
     createdAt: string;
 }
 interface TerminalInfo {
@@ -3218,6 +3238,144 @@ declare const events: {
         type: "pr.GET_PR_AUTOFILL";
         systemId: "code";
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.GET_SMART_BASE_BRANCH">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.GET_SMART_BASE_BRANCH";
+        systemId: "code";
+    }, {
+        type: "pr.GET_SMART_BASE_BRANCH";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.DELETE_BRANCH">;
+        systemId: zod.ZodLiteral<"code">;
+        branch: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.DELETE_BRANCH";
+        systemId: "code";
+        branch: string;
+    }, {
+        type: "pr.DELETE_BRANCH";
+        systemId: "code";
+        branch: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.UPDATE_PR">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+        title: zod.ZodOptional<zod.ZodString>;
+        body: zod.ZodOptional<zod.ZodString>;
+        base: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.UPDATE_PR";
+        systemId: "code";
+        title?: string | undefined;
+        body?: string | undefined;
+        base?: string | undefined;
+    }, {
+        number: number;
+        type: "pr.UPDATE_PR";
+        systemId: "code";
+        title?: string | undefined;
+        body?: string | undefined;
+        base?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.CREATE_COMMENT">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+        body: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.CREATE_COMMENT";
+        systemId: "code";
+        body: string;
+    }, {
+        number: number;
+        type: "pr.CREATE_COMMENT";
+        systemId: "code";
+        body: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.EDIT_COMMENT">;
+        systemId: zod.ZodLiteral<"code">;
+        commentId: zod.ZodNumber;
+        body: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.EDIT_COMMENT";
+        systemId: "code";
+        body: string;
+        commentId: number;
+    }, {
+        type: "pr.EDIT_COMMENT";
+        systemId: "code";
+        body: string;
+        commentId: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.DELETE_COMMENT">;
+        systemId: zod.ZodLiteral<"code">;
+        commentId: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.DELETE_COMMENT";
+        systemId: "code";
+        commentId: number;
+    }, {
+        type: "pr.DELETE_COMMENT";
+        systemId: "code";
+        commentId: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.GET_REVIEW_THREADS">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.GET_REVIEW_THREADS";
+        systemId: "code";
+    }, {
+        number: number;
+        type: "pr.GET_REVIEW_THREADS";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.REPLY_TO_THREAD">;
+        systemId: zod.ZodLiteral<"code">;
+        prNumber: zod.ZodNumber;
+        commentId: zod.ZodNumber;
+        body: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.REPLY_TO_THREAD";
+        systemId: "code";
+        body: string;
+        commentId: number;
+        prNumber: number;
+    }, {
+        type: "pr.REPLY_TO_THREAD";
+        systemId: "code";
+        body: string;
+        commentId: number;
+        prNumber: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.RESOLVE_THREAD">;
+        systemId: zod.ZodLiteral<"code">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.RESOLVE_THREAD";
+        systemId: "code";
+        threadId: string;
+    }, {
+        type: "pr.RESOLVE_THREAD";
+        systemId: "code";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.UNRESOLVE_THREAD">;
+        systemId: zod.ZodLiteral<"code">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.UNRESOLVE_THREAD";
+        systemId: "code";
+        threadId: string;
+    }, {
+        type: "pr.UNRESOLVE_THREAD";
+        systemId: "code";
+        threadId: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.CREATE_TERMINAL">;
         systemId: zod.ZodLiteral<"code">;
         title: zod.ZodOptional<zod.ZodString>;
@@ -4479,6 +4637,69 @@ declare const events: {
         data: {
             title: string;
             body: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.SMART_BASE_BRANCH_RECEIVED";
+        data: {
+            branch: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.BRANCH_DELETED";
+        data: {
+            branch: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.PR_UPDATED";
+        data: {
+            number: number;
+            title?: string;
+            body?: string;
+            base?: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.COMMENT_CREATED";
+        data: {
+            number: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.COMMENT_EDITED";
+        data: {
+            commentId: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.COMMENT_DELETED";
+        data: {
+            commentId: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.REVIEW_THREADS_RECEIVED";
+        data: {
+            threads: GhReviewThread[];
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.THREAD_REPLIED";
+        data: {
+            prNumber: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.THREAD_RESOLVED";
+        data: {
+            threadId: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.THREAD_UNRESOLVED";
+        data: {
+            threadId: string;
         };
         pluginId: "code";
     } | {

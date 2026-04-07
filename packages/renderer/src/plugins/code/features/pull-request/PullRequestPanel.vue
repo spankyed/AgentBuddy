@@ -192,7 +192,23 @@
             :isUpdating="isUpdatingPR"
             @save="handleSavePR"
             @start-editing="commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })"
-          />
+          >
+            <PRComments
+              :comments="prComments"
+              :reviewThreads="reviewThreads"
+              :tab="commentTab"
+              :prNumber="selectedPR.number"
+              :isOpen="selectedPR.state === 'OPEN'"
+              :isSubmitting="isSubmittingComment"
+              @set-tab="(tab) => prActor?.send({ type: 'pr.SET_COMMENT_TAB', tab })"
+              @create-comment="(body) => prActor?.send({ type: 'pr.CREATE_COMMENT', number: selectedPR!.number, body })"
+              @edit-comment="(id, body) => prActor?.send({ type: 'pr.EDIT_COMMENT', commentId: id, body })"
+              @delete-comment="(id) => prActor?.send({ type: 'pr.DELETE_COMMENT', commentId: id })"
+              @reply-thread="(prNum, commentId, body) => prActor?.send({ type: 'pr.REPLY_TO_THREAD', prNumber: prNum, commentId, body })"
+              @resolve-thread="(id) => prActor?.send({ type: 'pr.RESOLVE_THREAD', threadId: id })"
+              @unresolve-thread="(id) => prActor?.send({ type: 'pr.UNRESOLVE_THREAD', threadId: id })"
+            />
+          </PRInfo>
           <PRActionBar
             :pr="selectedPR"
             :isMerging="isMerging"
@@ -252,6 +268,7 @@ import PRSelector from '@/plugins/code/features/pull-request/PRSelector.vue'
 import PRComparison from '@/plugins/code/features/pull-request/PRComparison.vue'
 import CreatePRForm from '@/plugins/code/features/pull-request/CreatePRForm.vue'
 import PRInfo from '@/plugins/code/features/pull-request/PRInfo.vue'
+import PRComments from '@/plugins/code/features/pull-request/PRComments.vue'
 import PRActionBar from '@/plugins/code/features/pull-request/PRActionBar.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import type { TreeNode } from './types'
@@ -273,6 +290,9 @@ const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirect
 const openPRs = useSelector(prActor, (state: any) => state.context.openPRs)
 const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR)
 const prComments = useSelector(prActor, (state: any) => state.context.prComments)
+const reviewThreads = useSelector(prActor, (state: any) => state.context.reviewThreads)
+const commentTab = useSelector(prActor, (state: any) => state.context.commentTab)
+const isSubmittingComment = useSelector(prActor, (state: any) => state.context.isSubmittingComment)
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
 const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)

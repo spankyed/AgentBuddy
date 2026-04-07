@@ -117,8 +117,28 @@ export interface GhPullRequest {
 }
 
 export interface GhPRComment {
-  author: { login: string }
+  id: string
   body: string
+  author: { login: string }
+  createdAt: string
+  url: string
+  viewerDidAuthor: boolean
+}
+
+export interface GhReviewThread {
+  id: string
+  isResolved: boolean
+  isOutdated: boolean
+  path: string
+  line: number | null
+  comments: GhReviewComment[]
+}
+
+export interface GhReviewComment {
+  id: string
+  databaseId: number
+  body: string
+  author: { login: string }
   createdAt: string
 }
 
