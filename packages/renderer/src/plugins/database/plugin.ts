@@ -11,6 +11,7 @@ const databasePlugin: Plugin = {
   state,
   canvas,
   settings,
+  isPinned: true,
 };
 
 export default databasePlugin; 

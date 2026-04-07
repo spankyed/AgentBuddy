@@ -12,7 +12,7 @@ const logsPlugin: Plugin = {
   state,
   canvas,
   settings,
-  isPinned: false,
+  isPinned: true,
 };
 
 export default logsPlugin;
