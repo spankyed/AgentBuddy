@@ -84,7 +84,7 @@
 
           <!-- Published, error state (can't determine PR status) -->
           <button
-            v-else-if="!selectedPR && prError"
+            v-else-if="!selectedPR && branchPRCheckFailed"
             disabled
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
           >
@@ -261,6 +261,7 @@ const prComments = useSelector(prActor, (state: any) => state.context.prComments
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
 const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
+const branchPRCheckFailed = useSelector(prActor, (state: any) => state.context.branchPRCheckFailed)
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
 const createBody = useSelector(prActor, (state: any) => state.context.createBody)
 const createBaseBranch = useSelector(prActor, (state: any) => state.context.createBaseBranch)

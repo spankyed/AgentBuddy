@@ -43,6 +43,7 @@ export interface Context {
   viewMode: 'files' | 'pr'
   isGhAvailable: boolean
   isGhChecking: boolean
+  branchPRCheckFailed: boolean
 
   // Create form
   createTitle: string
@@ -136,9 +137,10 @@ export const pullRequestState = setup({
         return ev.message
       },
       ...defaultLoadingStates,
+      branchPRCheckFailed: true,
     }),
 
-    setPrLoading: assign({ isPrLoading: true }),
+    setPrLoading: assign({ isPrLoading: true, branchPRCheckFailed: false }),
 
     handleBaseBranchReceived: assign({
       prBaseBranch: ({ event }) => {
@@ -250,6 +252,7 @@ export const pullRequestState = setup({
         return context.selectedPR
       },
       isGhChecking: false,
+      branchPRCheckFailed: false,
     }),
 
     handlePRCreated: assign({
@@ -434,6 +437,7 @@ export const pullRequestState = setup({
     viewMode: 'files',
     isGhAvailable: false,
     isGhChecking: false,
+    branchPRCheckFailed: false,
 
     createTitle: '',
     createBody: '',
