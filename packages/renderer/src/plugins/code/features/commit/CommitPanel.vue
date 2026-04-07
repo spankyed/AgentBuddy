@@ -209,7 +209,7 @@
           v-model="commitMessage"
           @input="updateCommitMessage"
           :placeholder="`Message (currently on ${gitBranch || 'unknown'})`"
-          class="w-full px-3 py-2 text-sm border rounded resize-none bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+          class="w-full px-3 py-2 text-sm border rounded resize-none bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 commit-message"
           rows="3"
         />
         <button
@@ -823,4 +823,12 @@ refreshStatus()
 commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 commitActor?.send({ type: 'commit.STASH_LIST' })
 </script>
+
+<style scoped>
+.commit-message::placeholder {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>
 
