@@ -406,7 +406,7 @@
 
 .tiptap-editor .ProseMirror {
   min-height: 200px;
-  padding: 0.1rem 0 0 3.25rem;
+  padding: 0.1rem 0 2rem 3.25rem;
 }
 
 /* Input mode */
