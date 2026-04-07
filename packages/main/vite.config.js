@@ -28,6 +28,7 @@ export default /**
   },
   plugins: [
     viteStaticCopy({
+      environment: 'ssr', // Required: Vite 7 Environment API defaults to 'client', skipping copies in SSR builds
       targets: [
         {
           src: 'src/modules/splash-screen/assets/*',

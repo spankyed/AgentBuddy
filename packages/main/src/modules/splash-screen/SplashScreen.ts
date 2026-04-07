@@ -38,7 +38,8 @@ export class SplashScreen implements AppModule {
 
     // Load the splash HTML file from assets
     const splashPath = join(__dirname, 'assets', 'splash.html');
-    this.splashWindow.loadFile(splashPath);
+    this.splashWindow.loadFile(splashPath)
+      .catch((err) => console.error('[SPLASH] Failed to load splash HTML:', err));
 
     // Show window once ready
     this.splashWindow.once('ready-to-show', () => {
