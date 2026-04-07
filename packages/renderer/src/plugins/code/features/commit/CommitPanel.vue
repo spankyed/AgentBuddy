@@ -48,45 +48,9 @@
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
       <!-- Branch Info -->
-      <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
-      <div class="flex items-center gap-2">
-        <GitBranch :size="14" class="text-neutral-400" />
-        <span class="text-xs text-neutral-300">Branch</span>
-        <div class="ml-auto flex items-center gap-1">
-          <span v-if="syncFeedback" class="text-[10px] text-neutral-500">{{ syncFeedback }}</span>
-          <ContextMenuRoot>
-            <ContextMenuTrigger as-child>
-              <button
-                @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
-                :disabled="isPulling || isPushing || !hasUpstream"
-                class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Pull latest"
-              >
-                <Loader2 v-if="isPulling || isPushing" :size="14" class="animate-spin" />
-                <ArrowDownToLine v-else :size="14" />
-                <span
-                  v-if="commitsBehind > 0"
-                  class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
-                >{{ commitsBehind }}</span>
-              </button>
-            </ContextMenuTrigger>
-            <ContextMenuPortal>
-              <ContextMenuContent class="min-w-[120px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50">
-                <ContextMenuItem
-                  @select="commitActor?.send({ type: 'commit.PUSH_BRANCH' })"
-                  :disabled="isPushing || !hasUpstream || commitsAhead <= 0"
-                  class="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
-                >
-                  <ArrowUpFromLine :size="14" /> Push
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenuPortal>
-          </ContextMenuRoot>
-        </div>
-      </div>
-
+      <div class="px-3 py-2 border-b border-neutral-800 bg-neutral-800/50">
       <!-- Create Branch Mode -->
-      <div v-if="isCreatingBranch" class="flex items-center gap-1.5 mt-2">
+      <div v-if="isCreatingBranch" class="flex items-center gap-1.5">
         <input
           ref="newBranchInput"
           v-model="newBranchName"
@@ -113,8 +77,40 @@
       </div>
 
       <!-- Branch Select Mode -->
-      <div v-else class="relative flex items-center gap-1.5 mt-2">
+      <div v-else class="relative flex items-center gap-1.5">
+        <ContextMenuRoot>
+          <ContextMenuTrigger as-child>
+            <button
+              @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
+              :disabled="isPulling || isPushing || !hasUpstream"
+              class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Pull latest"
+            >
+              <Loader2 v-if="isPulling || isPushing" :size="14" class="animate-spin" />
+              <ArrowDownToLine v-else :size="14" />
+              <span
+                v-if="commitsBehind > 0"
+                class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+              >{{ commitsBehind }}</span>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuPortal>
+            <ContextMenuContent class="min-w-[120px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50">
+              <ContextMenuItem
+                @select="commitActor?.send({ type: 'commit.PUSH_BRANCH' })"
+                :disabled="isPushing || !hasUpstream || commitsAhead <= 0"
+                class="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+              >
+                <ArrowUpFromLine :size="14" /> Push
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenuPortal>
+        </ContextMenuRoot>
         <div class="relative flex-1 min-w-0">
+          <GitBranch
+            :size="12"
+            class="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none"
+          />
           <input
             v-model="branchInput"
             @input="updateBranchInput"
@@ -123,7 +119,7 @@
             @blur="hideBranchDropdown"
             :disabled="isCheckingOutBranch"
             :placeholder="gitBranch || 'Select branch...'"
-            class="w-full px-3 py-1.5 pr-8 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 disabled:opacity-50"
+            class="w-full pl-7 pr-8 py-1.5 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 disabled:opacity-50"
           />
           <ChevronDown
             :size="14"
