@@ -2,7 +2,6 @@ import { mergeSystems } from '@/core/helpers/event-helpers';
 
 export { bus } from "@/systems/backend";
 
-import { agent, agentSystem, AgentSystemEvents } from "@/systems/agent/system";
 import { brain, brainSystem, BrainSystemEvents } from '@/systems/brain/system';
 import { threads, threadsSystem, ThreadsSystemEvents } from '@/systems/threads/system';
 import { flows, flowsSystem, FlowsSystemEvents } from '@/systems/flows/system';
@@ -17,7 +16,6 @@ import { notes, notesSystem, NotesSystemEvents } from '@/systems/notes/system';
 
 export default {
   [settings]: settingsSystem,
-  [agent]: agentSystem,
   [brain]: brainSystem,
   [threads]: threadsSystem,
   [flows]: flowsSystem,
@@ -32,7 +30,6 @@ export default {
 
 export const events = mergeSystems(
   SettingsSystemEvents,
-  AgentSystemEvents,
   BrainSystemEvents,
   ThreadsSystemEvents,
   FlowsSystemEvents,

@@ -11,12 +11,13 @@ import {
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type {
-  ThreadEntity, MessageEntity,
+  ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,
   ThreadExtendedData,
   ThreadTypeShortCode,
   ThreadConnectedData,
-  ThreadTagOption
+  ThreadTagOption,
+  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
 import type { ThreadsSettings } from '@/systems/settings/types';
 import { settingsQueries } from '@/systems/settings/repository';
@@ -269,5 +270,406 @@ export const threadCommands = {
 
     // 4. Finally, delete the thread entity itself
     tx(id).destroy();
+  },
+} as const;
+
+// ---- Chat queries & commands (merged from agent system) ----
+
+const THREAD_TOPIC_MAX_LENGTH = 40;
+
+function getRecentThreads(limit: number = 4): Partial<ThreadEntity>[] {
+  const threadFields = [
+    "shortCode", "topic", "instructions", "status", "timestamp",
+    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned",
+  ] as const;
+
+  const allThreads = qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[];
+
+  return allThreads
+    .sort((a, b) => {
+      const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp || 0;
+      const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp || 0;
+      return bTime - aTime;
+    })
+    .slice(0, limit);
+}
+
+function getThreadsWithCurrent(limit: number = 4): {
+  threads: Partial<ThreadEntity>[];
+  currentThread: AgentThreadData | null;
+} {
+  const threads = getRecentThreads(limit);
+
+  if (threads.length === 0) {
+    return { threads, currentThread: null };
+  }
+
+  const mostRecentThread = threads[0];
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command"] as const;
+
+  const currentThread: AgentThreadData = {
+    id: mostRecentThread.id,
+    shortCode: mostRecentThread.shortCode,
+    topic: mostRecentThread.topic || '',
+    instructions: mostRecentThread.instructions || '',
+    status: mostRecentThread.status || 'backlog',
+    timestamp: mostRecentThread.timestamp || Date.now(),
+    forcedMode: mostRecentThread.forcedMode,
+    messages: mostRecentThread.id
+      ? ((qx(mostRecentThread.id)
+          .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
+          .filter((m: any) => !m.deleted)) as Partial<MessageEntity>[]
+      : [],
+    artifacts: mostRecentThread.id
+      ? (qx().relatedTo(mostRecentThread.id).ofType(EARS.Entity.Artifact)
+          .pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[]
+      : [],
+  };
+
+  return { threads, currentThread };
+}
+
+function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
+  const artifacts = qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
+    .pick(['id', 'title', 'content', 'artifactType'] as const);
+
+  if (!artifacts || artifacts.length === 0) return [];
+
+  return artifacts.map(artifact => ({
+    id: artifact.id,
+    type: (artifact.artifactType || 'text') as ArtifactType,
+    title: String(artifact.title || ''),
+    content: artifact.content,
+    metadata: { createdAt: Date.now() }
+  }));
+}
+
+export const chatQueries = {
+  hasRequiredApiKeys: (): boolean => {
+    const secrets = settingsQueries.getGeneralSettings().secrets;
+    const required = ['openai', 'anthropic'];
+    return required.some(provider => {
+      const secretId = secrets[provider as keyof typeof secrets];
+      return secretId !== null && secretId !== undefined && secretId !== '';
+    });
+  },
+
+  threadArtifacts: (threadId: EARS.EntityId) => {
+    return qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
+      .pick(['id', 'title', 'content', 'artifactType'] as const)
+      .map(artifact => ({
+        id: artifact.id,
+        type: artifact.artifactType,
+        title: artifact.title,
+        content: artifact.content
+      }));
+  },
+
+  threadData: (threadId: EARS.EntityId): AgentThreadData => {
+    const thread = qx(threadId)
+      .orderBy('timestamp', 'desc')
+      .limit(4)
+      .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned"] as const);
+
+    const threadArtifacts = qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
+      .pick(['id', 'title', 'content', 'artifactType'] as const) ?? [];
+
+    return {
+      ...thread[0] as AgentThreadData,
+      messages: (qx(threadId)
+        .linksPick(
+          EARS.RelKind.CONTAINS,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted"] as const,
+          EARS.Entity.Message,
+        ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
+      artifacts: threadArtifacts as any as ArtifactEntity[],
+    };
+  },
+
+  refreshThreadsData: (): RecentThreadRefreshData => {
+    return { recentThreads: getRecentThreads() };
+  },
+
+  connectedData: (): AgentConnectedData => {
+    const { threads, currentThread } = getThreadsWithCurrent();
+    const tabs: Tab[] = [];
+
+    const pinnedThreads = qx(EARS.Entity.Thread)
+      .where('pinned', true)
+      .pick(["id", "shortCode", "topic"] as const) as Partial<ThreadEntity>[];
+    const pinnedIds = new Set(pinnedThreads.map(t => t.id));
+
+    if (currentThread?.id) {
+      const artifacts = getThreadArtifacts(currentThread.id);
+      const threadTab: Tab = {
+        id: currentThread.id,
+        label: currentThread.topic || `Thread ${currentThread.shortCode || ''}`,
+        artifacts,
+        selectedArtifactId: artifacts[0]?.id,
+        ...(pinnedIds.has(currentThread.id) && { pinned: true }),
+      };
+      tabs.push(threadTab);
+    }
+
+    for (const pt of pinnedThreads) {
+      if (!pt.id || pt.id === currentThread?.id) continue;
+      const ptArtifacts = getThreadArtifacts(pt.id);
+      tabs.unshift({
+        id: pt.id,
+        label: pt.topic || 'No topic',
+        artifacts: ptArtifacts,
+        selectedArtifactId: ptArtifacts[0]?.id,
+        pinned: true,
+      });
+    }
+
+    const allSettings = settingsQueries.getSettings();
+    const chatSettings = allSettings?.plugins?.threads?.chat ?? allSettings?.plugins?.agent;
+
+    return {
+      currentThread,
+      threads,
+      tabs,
+      settings: chatSettings,
+      hasRequiredApiKeys: chatQueries.hasRequiredApiKeys(),
+    };
+  },
+
+  messageById: (messageId: EARS.EntityId): MessageEntity | null => {
+    const message = qx(messageId).pickOne([
+      'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
+      'responseTimestamp', 'createdAt', 'updatedAt'
+    ] as const);
+
+    if (!message) return null;
+
+    return { ...message, entityType: EARS.Entity.Message } as MessageEntity;
+  }
+} as const;
+
+export const chatCommands = {
+  addMessage: (params: {
+    threadId: EARS.EntityId;
+    text: string;
+    sender: 'user' | 'assistant' | 'system';
+    blocks?: BlockConfig[];
+    forkable?: boolean;
+    references?: MessageReferences;
+    isCommand?: boolean;
+    command?: string;
+  }): {
+    id: EARS.EntityId;
+    threadId: EARS.EntityId;
+    text: string;
+    sender: string;
+    timestamp: number;
+  } => {
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command } = params;
+
+    const thread = qx(threadId).id();
+    if (!thread) {
+      throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const validSenders = ['user', 'assistant', 'system'];
+    if (!validSenders.includes(sender)) {
+      throw new RepositoryError(
+        `Invalid sender type. Must be one of: ${validSenders.join(', ')}`,
+        RepositoryErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    const timestamp = Date.now();
+    const messageTx = tx(EARS.Entity.Message)
+      .put('text', text.trim())
+      .put('timestamp', timestamp)
+      .put('sender', sender)
+      .put('createdAt', timestamp)
+      .put('updatedAt', timestamp);
+
+    if (blocks) messageTx.put('blocks', blocks);
+    if (forkable === false) messageTx.put('forkable', forkable);
+    if (references) messageTx.put('references', references);
+    if (isCommand) messageTx.put('isCommand', isCommand);
+    if (command) messageTx.put('command', command);
+
+    const messageId = messageTx.link(EARS.RelKind.CONTAINS, threadId).id();
+
+    tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
+    tx(threadId).update('lastMessageTimestamp', timestamp);
+
+    return { id: messageId, threadId, text: text.trim(), sender, timestamp };
+  },
+
+  createThreadFromMessage: (text: string): {
+    threadId: EARS.EntityId;
+    threadData: ReturnType<typeof threadCommands.create>;
+  } => {
+    const threadData = threadCommands.create({
+      topic: text.substring(0, THREAD_TOPIC_MAX_LENGTH),
+      instructions: '',
+    });
+
+    return { threadId: threadData.id, threadData };
+  },
+
+  updateMessageBlockResponse: (params: {
+    messageId: EARS.EntityId;
+    response: any;
+  }): {
+    messageId: EARS.EntityId;
+    responseTimestamp: number;
+    updatedAt: number;
+    blocks?: BlockConfig[];
+  } => {
+    const { messageId, response } = params;
+
+    const message = qx(messageId).id();
+    if (!message) {
+      throw new RepositoryError(`Message ${messageId} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const now = Date.now();
+
+    tx(messageId)
+      .put('blockResponse', response)
+      .put('responseTimestamp', now)
+      .put('updatedAt', now);
+
+    let updatedBlocks: BlockConfig[] | undefined;
+    const fullMessage = qx(messageId).pickOne(['blocks']);
+
+    if (fullMessage?.blocks && response.buttonId) {
+      let buttonToggled = false;
+      const newBlocks = fullMessage.blocks.map((block: BlockConfig) => {
+        if (block.type === 'button-group') {
+          const updatedButtons = block.props.buttons.map((button: any) => {
+            if (button.toggleStates && button.id === response.buttonId) {
+              buttonToggled = true;
+              return { ...button, state: button.state === 'on' ? 'off' : 'on' };
+            }
+            return button;
+          });
+          return { ...block, props: { ...block.props, buttons: updatedButtons } };
+        }
+        return block;
+      });
+
+      if (buttonToggled) {
+        updatedBlocks = newBlocks;
+        tx(messageId).put('blocks', newBlocks).put('updatedAt', now);
+      }
+    }
+
+    return {
+      messageId,
+      responseTimestamp: now,
+      updatedAt: now,
+      ...(updatedBlocks && { blocks: updatedBlocks })
+    };
+  },
+
+  updateMessageState: (params: {
+    messageId: EARS.EntityId;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>;
+  }): {
+    messageId: EARS.EntityId;
+    updatedAt: number;
+    updates: typeof params.updates;
+  } => {
+    const { messageId, updates } = params;
+
+    const message = qx(messageId).id();
+    if (!message) {
+      throw new RepositoryError(`Message ${messageId} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const now = Date.now();
+    const updateData: Record<string, any> = { ...updates, updatedAt: now };
+    tx(messageId).updateBatch(updateData);
+
+    return { messageId, updatedAt: now, updates };
+  },
+
+  copyMessagesUpTo: (params: {
+    sourceThreadId: EARS.EntityId;
+    targetThreadId: EARS.EntityId;
+    upToMessageId: string;
+  }): void => {
+    const { sourceThreadId, targetThreadId, upToMessageId } = params;
+    const sourceData = chatQueries.threadData(sourceThreadId);
+    const sourceMessages = sourceData.messages || [];
+
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command'] as const;
+
+    for (const msg of sourceMessages) {
+      const optional: Record<string, any> = {};
+      for (const key of copyableKeys) {
+        if (msg[key] !== undefined) optional[key] = msg[key];
+      }
+
+      chatCommands.addMessage({
+        threadId: targetThreadId,
+        text: msg.text || '',
+        sender: (msg.sender as 'user' | 'assistant' | 'system') || 'user',
+        ...optional,
+      });
+
+      if (msg.id === upToMessageId) break;
+    }
+  },
+
+  softDeleteMessagesAfter: (params: {
+    threadId: EARS.EntityId;
+    messageId: EARS.EntityId;
+  }): { deletedCount: number; deletedIds: string[] } => {
+    const { threadId, messageId } = params;
+
+    const messages = qx(threadId)
+      .linksPick(EARS.RelKind.CONTAINS, ["id", "deleted"] as const, EARS.Entity.Message) ?? [];
+
+    const nonDeleted = messages.filter((m: any) => !m.deleted);
+    const targetIndex = nonDeleted.findIndex((m: any) => m.id === messageId);
+
+    if (targetIndex === -1) {
+      throw new RepositoryError(`Message ${messageId} not found in thread ${threadId}`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const toDelete = nonDeleted.slice(targetIndex + 1);
+    const now = Date.now();
+    const deletedIds: string[] = [];
+
+    for (const msg of toDelete) {
+      if (msg.id) {
+        tx(msg.id as EARS.EntityId).put('deleted', true).put('deletedAt', now);
+        deletedIds.push(msg.id as string);
+      }
+    }
+
+    return { deletedCount: deletedIds.length, deletedIds };
+  },
+
+  createArtifact: (params: {
+    artifactType: ArtifactType;
+    title: string;
+    content: any;
+    threadId?: EARS.EntityId;
+  }): { artifactId: EARS.EntityId } => {
+    const { artifactType, title, content, threadId } = params;
+
+    const artifactId = tx(EARS.Entity.Artifact)
+      .put('entityType', EARS.Entity.Artifact)
+      .put('title', title)
+      .put('artifactType', artifactType)
+      .put('content', content)
+      .put('createdAt', Date.now())
+      .id();
+
+    if (threadId) {
+      tx(threadId).link(EARS.RelKind.HAS, artifactId);
+      tx(artifactId).link(EARS.RelKind.RELATES_TO, threadId);
+    }
+
+    return { artifactId };
   },
 } as const;

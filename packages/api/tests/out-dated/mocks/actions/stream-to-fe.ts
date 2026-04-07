@@ -18,7 +18,7 @@ const actionFn = tidyFunction(`
   for await (const textPart of result.textStream) {
     services.logger.info('Streaming text to FE', { textPart });
 
-    services.emitter.sendToPlugin('agent', {
+    services.emitter.sendToPlugin('threads', {
       type: 'TOKEN_STREAM',
       token: textPart
     });
@@ -26,7 +26,7 @@ const actionFn = tidyFunction(`
 
   await result.finishReason
 
-  services.emitter.sendToPlugin('agent', {
+  services.emitter.sendToPlugin('threads', {
     type: 'LLM_DONE',
   });
 `);

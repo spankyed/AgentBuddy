@@ -170,16 +170,16 @@ export const tourSteps: TourStep[] = [
   },
 
   // ========================================
-  // Agent Plugin
+  // Chat & Artifacts
   // ========================================
   {
     id: 'agent-plugin-icon',
-    targetId: 'plugin-agent',
-    title: 'Agent Plugin',
-    content: 'The Agent plugin is your main AI assistant interface.',
+    targetId: 'plugin-threads',
+    title: 'Chat & Artifacts',
+    content: 'The Threads plugin is your main AI assistant interface, combining chat and thread management.',
     tooltipPosition: 'right',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
   {
@@ -188,7 +188,7 @@ export const tourSteps: TourStep[] = [
     title: 'AI Assistant Interface',
     content: 'This is where you interact with the AI assistant. Let\'s explore its features.',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
   {
@@ -197,7 +197,7 @@ export const tourSteps: TourStep[] = [
     title: 'Thread Tabs',
     content: 'Each tab represents an open thread. Switch between conversations by clicking different tabs.',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
   {
@@ -206,7 +206,7 @@ export const tourSteps: TourStep[] = [
     title: 'Artifacts',
     content: 'Artifacts are structured outputs separate from chat messages. They include todo lists, code files, diagrams, and more.',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
   {
@@ -215,7 +215,7 @@ export const tourSteps: TourStep[] = [
     title: 'Chat Interface',
     content: 'Type your messages here to interact with the AI. The assistant can help with planning, coding, debugging, and more.',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
 

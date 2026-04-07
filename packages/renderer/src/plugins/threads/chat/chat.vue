@@ -104,24 +104,24 @@ import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id, type AgentState } from '@/plugins/agent/state';
+import { id, type ThreadsState } from '@/plugins/threads/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 
-const actor: AgentState = applicationState.system.get(id);
+const actor: ThreadsState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
 const recentThreads = useSelector(actor, (state) => (state.context.recentThreads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
-const quickPrompts = useSelector(actor, (state) => (state.context.settings?.quickPrompts || []) as QuickPrompt[])
+const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
-const settings = useSelector(actor, (state) => state.context.settings as AgentSettings)
+const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
 const showRevertDialog = ref(false)
 const pendingRevertMessageId = ref<string | null>(null)
 const dontAskAgain = ref(false)
@@ -144,8 +144,8 @@ function updateQuickPrompts(prompts: QuickPrompt[]) {
     systemId: 'settings',
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
-    label: 'agent',
-    path: ['quickPrompts'],
+    label: 'threads',
+    path: ['chat', 'quickPrompts'],
     value: prompts,
   })
 }
@@ -180,8 +180,8 @@ function confirmRevert() {
       systemId: 'settings',
       type: 'UPDATE_SETTINGS',
       entityType: 'plugin',
-      label: 'agent',
-      path: ['skipRevertConfirm'],
+      label: 'threads',
+      path: ['chat', 'skipRevertConfirm'],
       value: true,
     })
   }

@@ -46,9 +46,8 @@ export const defaultSettings: SettingsData = {
   plugins: {
     _meta: {
       visibility: {
-        // Only threads and agent visible for guided tour
+        // Only threads visible for guided tour
         threads: true,
-        agent: true,
         code: false,
         library: false,
         flows: false,
@@ -60,33 +59,6 @@ export const defaultSettings: SettingsData = {
         settings: true, // Settings should always be visible
         blank: false,
       }
-    },
-    agent: {
-      modes: [
-        { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
-        { id: 'chat', name: 'Chat', description: 'General conversation mode' },
-        {
-          id: 'work',
-          name: 'Work',
-          description: 'Implementation and coding mode',
-          phases: [
-            { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown' },
-            { id: 'edit', name: 'Edit', description: 'Implementation and development' },
-            { id: 'review', name: 'Review', description: 'Code review and refinement' }
-          ]
-        },
-        { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
-      ],
-      hotkeys: {
-        textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
-        switchMode: { key: 'Tab', modifiers: ['shift'], global: true }
-      },
-      quickPrompts: [
-        { id: 'qp_1', text: 'Write a commit message' },
-        { id: 'qp_2', text: 'Review the code' },
-        { id: 'qp_3', text: 'Summarize the conversation to a md file' },
-        { id: 'qp_4', text: 'What are the next steps?' },
-      ]
     },
     code: {
       hotkeys: {
@@ -109,6 +81,33 @@ export const defaultSettings: SettingsData = {
       }
     },
     threads: {
+      chat: {
+        modes: [
+          { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
+          { id: 'chat', name: 'Chat', description: 'General conversation mode' },
+          {
+            id: 'work',
+            name: 'Work',
+            description: 'Implementation and coding mode',
+            phases: [
+              { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown' },
+              { id: 'edit', name: 'Edit', description: 'Implementation and development' },
+              { id: 'review', name: 'Review', description: 'Code review and refinement' }
+            ]
+          },
+          { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
+        ],
+        hotkeys: {
+          textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
+          switchMode: { key: 'Tab', modifiers: ['shift'], global: true }
+        },
+        quickPrompts: [
+          { id: 'qp_1', text: 'Write a commit message' },
+          { id: 'qp_2', text: 'Review the code' },
+          { id: 'qp_3', text: 'Summarize the conversation to a md file' },
+          { id: 'qp_4', text: 'What are the next steps?' },
+        ]
+      },
       statuses: [
         { label: 'Backlog', color: '#6B7280' },
         { label: 'Open', color: '#3B82F6' },

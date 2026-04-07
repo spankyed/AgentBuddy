@@ -28,7 +28,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
 } {
   const { threadId, text, blocks, forkable } = options;
 
-  const result = repository.agentCommands.addMessage({
+  const result = repository.chatCommands.addMessage({
     threadId,
     text,
     sender: 'assistant',
@@ -60,7 +60,7 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
   const result = createBlockMessage(options);
 
   // Emit granular event - only new message data (not entire thread)
-  sendToPlugin('agent', {
+  sendToPlugin('threads', {
     type: 'MESSAGE_ADDED',
     threadId: result.threadId,
     message: result.message
@@ -320,7 +320,7 @@ export function updateMessageBlockResponse(
   messageId: EARS.EntityId,
   response: any
 ): void {
-  repository.agentCommands.updateMessageBlockResponse({
+  repository.chatCommands.updateMessageBlockResponse({
     messageId,
     response
   });
@@ -348,13 +348,13 @@ export function updateMessageState(
   messageId: EARS.EntityId,
   updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>
 ): void {
-  const result = repository.agentCommands.updateMessageState({
+  const result = repository.chatCommands.updateMessageState({
     messageId,
     updates
   });
 
   // Emit UPDATE_MESSAGE_STATE event to frontend with all updated fields
-  sendToPlugin('agent', {
+  sendToPlugin('threads', {
     type: 'UPDATE_MESSAGE_STATE',
     messageId: result.messageId,
     ...result.updates
@@ -413,9 +413,9 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId) {
   repository.threadCommands.markAsVisited(threadId);
 
   // Send thread data to load in chat
-  sendToPlugin('agent', {
+  sendToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
-    data: repository.agentQueries.threadData(threadId),
+    data: repository.chatQueries.threadData(threadId),
   });
 
   // Send updated recent threads list
@@ -436,10 +436,10 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
 
   // Query thread data and artifacts from repository
   const thread = repository.threadQueries.byId(threadId);
-  const artifacts = repository.agentQueries.threadArtifacts(threadId);
+  const artifacts = repository.chatQueries.threadArtifacts(threadId);
 
   // Send thread tab data
-  sendToPlugin('agent', {
+  sendToPlugin('threads', {
     type: 'THREAD_TAB_REQUESTED',
     threadId,
     topic: thread?.topic || `Thread ${threadId}`,
@@ -460,8 +460,8 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
  * - Thread visits (updates lastVisitedTimestamp)
  */
 export function sendRecentThreadsRefresh() {
-  sendToPlugin('agent', {
+  sendToPlugin('threads', {
     type: 'REFRESH_RECENT_THREADS',
-    data: repository.agentQueries.refreshThreadsData()
+    data: repository.chatQueries.refreshThreadsData()
   });
 }

@@ -100,16 +100,16 @@ export const tourSteps: TourStep[] = [
   },
 
   // ========================================
-  // Agent Plugin
+  // Chat & Artifacts
   // ========================================
   {
     id: 'agent-plugin-icon',
-    targetId: 'plugin-agent',
-    title: 'Agent Plugin',
+    targetId: 'plugin-threads',
+    title: 'Chat & Artifacts',
     content: 'A place for the assistant to share information and collaborate.',
     tooltipPosition: 'right',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
   {
@@ -118,7 +118,7 @@ export const tourSteps: TourStep[] = [
     title: 'Agent Canvas',
     content: 'The assistant will display longer text or image artifacts here, to avoid cluttering the main chat area below. Quickly switch between different thread tabs to view artifacts from various threads.',
     setupActions: [
-      selectPlugin('agent'),
+      selectPlugin('threads'),
     ],
   },
 

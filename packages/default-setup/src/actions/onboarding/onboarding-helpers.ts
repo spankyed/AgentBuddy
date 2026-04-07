@@ -52,7 +52,7 @@ export function markTaskCompleted(services: Services, threadId: EntityId, step: 
   );
   services.database.tx(todoArtifact.id, true).update('content', { ...content, tasks });
 
-  services.emitter.sendToPlugin('agent', {
+  services.emitter.sendToPlugin('threads', {
     type: 'UPDATE_TODO_TASK',
     artifactId: todoArtifact.id,
     taskId,
@@ -84,7 +84,7 @@ export function finishOnboarding(
 
   services.chat.openThreadChatAndRefreshRecent(threadId);
 
-  services.emitter.sendToPlugin('agent', {
+  services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
     mode: 'chat',
   });

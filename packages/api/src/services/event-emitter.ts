@@ -9,7 +9,7 @@ type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : nev
  * @param pluginId - The target plugin ID (or 'application' for main plugin)
  * @param event - The event to emit (without pluginId)
  * @example
- * sendToPlugin('agent', {
+ * sendToPlugin('threads', {
  *   type: 'TOKEN_STREAM',
  *   token: 'Hello'
  * });
