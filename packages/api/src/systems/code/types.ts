@@ -140,6 +140,7 @@ export interface GhReviewComment {
   body: string
   author: { login: string }
   createdAt: string
+  viewerDidAuthor: boolean
 }
 
 // Terminal types

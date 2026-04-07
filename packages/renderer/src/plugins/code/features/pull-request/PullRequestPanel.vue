@@ -207,6 +207,8 @@
               @reply-thread="(prNum, commentId, body) => prActor?.send({ type: 'pr.REPLY_TO_THREAD', prNumber: prNum, commentId, body })"
               @resolve-thread="(id) => prActor?.send({ type: 'pr.RESOLVE_THREAD', threadId: id })"
               @unresolve-thread="(id) => prActor?.send({ type: 'pr.UNRESOLVE_THREAD', threadId: id })"
+              @edit-review-comment="(id, body) => prActor?.send({ type: 'pr.EDIT_REVIEW_COMMENT', commentId: id, body })"
+              @delete-review-comment="(id) => prActor?.send({ type: 'pr.DELETE_REVIEW_COMMENT', commentId: id })"
             />
           </PRInfo>
           <PRActionBar

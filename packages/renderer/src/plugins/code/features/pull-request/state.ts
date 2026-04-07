@@ -98,6 +98,8 @@ export type Event =
   | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
   | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
   | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
+  | { type: 'pr.REVIEW_COMMENT_EDITED'; data: { commentId: number } }
+  | { type: 'pr.REVIEW_COMMENT_DELETED'; data: { commentId: number } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   // User actions
   | { type: 'pr.LIST_PRS' }
@@ -119,6 +121,8 @@ export type Event =
   | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
   | { type: 'pr.RESOLVE_THREAD'; threadId: string }
   | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
+  | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
   | { type: 'pr.SET_COMMENT_TAB'; tab: 'discussion' | 'reviews' }
   | { type: 'pr.REFRESH_PR'; number: number }
   | { type: 'pr.CLEAR_ERROR' };
@@ -546,6 +550,16 @@ export const pullRequestState = setup({
       sendToBackend('pr.UNRESOLVE_THREAD', { threadId: ev.threadId })
     },
 
+    requestEditReviewComment: ({ event }) => {
+      const ev = event as { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
+      sendToBackend('pr.EDIT_REVIEW_COMMENT', { commentId: ev.commentId, body: ev.body })
+    },
+
+    requestDeleteReviewComment: ({ event }) => {
+      const ev = event as { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
+      sendToBackend('pr.DELETE_REVIEW_COMMENT', { commentId: ev.commentId })
+    },
+
     handleReviewThreadsReceived: assign({
       reviewThreads: ({ event }) => {
         const ev = event as { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
@@ -648,6 +662,8 @@ export const pullRequestState = setup({
         'pr.THREAD_REPLIED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
         'pr.THREAD_RESOLVED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
         'pr.THREAD_UNRESOLVED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
+        'pr.REVIEW_COMMENT_EDITED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
+        'pr.REVIEW_COMMENT_DELETED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
 
         // User actions
         'pr.LIST_PRS': { actions: ['requestListPRs', assign({ isLoadingPRs: true })] },
@@ -669,6 +685,8 @@ export const pullRequestState = setup({
         'pr.REPLY_TO_THREAD': { actions: ['requestReplyToThread', assign({ isSubmittingComment: true })] },
         'pr.RESOLVE_THREAD': { actions: 'requestResolveThread' },
         'pr.UNRESOLVE_THREAD': { actions: 'requestUnresolveThread' },
+        'pr.EDIT_REVIEW_COMMENT': { actions: ['requestEditReviewComment', assign({ isSubmittingComment: true })] },
+        'pr.DELETE_REVIEW_COMMENT': { actions: ['requestDeleteReviewComment', assign({ isSubmittingComment: true })] },
         'pr.SET_COMMENT_TAB': { actions: assign({ commentTab: ({ event }) => (event as any).tab }) },
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },

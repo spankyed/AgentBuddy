@@ -170,7 +170,7 @@ export async function getReviewThreads(cwd: string, number: number): Promise<GhR
           nodes{
             id isResolved isOutdated path line
             comments(first:50){
-              nodes{ id databaseId body author{login} createdAt }
+              nodes{ id databaseId body author{login} createdAt viewerDidAuthor }
             }
           }
         }
@@ -198,6 +198,7 @@ export async function getReviewThreads(cwd: string, number: number): Promise<GhR
       body: c.body,
       author: c.author,
       createdAt: c.createdAt,
+      viewerDidAuthor: c.viewerDidAuthor ?? false,
     })),
   }))
 }
@@ -208,6 +209,16 @@ export async function replyToReviewThread(cwd: string, prNumber: number, comment
     'api', `repos/${owner}/${name}/pulls/${prNumber}/comments/${commentDatabaseId}/replies`,
     '-X', 'POST', '-f', `body=${body}`,
   ], cwd)
+}
+
+export async function editReviewComment(cwd: string, commentId: number, body: string): Promise<void> {
+  const { owner, name } = await getRepoInfo(cwd)
+  await runGh(['api', `repos/${owner}/${name}/pulls/comments/${commentId}`, '-X', 'PATCH', '-f', `body=${body}`], cwd)
+}
+
+export async function deleteReviewComment(cwd: string, commentId: number): Promise<void> {
+  const { owner, name } = await getRepoInfo(cwd)
+  await runGh(['api', `repos/${owner}/${name}/pulls/comments/${commentId}`, '-X', 'DELETE'], cwd)
 }
 
 export async function resolveReviewThread(cwd: string, threadId: string): Promise<void> {

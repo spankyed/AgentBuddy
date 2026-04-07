@@ -154,14 +154,58 @@
           <div
             v-for="(comment, i) in thread.comments"
             :key="comment.id"
-            class="px-3 py-2"
+            class="group px-3 py-2"
             :class="{ 'border-t border-neutral-800/50': i > 0 }"
           >
             <div class="flex items-center gap-2 mb-1">
               <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
-              <span class="text-xs text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
+              <span class="text-xs text-neutral-600 flex-1">{{ formatDate(comment.createdAt) }}</span>
+              <template v-if="comment.viewerDidAuthor">
+                <button
+                  v-if="editingReviewCommentId !== comment.id"
+                  @click="startEditReviewComment(comment)"
+                  class="opacity-0 group-hover:opacity-100 p-0.5 rounded text-neutral-500 hover:text-neutral-300 transition-all"
+                  title="Edit"
+                >
+                  <Pencil :size="10" />
+                </button>
+                <button
+                  @click="confirmDeleteReviewComment(comment)"
+                  class="opacity-0 group-hover:opacity-100 p-0.5 rounded text-neutral-500 hover:text-red-400 transition-all"
+                  title="Delete"
+                >
+                  <Trash2 :size="10" />
+                </button>
+              </template>
             </div>
-            <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-comment-viewer" />
+            <!-- Edit mode -->
+            <div v-if="editingReviewCommentId === comment.id" class="space-y-2">
+              <div class="rounded bg-neutral-800 border border-neutral-700 p-2 min-h-[60px] max-h-[150px] overflow-y-auto">
+                <TiptapEditor
+                  mode="editor"
+                  hideGutter
+                  :modelValue="editReviewCommentBody"
+                  @update:modelValue="editReviewCommentBody = $event"
+                  editorClass="pr-comment-editor"
+                />
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button
+                  @click="saveEditReviewComment(comment)"
+                  :disabled="isSubmitting"
+                  class="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
+                >
+                  <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
+                  <span>Save</span>
+                </button>
+                <button
+                  @click="editingReviewCommentId = null"
+                  class="px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
+                >Cancel</button>
+              </div>
+            </div>
+            <!-- View mode -->
+            <TiptapEditor v-else mode="viewer" :modelValue="comment.body" editorClass="pr-comment-viewer" />
           </div>
 
           <!-- Reply form (above action row) -->
@@ -232,7 +276,7 @@ import {
   ChevronRight, Reply, CheckCircle
 } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import type { GhPRComment, GhReviewThread } from '@app/api'
+import type { GhPRComment, GhReviewThread, GhReviewComment } from '@app/api'
 
 const props = defineProps<{
   comments: GhPRComment[]
@@ -251,6 +295,8 @@ const emit = defineEmits<{
   'reply-thread': [prNumber: number, commentId: number, body: string]
   'resolve-thread': [threadId: string]
   'unresolve-thread': [threadId: string]
+  'edit-review-comment': [commentId: number, body: string]
+  'delete-review-comment': [commentId: number]
 }>()
 
 // New comment
@@ -296,6 +342,24 @@ watch(() => props.reviewThreads, () => {
 })
 const replyingThreadId = ref<string | null>(null)
 const replyBody = ref('')
+const editingReviewCommentId = ref<string | null>(null)
+const editReviewCommentBody = ref('')
+
+function startEditReviewComment(comment: GhReviewComment) {
+  editingReviewCommentId.value = comment.id
+  editReviewCommentBody.value = comment.body
+}
+
+function saveEditReviewComment(comment: GhReviewComment) {
+  emit('edit-review-comment', comment.databaseId, editReviewCommentBody.value)
+  editingReviewCommentId.value = null
+}
+
+function confirmDeleteReviewComment(comment: GhReviewComment) {
+  if (confirm('Delete this comment? This cannot be undone.')) {
+    emit('delete-review-comment', comment.databaseId)
+  }
+}
 
 function toggleThread(threadId: string) {
   if (expandedThreads.value.has(threadId)) {

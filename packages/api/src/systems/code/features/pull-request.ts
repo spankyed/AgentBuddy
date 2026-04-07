@@ -34,6 +34,8 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.REPLY_TO_THREAD', { prNumber: z.number(), commentId: z.number(), body: z.string() }),
   busEvent('pr.RESOLVE_THREAD', { threadId: z.string() }),
   busEvent('pr.UNRESOLVE_THREAD', { threadId: z.string() }),
+  busEvent('pr.EDIT_REVIEW_COMMENT', { commentId: z.number(), body: z.string() }),
+  busEvent('pr.DELETE_REVIEW_COMMENT', { commentId: z.number() }),
 ] as const
 
 // Outgoing events to frontend
@@ -62,6 +64,8 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
   | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
   | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
+  | { type: 'pr.REVIEW_COMMENT_EDITED'; data: { commentId: number } }
+  | { type: 'pr.REVIEW_COMMENT_DELETED'; data: { commentId: number } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -90,6 +94,8 @@ export type Event =
   | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
   | { type: 'pr.RESOLVE_THREAD'; threadId: string }
   | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
+  | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
@@ -356,6 +362,22 @@ export const pullRequestSystem = setup({
       )
     },
 
+    editReviewComment: ({ event, context }) => {
+      const ev = event as { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
+      withRepo(context,
+        repo => ghCli.editReviewComment(repo.getWorkingDir(), ev.commentId, ev.body),
+        () => emitToFrontend({ type: 'pr.REVIEW_COMMENT_EDITED', data: { commentId: ev.commentId } })
+      )
+    },
+
+    deleteReviewComment: ({ event, context }) => {
+      const ev = event as { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
+      withRepo(context,
+        repo => ghCli.deleteReviewComment(repo.getWorkingDir(), ev.commentId),
+        () => emitToFrontend({ type: 'pr.REVIEW_COMMENT_DELETED', data: { commentId: ev.commentId } })
+      )
+    },
+
     deleteBranch: ({ event, context }) => {
       const ev = event as { type: 'pr.DELETE_BRANCH'; branch: string }
       withRepo(context,
@@ -410,6 +432,8 @@ export const pullRequestSystem = setup({
         'pr.REPLY_TO_THREAD': { actions: 'replyToThread' },
         'pr.RESOLVE_THREAD': { actions: 'resolveThread' },
         'pr.UNRESOLVE_THREAD': { actions: 'unresolveThread' },
+        'pr.EDIT_REVIEW_COMMENT': { actions: 'editReviewComment' },
+        'pr.DELETE_REVIEW_COMMENT': { actions: 'deleteReviewComment' },
         'pr.CHECK_GH_AUTH': { actions: 'checkGhAuth' },
         'pr.GET_PR_AUTOFILL': { actions: 'getPRAutofill' },
         'pr.GIT_STATUS_CHANGED': { actions: 'handleGitStatusChanged' },
