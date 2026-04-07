@@ -206,6 +206,7 @@
         :baseBranch="prBaseBranch"
         :currentBranch="displayBranch"
         :isLoading="isPrLoading"
+        :baseDirectory="baseDirectory"
         @select-file="handleFileSelect"
         @open-file="handleOpenFile"
       />

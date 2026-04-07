@@ -54,6 +54,7 @@
       :files="files"
       :all-collapsed="allCollapsed"
       :all-expanded="allExpanded"
+      :base-directory="baseDirectory"
       @select-file="$emit('select-file', $event)"
       @open-file="$emit('open-file', $event)"
     />
@@ -78,6 +79,7 @@ defineProps<{
   baseBranch: string
   currentBranch?: string
   isLoading: boolean
+  baseDirectory?: string
 }>()
 
 defineEmits<{

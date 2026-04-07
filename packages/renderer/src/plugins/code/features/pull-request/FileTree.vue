@@ -8,6 +8,7 @@
         :level="0"
         :all-collapsed="allCollapsed"
         :all-expanded="allExpanded"
+        :base-directory="baseDirectory"
         @select-file="$emit('select-file', $event)"
         @open-file="$emit('open-file', $event)"
       />
@@ -28,6 +29,7 @@ const props = defineProps<{
   files: GitStatusFile[]
   allCollapsed?: boolean
   allExpanded?: boolean
+  baseDirectory?: string
 }>()
 
 defineEmits<{

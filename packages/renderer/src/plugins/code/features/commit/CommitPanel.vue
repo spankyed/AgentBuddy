@@ -260,41 +260,58 @@
             </button>
           </div>
           <div class="space-y-1">
-            <div
-              v-for="file in stagedFiles"
-              :key="`staged-${file.path}`"
-              @click="selectFile(file)"
-              :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
-              :class="[
-                'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
-                selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
-                  ? 'bg-neutral-800'
-                  : 'hover:bg-neutral-800/50'
-              ]"
-            >
-
-              <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
-                <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
-                  {{ getFileDisplay(file.path, file).directory }}
-                </span>
-              </div>
-              <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
-                {{ getStatusIcon(file.status) }}
-              </span>
-              <button
-                v-if="file.status !== 'deleted'"
-                @click.stop="openFile(file)"
-                class="p-0.5 hover:bg-neutral-700 rounded"
-                title="Open file"
-              >
-                <File class="w-3 h-3 text-neutral-400" />
-              </button>
-
-              <button @click.stop="unstageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage">
-                <Minus class="w-3 h-3 text-neutral-400" />
-              </button>
-            </div>
+            <ContextMenuRoot v-for="file in stagedFiles" :key="`staged-${file.path}`" @update:open="onMenuOpenChange">
+              <ContextMenuTrigger as-child>
+                <div
+                  @click="selectFile(file)"
+                  :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
+                  :class="[
+                    'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
+                    selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
+                      ? 'bg-neutral-800'
+                      : 'hover:bg-neutral-800/50'
+                  ]"
+                >
+                  <div class="flex-1 min-w-0 flex items-center gap-1.5">
+                    <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
+                    <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
+                      {{ getFileDisplay(file.path, file).directory }}
+                    </span>
+                  </div>
+                  <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
+                    {{ getStatusIcon(file.status) }}
+                  </span>
+                  <button
+                    v-if="file.status !== 'deleted'"
+                    @click.stop="openFile(file)"
+                    class="p-0.5 hover:bg-neutral-700 rounded"
+                    title="Open file"
+                  >
+                    <File class="w-3 h-3 text-neutral-400" />
+                  </button>
+                  <button @click.stop="unstageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage">
+                    <Minus class="w-3 h-3 text-neutral-400" />
+                  </button>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuPortal>
+                <ContextMenuContent :class="MENU_CONTENT_CLASS">
+                  <ContextMenuItem v-if="file.status !== 'deleted'" @select="openFile(file)" :class="MENU_ITEM_CLASS">
+                    <File class="w-4 h-4" /> Open File
+                  </ContextMenuItem>
+                  <ContextMenuItem @select="copyPath(file.path)" :class="MENU_ITEM_CLASS">
+                    <Copy class="w-4 h-4" /> Copy Path
+                  </ContextMenuItem>
+                  <ContextMenuItem @select="copyRelativePath(file.path)" :class="MENU_ITEM_CLASS">
+                    <Copy class="w-4 h-4" /> Copy Relative Path
+                  </ContextMenuItem>
+                  <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+                  <ContextMenuItem @select="unstageFile(file)" :class="MENU_ITEM_CLASS">
+                    <Minus class="w-4 h-4" /> Unstage
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenuPortal>
+            </ContextMenuRoot>
           </div>
         </div>
 
@@ -312,43 +329,64 @@
             </div>
           </div>
           <div class="space-y-1">
-            <div
-              v-for="file in unstagedFiles"
-              :key="`unstaged-${file.path}`"
-              @click="selectFile(file)"
-              :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
-              :class="[
-                'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
-                selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
-                  ? 'bg-neutral-800'
-                  : 'hover:bg-neutral-800/50'
-              ]"
-            >
-
-              <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
-                <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
-                  {{ getFileDisplay(file.path, file).directory }}
-                </span>
-              </div>
-              <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
-                {{ getStatusIcon(file.status) }}
-              </span>
-              <button
-                v-if="file.status !== 'deleted'"
-                @click.stop="openFile(file)"
-                class="p-0.5 hover:bg-neutral-700 rounded"
-                title="Open file"
-              >
-                <File class="w-3 h-3 text-neutral-400" />
-              </button>
-              <button @click.stop="openRevertDialog(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard changes">
-                <RotateCcw class="w-3 h-3 text-red-400" />
-              </button>
-              <button @click.stop="stageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage">
-                <Plus class="w-3 h-3 text-neutral-400" />
-              </button>
-            </div>
+            <ContextMenuRoot v-for="file in unstagedFiles" :key="`unstaged-${file.path}`" @update:open="onMenuOpenChange">
+              <ContextMenuTrigger as-child>
+                <div
+                  @click="selectFile(file)"
+                  :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
+                  :class="[
+                    'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
+                    selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
+                      ? 'bg-neutral-800'
+                      : 'hover:bg-neutral-800/50'
+                  ]"
+                >
+                  <div class="flex-1 min-w-0 flex items-center gap-1.5">
+                    <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
+                    <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
+                      {{ getFileDisplay(file.path, file).directory }}
+                    </span>
+                  </div>
+                  <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
+                    {{ getStatusIcon(file.status) }}
+                  </span>
+                  <button
+                    v-if="file.status !== 'deleted'"
+                    @click.stop="openFile(file)"
+                    class="p-0.5 hover:bg-neutral-700 rounded"
+                    title="Open file"
+                  >
+                    <File class="w-3 h-3 text-neutral-400" />
+                  </button>
+                  <button @click.stop="openRevertDialog(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard changes">
+                    <RotateCcw class="w-3 h-3 text-red-400" />
+                  </button>
+                  <button @click.stop="stageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage">
+                    <Plus class="w-3 h-3 text-neutral-400" />
+                  </button>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuPortal>
+                <ContextMenuContent :class="MENU_CONTENT_CLASS">
+                  <ContextMenuItem v-if="file.status !== 'deleted'" @select="openFile(file)" :class="MENU_ITEM_CLASS">
+                    <File class="w-4 h-4" /> Open File
+                  </ContextMenuItem>
+                  <ContextMenuItem @select="copyPath(file.path)" :class="MENU_ITEM_CLASS">
+                    <Copy class="w-4 h-4" /> Copy Path
+                  </ContextMenuItem>
+                  <ContextMenuItem @select="copyRelativePath(file.path)" :class="MENU_ITEM_CLASS">
+                    <Copy class="w-4 h-4" /> Copy Relative Path
+                  </ContextMenuItem>
+                  <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+                  <ContextMenuItem @select="stageFile(file)" :class="MENU_ITEM_CLASS">
+                    <Plus class="w-4 h-4" /> Stage
+                  </ContextMenuItem>
+                  <ContextMenuItem @select="openRevertDialog(file)" :class="MENU_ITEM_DANGER_CLASS">
+                    <RotateCcw class="w-4 h-4" /> Discard Changes
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenuPortal>
+            </ContextMenuRoot>
           </div>
         </div>
       </div>
@@ -424,8 +462,10 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2 } from 'lucide-vue-next'
-import { ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal } from 'reka-ui'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy } from 'lucide-vue-next'
+import { ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
+import { onMenuOpenChange } from '@/core/composables/useMenuState'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
@@ -634,6 +674,22 @@ const cancelRevert = () => {
 
 const openFile = (file: GitStatusFile) => {
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
+}
+
+const copyPath = async (path: string) => {
+  try { await navigator.clipboard.writeText(path) } catch (err) { console.error('Failed to copy path:', err) }
+}
+
+const copyRelativePath = async (path: string) => {
+  try {
+    const base = baseDirectory.value
+    let rel = path
+    if (base && rel.startsWith(base)) {
+      rel = rel.slice(base.length)
+      if (rel.startsWith('/')) rel = rel.slice(1)
+    }
+    await navigator.clipboard.writeText(rel)
+  } catch (err) { console.error('Failed to copy path:', err) }
 }
 
 const updateBranchInput = (event: Event) => {
