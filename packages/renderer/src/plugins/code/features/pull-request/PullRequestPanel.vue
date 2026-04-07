@@ -40,7 +40,7 @@
       </div>
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
-      <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
+      <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[42px]" :class="{ 'hidden': viewMode === 'pr' }">
         <!-- Checking gh auth / upstream -->
         <button
           v-if="topRowStatus === 'checking'"
@@ -91,11 +91,9 @@
           <button
             v-if="selectedPR"
             @click="handleViewPRInfo()"
-            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 shrink-0"
+            class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
             title="View PR details"
-          >
-            <Info :size="14" />
-          </button>
+          >View</button>
         </template>
       </div>
 
@@ -113,9 +111,9 @@
         <!-- Back to files bar -->
         <div
           @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'files' })"
-          class="flex items-center px-3 border-b border-neutral-800 bg-neutral-800/50 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors h-[38px]"
+          class="flex items-center px-3 border-b border-neutral-800 bg-neutral-800/50 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors h-[42px]"
         >
-          <div class="flex items-center gap-1.5 text-xs">
+          <div class="flex items-center gap-1.5 text-sm">
             <ArrowLeft :size="12" />
             Back to files
           </div>

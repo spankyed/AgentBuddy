@@ -2,7 +2,7 @@
   <div ref="dropdownContainer" class="relative flex-1 min-w-0">
     <button
       @click="isDropdownOpen = !isDropdownOpen"
-      class="flex items-center w-full gap-2 px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 transition-colors"
+      class="flex items-center w-full gap-1.5 px-2 py-1 text-sm rounded text-neutral-300 hover:bg-neutral-700/50 transition-colors"
     >
       <GitPullRequest :size="12" :class="[prStatusColor(selectedPR), 'shrink-0']" />
       <span class="truncate flex-1 text-left">
@@ -20,7 +20,6 @@
         v-else-if="selectedPR?.isDraft"
         class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
       >DRAFT</span>
-      <ChevronDown :size="12" class="shrink-0 text-neutral-500" />
     </button>
 
     <!-- Dropdown -->
@@ -59,7 +58,7 @@
 
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
-import { GitPullRequest, ChevronDown } from 'lucide-vue-next'
+import { GitPullRequest } from 'lucide-vue-next'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
 
