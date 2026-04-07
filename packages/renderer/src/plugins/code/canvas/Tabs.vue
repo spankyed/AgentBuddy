@@ -346,7 +346,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import {
   X,
   GitCompare,
@@ -437,6 +437,14 @@ const isPinnedContext = (context: string) => {
 // Container refs
 const pinnedContainer = ref<HTMLElement | null>(null)
 const mainContainer = ref<HTMLElement | null>(null)
+
+// Auto-scroll to active tab when it changes
+watch(() => props.activeTabPath, (path) => {
+  if (!path) return
+  const selector = `[data-path="${CSS.escape(path)}"]`
+  const el = pinnedContainer.value?.querySelector(selector) ?? mainContainer.value?.querySelector(selector)
+  el?.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'nearest' })
+}, { flush: 'post' })
 
 // Drag and drop
 const {
