@@ -48,7 +48,7 @@
     <!-- Show normal UI only when directory is selected and has git -->
     <template v-else>
       <!-- Branch Info -->
-      <div class="px-3 py-2 border-b border-neutral-800 bg-neutral-800/50">
+      <div class="px-4 py-2 border-b border-neutral-800 bg-neutral-800/50">
       <!-- Create Branch Mode -->
       <div v-if="isCreatingBranch" class="flex items-center gap-1.5">
         <input
@@ -78,34 +78,6 @@
 
       <!-- Branch Select Mode -->
       <div v-else class="relative flex items-center gap-1.5">
-        <ContextMenuRoot>
-          <ContextMenuTrigger as-child>
-            <button
-              @click="commitActor?.send({ type: 'commit.PULL_BRANCH' })"
-              :disabled="isPulling || isPushing || !hasUpstream"
-              class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Pull latest"
-            >
-              <Loader2 v-if="isPulling || isPushing" :size="14" class="animate-spin" />
-              <ArrowDownToLine v-else :size="14" />
-              <span
-                v-if="commitsBehind > 0"
-                class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
-              >{{ commitsBehind }}</span>
-            </button>
-          </ContextMenuTrigger>
-          <ContextMenuPortal>
-            <ContextMenuContent class="min-w-[120px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50">
-              <ContextMenuItem
-                @select="commitActor?.send({ type: 'commit.PUSH_BRANCH' })"
-                :disabled="isPushing || !hasUpstream || commitsAhead <= 0"
-                class="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
-              >
-                <ArrowUpFromLine :size="14" /> Push
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenuPortal>
-        </ContextMenuRoot>
         <div class="relative flex-1 min-w-0">
           <GitBranch
             :size="12"
@@ -132,6 +104,20 @@
           title="Create new branch"
         >
           <GitBranchPlus :size="14" />
+        </button>
+        <button
+          @click="commitsAhead > 0 ? commitActor?.send({ type: 'commit.PUSH_BRANCH' }) : commitActor?.send({ type: 'commit.PULL_BRANCH' })"
+          :disabled="isPulling || isPushing || !hasUpstream"
+          class="relative p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          :title="commitsAhead > 0 ? 'Push' : 'Pull latest'"
+        >
+          <Loader2 v-if="isPulling || isPushing" :size="14" class="animate-spin" />
+          <ArrowUpFromLine v-else-if="commitsAhead > 0" :size="14" />
+          <ArrowDownToLine v-else :size="14" />
+          <span
+            v-if="commitsBehind > 0 || commitsAhead > 0"
+            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+          >{{ commitsAhead > 0 ? commitsAhead : commitsBehind }}</span>
         </button>
 
         <!-- Dropdown -->
