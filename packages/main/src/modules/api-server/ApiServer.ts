@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { app, ipcMain } from 'electron';
+import { app, dialog, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import getPort from 'get-port';
@@ -15,6 +15,8 @@ import {
 } from './config.js';
 import { ProcessManager, broadcastEvent } from './process-manager.js';
 import { logInfo, logError, logWarn, getLogger } from './logger.js';
+
+const DATA_CORRUPTION_EXIT_CODE = 42;
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;
@@ -152,6 +154,13 @@ export class ApiServer implements AppModule {
 
   private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
     logError(`[MAIN] API server exited with code ${code} and signal ${signal}`);
+
+    // Data corruption detected — show recovery dialog instead of restarting
+    if (code === DATA_CORRUPTION_EXIT_CODE) {
+      this.showCorruptionRecoveryDialog();
+      return;
+    }
+
     const errors = this.processManager.getFatalErrors();
     const stderr = this.processManager.getLastStderr();
     if (errors.length > 0) {
@@ -197,6 +206,39 @@ export class ApiServer implements AppModule {
         this.restartAttempts = 0;
       }
     }, API_CONFIG.SUCCESS_CHECK_DELAY);
+  }
+
+  private async showCorruptionRecoveryDialog(): Promise<void> {
+    logError('[MAIN] Data corruption detected, showing recovery dialog');
+    broadcastEvent(API_EVENTS.ERROR, { error: 'Data corruption detected' });
+
+    const { response } = await dialog.showMessageBox({
+      type: 'error',
+      title: 'Data Recovery Required',
+      message: 'AgentBuddy detected corrupted data and could not start.',
+      detail: 'You can reset the data to start fresh, or quit and manually restore from a backup.',
+      buttons: ['Reset Data & Restart', 'Quit'],
+      defaultId: 1,
+      cancelId: 1,
+    });
+
+    if (response === 0) {
+      // Delete LMDB directories and relaunch
+      const userDataPath = app.getPath('userData');
+      for (const dir of ['ears-db', 'ears-trace', 'ears-secrets']) {
+        const dirPath = path.join(userDataPath, dir);
+        try {
+          fs.rmSync(dirPath, { recursive: true, force: true });
+          logInfo(`[MAIN] Removed corrupted database: ${dir}`);
+        } catch {
+          // May not exist
+        }
+      }
+      app.relaunch();
+      app.exit(0);
+    } else {
+      app.exit(1);
+    }
   }
 
   private stopApiServer(): void {

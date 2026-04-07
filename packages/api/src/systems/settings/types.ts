@@ -167,6 +167,7 @@ export interface InternalSettings {
   lastInteractionTimestamp: number | null;
   version: string;
   seedHash: string | null;
+  lastAppVersion: string | null;
 }
 
 export interface AssistantSettings {

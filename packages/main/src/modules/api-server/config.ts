@@ -48,6 +48,7 @@ export const getEnvironment = (port: number) => ({
   API_PORT: port.toString(),
   DATABASE_PATH: path.join(app.getPath('userData'), 'database.db'),
   USER_DATA_PATH: app.isPackaged ? app.getPath('userData') : undefined,
+  APP_VERSION: app.getVersion(),
   ELECTRON_RUN_AS_NODE: '1',
 });
 

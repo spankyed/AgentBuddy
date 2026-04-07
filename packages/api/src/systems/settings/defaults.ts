@@ -177,6 +177,7 @@ export const defaultSettings: SettingsData = {
     lastInteractionTimestamp: null,
     version: '0.1.0',
     seedHash: null,
+    lastAppVersion: null,
   },
   assistant: {
     name: '',
