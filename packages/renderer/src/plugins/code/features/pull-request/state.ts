@@ -201,7 +201,7 @@ export const pullRequestState = setup({
       const newBase = ev.data.branch
       enqueue.assign({ prBaseBranch: newBase })
       if (newBase !== context.prBaseBranch || context.prFiles.length === 0 || context.diffStale) {
-        enqueue(() => sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase }))
+        sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
       }
     }),
 
@@ -303,18 +303,13 @@ export const pullRequestState = setup({
       isLoadingDetails: false
     }),
 
-    assignBranchPRChecked: assign(({ event, context }) => {
+    handleBranchPRChecked: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
       const incoming = ev.data.pr
       const unchanged = incoming?.number === context.selectedPR?.number
         && incoming?.updatedAt === context.selectedPR?.updatedAt
 
-      const needsDiff = !context.isManualPRSelection && incoming
-        && (incoming.baseRefName !== context.prBaseBranch
-          || context.prFiles.length === 0
-          || context.diffStale)
-
-      return {
+      enqueue.assign({
         branchPR: incoming,
         // Don't overwrite a manually selected PR
         selectedPR: context.isManualPRSelection
@@ -323,28 +318,26 @@ export const pullRequestState = setup({
         isGhChecking: false,
         branchPRCheckFailed: false,
         prCheckCompleted: true,
-        ...(needsDiff ? { prBaseBranch: incoming!.baseRefName } : {}),
+      })
+
+      // Only auto-load diff for the current branch PR if no manual selection is active
+      if (!context.isManualPRSelection) {
+        if (incoming) {
+          const needsDiff = incoming.baseRefName !== context.prBaseBranch
+            || context.prFiles.length === 0
+            || context.diffStale
+          if (needsDiff) {
+            enqueue.assign({ prBaseBranch: incoming.baseRefName })
+            sendToBackend('pr.GET_BRANCH_DIFF', {
+              baseBranch: incoming.baseRefName,
+              headBranch: incoming.headRefName,
+            })
+          }
+        } else {
+          sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
+        }
       }
     }),
-
-    handleBranchPRCheckedEffects: ({ event, context }) => {
-      const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-      const incoming = ev.data.pr
-      if (context.isManualPRSelection) return
-      if (incoming) {
-        const needsDiff = incoming.baseRefName !== context.prBaseBranch
-          || context.prFiles.length === 0
-          || context.diffStale
-        if (needsDiff) {
-          sendToBackend('pr.GET_BRANCH_DIFF', {
-            baseBranch: incoming.baseRefName,
-            headBranch: incoming.headRefName,
-          })
-        }
-      } else {
-        sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
-      }
-    },
 
     handlePRCreated: assign({
       selectedPR: ({ event }) => {
@@ -790,7 +783,7 @@ export const pullRequestState = setup({
         'pr.GH_AUTH_CHECKED': { actions: 'handleGhAuthChecked' },
         'pr.OPEN_PRS_RECEIVED': { actions: 'handleOpenPRsReceived' },
         'pr.PR_DETAILS_RECEIVED': { actions: ['handlePRDetailsReceived', 'loadDiffForSelectedPR', 'fetchReviewThreads'] },
-        'pr.BRANCH_PR_CHECKED': { actions: ['assignBranchPRChecked', 'handleBranchPRCheckedEffects'] },
+        'pr.BRANCH_PR_CHECKED': { actions: 'handleBranchPRChecked' },
         'pr.SMART_BASE_BRANCH_RECEIVED': { actions: 'handleSmartBaseBranchReceived' },
         'pr.AUTOFILL_RECEIVED': { actions: 'handleAutofillReceived' },
         'pr.PR_CREATED': { actions: ['handlePRCreated', 'refreshPRList'] },
