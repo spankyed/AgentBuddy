@@ -302,7 +302,7 @@ export const librarySystem = setup({
         const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'agent' as any, commands },
+          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'threads' as any, commands },
         });
       }
     },
@@ -325,7 +325,7 @@ export const librarySystem = setup({
         const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
         system.get(bus).send({
           type: 'OUTGOING' as const,
-          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'agent' as any, commands },
+          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'threads' as any, commands },
         });
       }
     },

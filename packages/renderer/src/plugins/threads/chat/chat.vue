@@ -144,8 +144,8 @@ function updateQuickPrompts(prompts: QuickPrompt[]) {
     systemId: 'settings',
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
-    label: 'agent',
-    path: ['quickPrompts'],
+    label: 'threads',
+    path: ['chat', 'quickPrompts'],
     value: prompts,
   })
 }
@@ -180,8 +180,8 @@ function confirmRevert() {
       systemId: 'settings',
       type: 'UPDATE_SETTINGS',
       entityType: 'plugin',
-      label: 'agent',
-      path: ['skipRevertConfirm'],
+      label: 'threads',
+      path: ['chat', 'skipRevertConfirm'],
       value: true,
     })
   }
