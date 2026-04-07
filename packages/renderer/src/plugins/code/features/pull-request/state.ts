@@ -81,6 +81,7 @@ export type Event =
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
   | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
+  | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   // User actions
   | { type: 'pr.LIST_PRS' }
@@ -109,8 +110,6 @@ export const pullRequestState = setup({
         self.send({ type: 'pr.ERROR', message: 'No directory selected. Please select a directory first.' })
         return
       }
-      sendToBackend('pr.GET_BASE_BRANCH', {})
-      sendToBackend('pr.GET_BRANCH_DIFF', {})
       sendToBackend('pr.CHECK_GH_AUTH', {})
       sendToBackend('pr.LIST_OPEN_PRS', {})
       sendToBackend('pr.CHECK_BRANCH_PR', {})
@@ -148,6 +147,12 @@ export const pullRequestState = setup({
         return ev.data.branch
       },
       prError: null
+    }),
+
+    handleSmartBaseBranchReceived: enqueueActions(({ enqueue, event }) => {
+      const ev = event as { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
+      enqueue.assign({ prBaseBranch: ev.data.branch })
+      sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.branch })
     }),
 
     handleBranchDiffReceived: assign({
@@ -241,18 +246,22 @@ export const pullRequestState = setup({
       isLoadingDetails: false
     }),
 
-    handleBranchPRChecked: assign({
-      branchPR: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-        return ev.data.pr
-      },
-      selectedPR: ({ event, context }) => {
-        const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-        if (ev.data.pr && !context.selectedPR) return ev.data.pr
-        return context.selectedPR
-      },
-      isGhChecking: false,
-      branchPRCheckFailed: false,
+    handleBranchPRChecked: enqueueActions(({ enqueue, event, context }) => {
+      const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
+      enqueue.assign({
+        branchPR: ev.data.pr,
+        selectedPR: ev.data.pr && !context.selectedPR ? ev.data.pr : context.selectedPR,
+        isGhChecking: false,
+        branchPRCheckFailed: false,
+      })
+      if (ev.data.pr) {
+        // PR exists → use its base branch for diff
+        enqueue.assign({ prBaseBranch: ev.data.pr.baseRefName })
+        sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.pr.baseRefName })
+      } else {
+        // No PR → run smart upstream detection
+        sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
+      }
     }),
 
     handlePRCreated: assign({
@@ -472,6 +481,7 @@ export const pullRequestState = setup({
         'pr.OPEN_PRS_RECEIVED': { actions: 'handleOpenPRsReceived' },
         'pr.PR_DETAILS_RECEIVED': { actions: ['handlePRDetailsReceived', 'loadDiffForSelectedPR'] },
         'pr.BRANCH_PR_CHECKED': { actions: 'handleBranchPRChecked' },
+        'pr.SMART_BASE_BRANCH_RECEIVED': { actions: 'handleSmartBaseBranchReceived' },
         'pr.AUTOFILL_RECEIVED': { actions: 'handleAutofillReceived' },
         'pr.PR_CREATED': { actions: ['handlePRCreated', 'refreshPRList'] },
         'pr.PR_MERGED': { actions: ['handlePRMerged', 'refreshPRList'] },
