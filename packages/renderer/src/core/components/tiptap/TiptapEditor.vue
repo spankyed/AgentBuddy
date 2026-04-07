@@ -284,8 +284,9 @@ const editor = useEditor({
       if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
         event.preventDefault()
         const { $from } = view.state.selection
-        const lineText = $from.parent.textContent
-        navigator.clipboard.writeText(lineText)
+        const serializer = (editor.value!.storage as any).markdown.serializer
+        const lineMarkdown = serializer.serialize($from.parent)
+        navigator.clipboard.writeText(lineMarkdown)
         const tr = view.state.tr.deleteRange($from.before(), $from.after())
         view.dispatch(tr)
         return true
