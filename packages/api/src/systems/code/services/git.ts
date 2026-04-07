@@ -26,6 +26,7 @@ interface CachedResult<T> {
 export class GitRepository {
   private cache = new Map<string, CachedResult<any>>()
   private readonly CACHE_TTL = 5000 // 5 seconds
+  private readonly PARENT_BRANCH_SEARCH_DEPTH = 25
   
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
@@ -607,7 +608,7 @@ export class GitRepository {
     const preferUpstream = options?.preferUpstream !== false // Default to true
     
     // Check cache first (different cache keys for different modes)
-    const cacheKey = preferUpstream ? 'baseBranch' : 'prBaseBranch'
+    const cacheKey = 'baseBranch'
     const cached = this.getCached<string>(cacheKey)
     if (cached) return cached
     
@@ -648,22 +649,79 @@ export class GitRepository {
       }
     }
     
-    throw new Error(`Could not determine ${preferUpstream ? 'base' : 'PR base'} branch`)
+    throw new Error('Could not determine base branch')
   }
 
   async getPRBaseBranch(): Promise<string> {
-    // Check if upstream tracks a DIFFERENT branch (e.g., feature-B tracks origin/feature-A)
-    // If so, use it as the PR base — the user likely branched from that feature branch
+    const cached = this.getCached<string>('prBaseBranch')
+    if (cached) return cached
+
+    const defaultBase = await this.getBaseBranch({ preferUpstream: false })
+
+    // Try to find a closer parent branch via merge-base distance
     try {
-      const currentBranch = await this.getCurrentBranch()
-      const upstream = await this.getUpstreamBranch()
-      if (upstream && upstream !== currentBranch) {
-        return upstream
+      const closestParent = await this.findClosestParentBranch(defaultBase)
+      if (closestParent) {
+        this.setCached('prBaseBranch', closestParent)
+        return closestParent
       }
     } catch {
-      // Fall through to default detection
+      // Fall through to default
     }
-    return this.getBaseBranch({ preferUpstream: false })
+
+    this.setCached('prBaseBranch', defaultBase)
+    return defaultBase
+  }
+
+  /**
+   * Find the closest parent branch by comparing merge-base distances.
+   * When branching feature-B from feature-A, feature-A will have a much
+   * smaller commit distance than main/master.
+   */
+  private async findClosestParentBranch(defaultBase: string): Promise<string | null> {
+    const currentBranch = await this.getCurrentBranch()
+
+    // Only check branches whose tip is within recent commits AND merged into HEAD
+    const candidates = await this.getNearbyMergedBranches(this.PARENT_BRANCH_SEARCH_DEPTH)
+    const filtered = candidates.filter(b =>
+      b !== currentBranch && b !== defaultBase && b !== 'HEAD'
+    )
+    if (filtered.length === 0) return null
+
+    // For merged branches, tip = merge-base, so rev-list --count <branch>..HEAD gives distance directly
+    const [defaultDistance, ...distances] = await Promise.all([
+      this.getCommitDistance(defaultBase),
+      ...filtered.map(b => this.getCommitDistance(b)),
+    ])
+
+    if (defaultDistance <= 0) return null
+
+    let closestBranch: string | null = null
+    let closestDistance = defaultDistance
+
+    for (let i = 0; i < filtered.length; i++) {
+      const distance = distances[i]
+      if (distance > 0 && distance < closestDistance) {
+        closestDistance = distance
+        closestBranch = filtered[i]
+      }
+    }
+
+    return closestBranch
+  }
+
+  private async getCommitDistance(branch: string): Promise<number> {
+    const result = await this.executeGitCommand(['rev-list', '--count', `${branch}..HEAD`])
+    if (!result.success || !result.output) return Infinity
+    return parseInt(result.output.trim(), 10)
+  }
+
+  private async getNearbyMergedBranches(depth: number): Promise<string[]> {
+    const result = await this.executeGitCommand([
+      'branch', '--merged', 'HEAD', '--contains', `HEAD~${depth}`, '--format=%(refname:short)',
+    ])
+    if (!result.success || !result.output) return []
+    return result.output.trim().split('\n').filter(Boolean)
   }
 
   async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
