@@ -4,12 +4,20 @@
       @click="isDropdownOpen = !isDropdownOpen"
       class="flex items-center w-full gap-2 px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 text-neutral-300 hover:bg-neutral-700 transition-colors"
     >
-      <GitPullRequest :size="12" class="shrink-0" />
+      <GitPullRequest :size="12" :class="[prStatusColor(selectedPR), 'shrink-0']" />
       <span class="truncate flex-1 text-left">
         {{ selectedPR ? `#${selectedPR.number} ${selectedPR.title}` : 'Select a pull request...' }}
       </span>
       <span
-        v-if="selectedPR?.isDraft"
+        v-if="selectedPR?.state === 'MERGED'"
+        class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
+      >MERGED</span>
+      <span
+        v-else-if="selectedPR?.state === 'CLOSED'"
+        class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
+      >CLOSED</span>
+      <span
+        v-else-if="selectedPR?.isDraft"
         class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
       >DRAFT</span>
       <ChevronDown :size="12" class="shrink-0 text-neutral-500" />
@@ -27,10 +35,18 @@
         class="flex items-center w-full gap-2 px-3 py-1.5 text-xs text-left transition-colors hover:bg-neutral-700"
         :class="selectedPR?.number === pr.number ? 'text-blue-400' : 'text-neutral-300'"
       >
-        <GitPullRequest :size="11" class="shrink-0" />
+        <GitPullRequest :size="11" :class="[prStatusColor(pr), 'shrink-0']" />
         <span class="truncate flex-1">#{{ pr.number }} {{ pr.title }}</span>
         <span
-          v-if="pr.isDraft"
+          v-if="pr.state === 'MERGED'"
+          class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
+        >MERGED</span>
+        <span
+          v-else-if="pr.state === 'CLOSED'"
+          class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
+        >CLOSED</span>
+        <span
+          v-else-if="pr.isDraft"
           class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
         >DRAFT</span>
       </button>
@@ -66,5 +82,13 @@ useClickOutside(dropdownContainer, () => {
 const selectPR = (number: number) => {
   isDropdownOpen.value = false
   emit('select-pr', number)
+}
+
+function prStatusColor(pr: GhPullRequest | null): string {
+  if (!pr) return 'text-neutral-400'
+  if (pr.state === 'MERGED') return 'text-purple-400'
+  if (pr.state === 'CLOSED') return 'text-red-400'
+  if (pr.isDraft) return 'text-neutral-400'
+  return 'text-green-400'
 }
 </script>

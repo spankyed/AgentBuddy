@@ -41,99 +41,60 @@
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
       <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
-        <!-- Selector mode -->
-        <template v-if="showSelector">
+        <!-- Checking gh auth / upstream -->
+        <button
+          v-if="topRowStatus === 'checking'"
+          disabled
+          class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+        >
+          <Loader2 :size="12" class="animate-spin shrink-0" />
+          <span class="truncate">Checking...</span>
+        </button>
+
+        <!-- Unpublished branch -->
+        <button
+          v-else-if="topRowStatus === 'publish'"
+          @click="handlePublishBranch()"
+          :disabled="isPushing"
+          class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 flex-1 min-w-0"
+        >
+          <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0 mr-1.5" />
+          <span class="truncate">Publish Branch</span>
+        </button>
+
+        <!-- Can't determine PR status -->
+        <button
+          v-else-if="topRowStatus === 'check-failed'"
+          disabled
+          class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+        >
+          <AlertCircle :size="12" class="shrink-0" />
+          <span class="truncate">Unable to check PR status</span>
+        </button>
+
+        <!-- No PR exists -->
+        <button
+          v-else-if="topRowStatus === 'no-pr'"
+          @click="handleCreatePR()"
+          class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-green-600/80 text-white hover:bg-green-500 transition-colors flex-1 min-w-0"
+        >
+          <span class="truncate">Create PR</span>
+        </button>
+
+        <!-- Has PR or base branch: inline selector + info button -->
+        <template v-else-if="topRowStatus === 'has-pr' || topRowStatus === 'base-branch'">
           <PRSelector
             :openPRs="openPRs"
             :selectedPR="selectedPR"
             @select-pr="handleSelectPRFromDropdown"
           />
           <button
-            @click="showSelector = false"
-            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 shrink-0"
-            title="Close selector"
-          >
-            <X :size="14" />
-          </button>
-        </template>
-
-        <template v-else>
-          <!-- Checking gh auth / upstream -->
-          <button
-            v-if="topRowStatus === 'checking'"
-            disabled
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
-          >
-            <Loader2 :size="12" class="animate-spin shrink-0" />
-            <span class="truncate">Checking...</span>
-          </button>
-
-          <!-- Unpublished branch -->
-          <button
-            v-else-if="topRowStatus === 'publish'"
-            @click="handlePublishBranch()"
-            :disabled="isPushing"
-            class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 flex-1 min-w-0"
-          >
-            <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0 mr-1.5" />
-            <span class="truncate">Publish Branch</span>
-          </button>
-
-          <!-- Can't determine PR status -->
-          <button
-            v-else-if="topRowStatus === 'check-failed'"
-            disabled
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
-          >
-            <AlertCircle :size="12" class="shrink-0" />
-            <span class="truncate">Unable to check PR status</span>
-          </button>
-
-          <!-- No PR exists -->
-          <button
-            v-else-if="topRowStatus === 'no-pr'"
-            @click="handleCreatePR()"
-            class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-green-600/80 text-white hover:bg-green-500 transition-colors flex-1 min-w-0"
-          >
-            <span class="truncate">Create PR</span>
-          </button>
-
-          <!-- Has PR -->
-          <button
-            v-else-if="topRowStatus === 'has-pr'"
+            v-if="selectedPR"
             @click="handleViewPRInfo()"
-            class="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded border border-transparent text-left transition-colors hover:bg-neutral-700"
+            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 shrink-0"
             title="View PR details"
           >
-            <GitPullRequest :size="12" :class="[
-              selectedPR.state === 'MERGED' ? 'text-purple-400' :
-              selectedPR.state === 'CLOSED' ? 'text-red-400' :
-              selectedPR.isDraft ? 'text-neutral-400' :
-              'text-green-400',
-              'shrink-0'
-            ]" />
-            <span class="text-xs text-neutral-200 truncate">#{{ selectedPR.number }} {{ selectedPR.title }}</span>
-            <span
-              v-if="selectedPR.state === 'MERGED'"
-              class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
-            >MERGED</span>
-            <span
-              v-else-if="selectedPR.state === 'CLOSED'"
-              class="text-[9px] px-1 py-0.5 rounded bg-red-600/50 text-red-300 shrink-0"
-            >CLOSED</span>
-            <span
-              v-else-if="selectedPR.isDraft"
-              class="text-[9px] px-1 py-0.5 rounded bg-neutral-600 text-neutral-300 shrink-0"
-            >DRAFT</span>
-          </button>
-
-          <!-- PR select toggle -->
-          <button
-            @click="showSelector = true"
-            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 shrink-0"
-            title="Select pull request"
-          >
-            <List :size="14" />
+            <Info :size="14" />
           </button>
         </template>
       </div>
@@ -256,13 +217,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
-  Loader2, List, X, ArrowLeft
+  Loader2, Info, ArrowLeft
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
@@ -280,9 +241,6 @@ import type { TreeNode } from './types'
 const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
 const commitActor = codeActor.system.get('commit')!
-
-// Local UI state
-const showSelector = ref(false)
 
 // State selectors
 const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
@@ -369,7 +327,6 @@ const handleFileSelect = (file: TreeNode) => {
 }
 
 const handleSelectPRFromDropdown = (number: number) => {
-  showSelector.value = false
   prActor?.send({ type: 'pr.SELECT_PR_BY_NUMBER', number })
 }
 
