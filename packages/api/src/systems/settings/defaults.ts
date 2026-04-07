@@ -22,6 +22,8 @@ export const defaultSettings: SettingsData = {
       cliPaths: {
         'copilot': '/usr/local/bin/copilot',
         'claude-code': process.env.HOME + '/.claude/local/claude',
+        'codex': 'codex',
+        'gh': 'gh',
       },
     },
     hotkeys: {

@@ -100,6 +100,49 @@ export interface StashEntry {
   date: string
 }
 
+// GitHub PR types
+export interface GhPullRequest {
+  number: number
+  title: string
+  body: string
+  headRefName: string
+  baseRefName: string
+  state: 'OPEN' | 'CLOSED' | 'MERGED'
+  url: string
+  isDraft: boolean
+  author: { login: string }
+  createdAt: string
+  updatedAt: string
+  commits?: { oid: string; messageHeadline: string; committedDate: string }[]
+}
+
+export interface GhPRComment {
+  id: string
+  body: string
+  author: { login: string }
+  createdAt: string
+  url: string
+  viewerDidAuthor: boolean
+}
+
+export interface GhReviewThread {
+  id: string
+  isResolved: boolean
+  isOutdated: boolean
+  path: string
+  line: number | null
+  comments: GhReviewComment[]
+}
+
+export interface GhReviewComment {
+  id: string
+  databaseId: number
+  body: string
+  author: { login: string }
+  createdAt: string
+  viewerDidAuthor: boolean
+}
+
 // Terminal types
 export interface TerminalInfo {
   id: EARS.EntityId

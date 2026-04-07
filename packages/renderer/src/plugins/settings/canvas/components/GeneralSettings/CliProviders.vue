@@ -50,6 +50,22 @@
           <CliCommand>npm install -g @openai/codex</CliCommand>
         </div>
       </CliProviderRow>
+
+      <!-- GitHub CLI -->
+      <CliProviderRow
+        providerKey="gh"
+        v-model="cliPathValues.gh"
+        placeholder="Binary path, e.g. /opt/homebrew/bin/gh (default: gh)"
+        :testResult="cliTestResults?.gh"
+        @update:modelValue="debouncedSaveCliPaths()"
+        @test="testCliProvider('gh')"
+      >
+        <label class="block text-sm font-medium text-gray-200">GitHub CLI</label>
+        <div class="mt-1 flex items-center gap-2">
+          <span class="text-xs text-neutral-500">Install via Homebrew</span>
+          <CliCommand>brew install gh</CliCommand>
+        </div>
+      </CliProviderRow>
     </div>
   </div>
 </template>

@@ -20,6 +20,7 @@ const CLI_TEST_COMMANDS: Record<string, { command: string; args: string[] }> = {
   copilot:       { command: 'copilot', args: ['--version'] },
   'claude-code': { command: 'claude', args: ['--version'] },
   codex:         { command: 'codex', args: ['--version'] },
+  gh:            { command: 'gh', args: ['--version'] },
 };
 
 const typeOf = safeEvents<ReceivableEvents>();

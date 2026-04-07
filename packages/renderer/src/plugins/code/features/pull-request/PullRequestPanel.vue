@@ -17,7 +17,7 @@
       </template>
     </CodePanelHeader>
 
-    <!-- Show friendly empty state if no git repository -->
+    <!-- No git repository -->
     <EmptyState
       v-if="isNoGitRepoError"
       :icon="GitPullRequest"
@@ -25,12 +25,84 @@
       subtitle="Open a folder with a git repository to create and view pull requests"
     />
 
-    <!-- Show error if no directory selected -->
+    <!-- No directory -->
     <NoDirectoryState v-else-if="!baseDirectory" />
 
-    <!-- Show normal UI only when directory is selected and has git -->
+    <!-- Main content -->
     <template v-else>
-      <!-- Show friendly empty state if cannot determine base branch -->
+      <!-- gh CLI not available banner -->
+      <div
+        v-if="!isGhAvailable && !isPrLoading && !isGhChecking"
+        class="flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
+      >
+        <AlertTriangle :size="12" class="shrink-0" />
+        <span>GitHub CLI not available. Install <code class="px-1 py-0.5 rounded bg-neutral-800">gh</code> and run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth login</code> for PR features.</span>
+      </div>
+
+      <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
+      <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[42px]" :class="{ 'hidden': viewMode === 'pr' }">
+        <!-- Checking spinner (replaces selector while checking) -->
+        <button
+          v-if="topRowStatus === 'checking'"
+          disabled
+          class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+        >
+          <Loader2 :size="12" class="animate-spin shrink-0" />
+          <span class="truncate">Checking...</span>
+        </button>
+
+        <!-- PR Selector — always shown except when checking -->
+        <PRSelector
+          v-else
+          :openPRs="openPRs"
+          :selectedPR="selectedPR"
+          @select-pr="handleSelectPRFromDropdown"
+        />
+
+        <!-- Action buttons (compact, right side) — hide branch-specific buttons when viewing another PR -->
+        <template v-if="!selectedPR">
+          <button
+            v-if="topRowStatus === 'publish'"
+            @click="handlePublishBranch()"
+            :disabled="isPushing"
+            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 shrink-0"
+          >
+            <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
+            <span>Publish</span>
+          </button>
+          <button
+            v-else-if="topRowStatus === 'no-pr'"
+            @click="handleCreatePR()"
+            class="flex items-center justify-center px-2 py-1 text-xs rounded bg-green-600/80 text-white hover:bg-green-500 transition-colors shrink-0"
+          >
+            <span>Create PR</span>
+          </button>
+          <button
+            v-else-if="topRowStatus === 'check-failed'"
+            disabled
+            class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-neutral-700/50 text-neutral-500 shrink-0 cursor-default"
+          >
+            <AlertCircle :size="12" class="shrink-0" />
+            <span>Error</span>
+          </button>
+        </template>
+        <button
+          v-if="isViewingOtherPR"
+          @click="handleBackToBranch()"
+          class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+          title="Back to current branch"
+        >
+          <ArrowLeft :size="13" />
+        </button>
+        <button
+          v-if="selectedPR"
+          @click="handleViewPRInfo()"
+          class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+          title="View PR details"
+        >View</button>
+      </div>
+
+      <!-- Fatal error: no base branch -->
       <EmptyState
         v-if="isNoBaseBranchError"
         :icon="GitBranch"
@@ -38,128 +110,213 @@
         subtitle="Unable to determine the base branch for comparison. Check that the repository has a default branch configured."
       />
 
-      <!-- Generic error state for other errors -->
-      <div v-else-if="prError" class="error-state">
-        <AlertCircle class="w-4 h-4 text-red-500" />
-        <span class="text-sm text-red-500">{{ prError }}</span>
-      </div>
-
-      <div v-else-if="isPrLoading && prFiles.length === 0" class="loading-state">
-        <Loader2 class="w-5 h-5 animate-spin" />
-        <span class="text-sm text-neutral-400">Loading changes...</span>
-      </div>
-
-      <EmptyState
-        v-else-if="prFiles.length === 0"
-        :icon="GitBranch"
-        title="No changes found"
-        :subtitle="`Comparing with ${prBaseBranch || 'base branch'}`"
-      />
-
-      <div v-else class="pr-content">
-        <div class="branch-info bg-neutral-800/50">
-          <GitBranch class="w-3 h-3 text-neutral-500" />
-          <span class="text-xs text-neutral-400">
-            Comparing with {{ prBaseBranch }}
-          </span>
-          <div class="flex items-center gap-1 ml-auto">
-            <button
-              @click="expandAll()"
-              class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-              title="Expand all folders"
-            >
-              <UnfoldVertical :size="14" />
-            </button>
-            <button
-              @click="collapseAll()"
-              class="p-1 m-1 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-              title="Collapse all folders"
-            >
-              <FoldVertical :size="14" />
-            </button>
+      <template v-else>
+      <!-- PR view (create form or info) -->
+      <template v-if="viewMode === 'pr'">
+        <!-- Back to files bar -->
+        <div
+          @click="prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'files' })"
+          class="flex items-center px-3 border-b border-neutral-800 bg-neutral-800/50 cursor-pointer text-neutral-500 hover:text-neutral-300 transition-colors h-[42px]"
+        >
+          <div class="flex items-center gap-1.5 text-sm">
+            <ArrowLeft :size="12" />
+            Back to files
           </div>
+          <button
+            v-if="selectedPR"
+            @click.stop="handleRefreshPR()"
+            :disabled="isLoadingDetails"
+            class="ml-auto p-0.5 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700 transition-colors disabled:opacity-50"
+            title="Refresh PR details"
+          >
+            <RefreshCw :size="12" :class="{ 'animate-spin': isLoadingDetails }" />
+          </button>
         </div>
 
-        <FileTree
-          :files="prFiles"
-          :all-collapsed="allCollapsed"
-          :all-expanded="allExpanded"
-          @select-file="handleFileSelect"
-          @open-file="handleOpenFile"
+        <!-- No PR → create form -->
+        <CreatePRForm
+          v-if="!selectedPR"
+          :title="createTitle"
+          :body="createBody"
+          :baseBranch="createBaseBranch"
+          :defaultBaseBranch="prBaseBranch"
+          :branches="availableBranches"
+          :isCreating="isCreating"
+          @update-field="handleUpdateField"
+          @submit="handleSubmitCreate"
+          @submit-draft="handleSubmitDraft"
         />
-      </div>
+
+        <!-- Existing PR → info + action bar -->
+        <template v-else>
+          <PRInfo
+            :pr="selectedPR"
+            :comments="prComments"
+            :branches="availableBranches"
+            :isLoading="isLoadingDetails"
+            :isUpdating="isUpdatingPR"
+            @save="handleSavePR"
+            @start-editing="commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })"
+          >
+            <PRComments
+              :comments="prComments"
+              :reviewThreads="reviewThreads"
+              :tab="commentTab"
+              :prNumber="selectedPR.number"
+              :isOpen="selectedPR.state === 'OPEN'"
+              :isSubmitting="isSubmittingComment"
+              @set-tab="(tab) => prActor?.send({ type: 'pr.SET_COMMENT_TAB', tab })"
+              @create-comment="(body) => prActor?.send({ type: 'pr.CREATE_COMMENT', number: selectedPR!.number, body })"
+              @edit-comment="(id, body) => prActor?.send({ type: 'pr.EDIT_COMMENT', commentId: id, body })"
+              @delete-comment="(id) => prActor?.send({ type: 'pr.DELETE_COMMENT', commentId: id })"
+              @reply-thread="(prNum, commentId, body) => prActor?.send({ type: 'pr.REPLY_TO_THREAD', prNumber: prNum, commentId, body })"
+              @resolve-thread="(id) => prActor?.send({ type: 'pr.RESOLVE_THREAD', threadId: id })"
+              @unresolve-thread="(id) => prActor?.send({ type: 'pr.UNRESOLVE_THREAD', threadId: id })"
+              @edit-review-comment="(id, body) => prActor?.send({ type: 'pr.EDIT_REVIEW_COMMENT', commentId: id, body })"
+              @delete-review-comment="(id) => prActor?.send({ type: 'pr.DELETE_REVIEW_COMMENT', commentId: id })"
+            />
+          </PRInfo>
+          <PRActionBar
+            :pr="selectedPR"
+            :isMerging="isMerging"
+            :isClosing="isClosing"
+            :isTogglingDraft="isTogglingDraft"
+            :isDeletingBranch="isDeletingBranch"
+            @merge="handleMerge"
+            @close="handleClose"
+            @toggle-draft="handleToggleDraft"
+            @delete-branch="handleDeleteBranch"
+          />
+        </template>
+      </template>
+
+      <!-- Files view (diff tree) — default -->
+      <PRComparison
+        v-else
+        :files="prFiles"
+        :baseBranch="prBaseBranch"
+        :currentBranch="displayBranch"
+        :isLoading="isPrLoading"
+        @select-file="handleFileSelect"
+        @open-file="handleOpenFile"
+      />
+        <!-- Non-fatal error banner (dismissible, pinned to bottom) -->
+        <div
+          v-if="prError && !isNoGitRepoError && !isNoBaseBranchError"
+          class="flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 bg-red-900/20 border-t border-red-800/30 mt-auto"
+        >
+          <AlertCircle :size="12" class="shrink-0" />
+          <span class="flex-1">{{ prError }}</span>
+          <button
+            @click="prActor?.send({ type: 'pr.CLEAR_ERROR' })"
+            class="p-0.5 rounded text-red-500 hover:text-red-300 hover:bg-red-900/30 transition-colors shrink-0"
+          >
+            <X :size="12" />
+          </button>
+        </div>
+      </template>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { AlertCircle, Loader2, GitBranch, GitPullRequest, RefreshCw, UnfoldVertical, FoldVertical } from 'lucide-vue-next'
+import {
+  AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
+  Loader2, ArrowLeft, X
+} from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
-import FileTree from '@/plugins/code/features/pull-request/FileTree.vue'
+import PRSelector from '@/plugins/code/features/pull-request/PRSelector.vue'
+import PRComparison from '@/plugins/code/features/pull-request/PRComparison.vue'
+import CreatePRForm from '@/plugins/code/features/pull-request/CreatePRForm.vue'
+import PRInfo from '@/plugins/code/features/pull-request/PRInfo.vue'
+import PRComments from '@/plugins/code/features/pull-request/PRComments.vue'
+import PRActionBar from '@/plugins/code/features/pull-request/PRActionBar.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
+import type { TreeNode } from './types'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const prActor = codeActor.system.get('pr')!
+const commitActor = codeActor.system.get('commit')!
 
-// Collapse/Expand state management
-const allCollapsed = ref(false)
-const allExpanded = ref(false)
-
-// State selectors from PR actor
+// State selectors
 const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)
 const prBaseBranch = useSelector(prActor, (state: any) => state.context.prBaseBranch)
 const prError = useSelector(prActor, (state: any) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state: any) => state.context.isPrLoading)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
+const openPRs = useSelector(prActor, (state: any) => state.context.openPRs)
+const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR)
+const prComments = useSelector(prActor, (state: any) => state.context.prComments)
+const reviewThreads = useSelector(prActor, (state: any) => state.context.reviewThreads)
+const commentTab = useSelector(prActor, (state: any) => state.context.commentTab)
+const isSubmittingComment = useSelector(prActor, (state: any) => state.context.isSubmittingComment)
+const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
+const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
+const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
+const branchPRCheckFailed = useSelector(prActor, (state: any) => state.context.branchPRCheckFailed)
+const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
+const createBody = useSelector(prActor, (state: any) => state.context.createBody)
+const createBaseBranch = useSelector(prActor, (state: any) => state.context.createBaseBranch)
+
+const isCreating = useSelector(prActor, (state: any) => state.context.isCreating)
+const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
+const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
+const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
+const isDeletingBranch = useSelector(prActor, (state: any) => state.context.isDeletingBranch)
+const isUpdatingPR = useSelector(prActor, (state: any) => state.context.isUpdatingPR)
+const isLoadingDetails = useSelector(prActor, (state: any) => state.context.isLoadingDetails)
+const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
+const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
+const currentBranch = useSelector(commitActor, (state: any) => state.context.gitBranch)
+const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
 
 // Computed
-const isNoDirectoryError = computed(() =>
-  prError.value?.includes('No directory selected')
-)
-
 const isNoGitRepoError = computed(() =>
   prError.value?.includes('not a git repository') ||
   prError.value?.includes('Not a git repository')
 )
 
 const isNoBaseBranchError = computed(() =>
-  prError.value?.includes('Could not determine PR base branch')
+  prError.value?.includes('Could not determine PR base branch') ||
+  prError.value?.includes('Could not determine base branch')
 )
+
+const displayBranch = computed(() =>
+  selectedPR.value?.headRefName ?? currentBranch.value
+)
+
+const isViewingOtherPR = computed(() =>
+  selectedPR.value && selectedPR.value.headRefName !== currentBranch.value
+)
+
+const isBaseBranch = computed(() => {
+  const branch = currentBranch.value
+  if (!branch) return false
+  if (prBaseBranch.value && branch === prBaseBranch.value) return true
+  return ['main', 'master', 'develop'].includes(branch)
+})
+
+const topRowStatus = computed(() => {
+  if (isGhChecking.value) return 'checking' as const
+  if (!isGhAvailable.value) return 'hidden' as const
+  if (isBaseBranch.value) return 'base-branch' as const
+  if (!hasUpstream.value) return 'publish' as const
+  if (selectedPR.value) return 'has-pr' as const
+  if (branchPRCheckFailed.value) return 'check-failed' as const
+  return 'no-pr' as const
+})
 
 // Actions
 const refreshStatus = () => {
   prActor?.send({ type: 'pr.REFRESH_STATUS' })
 }
-
-const toggleAllFolders = (expand: boolean) => {
-  if (expand) {
-    allExpanded.value = true
-    setTimeout(() => allExpanded.value = false, 100)
-  } else {
-    allCollapsed.value = true
-    setTimeout(() => allCollapsed.value = false, 100)
-  }
-}
-
-const collapseAll = () => toggleAllFolders(false)
-const expandAll = () => toggleAllFolders(true)
-
-interface TreeNode {
-  name: string
-  path: string
-  type: 'file' | 'folder'
-  status?: GitStatusFile['status']
-  children?: TreeNode[]
-  fileCount?: number
-}
-
 
 const handleOpenFile = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
@@ -171,47 +328,74 @@ const handleOpenFile = (file: TreeNode) => {
 
 const handleFileSelect = (file: TreeNode) => {
   if (file.type !== 'file' || !file.status) return
-
-  const gitFile: GitStatusFile = {
-    path: file.path,
-    status: file.status,
-    staged: false
-  }
-
+  const gitFile: GitStatusFile = { path: file.path, status: file.status, staged: false }
   prActor?.send({ type: 'pr.SELECT_FILE', file: gitFile })
   prActor?.send({ type: 'pr.VIEW_DIFF', path: file.path })
 }
+
+const handleSelectPRFromDropdown = (number: number) => {
+  prActor?.send({ type: 'pr.SELECT_PR_BY_NUMBER', number })
+}
+
+const handleCreatePR = () => {
+  prActor?.send({ type: 'pr.NEW_PR' })
+  // Ensure branches are loaded for the base branch select
+  commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
+}
+
+const handleRefreshPR = () => {
+  if (selectedPR.value) {
+    prActor?.send({ type: 'pr.REFRESH_PR', number: selectedPR.value.number })
+  }
+}
+
+const handleViewPRInfo = () => {
+  prActor?.send({ type: 'pr.SET_VIEW_MODE', mode: 'pr' })
+  // Fetch full details (including commits/comments) if not yet loaded
+  if (selectedPR.value && !prComments.value.length) {
+    prActor?.send({ type: 'pr.REFRESH_PR', number: selectedPR.value.number })
+  }
+}
+
+const handleBackToBranch = () => {
+  prActor?.send({ type: 'pr.BACK_TO_BRANCH' })
+}
+
+const handleUpdateField = (field: string, value: any) => {
+  prActor?.send({ type: 'pr.UPDATE_CREATE_FIELD', field, value })
+}
+
+const handleSubmitCreate = () => {
+  prActor?.send({ type: 'pr.SUBMIT_CREATE' })
+}
+
+const handleSubmitDraft = () => {
+  prActor?.send({ type: 'pr.SUBMIT_CREATE_DRAFT' })
+}
+
+const handlePublishBranch = () => {
+  commitActor?.send({ type: 'commit.PUSH_BRANCH' })
+}
+
+const handleMerge = (method: 'merge' | 'squash' | 'rebase') => {
+  prActor?.send({ type: 'pr.MERGE', method })
+}
+
+const handleClose = () => {
+  prActor?.send({ type: 'pr.CLOSE' })
+}
+
+const handleToggleDraft = () => {
+  prActor?.send({ type: 'pr.TOGGLE_DRAFT' })
+}
+
+const handleDeleteBranch = () => {
+  prActor?.send({ type: 'pr.DELETE_BRANCH' })
+}
+
+const handleSavePR = (data: { title?: string; body?: string; base?: string }) => {
+  if (selectedPR.value) {
+    prActor?.send({ type: 'pr.UPDATE_PR', number: selectedPR.value.number, ...data })
+  }
+}
 </script>
-
-<style scoped>
-.error-state,
-.loading-state,
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem;
-  color: #71717a;
-}
-
-.empty-state {
-  flex-direction: column;
-}
-
-.pr-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.branch-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #27272a;
-}
-
-</style>

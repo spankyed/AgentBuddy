@@ -4,7 +4,7 @@
     :class="[`tiptap-${mode}`, $attrs.class]"
   >
     <template v-if="editor">
-      <template v-if="mode === 'editor' && variant === 'full'">
+      <template v-if="mode === 'editor' && variant === 'full' && !hideGutter">
         <TiptapBlockMenu :editor="editor" />
         <TiptapImageBubbleMenu :editor="editor" />
       </template>
@@ -38,6 +38,8 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   editorClass?: string
   entityId?: string
+  disableImages?: boolean
+  hideGutter?: boolean
   isCommand?: boolean
   inHistoryMode?: boolean
 }>(), {
@@ -47,6 +49,7 @@ const props = withDefaults(defineProps<{
   disabled: false,
   editorClass: '',
   entityId: undefined,
+  disableImages: false,
   isCommand: false,
   inHistoryMode: false,
 })
@@ -60,6 +63,7 @@ const emit = defineEmits<{
   (e: 'focusTitle'): void
   (e: 'history-prev'): void
   (e: 'history-next'): void
+  (e: 'imageClick', src: string): void
 }>()
 
 defineOptions({ inheritAttrs: false })
@@ -165,7 +169,7 @@ const editorOnlyProps = props.mode === 'editor' ? {
     return true
   },
   handlePaste: (_view: any, event: ClipboardEvent) => {
-    if (!props.entityId) return false
+    if (props.disableImages || !props.entityId) return false
     const items = event.clipboardData?.items
     if (!items) return false
 
@@ -181,7 +185,7 @@ const editorOnlyProps = props.mode === 'editor' ? {
     return handled
   },
   handleDrop: (view: any, event: DragEvent) => {
-    if (!props.entityId) return false
+    if (props.disableImages || !props.entityId) return false
     const files = event.dataTransfer?.files
     if (!files?.length) return false
 
@@ -194,6 +198,17 @@ const editorOnlyProps = props.mode === 'editor' ? {
       }
     }
     return handled
+  },
+} : {}
+
+const viewerClickProps = props.mode === 'viewer' ? {
+  handleClick: (_view: any, _pos: any, event: MouseEvent) => {
+    const img = (event.target as HTMLElement).closest('img')
+    if (img?.src) {
+      emit('imageClick', img.src)
+      return true
+    }
+    return false
   },
 } : {}
 
@@ -305,6 +320,7 @@ const editor = useEditor({
       return false
     },
     ...editorOnlyProps,
+    ...viewerClickProps,
   },
   onCreate: ({ editor: e }) => {
     selectStart(e)

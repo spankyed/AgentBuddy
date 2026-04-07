@@ -7,15 +7,15 @@
     >
       <button
         @click="toggleExpanded"
-        class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800"
+        class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 min-w-0"
         :style="{ paddingLeft: `${(level * 16) + 8}px` }"
       >
         <ChevronRight
           :class="['w-3 h-3 text-neutral-400 transition-transform', { 'rotate-90': expanded }]"
         />
         <Folder class="w-4 h-4 text-neutral-500" />
-        <span class="text-sm text-neutral-200">{{ item.name }}</span>
-        <span class="ml-auto mr-2 text-xs text-neutral-500">{{ item.fileCount }}</span>
+        <span class="text-sm text-neutral-200 truncate" :title="item.path">{{ item.name }}</span>
+        <span class="ml-auto mr-2 text-xs text-neutral-500 shrink-0">{{ item.fileCount }}</span>
       </button>
       
       <!-- Children -->
@@ -36,13 +36,13 @@
     <!-- File -->
     <div
       v-else
-      class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 cursor-pointer"
+      class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 cursor-pointer min-w-0"
       :style="{ paddingLeft: `${(level * 16) + 8 + 20}px` }"
       @click="$emit('select-file', item)"
     >
-      <FileCode class="w-4 h-4 text-neutral-400" />
-      <span class="text-sm text-neutral-200">{{ item.name }}</span>
-      <span :class="getStatusColor(item.status)" class="ml-auto w-4 text-xs font-medium">
+      <FileCode class="w-4 h-4 text-neutral-400 shrink-0" />
+      <span class="text-sm text-neutral-200 truncate" :title="item.path">{{ item.name }}</span>
+      <span :class="getStatusColor(item.status)" class="ml-auto w-4 text-xs font-medium shrink-0">
         {{ getStatusIcon(item.status) }}
       </span>
       <button
@@ -60,15 +60,7 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronRight, Folder, FileCode, File } from 'lucide-vue-next'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-
-interface TreeNode {
-  name: string
-  path: string
-  type: 'file' | 'folder'
-  status?: GitStatusFile['status']
-  children?: TreeNode[]
-  fileCount?: number
-}
+import type { TreeNode } from './types'
 
 const props = withDefaults(defineProps<{
   item: TreeNode

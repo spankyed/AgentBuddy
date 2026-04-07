@@ -286,17 +286,14 @@ export const systemMachine = setup({
         // Clear git cache when git status changes
         context.gitRepository?.clearCache()
         
-        // Notify commit system of changes
+        // Notify commit system of changes (commit system forwards to PR system)
         system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        
-        // Also notify the PR system
-        system.get('pr')?.send({ type: 'pr.GIT_STATUS_CHANGED' })
       })
 
       // Start watching git changes
       await context.gitWatcher.startWatching()
     },
-    
+
     restartGitWatcher: async ({ context, system }) => {
       if (!context.gitWatcher || !context.gitRepository) {
         return
@@ -307,11 +304,8 @@ export const systemMachine = setup({
         // Clear git cache when git status changes
         context.gitRepository?.clearCache()
 
-        // Notify commit system of changes
+        // Notify commit system of changes (commit system forwards to PR system)
         system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
-
-        // Also notify the PR system
-        system.get('pr')?.send({ type: 'pr.GIT_STATUS_CHANGED' })
       })
 
       // Start watching git changes
