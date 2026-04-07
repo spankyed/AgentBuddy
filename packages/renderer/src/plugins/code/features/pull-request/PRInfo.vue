@@ -43,6 +43,9 @@
             >
               <Pencil :size="14" />
             </button>
+            <button v-if="!editing" @click="openOnGitHub" class="p-1.5 rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700 transition-colors" title="View on GitHub">
+              <ExternalLink :size="14" />
+            </button>
           </div>
         </div>
         <div class="flex items-center gap-1.5 mt-2 text-xs text-neutral-500">
@@ -117,7 +120,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { GitBranch, ArrowRight, Loader2, Pencil } from 'lucide-vue-next'
+import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
@@ -137,6 +140,12 @@ const emit = defineEmits<{
 
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
+
+function openOnGitHub() {
+  if (props.pr?.url) {
+    window.electronAPI?.shell?.openExternal(props.pr.url)
+  }
+}
 
 function openLightbox(src: string) {
   lightboxSrc.value = src

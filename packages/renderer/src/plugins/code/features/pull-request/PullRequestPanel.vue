@@ -108,6 +108,7 @@
             <GitPullRequest :size="12" :class="[
               selectedPR.state === 'MERGED' ? 'text-purple-400' :
               selectedPR.state === 'CLOSED' ? 'text-red-400' :
+              selectedPR.isDraft ? 'text-neutral-400' :
               'text-green-400',
               'shrink-0'
             ]" />

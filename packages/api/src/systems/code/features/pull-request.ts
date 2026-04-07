@@ -103,7 +103,7 @@ function humanizeBranchName(branch: string): string {
   const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[\/_]/i, '')
   return stripped
     .replace(/[-_/]/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/^\w/, c => c.toUpperCase())
     .trim()
 }
 
