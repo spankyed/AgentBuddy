@@ -31,8 +31,8 @@
       </div>
 
       <!-- PR Body -->
-      <div v-if="pr.body" class="pr-body text-xs text-neutral-300">
-        <div v-html="renderedBody" class="prose prose-invert prose-xs max-w-none" />
+      <div v-if="pr.body" class="pr-body">
+        <TiptapEditor mode="viewer" :modelValue="pr.body" editorClass="pr-markdown" />
       </div>
       <div v-else class="text-xs text-neutral-500 italic">
         No description provided.
@@ -60,7 +60,7 @@
             <span class="text-[11px] font-medium text-neutral-300">{{ comment.author.login }}</span>
             <span class="text-[10px] text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
           </div>
-          <div v-html="renderMarkdown(comment.body)" class="text-xs text-neutral-400 prose prose-invert prose-xs max-w-none" />
+          <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-markdown" />
         </div>
       </div>
     </div>
@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { GitBranch, ArrowRight, MessageSquare } from 'lucide-vue-next'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
 
 const props = defineProps<{
@@ -94,23 +95,6 @@ const statusBadgeClass = computed(() => {
   if (props.pr.state === 'MERGED') return 'bg-purple-900/50 text-purple-400'
   return 'bg-red-900/50 text-red-400'
 })
-
-const renderedBody = computed(() => renderMarkdown(props.pr?.body || ''))
-
-function renderMarkdown(text: string): string {
-  // Lightweight markdown rendering — handles common patterns
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-neutral-800 text-neutral-300">$1</code>')
-    .replace(/\n/g, '<br>')
-}
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -133,11 +117,17 @@ function formatDate(dateStr: string): string {
 </script>
 
 <style scoped>
-.prose-xs {
+:deep(.pr-markdown) {
   font-size: 0.75rem;
-  line-height: 1.4;
+  line-height: 1.5;
+  color: rgb(212 212 212);
 }
-.prose-xs h1, .prose-xs h2, .prose-xs h3 {
+:deep(.pr-markdown .tiptap) {
+  padding: 0;
+}
+:deep(.pr-markdown h1),
+:deep(.pr-markdown h2),
+:deep(.pr-markdown h3) {
   font-size: 0.8rem;
   font-weight: 600;
   margin: 0.5rem 0 0.25rem;

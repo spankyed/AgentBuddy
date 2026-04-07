@@ -12,14 +12,17 @@
     </div>
 
     <!-- Body -->
-    <div>
+    <div class="flex-1 flex flex-col min-h-0">
       <label class="block text-xs text-neutral-400 mb-1">Description</label>
-      <textarea
-        :value="body"
-        @input="$emit('update-field', 'body', ($event.target as HTMLTextAreaElement).value)"
-        placeholder="Describe your changes..."
-        class="min-h-[80px] max-h-[200px] w-full px-2 py-1.5 text-xs rounded bg-neutral-800 border border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-blue-600 resize-y"
-      />
+      <div class="flex-1 min-h-[80px] max-h-[200px] overflow-y-auto rounded bg-neutral-800 border border-neutral-700">
+        <TiptapEditor
+          mode="editor"
+          :modelValue="body"
+          @update:modelValue="$emit('update-field', 'body', $event)"
+          placeholder="Describe your changes..."
+          editorClass="pr-create-editor"
+        />
+      </div>
     </div>
 
     <!-- Base branch -->
@@ -64,6 +67,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { GitPullRequest, Loader2, FileEdit } from 'lucide-vue-next'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 const props = defineProps<{
   title: string
@@ -91,3 +95,14 @@ defineEmits<{
   'submit-draft': []
 }>()
 </script>
+
+<style scoped>
+:deep(.pr-create-editor) {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+:deep(.pr-create-editor .tiptap) {
+  padding: 0.375rem 0.5rem;
+  min-height: 60px;
+}
+</style>
