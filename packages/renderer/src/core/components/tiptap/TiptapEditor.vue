@@ -280,16 +280,17 @@ const editor = useEditor({
         }
       }
 
-      // ⌘/Ctrl+X on empty selection → cut entire line
+      // ⌘/Ctrl+X on empty selection → select entire line block, let ProseMirror cut it
       if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
-        event.preventDefault()
         const { $from } = view.state.selection
-        const serializer = (editor.value!.storage as any).markdown.serializer
-        const lineMarkdown = serializer.serialize($from.parent)
-        navigator.clipboard.writeText(lineMarkdown)
-        const tr = view.state.tr.deleteRange($from.before(), $from.after())
-        view.dispatch(tr)
-        return true
+
+        // Walk up past single-child wrappers so the whole block is cut (e.g. listItem, blockquote)
+        let depth = $from.depth
+        while (depth > 1 && $from.node(depth - 1).childCount === 1) depth--
+
+        // Select the full block and let ProseMirror + tiptap-markdown handle cut + clipboard
+        editor.value?.commands.setTextSelection({ from: $from.before(depth), to: $from.after(depth) })
+        return false
       }
 
       if (event.key === 'Tab') {
