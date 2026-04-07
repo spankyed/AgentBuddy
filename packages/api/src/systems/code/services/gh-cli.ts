@@ -80,12 +80,14 @@ export async function getPRForBranch(cwd: string, branch: string): Promise<GhPul
       'pr', 'list',
       '--head', branch,
       '--json', PR_JSON_FIELDS,
-      '--state', 'open',
-      '--limit', '1',
+      '--state', 'all',
+      '--limit', '3',
     ], cwd)
     if (!output) return null
     const prs = parseJson<GhPullRequest[]>(output, `PR for branch ${branch}`)
-    return prs.length > 0 ? prs[0] : null
+    if (prs.length === 0) return null
+    // Prefer open PR if multiple exist
+    return prs.find(pr => pr.state === 'OPEN') || prs[0]
   } catch {
     return null
   }
