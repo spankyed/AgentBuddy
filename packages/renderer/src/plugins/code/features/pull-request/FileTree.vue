@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full overflow-y-auto">
+  <div class="h-full overflow-y-auto p-1">
     <div v-if="tree.children && tree.children.length > 0">
       <FileTreeItem
         v-for="child in sortedRootChildren"
