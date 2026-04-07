@@ -409,17 +409,8 @@ const getStatusText = (file: any) => {
 }
 
 const revealInExplorer = (path: string) => {
-  // Switch to explorer panel
   actor.send({ type: 'SELECT_PANEL', panel: 'explorer' })
-
-  // Get the directory of the file
-  const directory = path.substring(0, path.lastIndexOf('/'))
-
-  // Navigate to the file's directory in the explorer
-  explorerActor?.send({
-    type: 'explorer.NAVIGATE_TO_DIRECTORY',
-    path: directory
-  })
+  explorerActor?.send({ type: 'explorer.REVEAL_IN_TREE', path })
 }
 
 const pinTab = (path: string) => {
