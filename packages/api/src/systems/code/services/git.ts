@@ -27,7 +27,8 @@ export class GitRepository {
   private cache = new Map<string, CachedResult<any>>()
   private readonly CACHE_TTL = 5000 // 5 seconds
   private readonly PARENT_BRANCH_SEARCH_DEPTH = 25
-  
+  private writeQueue: Promise<void> = Promise.resolve()
+
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
   }
@@ -36,6 +37,12 @@ export class GitRepository {
     return this.workingDirectory
   }
   
+  private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
+    const op = this.writeQueue.then(fn, fn)
+    this.writeQueue = op.then(() => {}, () => {})
+    return op
+  }
+
   private validateWorkingDirectory(dir: string): void {
     if (!path.isAbsolute(dir)) {
       throw new Error('Working directory must be an absolute path')
@@ -492,75 +499,81 @@ export class GitRepository {
 
   async stageFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    
-    const result = await this.executeGitCommand(['add', ...filePaths])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to stage files')
-    }
-    this.cache.delete('status')
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['add', ...filePaths])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to stage files')
+      }
+      this.cache.delete('status')
+    })
   }
 
   async unstageFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    
-    const result = await this.executeGitCommand(['reset', 'HEAD', ...filePaths])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to unstage files')
-    }
-    this.cache.delete('status')
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['reset', 'HEAD', ...filePaths])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to unstage files')
+      }
+      this.cache.delete('status')
+    })
   }
 
   async revertFile(filePath: string): Promise<void> {
-    const status = await this.getStatus()
-    const fileStatus = status.find(f => f.path === filePath)
+    return this.enqueueWrite(async () => {
+      const status = await this.getStatus()
+      const fileStatus = status.find(f => f.path === filePath)
 
-    if (fileStatus?.status === 'untracked') {
-      const fullPath = path.join(this.workingDirectory, filePath)
-      await fs.unlink(fullPath)
-    } else {
-      const result = await this.executeGitCommand(['checkout', '--', filePath])
-      if (!result.success) {
-        throw new Error(result.error || `Failed to revert file: ${filePath}`)
+      if (fileStatus?.status === 'untracked') {
+        const fullPath = path.join(this.workingDirectory, filePath)
+        await fs.unlink(fullPath)
+      } else {
+        const result = await this.executeGitCommand(['checkout', '--', filePath])
+        if (!result.success) {
+          throw new Error(result.error || `Failed to revert file: ${filePath}`)
+        }
       }
-    }
-    this.cache.delete('status')
+      this.cache.delete('status')
+    })
   }
 
   async revertFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
+    return this.enqueueWrite(async () => {
+      const status = await this.getStatus()
+      const statusMap = new Map(status.map(f => [f.path, f.status]))
 
-    const status = await this.getStatus()
-    const statusMap = new Map(status.map(f => [f.path, f.status]))
+      const untrackedPaths = filePaths.filter(p => statusMap.get(p) === 'untracked')
+      const trackedPaths = filePaths.filter(p => statusMap.get(p) !== 'untracked')
 
-    const untrackedPaths = filePaths.filter(p => statusMap.get(p) === 'untracked')
-    const trackedPaths = filePaths.filter(p => statusMap.get(p) !== 'untracked')
-
-    // Delete untracked files
-    for (const filePath of untrackedPaths) {
-      const fullPath = path.join(this.workingDirectory, filePath)
-      await fs.unlink(fullPath)
-    }
-
-    // Revert tracked files
-    if (trackedPaths.length > 0) {
-      const result = await this.executeGitCommand(['checkout', '--', ...trackedPaths])
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to revert files')
+      // Delete untracked files
+      for (const filePath of untrackedPaths) {
+        const fullPath = path.join(this.workingDirectory, filePath)
+        await fs.unlink(fullPath)
       }
-    }
 
-    this.cache.delete('status')
+      // Revert tracked files
+      if (trackedPaths.length > 0) {
+        const result = await this.executeGitCommand(['checkout', '--', ...trackedPaths])
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to revert files')
+        }
+      }
+
+      this.cache.delete('status')
+    })
   }
 
   async commit(message: string): Promise<void> {
     if (!message.trim()) {
       throw new Error('Commit message cannot be empty')
     }
-    
-    const result = await this.executeGitCommand(['commit', '-m', message])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to commit')
-    }
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['commit', '-m', message])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to commit')
+      }
+    })
   }
 
   async isGitRepository(): Promise<boolean> {
@@ -811,14 +824,18 @@ export class GitRepository {
   }
 
   async fetchRemoteBranch(branch: string): Promise<void> {
-    await this.executeGitCommand(['fetch', 'origin', branch])
+    return this.enqueueWrite(async () => {
+      await this.executeGitCommand(['fetch', 'origin', branch])
+    })
   }
 
   async deleteRemoteBranch(branch: string): Promise<void> {
-    const result = await this.executeGitCommand(['push', 'origin', '--delete', branch])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to delete remote branch')
-    }
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['push', 'origin', '--delete', branch])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete remote branch')
+      }
+    })
   }
 
   async getAllBranches(): Promise<string[]> {
@@ -861,31 +878,33 @@ export class GitRepository {
       throw new Error('Invalid branch name. Branch names can only contain letters, numbers, dots, underscores, hyphens, and forward slashes.')
     }
     
-    // Try to checkout the branch
-    const result = await this.executeGitCommand(['checkout', branchName])
-    
-    if (!result.success) {
-      // Check if it's because the branch doesn't exist locally
-      if (result.error?.includes('pathspec') && result.error?.includes('did not match')) {
-        // Try to create a new branch tracking the remote
-        const remoteResult = await this.executeGitCommand(['checkout', '-b', branchName, `origin/${branchName}`])
-        if (!remoteResult.success) {
-          // If that fails too, just create a new local branch
-          const newBranchResult = await this.executeGitCommand(['checkout', '-b', branchName])
-          if (!newBranchResult.success) {
-            throw new Error(newBranchResult.error || `Failed to create branch: ${branchName}`)
+    return this.enqueueWrite(async () => {
+      // Try to checkout the branch
+      const result = await this.executeGitCommand(['checkout', branchName])
+
+      if (!result.success) {
+        // Check if it's because the branch doesn't exist locally
+        if (result.error?.includes('pathspec') && result.error?.includes('did not match')) {
+          // Try to create a new branch tracking the remote
+          const remoteResult = await this.executeGitCommand(['checkout', '-b', branchName, `origin/${branchName}`])
+          if (!remoteResult.success) {
+            // If that fails too, just create a new local branch
+            const newBranchResult = await this.executeGitCommand(['checkout', '-b', branchName])
+            if (!newBranchResult.success) {
+              throw new Error(newBranchResult.error || `Failed to create branch: ${branchName}`)
+            }
           }
+        } else if (result.error?.includes('Your local changes to the following files would be overwritten')) {
+          // Git is preventing checkout due to conflicts
+          throw new Error('Cannot switch branches: Your uncommitted changes conflict with files in the target branch. Please commit, stash, or discard your changes first.')
+        } else {
+          throw new Error(result.error || `Failed to checkout branch: ${branchName}`)
         }
-      } else if (result.error?.includes('Your local changes to the following files would be overwritten')) {
-        // Git is preventing checkout due to conflicts
-        throw new Error('Cannot switch branches: Your uncommitted changes conflict with files in the target branch. Please commit, stash, or discard your changes first.')
-      } else {
-        throw new Error(result.error || `Failed to checkout branch: ${branchName}`)
       }
-    }
-    
-    // Clear cache after branch switch
-    this.clearCache()
+
+      // Clear cache after branch switch
+      this.clearCache()
+    })
   }
 
   async isCurrentBranchPublished(): Promise<boolean> {
@@ -924,86 +943,92 @@ export class GitRepository {
   }
 
   async pushBranch(branchName?: string): Promise<void> {
-    // Get current branch if not specified
-    const branch = branchName || await this.getCurrentBranch()
-    
-    // Check if branch is published
-    const isPublished = await this.isCurrentBranchPublished()
-    
-    // Use appropriate push command
-    const args = isPublished 
-      ? ['push'] // Regular push for already published branches
-      : ['push', '-u', 'origin', branch] // Set upstream for new branches
-    
-    const result = await this.executeGitCommand(args)
-    
-    if (!result.success) {
-      // Check for common errors
-      if (result.error?.includes('Could not read from remote repository')) {
-        throw new Error('Failed to push: Cannot connect to remote repository. Check your network connection and repository access.')
-      } else if (result.error?.includes('remote: Permission')) {
-        throw new Error('Failed to push: Permission denied. Check your repository access rights.')
-      } else if (result.error?.includes('non-fast-forward')) {
-        throw new Error('Failed to push: Remote branch has diverged. Pull changes first.')
-      } else if (result.error?.includes('Everything up-to-date')) {
-        throw new Error('Everything up-to-date. No commits to push.')
-      } else {
-        throw new Error(result.error || 'Failed to push changes')
+    return this.enqueueWrite(async () => {
+      // Get current branch if not specified
+      const branch = branchName || await this.getCurrentBranch()
+
+      // Check if branch is published
+      const isPublished = await this.isCurrentBranchPublished()
+
+      // Use appropriate push command
+      const args = isPublished
+        ? ['push'] // Regular push for already published branches
+        : ['push', '-u', 'origin', branch] // Set upstream for new branches
+
+      const result = await this.executeGitCommand(args)
+
+      if (!result.success) {
+        // Check for common errors
+        if (result.error?.includes('Could not read from remote repository')) {
+          throw new Error('Failed to push: Cannot connect to remote repository. Check your network connection and repository access.')
+        } else if (result.error?.includes('remote: Permission')) {
+          throw new Error('Failed to push: Permission denied. Check your repository access rights.')
+        } else if (result.error?.includes('non-fast-forward')) {
+          throw new Error('Failed to push: Remote branch has diverged. Pull changes first.')
+        } else if (result.error?.includes('Everything up-to-date')) {
+          throw new Error('Everything up-to-date. No commits to push.')
+        } else {
+          throw new Error(result.error || 'Failed to push changes')
+        }
       }
-    }
-    
-    // Clear cache after pushing
-    this.clearCache()
+
+      // Clear cache after pushing
+      this.clearCache()
+    })
   }
 
   async pullBranch(): Promise<void> {
-    // Check if we have an upstream branch
-    const hasUpstream = await this.isCurrentBranchPublished()
-    if (!hasUpstream) {
-      throw new Error('No upstream branch to pull from. Push your branch first.')
-    }
-    
-    // Execute git pull
-    const result = await this.executeGitCommand(['pull'])
-    
-    if (!result.success) {
-      // Handle common pull errors
-      if (result.error?.includes('Automatic merge failed')) {
-        throw new Error('Failed to pull: Merge conflicts detected. Resolve conflicts and commit.')
-      } else if (result.error?.includes('Your local changes')) {
-        throw new Error('Failed to pull: You have uncommitted changes. Commit or stash them first.')
-      } else if (result.error?.includes('Could not read from remote repository')) {
-        throw new Error('Failed to pull: Cannot connect to remote repository. Check your network connection.')
-      } else if (result.error?.includes('Permission denied')) {
-        throw new Error('Failed to pull: Permission denied. Check your repository access rights.')
-      } else if (result.error?.includes('Already up to date')) {
-        // This is actually okay - no changes to pull
-        return
-      } else {
-        throw new Error(result.error || 'Failed to pull changes')
+    return this.enqueueWrite(async () => {
+      // Check if we have an upstream branch
+      const hasUpstream = await this.isCurrentBranchPublished()
+      if (!hasUpstream) {
+        throw new Error('No upstream branch to pull from. Push your branch first.')
       }
-    }
-    
-    // Clear cache after pulling
-    this.clearCache()
+
+      // Execute git pull
+      const result = await this.executeGitCommand(['pull'])
+
+      if (!result.success) {
+        // Handle common pull errors
+        if (result.error?.includes('Automatic merge failed')) {
+          throw new Error('Failed to pull: Merge conflicts detected. Resolve conflicts and commit.')
+        } else if (result.error?.includes('Your local changes')) {
+          throw new Error('Failed to pull: You have uncommitted changes. Commit or stash them first.')
+        } else if (result.error?.includes('Could not read from remote repository')) {
+          throw new Error('Failed to pull: Cannot connect to remote repository. Check your network connection.')
+        } else if (result.error?.includes('Permission denied')) {
+          throw new Error('Failed to pull: Permission denied. Check your repository access rights.')
+        } else if (result.error?.includes('Already up to date')) {
+          // This is actually okay - no changes to pull
+          return
+        } else {
+          throw new Error(result.error || 'Failed to pull changes')
+        }
+      }
+
+      // Clear cache after pulling
+      this.clearCache()
+    })
   }
 
   // --- Stash operations ---
 
   async stashPush(message?: string, stagedOnly?: boolean): Promise<string> {
-    const args = ['stash', 'push']
-    if (message) {
-      args.push('-m', message)
-    }
-    if (stagedOnly) {
-      args.push('--staged')
-    }
-    const result = await this.executeGitCommand(args)
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to stash changes')
-    }
-    this.clearCache()
-    return result.output || 'Changes stashed'
+    return this.enqueueWrite(async () => {
+      const args = ['stash', 'push']
+      if (message) {
+        args.push('-m', message)
+      }
+      if (stagedOnly) {
+        args.push('--staged')
+      }
+      const result = await this.executeGitCommand(args)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to stash changes')
+      }
+      this.clearCache()
+      return result.output || 'Changes stashed'
+    })
   }
 
   async stashList(): Promise<StashEntry[]> {
@@ -1027,33 +1052,41 @@ export class GitRepository {
   }
 
   async stashApply(index: number): Promise<void> {
-    const result = await this.executeGitCommand(['stash', 'apply', `stash@{${index}}`])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to apply stash')
-    }
-    this.clearCache()
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['stash', 'apply', `stash@{${index}}`])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to apply stash')
+      }
+      this.clearCache()
+    })
   }
 
   async stashPop(index: number): Promise<void> {
-    const result = await this.executeGitCommand(['stash', 'pop', `stash@{${index}}`])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to pop stash')
-    }
-    this.clearCache()
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['stash', 'pop', `stash@{${index}}`])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to pop stash')
+      }
+      this.clearCache()
+    })
   }
 
   async stashDrop(index: number): Promise<void> {
-    const result = await this.executeGitCommand(['stash', 'drop', `stash@{${index}}`])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to drop stash')
-    }
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['stash', 'drop', `stash@{${index}}`])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to drop stash')
+      }
+    })
   }
 
   async stashClear(): Promise<void> {
-    const result = await this.executeGitCommand(['stash', 'clear'])
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to clear stashes')
-    }
+    return this.enqueueWrite(async () => {
+      const result = await this.executeGitCommand(['stash', 'clear'])
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to clear stashes')
+      }
+    })
   }
 
   async getCommitsBetweenBranches(baseBranch: string, targetBranch = 'HEAD'): Promise<{ subject: string; body: string }[]> {
