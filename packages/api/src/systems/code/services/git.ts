@@ -31,6 +31,8 @@ export class GitRepository {
   private commandQueue: Promise<void> = Promise.resolve()
   private _writeInProgress = 0
   private _writeCompleteCallbacks: (() => void)[] = []
+  private _lastFetchTimestamp = 0
+  private readonly FETCH_THROTTLE_MS = 60_000 // 60 seconds
 
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
@@ -933,6 +935,13 @@ export class GitRepository {
     }
   }
 
+  private async fetchIfStale(): Promise<void> {
+    const now = Date.now()
+    if (now - this._lastFetchTimestamp < this.FETCH_THROTTLE_MS) return
+    this._lastFetchTimestamp = now
+    await this.executeGitCommand(['fetch', '--quiet'])
+  }
+
   async getCommitsAheadBehind(): Promise<{ ahead: number; behind: number }> {
     try {
       // Check if we have an upstream branch
@@ -940,7 +949,10 @@ export class GitRepository {
       if (!upstream) {
         return { ahead: 0, behind: 0 }
       }
-      
+
+      // Fetch remote refs at most once per minute so @{u} stays reasonably fresh
+      await this.fetchIfStale()
+
       // Count commits ahead
       const aheadResult = await this.executeGitCommand(['rev-list', '--count', '@{u}..HEAD'])
       const ahead = aheadResult.success ? parseInt(aheadResult.output?.trim() || '0', 10) : 0

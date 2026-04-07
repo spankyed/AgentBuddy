@@ -115,9 +115,13 @@
           <ArrowUpFromLine v-else-if="commitsAhead > 0" :size="14" />
           <ArrowDownToLine v-else :size="14" />
           <span
-            v-if="commitsBehind > 0 || commitsAhead > 0"
+            v-if="commitsAhead > 0"
             class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
-          >{{ commitsAhead > 0 ? commitsAhead : commitsBehind }}</span>
+          >{{ commitsAhead }}</span>
+          <span
+            v-else-if="commitsBehind > 0"
+            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-red-600 rounded-full"
+          >{{ commitsBehind }}</span>
         </button>
 
         <!-- Sync feedback popover -->
