@@ -25,7 +25,8 @@
               <select
                 v-if="editing"
                 v-model="editBase"
-                class="bg-neutral-800 border border-neutral-700 rounded px-1 py-0.5 text-xs text-neutral-200 focus:outline-none focus:border-blue-600 cursor-pointer"
+                class="bg-neutral-800 border border-neutral-700 rounded px-1 py-0.5 text-xs text-neutral-200 focus:outline-none focus:border-blue-600 cursor-pointer truncate"
+                :style="{ maxWidth: `${Math.min(editBase.length + 4, 24)}ch` }"
               >
                 <option v-for="branch in branchOptions" :key="branch" :value="branch">{{ branch }}</option>
               </select>
