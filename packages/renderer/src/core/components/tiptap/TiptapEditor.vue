@@ -62,6 +62,7 @@ const emit = defineEmits<{
   (e: 'focusTitle'): void
   (e: 'history-prev'): void
   (e: 'history-next'): void
+  (e: 'imageClick', src: string): void
 }>()
 
 defineOptions({ inheritAttrs: false })
@@ -199,6 +200,17 @@ const editorOnlyProps = props.mode === 'editor' ? {
   },
 } : {}
 
+const viewerClickProps = props.mode === 'viewer' ? {
+  handleClick: (_view: any, _pos: any, event: MouseEvent) => {
+    const img = (event.target as HTMLElement).closest('img')
+    if (img?.src) {
+      emit('imageClick', img.src)
+      return true
+    }
+    return false
+  },
+} : {}
+
 const editorOnlyTransaction = props.mode === 'editor' ? {
   onTransaction: ({ transaction }: { transaction: any }) => {
     if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
@@ -307,6 +319,7 @@ const editor = useEditor({
       return false
     },
     ...editorOnlyProps,
+    ...viewerClickProps,
   },
   onCreate: ({ editor: e }) => {
     selectStart(e)

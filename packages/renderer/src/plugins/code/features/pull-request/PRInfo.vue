@@ -39,7 +39,7 @@
       <template v-else>
       <!-- PR Body -->
       <div v-if="pr.body" class="pr-body">
-        <TiptapEditor mode="viewer" :modelValue="pr.body" editorClass="pr-markdown" />
+        <TiptapEditor mode="viewer" :modelValue="pr.body" editorClass="pr-markdown" @imageClick="openLightbox" />
       </div>
       <div v-else class="text-xs text-neutral-500 italic">
         No description provided.
@@ -67,7 +67,7 @@
             <span class="text-[11px] font-medium text-neutral-300">{{ comment.author.login }}</span>
             <span class="text-[10px] text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
           </div>
-          <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-markdown" />
+          <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-markdown" @imageClick="openLightbox" />
         </div>
       </div>
       </template>
@@ -76,13 +76,16 @@
     <div v-else class="flex items-center justify-center flex-1 text-xs text-neutral-500">
       Select a pull request to view details
     </div>
+
+    <ImageLightbox v-model="lightboxOpen" :imageSrc="lightboxSrc" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { GitBranch, ArrowRight, MessageSquare, Loader2 } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
 
 const props = defineProps<{
@@ -90,6 +93,14 @@ const props = defineProps<{
   comments: GhPRComment[]
   isLoading?: boolean
 }>()
+
+const lightboxOpen = ref(false)
+const lightboxSrc = ref('')
+
+function openLightbox(src: string) {
+  lightboxSrc.value = src
+  lightboxOpen.value = true
+}
 
 const statusLabel = computed(() => {
   if (!props.pr) return ''

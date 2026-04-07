@@ -99,7 +99,7 @@ function rotateQuote() {
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
-import ImageLightbox from './ImageLightbox.vue'
+import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
