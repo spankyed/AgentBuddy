@@ -14,7 +14,7 @@ const busEvent = systemBus(pluginId)
 export const IncomingPullRequestEvents = [
   busEvent('pr.GET_BASE_BRANCH', {}),
   busEvent('pr.GET_BRANCH_DIFF', { baseBranch: z.string().optional(), headBranch: z.string().optional() }),
-  busEvent('pr.GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
+  busEvent('pr.GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string(), headBranch: z.string().optional() }),
   busEvent('pr.LIST_OPEN_PRS', {}),
   busEvent('pr.SELECT_PR', { number: z.number() }),
   busEvent('pr.CREATE_PR', { title: z.string(), body: z.string(), base: z.string().optional(), draft: z.boolean().optional() }),
@@ -74,7 +74,7 @@ export interface Context {
 export type Event =
   | { type: 'pr.GET_BASE_BRANCH' }
   | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string; headBranch?: string }
-  | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
+  | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string; headBranch?: string }
   | { type: 'pr.LIST_OPEN_PRS' }
   | { type: 'pr.SELECT_PR'; number: number }
   | { type: 'pr.CREATE_PR'; title: string; body: string; base?: string; draft?: boolean }
@@ -166,13 +166,19 @@ export const pullRequestSystem = setup({
     },
 
     getBranchFileDiff: ({ event, context }) => {
-      const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
+      const ev = event as { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string; headBranch?: string }
+      const target = ev.headBranch ? `origin/${ev.headBranch}` : 'HEAD'
       withRepo(context,
-        repo => Promise.all([
-          repo.getFileDiffBetweenBranches(ev.path, ev.baseBranch),
-          repo.getFileContentFromBranch(ev.path, ev.baseBranch),
-          repo.getFileContentFromBranch(ev.path, 'HEAD'),
-        ]),
+        async repo => {
+          if (ev.headBranch) {
+            await repo.fetchRemoteBranch(ev.headBranch)
+          }
+          return Promise.all([
+            repo.getFileDiffBetweenBranches(ev.path, ev.baseBranch, target),
+            repo.getFileContentFromBranch(ev.path, ev.baseBranch),
+            repo.getFileContentFromBranch(ev.path, target),
+          ])
+        },
         ([diff, originalContent, modifiedContent]) => emitToFrontend({
           type: 'pr.FILE_DIFF_RECEIVED',
           data: { path: ev.path, diff, staged: false, originalContent, modifiedContent }

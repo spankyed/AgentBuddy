@@ -164,7 +164,8 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.VIEW_DIFF'; path: string }
       sendToBackend('pr.GET_BRANCH_FILE_DIFF', {
         path: ev.path,
-        baseBranch: context.prBaseBranch
+        baseBranch: context.prBaseBranch,
+        headBranch: context.selectedPR?.headRefName,
       })
     },
 
