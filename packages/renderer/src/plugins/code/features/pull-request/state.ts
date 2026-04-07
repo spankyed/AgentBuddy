@@ -137,6 +137,7 @@ export type Event =
   | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
   | { type: 'pr.SET_COMMENT_TAB'; tab: 'discussion' | 'reviews' }
   | { type: 'pr.REFRESH_PR'; number: number }
+  | { type: 'pr.BACK_TO_BRANCH' }
   | { type: 'pr.CLEAR_ERROR' };
 
 export const pullRequestState = setup({
@@ -825,6 +826,12 @@ export const pullRequestState = setup({
         'pr.DELETE_REVIEW_COMMENT': { actions: 'optimisticDeleteReviewComment' },
         'pr.SET_COMMENT_TAB': { actions: assign({ commentTab: ({ event }) => (event as { type: 'pr.SET_COMMENT_TAB'; tab: 'discussion' | 'reviews' }).tab }) },
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
+        'pr.BACK_TO_BRANCH': {
+          actions: [
+            assign({ selectedPR: null, isManualPRSelection: false, prFiles: [], diffStale: true }),
+            'refreshPrStatus',
+          ]
+        },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
       }
     }
