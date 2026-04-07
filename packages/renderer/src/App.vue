@@ -3,6 +3,7 @@ import WebApp from './WebApp.vue';
 import ApiStatus from './core/components/ApiStatus.vue';
 import Onboarding from './core/components/onboarding/Onboarding.vue';
 import TourSpotlight from './core/components/onboarding/TourSpotlight.vue';
+import UpdateBanner from './core/components/UpdateBanner.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
@@ -29,6 +30,8 @@ window.addEventListener('keydown', (e) => {
   <template v-else>
     <!-- Onboarding modal overlay -->
     <Onboarding v-if="isOnboarding" />
+    <!-- Update notification banner -->
+    <UpdateBanner />
     <!-- Main web app component (always rendered when running) -->
     <WebApp />
     <!-- Guided tour overlay -->

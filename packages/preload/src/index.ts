@@ -98,6 +98,33 @@ const apiStatus = {
   },
 };
 
+// App update events
+const appUpdate = {
+  onUpdateAvailable: (callback: (info: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: any) => callback(info);
+    ipcRenderer.on('update:available', handler);
+    return () => { ipcRenderer.removeListener('update:available', handler); };
+  },
+  onDownloadProgress: (callback: (progress: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, progress: any) => callback(progress);
+    ipcRenderer.on('update:download-progress', handler);
+    return () => { ipcRenderer.removeListener('update:download-progress', handler); };
+  },
+  onUpdateDownloaded: (callback: (info: any) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: any) => callback(info);
+    ipcRenderer.on('update:downloaded', handler);
+    return () => { ipcRenderer.removeListener('update:downloaded', handler); };
+  },
+  onUpdateError: (callback: (message: string) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, message: string) => callback(message);
+    ipcRenderer.on('update:error', handler);
+    return () => { ipcRenderer.removeListener('update:error', handler); };
+  },
+  startDownload: () => ipcRenderer.invoke('update:start-download'),
+  installAndRestart: () => ipcRenderer.invoke('update:install'),
+  dismissUpdate: (version: string) => ipcRenderer.invoke('update:dismiss', version),
+};
+
 // Expose APIs to renderer
 contextBridge.exposeInMainWorld('electronAPI', {
   windowControls,
@@ -107,6 +134,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   speechRecognition,
   zoom,
   apiStatus,
+  appUpdate,
   apiPort,
 });
 

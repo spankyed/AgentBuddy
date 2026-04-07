@@ -4,6 +4,7 @@ import { appRouter } from '@/core/router';
 import { createContext } from '@/core/router/context';
 import { logger } from '@/core/helpers/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
+import { closePersistence } from '@/core/ears/attribute-storage';
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
@@ -29,6 +30,7 @@ export function createWebSocketServer() {
   process.on('SIGTERM', () => {
     handler.broadcastReconnectNotification();
     wss.close();
+    closePersistence();
   });
 
   return { wss, handler, port };
