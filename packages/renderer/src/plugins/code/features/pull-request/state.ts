@@ -754,7 +754,19 @@ export const pullRequestState = setup({
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
         'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false }), 'refreshPrStatus'] },
-        'CODE_STARTUP': { actions: 'handleCodeStartup' },
+        'CODE_STARTUP': {
+          actions: [
+            assign({
+              prCheckCompleted: false,
+              selectedPR: null,
+              branchPR: null,
+              prFiles: [],
+              prBaseBranch: '',
+              diffStale: false,
+            }),
+            'handleCodeStartup',
+          ]
+        },
 
         // GitHub PR events from backend
         'pr.GH_AUTH_CHECKED': { actions: 'handleGhAuthChecked' },
