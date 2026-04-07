@@ -1,5 +1,229 @@
 -e # Changelog
 
+## v0.0.2 (2026-04-07)
+
+### Features
+-  add "Copy Path" option to directory context menu in explorer
+-  add auto-scroll functionality to active tab in Tabs component
+-  add GitHub CLI as settings provider and codex default path
+-  add toggleable commit list with timestamps and GitHub links
+-  add optimistic updates for PR comments and review threads
+-  add edit and delete functionality for review comments
+-  add loading states for resolve/unresolve thread actions
+-  implement confirmation dialog for comment deletion and refactor ID extraction
+-  redesign PR comments with discussion and review thread tabs
+-  inline editing for PR title, body, and base branch
+-  show delete branch button after PR merge/close
+-  show merged/closed PR badge instead of create form after merge
+-  detect closest parent branch for PR base using merge-base distance
+-  smart upstream detection for PR base branch
+-  open image lightbox on click in viewer mode
+-  add disableImages prop to TiptapEditor for PR create form
+-  use Tiptap editor for PR description and comment rendering
+-  show commit count in PR info and fetch full details on view
+-  add refresh button to PR info view
+-  implement PR autofill feature with title and body generation
+-  redesign PR panel with GitHub CLI integration for full PR management
+-  add "New note" button to notes welcome page
+-  add push operations in CommitPanel as right click pull option
+-  add pull feedback to commit panel
+-  add inline re-link form via right-click menu on broken symlinks
+-  show broken symlinks as muted rows with broken link icon in table
+-  add broken symlink detection with validate-on-access and re-link UI
+-  add change count badge to commit panel button
+-  show full prompt tooltip on hover in Quick Prompts menu
+-  number pasted images sequentially as "image 1", "image 2", etc.
+-  set Markdown editor to default to rich text mode
+-  add option to use rich text editor for Markdown files by default
+-  add "Open as Rich Text" context menu for .md files in code explorer
+-  auto-scroll diff editor to first changed line
+-  ensure unique emojis in allEmojis computed property
+-  add missing keywords for various emoji categories in emoji picker
+-  add new emoji categories for signs, symbols, and objects in emoji picker
+-  enhance emoji picker with new categories for colors, shapes, and country flags
+-  add 'Kill Terminal' option to context menu for terminal tabs
+-  add search, category tabs, and 830+ emojis to EmojiPicker
+-  enhance EmojiPicker with search, category tabs, and 530+ emojis
+-  add update icon functionality to TaskListPanel and canvas components
+-  preserve scroll position when opening file from diff view
+-  add upgrade strategy prompt for macOS Electron app
+-  implement stash functionality with push, list, apply, pop, drop, and clear actions
+-  restore most recently viewed tab when closing active tab
+-  add drag reorder handle for quick prompts in edit mode
+-  add scroll-to-bottom for terminals and shared fob component
+-  add copy-to-clipboard button on hover for quick prompts
+-  add open to file for staged changes
+-  add image preview support in code editor
+-  add drag-and-drop file opening in code editor
+-  open files dragged from OS file manager into code editor tabs
+-  add terminal tab rename via right-click context menu
+-  add notes trashcan with soft-delete, restore, and auto-cleanup
+-  add DEV badge to toolbar for development environment indication
+
+### Fixes
+-  refactor clipboard copy functionality to use dedicated copyPath method
+-  update clipboard write method to use navigator.clipboard
+-  update clipboard write method to use window.navigator.clipboard
+-  serialize git write operations to prevent index.lock conflicts
+-  resolve XState "Custom actions should not call assign() directly" warning
+-  reorder plugins to ensure code is above Notes
+-  reveal in explorer now uses correct event
+-  preserve scroll position in PR details view across re-renders
+-  always show PR selector alongside action buttons in top row
+-  guard edit/delete actions against pending and unparseable comments
+-  update branch PR check logic to prevent hiding PR selector on error
+-  add missing icon 'X' to the import list in PullRequestPanel.vue
+-  adjust PR status display badge now sits directly after the title text instead of being pushed to the far right
+-  allow switching PRs from selector by bypassing stale-response guards
+-  guard handlePRDetailsReceived against stale PR responses
+-  prevent "Create PR" flash on directory switch
+-  address PR review comments — error detection, dead code, loading states
+-  reset stale PR state on directory switch to prevent "Create PR" flash
+-  pass headBranch when loading file diffs for cross-branch PRs
+-  fetch remote branch before diff when viewing PR from selector  show loading spinner in diff tree when selecting PR from dropdown
+-  hide PR action row on base branches (main/master/develop) fix: show PR selector on base branches instead of hiding entire row
+-  prevent "Publish Branch" flash by defaulting hasUpstream to true
+-  show selected PR's head branch name in diff tree header
+-  address review bugs in optimistic updates and diff loading
+-  show correct diff when selecting a PR on a different branch
+-  ensure thread is collapsed when resolving in PRComments
+-  prevent PR view flash by preserving selectedPR reference on identical data
+-  resolve GitHub asset URLs in checkBranchPR to prevent broken images
+-  always sync selectedPR with branch PR check result
+-  detect merged/closed PRs instead of showing create form
+-  update displayed PR with fresh GitHub data on background re-check
+-  use detected base branch when PR form dropdown is untouched
+-  fall back to all merged branches when HEAD~N is invalid on shallow repos
+-  persist "Unable to check PR status" after dismissing error banner
+-  resolve GitHub asset URLs so PR images load in Electron
+-  prevent flash of wrong UI states during PR panel initialization
+- fix pr status error
+-  prevent PR panel from flashing wrong states during initialization
+-  clear stale state in PR panel on merge/close/create and view switches
+-  resolve draft PR creation race condition and pass --head flag
+-  trigger GitHub CLI operations when base directory is set
+-  prevent Cmd+A from selecting all library items when focused on input fields
+-  prevent command dropdown from triggering on pasted paths
+-  remove premature commit/PR refresh on directory change to fix stale data
+-  replace GitCommit icon with GitCommitVertical in CodePanelHeader
+-  show deleted file view instead of error when opening deleted files from commit panel
+-  delay relink input focus to avoid context menu stealing it
+-  update collection name to match new folder when relinking
+-  correct icon import for symlink representation in TreeTableRow component
+-  adjust padding for panel header buttons in CodePanelHeader.vue
+-  show staged-vs-unstaged diff for newly added files in commit panel
+-  preserve markdown structure when cutting lines with Cmd+X
+-  adjust margin for stash menu button in CommitPanel
+-  handle Tab and Cmd+X key behaviors in Tiptap editor
+-  rename ListBackspace to ListKeymap
+-  prevent panel resizer from blocking scrollbars and add single-click expand
+- fix up panel resizer
+-  add collapsed state to PanelResizer for better visibility control
+-  wire up Kill Terminal context menu action and clean up menu spacing
+- fix menu padding and margin
+- fix type errors
+-  update return type of waitForSelector method to simplify ElementHandle
+-  correct label for task list in menu items
+-  expand EmojiPicker from 40 to 336 emojis with scrollable grid.
+-  update trash icon color in CommitPanel for better visibility
+-  reliable multiline textarea auto-resize for quick prompt editing
+-  hide drop overlay for unsupported file types
+-  handle discard of untracked files by deleting instead of git checkout
+-  hide context menu separator when file operations are hidden for terminal tabs
+-  bundle ripgrep binary for search to work in packaged Electron app
+-  show -- instead of child count for folder sizes in library browser
+-  apply table sorting to nested items in library file browser
+-  autofocus chat input when selecting a quick prompt
+-  fix error page reload button and add restart app button
+-  remount diff editor on tab switch to prevent stale sticky scroll line number error
+-  rename Task List to Checklist in block menu and fix checkbox alignment
+-  make trash view header buttons clickable above window drag overlay
+-  reorder plugin exports for better UX
+-  disable shell integration by default
+-  remove unnecessary .DS_Store file from repository
+-  strip ELECTRON_RUN_AS_NODE from built-in terminal environment
+-  add button-class to CollapsibleSection components for consistent styling
+-  change image bubble menu strategy from absolute to fixed
+-  add missing refTypes (task, tasklist, folder) to agent event validation
+
+### Refactors
+-  always show PR selector with action buttons and add back-to-branch navigation
+-  adjust padding and height for improved layout consistency in PR components
+-  inline PR selector with status-colored icons and info button
+-  defer smart base branch detection until after PR check
+-  replace boolean flag chain with computed topRowStatus in PR panel
+-  remove dead code and simplify draft PR creation
+-  replace async/await with withRepo helper in PR backend actions
+-  restyle PR info header with clearer hierarchy
+-  make PR title row fully clickable and fix layout jank
+-  improve PR create form with base branch select and draft button
+-  unify expand/collapse into single toggle with context menu
+-  redesign PR panel layout with contextual top row and always-visible diff tree
+-  clean up PR panel code for maintainability
+-  cleanup broken symlink detection PR
+-  simplify Cmd+X and Tab handlers in TiptapEditor
+-  move stash action buttons to left of "Commit Message" labelkeep
+-  simplify md editor mode code with single parameterized event
+-  extract TabContextMenu component from duplicated tab menus
+-  centralize tab view history tracking in updateState middleware
+-  remove dead reorder code and fix library table sorting
+-  replace empty state divs with EmptyState component in ActionsPanel and PromptsPanel
+
+### Other
+- Revert "fix: resolve XState "Custom actions should not call assign() directly" warning"
+- style: position draft badge next to PR title instead of far right
+- Disable StarterKit's built-in paragraph since EmptyLinePreserver already provides a custom one.
+- style: adjust overlay background opacity in ImageLightbox component
+- style: show stack trace expanded by default on error page
+- style: restyle branch select section - remove label, add icon in input, combine pull/push into single    adaptive button
+- style: prevent placeholder word-break on hyphenated branch names
+- style: restyle branch select section - move pull button left of input, remove label, add icon in select
+- Merge pull request #93 from spankyed/AS/PR-panel-redesign
+- style: increase text sizes in PR action bar, comment tabs, and title
+- BACK_TO_BRANCH now resets prCheckCompleted: false and sets isGhChecking: true, so "Checking..."    shows instead of the "Create PR" flash.
+- style: show commits newest first in PR details
+- style: add GitHub link, fix title casing, grey draft PR icon
+- style: refactor reply form layout and improve styling for better usability
+- style: update code block styles with new border and padding
+- style: remove unused Code icon from review thread display
+- style: adjust padding and font sizes for PR comments and review threads
+- style: size base branch select to fit content in PR edit form
+- code cleanup
+- style: align PR panel padding with commit panel
+- style: enhance image handling in PR markdown
+- style: standardize text sizing in PR view and create form
+- perf: eliminate UI flash and duplicate API calls on git changes
+- Merge pull request #94 from spankyed/AS/pr-panel-redesign-smart-upstream
+- Merge pull request #95 from spankyed/AS/panel-redesign-smart-upstream-sync
+- perf: cache PR state and diff across panel re-opens
+- style: update PR panel button colors and remove icons
+- style: enhance bg for PRComparison layout and improve back to files button appearance
+- Improve spacing consistency
+- Consistent spacing
+- style: adjust back to files button appearance in PR panel
+- remove check icon from PR selector dropdown
+- prevent merge menu items text wrapping
+- Move error message to bottom of panel
+- prevent filename text wrapping
+- style: use accent-colored dividers on flow node content sections
+- restyle stash section
+- Merge pull request #92 from spankyed/AS/symlink-relink
+- style: redesign broken symlink view with card layout and inline path input
+- doc node env 'fs-extra' issue
+- update defs
+- Restyle stash section
+- restore most recently viewed tab when closing active tab
+- improve quick prompts drag reorder UI/UX
+- Fix node-pty spawn-helper permissions in postinstall script
+- The backend build (`npm run start`) has been broken due to three issues:
+- prevent header scrolling for library docs
+- Revert "readme prompt"
+- readme prompt
+- docs: update README.md with project details and features
+- reorganize docs
+
+-e # Changelog
+
 ## v0.0.1 (2026-04-03)
 
 ### Features
