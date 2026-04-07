@@ -58,7 +58,9 @@
           <span>{{ formatDate(pr.createdAt) }}</span>
           <template v-if="pr.commits?.length">
             <span>&middot;</span>
-            <span>{{ pr.commits.length }} commit{{ pr.commits.length !== 1 ? 's' : '' }}</span>
+            <button @click="showCommits = !showCommits" :class="['transition-colors cursor-pointer', showCommits ? 'text-neutral-200 underline' : 'hover:text-neutral-300']">
+              {{ pr.commits.length }} commit{{ pr.commits.length !== 1 ? 's' : '' }}
+            </button>
           </template>
         </div>
       </div>
@@ -80,6 +82,18 @@
           placeholder="Describe your changes..."
           editorClass="pr-markdown"
         />
+      </div>
+      <div v-else-if="showCommits && pr.commits?.length" class="space-y-0.5">
+        <button
+          v-for="commit in pr.commits"
+          :key="commit.oid"
+          @click="openCommitOnGitHub(commit.oid)"
+          class="flex items-center gap-2 text-sm w-full text-left px-1 py-0.5 rounded hover:bg-neutral-800 transition-colors"
+          :title="commit.messageHeadline"
+        >
+          <span class="text-neutral-300 truncate flex-1">{{ commit.messageHeadline }}</span>
+          <span class="text-neutral-500 text-[11px] shrink-0">{{ formatDate(commit.committedDate) }}</span>
+        </button>
       </div>
       <div v-else-if="pr.body" class="pr-body">
         <TiptapEditor mode="viewer" :modelValue="pr.body" editorClass="pr-markdown" @imageClick="openLightbox" />
@@ -147,10 +161,18 @@ function openOnGitHub() {
   }
 }
 
+function openCommitOnGitHub(oid: string) {
+  if (props.pr?.url) {
+    window.electronAPI?.shell?.openExternal(`${props.pr.url}/commits/${oid}`)
+  }
+}
+
 function openLightbox(src: string) {
   lightboxSrc.value = src
   lightboxOpen.value = true
 }
+
+const showCommits = ref(false)
 
 // Edit mode
 const editing = ref(false)

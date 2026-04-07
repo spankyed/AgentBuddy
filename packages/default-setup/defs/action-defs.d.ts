@@ -602,6 +602,7 @@ interface GhPullRequest {
     commits?: {
         oid: string;
         messageHeadline: string;
+        committedDate: string;
     }[];
 }
 interface GhPRComment {
@@ -630,6 +631,7 @@ interface GhReviewComment {
         login: string;
     };
     createdAt: string;
+    viewerDidAuthor: boolean;
 }
 interface TerminalInfo {
     id: EARS.EntityId;
@@ -3103,29 +3105,35 @@ declare const events: {
         type: zod.ZodLiteral<"pr.GET_BRANCH_DIFF">;
         systemId: zod.ZodLiteral<"code">;
         baseBranch: zod.ZodOptional<zod.ZodString>;
+        headBranch: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "pr.GET_BRANCH_DIFF";
         systemId: "code";
         baseBranch?: string | undefined;
+        headBranch?: string | undefined;
     }, {
         type: "pr.GET_BRANCH_DIFF";
         systemId: "code";
         baseBranch?: string | undefined;
+        headBranch?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"pr.GET_BRANCH_FILE_DIFF">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
         baseBranch: zod.ZodString;
+        headBranch: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
         path: string;
         baseBranch: string;
+        headBranch?: string | undefined;
     }, {
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
         path: string;
         baseBranch: string;
+        headBranch?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"pr.LIST_OPEN_PRS">;
         systemId: zod.ZodLiteral<"code">;
@@ -3375,6 +3383,33 @@ declare const events: {
         type: "pr.UNRESOLVE_THREAD";
         systemId: "code";
         threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.EDIT_REVIEW_COMMENT">;
+        systemId: zod.ZodLiteral<"code">;
+        commentId: zod.ZodNumber;
+        body: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.EDIT_REVIEW_COMMENT";
+        systemId: "code";
+        body: string;
+        commentId: number;
+    }, {
+        type: "pr.EDIT_REVIEW_COMMENT";
+        systemId: "code";
+        body: string;
+        commentId: number;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.DELETE_REVIEW_COMMENT">;
+        systemId: zod.ZodLiteral<"code">;
+        commentId: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.DELETE_REVIEW_COMMENT";
+        systemId: "code";
+        commentId: number;
+    }, {
+        type: "pr.DELETE_REVIEW_COMMENT";
+        systemId: "code";
+        commentId: number;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.CREATE_TERMINAL">;
         systemId: zod.ZodLiteral<"code">;
@@ -4700,6 +4735,18 @@ declare const events: {
         type: "pr.THREAD_UNRESOLVED";
         data: {
             threadId: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.REVIEW_COMMENT_EDITED";
+        data: {
+            commentId: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.REVIEW_COMMENT_DELETED";
+        data: {
+            commentId: number;
         };
         pluginId: "code";
     } | {
