@@ -231,7 +231,7 @@
         v-else
         :files="prFiles"
         :baseBranch="prBaseBranch"
-        :currentBranch="currentBranch"
+        :currentBranch="displayBranch"
         :isLoading="isPrLoading"
         @select-file="handleFileSelect"
         @open-file="handleOpenFile"
@@ -324,6 +324,10 @@ const isNoGitRepoError = computed(() =>
 
 const isNoBaseBranchError = computed(() =>
   prError.value?.includes('Could not determine PR base branch')
+)
+
+const displayBranch = computed(() =>
+  selectedPR.value?.headRefName ?? currentBranch.value
 )
 
 const topRowStatus = computed(() => {
