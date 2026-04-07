@@ -26,6 +26,7 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.GET_PR_AUTOFILL', {}),
   busEvent('pr.GET_SMART_BASE_BRANCH', {}),
   busEvent('pr.DELETE_BRANCH', { branch: z.string() }),
+  busEvent('pr.UPDATE_PR', { number: z.number(), title: z.string().optional(), body: z.string().optional(), base: z.string().optional() }),
 ] as const
 
 // Outgoing events to frontend
@@ -46,6 +47,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
+  | { type: 'pr.PR_UPDATED'; data: { number: number; title?: string; body?: string; base?: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -66,6 +68,7 @@ export type Event =
   | { type: 'pr.GET_PR_AUTOFILL' }
   | { type: 'pr.GET_SMART_BASE_BRANCH' }
   | { type: 'pr.DELETE_BRANCH'; branch: string }
+  | { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
@@ -266,6 +269,14 @@ export const pullRequestSystem = setup({
       )
     },
 
+    updatePR: ({ event, context }) => {
+      const ev = event as { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
+      withRepo(context,
+        repo => ghCli.updatePR(repo.getWorkingDir(), ev.number, { title: ev.title, body: ev.body, base: ev.base }),
+        () => emitToFrontend({ type: 'pr.PR_UPDATED', data: { number: ev.number, title: ev.title, body: ev.body, base: ev.base } })
+      )
+    },
+
     deleteBranch: ({ event, context }) => {
       const ev = event as { type: 'pr.DELETE_BRANCH'; branch: string }
       withRepo(context,
@@ -312,6 +323,7 @@ export const pullRequestSystem = setup({
         'pr.CHECK_BRANCH_PR': { actions: 'checkBranchPR' },
         'pr.GET_SMART_BASE_BRANCH': { actions: 'getSmartBaseBranch' },
         'pr.DELETE_BRANCH': { actions: 'deleteBranch' },
+        'pr.UPDATE_PR': { actions: 'updatePR' },
         'pr.CHECK_GH_AUTH': { actions: 'checkGhAuth' },
         'pr.GET_PR_AUTOFILL': { actions: 'getPRAutofill' },
         'pr.GIT_STATUS_CHANGED': { actions: 'handleGitStatusChanged' },

@@ -187,7 +187,11 @@
           <PRInfo
             :pr="selectedPR"
             :comments="prComments"
+            :branches="availableBranches"
             :isLoading="isLoadingDetails"
+            :isUpdating="isUpdatingPR"
+            @save="handleSavePR"
+            @start-editing="commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })"
           />
           <PRActionBar
             :pr="selectedPR"
@@ -282,6 +286,7 @@ const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
 const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
 const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
 const isDeletingBranch = useSelector(prActor, (state: any) => state.context.isDeletingBranch)
+const isUpdatingPR = useSelector(prActor, (state: any) => state.context.isUpdatingPR)
 const isLoadingDetails = useSelector(prActor, (state: any) => state.context.isLoadingDetails)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
@@ -382,5 +387,11 @@ const handleToggleDraft = () => {
 
 const handleDeleteBranch = () => {
   prActor?.send({ type: 'pr.DELETE_BRANCH' })
+}
+
+const handleSavePR = (data: { title?: string; body?: string; base?: string }) => {
+  if (selectedPR.value) {
+    prActor?.send({ type: 'pr.UPDATE_PR', number: selectedPR.value.number, ...data })
+  }
 }
 </script>

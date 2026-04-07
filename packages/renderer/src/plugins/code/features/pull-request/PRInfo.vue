@@ -5,15 +5,44 @@
       <div class="pb-3 border-b border-neutral-800">
         <div class="flex items-start gap-2">
           <div class="flex-1 min-w-0">
-            <span class="text-sm font-medium text-neutral-100 leading-snug">{{ pr.title }}</span>
-            <div class="flex items-center gap-1 mt-0.5 text-xs text-neutral-600">
+            <!-- Title: editable or read-only -->
+            <input
+              v-if="editing"
+              v-model="editTitle"
+              class="w-full text-sm font-medium bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-neutral-100 focus:outline-none focus:border-blue-600"
+            />
+            <div v-else class="flex items-baseline gap-1.5">
+              <span class="text-sm font-medium text-neutral-100 leading-snug">{{ pr.title }}</span>
+              <span class="text-sm text-neutral-500 shrink-0">#{{ pr.number }}</span>
+            </div>
+
+            <!-- Branch info -->
+            <div :class="['flex items-center gap-1 text-xs text-neutral-600', editing ? 'mt-2' : 'mt-0.5']">
               <GitBranch :size="10" class="shrink-0" />
               <span class="truncate" :title="pr.headRefName">{{ pr.headRefName }}</span>
               <ArrowRight :size="10" class="shrink-0" />
-              <span class="truncate" :title="pr.baseRefName">{{ pr.baseRefName }}</span>
+              <!-- Base branch: editable or read-only -->
+              <select
+                v-if="editing"
+                v-model="editBase"
+                class="bg-neutral-800 border border-neutral-700 rounded px-1 py-0.5 text-xs text-neutral-200 focus:outline-none focus:border-blue-600 cursor-pointer"
+              >
+                <option v-for="branch in branchOptions" :key="branch" :value="branch">{{ branch }}</option>
+              </select>
+              <span v-else class="truncate" :title="pr.baseRefName">{{ pr.baseRefName }}</span>
             </div>
           </div>
-          <span class="text-xs text-neutral-400 shrink-0 mt-0.5">#{{ pr.number }}</span>
+          <div class="flex items-center gap-1 shrink-0 mt-0.5">
+            <!-- Edit toggle (only for OPEN PRs) -->
+            <button
+              v-if="pr.state === 'OPEN' && !editing"
+              @click="startEditing"
+              class="p-1.5 rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700 transition-colors"
+              title="Edit PR"
+            >
+              <Pencil :size="14" />
+            </button>
+          </div>
         </div>
         <div class="flex items-center gap-1.5 mt-2 text-xs text-neutral-500">
           <span class="text-[11px] px-1.5 py-0.5 rounded-full shrink-0" :class="statusBadgeClass">
@@ -38,11 +67,37 @@
 
       <template v-else>
       <!-- PR Body -->
-      <div v-if="pr.body" class="pr-body">
+      <div v-if="editing" class="min-h-[120px] max-h-[350px] overflow-y-auto rounded bg-neutral-800 border border-neutral-700 p-2">
+        <TiptapEditor
+          mode="editor"
+          :modelValue="editBody"
+          @update:modelValue="editBody = $event"
+          placeholder="Describe your changes..."
+          editorClass="pr-markdown"
+        />
+      </div>
+      <div v-else-if="pr.body" class="pr-body">
         <TiptapEditor mode="viewer" :modelValue="pr.body" editorClass="pr-markdown" @imageClick="openLightbox" />
       </div>
       <div v-else class="text-xs text-neutral-500 italic">
         No description provided.
+      </div>
+
+      <!-- Edit actions -->
+      <div v-if="editing" class="flex items-center gap-2">
+        <button
+          @click="save"
+          :disabled="isUpdating"
+          class="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
+        >
+          <Loader2 v-if="isUpdating" :size="11" class="animate-spin" />
+          <span>Save</span>
+        </button>
+        <button
+          @click="cancelEditing"
+          :disabled="isUpdating"
+          class="px-2.5 py-1 text-xs rounded border border-neutral-700 text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50"
+        >Cancel</button>
       </div>
 
       <!-- Comments -->
@@ -82,8 +137,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { GitBranch, ArrowRight, MessageSquare, Loader2 } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { GitBranch, ArrowRight, MessageSquare, Loader2, Pencil } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
@@ -91,7 +146,14 @@ import type { GhPullRequest, GhPRComment } from '@app/api'
 const props = defineProps<{
   pr: GhPullRequest | null
   comments: GhPRComment[]
+  branches: string[]
   isLoading?: boolean
+  isUpdating?: boolean
+}>()
+
+const emit = defineEmits<{
+  'save': [data: { title?: string; body?: string; base?: string }]
+  'start-editing': []
 }>()
 
 const lightboxOpen = ref(false)
@@ -101,6 +163,55 @@ function openLightbox(src: string) {
   lightboxSrc.value = src
   lightboxOpen.value = true
 }
+
+// Edit mode
+const editing = ref(false)
+const editTitle = ref('')
+const editBody = ref('')
+const editBase = ref('')
+
+const branchOptions = computed(() => {
+  if (props.branches.length === 0 && props.pr?.baseRefName) {
+    return [props.pr.baseRefName]
+  }
+  if (props.pr?.baseRefName && !props.branches.includes(props.pr.baseRefName)) {
+    return [props.pr.baseRefName, ...props.branches]
+  }
+  return props.branches
+})
+
+function startEditing() {
+  if (!props.pr) return
+  editTitle.value = props.pr.title
+  editBody.value = props.pr.body || ''
+  editBase.value = props.pr.baseRefName
+  editing.value = true
+  emit('start-editing')
+}
+
+function cancelEditing() {
+  editing.value = false
+}
+
+function save() {
+  if (!props.pr) return
+  const changes: { title?: string; body?: string; base?: string } = {}
+  if (editTitle.value !== props.pr.title) changes.title = editTitle.value
+  if (editBody.value !== (props.pr.body || '')) changes.body = editBody.value
+  if (editBase.value !== props.pr.baseRefName) changes.base = editBase.value
+  if (Object.keys(changes).length > 0) {
+    emit('save', changes)
+  } else {
+    editing.value = false
+  }
+}
+
+// Exit edit mode when update completes
+watch(() => props.isUpdating, (updating, wasUpdating) => {
+  if (wasUpdating && !updating) {
+    editing.value = false
+  }
+})
 
 const statusLabel = computed(() => {
   if (!props.pr) return ''

@@ -131,6 +131,18 @@ export async function markReady(cwd: string, number: number): Promise<void> {
   await runGh(['pr', 'ready', String(number)], cwd)
 }
 
+export async function updatePR(
+  cwd: string,
+  number: number,
+  opts: { title?: string; body?: string; base?: string }
+): Promise<void> {
+  const args = ['pr', 'edit', String(number)]
+  if (opts.title) args.push('--title', opts.title)
+  if (opts.body !== undefined) args.push('--body', opts.body)
+  if (opts.base) args.push('--base', opts.base)
+  await runGh(args, cwd)
+}
+
 // --- GitHub asset URL resolution ---
 
 async function getAuthToken(cwd: string): Promise<string> {
