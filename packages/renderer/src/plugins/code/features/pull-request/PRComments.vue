@@ -138,7 +138,6 @@
             class="shrink-0 text-neutral-500 transition-transform"
             :class="{ 'rotate-90': expandedThreads.has(thread.id) }"
           />
-          <Code :size="10" class="shrink-0 text-neutral-500" />
           <span class="text-xs text-neutral-400 truncate flex-1" :title="thread.path">
             {{ thread.path.split('/').pop() }}{{ thread.line ? `:${thread.line}` : '' }}
           </span>
