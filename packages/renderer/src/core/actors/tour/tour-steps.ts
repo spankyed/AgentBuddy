@@ -170,13 +170,13 @@ export const tourSteps: TourStep[] = [
   },
 
   // ========================================
-  // Agent Plugin
+  // Chat & Artifacts
   // ========================================
   {
     id: 'agent-plugin-icon',
-    targetId: 'plugin-agent',
-    title: 'Agent Plugin',
-    content: 'The Agent plugin is your main AI assistant interface.',
+    targetId: 'plugin-threads',
+    title: 'Chat & Artifacts',
+    content: 'The Threads plugin is your main AI assistant interface, combining chat and thread management.',
     tooltipPosition: 'right',
     setupActions: [
       selectPlugin('threads'),

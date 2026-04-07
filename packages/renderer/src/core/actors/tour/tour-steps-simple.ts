@@ -100,12 +100,12 @@ export const tourSteps: TourStep[] = [
   },
 
   // ========================================
-  // Agent Plugin
+  // Chat & Artifacts
   // ========================================
   {
     id: 'agent-plugin-icon',
-    targetId: 'plugin-agent',
-    title: 'Agent Plugin',
+    targetId: 'plugin-threads',
+    title: 'Chat & Artifacts',
     content: 'A place for the assistant to share information and collaborate.',
     tooltipPosition: 'right',
     setupActions: [

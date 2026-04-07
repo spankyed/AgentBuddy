@@ -482,7 +482,7 @@ export const createApplicationState = () => setup({
       });
     },
     startGuidedTour: ({ context, self }) => {
-      // Hide non-tour plugins - only show threads, agent, and settings
+      // Hide non-tour plugins - only show threads and settings
       const tourVisibility: Record<string, boolean> = {};
       for (const plugin of context.plugins) {
         tourVisibility[plugin.id] = plugin.id === 'threads' || plugin.id === 'settings';

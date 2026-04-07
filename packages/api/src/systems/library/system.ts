@@ -296,7 +296,7 @@ export const librarySystem = setup({
         })
       }
 
-      // If this is the internal/commands doc, notify agent plugin
+      // If this is the internal/commands doc, notify threads plugin
       if (document.name === 'commands' && document.collectionPath?.join('/') === 'internal') {
         const fieldSection = document.content.find((s: any): s is FieldContent => s.type === 'field');
         const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
@@ -319,7 +319,7 @@ export const librarySystem = setup({
         event: { type: 'DOCUMENT_UPDATED' as const, pluginId: 'library', data: { document } },
       })
 
-      // If this is the internal/commands doc, notify agent plugin
+      // If this is the internal/commands doc, notify threads plugin
       if (document.name === 'commands' && document.collectionPath?.join('/') === 'internal') {
         const fieldSection = document.content.find((s: any): s is FieldContent => s.type === 'field');
         const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
