@@ -6,67 +6,20 @@
     </div>
 
     <div class="space-y-3">
-      <!-- Copilot -->
       <CliProviderRow
-        providerKey="copilot"
-        v-model="cliPathValues.copilot"
+        v-for="p in providers"
+        :key="p.key"
+        :providerKey="p.key"
+        v-model="cliPathValues[p.key]"
         placeholder="Path override (auto-detected if empty)"
-        :testResult="cliTestResults?.copilot"
+        :testResult="cliTestResults?.[p.key]"
         @update:modelValue="debouncedSaveCliPaths()"
-        @test="testCliProvider('copilot')"
+        @test="testCliProvider(p.key)"
       >
-        <label class="block text-sm font-medium text-gray-200">Copilot CLI</label>
+        <label class="block text-sm font-medium text-gray-200">{{ p.label }}</label>
         <div class="mt-1 flex items-center gap-2">
-          <span class="text-xs text-neutral-500">Install via npm</span>
-          <CliCommand>npm install -g @github/copilot</CliCommand>
-        </div>
-      </CliProviderRow>
-
-      <!-- Claude Code -->
-      <CliProviderRow
-        providerKey="claude-code"
-        v-model="cliPathValues['claude-code']"
-        placeholder="Path override (auto-detected if empty)"
-        :testResult="cliTestResults?.['claude-code']"
-        @update:modelValue="debouncedSaveCliPaths()"
-        @test="testCliProvider('claude-code')"
-      >
-        <label class="block text-sm font-medium text-gray-200">Claude Code CLI</label>
-        <div class="mt-1 flex items-center gap-2">
-          <span class="text-xs text-neutral-500">Install via npm</span>
-          <CliCommand>npm install -g @anthropic-ai/claude-code</CliCommand>
-        </div>
-      </CliProviderRow>
-
-      <!-- Codex -->
-      <CliProviderRow
-        providerKey="codex"
-        v-model="cliPathValues.codex"
-        placeholder="Path override (auto-detected if empty)"
-        :testResult="cliTestResults?.codex"
-        @update:modelValue="debouncedSaveCliPaths()"
-        @test="testCliProvider('codex')"
-      >
-        <label class="block text-sm font-medium text-gray-200">Codex CLI</label>
-        <div class="mt-1 flex items-center gap-2">
-          <span class="text-xs text-neutral-500">Install via npm</span>
-          <CliCommand>npm install -g @openai/codex</CliCommand>
-        </div>
-      </CliProviderRow>
-
-      <!-- GitHub CLI -->
-      <CliProviderRow
-        providerKey="gh"
-        v-model="cliPathValues.gh"
-        placeholder="Path override (auto-detected if empty)"
-        :testResult="cliTestResults?.gh"
-        @update:modelValue="debouncedSaveCliPaths()"
-        @test="testCliProvider('gh')"
-      >
-        <label class="block text-sm font-medium text-gray-200">GitHub CLI</label>
-        <div class="mt-1 flex items-center gap-2">
-          <span class="text-xs text-neutral-500">Install via Homebrew</span>
-          <CliCommand>brew install gh</CliCommand>
+          <span class="text-xs text-neutral-500">{{ p.installHint }}</span>
+          <CliCommand>{{ p.installCmd }}</CliCommand>
         </div>
       </CliProviderRow>
     </div>
@@ -100,6 +53,13 @@ const emit = defineEmits<{
 
 const settingsActor = applicationState.system.get('settings')
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
+
+const providers = [
+  { key: 'copilot', label: 'Copilot CLI', installHint: 'Install via npm', installCmd: 'npm install -g @github/copilot' },
+  { key: 'claude-code', label: 'Claude Code CLI', installHint: 'Install via npm', installCmd: 'npm install -g @anthropic-ai/claude-code' },
+  { key: 'codex', label: 'Codex CLI', installHint: 'Install via npm', installCmd: 'npm install -g @openai/codex' },
+  { key: 'gh', label: 'GitHub CLI', installHint: 'Install via Homebrew', installCmd: 'brew install gh' },
+]
 
 const testCliProvider = (provider: string) => {
   settingsActor.send({ type: 'CLI.TEST', provider })

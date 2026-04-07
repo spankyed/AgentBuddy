@@ -128,3 +128,33 @@ export async function resolveCliPath(
 export function clearCliPathCache(): void {
   resolvedCache.clear()
 }
+
+const CLI_NAMES: Set<string> = new Set<string>(['copilot', 'claude-code', 'codex', 'gh'])
+
+export function isCliName(value: string): value is CliName {
+  return CLI_NAMES.has(value)
+}
+
+/** Resolve and test a CLI binary. Clears cache first so it always probes fresh. */
+export async function testCli(
+  cli: CliName,
+  storedPath?: string,
+): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }> {
+  clearCliPathCache()
+  try {
+    const resolved = await resolveCliPath(cli, storedPath)
+    await execFileAsync(resolved, ['--version'], { timeout: 10000 })
+    return { success: true, resolvedPath: resolved }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Command failed' }
+  }
+}
+
+/** Convenience: read stored path from settings and resolve. Used by CLI service modules. */
+export async function resolveForService(cli: CliName): Promise<string> {
+  // Lazy import to avoid circular dependency at module load time
+  const { settingsQueries } = await import('@/systems/settings/repository')
+  const settings = settingsQueries.getSettings()
+  const storedPath = settings.general.secrets.cliPaths?.[cli]
+  return resolveCliPath(cli, storedPath)
+}

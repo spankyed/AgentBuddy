@@ -1,18 +1,11 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { settingsQueries } from '@/systems/settings/repository'
-import { resolveCliPath } from '@/core/helpers/resolve-cli'
+import { resolveForService } from '@/core/helpers/resolve-cli'
 
 const execFileAsync = promisify(execFile)
 
-async function resolvePath(): Promise<string> {
-  const settings = settingsQueries.getSettings()
-  const storedPath = settings.general.secrets.cliPaths?.['copilot']
-  return resolveCliPath('copilot', storedPath)
-}
-
 export async function prompt(text: string, options?: { cwd?: string; timeout?: number }): Promise<string> {
-  const cliPath = await resolvePath()
+  const cliPath = await resolveForService('copilot')
   const timeout = options?.timeout ?? 30_000
 
   try {

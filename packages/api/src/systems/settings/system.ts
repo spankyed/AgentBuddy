@@ -10,19 +10,8 @@ import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 import { threads } from '@/systems/threads/system';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import { seedData, type SeedResult } from '@/setup/seed/index';
-import { resolveCliPath, clearCliPathCache, type CliName } from '@/core/helpers/resolve-cli';
-
-const execFileAsync = promisify(execFile);
-
-const CLI_TEST_COMMANDS: Record<string, { command: string; args: string[] }> = {
-  copilot:       { command: 'copilot', args: ['--version'] },
-  'claude-code': { command: 'claude', args: ['--version'] },
-  codex:         { command: 'codex', args: ['--version'] },
-  gh:            { command: 'gh', args: ['--version'] },
-};
+import { testCli, isCliName, clearCliPathCache } from '@/core/helpers/resolve-cli';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -314,9 +303,8 @@ export const settingsSystem = setup({
     testCliProvider: ({ system, event }) => {
       const ev = typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
-      const cmd = CLI_TEST_COMMANDS[provider];
 
-      if (!cmd) {
+      if (!isCliName(provider)) {
         system.get(bus).send(emit(settings, {
           type: 'CLI_TEST_RESULT',
           provider,
@@ -326,39 +314,25 @@ export const settingsSystem = setup({
         return;
       }
 
-      clearCliPathCache();
+      const storedPath = settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
 
-      const data = settingsQueries.getSettings();
-      const storedPath = data.general.secrets.cliPaths?.[provider];
-
-      (async () => {
-        const command = await resolveCliPath(provider as CliName, storedPath || cmd.command);
-        await execFileAsync(command, cmd.args, { timeout: 10000 });
-        return command;
-      })()
-        .then((resolvedPath) => {
-          const currentData = settingsQueries.getSettings();
-          const updatedPaths = { ...currentData.general.secrets.cliPaths, [provider]: resolvedPath };
-          settingsCommands.updateSettings('general', 'secrets', ['cliPaths'], updatedPaths);
+      testCli(provider, storedPath).then((result) => {
+        if (result.success) {
+          const currentPaths = settingsQueries.getSettings().general.secrets.cliPaths;
+          settingsCommands.updateSettings('general', 'secrets', ['cliPaths'], { ...currentPaths, [provider]: result.resolvedPath });
 
           const data = settingsQueries.getSettings();
           system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
-          system.get(bus).send(emit(settings, {
-            type: 'CLI_TEST_RESULT',
-            provider,
-            success: true,
-            resolvedPath,
-          }));
-        })
-        .catch((err: any) => {
-          console.error(`[settings] CLI test failed for "${provider}":`, err.message || err);
-          system.get(bus).send(emit(settings, {
-            type: 'CLI_TEST_RESULT',
-            provider,
-            success: false,
-            error: err.message || 'Command failed',
-          }));
-        });
+        } else {
+          console.error(`[settings] CLI test failed for "${provider}":`, result.error);
+        }
+
+        system.get(bus).send(emit(settings, {
+          type: 'CLI_TEST_RESULT',
+          provider,
+          ...result,
+        }));
+      });
     },
 
     importSetupPack: ({ system, event }) => {
