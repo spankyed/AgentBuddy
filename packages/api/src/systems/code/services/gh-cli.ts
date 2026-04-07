@@ -29,7 +29,11 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
     }
     // gh outputs errors to stderr
     if (error.stderr) {
-      throw new Error(error.stderr.trim())
+      const msg = error.stderr.trim()
+      if (msg.includes('Resource not accessible by personal access token')) {
+        throw new Error('GitHub token missing required permissions. Run `gh auth refresh -s repo` or update your fine-grained token to include Pull Request access.')
+      }
+      throw new Error(msg)
     }
     throw error
   }
@@ -38,12 +42,24 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
 const PR_JSON_FIELDS = 'number,title,headRefName,baseRefName,state,body,url,isDraft,author,createdAt,updatedAt'
 const PR_DETAIL_FIELDS = `${PR_JSON_FIELDS},commits`
 
-export async function checkAuth(cwd: string): Promise<boolean> {
+export async function checkAuth(cwd: string): Promise<{ available: boolean; prAccess: boolean }> {
   try {
     await runGh(['auth', 'status'], cwd, 10_000)
-    return true
   } catch {
-    return false
+    return { available: false, prAccess: false }
+  }
+  // Probe actual PR access with a lightweight GraphQL query
+  try {
+    const { owner, name } = await getRepoInfo(cwd)
+    await runGh([
+      'api', 'graphql',
+      '-f', 'query=query($owner:String!,$name:String!){ repository(owner:$owner,name:$name){ pullRequests(first:0){ totalCount } } }',
+      '-F', `owner=${owner}`,
+      '-F', `name=${name}`,
+    ], cwd, 10_000)
+    return { available: true, prAccess: true }
+  } catch {
+    return { available: true, prAccess: false }
   }
 }
 

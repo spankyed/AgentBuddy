@@ -49,6 +49,7 @@ export interface Context {
   commentTab: 'discussion' | 'reviews'
   viewMode: 'files' | 'pr'
   isGhAvailable: boolean
+  prAccess: boolean
   isGhChecking: boolean
   branchPRCheckFailed: boolean
   prCheckCompleted: boolean
@@ -92,7 +93,7 @@ export type Event =
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
   | { type: 'CODE_STARTUP' }
   // GitHub PR events from backend
-  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
+  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
   | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
@@ -273,8 +274,12 @@ export const pullRequestState = setup({
 
     handleGhAuthChecked: assign({
       isGhAvailable: ({ event }) => {
-        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
+        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
         return ev.data.available
+      },
+      prAccess: ({ event }) => {
+        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
+        return ev.data.prAccess
       },
     }),
 
@@ -718,6 +723,7 @@ export const pullRequestState = setup({
     commentTab: 'discussion',
     viewMode: 'files',
     isGhAvailable: false,
+    prAccess: true,
     isGhChecking: false,
     branchPRCheckFailed: false,
     prCheckCompleted: false,

@@ -39,6 +39,15 @@
         <span>GitHub CLI not available. Install <code class="px-1 py-0.5 rounded bg-neutral-800">gh</code> and run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth login</code> for PR features.</span>
       </div>
 
+      <!-- gh token missing PR permissions banner -->
+      <div
+        v-if="isGhAvailable && !prAccess && !isPrLoading && !isGhChecking"
+        class="flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
+      >
+        <AlertTriangle :size="12" class="shrink-0" />
+        <span>GitHub token missing PR permissions. Run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth refresh -s repo</code> or update your fine-grained token settings.</span>
+      </div>
+
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
       <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[42px]" :class="{ 'hidden': viewMode === 'pr' }">
         <!-- Checking spinner (replaces selector while checking) -->
@@ -259,6 +268,7 @@ const commentTab = useSelector(prActor, (state: any) => state.context.commentTab
 const isSubmittingComment = useSelector(prActor, (state: any) => state.context.isSubmittingComment)
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
+const prAccess = useSelector(prActor, (state: any) => state.context.prAccess)
 const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
 const branchPRCheckFailed = useSelector(prActor, (state: any) => state.context.branchPRCheckFailed)
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)

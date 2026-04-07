@@ -52,7 +52,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
   | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean } }
+  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
@@ -190,13 +190,13 @@ export const pullRequestSystem = setup({
 
     checkGhAuth: ({ context }) => {
       if (!context.gitRepository) {
-        emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false } })
+        emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false, prAccess: false } })
         return
       }
       withRepo(context,
         repo => ghCli.checkAuth(repo.getWorkingDir()),
-        available => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available } }),
-        () => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false } })
+        result => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: result }),
+        () => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false, prAccess: false } })
       )
     },
 
