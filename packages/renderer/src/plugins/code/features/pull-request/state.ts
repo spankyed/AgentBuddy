@@ -24,6 +24,8 @@ const defaultLoadingStates = {
   isMerging: false,
   isClosing: false,
   isTogglingDraft: false,
+  isDeletingBranch: false,
+  isUpdatingPR: false,
   isLoadingDetails: false,
   isLoadingPRs: false,
   isSubmittingComment: false,
@@ -182,8 +184,6 @@ export const pullRequestState = setup({
       _commentSnapshot: null,
       _threadSnapshot: null,
     }),
-
-    setPrLoading: assign({ isPrLoading: true, branchPRCheckFailed: false }),
 
     handleBaseBranchReceived: assign({
       prBaseBranch: ({ event }) => {

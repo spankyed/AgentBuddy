@@ -262,7 +262,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
-  Loader2, Plus, List, X, ArrowLeft
+  Loader2, List, X, ArrowLeft
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
@@ -323,7 +323,8 @@ const isNoGitRepoError = computed(() =>
 )
 
 const isNoBaseBranchError = computed(() =>
-  prError.value?.includes('Could not determine PR base branch')
+  prError.value?.includes('Could not determine PR base branch') ||
+  prError.value?.includes('Could not determine base branch')
 )
 
 const displayBranch = computed(() =>

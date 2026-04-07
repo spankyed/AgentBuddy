@@ -203,7 +203,8 @@ export const pullRequestSystem = setup({
     listOpenPRs: ({ context }) => {
       withRepo(context,
         repo => ghCli.listOpenPRs(repo.getWorkingDir()),
-        prs => emitToFrontend({ type: 'pr.OPEN_PRS_RECEIVED', data: { prs } })
+        prs => emitToFrontend({ type: 'pr.OPEN_PRS_RECEIVED', data: { prs } }),
+        () => emitToFrontend({ type: 'pr.OPEN_PRS_RECEIVED', data: { prs: [] } })
       )
     },
 

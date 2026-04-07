@@ -607,7 +607,7 @@ export class GitRepository {
   async getBaseBranch(options?: { preferUpstream?: boolean }): Promise<string> {
     const preferUpstream = options?.preferUpstream !== false // Default to true
     
-    const cacheKey = 'baseBranch'
+    const cacheKey = preferUpstream ? 'baseBranch:preferUpstream' : 'baseBranch'
     const cached = this.getCached<string>(cacheKey)
     if (cached) return cached
     
