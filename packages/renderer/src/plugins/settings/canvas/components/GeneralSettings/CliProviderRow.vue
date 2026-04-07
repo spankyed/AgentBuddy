@@ -57,7 +57,6 @@ import { computed } from 'vue'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
 
 const props = defineProps<{
-  providerKey: string
   placeholder: string
   modelValue: string
   testResult?: { status: string; resolvedPath?: string; error?: string }

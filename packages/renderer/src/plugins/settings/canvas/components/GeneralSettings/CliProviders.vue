@@ -9,7 +9,6 @@
       <CliProviderRow
         v-for="p in providers"
         :key="p.key"
-        :providerKey="p.key"
         v-model="cliPathValues[p.key]"
         placeholder="Path override (auto-detected if empty)"
         :testResult="cliTestResults?.[p.key]"
