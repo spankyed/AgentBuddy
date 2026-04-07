@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as chokidar from 'chokidar'
 import * as fs from 'fs/promises'
+import { GitRepository } from './git'
 
 export interface FileChangeInfo {
   path: string
@@ -17,8 +18,13 @@ export class GitWatcherService {
   private fileChangeTimeouts: Map<string, NodeJS.Timeout> = new Map()
   private isWatching = false
   private openFiles: Set<string> = new Set()
+  private gitRepository?: GitRepository
 
   constructor(private workingDirectory: string) {}
+
+  setGitRepository(repo: GitRepository): void {
+    this.gitRepository = repo
+  }
 
   setChangeCallback(callback: () => void) {
     this.onGitChangeCallback = callback
@@ -168,11 +174,28 @@ export class GitWatcherService {
     if (this.gitStatusDebounceTimeout) {
       clearTimeout(this.gitStatusDebounceTimeout)
     }
-    this.gitStatusDebounceTimeout = setTimeout(() => {
-      if (this.onGitChangeCallback) {
-        this.onGitChangeCallback()
-      }
-    }, 500)
+
+    // If a write is in progress, defer the callback until it finishes
+    // instead of racing with it on a timer
+    if (this.gitRepository?.isWriteInProgress) {
+      this.gitRepository.onWriteComplete(() => {
+        // Re-debounce: another write may have started in the meantime
+        if (this.gitStatusDebounceTimeout) {
+          clearTimeout(this.gitStatusDebounceTimeout)
+        }
+        this.gitStatusDebounceTimeout = setTimeout(() => {
+          if (this.onGitChangeCallback) {
+            this.onGitChangeCallback()
+          }
+        }, 100) // shorter debounce after write completes — the lock is already released
+      })
+    } else {
+      this.gitStatusDebounceTimeout = setTimeout(() => {
+        if (this.onGitChangeCallback) {
+          this.onGitChangeCallback()
+        }
+      }, 500)
+    }
 
     // Per-file debouncing for file change notifications (so we don't lose notifications)
     if (this.openFiles.has(filePath) && this.onFileChangeCallback) {

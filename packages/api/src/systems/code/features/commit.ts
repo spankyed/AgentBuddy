@@ -57,6 +57,7 @@ export type OutgoingCommitEvents =
 export interface Context {
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
+  _statusRefreshTimer?: ReturnType<typeof setTimeout>
 }
 
 export type Event = 
@@ -92,10 +93,17 @@ export const commitSystem = setup({
   actions: {
     // Git watcher is now managed by parent code system
 
-    handleGitStatusChanged: async ({ context, self, system }) => {
-      // When git status changes, automatically send the new status to frontend
-      self.send({ type: 'commit.GET_GIT_STATUS' })
-      
+    handleGitStatusChanged: ({ context, self, system }) => {
+      // Debounce: collapse rapid status-change notifications into one refresh.
+      // This prevents double-refresh from write-action + watcher both triggering.
+      if (context._statusRefreshTimer) {
+        clearTimeout(context._statusRefreshTimer)
+      }
+      context._statusRefreshTimer = setTimeout(() => {
+        context._statusRefreshTimer = undefined
+        self.send({ type: 'commit.GET_GIT_STATUS' })
+      }, 150)
+
       // Also notify the PR system to refresh if it exists
       const prSystem = system.get('pr')
       if (prSystem) {
@@ -215,9 +223,9 @@ export const commitSystem = setup({
 
     stageFiles: async ({ event, context, self }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
-      
+
       if (!requireGitRepository(context)) return
-      
+
       try {
         await context.gitRepository.stageFiles(ev.paths)
         const wrapped = emit(pluginId, {
@@ -225,8 +233,8 @@ export const commitSystem = setup({
           data: { paths: ev.paths }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Also send updated status
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh (watcher may also trigger one — they coalesce)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -257,8 +265,8 @@ export const commitSystem = setup({
           data: { paths: ev.paths }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Also send updated status
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh (watcher may also trigger one — they coalesce)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -280,8 +288,8 @@ export const commitSystem = setup({
           data: { path: ev.path }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Also send updated status
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         // Notify frontend about file change
         const fileChangeWrapped = emit(pluginId, {
           type: 'explorer.FILE_CHANGED_EXTERNALLY',
@@ -313,8 +321,8 @@ export const commitSystem = setup({
           data: { paths: ev.paths }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Also send updated status
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         // Notify frontend about file changes
         for (const path of ev.paths) {
           const fileChangeWrapped = emit(pluginId, {
@@ -359,8 +367,8 @@ export const commitSystem = setup({
           data: { message: ev.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Also send updated status
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         let errorMessage = error.message
         if (error.message.includes('nothing to commit')) {
@@ -432,8 +440,8 @@ export const commitSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
         
-        // Refresh git status to show new branch
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         
         // Also notify PR system about branch change
         const prSystem = self.system.get('pr')
@@ -462,8 +470,8 @@ export const commitSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
         
-        // Refresh git status to show updated upstream status
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -539,8 +547,8 @@ export const commitSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
         
-        // Refresh git status to show updated state
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        // Debounced status refresh
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -562,7 +570,7 @@ export const commitSystem = setup({
     }),
 
     selfRefreshGitStatus: ({ self }) => {
-      self.send({ type: 'commit.GET_GIT_STATUS' })
+      self.send({ type: 'commit.GIT_STATUS_CHANGED' })
     },
 
     stashPush: async ({ event, context, self }) => {
@@ -577,7 +585,7 @@ export const commitSystem = setup({
           data: { message: result }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
@@ -619,7 +627,7 @@ export const commitSystem = setup({
           data: { message: 'Stash applied successfully' }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -641,7 +649,7 @@ export const commitSystem = setup({
           data: { message: 'Stash popped successfully' }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        self.send({ type: 'commit.GET_GIT_STATUS' })
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {

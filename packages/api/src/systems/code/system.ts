@@ -280,12 +280,15 @@ export const systemMachine = setup({
         // No directory selected yet
         return
       }
-      
+
+      // Give the watcher a reference to the git repo for write-in-progress checks
+      context.gitWatcher.setGitRepository(context.gitRepository)
+
       // Set up the callback for git changes
       context.gitWatcher.setChangeCallback(() => {
         // Clear git cache when git status changes
         context.gitRepository?.clearCache()
-        
+
         // Notify commit system of changes (commit system forwards to PR system)
         system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
       })
@@ -298,6 +301,9 @@ export const systemMachine = setup({
       if (!context.gitWatcher || !context.gitRepository) {
         return
       }
+
+      // Give the watcher a reference to the git repo for write-in-progress checks
+      context.gitWatcher.setGitRepository(context.gitRepository)
 
       // Set up the callback for git changes (same as setupGitWatcher)
       context.gitWatcher.setChangeCallback(() => {

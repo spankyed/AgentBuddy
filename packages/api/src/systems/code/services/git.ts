@@ -27,7 +27,10 @@ export class GitRepository {
   private cache = new Map<string, CachedResult<any>>()
   private readonly CACHE_TTL = 5000 // 5 seconds
   private readonly PARENT_BRANCH_SEARCH_DEPTH = 25
-  private writeQueue: Promise<void> = Promise.resolve()
+  /** Serializes all git process invocations to prevent index.lock races. */
+  private commandQueue: Promise<void> = Promise.resolve()
+  private _writeInProgress = 0
+  private _writeCompleteCallbacks: (() => void)[] = []
 
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
@@ -36,11 +39,41 @@ export class GitRepository {
   getWorkingDir(): string {
     return this.workingDirectory
   }
-  
-  private enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
-    const op = this.writeQueue.then(fn, fn)
-    this.writeQueue = op.then(() => {}, () => {})
+
+  get isWriteInProgress(): boolean {
+    return this._writeInProgress > 0
+  }
+
+  /** Register a one-shot callback that fires when all pending writes finish. */
+  onWriteComplete(callback: () => void): void {
+    if (!this.isWriteInProgress) {
+      callback()
+    } else {
+      this._writeCompleteCallbacks.push(callback)
+    }
+  }
+
+  /** Run fn serially on the command queue (used by executeGitCommand). */
+  private enqueueCommand<T>(fn: () => Promise<T>): Promise<T> {
+    const op = this.commandQueue.then(fn, fn)
+    this.commandQueue = op.then(() => {}, () => {})
     return op
+  }
+
+  /** Wrap a write operation to track write-in-progress for watcher suppression. */
+  private async withWriteFlag<T>(fn: () => Promise<T>): Promise<T> {
+    this._writeInProgress++
+    try {
+      return await fn()
+    } finally {
+      this._writeInProgress--
+      if (this._writeInProgress === 0 && this._writeCompleteCallbacks.length > 0) {
+        const callbacks = this._writeCompleteCallbacks.splice(0)
+        for (const cb of callbacks) {
+          try { cb() } catch { /* ignore */ }
+        }
+      }
+    }
   }
 
   private validateWorkingDirectory(dir: string): void {
@@ -145,39 +178,38 @@ export class GitRepository {
     })
   }
 
-  private async executeGitCommand(args: string[]): Promise<GitCommandResult> {
-    // Always add --color=never to prevent ANSI codes
-    const colorlessArgs = ['-c', 'color.ui=never', ...args]
-    
-    try {
-      const { stdout, stderr } = await execFileAsync('git', colorlessArgs, {
-        cwd: this.workingDirectory,
-        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer limit
-        encoding: 'utf8'
-      })
-      
-      return { success: true, output: stdout }
-    } catch (error) {
-      const gitError = error as GitCommandError
-      
-      // Special cases where non-zero exit codes are expected
-      if (gitError.code === 1 && args[0] === 'diff') {
-        // git diff returns 1 when there are differences
-        return { success: true, output: gitError.stdout || '' }
+  private executeGitCommand(args: string[]): Promise<GitCommandResult> {
+    return this.enqueueCommand(async () => {
+      // Always add --color=never to prevent ANSI codes
+      const colorlessArgs = ['-c', 'color.ui=never', ...args]
+
+      try {
+        const { stdout } = await execFileAsync('git', colorlessArgs, {
+          cwd: this.workingDirectory,
+          env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+          maxBuffer: 10 * 1024 * 1024, // 10MB buffer limit
+          encoding: 'utf8'
+        })
+
+        return { success: true, output: stdout }
+      } catch (error) {
+        const gitError = error as GitCommandError
+
+        // Special cases where non-zero exit codes are expected
+        if (gitError.code === 1 && args[0] === 'diff') {
+          return { success: true, output: gitError.stdout || '' }
+        }
+        if (gitError.code === 128 && args[0] === 'show') {
+          return { success: true, output: '' }
+        }
+
+        return {
+          success: false,
+          error: gitError.stderr || gitError.message,
+          output: gitError.stdout
+        }
       }
-      if (gitError.code === 128 && args[0] === 'show') {
-        // git show returns 128 when object doesn't exist (file not in branch)
-        return { success: true, output: '' }
-      }
-      
-      // Include original error for better debugging
-      return { 
-        success: false, 
-        error: gitError.stderr || gitError.message,
-        output: gitError.stdout // Sometimes useful for debugging
-      }
-    }
+    })
   }
 
   async getCurrentBranch(): Promise<string> {
@@ -192,7 +224,7 @@ export class GitRepository {
     // Check cache first
     const cached = this.getCached<GitStatusFile[]>('status')
     if (cached) return cached
-    
+
     const result = await this.executeGitCommand(['status', '--porcelain', '-z'])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get git status')
@@ -465,16 +497,14 @@ export class GitRepository {
 
   async getFileContent(filePath: string, version: 'HEAD' | 'working' | 'index' = 'working'): Promise<string> {
     if (version === 'working') {
-      // Get current working file content
+      // Working-tree reads don't touch the git index — no queue needed
       try {
-        // Ensure the file path is relative to the working directory
         const relativePath = filePath.startsWith(this.workingDirectory)
           ? filePath.slice(this.workingDirectory.length + 1)
           : filePath
 
-        // Check if it's a directory
         if (await this.isDirectory(relativePath)) {
-          return '' // Return empty content for directories
+          return ''
         }
 
         const fullPath = path.join(this.workingDirectory, relativePath)
@@ -483,14 +513,12 @@ export class GitRepository {
         throw new Error(`Failed to read file: ${error}`)
       }
     } else {
-      // Get file content from HEAD or index
       const relativePath = filePath.startsWith(this.workingDirectory)
         ? filePath.slice(this.workingDirectory.length + 1)
         : filePath
       const ref = version === 'HEAD' ? `HEAD:${relativePath}` : `:${relativePath}`
       const result = await this.executeGitCommand(['show', ref])
       if (!result.success) {
-        // File might be new (not in HEAD/index)
         return ''
       }
       return result.output || ''
@@ -499,7 +527,7 @@ export class GitRepository {
 
   async stageFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['add', ...filePaths])
       if (!result.success) {
         throw new Error(result.error || 'Failed to stage files')
@@ -510,7 +538,7 @@ export class GitRepository {
 
   async unstageFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['reset', 'HEAD', ...filePaths])
       if (!result.success) {
         throw new Error(result.error || 'Failed to unstage files')
@@ -520,7 +548,7 @@ export class GitRepository {
   }
 
   async revertFile(filePath: string): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const status = await this.getStatus()
       const fileStatus = status.find(f => f.path === filePath)
 
@@ -539,7 +567,7 @@ export class GitRepository {
 
   async revertFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const status = await this.getStatus()
       const statusMap = new Map(status.map(f => [f.path, f.status]))
 
@@ -568,7 +596,7 @@ export class GitRepository {
     if (!message.trim()) {
       throw new Error('Commit message cannot be empty')
     }
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['commit', '-m', message])
       if (!result.success) {
         throw new Error(result.error || 'Failed to commit')
@@ -592,23 +620,19 @@ export class GitRepository {
   }
 
   async getUpstreamBranch(): Promise<string | null> {
-    // Get the upstream branch of HEAD
     const result = await this.executeGitCommand(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
-    
+
     if (!result.success) {
-      // Check if it's because there's no upstream configured
-      if (result.error?.includes('no upstream configured') || 
+      if (result.error?.includes('no upstream configured') ||
           result.error?.includes('@{u}') ||
           result.error?.includes('HEAD has no upstream')) {
-        return null // This is expected, not an error
+        return null
       }
-      // Otherwise, it's a real error
       throw new Error(`Failed to get upstream branch: ${result.error}`)
     }
-    
+
     if (result.output) {
       const upstream = result.output.trim()
-      // Extract branch name from remote/branch format
       const parts = upstream.split('/')
       if (parts.length >= 2) {
         return parts.slice(1).join('/')
@@ -618,13 +642,12 @@ export class GitRepository {
   }
 
   async getBaseBranch(options?: { preferUpstream?: boolean }): Promise<string> {
-    const preferUpstream = options?.preferUpstream !== false // Default to true
-    
+    const preferUpstream = options?.preferUpstream !== false
+
     const cacheKey = preferUpstream ? 'baseBranch:preferUpstream' : 'baseBranch'
     const cached = this.getCached<string>(cacheKey)
     if (cached) return cached
-    
-    // 1. Try upstream of HEAD first (if preferred)
+
     if (preferUpstream) {
       try {
         const upstream = await this.getUpstreamBranch()
@@ -633,12 +656,10 @@ export class GitRepository {
           return upstream
         }
       } catch (error) {
-        // Log but continue with other methods
         console.warn('Failed to get upstream branch:', error)
       }
     }
-    
-    // 2. Try symbolic ref for origin/HEAD
+
     const originHeadResult = await this.executeGitCommand(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
     if (originHeadResult.success && originHeadResult.output) {
       const branch = originHeadResult.output.trim().replace(/^origin\//, '')
@@ -647,20 +668,15 @@ export class GitRepository {
         return branch
       }
     }
-    
-    // 3. Probe for common branch names
-    const checkBranch = async (branch: string): Promise<boolean> => {
-      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
-      return result.success
-    }
-    
+
     for (const branch of ['main', 'master', 'develop', 'development']) {
-      if (await checkBranch(branch)) {
+      const result = await this.executeGitCommand(['rev-parse', '--verify', branch])
+      if (result.success) {
         this.setCached(cacheKey, branch)
         return branch
       }
     }
-    
+
     throw new Error('Could not determine base branch')
   }
 
@@ -824,13 +840,13 @@ export class GitRepository {
   }
 
   async fetchRemoteBranch(branch: string): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       await this.executeGitCommand(['fetch', 'origin', branch])
     })
   }
 
   async deleteRemoteBranch(branch: string): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['push', 'origin', '--delete', branch])
       if (!result.success) {
         throw new Error(result.error || 'Failed to delete remote branch')
@@ -878,7 +894,7 @@ export class GitRepository {
       throw new Error('Invalid branch name. Branch names can only contain letters, numbers, dots, underscores, hyphens, and forward slashes.')
     }
     
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       // Try to checkout the branch
       const result = await this.executeGitCommand(['checkout', branchName])
 
@@ -943,7 +959,7 @@ export class GitRepository {
   }
 
   async pushBranch(branchName?: string): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       // Get current branch if not specified
       const branch = branchName || await this.getCurrentBranch()
 
@@ -978,7 +994,7 @@ export class GitRepository {
   }
 
   async pullBranch(): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       // Check if we have an upstream branch
       const hasUpstream = await this.isCurrentBranchPublished()
       if (!hasUpstream) {
@@ -1014,7 +1030,7 @@ export class GitRepository {
   // --- Stash operations ---
 
   async stashPush(message?: string, stagedOnly?: boolean): Promise<string> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const args = ['stash', 'push']
       if (message) {
         args.push('-m', message)
@@ -1052,7 +1068,7 @@ export class GitRepository {
   }
 
   async stashApply(index: number): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['stash', 'apply', `stash@{${index}}`])
       if (!result.success) {
         throw new Error(result.error || 'Failed to apply stash')
@@ -1062,7 +1078,7 @@ export class GitRepository {
   }
 
   async stashPop(index: number): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['stash', 'pop', `stash@{${index}}`])
       if (!result.success) {
         throw new Error(result.error || 'Failed to pop stash')
@@ -1072,7 +1088,7 @@ export class GitRepository {
   }
 
   async stashDrop(index: number): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['stash', 'drop', `stash@{${index}}`])
       if (!result.success) {
         throw new Error(result.error || 'Failed to drop stash')
@@ -1081,7 +1097,7 @@ export class GitRepository {
   }
 
   async stashClear(): Promise<void> {
-    return this.enqueueWrite(async () => {
+    return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['stash', 'clear'])
       if (!result.success) {
         throw new Error(result.error || 'Failed to clear stashes')
