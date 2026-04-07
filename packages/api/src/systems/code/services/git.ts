@@ -810,6 +810,13 @@ export class GitRepository {
     return result.output || ''
   }
 
+  async deleteRemoteBranch(branch: string): Promise<void> {
+    const result = await this.executeGitCommand(['push', 'origin', '--delete', branch])
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to delete remote branch')
+    }
+  }
+
   async getAllBranches(): Promise<string[]> {
     // Get all local and remote branches
     const result = await this.executeGitCommand(['branch', '-a', '--no-color'])

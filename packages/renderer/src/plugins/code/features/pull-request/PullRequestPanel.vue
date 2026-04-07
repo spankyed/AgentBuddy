@@ -194,9 +194,11 @@
             :isMerging="isMerging"
             :isClosing="isClosing"
             :isTogglingDraft="isTogglingDraft"
+            :isDeletingBranch="isDeletingBranch"
             @merge="handleMerge"
             @close="handleClose"
             @toggle-draft="handleToggleDraft"
+            @delete-branch="handleDeleteBranch"
           />
         </template>
       </template>
@@ -279,6 +281,7 @@ const isCreating = useSelector(prActor, (state: any) => state.context.isCreating
 const isMerging = useSelector(prActor, (state: any) => state.context.isMerging)
 const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
 const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
+const isDeletingBranch = useSelector(prActor, (state: any) => state.context.isDeletingBranch)
 const isLoadingDetails = useSelector(prActor, (state: any) => state.context.isLoadingDetails)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
@@ -375,5 +378,9 @@ const handleClose = () => {
 
 const handleToggleDraft = () => {
   prActor?.send({ type: 'pr.TOGGLE_DRAFT' })
+}
+
+const handleDeleteBranch = () => {
+  prActor?.send({ type: 'pr.DELETE_BRANCH' })
 }
 </script>
