@@ -6,17 +6,17 @@
         <div class="flex items-start gap-2">
           <div class="flex-1 min-w-0">
             <span class="text-sm font-medium text-neutral-100 leading-snug">{{ pr.title }}</span>
-            <div class="flex items-center gap-1 mt-0.5 text-[11px] text-neutral-600">
+            <div class="flex items-center gap-1 mt-0.5 text-xs text-neutral-600">
               <GitBranch :size="10" class="shrink-0" />
               <span class="truncate" :title="pr.headRefName">{{ pr.headRefName }}</span>
               <ArrowRight :size="10" class="shrink-0" />
               <span class="truncate" :title="pr.baseRefName">{{ pr.baseRefName }}</span>
             </div>
           </div>
-          <span class="text-[11px] text-neutral-400 shrink-0 mt-0.5">#{{ pr.number }}</span>
+          <span class="text-xs text-neutral-400 shrink-0 mt-0.5">#{{ pr.number }}</span>
         </div>
-        <div class="flex items-center gap-1.5 mt-2 text-[11px] text-neutral-500">
-          <span class="text-[10px] px-1.5 py-0.5 rounded-full shrink-0" :class="statusBadgeClass">
+        <div class="flex items-center gap-1.5 mt-2 text-xs text-neutral-500">
+          <span class="text-[11px] px-1.5 py-0.5 rounded-full shrink-0" :class="statusBadgeClass">
             {{ statusLabel }}
           </span>
           <span>&middot;</span>
@@ -64,8 +64,8 @@
           class="mb-3 last:mb-0"
         >
           <div class="flex items-center gap-2 mb-1">
-            <span class="text-[11px] font-medium text-neutral-300">{{ comment.author.login }}</span>
-            <span class="text-[10px] text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
+            <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
+            <span class="text-xs text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
           </div>
           <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-markdown" @imageClick="openLightbox" />
         </div>
@@ -138,7 +138,7 @@ function formatDate(dateStr: string): string {
 
 <style scoped>
 :deep(.pr-markdown) {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   line-height: 1.5;
   color: rgb(212 212 212);
 }
