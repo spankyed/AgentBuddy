@@ -83,12 +83,20 @@
       <Trash2 v-else :size="11" />
       <span>Delete Branch</span>
     </button>
+    <button
+      @click="$emit('checkout-base')"
+      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-blue-400 hover:bg-blue-900/30 transition-colors ml-auto"
+      title="Checkout base branch"
+    >
+      <GitBranch :size="11" />
+      <span>Checkout Base</span>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
-import { GitMerge, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2 } from 'lucide-vue-next'
+import { GitMerge, GitBranch, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2 } from 'lucide-vue-next'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
 
@@ -105,6 +113,7 @@ defineEmits<{
   'close': []
   'toggle-draft': []
   'delete-branch': []
+  'checkout-base': []
 }>()
 
 const showMergeOptions = ref(false)

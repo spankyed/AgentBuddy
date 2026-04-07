@@ -127,6 +127,7 @@ export type Event =
   | { type: 'pr.CLOSE' }
   | { type: 'pr.TOGGLE_DRAFT' }
   | { type: 'pr.DELETE_BRANCH' }
+  | { type: 'pr.CHECKOUT_BASE' }
   | { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
   | { type: 'pr.CREATE_COMMENT'; number: number; body: string }
   | { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
@@ -412,6 +413,13 @@ export const pullRequestState = setup({
       if (context.selectedPR?.headRefName) {
         sendToBackend('pr.DELETE_BRANCH', { branch: context.selectedPR.headRefName })
       }
+    },
+
+    checkoutBase: ({ context, self, system }) => {
+      if (!context.selectedPR?.baseRefName) return
+      updateParentState(self, { selectedPanel: 'commit' })
+      system.get('commit')?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: context.selectedPR.baseRefName })
+      system.get('commit')?.send({ type: 'commit.CHECKOUT_BRANCH' })
     },
 
     handleBranchDeleted: assign({
@@ -821,6 +829,7 @@ export const pullRequestState = setup({
         'pr.CLOSE': { actions: ['requestClose', assign({ isClosing: true })] },
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
         'pr.DELETE_BRANCH': { actions: ['requestDeleteBranch', assign({ isDeletingBranch: true })] },
+        'pr.CHECKOUT_BASE': { actions: 'checkoutBase' },
         'pr.UPDATE_PR': { actions: ['requestUpdatePR', assign({ isUpdatingPR: true })] },
         'pr.CREATE_COMMENT': { actions: 'optimisticCreateComment' },
         'pr.EDIT_COMMENT': { actions: 'optimisticEditComment' },

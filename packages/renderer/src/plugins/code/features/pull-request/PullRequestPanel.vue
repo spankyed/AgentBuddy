@@ -195,6 +195,7 @@
             @close="handleClose"
             @toggle-draft="handleToggleDraft"
             @delete-branch="handleDeleteBranch"
+            @checkout-base="prActor?.send({ type: 'pr.CHECKOUT_BASE' })"
           />
         </template>
       </template>

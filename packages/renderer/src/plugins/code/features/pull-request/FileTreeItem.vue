@@ -8,7 +8,7 @@
       <button
         @click="toggleExpanded"
         class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 min-w-0"
-        :style="{ paddingLeft: `${(level * 16) + 8}px` }"
+        :style="{ paddingLeft: `${(level * 16) + 12}px` }"
       >
         <ChevronRight
           :class="['w-3 h-3 text-neutral-400 transition-transform', { 'rotate-90': expanded }]"
@@ -39,7 +39,7 @@
       <ContextMenuTrigger as-child>
         <div
           class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 cursor-pointer min-w-0"
-          :style="{ paddingLeft: `${(level * 16) + 8 + 20}px` }"
+          :style="{ paddingLeft: `${(level * 16) + 12 + 20}px` }"
           @click="$emit('select-file', item)"
         >
           <FileCode class="w-4 h-4 text-neutral-400 shrink-0" />
