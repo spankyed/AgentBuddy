@@ -284,12 +284,15 @@ export const pullRequestState = setup({
     }),
 
     handlePRDetailsReceived: assign({
-      selectedPR: ({ event }) => {
+      selectedPR: ({ event, context }) => {
         const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
+        // Skip stale responses from a previously selected PR
+        if (context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.selectedPR
         return ev.data.pr
       },
-      prComments: ({ event }) => {
+      prComments: ({ event, context }) => {
         const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
+        if (context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.prComments
         return ev.data.comments
       },
       isLoadingDetails: false
@@ -814,7 +817,7 @@ export const pullRequestState = setup({
         'pr.UNRESOLVE_THREAD': { actions: 'optimisticUnresolveThread' },
         'pr.EDIT_REVIEW_COMMENT': { actions: 'optimisticEditReviewComment' },
         'pr.DELETE_REVIEW_COMMENT': { actions: 'optimisticDeleteReviewComment' },
-        'pr.SET_COMMENT_TAB': { actions: assign({ commentTab: ({ event }) => (event as any).tab }) },
+        'pr.SET_COMMENT_TAB': { actions: assign({ commentTab: ({ event }) => (event as { type: 'pr.SET_COMMENT_TAB'; tab: 'discussion' | 'reviews' }).tab }) },
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
       }
