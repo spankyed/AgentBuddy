@@ -32,14 +32,19 @@ applicationState.subscribe({
   }
 });
 
+declare const __APP_VERSION__: string;
+
 declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createApplicationState>>;
     __showErrorPage?: (title: string, detail: string) => void;
+    appVersion: string;
   }
 }
 
 window.applicationState = applicationState;
+window.appVersion = __APP_VERSION__;
+console.log(`AgentBuddy v${__APP_VERSION__}`);
 
 const app = createApp(App);
 
