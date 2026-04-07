@@ -18,41 +18,60 @@
       <div class="flex items-center gap-2">
         <button
           @click="emit('test')"
-          :disabled="testResult === 'testing'"
+          :disabled="status === 'testing'"
           class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
-          :class="testResult === 'testing'
+          :class="status === 'testing'
             ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
             : 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 border border-neutral-700/50'"
           title="Test if CLI is available"
         >
           <Loader2
-            v-if="testResult === 'testing'"
+            v-if="status === 'testing'"
             class="w-3.5 h-3.5 animate-spin"
           />
           <span v-else>Test</span>
         </button>
         <CheckCircle
-          v-if="testResult === 'success'"
+          v-if="status === 'success'"
           class="w-4 h-4 text-green-400"
         />
         <XCircle
-          v-else-if="testResult === 'error'"
+          v-else-if="status === 'error'"
           class="w-4 h-4 text-red-400"
         />
       </div>
+    </div>
+
+    <!-- Resolved path (shown when fallback was used) -->
+    <div
+      v-if="status === 'success' && testResult?.resolvedPath && testResult.resolvedPath !== modelValue"
+      class="text-xs text-green-400/70 pl-9 truncate"
+      :title="testResult.resolvedPath"
+    >
+      Resolved: {{ testResult.resolvedPath }}
+    </div>
+    <!-- Error message -->
+    <div
+      v-else-if="status === 'error' && testResult?.error"
+      class="text-xs text-red-400/70 pl-9"
+    >
+      {{ testResult.error }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
 
-defineProps<{
+const props = defineProps<{
   providerKey: string
   placeholder: string
   modelValue: string
-  testResult: string
+  testResult?: { status: string; resolvedPath?: string; error?: string }
 }>()
+
+const status = computed(() => props.testResult?.status)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]

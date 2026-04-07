@@ -2,17 +2,19 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import https from 'https'
 import { settingsQueries } from '@/systems/settings/repository'
+import { resolveCliPath } from '@/core/helpers/resolve-cli'
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 
 const execFileAsync = promisify(execFile)
 
-function resolvePath(): string {
+async function resolvePath(): Promise<string> {
   const settings = settingsQueries.getSettings()
-  return settings.general.secrets.cliPaths?.['gh'] || 'gh'
+  const storedPath = settings.general.secrets.cliPaths?.['gh']
+  return resolveCliPath('gh', storedPath)
 }
 
 async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<string> {
-  const ghPath = resolvePath()
+  const ghPath = await resolvePath()
   try {
     const { stdout } = await execFileAsync(ghPath, args, {
       cwd,

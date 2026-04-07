@@ -28,7 +28,7 @@ export interface SetupPackImport {
 export interface SettingsContext {
   settings: SettingsData | null;
   secretsData: any[];
-  cliTestResults: Record<string, 'idle' | 'testing' | 'success' | 'error'>;
+  cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   setupPackImport: SetupPackImport;
   activeTab: 'general' | 'plugins' | 'help';
   generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc';
@@ -54,7 +54,7 @@ export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'SECRETS.EVENT.UPDATED'; id: string }
   | { type: 'SECRETS.EVENT.DELETED'; id: string }
   | { type: 'SECRETS.EVENT.ERROR'; message: string }
-  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string }
+  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 const typeOf = safeEvents<SettingsEvents>()
 
 const settingsState = setup({
@@ -161,16 +161,20 @@ const settingsState = setup({
         provider: ev.provider,
       });
       return {
-        cliTestResults: { ...context.cliTestResults, [ev.provider]: 'testing' as const },
+        cliTestResults: { ...context.cliTestResults, [ev.provider]: { status: 'testing' as const } },
       };
     }),
 
     setCliTestResult: assign(({ context, event }) => {
-      const ev = event as { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string };
+      const ev = event as { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string };
       return {
         cliTestResults: {
           ...context.cliTestResults,
-          [ev.provider]: ev.success ? 'success' as const : 'error' as const,
+          [ev.provider]: {
+            status: ev.success ? 'success' as const : 'error' as const,
+            resolvedPath: ev.resolvedPath,
+            error: ev.error,
+          },
         },
       };
     }),

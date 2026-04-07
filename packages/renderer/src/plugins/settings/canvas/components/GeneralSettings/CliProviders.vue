@@ -7,7 +7,7 @@
       <CliProviderRow
         providerKey="copilot"
         v-model="cliPathValues.copilot"
-        placeholder="Binary path, e.g. /usr/local/bin/copilot (default: copilot)"
+        placeholder="Path override (auto-detected if empty)"
         :testResult="cliTestResults?.copilot"
         @update:modelValue="debouncedSaveCliPaths()"
         @test="testCliProvider('copilot')"
@@ -23,7 +23,7 @@
       <CliProviderRow
         providerKey="claude-code"
         v-model="cliPathValues['claude-code']"
-        placeholder="Binary path, e.g. /usr/local/bin/claude (default: claude)"
+        placeholder="Path override (auto-detected if empty)"
         :testResult="cliTestResults?.['claude-code']"
         @update:modelValue="debouncedSaveCliPaths()"
         @test="testCliProvider('claude-code')"
@@ -39,7 +39,7 @@
       <CliProviderRow
         providerKey="codex"
         v-model="cliPathValues.codex"
-        placeholder="Binary path, e.g. /usr/local/bin/codex (default: codex)"
+        placeholder="Path override (auto-detected if empty)"
         :testResult="cliTestResults?.codex"
         @update:modelValue="debouncedSaveCliPaths()"
         @test="testCliProvider('codex')"
@@ -55,7 +55,7 @@
       <CliProviderRow
         providerKey="gh"
         v-model="cliPathValues.gh"
-        placeholder="Binary path, e.g. /opt/homebrew/bin/gh (default: gh)"
+        placeholder="Path override (auto-detected if empty)"
         :testResult="cliTestResults?.gh"
         @update:modelValue="debouncedSaveCliPaths()"
         @test="testCliProvider('gh')"

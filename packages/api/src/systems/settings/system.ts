@@ -13,6 +13,7 @@ import { threads } from '@/systems/threads/system';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { seedData, type SeedResult } from '@/setup/seed/index';
+import { resolveCliPath, clearCliPathCache } from '@/core/helpers/resolve-cli';
 
 const execFileAsync = promisify(execFile);
 
@@ -70,7 +71,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['hotkeys'] }
-  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string }
+  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
   | { type: 'SETUP_PACK_IMPORTED'; result: SeedResult }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
@@ -166,7 +167,11 @@ export const settingsSystem = setup({
         : null;
       
       settingsCommands.updateSettings(ev.entityType, ev.label, ev.path, ev.value);
-      
+
+      if (ev.entityType === 'general' && ev.label === 'secrets' && ev.path[0] === 'cliPaths') {
+        clearCliPathCache();
+      }
+
       // Get all settings to send to frontend
       const data = settingsQueries.getSettings();
       system.get(bus).send(emit(settings, {
@@ -321,16 +326,22 @@ export const settingsSystem = setup({
         return;
       }
 
+      clearCliPathCache();
+
       const data = settingsQueries.getSettings();
       const storedPath = data.general.secrets.cliPaths?.[provider];
-      const command = storedPath || cmd.command;
 
-      execFileAsync(command, cmd.args, { timeout: 10000 })
-        .then(() => {
+      (async () => {
+        const command = await resolveCliPath(provider as any, storedPath || cmd.command);
+        await execFileAsync(command, cmd.args, { timeout: 10000 });
+        return command;
+      })()
+        .then((resolvedPath) => {
           system.get(bus).send(emit(settings, {
             type: 'CLI_TEST_RESULT',
             provider,
             success: true,
+            resolvedPath,
           }));
         })
         .catch((err: any) => {
