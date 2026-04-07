@@ -157,10 +157,19 @@ export const pullRequestSystem = setup({
     selectPR: ({ event, context }) => {
       const ev = event as { type: 'pr.SELECT_PR'; number: number }
       withRepo(context,
-        repo => ghCli.getPRDetails(repo.getWorkingDir(), ev.number),
-        details => {
-          const { comments, ...pr } = details
-          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments: comments || [] } })
+        async repo => {
+          const cwd = repo.getWorkingDir()
+          const details = await ghCli.getPRDetails(cwd, ev.number)
+          const { comments = [], ...pr } = details
+          // Resolve GitHub asset URLs to signed S3 URLs so images load in Electron
+          pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
+          for (const comment of comments) {
+            comment.body = await ghCli.resolveGitHubAssetUrls(comment.body, cwd)
+          }
+          return { pr, comments }
+        },
+        ({ pr, comments }) => {
+          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments } })
         }
       )
     },

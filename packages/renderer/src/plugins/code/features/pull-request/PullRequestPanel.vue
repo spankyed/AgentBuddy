@@ -178,6 +178,7 @@
           <PRInfo
             :pr="selectedPR"
             :comments="prComments"
+            :isLoading="isLoadingDetails"
           />
           <PRActionBar
             :pr="selectedPR"

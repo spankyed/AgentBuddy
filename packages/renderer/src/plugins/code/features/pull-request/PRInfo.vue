@@ -30,6 +30,13 @@
         </div>
       </div>
 
+      <!-- Loading state -->
+      <div v-if="isLoading" class="flex items-center justify-center gap-2 py-6">
+        <Loader2 class="w-4 h-4 animate-spin text-neutral-500" />
+        <span class="text-xs text-neutral-500">Loading details...</span>
+      </div>
+
+      <template v-else>
       <!-- PR Body -->
       <div v-if="pr.body" class="pr-body">
         <TiptapEditor mode="viewer" :modelValue="pr.body" editorClass="pr-markdown" />
@@ -63,6 +70,7 @@
           <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-markdown" />
         </div>
       </div>
+      </template>
     </div>
 
     <div v-else class="flex items-center justify-center flex-1 text-xs text-neutral-500">
@@ -73,13 +81,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GitBranch, ArrowRight, MessageSquare } from 'lucide-vue-next'
+import { GitBranch, ArrowRight, MessageSquare, Loader2 } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
 
 const props = defineProps<{
   pr: GhPullRequest | null
   comments: GhPRComment[]
+  isLoading?: boolean
 }>()
 
 const statusLabel = computed(() => {

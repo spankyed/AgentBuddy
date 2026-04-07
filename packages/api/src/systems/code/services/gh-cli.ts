@@ -1,5 +1,6 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import https from 'https'
 import { settingsQueries } from '@/systems/settings/repository'
 import type { GhPullRequest, GhPRComment } from '../types'
 
@@ -126,4 +127,55 @@ export async function markDraft(cwd: string, number: number): Promise<void> {
 
 export async function markReady(cwd: string, number: number): Promise<void> {
   await runGh(['pr', 'ready', String(number)], cwd)
+}
+
+// --- GitHub asset URL resolution ---
+
+async function getAuthToken(cwd: string): Promise<string> {
+  return runGh(['auth', 'token'], cwd, 5_000)
+}
+
+function resolveRedirect(url: string, token: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const req = https.request(url, {
+      method: 'HEAD',
+      headers: { Authorization: `token ${token}` },
+    }, (res) => {
+      if (res.statusCode === 302 && res.headers.location) {
+        resolve(res.headers.location)
+      } else {
+        resolve(null)
+      }
+    })
+    req.on('error', () => resolve(null))
+    req.setTimeout(5_000, () => { req.destroy(); resolve(null) })
+    req.end()
+  })
+}
+
+const ASSET_URL_PATTERN = /https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+/g
+
+export async function resolveGitHubAssetUrls(text: string, cwd: string): Promise<string> {
+  if (!text) return text
+  const matches = text.match(ASSET_URL_PATTERN)
+  if (!matches) return text
+
+  let token: string
+  try {
+    token = await getAuthToken(cwd)
+  } catch {
+    return text
+  }
+
+  let resolved = text
+  const unique = [...new Set(matches)]
+  const results = await Promise.all(
+    unique.map(url => resolveRedirect(url, token))
+  )
+  for (let i = 0; i < unique.length; i++) {
+    if (results[i]) {
+      resolved = resolved.replaceAll(unique[i], results[i]!)
+    }
+  }
+  return resolved
 }
