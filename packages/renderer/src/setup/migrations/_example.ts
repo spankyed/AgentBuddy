@@ -11,7 +11,7 @@
 import type { FrontendMigration } from './index';
 
 export const migration: FrontendMigration = {
-  target: '0.0.3',
+  target: '0.1.0',
   description: 'Rename example localStorage key',
   up: () => {
     // Rename a key
