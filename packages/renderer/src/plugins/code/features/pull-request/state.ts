@@ -44,6 +44,7 @@ export interface Context {
   isGhAvailable: boolean
   isGhChecking: boolean
   branchPRCheckFailed: boolean
+  prCheckCompleted: boolean
 
   // Create form
   createTitle: string
@@ -149,10 +150,13 @@ export const pullRequestState = setup({
       prError: null
     }),
 
-    handleSmartBaseBranchReceived: enqueueActions(({ enqueue, event }) => {
+    handleSmartBaseBranchReceived: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
-      enqueue.assign({ prBaseBranch: ev.data.branch })
-      sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.branch })
+      const newBase = ev.data.branch
+      enqueue.assign({ prBaseBranch: newBase })
+      if (newBase !== context.prBaseBranch || context.prFiles.length === 0) {
+        sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
+      }
     }),
 
     handleBranchDiffReceived: assign({
@@ -253,13 +257,15 @@ export const pullRequestState = setup({
         selectedPR: ev.data.pr && !context.selectedPR ? ev.data.pr : context.selectedPR,
         isGhChecking: false,
         branchPRCheckFailed: false,
+        prCheckCompleted: true,
       })
       if (ev.data.pr) {
-        // PR exists → use its base branch for diff
-        enqueue.assign({ prBaseBranch: ev.data.pr.baseRefName })
-        sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.pr.baseRefName })
+        const newBase = ev.data.pr.baseRefName
+        if (newBase !== context.prBaseBranch || context.prFiles.length === 0) {
+          enqueue.assign({ prBaseBranch: newBase })
+          sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
+        }
       } else {
-        // No PR → run smart upstream detection
         sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
       }
     }),
@@ -447,6 +453,7 @@ export const pullRequestState = setup({
     isGhAvailable: false,
     isGhChecking: false,
     branchPRCheckFailed: false,
+    prCheckCompleted: false,
 
     createTitle: '',
     createBody: '',
@@ -464,7 +471,14 @@ export const pullRequestState = setup({
     idle: {
       on: {
         'pr.REFRESH_STATUS': {
-          actions: ['setPrLoading', assign({ isGhChecking: true }), 'refreshPrStatus']
+          actions: [
+            assign({
+              isPrLoading: ({ context }) => context.prFiles.length === 0,
+              isGhChecking: ({ context }) => !context.prCheckCompleted,
+              branchPRCheckFailed: false,
+            }),
+            'refreshPrStatus',
+          ]
         },
         'pr.SELECT_FILE': { actions: 'selectPrFile' },
         'pr.VIEW_DIFF': { actions: 'viewPrDiff' },
@@ -473,7 +487,7 @@ export const pullRequestState = setup({
         'pr.BASE_BRANCH_RECEIVED': { actions: 'handleBaseBranchReceived' },
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
-        'pr.STATUS_CHANGED': { actions: 'refreshPrStatus' },
+        'pr.STATUS_CHANGED': { actions: [assign({ prFiles: [], prCheckCompleted: false, isGhChecking: true }), 'refreshPrStatus'] },
         'CODE_STARTUP': { actions: 'handleCodeStartup' },
 
         // GitHub PR events from backend
