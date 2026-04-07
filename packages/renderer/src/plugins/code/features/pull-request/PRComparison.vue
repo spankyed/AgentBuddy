@@ -9,7 +9,7 @@
   />
 
   <div v-else class="flex flex-col flex-1 overflow-hidden">
-    <div class="flex items-center gap-2 pl-4 pr-2 py-2 border-b border-neutral-800">
+    <div class="flex items-center gap-2 pl-4 pr-3 py-2 border-b border-neutral-800">
       <div class="flex items-center gap-1.5 min-w-0" :title="`${currentBranch} → ${baseBranch}`">
         <GitBranch class="w-3 h-3 text-neutral-500 shrink-0" />
         <span class="text-xs text-neutral-300 truncate">{{ currentBranch }}</span>
