@@ -301,9 +301,7 @@ export class FileSystemRepository {
       if (options.useRegex) {
         args.push('-e', options.query)
       } else {
-        // Escape special regex characters if not using regex mode
-        const escapedQuery = options.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        args.push('-F', escapedQuery)
+        args.push('-F', options.query)
       }
       
       // Add options
@@ -316,12 +314,20 @@ export class FileSystemRepository {
       // JSON output for easier parsing
       args.push('--json')
       
-      // Include/exclude patterns
+      // Include/exclude patterns - support comma-separated values
       if (options.includePattern) {
-        args.push('-g', options.includePattern)
+        const patterns = options.includePattern.split(',').map(p => p.trim()).filter(Boolean)
+        for (const pattern of patterns) {
+          const glob = pattern.includes('/') && !pattern.includes('*') ? `${pattern}/**` : pattern
+          args.push('-g', glob)
+        }
       }
       if (options.excludePattern) {
-        args.push('-g', `!${options.excludePattern}`)
+        const patterns = options.excludePattern.split(',').map(p => p.trim()).filter(Boolean)
+        for (const pattern of patterns) {
+          const glob = pattern.includes('/') && !pattern.includes('*') ? `${pattern}/**` : pattern
+          args.push('-g', `!${glob}`)
+        }
       }
       
       // Limit results if specified

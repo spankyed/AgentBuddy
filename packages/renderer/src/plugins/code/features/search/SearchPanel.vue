@@ -230,18 +230,18 @@ const searchPlaceholder = computed(() => {
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const performSearch = () => {
-  // Cancel any pending debounce
   if (searchTimeout) clearTimeout(searchTimeout)
 
+  // Always sync current pattern values to state before searching
+  updateOptions()
+
   if (!searchQuery.value) {
-    // Immediate: cancel in-flight + clear
     searchActor?.send({ type: 'search.CANCEL' })
     searchActor?.send({ type: 'search.CLEAR' })
     expandedResults.value.clear()
     return
   }
 
-  // Debounce actual search
   searchTimeout = setTimeout(() => {
     expandedResults.value.clear()
     searchActor?.send({ type: 'search.START', query: searchQuery.value })
@@ -259,6 +259,10 @@ const toggleOption = (option: 'caseSensitive' | 'wholeWord' | 'useRegex') => {
       [option]: !searchOptions.value[option]
     }
   })
+  // Re-run search with updated option if there's an active query
+  if (searchQuery.value) {
+    nextTick(() => performSearch())
+  }
 }
 
 const updateOptions = () => {
