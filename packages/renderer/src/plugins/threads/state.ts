@@ -69,6 +69,7 @@ type UIEvent =
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'VIEW_LIST' }
   | { type: 'VIEW_KANBAN' }
+  | { type: 'VIEW_DASHBOARD' }
   | { type: 'UPDATE_THREAD_STATUS'; id: string; status: ThreadEntity['status'] }
   | { type: 'SELECT_THREAD'; id: string }
   | { type: 'CREATE_THREAD' }
@@ -852,6 +853,7 @@ const threadsState = setup({
     },
     VIEW_LIST: { target: '.list' },
     VIEW_KANBAN: { target: '.kanban' },
+    VIEW_DASHBOARD: { target: '.dashboard' },
     OPEN_THREAD_CHAT: {
       actions: 'openThreadChat'
     },
@@ -925,6 +927,7 @@ const threadsState = setup({
       ['.kanban', 'kanban'],
       ['.create', 'create'],
       ['.view', 'view'],
+      ['.dashboard', 'dashboard'],
     ]),
     SELECT_THREAD: {
       target: '.view',
@@ -1014,6 +1017,10 @@ const threadsState = setup({
     },
   },
   states: {
+    'dashboard': {
+      meta: { ...breadcrumb('dashboard', 'Dashboard') },
+      on: {},
+    },
     'list': {
       entry: 'persistListView',
       meta: { ...breadcrumb('list', 'Threads', true) },

@@ -1,5 +1,6 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
+    <ThreadsHeader />
     <!-- Tab Bar -->
     <div class="flex items-center min-h-[37px] border-b border-neutral-800 bg-neutral-900" data-onboarding-id="agent-thread-tabs">
       <TabBar
@@ -26,6 +27,7 @@ import { useSelector } from '@xstate/vue';
 import { id, type ThreadsState } from '@/plugins/threads/state';
 import TabBar from '@/plugins/threads/canvas/agent/tabs/tab-bar.vue';
 import ContentViewer from '@/plugins/threads/canvas/agent/content-viewer.vue';
+import ThreadsHeader from '@/plugins/threads/canvas/components/ThreadsHeader.vue';
 
 const actor: ThreadsState = applicationState.system.get(id);
 

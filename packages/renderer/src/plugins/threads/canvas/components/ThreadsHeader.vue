@@ -20,7 +20,7 @@
             : 'text-neutral-400 hover:text-neutral-200'"
           title="List View"
         >
-          <LayoutList :size="16" />
+          <List :size="16" />
         </button>
         <button
           @click="actor.send({ type: 'VIEW_KANBAN' })"
@@ -30,7 +30,17 @@
             : 'text-neutral-400 hover:text-neutral-200'"
           title="Kanban Board"
         >
-          <LayoutGrid :size="16" />
+          <Columns3 :size="16" />
+        </button>
+        <button
+          @click="actor.send({ type: 'VIEW_DASHBOARD' })"
+          class="p-1.5 rounded-md transition-colors"
+          :class="isDashboardView
+            ? 'bg-neutral-700 text-neutral-100'
+            : 'text-neutral-400 hover:text-neutral-200'"
+          title="Dashboard"
+        >
+          <PanelLeft :size="16" />
         </button>
       </div>
       <!-- Filter buttons -->
@@ -91,7 +101,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Search, Filter, LayoutList, LayoutGrid, History } from 'lucide-vue-next'
+import { Search, Filter, List, Columns3, PanelLeft, History } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
@@ -100,6 +110,7 @@ import { id, type ThreadsState } from '@/plugins/threads/state'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const currentState = useSelector(actor, s => s.value)
+const isDashboardView = computed(() => currentState.value === 'dashboard')
 const isListView = computed(() => currentState.value === 'list')
 const isKanbanView = computed(() => currentState.value === 'kanban')
 
