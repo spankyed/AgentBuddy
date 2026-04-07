@@ -257,21 +257,25 @@ export const pullRequestState = setup({
 
     handleBranchPRChecked: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
+      const incoming = ev.data.pr
+      const unchanged = incoming?.number === context.selectedPR?.number
+        && incoming?.updatedAt === context.selectedPR?.updatedAt
+
       enqueue.assign({
-        branchPR: ev.data.pr,
-        selectedPR: (context.selectedPR?.number === ev.data.pr?.number
-          && context.selectedPR?.updatedAt === ev.data.pr?.updatedAt)
-          ? context.selectedPR
-          : ev.data.pr ?? null,
+        branchPR: incoming,
+        selectedPR: unchanged ? context.selectedPR : incoming ?? null,
         isGhChecking: false,
         branchPRCheckFailed: false,
         prCheckCompleted: true,
       })
-      if (ev.data.pr) {
-        const newBase = ev.data.pr.baseRefName
-        if (newBase !== context.prBaseBranch || context.prFiles.length === 0 || context.diffStale) {
-          enqueue.assign({ prBaseBranch: newBase })
-          sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: newBase })
+
+      if (incoming) {
+        const needsDiff = incoming.baseRefName !== context.prBaseBranch
+          || context.prFiles.length === 0
+          || context.diffStale
+        if (needsDiff) {
+          enqueue.assign({ prBaseBranch: incoming.baseRefName })
+          sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: incoming.baseRefName })
         }
       } else {
         sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
