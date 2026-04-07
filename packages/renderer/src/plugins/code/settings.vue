@@ -302,8 +302,8 @@ const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
 const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
-const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? true)
-const autoFetchIntervalSeconds = ref(props.settings?.autoFetchIntervalSeconds ?? 60)
+const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? false)
+const autoFetchIntervalSeconds = ref(props.settings?.autoFetchIntervalSeconds ?? 180)
 
 // Get projects from general settings
 const settingsActor = applicationState.system.get('settings')
@@ -368,7 +368,7 @@ const saveAutoFetchRemoteSetting = () => {
 }
 
 const saveAutoFetchIntervalSetting = () => {
-  const value = Math.max(60, autoFetchIntervalSeconds.value || 60)
+  const value = Math.max(60, autoFetchIntervalSeconds.value || 180)
   autoFetchIntervalSeconds.value = value
   emit('update-setting', {
     path: ['autoFetchIntervalSeconds'],

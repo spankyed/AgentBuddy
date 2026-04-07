@@ -192,8 +192,8 @@ export const systemMachine = setup({
         const repo = new GitRepository(ev.path)
         const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
         repo.setFetchConfig(
-          codeSettings?.autoFetchRemote ?? true,
-          codeSettings?.autoFetchIntervalSeconds ?? 60
+          codeSettings?.autoFetchRemote ?? false,
+          codeSettings?.autoFetchIntervalSeconds ?? 180
         )
         return repo
       },
@@ -253,8 +253,8 @@ export const systemMachine = setup({
       // Update git fetch config if repository exists
       if (context.gitRepository) {
         context.gitRepository.setFetchConfig(
-          ev.settings.autoFetchRemote ?? true,
-          ev.settings.autoFetchIntervalSeconds ?? 60
+          ev.settings.autoFetchRemote ?? false,
+          ev.settings.autoFetchIntervalSeconds ?? 180
         )
       }
 
@@ -345,8 +345,8 @@ export const systemMachine = setup({
     const gitRepo = baseDir ? new GitRepository(baseDir) : null
     if (gitRepo) {
       gitRepo.setFetchConfig(
-        codeSettings?.autoFetchRemote ?? true,
-        codeSettings?.autoFetchIntervalSeconds ?? 60
+        codeSettings?.autoFetchRemote ?? false,
+        codeSettings?.autoFetchIntervalSeconds ?? 180
       )
     }
 

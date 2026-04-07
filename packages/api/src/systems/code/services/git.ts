@@ -32,8 +32,8 @@ export class GitRepository {
   private _writeInProgress = 0
   private _writeCompleteCallbacks: (() => void)[] = []
   private _lastFetchTimestamp = 0
-  private _autoFetchEnabled = true
-  private _fetchThrottleMs = 60_000
+  private _autoFetchEnabled = false
+  private _fetchThrottleMs = 180_000
 
   constructor(private workingDirectory: string) {
     this.validateWorkingDirectory(workingDirectory)
