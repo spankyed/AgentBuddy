@@ -174,7 +174,7 @@ export const defaultSettings: SettingsData = {
     hasOnboarded: false,
     tourComplete: false,
     lastInteractionTimestamp: null,
-    version: '0.1.0',
+    version: '0.2.0',
     seedHash: null,
   },
   assistant: {

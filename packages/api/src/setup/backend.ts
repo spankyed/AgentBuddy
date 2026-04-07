@@ -7,6 +7,7 @@ import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded'
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 import { seedData } from '@/setup/seed/index';
+import { runMigrations } from '@/setup/migrations';
 
 export async function setupBackend(): Promise<void> {
   // Initialize log capture first to catch all logs
@@ -22,6 +23,9 @@ export async function setupBackend(): Promise<void> {
 
   // Initialize default settings if they don't exist
   createDefaultSettings();
+
+  // Run versioned data migrations
+  runMigrations();
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   seedData();
