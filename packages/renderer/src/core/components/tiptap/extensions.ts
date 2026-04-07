@@ -277,6 +277,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
 
   const extensions: AnyExtension[] = [
     StarterKit.configure({
+      paragraph: false,
       codeBlock: false,
       link: false,
       blockquote: false,
