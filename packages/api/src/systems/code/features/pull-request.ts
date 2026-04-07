@@ -230,7 +230,15 @@ export const pullRequestSystem = setup({
         return
       }
       withRepo(context,
-        repo => repo.getCurrentBranch().then(branch => ghCli.getPRForBranch(repo.getWorkingDir(), branch)),
+        async repo => {
+          const cwd = repo.getWorkingDir()
+          const branch = await repo.getCurrentBranch()
+          const pr = await ghCli.getPRForBranch(cwd, branch)
+          if (pr?.body) {
+            pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
+          }
+          return pr
+        },
         pr => emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr } }),
         () => emitToFrontend({ type: 'pr.BRANCH_PR_CHECKED', data: { pr: null } })
       )
