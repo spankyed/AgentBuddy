@@ -810,6 +810,10 @@ export class GitRepository {
     return result.output || ''
   }
 
+  async fetchRemoteBranch(branch: string): Promise<void> {
+    await this.executeGitCommand(['fetch', 'origin', branch])
+  }
+
   async deleteRemoteBranch(branch: string): Promise<void> {
     const result = await this.executeGitCommand(['push', 'origin', '--delete', branch])
     if (!result.success) {

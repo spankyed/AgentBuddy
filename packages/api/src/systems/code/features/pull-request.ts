@@ -151,12 +151,15 @@ export const pullRequestSystem = setup({
     getBranchDiff: ({ event, context }) => {
       const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string; headBranch?: string }
       withRepo(context,
-        repo => {
+        async repo => {
           const base = ev.baseBranch ? Promise.resolve(ev.baseBranch) : repo.getBaseBranch({ preferUpstream: false })
           const head = ev.headBranch ? `origin/${ev.headBranch}` : undefined
-          return base.then(baseBranch =>
-            repo.getBranchDiff(baseBranch, head).then(files => ({ files, baseBranch }))
-          )
+          if (ev.headBranch) {
+            await repo.fetchRemoteBranch(ev.headBranch)
+          }
+          const baseBranch = await base
+          const files = await repo.getBranchDiff(baseBranch, head)
+          return { files, baseBranch }
         },
         ({ files, baseBranch }) => emitToFrontend({ type: 'pr.BRANCH_DIFF_RECEIVED', data: { files, baseBranch } })
       )

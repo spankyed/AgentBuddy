@@ -523,6 +523,7 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.SELECT_PR_BY_NUMBER'; number: number }
       enqueue.assign({
         isLoadingDetails: true,
+        isPrLoading: true,
         viewMode: 'files' as const,
         prComments: [],
         isManualPRSelection: true,
