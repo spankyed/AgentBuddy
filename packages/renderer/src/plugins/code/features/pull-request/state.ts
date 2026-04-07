@@ -67,6 +67,9 @@ export interface Context {
   isLoadingDetails: boolean
   diffStale: boolean
 
+  // PR selection tracking
+  isManualPRSelection: boolean
+
   // Optimistic update rollback
   _commentSnapshot: GhPRComment[] | null
   _threadSnapshot: GhReviewThread[] | null
@@ -297,22 +300,31 @@ export const pullRequestState = setup({
 
       enqueue.assign({
         branchPR: incoming,
-        selectedPR: unchanged ? context.selectedPR : incoming ?? null,
+        // Don't overwrite a manually selected PR
+        selectedPR: context.isManualPRSelection
+          ? context.selectedPR
+          : (unchanged ? context.selectedPR : incoming ?? null),
         isGhChecking: false,
         branchPRCheckFailed: false,
         prCheckCompleted: true,
       })
 
-      if (incoming) {
-        const needsDiff = incoming.baseRefName !== context.prBaseBranch
-          || context.prFiles.length === 0
-          || context.diffStale
-        if (needsDiff) {
-          enqueue.assign({ prBaseBranch: incoming.baseRefName })
-          sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: incoming.baseRefName })
+      // Only auto-load diff for the current branch PR if no manual selection is active
+      if (!context.isManualPRSelection) {
+        if (incoming) {
+          const needsDiff = incoming.baseRefName !== context.prBaseBranch
+            || context.prFiles.length === 0
+            || context.diffStale
+          if (needsDiff) {
+            enqueue.assign({ prBaseBranch: incoming.baseRefName })
+            sendToBackend('pr.GET_BRANCH_DIFF', {
+              baseBranch: incoming.baseRefName,
+              headBranch: incoming.headRefName,
+            })
+          }
+        } else {
+          sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
         }
-      } else {
-        sendToBackend('pr.GET_SMART_BASE_BRANCH', {})
       }
     }),
 
@@ -334,6 +346,7 @@ export const pullRequestState = setup({
         : null,
       branchPR: null,
       isMerging: false,
+      isManualPRSelection: false,
     }),
 
     handlePRClosed: assign({
@@ -342,6 +355,7 @@ export const pullRequestState = setup({
         : null,
       branchPR: null,
       isClosing: false,
+      isManualPRSelection: false,
     }),
 
     handlePRDraftToggled: assign({
@@ -416,6 +430,7 @@ export const pullRequestState = setup({
         createTitle: '',
         createBody: '',
         createDraft: false,
+        isManualPRSelection: false,
       })
       enqueue(() => {
         sendToBackend('pr.GET_PR_AUTOFILL', {})
@@ -508,6 +523,7 @@ export const pullRequestState = setup({
         isLoadingDetails: true,
         viewMode: 'files' as const,
         prComments: [],
+        isManualPRSelection: true,
       })
       enqueue(() => {
         sendToBackend('pr.SELECT_PR', { number: ev.number })
@@ -516,7 +532,10 @@ export const pullRequestState = setup({
 
     loadDiffForSelectedPR: ({ event }) => {
       const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-      sendToBackend('pr.GET_BRANCH_DIFF', { baseBranch: ev.data.pr.baseRefName })
+      sendToBackend('pr.GET_BRANCH_DIFF', {
+        baseBranch: ev.data.pr.baseRefName,
+        headBranch: ev.data.pr.headRefName,
+      })
     },
 
     // --- Comment actions (optimistic) ---
@@ -701,6 +720,8 @@ export const pullRequestState = setup({
     isLoadingDetails: false,
     diffStale: false,
 
+    isManualPRSelection: false,
+
     _commentSnapshot: null,
     _threadSnapshot: null,
   },
@@ -724,7 +745,7 @@ export const pullRequestState = setup({
         'pr.BASE_BRANCH_RECEIVED': { actions: 'handleBaseBranchReceived' },
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
-        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true }), 'refreshPrStatus'] },
+        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false }), 'refreshPrStatus'] },
         'CODE_STARTUP': { actions: 'handleCodeStartup' },
 
         // GitHub PR events from backend

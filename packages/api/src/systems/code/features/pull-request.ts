@@ -13,7 +13,7 @@ const busEvent = systemBus(pluginId)
 // Incoming events from frontend
 export const IncomingPullRequestEvents = [
   busEvent('pr.GET_BASE_BRANCH', {}),
-  busEvent('pr.GET_BRANCH_DIFF', { baseBranch: z.string().optional() }),
+  busEvent('pr.GET_BRANCH_DIFF', { baseBranch: z.string().optional(), headBranch: z.string().optional() }),
   busEvent('pr.GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string() }),
   busEvent('pr.LIST_OPEN_PRS', {}),
   busEvent('pr.SELECT_PR', { number: z.number() }),
@@ -73,7 +73,7 @@ export interface Context {
 
 export type Event =
   | { type: 'pr.GET_BASE_BRANCH' }
-  | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
+  | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string; headBranch?: string }
   | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string }
   | { type: 'pr.LIST_OPEN_PRS' }
   | { type: 'pr.SELECT_PR'; number: number }
@@ -149,12 +149,13 @@ export const pullRequestSystem = setup({
     },
 
     getBranchDiff: ({ event, context }) => {
-      const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string }
+      const ev = event as { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string; headBranch?: string }
       withRepo(context,
         repo => {
           const base = ev.baseBranch ? Promise.resolve(ev.baseBranch) : repo.getBaseBranch({ preferUpstream: false })
+          const head = ev.headBranch ? `origin/${ev.headBranch}` : undefined
           return base.then(baseBranch =>
-            repo.getBranchDiff(baseBranch).then(files => ({ files, baseBranch }))
+            repo.getBranchDiff(baseBranch, head).then(files => ({ files, baseBranch }))
           )
         },
         ({ files, baseBranch }) => emitToFrontend({ type: 'pr.BRANCH_DIFF_RECEIVED', data: { files, baseBranch } })
