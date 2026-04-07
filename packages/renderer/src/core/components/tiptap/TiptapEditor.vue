@@ -280,19 +280,15 @@ const editor = useEditor({
         }
       }
 
-      // ⌘/Ctrl+X on empty selection → select line, let ProseMirror handle cut
+      // ⌘/Ctrl+X on empty selection → cut entire line
       if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
+        event.preventDefault()
         const { $from } = view.state.selection
-        editor.value?.commands.setTextSelection({ from: $from.start(), to: $from.end() })
-        setTimeout(() => {
-          const { $from: $pos } = view.state.selection
-          if ($pos.parent.content.size === 0) {
-            let depth = $pos.depth
-            while (depth > 1 && $pos.node(depth - 1).childCount === 1) depth--
-            view.dispatch(view.state.tr.deleteRange($pos.before(depth), $pos.after(depth)))
-          }
-        })
-        return false
+        const lineText = $from.parent.textContent
+        navigator.clipboard.writeText(lineText)
+        const tr = view.state.tr.deleteRange($from.before(), $from.after())
+        view.dispatch(tr)
+        return true
       }
 
       if (event.key === 'Tab') {
