@@ -5,7 +5,7 @@ import * as path from 'path'
 
 const execFileAsync = promisify(execFile)
 
-type CliName = 'copilot' | 'claude-code' | 'codex' | 'gh'
+export type CliName = 'copilot' | 'claude-code' | 'codex' | 'gh'
 
 const HOME = process.env.HOME || ''
 
@@ -68,7 +68,7 @@ async function isExecutable(cmd: string): Promise<boolean> {
   }
 
   try {
-    await execFileAsync(cmd, ['--version'], { timeout: 5000 })
+    await execFileAsync(cmd, ['--version'], { timeout: 2000 })
     return true
   } catch {
     return false
@@ -78,25 +78,29 @@ async function isExecutable(cmd: string): Promise<boolean> {
 /**
  * Resolve a CLI binary path with fallbacks.
  *
- * 1. Try the preferred path (from settings or bare command name)
- * 2. Try known fallback locations for the tool
- * 3. Return original command name if nothing found (caller gets standard ENOENT)
+ * 1. If preferred path is absolute, check it exists (fast fs check)
+ * 2. Try known fallback locations on disk (fast fs checks)
+ * 3. If preferred path is a bare command, try executing it (slow, last resort)
+ * 4. Return CLI name if nothing found (caller gets standard ENOENT)
  */
 export async function resolveCliPath(
   cli: CliName,
   preferredPath?: string,
 ): Promise<string> {
-  const cacheKey = `${cli}:${preferredPath ?? ''}`
+  const effective = preferredPath?.trim() || undefined
+  const cacheKey = `${cli}:${effective ?? ''}`
   const cached = resolvedCache.get(cacheKey)
   if (cached) return cached
 
-  if (preferredPath) {
-    if (await isExecutable(preferredPath)) {
-      resolvedCache.set(cacheKey, preferredPath)
-      return preferredPath
+  // 1. Fast check: absolute preferred path
+  if (effective && path.isAbsolute(effective)) {
+    if (await isExecutable(effective)) {
+      resolvedCache.set(cacheKey, effective)
+      return effective
     }
   }
 
+  // 2. Fast check: known fallback locations (filesystem only)
   const fallbacks = FALLBACK_PATHS[cli] ?? []
   for (const pattern of fallbacks) {
     for (const candidate of expandGlobPaths(pattern)) {
@@ -107,12 +111,50 @@ export async function resolveCliPath(
     }
   }
 
-  const fallbackReturn = preferredPath || cli
-  resolvedCache.set(cacheKey, fallbackReturn)
-  return fallbackReturn
+  // 3. Slow check: bare command via PATH (execFile with 2s timeout)
+  if (effective && !path.isAbsolute(effective)) {
+    if (await isExecutable(effective)) {
+      resolvedCache.set(cacheKey, effective)
+      return effective
+    }
+  }
+
+  // 4. Nothing found — return CLI name so caller gets a recognizable ENOENT
+  resolvedCache.set(cacheKey, cli)
+  return cli
 }
 
 /** Clear the resolution cache (e.g. when CLI paths are updated in settings). */
 export function clearCliPathCache(): void {
   resolvedCache.clear()
+}
+
+const CLI_NAMES: Set<string> = new Set<string>(['copilot', 'claude-code', 'codex', 'gh'])
+
+export function isCliName(value: string): value is CliName {
+  return CLI_NAMES.has(value)
+}
+
+/** Resolve and test a CLI binary. Clears cache first so it always probes fresh. */
+export async function testCli(
+  cli: CliName,
+  storedPath?: string,
+): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }> {
+  clearCliPathCache()
+  try {
+    const resolved = await resolveCliPath(cli, storedPath)
+    await execFileAsync(resolved, ['--version'], { timeout: 10000 })
+    return { success: true, resolvedPath: resolved }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Command failed' }
+  }
+}
+
+/** Convenience: read stored path from settings and resolve. Used by CLI service modules. */
+export async function resolveForService(cli: CliName): Promise<string> {
+  // Lazy import to avoid circular dependency at module load time
+  const { settingsQueries } = await import('@/systems/settings/repository')
+  const settings = settingsQueries.getSettings()
+  const storedPath = settings.general.secrets.cliPaths?.[cli]
+  return resolveCliPath(cli, storedPath)
 }

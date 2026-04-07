@@ -21,10 +21,10 @@ export const defaultSettings: SettingsData = {
       custom: {},
       required: ['openai', 'anthropic'],
       cliPaths: {
-        'copilot': 'copilot',
-        'claude-code': process.env.HOME + '/.claude/local/claude',
-        'codex': 'codex',
-        'gh': 'gh',
+        'copilot': '',
+        'claude-code': '',
+        'codex': '',
+        'gh': '',
       },
     },
     hotkeys: {
