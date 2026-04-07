@@ -52,7 +52,7 @@
               <Pencil :size="10" />
             </button>
             <button
-              @click="$emit('delete-comment', parseInt(comment.id.split('_').pop() || '0'))"
+              @click="confirmDeleteComment(comment)"
               class="opacity-0 group-hover:opacity-100 p-0.5 rounded text-neutral-500 hover:text-red-400 transition-all"
               title="Delete"
             >
@@ -262,6 +262,11 @@ function submitNewComment() {
   newCommentBody.value = ''
 }
 
+function getCommentDatabaseId(comment: GhPRComment): number {
+  const match = comment.url.match(/issuecomment-(\d+)/)
+  return match ? parseInt(match[1]) : 0
+}
+
 // Edit comment
 const editingCommentId = ref<string | null>(null)
 const editCommentBody = ref('')
@@ -271,11 +276,14 @@ function startEditComment(comment: GhPRComment) {
   editCommentBody.value = comment.body
 }
 
+function confirmDeleteComment(comment: GhPRComment) {
+  if (confirm('Delete this comment? This cannot be undone.')) {
+    emit('delete-comment', getCommentDatabaseId(comment))
+  }
+}
+
 function saveEditComment(comment: GhPRComment) {
-  // Extract numeric database ID from the GraphQL ID (format: IC_kwDO..._XXXX)
-  // Use the URL to get the numeric ID instead
-  const numericId = parseInt(comment.url.split('-').pop() || '0')
-  emit('edit-comment', numericId, editCommentBody.value)
+  emit('edit-comment', getCommentDatabaseId(comment), editCommentBody.value)
   editingCommentId.value = null
 }
 
