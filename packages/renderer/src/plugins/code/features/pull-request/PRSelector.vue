@@ -35,7 +35,7 @@
         :class="selectedPR?.number === pr.number ? 'text-blue-400' : 'text-neutral-300'"
       >
         <GitPullRequest :size="11" :class="[prStatusColor(pr), 'shrink-0']" />
-        <span class="truncate flex-1">#{{ pr.number }} {{ pr.title }}</span>
+        <span class="truncate">#{{ pr.number }} {{ pr.title }}</span>
         <span
           v-if="pr.state === 'MERGED'"
           class="text-[9px] px-1 py-0.5 rounded bg-purple-600/50 text-purple-300 shrink-0"
