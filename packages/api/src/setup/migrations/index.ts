@@ -2,7 +2,7 @@ import { settingsQueries, settingsCommands } from '@/systems/settings/repository
 import { APP_VERSION } from '@/version';
 
 export interface Migration {
-  version: string;
+  target: string;
   description: string;
   up: () => void;
 }
@@ -22,8 +22,8 @@ export function runMigrations(): void {
   }
 
   for (const m of migrations) {
-    if (m.version > current) {
-      console.log(`[migration] Running ${m.version}: ${m.description}`);
+    if (m.target > current) {
+      console.log(`[migration] Running ${m.target}: ${m.description}`);
       m.up();
     }
   }

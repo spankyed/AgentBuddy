@@ -12,7 +12,7 @@
 declare const __APP_VERSION__: string;
 
 export interface FrontendMigration {
-  version: string;
+  target: string;
   description: string;
   up: () => void;
 }
@@ -28,8 +28,8 @@ export function runFrontendMigrations(): void {
   const current = localStorage.getItem(VERSION_KEY) || '0.0.0';
 
   for (const m of migrations) {
-    if (m.version > current) {
-      console.log(`[frontend-migration] Running ${m.version}: ${m.description}`);
+    if (m.target > current) {
+      console.log(`[frontend-migration] Running ${m.target}: ${m.description}`);
       m.up();
     }
   }
