@@ -753,7 +753,8 @@ export const pullRequestState = setup({
         'pr.BASE_BRANCH_RECEIVED': { actions: 'handleBaseBranchReceived' },
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
-        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false }), 'refreshPrStatus'] },
+        // Reset check state to show "Checking..." during git changes and directory switches
+        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, prCheckCompleted: false, isGhChecking: true }), 'refreshPrStatus'] },
         'CODE_STARTUP': {
           actions: [
             assign({

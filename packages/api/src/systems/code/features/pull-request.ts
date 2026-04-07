@@ -409,6 +409,8 @@ export const pullRequestSystem = setup({
     }),
 
     selfRefreshPrStatus: ({ self }) => {
+      // Notify frontend to show "Checking..." before backend checks resolve (prevents UI flash on directory switch)
+      emitToFrontend({ type: 'pr.STATUS_CHANGED', data: { timestamp: new Date() } })
       self.send({ type: 'pr.CHECK_GH_AUTH' })
       self.send({ type: 'pr.LIST_OPEN_PRS' })
       self.send({ type: 'pr.CHECK_BRANCH_PR' })
