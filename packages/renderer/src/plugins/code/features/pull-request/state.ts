@@ -15,6 +15,8 @@ const sendToBackend = (type: string, data: any) => {
   } as any)
 }
 
+let placeholderIdCounter = -1
+
 const defaultLoadingStates = {
   isPrLoading: false,
   isGhChecking: false,
@@ -530,8 +532,10 @@ export const pullRequestState = setup({
       })
     }),
 
-    loadDiffForSelectedPR: ({ event }) => {
+    loadDiffForSelectedPR: ({ event, context }) => {
       const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
+      // Skip if user already selected a different PR while this was in flight
+      if (context.selectedPR?.number !== ev.data.pr.number) return
       sendToBackend('pr.GET_BRANCH_DIFF', {
         baseBranch: ev.data.pr.baseRefName,
         headBranch: ev.data.pr.headRefName,
@@ -542,16 +546,17 @@ export const pullRequestState = setup({
 
     optimisticCreateComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.CREATE_COMMENT'; number: number; body: string }
+      const pid = placeholderIdCounter--
       const placeholder: GhPRComment = {
-        id: `pending-${Date.now()}`,
+        id: `pending-${pid}`,
         body: ev.body,
         author: { login: '...' },
         createdAt: new Date().toISOString(),
-        url: '',
+        url: `pending-${pid}`,
         viewerDidAuthor: true,
       }
       enqueue.assign({
-        _commentSnapshot: context.prComments,
+        _commentSnapshot: context._commentSnapshot ?? context.prComments,
         prComments: [...context.prComments, placeholder],
         isSubmittingComment: true,
       })
@@ -561,7 +566,7 @@ export const pullRequestState = setup({
     optimisticEditComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
       enqueue.assign({
-        _commentSnapshot: context.prComments,
+        _commentSnapshot: context._commentSnapshot ?? context.prComments,
         prComments: context.prComments.map(c =>
           c.url.includes(`issuecomment-${ev.commentId}`) ? { ...c, body: ev.body } : c
         ),
@@ -573,7 +578,7 @@ export const pullRequestState = setup({
     optimisticDeleteComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.DELETE_COMMENT'; commentId: number }
       enqueue.assign({
-        _commentSnapshot: context.prComments,
+        _commentSnapshot: context._commentSnapshot ?? context.prComments,
         prComments: context.prComments.filter(c => !c.url.includes(`issuecomment-${ev.commentId}`)),
         isSubmittingComment: true,
       })
@@ -591,16 +596,17 @@ export const pullRequestState = setup({
 
     optimisticReplyToThread: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
+      const pid = placeholderIdCounter--
       const placeholder = {
-        id: `pending-${Date.now()}`,
-        databaseId: 0,
+        id: `pending-${pid}`,
+        databaseId: pid,
         body: ev.body,
         author: { login: '...' },
         createdAt: new Date().toISOString(),
         viewerDidAuthor: true,
       }
       enqueue.assign({
-        _threadSnapshot: context.reviewThreads,
+        _threadSnapshot: context._threadSnapshot ?? context.reviewThreads,
         reviewThreads: context.reviewThreads.map(t => {
           const hasComment = t.comments.some(c => c.databaseId === ev.commentId)
           if (!hasComment) return t
@@ -614,7 +620,7 @@ export const pullRequestState = setup({
     optimisticResolveThread: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.RESOLVE_THREAD'; threadId: string }
       enqueue.assign({
-        _threadSnapshot: context.reviewThreads,
+        _threadSnapshot: context._threadSnapshot ?? context.reviewThreads,
         reviewThreads: context.reviewThreads.map(t =>
           t.id === ev.threadId ? { ...t, isResolved: true } : t
         ),
@@ -625,7 +631,7 @@ export const pullRequestState = setup({
     optimisticUnresolveThread: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
       enqueue.assign({
-        _threadSnapshot: context.reviewThreads,
+        _threadSnapshot: context._threadSnapshot ?? context.reviewThreads,
         reviewThreads: context.reviewThreads.map(t =>
           t.id === ev.threadId ? { ...t, isResolved: false } : t
         ),
@@ -636,7 +642,7 @@ export const pullRequestState = setup({
     optimisticEditReviewComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
       enqueue.assign({
-        _threadSnapshot: context.reviewThreads,
+        _threadSnapshot: context._threadSnapshot ?? context.reviewThreads,
         reviewThreads: context.reviewThreads.map(t => ({
           ...t,
           comments: t.comments.map(c =>
@@ -651,7 +657,7 @@ export const pullRequestState = setup({
     optimisticDeleteReviewComment: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
       enqueue.assign({
-        _threadSnapshot: context.reviewThreads,
+        _threadSnapshot: context._threadSnapshot ?? context.reviewThreads,
         reviewThreads: context.reviewThreads.map(t => ({
           ...t,
           comments: t.comments.filter(c => c.databaseId !== ev.commentId),
