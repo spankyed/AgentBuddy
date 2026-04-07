@@ -155,7 +155,7 @@
             v-for="(comment, i) in thread.comments"
             :key="comment.id"
             class="px-3 py-2"
-            :class="{ 'border-t border-neutral-800/50': i > 0, 'pl-6': i > 0 }"
+            :class="{ 'border-t border-neutral-800/50': i > 0 }"
           >
             <div class="flex items-center gap-2 mb-1">
               <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
@@ -164,37 +164,37 @@
             <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-comment-viewer" />
           </div>
 
+          <!-- Reply form (above action row) -->
+          <div v-if="replyingThreadId === thread.id" class="relative border-t border-neutral-800 rounded bg-neutral-800/40 overflow-hidden">
+            <div class="px-3 py-1.5 pb-8 min-h-[32px] max-h-[100px] overflow-y-auto">
+              <TiptapEditor
+                mode="editor"
+                hideGutter
+                :modelValue="replyBody"
+                @update:modelValue="replyBody = $event"
+                placeholder="Reply..."
+                editorClass="pr-comment-editor"
+              />
+            </div>
+            <div class="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+              <button
+                @click="replyingThreadId = null"
+                class="px-2 py-1 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
+              >Cancel</button>
+              <button
+                @click="submitReply(thread)"
+                :disabled="!replyBody.trim() || isSubmitting"
+                class="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
+              >
+                <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
+                <span>Reply</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Thread actions -->
           <div class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800">
-            <!-- Reply input -->
-            <div v-if="replyingThreadId === thread.id" class="flex-1 space-y-1.5">
-              <div class="rounded bg-neutral-800 border border-neutral-700 p-2 min-h-[40px] max-h-[100px] overflow-y-auto">
-                <TiptapEditor
-                  mode="editor"
-            hideGutter
-                  :modelValue="replyBody"
-                  @update:modelValue="replyBody = $event"
-                  placeholder="Reply..."
-                  editorClass="pr-comment-editor"
-                />
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button
-                  @click="submitReply(thread)"
-                  :disabled="!replyBody.trim() || isSubmitting"
-                  class="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
-                >
-                  <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
-                  <span>Reply</span>
-                </button>
-                <button
-                  @click="replyingThreadId = null"
-                  class="px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
-                >Cancel</button>
-              </div>
-            </div>
             <button
-              v-else
               @click="startReply(thread.id)"
               class="flex items-center gap-1 px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
             >
