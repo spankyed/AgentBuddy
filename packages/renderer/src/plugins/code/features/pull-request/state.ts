@@ -259,7 +259,10 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
       enqueue.assign({
         branchPR: ev.data.pr,
-        selectedPR: ev.data.pr ?? null,
+        selectedPR: (context.selectedPR?.number === ev.data.pr?.number
+          && context.selectedPR?.updatedAt === ev.data.pr?.updatedAt)
+          ? context.selectedPR
+          : ev.data.pr ?? null,
         isGhChecking: false,
         branchPRCheckFailed: false,
         prCheckCompleted: true,
