@@ -120,6 +120,19 @@
           >{{ commitsAhead > 0 ? commitsAhead : commitsBehind }}</span>
         </button>
 
+        <!-- Sync feedback popover -->
+        <Transition name="sync-feedback">
+          <div
+            v-if="syncFeedback"
+            class="absolute -top-8 right-0 px-2 py-1 text-[11px] font-medium rounded shadow-lg whitespace-nowrap pointer-events-none z-20"
+            :class="syncFeedback.includes('Already') || syncFeedback.includes('Nothing')
+              ? 'text-neutral-300 bg-neutral-800 border border-neutral-700'
+              : 'text-green-300 bg-green-900/90 border border-green-800/60'"
+          >
+            {{ syncFeedback }}
+          </div>
+        </Transition>
+
         <!-- Dropdown -->
         <div
           v-if="showBranchDropdown && filteredBranches.length > 0"
@@ -815,6 +828,20 @@ commitActor?.send({ type: 'commit.STASH_LIST' })
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.sync-feedback-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.sync-feedback-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.sync-feedback-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.sync-feedback-leave-to {
+  opacity: 0;
+  transform: translateY(-2px);
 }
 </style>
 
