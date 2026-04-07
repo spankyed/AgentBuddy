@@ -1074,6 +1074,8 @@ export class GitRepository {
       }
       if (stagedOnly) {
         args.push('--staged')
+      } else {
+        args.push('--include-untracked')
       }
       const result = await this.executeGitCommand(args)
       if (!result.success) {
