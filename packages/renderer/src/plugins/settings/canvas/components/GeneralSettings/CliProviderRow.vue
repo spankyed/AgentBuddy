@@ -11,7 +11,7 @@
       <input
         type="text"
         :value="modelValue"
-        @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        @input="emit('update:modelValue', ($event.target as HTMLInputElement).value.trim())"
         :placeholder="placeholder"
         class="w-full max-w-[400px] px-3 py-1.5 bg-neutral-800 border border-neutral-700/50 rounded-md text-white placeholder-neutral-600 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
       />
