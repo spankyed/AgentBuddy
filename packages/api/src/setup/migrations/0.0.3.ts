@@ -11,5 +11,10 @@ export const migration = {
     if (agentSettings && !existingChatSettings) {
       settingsCommands.updateSettings('plugin', 'threads', ['chat'], agentSettings);
     }
+
+    // If lastActivePlugin was 'agent', update to 'threads'
+    if (data.plugins?._meta?.lastActivePlugin === 'agent') {
+      settingsCommands.updateSettings('plugin', '_meta', ['lastActivePlugin'], 'threads');
+    }
   },
 };
