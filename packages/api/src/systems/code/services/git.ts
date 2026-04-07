@@ -607,7 +607,6 @@ export class GitRepository {
   async getBaseBranch(options?: { preferUpstream?: boolean }): Promise<string> {
     const preferUpstream = options?.preferUpstream !== false // Default to true
     
-    // Check cache first (different cache keys for different modes)
     const cacheKey = 'baseBranch'
     const cached = this.getCached<string>(cacheKey)
     if (cached) return cached
@@ -720,7 +719,14 @@ export class GitRepository {
     const result = await this.executeGitCommand([
       'branch', '--merged', 'HEAD', '--contains', `HEAD~${depth}`, '--format=%(refname:short)',
     ])
-    if (!result.success || !result.output) return []
+    if (!result.success || !result.output) {
+      // Falls back to all merged branches if HEAD~N is invalid (e.g., repo has < N commits)
+      const fallback = await this.executeGitCommand([
+        'branch', '--merged', 'HEAD', '--format=%(refname:short)',
+      ])
+      if (!fallback.success || !fallback.output) return []
+      return fallback.output.trim().split('\n').filter(Boolean)
+    }
     return result.output.trim().split('\n').filter(Boolean)
   }
 
