@@ -1,5 +1,6 @@
 <template>
-  <div v-if="pr" class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800 bg-neutral-800/30">
+  <!-- Open PR actions -->
+  <div v-if="pr && pr.state === 'OPEN'" class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800 bg-neutral-800/30">
     <!-- Merge -->
     <div ref="mergeContainer" class="relative">
       <div class="flex">
@@ -69,11 +70,25 @@
       <span>Close</span>
     </button>
   </div>
+
+  <!-- Merged/Closed PR actions -->
+  <div v-else-if="pr && (pr.state === 'MERGED' || pr.state === 'CLOSED')" class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800 bg-neutral-800/30">
+    <button
+      @click="$emit('delete-branch')"
+      :disabled="isDeletingBranch"
+      class="flex items-center gap-1 px-2 py-1 text-[11px] rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
+      title="Delete remote branch"
+    >
+      <Loader2 v-if="isDeletingBranch" :size="11" class="animate-spin" />
+      <Trash2 v-else :size="11" />
+      <span>Delete Branch</span>
+    </button>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
-import { GitMerge, ChevronDown, Check, XCircle, FileEdit, Loader2 } from 'lucide-vue-next'
+import { GitMerge, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2 } from 'lucide-vue-next'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
 
@@ -82,12 +97,14 @@ defineProps<{
   isMerging: boolean
   isClosing: boolean
   isTogglingDraft: boolean
+  isDeletingBranch: boolean
 }>()
 
 defineEmits<{
   'merge': [method: 'merge' | 'squash' | 'rebase']
   'close': []
   'toggle-draft': []
+  'delete-branch': []
 }>()
 
 const showMergeOptions = ref(false)

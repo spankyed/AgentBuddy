@@ -58,6 +58,7 @@ export interface Context {
   isMerging: boolean
   isClosing: boolean
   isTogglingDraft: boolean
+  isDeletingBranch: boolean
   isLoadingDetails: boolean
 }
 
@@ -83,6 +84,7 @@ export type Event =
   | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
   | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
+  | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   // User actions
   | { type: 'pr.LIST_PRS' }
@@ -96,6 +98,7 @@ export type Event =
   | { type: 'pr.MERGE'; method?: 'merge' | 'squash' | 'rebase' }
   | { type: 'pr.CLOSE' }
   | { type: 'pr.TOGGLE_DRAFT' }
+  | { type: 'pr.DELETE_BRANCH' }
   | { type: 'pr.REFRESH_PR'; number: number }
   | { type: 'pr.CLEAR_ERROR' };
 
@@ -311,6 +314,18 @@ export const pullRequestState = setup({
       isTogglingDraft: false,
     }),
 
+    requestDeleteBranch: ({ context }) => {
+      if (context.selectedPR?.headRefName) {
+        sendToBackend('pr.DELETE_BRANCH', { branch: context.selectedPR.headRefName })
+      }
+    },
+
+    handleBranchDeleted: assign({
+      selectedPR: null,
+      branchPR: null,
+      isDeletingBranch: false,
+    }),
+
     // User-initiated actions
     requestListPRs: ({ }) => {
       sendToBackend('pr.LIST_OPEN_PRS', {})
@@ -471,6 +486,7 @@ export const pullRequestState = setup({
     isMerging: false,
     isClosing: false,
     isTogglingDraft: false,
+    isDeletingBranch: false,
     isLoadingDetails: false,
   },
   states: {
@@ -507,6 +523,7 @@ export const pullRequestState = setup({
         'pr.PR_MERGED': { actions: ['handlePRMerged', 'refreshPRList'] },
         'pr.PR_CLOSED': { actions: ['handlePRClosed', 'refreshPRList'] },
         'pr.PR_DRAFT_TOGGLED': { actions: 'handlePRDraftToggled' },
+        'pr.BRANCH_DELETED': { actions: 'handleBranchDeleted' },
 
         // User actions
         'pr.LIST_PRS': { actions: ['requestListPRs', assign({ isLoadingPRs: true })] },
@@ -520,6 +537,7 @@ export const pullRequestState = setup({
         'pr.MERGE': { actions: ['requestMerge', assign({ isMerging: true })] },
         'pr.CLOSE': { actions: ['requestClose', assign({ isClosing: true })] },
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
+        'pr.DELETE_BRANCH': { actions: ['requestDeleteBranch', assign({ isDeletingBranch: true })] },
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.CLEAR_ERROR': { actions: assign({ prError: null }) },
       }
