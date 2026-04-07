@@ -334,6 +334,9 @@ const onEmptySpaceDrop = (e: DragEvent) => {
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
+  // Don't intercept keyboard events when an input (e.g. rename) is focused
+  if (e.target instanceof HTMLInputElement) return
+
   // Ctrl+A select all
   if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
     e.preventDefault()
