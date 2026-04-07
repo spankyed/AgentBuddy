@@ -216,6 +216,11 @@ export const explorerState = setup({
       const file = openFiles.find((f: any) => f.path === ev.data.path)
 
       if (file && !file.isDiff) {
+        // File was deleted/moved externally — don't try to re-read it
+        if (ev.data.changeType === 'unlink') {
+          return
+        }
+
         const updatedFiles = openFiles.map((f: any) => {
           if (f.path === ev.data.path && !f.isDiff) {
             return {

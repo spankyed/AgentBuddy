@@ -402,6 +402,10 @@ export const explorerSystem = setup({
         for (const sourcePath of ev.sourcePaths) {
           const destPath = await context.repository.moveFile(sourcePath, ev.targetDir)
           movedPaths.push(destPath)
+          // Unregister old path from watcher to prevent stale FILE_CHANGED_EXTERNALLY events
+          if (context.gitWatcher) {
+            context.gitWatcher.unregisterOpenFile(sourcePath)
+          }
         }
 
         const wrapped = emit(pluginId, {
