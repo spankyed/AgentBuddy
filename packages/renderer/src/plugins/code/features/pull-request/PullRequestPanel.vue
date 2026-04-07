@@ -221,7 +221,7 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
-  Loader2, Info, ArrowLeft
+  Loader2, ArrowLeft, X
 } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
