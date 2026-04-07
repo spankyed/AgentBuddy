@@ -42,17 +42,9 @@
       </div>
     </div>
 
-    <!-- Resolved path (shown when fallback was used) -->
-    <div
-      v-if="status === 'success' && testResult?.resolvedPath && testResult.resolvedPath !== modelValue"
-      class="text-xs text-green-400/70 pl-9 truncate"
-      :title="testResult.resolvedPath"
-    >
-      Resolved: {{ testResult.resolvedPath }}
-    </div>
     <!-- Error message -->
     <div
-      v-else-if="status === 'error' && testResult?.error"
+      v-if="status === 'error' && testResult?.error"
       class="text-xs text-red-400/70 pl-9"
     >
       {{ testResult.error }}

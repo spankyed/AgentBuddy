@@ -1,6 +1,9 @@
 <template>
   <div class="space-y-4">
-    <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">CLI Providers</h3>
+    <div>
+      <h3 class="text-sm font-medium text-gray-300 uppercase tracking-wider">CLI Providers</h3>
+      <p class="mt-1 text-xs text-neutral-500">Leave path blank to auto-detect. Click Test to verify and resolve.</p>
+    </div>
 
     <div class="space-y-3">
       <!-- Copilot -->

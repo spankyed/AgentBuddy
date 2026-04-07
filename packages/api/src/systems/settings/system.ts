@@ -337,6 +337,12 @@ export const settingsSystem = setup({
         return command;
       })()
         .then((resolvedPath) => {
+          const currentData = settingsQueries.getSettings();
+          const updatedPaths = { ...currentData.general.secrets.cliPaths, [provider]: resolvedPath };
+          settingsCommands.updateSettings('general', 'secrets', ['cliPaths'], updatedPaths);
+
+          const data = settingsQueries.getSettings();
+          system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
           system.get(bus).send(emit(settings, {
             type: 'CLI_TEST_RESULT',
             provider,
