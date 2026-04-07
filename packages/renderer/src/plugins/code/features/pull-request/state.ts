@@ -356,7 +356,7 @@ export const pullRequestState = setup({
       sendToBackend('pr.CREATE_PR', {
         title: context.createTitle,
         body: context.createBody,
-        base: context.createBaseBranch || undefined,
+        base: context.createBaseBranch || context.prBaseBranch || undefined,
         draft: context.createDraft,
       })
     },
@@ -365,7 +365,7 @@ export const pullRequestState = setup({
       sendToBackend('pr.CREATE_PR', {
         title: context.createTitle,
         body: context.createBody,
-        base: context.createBaseBranch || undefined,
+        base: context.createBaseBranch || context.prBaseBranch || undefined,
         draft: true,
       })
     },
