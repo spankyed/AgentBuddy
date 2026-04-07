@@ -324,6 +324,7 @@ function handleResolveToggle(thread: GhReviewThread) {
   if (thread.isResolved) {
     emit('unresolve-thread', thread.id)
   } else {
+    expandedThreads.value.delete(thread.id)
     emit('resolve-thread', thread.id)
   }
 }
