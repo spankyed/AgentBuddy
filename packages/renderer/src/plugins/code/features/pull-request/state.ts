@@ -828,7 +828,7 @@ export const pullRequestState = setup({
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.BACK_TO_BRANCH': {
           actions: [
-            assign({ selectedPR: null, isManualPRSelection: false, prFiles: [], diffStale: true }),
+            assign({ selectedPR: null, isManualPRSelection: false, prFiles: [], diffStale: true, prCheckCompleted: false, isGhChecking: true }),
             'refreshPrStatus',
           ]
         },
