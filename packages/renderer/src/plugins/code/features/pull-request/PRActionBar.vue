@@ -7,7 +7,7 @@
         <button
           @click="$emit('merge', selectedMethod)"
           :disabled="isMerging || pr.isDraft"
-          class="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-l bg-green-700/80 text-white hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-l bg-green-700/80 text-white hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           :title="pr.isDraft ? 'Cannot merge a draft PR' : 'Merge pull request'"
         >
           <Loader2 v-if="isMerging" :size="11" class="animate-spin" />
@@ -31,7 +31,7 @@
           v-for="method in mergeMethodList"
           :key="method.value"
           @click="selectMethod(method.value)"
-          class="flex items-center w-full gap-2 px-3 py-1.5 text-[11px] text-left transition-colors hover:bg-neutral-700"
+          class="flex items-center w-full gap-2 px-3 py-1.5 text-xs text-left transition-colors hover:bg-neutral-700"
           :class="selectedMethod === method.value ? 'text-green-400' : 'text-neutral-300'"
         >
           <Check v-if="selectedMethod === method.value" :size="10" />
@@ -45,7 +45,7 @@
     <button
       @click="$emit('toggle-draft')"
       :disabled="isTogglingDraft"
-      class="flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors"
+      class="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors"
       :class="pr.isDraft
         ? 'bg-blue-700/50 text-blue-300 hover:bg-blue-700/70'
         : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700'"
@@ -62,7 +62,7 @@
     <button
       @click="$emit('close')"
       :disabled="isClosing"
-      class="flex items-center gap-1 px-2 py-1 text-[11px] rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
+      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
       title="Close pull request"
     >
       <Loader2 v-if="isClosing" :size="11" class="animate-spin" />
@@ -76,7 +76,7 @@
     <button
       @click="$emit('delete-branch')"
       :disabled="isDeletingBranch"
-      class="flex items-center gap-1 px-2 py-1 text-[11px] rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
+      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
       title="Delete remote branch"
     >
       <Loader2 v-if="isDeletingBranch" :size="11" class="animate-spin" />

@@ -9,7 +9,7 @@
           ? 'text-neutral-200 bg-neutral-700/50'
           : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800'"
       >
-        <MessageSquare :size="11" />
+        <MessageSquare :size="12" />
         <span>Discussion</span>
         <span v-if="comments.length" class="text-xs text-neutral-500">({{ comments.length }})</span>
       </button>
@@ -20,7 +20,7 @@
           ? 'text-neutral-200 bg-neutral-700/50'
           : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800'"
       >
-        <Code :size="11" />
+        <Code :size="12" />
         <span>Reviews</span>
         <span v-if="reviewThreads.length" class="text-xs text-neutral-500">({{ reviewThreads.length }})</span>
       </button>
