@@ -8,7 +8,7 @@
 import { EARS } from '@/core/types';
 import { sendToPlugin } from './event-emitter';
 import { repository } from '@/repository';
-import type { ArtifactType } from '@/systems/agent/types';
+import type { ArtifactType } from '@/systems/threads/types';
 
 export interface CreateArtifactOptions {
   artifactType: ArtifactType;
@@ -38,11 +38,11 @@ export interface CreateArtifactOptions {
  * // Frontend automatically receives ARTIFACT_ADDED event
  */
 export function createAndNotify(options: CreateArtifactOptions): { artifactId: EARS.EntityId } {
-  const result = repository.agentCommands.createArtifact(options);
+  const result = repository.chatCommands.createArtifact(options);
 
   // Send FE notification if linked to thread
   if (options.threadId) {
-    sendToPlugin('agent', {
+    sendToPlugin('threads', {
       type: 'ARTIFACT_ADDED',
       tabId: options.threadId,
       artifact: {

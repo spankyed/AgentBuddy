@@ -9,7 +9,7 @@ import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
-import { agent } from '@/systems/agent/system';
+import { threads } from '@/systems/threads/system';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { seedData, type SeedResult } from '@/setup/seed/index';
@@ -272,14 +272,14 @@ export const settingsSystem = setup({
           );
         };
 
-        // Notify agent system about API key changes
-        const agentActor = system.get(agent);
-        if (agentActor) {
-          agentActor.send({ type: 'API_KEYS_CHANGED' });
+        // Notify threads system about API key changes
+        const threadsActor = system.get(threads);
+        if (threadsActor) {
+          threadsActor.send({ type: 'API_KEYS_CHANGED' });
 
           // If we now have required API keys and no birth has occurred, trigger birth flow
           if (!assistantSettings.birthdate && hasRequiredKeys(secretsData)) {
-            agentActor.send({ type: 'BIRTH_FLOW_START' });
+            threadsActor.send({ type: 'BIRTH_FLOW_START' });
           }
         }
       }
@@ -297,7 +297,7 @@ export const settingsSystem = setup({
     }),
     completeTour: () => {
       // Show all plugins when tour completes
-      const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
+      const allPlugins = ['threads', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
       const visibilityUpdate: Record<string, boolean> = {};
       allPlugins.forEach(plugin => {
         visibilityUpdate[plugin] = true;
@@ -305,7 +305,7 @@ export const settingsSystem = setup({
 
       settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
     },
-    
+
     testCliProvider: ({ system, event }) => {
       const ev = typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
@@ -362,7 +362,7 @@ export const settingsSystem = setup({
     completeOnboarding: ({ system }) => {
       settingsCommands.updateSettings('internal', null, ['tourComplete'], true);
 
-      const allPlugins = ['threads', 'agent', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
+      const allPlugins = ['threads', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
       const visibilityUpdate: Record<string, boolean> = {};
       allPlugins.forEach(plugin => {
         visibilityUpdate[plugin] = true;
@@ -376,10 +376,10 @@ export const settingsSystem = setup({
         data
       }));
 
-      // Trigger the onboarding flow via agent → brain
-      const agentActor = system.get(agent);
-      if (agentActor) {
-        agentActor.send({ type: 'BIRTH_FLOW_START' });
+      // Trigger the onboarding flow via threads → brain
+      const threadsActor = system.get(threads);
+      if (threadsActor) {
+        threadsActor.send({ type: 'BIRTH_FLOW_START' });
       }
     }
   },

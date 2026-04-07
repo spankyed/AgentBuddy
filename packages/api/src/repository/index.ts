@@ -7,7 +7,6 @@
 
 // Import all system repositories
 import { actionQueries, actionCommands } from '@/systems/actions/repository';
-import { agentQueries, agentCommands } from '@/systems/agent/repository';
 import { brainQueries, brainCommands } from '@/systems/brain/repository';
 import { flowsQueries, flowsCommands } from '@/systems/flows/repository';
 import { libraryQueries, libraryCommands } from '@/systems/library/repository';
@@ -15,7 +14,7 @@ import { promptQueries, promptCommands } from '@/systems/prompts/repository';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import { secretsQueries, secretsCommands } from '@/systems/settings/secrets/repository';
 import { terminalQueries, terminalCommands } from '@/systems/code/repository';
-import { threadQueries, threadCommands } from '@/systems/threads/repository';
+import { threadQueries, threadCommands, chatQueries, chatCommands } from '@/systems/threads/repository';
 import { noteQueries, noteCommands } from '@/systems/notes/repository';
 
 // Export centralized repository
@@ -24,9 +23,9 @@ export const repository = {
   actionQueries,
   actionCommands,
   
-  // Agent system
-  agentQueries,
-  agentCommands,
+  // Chat (merged from agent system)
+  chatQueries,
+  chatCommands,
   
   // Brain system
   brainQueries,
