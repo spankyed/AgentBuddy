@@ -117,7 +117,7 @@ const contextMenuItems = computed<MenuItem[]>(() => [
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.8);
   z-index: 50;
   animation: overlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
