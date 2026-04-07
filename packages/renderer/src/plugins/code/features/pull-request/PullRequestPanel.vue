@@ -40,20 +40,9 @@
       </div>
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
-      <div v-if="isGhAvailable || isGhChecking" class="flex items-center gap-1 px-1 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
-        <!-- Loading state while checking gh auth / upstream -->
-        <template v-if="isGhChecking">
-          <button
-            disabled
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
-          >
-            <Loader2 :size="12" class="animate-spin shrink-0" />
-            <span class="truncate">Checking...</span>
-          </button>
-        </template>
-
+      <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-1 border-b border-neutral-800 bg-neutral-800/50 h-[38px]" :class="{ 'hidden': viewMode === 'pr' }">
         <!-- Selector mode -->
-        <template v-else-if="showSelector">
+        <template v-if="showSelector">
           <PRSelector
             :openPRs="openPRs"
             :selectedPR="selectedPR"
@@ -68,11 +57,20 @@
           </button>
         </template>
 
-        <!-- Default mode -->
         <template v-else>
+          <!-- Checking gh auth / upstream -->
+          <button
+            v-if="topRowStatus === 'checking'"
+            disabled
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+          >
+            <Loader2 :size="12" class="animate-spin shrink-0" />
+            <span class="truncate">Checking...</span>
+          </button>
+
           <!-- Unpublished branch -->
           <button
-            v-if="!hasUpstream"
+            v-else-if="topRowStatus === 'publish'"
             @click="handlePublishBranch()"
             :disabled="isPushing"
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-yellow-700/50 text-yellow-300 hover:bg-yellow-700 transition-colors disabled:opacity-50 flex-1 min-w-0"
@@ -82,9 +80,9 @@
             <span class="truncate">Publish Branch</span>
           </button>
 
-          <!-- Published, error state (can't determine PR status) -->
+          <!-- Can't determine PR status -->
           <button
-            v-else-if="!selectedPR && branchPRCheckFailed"
+            v-else-if="topRowStatus === 'check-failed'"
             disabled
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
           >
@@ -92,9 +90,9 @@
             <span class="truncate">Unable to check PR status</span>
           </button>
 
-          <!-- Published, no PR -->
+          <!-- No PR exists -->
           <button
-            v-else-if="!selectedPR"
+            v-else-if="topRowStatus === 'no-pr'"
             @click="handleCreatePR()"
             class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors flex-1 min-w-0"
           >
@@ -285,6 +283,15 @@ const isNoGitRepoError = computed(() =>
 const isNoBaseBranchError = computed(() =>
   prError.value?.includes('Could not determine PR base branch')
 )
+
+const topRowStatus = computed(() => {
+  if (isGhChecking.value) return 'checking' as const
+  if (!isGhAvailable.value) return 'hidden' as const
+  if (!hasUpstream.value) return 'publish' as const
+  if (selectedPR.value) return 'has-pr' as const
+  if (branchPRCheckFailed.value) return 'check-failed' as const
+  return 'no-pr' as const
+})
 
 // Actions
 const refreshStatus = () => {
