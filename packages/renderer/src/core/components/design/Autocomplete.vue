@@ -72,7 +72,7 @@ const filteredSuggestions = computed(() => {
   if (!value) return []
   
   return props.suggestions
-    .filter(s => s.toLowerCase().startsWith(value))
+    .filter(s => s.toLowerCase().includes(value))
     .slice(0, 5)
 })
 

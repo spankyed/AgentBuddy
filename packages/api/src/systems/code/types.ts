@@ -114,6 +114,7 @@ export interface GhPullRequest {
   createdAt: string
   updatedAt: string
   commits?: { oid: string; messageHeadline: string; committedDate: string }[]
+  reviewRequests?: { login: string }[]
 }
 
 export interface GhPRComment {

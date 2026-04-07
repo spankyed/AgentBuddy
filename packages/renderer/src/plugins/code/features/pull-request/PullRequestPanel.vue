@@ -152,6 +152,10 @@
             :isUpdating="isUpdatingPR"
             @save="handleSavePR"
             @start-editing="commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })"
+            :collaborators="collaborators"
+            @add-reviewers="handleAddReviewers"
+            @remove-reviewer="handleRemoveReviewer"
+            @request-collaborators="prActor?.send({ type: 'pr.GET_COLLABORATORS' })"
           >
             <PRComments
               :comments="prComments"
@@ -266,6 +270,7 @@ const isClosing = useSelector(prActor, (state: any) => state.context.isClosing)
 const isTogglingDraft = useSelector(prActor, (state: any) => state.context.isTogglingDraft)
 const isDeletingBranch = useSelector(prActor, (state: any) => state.context.isDeletingBranch)
 const isUpdatingPR = useSelector(prActor, (state: any) => state.context.isUpdatingPR)
+const collaborators = useSelector(prActor, (state: any) => state.context.collaborators)
 const isLoadingDetails = useSelector(prActor, (state: any) => state.context.isLoadingDetails)
 const hasUpstream = useSelector(commitActor, (state: any) => state.context.hasUpstream)
 const isPushing = useSelector(commitActor, (state: any) => state.context.isPushing)
@@ -383,6 +388,18 @@ const handleDeleteBranch = () => {
 const handleSavePR = (data: { title?: string; body?: string; base?: string }) => {
   if (selectedPR.value) {
     prActor?.send({ type: 'pr.UPDATE_PR', number: selectedPR.value.number, ...data })
+  }
+}
+
+const handleAddReviewers = (usernames: string[]) => {
+  if (selectedPR.value) {
+    prActor?.send({ type: 'pr.ADD_REVIEWERS', number: selectedPR.value.number, usernames })
+  }
+}
+
+const handleRemoveReviewer = (username: string) => {
+  if (selectedPR.value) {
+    prActor?.send({ type: 'pr.REMOVE_REVIEWER', number: selectedPR.value.number, username })
   }
 }
 </script>

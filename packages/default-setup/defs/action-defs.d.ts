@@ -604,6 +604,9 @@ interface GhPullRequest {
         messageHeadline: string;
         committedDate: string;
     }[];
+    reviewRequests?: {
+        login: string;
+    }[];
 }
 interface GhPRComment {
     id: string;
@@ -3411,6 +3414,45 @@ declare const events: {
         systemId: "code";
         commentId: number;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.ADD_REVIEWERS">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+        usernames: zod.ZodArray<zod.ZodString, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.ADD_REVIEWERS";
+        systemId: "code";
+        usernames: string[];
+    }, {
+        number: number;
+        type: "pr.ADD_REVIEWERS";
+        systemId: "code";
+        usernames: string[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.REMOVE_REVIEWER">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+        username: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.REMOVE_REVIEWER";
+        systemId: "code";
+        username: string;
+    }, {
+        number: number;
+        type: "pr.REMOVE_REVIEWER";
+        systemId: "code";
+        username: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.GET_COLLABORATORS">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "pr.GET_COLLABORATORS";
+        systemId: "code";
+    }, {
+        type: "pr.GET_COLLABORATORS";
+        systemId: "code";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"terminal.CREATE_TERMINAL">;
         systemId: zod.ZodLiteral<"code">;
         title: zod.ZodOptional<zod.ZodString>;
@@ -4747,6 +4789,21 @@ declare const events: {
         type: "pr.REVIEW_COMMENT_DELETED";
         data: {
             commentId: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.REVIEWERS_UPDATED";
+        data: {
+            number: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.COLLABORATORS_RECEIVED";
+        data: {
+            collaborators: {
+                login: string;
+                name: string | null;
+            }[];
         };
         pluginId: "code";
     } | {

@@ -63,6 +63,40 @@
             </button>
           </template>
         </div>
+        <!-- Reviewers -->
+        <div v-if="pr.state === 'OPEN'" class="flex flex-wrap items-center gap-1.5 mt-2 text-xs">
+          <span class="text-neutral-500">Reviewers:</span>
+          <template v-if="pr.reviewRequests?.length">
+            <span
+              v-for="r in pr.reviewRequests"
+              :key="r.login"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300"
+            >
+              {{ r.login }}
+              <button @click="emit('remove-reviewer', r.login)" class="text-neutral-500 hover:text-red-400 transition-colors">
+                <X :size="10" />
+              </button>
+            </span>
+          </template>
+          <span v-else class="text-neutral-600 italic">None</span>
+          <template v-if="showReviewerInput">
+            <Autocomplete
+              v-model="reviewerUsername"
+              :suggestions="availableCollaborators"
+              placeholder="Search collaborators..."
+              @enter="submitReviewer"
+              inputClass="w-32 px-1.5 py-0.5 text-xs rounded bg-neutral-800 border border-neutral-700 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-blue-600"
+            />
+          </template>
+          <button
+            v-else
+            @click="startReviewerInput"
+            class="text-neutral-500 hover:text-neutral-300 transition-colors"
+            title="Add reviewer"
+          >
+            <Plus :size="12" />
+          </button>
+        </div>
       </div>
 
       <!-- Loading state -->
@@ -134,7 +168,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
+import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink, X, Plus } from 'lucide-vue-next'
+import Autocomplete from '@/core/components/design/Autocomplete.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import type { GhPullRequest, GhPRComment } from '@app/api'
@@ -143,6 +178,7 @@ const props = defineProps<{
   pr: GhPullRequest | null
   comments: GhPRComment[]
   branches: string[]
+  collaborators: { login: string; name: string | null }[]
   isLoading?: boolean
   isUpdating?: boolean
 }>()
@@ -150,6 +186,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'save': [data: { title?: string; body?: string; base?: string }]
   'start-editing': []
+  'add-reviewers': [usernames: string[]]
+  'remove-reviewer': [username: string]
+  'request-collaborators': []
 }>()
 
 const lightboxOpen = ref(false)
@@ -173,6 +212,30 @@ function openLightbox(src: string) {
 }
 
 const showCommits = ref(false)
+const showReviewerInput = ref(false)
+const reviewerUsername = ref('')
+
+const availableCollaborators = computed(() => {
+  const assigned = new Set(props.pr?.reviewRequests?.map(r => r.login) ?? [])
+  return props.collaborators
+    .filter(c => !assigned.has(c.login))
+    .map(c => c.name ? `${c.login} (${c.name})` : c.login)
+})
+
+function startReviewerInput() {
+  showReviewerInput.value = true
+  emit('request-collaborators')
+}
+
+function submitReviewer() {
+  const input = reviewerUsername.value.trim()
+  if (!input) return
+  // Extract login from display string like "spankyed (Alex)" → "spankyed"
+  const login = input.includes(' (') ? input.split(' (')[0] : input
+  emit('add-reviewers', [login])
+  reviewerUsername.value = ''
+  showReviewerInput.value = false
+}
 
 // Edit mode
 const editing = ref(false)

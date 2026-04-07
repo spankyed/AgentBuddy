@@ -59,6 +59,9 @@ export interface Context {
   createBaseBranch: string
   createDraft: boolean
 
+  // Collaborators
+  collaborators: { login: string; name: string | null }[]
+
   // Loading states
   isLoadingPRs: boolean
   isCreating: boolean
@@ -112,6 +115,8 @@ export type Event =
   | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
   | { type: 'pr.REVIEW_COMMENT_EDITED'; data: { commentId: number } }
   | { type: 'pr.REVIEW_COMMENT_DELETED'; data: { commentId: number } }
+  | { type: 'pr.REVIEWERS_UPDATED'; data: { number: number } }
+  | { type: 'pr.COLLABORATORS_RECEIVED'; data: { collaborators: { login: string; name: string | null }[] } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   // User actions
   | { type: 'pr.LIST_PRS' }
@@ -135,6 +140,9 @@ export type Event =
   | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
   | { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
   | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
+  | { type: 'pr.ADD_REVIEWERS'; number: number; usernames: string[] }
+  | { type: 'pr.REMOVE_REVIEWER'; number: number; username: string }
+  | { type: 'pr.GET_COLLABORATORS' }
   | { type: 'pr.SET_COMMENT_TAB'; tab: 'discussion' | 'reviews' }
   | { type: 'pr.REFRESH_PR'; number: number }
   | { type: 'pr.CLEAR_ERROR' };
@@ -409,6 +417,23 @@ export const pullRequestState = setup({
       branchPR: null,
       isDeletingBranch: false,
     }),
+
+    requestAddReviewers: ({ event }) => {
+      const ev = event as { type: 'pr.ADD_REVIEWERS'; number: number; usernames: string[] }
+      sendToBackend('pr.ADD_REVIEWERS', { number: ev.number, usernames: ev.usernames })
+    },
+
+    handleCollaboratorsReceived: assign({
+      collaborators: ({ event }) => {
+        const ev = event as { type: 'pr.COLLABORATORS_RECEIVED'; data: { collaborators: { login: string; name: string | null }[] } }
+        return ev.data.collaborators
+      }
+    }),
+
+    requestRemoveReviewer: ({ event }) => {
+      const ev = event as { type: 'pr.REMOVE_REVIEWER'; number: number; username: string }
+      sendToBackend('pr.REMOVE_REVIEWER', { number: ev.number, username: ev.username })
+    },
 
     // User-initiated actions
     requestListPRs: ({ }) => {
@@ -720,6 +745,8 @@ export const pullRequestState = setup({
     createBaseBranch: '',
     createDraft: false,
 
+    collaborators: [],
+
     isLoadingPRs: false,
     isCreating: false,
     isMerging: false,
@@ -784,6 +811,8 @@ export const pullRequestState = setup({
         'pr.PR_CLOSED': { actions: ['handlePRClosed', 'refreshPRList'] },
         'pr.PR_DRAFT_TOGGLED': { actions: 'handlePRDraftToggled' },
         'pr.BRANCH_DELETED': { actions: 'handleBranchDeleted' },
+        'pr.REVIEWERS_UPDATED': { actions: 'refreshPrStatus' },
+        'pr.COLLABORATORS_RECEIVED': { actions: 'handleCollaboratorsReceived' },
         'pr.PR_UPDATED': { actions: ['handlePRUpdated', 'refreshPrStatus'] },
         'pr.COMMENT_CREATED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
         'pr.COMMENT_EDITED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
@@ -808,6 +837,9 @@ export const pullRequestState = setup({
         'pr.CLOSE': { actions: ['requestClose', assign({ isClosing: true })] },
         'pr.TOGGLE_DRAFT': { actions: ['requestToggleDraft', assign({ isTogglingDraft: true })] },
         'pr.DELETE_BRANCH': { actions: ['requestDeleteBranch', assign({ isDeletingBranch: true })] },
+        'pr.ADD_REVIEWERS': { actions: 'requestAddReviewers' },
+        'pr.REMOVE_REVIEWER': { actions: 'requestRemoveReviewer' },
+        'pr.GET_COLLABORATORS': { actions: () => sendToBackend('pr.GET_COLLABORATORS', {}) },
         'pr.UPDATE_PR': { actions: ['requestUpdatePR', assign({ isUpdatingPR: true })] },
         'pr.CREATE_COMMENT': { actions: 'optimisticCreateComment' },
         'pr.EDIT_COMMENT': { actions: 'optimisticEditComment' },

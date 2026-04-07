@@ -36,6 +36,9 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.UNRESOLVE_THREAD', { threadId: z.string() }),
   busEvent('pr.EDIT_REVIEW_COMMENT', { commentId: z.number(), body: z.string() }),
   busEvent('pr.DELETE_REVIEW_COMMENT', { commentId: z.number() }),
+  busEvent('pr.ADD_REVIEWERS', { number: z.number(), usernames: z.array(z.string()) }),
+  busEvent('pr.REMOVE_REVIEWER', { number: z.number(), username: z.string() }),
+  busEvent('pr.GET_COLLABORATORS', {}),
 ] as const
 
 // Outgoing events to frontend
@@ -66,6 +69,8 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.THREAD_UNRESOLVED'; data: { threadId: string } }
   | { type: 'pr.REVIEW_COMMENT_EDITED'; data: { commentId: number } }
   | { type: 'pr.REVIEW_COMMENT_DELETED'; data: { commentId: number } }
+  | { type: 'pr.REVIEWERS_UPDATED'; data: { number: number } }
+  | { type: 'pr.COLLABORATORS_RECEIVED'; data: { collaborators: { login: string; name: string | null }[] } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -96,6 +101,9 @@ export type Event =
   | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
   | { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
   | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
+  | { type: 'pr.ADD_REVIEWERS'; number: number; usernames: string[] }
+  | { type: 'pr.REMOVE_REVIEWER'; number: number; username: string }
+  | { type: 'pr.GET_COLLABORATORS' }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
@@ -397,6 +405,29 @@ export const pullRequestSystem = setup({
       )
     },
 
+    addReviewers: ({ event, context }) => {
+      const ev = event as { type: 'pr.ADD_REVIEWERS'; number: number; usernames: string[] }
+      withRepo(context,
+        repo => ghCli.addReviewers(repo.getWorkingDir(), ev.number, ev.usernames),
+        () => emitToFrontend({ type: 'pr.REVIEWERS_UPDATED', data: { number: ev.number } })
+      )
+    },
+
+    removeReviewer: ({ event, context }) => {
+      const ev = event as { type: 'pr.REMOVE_REVIEWER'; number: number; username: string }
+      withRepo(context,
+        repo => ghCli.removeReviewer(repo.getWorkingDir(), ev.number, ev.username),
+        () => emitToFrontend({ type: 'pr.REVIEWERS_UPDATED', data: { number: ev.number } })
+      )
+    },
+
+    getCollaborators: ({ context }) => {
+      withRepo(context,
+        repo => ghCli.getCollaborators(repo.getWorkingDir()),
+        collaborators => emitToFrontend({ type: 'pr.COLLABORATORS_RECEIVED', data: { collaborators } })
+      )
+    },
+
     handleGitStatusChanged: () => {
       emitToFrontend({ type: 'pr.STATUS_CHANGED', data: { timestamp: new Date() } })
     },
@@ -437,6 +468,9 @@ export const pullRequestSystem = setup({
         'pr.CHECK_BRANCH_PR': { actions: 'checkBranchPR' },
         'pr.GET_SMART_BASE_BRANCH': { actions: 'getSmartBaseBranch' },
         'pr.DELETE_BRANCH': { actions: 'deleteBranch' },
+        'pr.ADD_REVIEWERS': { actions: 'addReviewers' },
+        'pr.REMOVE_REVIEWER': { actions: 'removeReviewer' },
+        'pr.GET_COLLABORATORS': { actions: 'getCollaborators' },
         'pr.UPDATE_PR': { actions: 'updatePR' },
         'pr.CREATE_COMMENT': { actions: 'createComment' },
         'pr.EDIT_COMMENT': { actions: 'editComment' },

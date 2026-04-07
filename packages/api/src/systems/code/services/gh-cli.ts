@@ -35,7 +35,7 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
   }
 }
 
-const PR_JSON_FIELDS = 'number,title,headRefName,baseRefName,state,body,url,isDraft,author,createdAt,updatedAt'
+const PR_JSON_FIELDS = 'number,title,headRefName,baseRefName,state,body,url,isDraft,author,createdAt,updatedAt,reviewRequests'
 const PR_DETAIL_FIELDS = `${PR_JSON_FIELDS},commits`
 
 export async function checkAuth(cwd: string): Promise<boolean> {
@@ -141,6 +141,24 @@ export async function updatePR(
   if (opts.body !== undefined) args.push('--body', opts.body)
   if (opts.base) args.push('--base', opts.base)
   await runGh(args, cwd)
+}
+
+export async function addReviewers(cwd: string, number: number, usernames: string[]): Promise<void> {
+  await runGh(['pr', 'edit', String(number), '--add-reviewer', usernames.join(',')], cwd)
+}
+
+export async function removeReviewer(cwd: string, number: number, username: string): Promise<void> {
+  await runGh(['pr', 'edit', String(number), '--remove-reviewer', username], cwd)
+}
+
+export async function getCollaborators(cwd: string): Promise<{ login: string; name: string | null }[]> {
+  const { owner, name } = await getRepoInfo(cwd)
+  const output = await runGh([
+    'api', `repos/${owner}/${name}/collaborators`,
+    '--jq', '[.[] | {login: .login, name: .name}]',
+  ], cwd)
+  if (!output) return []
+  try { return JSON.parse(output) } catch { return [] }
 }
 
 // --- Issue comment operations ---
