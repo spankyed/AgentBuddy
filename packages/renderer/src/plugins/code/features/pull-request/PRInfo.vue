@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col flex-1 overflow-y-auto">
+  <div ref="scrollContainer" class="flex flex-col flex-1 overflow-y-auto">
     <div v-if="pr" class="p-3 space-y-3">
       <!-- PR Header -->
       <div class="pb-3 border-b border-neutral-800">
@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick, useTemplateRef } from 'vue'
 import { GitBranch, ArrowRight, Loader2, Pencil, ExternalLink } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
@@ -154,6 +154,18 @@ const emit = defineEmits<{
 
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
+const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer')
+
+// Preserve scroll position across re-renders (e.g., after comment mutations refresh PR data)
+let savedScrollTop = 0
+watch(() => props.pr, () => {
+  savedScrollTop = scrollContainer.value?.scrollTop ?? 0
+  nextTick(() => {
+    if (scrollContainer.value) {
+      scrollContainer.value.scrollTop = savedScrollTop
+    }
+  })
+})
 
 function openOnGitHub() {
   if (props.pr?.url) {
