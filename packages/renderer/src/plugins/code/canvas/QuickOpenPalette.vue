@@ -1,8 +1,10 @@
 <template>
+  <Teleport to="body">
   <Transition name="quick-open">
     <div
       v-if="isVisible"
-      class="absolute inset-0 z-50 flex items-start justify-center pt-20 -top-10"
+      class="fixed inset-0 z-[9999] flex items-start justify-center pt-12"
+      :style="overlayStyle"
       @click.self="handleClose"
     >
       <!-- Palette -->
@@ -133,6 +135,7 @@
       </div>
     </div>
   </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -167,6 +170,7 @@ const loading = useSelector(codeActor, (state) => state.context.quickOpenLoading
 const selectedIndex = useSelector(codeActor, (state) => state.context.quickOpenSelectedIndex)
 const recentlyOpenedFiles = useSelector(codeActor, (state) => state.context.recentlyOpenedFiles)
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
+const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
 
 // Local state
 const searchInput = ref<HTMLInputElement>()
@@ -174,6 +178,11 @@ const resultsContainer = ref<HTMLDivElement>()
 const searchQuery = ref('')
 const resultRefs = ref<(HTMLElement | null)[]>([])
 const isKeyboardNavigation = ref(false)
+
+const overlayStyle = computed(() => ({
+  paddingLeft: '4.5rem', // toolbar width (--toolbar-width)
+  paddingRight: `${panelSizes.value.inspectionWidth}px`,
+}))
 const hoveredIndex = ref(-1)
 
 // Computed filtered results
