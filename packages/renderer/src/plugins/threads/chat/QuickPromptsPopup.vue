@@ -49,7 +49,7 @@
                       @click="selectPrompt(prompt.text)"
                       @mouseenter="checkTruncation(prompt)"
                     >
-                      {{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
+                      <span class="text-neutral-600 mr-3">{{ prompts.indexOf(prompt) + 1 }}</span>{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span>
                     </button>
                   </TooltipTrigger>
                   <TooltipPortal>
