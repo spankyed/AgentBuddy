@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col border-t border-neutral-800">
     <!-- Tab switcher -->
-    <div class="flex items-center gap-0.5 px-3 pt-2 pb-1">
+    <div class="flex items-center gap-0.5 px-3 py-2">
       <button
         @click="$emit('set-tab', 'discussion')"
         class="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors"
@@ -11,7 +11,7 @@
       >
         <MessageSquare :size="11" />
         <span>Discussion</span>
-        <span v-if="comments.length" class="text-[10px] text-neutral-500">({{ comments.length }})</span>
+        <span v-if="comments.length" class="text-xs text-neutral-500">({{ comments.length }})</span>
       </button>
       <button
         @click="$emit('set-tab', 'reviews')"
@@ -22,12 +22,12 @@
       >
         <Code :size="11" />
         <span>Reviews</span>
-        <span v-if="reviewThreads.length" class="text-[10px] text-neutral-500">({{ reviewThreads.length }})</span>
+        <span v-if="reviewThreads.length" class="text-xs text-neutral-500">({{ reviewThreads.length }})</span>
       </button>
     </div>
 
     <!-- Discussion tab -->
-    <div v-if="tab === 'discussion'" class="px-3 pb-3 space-y-2">
+    <div v-if="tab === 'discussion'" class="px-3 pb-3 space-y-3">
       <div v-if="comments.length === 0 && !isOpen" class="text-xs text-neutral-500 italic py-2">
         No comments yet.
       </div>
@@ -38,9 +38,9 @@
         :key="comment.id"
         class="group rounded bg-neutral-800/40 border border-neutral-800 overflow-hidden"
       >
-        <div class="flex items-center gap-2 px-2.5 py-1.5 bg-neutral-800/60">
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/60">
           <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
-          <span class="text-[10px] text-neutral-600 flex-1">{{ formatDate(comment.createdAt) }}</span>
+          <span class="text-xs text-neutral-600 flex-1">{{ formatDate(comment.createdAt) }}</span>
           <!-- Actions for own comments -->
           <template v-if="comment.viewerDidAuthor">
             <button
@@ -75,26 +75,26 @@
             <button
               @click="saveEditComment(comment)"
               :disabled="isSubmitting"
-              class="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
+              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
             >
               <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
               <span>Save</span>
             </button>
             <button
               @click="editingCommentId = null"
-              class="px-2 py-0.5 text-[11px] rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
+              class="px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
             >Cancel</button>
           </div>
         </div>
         <!-- View mode -->
-        <div v-else class="px-2.5 py-1.5">
+        <div v-else class="px-3 py-2">
           <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-comment-viewer" />
         </div>
       </div>
 
       <!-- New comment input (only for open PRs) -->
-      <div v-if="isOpen" class="rounded bg-neutral-800/40 border border-neutral-800 overflow-hidden">
-        <div class="p-2 min-h-[48px] max-h-[120px] overflow-y-auto">
+      <div v-if="isOpen" class="relative rounded bg-neutral-800/40 border border-neutral-800 overflow-hidden">
+        <div class="px-3 py-1.5 pb-8 min-h-[32px] max-h-[120px] overflow-y-auto">
           <TiptapEditor
             mode="editor"
             hideGutter
@@ -104,22 +104,20 @@
             editorClass="pr-comment-editor"
           />
         </div>
-        <div class="flex items-center justify-end px-2 py-1.5 border-t border-neutral-800">
-          <button
-            @click="submitNewComment"
-            :disabled="!newCommentBody.trim() || isSubmitting"
-            class="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
-            <Send v-else :size="10" />
-            <span>Comment</span>
-          </button>
-        </div>
+        <button
+          @click="submitNewComment"
+          :disabled="!newCommentBody.trim() || isSubmitting"
+          class="absolute bottom-1.5 right-1.5 flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
+          <Send v-else :size="10" />
+          <span>Comment</span>
+        </button>
       </div>
     </div>
 
     <!-- Reviews tab -->
-    <div v-else-if="tab === 'reviews'" class="px-3 pb-3 space-y-2">
+    <div v-else-if="tab === 'reviews'" class="px-3 pb-3 space-y-3">
       <div v-if="reviewThreads.length === 0" class="text-xs text-neutral-500 italic py-2">
         No review comments.
       </div>
@@ -132,7 +130,7 @@
       >
         <!-- Thread header -->
         <div
-          class="flex items-center gap-2 px-2.5 py-1.5 bg-neutral-800/60 cursor-pointer hover:bg-neutral-700/40 transition-colors"
+          class="flex items-center gap-2 px-3 py-1.5 bg-neutral-800/60 cursor-pointer hover:bg-neutral-700/40 transition-colors"
           @click="toggleThread(thread.id)"
         >
           <ChevronRight
@@ -141,11 +139,11 @@
             :class="{ 'rotate-90': expandedThreads.has(thread.id) }"
           />
           <Code :size="10" class="shrink-0 text-neutral-500" />
-          <span class="text-[11px] text-neutral-400 truncate flex-1" :title="thread.path">
+          <span class="text-xs text-neutral-400 truncate flex-1" :title="thread.path">
             {{ thread.path.split('/').pop() }}{{ thread.line ? `:${thread.line}` : '' }}
           </span>
           <span
-            class="text-[9px] px-1.5 py-0.5 rounded-full shrink-0"
+            class="text-[11px] px-1.5 py-0.5 rounded-full shrink-0"
             :class="thread.isResolved
               ? 'bg-green-900/40 text-green-400'
               : 'bg-yellow-900/40 text-yellow-400'"
@@ -157,18 +155,18 @@
           <div
             v-for="(comment, i) in thread.comments"
             :key="comment.id"
-            class="px-2.5 py-1.5"
-            :class="{ 'border-t border-neutral-800/50': i > 0, 'pl-5': i > 0 }"
+            class="px-3 py-2"
+            :class="{ 'border-t border-neutral-800/50': i > 0, 'pl-6': i > 0 }"
           >
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-[11px] font-medium text-neutral-300">{{ comment.author.login }}</span>
-              <span class="text-[10px] text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
+              <span class="text-xs font-medium text-neutral-300">{{ comment.author.login }}</span>
+              <span class="text-xs text-neutral-600">{{ formatDate(comment.createdAt) }}</span>
             </div>
             <TiptapEditor mode="viewer" :modelValue="comment.body" editorClass="pr-comment-viewer" />
           </div>
 
           <!-- Thread actions -->
-          <div class="flex items-center gap-1.5 px-2.5 py-1.5 border-t border-neutral-800">
+          <div class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800">
             <!-- Reply input -->
             <div v-if="replyingThreadId === thread.id" class="flex-1 space-y-1.5">
               <div class="rounded bg-neutral-800 border border-neutral-700 p-2 min-h-[40px] max-h-[100px] overflow-y-auto">
@@ -185,21 +183,21 @@
                 <button
                   @click="submitReply(thread)"
                   :disabled="!replyBody.trim() || isSubmitting"
-                  class="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
+                  class="flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50"
                 >
                   <Loader2 v-if="isSubmitting" :size="10" class="animate-spin" />
                   <span>Reply</span>
                 </button>
                 <button
                   @click="replyingThreadId = null"
-                  class="px-2 py-0.5 text-[11px] rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
+                  class="px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
                 >Cancel</button>
               </div>
             </div>
             <button
               v-else
               @click="startReply(thread.id)"
-              class="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
+              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded text-neutral-400 hover:bg-neutral-700 transition-colors"
             >
               <Reply :size="10" />
               <span>Reply</span>
@@ -212,7 +210,7 @@
               @click="thread.isResolved
                 ? $emit('unresolve-thread', thread.id)
                 : $emit('resolve-thread', thread.id)"
-              class="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded transition-colors"
+              class="flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors"
               :class="thread.isResolved
                 ? 'text-yellow-400 hover:bg-yellow-900/30'
                 : 'text-green-400 hover:bg-green-900/30'"
@@ -337,7 +335,7 @@ function formatDate(dateStr: string): string {
   padding: 0;
 }
 :deep(.pr-comment-editor) {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   line-height: 1.5;
   color: rgb(212 212 212);
 }
