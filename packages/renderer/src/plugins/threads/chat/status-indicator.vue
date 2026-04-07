@@ -28,9 +28,9 @@ import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id, type AgentState } from '@/plugins/agent/state';
+import { id, type ThreadsState } from '@/plugins/threads/state';
 
-const actor: AgentState = applicationState.system.get(id);
+const actor: ThreadsState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => state.context.currentThread?.messages || []);
 
 // const statusColorClass = computed(() => {

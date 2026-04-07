@@ -1,4 +1,3 @@
-import Agent from './agent/plugin.ts';
 import Threads from './threads/plugin.ts';
 import Flows from './flows/plugin.ts';
 import Database from './database/plugin.ts';
@@ -46,7 +45,6 @@ const mockPlugins: Plugin[] = [
 
 export default [
   Threads,
-  Agent,
   Code,
   Notes,
   Library,
@@ -61,4 +59,4 @@ export default [
   ...mockPlugins,
 ];
 
-export const defaultPlugin = Agent;
+export const defaultPlugin = Threads;

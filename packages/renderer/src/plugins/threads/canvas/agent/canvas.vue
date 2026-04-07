@@ -23,11 +23,11 @@
 import { computed } from 'vue';
 import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
-import { id, type AgentState } from '@/plugins/agent/state';
-import TabBar from '@/plugins/agent/canvas/tabs/tab-bar.vue';
-import ContentViewer from '@/plugins/agent/canvas/content-viewer.vue';
+import { id, type ThreadsState } from '@/plugins/threads/state';
+import TabBar from '@/plugins/threads/canvas/agent/tabs/tab-bar.vue';
+import ContentViewer from '@/plugins/threads/canvas/agent/content-viewer.vue';
 
-const actor: AgentState = applicationState.system.get(id);
+const actor: ThreadsState = applicationState.system.get(id);
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);

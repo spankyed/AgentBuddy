@@ -102,7 +102,7 @@ import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
 import { applicationState } from '@/main';
-import { id as agentId } from '@/plugins/agent/state';
+import { id as threadsId } from '@/plugins/threads/state';
 
 interface TodoTask {
   id: string;
@@ -119,7 +119,7 @@ const props = defineProps<{
   artifact: ArtifactItem;
 }>();
 
-const agentActor = applicationState.system.get(agentId);
+const threadsActor = applicationState.system.get(threadsId);
 
 // Use reactive data to allow local edits
 const todoData = ref<TodoContent>({
@@ -148,7 +148,7 @@ function updateTaskDescription(taskId: string, event: Event) {
 }
 
 function handleApprove() {
-  agentActor.send({
+  threadsActor.send({
     type: 'APPROVE_TODO_LIST',
     artifactId: props.artifact.id,
     tasks: todoData.value.tasks
@@ -157,7 +157,7 @@ function handleApprove() {
 }
 
 function handleReject() {
-  agentActor.send({
+  threadsActor.send({
     type: 'REJECT_TODO_LIST',
     artifactId: props.artifact.id
   });

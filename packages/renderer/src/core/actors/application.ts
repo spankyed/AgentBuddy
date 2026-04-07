@@ -468,8 +468,8 @@ export const createApplicationState = () => setup({
       };
     }),
     completeOnboarding: ({ context, self }) => {
-      // Navigate to agent plugin where onboarding thread artifacts are shown
-      self.send({ type: 'SELECT_PLUGIN', pluginId: 'agent' });
+      // Navigate to threads plugin where onboarding thread artifacts are shown
+      self.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
 
       // Ensure chat panel is expanded to default height
       self.send({ type: 'RESET_CHAT_HEIGHT' });
@@ -485,7 +485,7 @@ export const createApplicationState = () => setup({
       // Hide non-tour plugins - only show threads, agent, and settings
       const tourVisibility: Record<string, boolean> = {};
       for (const plugin of context.plugins) {
-        tourVisibility[plugin.id] = plugin.id === 'threads' || plugin.id === 'agent' || plugin.id === 'settings';
+        tourVisibility[plugin.id] = plugin.id === 'threads' || plugin.id === 'settings';
       }
 
       // Update backend settings

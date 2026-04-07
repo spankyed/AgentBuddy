@@ -113,7 +113,7 @@ import TextInput from './inputs/TextInput.vue'
 import ApprovalButtons from './inputs/ApprovalButtons.vue'
 import ButtonGroupInput from './inputs/ButtonGroupInput.vue'
 import { applicationState } from '@/main'
-import { id as agentId } from '@/plugins/agent/state'
+import { id as threadsId } from '@/plugins/threads/state'
 
 interface Props {
   blocks: BlockConfig[]
@@ -126,11 +126,11 @@ const props = withDefaults(defineProps<Props>(), {
   isDisabled: false
 })
 
-const agentActor = applicationState.system.get(agentId)
+const threadsActor = applicationState.system.get(threadsId)
 
 // Internal interaction handlers
 const handleBlockResponse = (response: any) => {
-  agentActor.send({
+  threadsActor.send({
     type: 'RESPOND_TO_BLOCK_INTERACTION',
     messageId: props.messageId,
     response
