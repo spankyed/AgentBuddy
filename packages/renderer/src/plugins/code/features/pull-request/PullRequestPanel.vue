@@ -41,7 +41,7 @@
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
       <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[42px]" :class="{ 'hidden': viewMode === 'pr' }">
-        <!-- Checking gh auth / upstream -->
+        <!-- Checking spinner (replaces selector while checking) -->
         <button
           v-if="topRowStatus === 'checking'"
           disabled
@@ -51,50 +51,45 @@
           <span class="truncate">Checking...</span>
         </button>
 
-        <!-- Unpublished branch -->
+        <!-- PR Selector — always shown except when checking -->
+        <PRSelector
+          v-else
+          :openPRs="openPRs"
+          :selectedPR="selectedPR"
+          @select-pr="handleSelectPRFromDropdown"
+        />
+
+        <!-- Action buttons (compact, right side) -->
         <button
-          v-else-if="topRowStatus === 'publish'"
+          v-if="topRowStatus === 'publish'"
           @click="handlePublishBranch()"
           :disabled="isPushing"
-          class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 flex-1 min-w-0"
+          class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 shrink-0"
         >
-          <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0 mr-1.5" />
-          <span class="truncate">Publish Branch</span>
+          <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
+          <span>Publish</span>
         </button>
-
-        <!-- Can't determine PR status -->
-        <button
-          v-else-if="topRowStatus === 'check-failed'"
-          disabled
-          class="flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
-        >
-          <AlertCircle :size="12" class="shrink-0" />
-          <span class="truncate">Unable to check PR status</span>
-        </button>
-
-        <!-- No PR exists -->
         <button
           v-else-if="topRowStatus === 'no-pr'"
           @click="handleCreatePR()"
-          class="flex items-center justify-center px-2 py-1 text-xs rounded border border-transparent bg-green-600/80 text-white hover:bg-green-500 transition-colors flex-1 min-w-0"
+          class="flex items-center justify-center px-2 py-1 text-xs rounded bg-green-600/80 text-white hover:bg-green-500 transition-colors shrink-0"
         >
-          <span class="truncate">Create PR</span>
+          <span>Create PR</span>
         </button>
-
-        <!-- Has PR or base branch: inline selector + info button -->
-        <template v-else-if="topRowStatus === 'has-pr' || topRowStatus === 'base-branch'">
-          <PRSelector
-            :openPRs="openPRs"
-            :selectedPR="selectedPR"
-            @select-pr="handleSelectPRFromDropdown"
-          />
-          <button
-            v-if="selectedPR"
-            @click="handleViewPRInfo()"
-            class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
-            title="View PR details"
-          >View</button>
-        </template>
+        <button
+          v-else-if="topRowStatus === 'check-failed'"
+          disabled
+          class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-neutral-700/50 text-neutral-500 shrink-0 cursor-default"
+        >
+          <AlertCircle :size="12" class="shrink-0" />
+          <span>Error</span>
+        </button>
+        <button
+          v-else-if="selectedPR"
+          @click="handleViewPRInfo()"
+          class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+          title="View PR details"
+        >View</button>
       </div>
 
       <!-- Fatal error: no base branch -->
