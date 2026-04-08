@@ -117,6 +117,13 @@
         </ContextMenuItem>
         <ContextMenuItem
           class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          @select="$emit('chat-click', thread.id)"
+        >
+          <PanelLeft :size="14" class="text-neutral-400" />
+          Open in Dashboard
+        </ContextMenuItem>
+        <ContextMenuItem
+          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
           @select="copyId"
         >
           <Copy :size="14" class="text-neutral-400" />
@@ -138,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { Copy, MessageCircleMore, SquarePen, Trash2 } from 'lucide-vue-next'
+import { Copy, MessageCircleMore, PanelLeft, SquarePen, Trash2 } from 'lucide-vue-next'
 import {
   ContextMenuContent, ContextMenuItem, ContextMenuPortal,
   ContextMenuRoot, ContextMenuSeparator, ContextMenuTrigger,
