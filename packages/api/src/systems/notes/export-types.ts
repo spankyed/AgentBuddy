@@ -7,6 +7,8 @@ export interface ExportedNote {
   completed: boolean
   hideCompletedChildren: boolean
   favorite: boolean
+  displayOrder?: number
+  savedDisplayOrder?: number
   children: ExportedNote[]
 }
 

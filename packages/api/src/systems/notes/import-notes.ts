@@ -157,6 +157,7 @@ function importNoteNodes(
         parentId,
         noteType: node.type,
         completed: node.completed ?? false,
+        displayOrder: node.displayOrder ?? i,
       })
       result.created++
       createdNotes.push({ id: note.id, title: node.title, oldId: node.id })
@@ -173,14 +174,17 @@ function importNoteNodes(
         hideCompletedChildren: node.hideCompletedChildren,
         content: restoredContent,
       })
+      if (node.savedDisplayOrder != null) {
+        repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder: node.savedDisplayOrder })
+      }
 
       // Recurse for children
       if (node.children && node.children.length > 0) {
         importNoteNodes(node.children, note.id, result, importDir, hasMedia, createdNotes)
       }
 
-      // Append document:// link to parent after children are created
-      if (parentId) {
+      // Append document:// link to parent after children are created (skip for tasks)
+      if (parentId && node.type !== 'task') {
         appendDocumentLink(parentId, note.id, node.title, node.icon)
       }
     } catch (err) {
@@ -201,6 +205,8 @@ function parseFrontmatter(content: string): {
   favorite: boolean
   hideCompletedChildren: boolean
   completed: boolean
+  displayOrder?: number
+  savedDisplayOrder?: number
   body: string
 } {
   const defaults = { type: 'document' as const, icon: null as string | null, favorite: false, hideCompletedChildren: false, completed: false }
@@ -219,6 +225,8 @@ function parseFrontmatter(content: string): {
   const favoriteMatch = frontmatter.match(/favorite:\s*true/)
   const hideMatch = frontmatter.match(/hideCompletedChildren:\s*true/)
   const completedMatch = frontmatter.match(/completed:\s*true/)
+  const displayOrderMatch = frontmatter.match(/displayOrder:\s*(\d+)/)
+  const savedDisplayOrderMatch = frontmatter.match(/savedDisplayOrder:\s*(\d+)/)
 
   return {
     id: idMatch?.[1] ? unescape(idMatch[1]) : undefined,
@@ -228,6 +236,8 @@ function parseFrontmatter(content: string): {
     favorite: !!favoriteMatch,
     hideCompletedChildren: !!hideMatch,
     completed: !!completedMatch,
+    displayOrder: displayOrderMatch ? parseInt(displayOrderMatch[1], 10) : undefined,
+    savedDisplayOrder: savedDisplayOrderMatch ? parseInt(savedDisplayOrderMatch[1], 10) : undefined,
     body,
   }
 }
@@ -269,6 +279,8 @@ function importMarkdownDir(
         let noteType: 'document' | 'tasklist' | 'task' = 'document'
         let completed = false
         let oldId: string | undefined
+        let displayOrder: number | undefined
+        let savedDisplayOrder: number | undefined
 
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
@@ -280,6 +292,8 @@ function importMarkdownDir(
           noteType = parsed.type
           completed = parsed.completed
           oldId = parsed.id
+          displayOrder = parsed.displayOrder
+          savedDisplayOrder = parsed.savedDisplayOrder
           if (parsed.title) name = parsed.title
         }
 
@@ -290,6 +304,7 @@ function importMarkdownDir(
           parentId,
           noteType,
           completed,
+          displayOrder,
         })
         result.created++
         createdNotes.push({ id: note.id, title: name, oldId })
@@ -305,12 +320,15 @@ function importMarkdownDir(
           hideCompletedChildren,
           content: restoredContent,
         })
+        if (savedDisplayOrder != null) {
+          repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder })
+        }
 
         // Recurse for children (skip index.md)
         importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia, createdNotes)
 
-        // Append document:// link to parent after this note is created
-        if (parentId) {
+        // Append document:// link to parent after this note is created (skip for tasks)
+        if (parentId && noteType !== 'task') {
           appendDocumentLink(parentId, note.id, name, icon)
         }
       } catch (err) {
@@ -335,6 +353,7 @@ function importMarkdownDir(
           parentId,
           noteType: parsed.type,
           completed: parsed.completed,
+          displayOrder: parsed.displayOrder,
         })
         result.created++
         createdNotes.push({ id: note.id, title: name, oldId: parsed.id })
@@ -350,9 +369,12 @@ function importMarkdownDir(
           hideCompletedChildren: parsed.hideCompletedChildren,
           content: restoredContent,
         })
+        if (parsed.savedDisplayOrder != null) {
+          repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder: parsed.savedDisplayOrder })
+        }
 
-        // Append document:// link to parent
-        if (parentId) {
+        // Append document:// link to parent (skip for tasks)
+        if (parentId && parsed.type !== 'task') {
           appendDocumentLink(parentId, note.id, name, parsed.icon)
         }
       } catch (err) {

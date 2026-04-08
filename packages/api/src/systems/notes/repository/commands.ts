@@ -60,8 +60,8 @@ export const noteCommands = {
     }
 
     // Calculate displayOrder if not provided
-    let displayOrder = input.displayOrder ?? 0;
-    if (displayOrder === 0) {
+    let displayOrder = input.displayOrder;
+    if (displayOrder == null) {
       if (input.parentId) {
         const siblings = qx(input.parentId as EARS.EntityId)
           .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note)

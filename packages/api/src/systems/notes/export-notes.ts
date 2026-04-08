@@ -45,6 +45,8 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
       completed: note.completed,
       hideCompletedChildren: note.hideCompletedChildren ?? false,
       favorite: note.favorite ?? false,
+      displayOrder: note.displayOrder,
+      ...(note.savedDisplayOrder != null ? { savedDisplayOrder: note.savedDisplayOrder } : {}),
       children,
     }
   }
@@ -99,6 +101,8 @@ function buildNoteFrontmatter(note: ExportedNote): string {
   if (note.favorite) fields.push(`favorite: true`)
   if (note.hideCompletedChildren) fields.push(`hideCompletedChildren: true`)
   if (note.completed) fields.push(`completed: true`)
+  if (note.displayOrder !== undefined) fields.push(`displayOrder: ${note.displayOrder}`)
+  if (note.savedDisplayOrder !== undefined) fields.push(`savedDisplayOrder: ${note.savedDisplayOrder}`)
   return `---\n${fields.join('\n')}\n---\n\n`
 }
 
