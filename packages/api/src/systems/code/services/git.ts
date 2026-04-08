@@ -957,7 +957,7 @@ export class GitRepository {
 
   async getAllBranches(): Promise<string[]> {
     // Get all local and remote branches
-    const result = await this.executeGitCommand(['branch', '-a', '--no-color'])
+    const result = await this.executeGitCommand(['branch', '-a', '--no-color', '--sort=-committerdate'])
     if (!result.success) {
       throw new Error(result.error || 'Failed to get branches')
     }
