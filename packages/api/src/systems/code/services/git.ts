@@ -6,6 +6,24 @@ import { GitStatusFile, StashEntry } from '../types'
 
 const execFileAsync = promisify(execFile)
 
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  svg: 'image/svg+xml',
+  ico: 'image/x-icon',
+  webp: 'image/webp',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+  bmp: 'image/bmp',
+}
+
+function getImageMimeType(filePath: string): string | null {
+  const ext = path.extname(filePath).slice(1).toLowerCase()
+  return IMAGE_MIME_TYPES[ext] || null
+}
+
 interface GitCommandResult {
   success: boolean
   output?: string
@@ -531,6 +549,81 @@ export class GitRepository {
       }
       return result.output || ''
     }
+  }
+
+  /**
+   * Read a file as a base64 data URL if it's an image, otherwise return text content.
+   * For git refs (HEAD/index), reads binary output from `git show`.
+   */
+  async getFileContentAsDataUrl(filePath: string, version: 'HEAD' | 'working' | 'index' = 'working'): Promise<string> {
+    const mimeType = getImageMimeType(filePath)
+    if (!mimeType) {
+      return this.getFileContent(filePath, version)
+    }
+
+    const relativePath = filePath.startsWith(this.workingDirectory)
+      ? filePath.slice(this.workingDirectory.length + 1)
+      : filePath
+
+    if (version === 'working') {
+      try {
+        const fullPath = path.join(this.workingDirectory, relativePath)
+        const buffer = await fs.readFile(fullPath)
+        return `data:${mimeType};base64,${buffer.toString('base64')}`
+      } catch {
+        return ''
+      }
+    }
+
+    // For HEAD/index, use git show with binary-safe output
+    const ref = version === 'HEAD' ? `HEAD:${relativePath}` : `:${relativePath}`
+    try {
+      const buffer = await this.executeGitCommandBinary(['show', ref])
+      if (!buffer || buffer.length === 0) return ''
+      return `data:${mimeType};base64,${buffer.toString('base64')}`
+    } catch {
+      return ''
+    }
+  }
+
+  /**
+   * Read a file from a branch as a base64 data URL if it's an image.
+   */
+  async getFileContentFromBranchAsDataUrl(filePath: string, branch: string): Promise<string> {
+    const mimeType = getImageMimeType(filePath)
+    if (!mimeType) {
+      return this.getFileContentFromBranch(filePath, branch)
+    }
+
+    try {
+      const ref = filePath.includes(':') || filePath.startsWith('-')
+        ? `${branch}:./${filePath}`
+        : `${branch}:${filePath}`
+      const buffer = await this.executeGitCommandBinary(['show', ref])
+      if (!buffer || buffer.length === 0) return ''
+      return `data:${mimeType};base64,${buffer.toString('base64')}`
+    } catch {
+      return ''
+    }
+  }
+
+  /** Check if a file path is an image based on extension. */
+  isImageFile(filePath: string): boolean {
+    return getImageMimeType(filePath) !== null
+  }
+
+  /** Execute a git command and return raw binary buffer output. */
+  private executeGitCommandBinary(args: string[]): Promise<Buffer> {
+    return this.enqueueCommand(async () => {
+      const colorlessArgs = ['-c', 'color.ui=never', ...args]
+      const { stdout } = await execFileAsync('git', colorlessArgs, {
+        cwd: this.workingDirectory,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+        maxBuffer: 10 * 1024 * 1024,
+        encoding: 'buffer' as any
+      })
+      return stdout as unknown as Buffer
+    })
   }
 
   async stageFiles(filePaths: string[]): Promise<void> {

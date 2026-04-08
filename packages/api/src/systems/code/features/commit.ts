@@ -168,35 +168,39 @@ export const commitSystem = setup({
 
         let originalContent = ''
         let modifiedContent = ''
+        const isImage = ev.path ? context.gitRepository.isImageFile(ev.path) : false
+        const getContent = isImage
+          ? (p: string, v: 'HEAD' | 'working' | 'index') => context.gitRepository.getFileContentAsDataUrl(p, v)
+          : (p: string, v: 'HEAD' | 'working' | 'index') => context.gitRepository.getFileContent(p, v)
 
         if (fileStatus) {
           if (fileStatus.status === 'added' || fileStatus.status === 'untracked') {
             originalContent = ''
             modifiedContent = ev.staged
-              ? await context.gitRepository.getFileContent(ev.path!, 'index')
-              : await context.gitRepository.getFileContent(ev.path!, 'working')
+              ? await getContent(ev.path!, 'index')
+              : await getContent(ev.path!, 'working')
           } else if (fileStatus.status === 'deleted') {
             originalContent = ev.staged
-              ? await context.gitRepository.getFileContent(ev.path!, 'HEAD')
-              : await context.gitRepository.getFileContent(ev.path!, 'index')
+              ? await getContent(ev.path!, 'HEAD')
+              : await getContent(ev.path!, 'index')
             modifiedContent = ''
           } else if (fileStatus.status === 'renamed' || fileStatus.status === 'copied') {
             // For renames/copies, the original content lives at the old path in HEAD
             const oldPath = fileStatus.originalPath || ev.path!
             if (ev.staged) {
-              originalContent = await context.gitRepository.getFileContent(oldPath, 'HEAD')
-              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'index')
+              originalContent = await getContent(oldPath, 'HEAD')
+              modifiedContent = await getContent(ev.path!, 'index')
             } else {
-              originalContent = await context.gitRepository.getFileContent(ev.path!, 'index')
-              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+              originalContent = await getContent(ev.path!, 'index')
+              modifiedContent = await getContent(ev.path!, 'working')
             }
           } else {
             if (ev.staged) {
-              originalContent = await context.gitRepository.getFileContent(ev.path!, 'HEAD')
-              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'index')
+              originalContent = await getContent(ev.path!, 'HEAD')
+              modifiedContent = await getContent(ev.path!, 'index')
             } else {
-              originalContent = await context.gitRepository.getFileContent(ev.path!, 'index')
-              modifiedContent = await context.gitRepository.getFileContent(ev.path!, 'working')
+              originalContent = await getContent(ev.path!, 'index')
+              modifiedContent = await getContent(ev.path!, 'working')
             }
           }
         }
@@ -208,7 +212,8 @@ export const commitSystem = setup({
             diff,
             staged: ev.staged || false,
             originalContent,
-            modifiedContent
+            modifiedContent,
+            isImage
           }
         })
         rootEvents.emitOutgoing(wrapped.event)

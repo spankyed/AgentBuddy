@@ -48,13 +48,31 @@
         </div>
 
         <!-- Image preview -->
-        <div v-show="isImage(activeFile)" class="flex items-center justify-center h-full overflow-auto bg-neutral-950 p-4">
+        <div v-show="isImage(activeFile) && !isImageDiff" class="flex items-center justify-center h-full overflow-auto bg-neutral-950 p-4">
           <img
-            v-if="isImage(activeFile)"
+            v-if="isImage(activeFile) && !isImageDiff"
             :src="activeFile.content"
             :alt="activeFile.path.split('/').pop()"
             class="max-w-full max-h-full object-contain"
           />
+        </div>
+
+        <!-- Image diff side-by-side view -->
+        <div v-show="isImageDiff" class="h-full flex" style="background: #1e1e1e">
+          <div v-if="isImageDiff" class="flex-1 min-w-0 flex flex-col border-r border-neutral-700">
+            <div class="text-neutral-500 text-xs px-3 py-1.5 border-b border-neutral-800 shrink-0">Original</div>
+            <div class="flex-1 min-h-0 overflow-auto flex items-center justify-center p-6">
+              <img v-if="diffOriginalContent" :src="diffOriginalContent" class="max-w-full max-h-full object-contain" />
+              <span v-else class="text-neutral-500 text-sm italic">File added</span>
+            </div>
+          </div>
+          <div v-if="isImageDiff" class="flex-1 min-w-0 flex flex-col">
+            <div class="text-neutral-500 text-xs px-3 py-1.5 border-b border-neutral-800 shrink-0">Modified</div>
+            <div class="flex-1 min-h-0 overflow-auto flex items-center justify-center p-6">
+              <img v-if="diffModifiedContent" :src="diffModifiedContent" class="max-w-full max-h-full object-contain" />
+              <span v-else class="text-neutral-500 text-sm italic">File deleted</span>
+            </div>
+          </div>
         </div>
 
         <!-- Deleted file view -->
@@ -78,9 +96,9 @@
         </div>
 
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
           <MonacoEditor
-            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -161,6 +179,13 @@ const isRichText = (file: OpenFile | TerminalTab | ActionTab | PromptTab): boole
 // Helper to check if file is a diff
 const isDiffFile = computed(() => {
   return activeFile.value && 'isDiff' in activeFile.value && activeFile.value.isDiff === true
+})
+
+// Helper to check if file is an image diff (side-by-side comparison)
+const isImageDiff = computed(() => {
+  if (!isDiffFile.value || !activeFile.value) return false
+  const diff = getDiffContent(activeFile.value)
+  return diff?.isImage === true
 })
 
 // Helper to check if file is a deleted file placeholder

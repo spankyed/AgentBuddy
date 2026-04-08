@@ -19,6 +19,7 @@ export interface GitDiff {
   staged: boolean
   originalContent?: string
   modifiedContent?: string
+  isImage?: boolean
 }
 
 const sendToBackend = (type: string, data: any) => {

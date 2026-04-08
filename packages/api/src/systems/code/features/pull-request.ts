@@ -173,15 +173,20 @@ export const pullRequestSystem = setup({
           if (ev.headBranch) {
             await repo.fetchRemoteBranch(ev.headBranch)
           }
-          return Promise.all([
+          const isImage = repo.isImageFile(ev.path)
+          const getContent = isImage
+            ? (p: string, b: string) => repo.getFileContentFromBranchAsDataUrl(p, b)
+            : (p: string, b: string) => repo.getFileContentFromBranch(p, b)
+          const [diff, originalContent, modifiedContent] = await Promise.all([
             repo.getFileDiffBetweenBranches(ev.path, ev.baseBranch, target),
-            repo.getFileContentFromBranch(ev.path, ev.baseBranch),
-            repo.getFileContentFromBranch(ev.path, target),
+            getContent(ev.path, ev.baseBranch),
+            getContent(ev.path, target),
           ])
+          return { diff, originalContent, modifiedContent, isImage }
         },
-        ([diff, originalContent, modifiedContent]) => emitToFrontend({
+        ({ diff, originalContent, modifiedContent, isImage }) => emitToFrontend({
           type: 'pr.FILE_DIFF_RECEIVED',
-          data: { path: ev.path, diff, staged: false, originalContent, modifiedContent }
+          data: { path: ev.path, diff, staged: false, originalContent, modifiedContent, isImage }
         })
       )
     },

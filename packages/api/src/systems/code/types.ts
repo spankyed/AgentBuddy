@@ -91,6 +91,7 @@ export interface GitDiff {
   staged: boolean
   originalContent?: string
   modifiedContent?: string
+  isImage?: boolean
 }
 
 export interface StashEntry {
