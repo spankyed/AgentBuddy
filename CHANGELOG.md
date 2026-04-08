@@ -1,5 +1,112 @@
 -e # Changelog
 
+## v0.0.3 (2026-04-08)
+
+### Features
+-  add undo-release script to reverse releases
+-  sort branches by committer date in getAllBranches method
+-  add infinite scroll pagination to search results
+-  show side-by-side image comparison in diff views
+-  add blue-bandana dev icon to distinguish dev from prod in dock
+-  add 'Open in Dashboard' option to thread context menu
+-  add toolbar refresh button for symlink library folders
+-  add image lightbox support in editor mode via cmd+click and bubble menu
+-  include untracked files when stashing all changes
+-  pin Brain, Database and Logs plugins to toolbar
+-  add order numbers beside quick prompt labels
+- Merge pull request #101 from spankyed/AS/remote-behind-badge
+-  add settings UI for auto-fetch remote toggle and interval
+-  show red badge for commits behind and auto-fetch remote
+-  add "Checkout Base" button to merged/closed PR action bar
+-  auto-persist resolved CLI path to settings on successful test
+-  add right-click context menus to commit and PR panel files
+- Merge pull request #98 from spankyed/AS/version-migrations
+-  add detailed documentation for data migrations process and execution
+-  expose app version on the global window object
+-  add frontend migration system for localStorage
+-  implement versioned data migrations
+-  replace PR panel spinner with skeleton loading state
+-  detect GitHub token permission issues early with actionable warnings
+-  add dashboard view toggle to threads plugin
+-  merge agent plugin into threads plugin (frontend)
+
+### Fixes
+-  authenticate GitHub API requests in CI to prevent ripgrep download   failures
+-  revert build validation to match asar:false and show npm install errors
+-  disable ASAR packaging to fix API server startup in production
+-  unset NODE_ENV after install and at end of prod build script
+-  ensure devDependencies install during build and restore playwright as prod dep
+-  update build validation for ASAR and use Vite mode API for sourcemaps
+-  reduce production build size (~150-200MB savings)
+-  add missing tour target ID and remove orphaned file from agent-threads merger
+-  retry scroll-to-line when Monaco editor is still initializing
+-  improve scroll-to-line reliability for Monaco and Tiptap editors
+-  scroll to line on search result click for newly opened files
+-  remove sharp dependency and related dev icon generation script
+-  include thread topic in LOAD_CHAT_THREAD after new thread creation
+-  update navigation to dashboard view in openThreadChat action
+-  prevent image bubble menu from being clipped by scroll container
+-  repair search panel include/exclude filtering and option toggling
+- Merge pull request #100 from spankyed/AS/-normalize-phantom-user
+-  restore legacy version normalization for phantom 0.1.0 user
+-  optimize CLI resolver order, reduce timeout, and clean up types
+-  stop explorer panel from swallowing keyboard events during file rename
+-  reset PR viewMode to files on branch change
+-  use bare command for default copilot CLI path
+-  prevent "File not found" error when moving files in explorer
+-  add legacy version normalization for and mark for removal after new version
+-  prevent stale 'agent' plugin ID from persisting after merger
+-  adjust padding in ProseMirror editor for improved layout
+-  update QuickOpenPalette to use Teleport and adjust positioning
+-  separate hover and keyboard selection states in QuickOpenPalette
+-  allow Shift+Enter new lines in command mode body text
+-  reorder Code plugin position in toolbar
+-  allow Shift+Enter after pasting a path in chat input
+-  Cmd+X in notes editor no longer deletes surrounding lines
+-  prevent git index.lock races by serializing all git commands
+-  merge default settings into stored settings so new defaults appear in UI
+-  trim input value before emitting update for modelValue
+-  expand PATH in production Electron to include common binary locations
+-  restore splash screen by setting viteStaticCopy environment to 'ssr'
+-  update icon for threads plugin to BotMessageSquare
+-  update stale 'agent' references in settings writes and library event routing
+
+### Refactors
+-  consolidate CLI provider logic and data-drive settings UI
+-  reorganize app version declaration and initialization to ensure it runs first
+-  rename 'version' to 'target' in migration interfaces for consistency
+-  centralize app version from package.json
+-  generalize Cmd+X cut-line to handle all nested block types
+-  update remaining references from agent to threads plugin
+
+### Other
+- Revert "chore(release): v0.1.0"
+- Revert "chore(release): v0.1.0"
+- Revert "chore(release): v0.1.0"
+- Merge pull request #102 from spankyed/AS/small-prod-build
+- docs: expand explanation on NODE_ENV and devDependencies in build process
+- docs: expand explanation on NODE_ENV and devDependencies in build process
+- style: right-align search result line numbers and adjust spacing
+- restyle search panel results
+- Merge pull request #101 from spankyed/AS/remote-behind-badge
+- chore: disable auto-fetch by default and set interval to 3 minutes
+- always fetch after pull regardless of auto-fetch setting
+- Merge pull request #100 from spankyed/AS/-normalize-phantom-user
+- Merge pull request #99 from spankyed/AS/auto-resolve-cli-paths
+- remove unused provider key
+- add fallback path resolution for CLI providers
+- align the collapse/expand button with the "View" button above and file count numbers below
+- style: add default background to PR selector button and make styles consistent across components in this section
+- style: restore sync feedback popover for pull/push buttons
+- style: restore sync feedback popover for pull/push buttons
+- Merge pull request #98 from spankyed/AS/version-migrations
+- style: increase favorites section size in notes panel
+- style: increase favorites section size in notes panel
+- Merge pull request #97 from spankyed/AS/agent-threads-merger
+- BE merger of agent & threads systems
+
+-e # Changelog
+
 ## v0.0.2 (2026-04-07)
 
 ### Features
