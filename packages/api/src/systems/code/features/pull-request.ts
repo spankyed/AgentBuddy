@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
+import { type ActiveTokenInfo } from '../services/gh-cli'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -52,7 +53,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
   | { type: 'pr.PR_DRAFT_TOGGLED'; data: { number: number; isDraft: boolean } }
   | { type: 'pr.BRANCH_PR_CHECKED'; data: { pr: GhPullRequest | null } }
-  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
+  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
   | { type: 'pr.AUTOFILL_RECEIVED'; data: { title: string; body: string } }
   | { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
   | { type: 'pr.BRANCH_DELETED'; data: { branch: string } }
@@ -195,13 +196,13 @@ export const pullRequestSystem = setup({
 
     checkGhAuth: ({ context }) => {
       if (!context.gitRepository) {
-        emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false, prAccess: false } })
+        emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false, prAccess: false, activeToken: null } })
         return
       }
       withRepo(context,
         repo => ghCli.checkAuth(repo.getWorkingDir()),
         result => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: result }),
-        () => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false, prAccess: false } })
+        () => emitToFrontend({ type: 'pr.GH_AUTH_CHECKED', data: { available: false, prAccess: false, activeToken: null } })
       )
     },
 

@@ -42,10 +42,16 @@
       <!-- gh token missing PR permissions banner -->
       <div
         v-if="isGhAvailable && !prAccess && !isPrLoading && !isGhChecking"
-        class="flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
+        class="flex items-start gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
       >
-        <AlertTriangle :size="12" class="shrink-0" />
-        <span>GitHub token missing PR permissions. Run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth status</code> to check your active token, then update its permissions or run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth switch</code>.</span>
+        <AlertTriangle :size="12" class="shrink-0 mt-0.5" />
+        <div class="flex-1">
+          <span>{{ prPermissionHint }}</span>
+          <button
+            @click="prActor?.send({ type: 'pr.NAVIGATE_TO_HELP' })"
+            class="ml-1 underline text-yellow-300 hover:text-yellow-200 transition-colors"
+          >Learn more</button>
+        </div>
       </div>
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
@@ -271,6 +277,7 @@ const isSubmittingComment = useSelector(prActor, (state: any) => state.context.i
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
 const prAccess = useSelector(prActor, (state: any) => state.context.prAccess)
+const activeToken = useSelector(prActor, (state: any) => state.context.activeToken)
 const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
 const branchPRCheckFailed = useSelector(prActor, (state: any) => state.context.branchPRCheckFailed)
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
@@ -290,6 +297,27 @@ const currentBranch = useSelector(commitActor, (state: any) => state.context.git
 const availableBranches = useSelector(commitActor, (state: any) => state.context.availableBranches)
 
 // Computed
+const prPermissionHint = computed(() => {
+  const token = activeToken.value
+  if (!token) return 'GitHub token missing PR permissions. Run "gh auth status" to check your active token.'
+
+  if (token.source === 'GITHUB_TOKEN') {
+    if (token.kind === 'fine-grained-pat') {
+      return 'Active token is a fine-grained PAT (via GITHUB_TOKEN env var). Add "Pull requests: Read and write" in GitHub Developer Settings, or unset GITHUB_TOKEN.'
+    }
+    if (token.kind === 'classic-pat') {
+      return 'Active token is a classic PAT (via GITHUB_TOKEN env var). Ensure it has the "repo" scope in GitHub Developer Settings, or unset GITHUB_TOKEN.'
+    }
+    return 'Active token (via GITHUB_TOKEN env var) lacks PR permissions. Update its permissions or unset GITHUB_TOKEN.'
+  }
+
+  if (token.source === 'keyring') {
+    return 'GitHub token missing PR permissions. Run "gh auth refresh -s repo" to add missing scopes, or "gh auth switch" to change accounts.'
+  }
+
+  return 'GitHub token missing PR permissions. Run "gh auth status" to check your active token.'
+})
+
 const isNoGitRepoError = computed(() =>
   prError.value?.includes('not a git repository') ||
   prError.value?.includes('Not a git repository')

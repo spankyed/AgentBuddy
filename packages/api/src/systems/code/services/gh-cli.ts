@@ -45,14 +45,49 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
   }
 }
 
+// --- Token detection ---
+
+export type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown'
+export type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown'
+
+export interface ActiveTokenInfo {
+  source: TokenSource
+  kind: TokenKind
+  prefix: string
+}
+
+function detectTokenKind(prefix: string): TokenKind {
+  if (prefix.startsWith('github_pat_')) return 'fine-grained-pat'
+  if (prefix.startsWith('ghp_')) return 'classic-pat'
+  if (prefix.startsWith('gho_')) return 'oauth'
+  return 'unknown'
+}
+
+export function parseActiveToken(output: string): ActiveTokenInfo | null {
+  const blocks = output.split(/\n\n+/)
+  const activeBlock = blocks.find(b => b.includes('Active account: true'))
+  if (!activeBlock) return null
+
+  const sourceMatch = activeBlock.match(/Logged in to .+ account .+ \((.+)\)/)
+  const source: TokenSource = sourceMatch?.[1] === 'GITHUB_TOKEN' ? 'GITHUB_TOKEN'
+    : sourceMatch?.[1] === 'keyring' ? 'keyring' : 'unknown'
+
+  const tokenMatch = activeBlock.match(/Token:\s+(\S+)/)
+  const prefix = tokenMatch?.[1] ?? ''
+
+  return { source, kind: detectTokenKind(prefix), prefix }
+}
+
 const PR_JSON_FIELDS = 'number,title,headRefName,baseRefName,state,body,url,isDraft,author,createdAt,updatedAt'
 const PR_DETAIL_FIELDS = `${PR_JSON_FIELDS},commits`
 
-export async function checkAuth(cwd: string): Promise<{ available: boolean; prAccess: boolean }> {
+export async function checkAuth(cwd: string): Promise<{ available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null }> {
+  let activeToken: ActiveTokenInfo | null = null
   try {
-    await runGh(['auth', 'status'], cwd, 10_000)
+    const statusOutput = await runGh(['auth', 'status'], cwd, 10_000)
+    activeToken = parseActiveToken(statusOutput)
   } catch {
-    return { available: false, prAccess: false }
+    return { available: false, prAccess: false, activeToken: null }
   }
   // Probe actual PR access with a lightweight GraphQL query
   try {
@@ -63,15 +98,15 @@ export async function checkAuth(cwd: string): Promise<{ available: boolean; prAc
       '-F', `owner=${owner}`,
       '-F', `name=${name}`,
     ], cwd, 10_000)
-    return { available: true, prAccess: true }
+    return { available: true, prAccess: true, activeToken }
   } catch (error: any) {
     const msg = error?.message ?? ''
-    logger.warn('PR access probe failed:', msg)
+    logger.warn('PR access probe failed', { error: msg, tokenSource: activeToken?.source, tokenKind: activeToken?.kind })
     if (msg.includes('missing required permissions') || msg.includes('Resource not accessible')) {
-      return { available: true, prAccess: false }
+      return { available: true, prAccess: false, activeToken }
     }
     // Non-permission errors (network, timeout, no remote, etc.) — don't show misleading banner
-    return { available: true, prAccess: true }
+    return { available: true, prAccess: true, activeToken }
   }
 }
 

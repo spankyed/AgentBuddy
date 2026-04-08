@@ -4,6 +4,7 @@ import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
 import { updateParentState, getParentContext } from '../../utils/parent-communication';
 import { mergeTabs } from '../../utils/tab-management';
+import { application } from '@/core/actors/application';
 
 export type { GhPullRequest, GhPRComment }
 
@@ -31,6 +32,12 @@ const defaultLoadingStates = {
   isSubmittingComment: false,
 }
 
+export interface ActiveTokenInfo {
+  source: 'GITHUB_TOKEN' | 'keyring' | 'unknown'
+  kind: 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown'
+  prefix: string
+}
+
 export interface Context {
   // Branch comparison
   prFiles: GitStatusFile[]
@@ -50,6 +57,7 @@ export interface Context {
   viewMode: 'files' | 'pr'
   isGhAvailable: boolean
   prAccess: boolean
+  activeToken: ActiveTokenInfo | null
   isGhChecking: boolean
   branchPRCheckFailed: boolean
   prCheckCompleted: boolean
@@ -93,7 +101,8 @@ export type Event =
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
   | { type: 'CODE_STARTUP' }
   // GitHub PR events from backend
-  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
+  | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
+  | { type: 'pr.NAVIGATE_TO_HELP' }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
   | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
@@ -275,14 +284,24 @@ export const pullRequestState = setup({
 
     handleGhAuthChecked: assign({
       isGhAvailable: ({ event }) => {
-        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
+        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
         return ev.data.available
       },
       prAccess: ({ event }) => {
-        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean } }
+        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
         return ev.data.prAccess
       },
+      activeToken: ({ event }) => {
+        const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
+        return ev.data.activeToken ?? null
+      },
     }),
+
+    navigateToHelp: ({ system }) => {
+      system.get(application).send({ type: 'SELECT_PLUGIN', pluginId: 'settings' })
+      const settingsActor = system.get('settings')
+      if (settingsActor) settingsActor.send({ type: 'TAB.SELECT', tab: 'help' })
+    },
 
     handleOpenPRsReceived: assign({
       openPRs: ({ event }) => {
@@ -732,6 +751,7 @@ export const pullRequestState = setup({
     viewMode: 'files',
     isGhAvailable: false,
     prAccess: true,
+    activeToken: null,
     isGhChecking: false,
     branchPRCheckFailed: false,
     prCheckCompleted: false,
@@ -795,6 +815,7 @@ export const pullRequestState = setup({
 
         // GitHub PR events from backend
         'pr.GH_AUTH_CHECKED': { actions: 'handleGhAuthChecked' },
+        'pr.NAVIGATE_TO_HELP': { actions: 'navigateToHelp' },
         'pr.OPEN_PRS_RECEIVED': { actions: 'handleOpenPRsReceived' },
         'pr.PR_DETAILS_RECEIVED': { actions: ['handlePRDetailsReceived', 'loadDiffForSelectedPR', 'fetchReviewThreads'] },
         'pr.BRANCH_PR_CHECKED': { actions: 'handleBranchPRChecked' },
