@@ -36,7 +36,7 @@ class WindowManager implements AppModule {
     
     // Set dock icon for macOS in development (production uses bundled icon from Info.plist)
     if (!app.isPackaged && process.platform === 'darwin' && app.dock) {
-      const iconPath = join(process.cwd(), 'build', 'resources', 'icon.png');
+      const iconPath = join(process.cwd(), 'build', 'resources', 'icon-dev.png');
       app.dock.setIcon(iconPath);
     }
     
@@ -261,9 +261,10 @@ class WindowManager implements AppModule {
   }
 
   async createWindow(): Promise<BrowserWindow> {
-    // Determine icon path based on platform
-    const iconName = process.platform === 'win32' ? 'icon.ico' : 
-                     process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
+    // Determine icon path based on platform (use dev icon in development)
+    const iconSuffix = app.isPackaged ? '' : '-dev';
+    const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
+                     process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
     const iconPath = join(process.cwd(), 'build', 'resources', iconName);
     
     // Get the API port before creating the window
