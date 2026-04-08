@@ -53,8 +53,13 @@ export async function checkAuth(cwd: string): Promise<{ available: boolean; prAc
       '-F', `name=${name}`,
     ], cwd, 10_000)
     return { available: true, prAccess: true }
-  } catch {
-    return { available: true, prAccess: false }
+  } catch (error: any) {
+    const msg = error?.message ?? ''
+    if (msg.includes('missing required permissions') || msg.includes('Resource not accessible')) {
+      return { available: true, prAccess: false }
+    }
+    // Non-permission errors (network, timeout, no remote, etc.) — don't show misleading banner
+    return { available: true, prAccess: true }
   }
 }
 
