@@ -114,7 +114,7 @@
       <!-- Results -->
       <div v-else-if="searchResults.length > 0" class="py-0.5">
         <div
-          v-for="result in searchResults"
+          v-for="result in visibleResults"
           :key="result.path"
           class="mb-0.5"
         >
@@ -151,6 +151,11 @@
             </div>
           </div>
         </div>
+
+        <!-- Infinite scroll sentinel -->
+        <div v-if="visibleFileCount < searchResults.length" ref="scrollSentinel" class="py-3 text-center text-[11px] text-neutral-600">
+          Showing {{ visibleFileCount }} of {{ searchResults.length }} files
+        </div>
       </div>
 
       <!-- No Results -->
@@ -175,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -206,9 +211,36 @@ onMounted(() => {
 })
 
 // Local state
+const FILE_PAGE_SIZE = 50
 const includePattern = ref(searchOptions.value.includePattern)
 const excludePattern = ref(searchOptions.value.excludePattern)
 const expandedResults = ref(new Set<string>())
+const visibleFileCount = ref(FILE_PAGE_SIZE)
+const scrollSentinel = ref<HTMLElement | null>(null)
+
+const visibleResults = computed(() => searchResults.value.slice(0, visibleFileCount.value))
+
+// Infinite scroll observer
+let observer: IntersectionObserver | null = null
+
+const setupObserver = () => {
+  observer?.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting && visibleFileCount.value < searchResults.value.length) {
+      visibleFileCount.value = Math.min(visibleFileCount.value + FILE_PAGE_SIZE, searchResults.value.length)
+    }
+  }, { threshold: 0.1 })
+}
+
+watch(scrollSentinel, (el) => {
+  observer?.disconnect()
+  if (el) {
+    if (!observer) setupObserver()
+    observer!.observe(el)
+  }
+})
+
+onUnmounted(() => observer?.disconnect())
 
 // Computed
 const totalMatches = computed(() => {
@@ -238,11 +270,13 @@ const performSearch = () => {
     searchActor?.send({ type: 'search.CANCEL' })
     searchActor?.send({ type: 'search.CLEAR' })
     expandedResults.value.clear()
+    visibleFileCount.value = FILE_PAGE_SIZE
     return
   }
 
   searchTimeout = setTimeout(() => {
     expandedResults.value.clear()
+    visibleFileCount.value = FILE_PAGE_SIZE
     searchActor?.send({ type: 'search.START', query: searchQuery.value })
   }, 300)
 }
