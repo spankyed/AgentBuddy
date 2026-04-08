@@ -1,12 +1,12 @@
 <template>
-  <div class="relative h-full">
+  <div class="flex flex-col h-full">
     <!-- Scrollable content area -->
-    <div class="p-8 overflow-auto pb-20">
+    <div class="flex-1 min-h-0 overflow-auto p-8">
       <div class="max-w-2xl mx-auto">
         <h2 class="text-2xl font-semibold text-white text-center mb-8">Frequently Asked Questions</h2>
-        
+
         <div class="space-y-3">
-          <div v-for="(item, index) in faqItems" :key="item.id" 
+          <div v-for="(item, index) in faqItems" :key="item.id"
             class="bg-neutral-800 border border-neutral-700 rounded-lg overflow-hidden transition-colors hover:border-neutral-600">
             <button
               @click="toggleItem(index)"
@@ -14,7 +14,7 @@
               :class="expandedItems.includes(index) ? 'bg-neutral-700/50' : ''"
             >
               <span class="text-sm font-medium" :class="expandedItems.includes(index) ? 'text-white' : 'text-neutral-300'">{{ item.question }}</span>
-              <ChevronDown class="w-4 h-4 text-neutral-400 transition-transform duration-200" 
+              <ChevronDown class="w-4 h-4 text-neutral-400 transition-transform duration-200"
                 :class="expandedItems.includes(index) ? 'rotate-180' : ''" />
             </button>
             <div v-if="expandedItems.includes(index)" class="px-5 pb-4 animate-fadeIn">
@@ -24,9 +24,9 @@
         </div>
       </div>
     </div>
-    
-    <!-- Fixed attribution at bottom -->
-    <div class="absolute bottom-0 left-0 right-0 bg-neutral-900 py-4">
+
+    <!-- Attribution pinned to bottom -->
+    <div class="shrink-0 bg-neutral-900 py-4">
       <div class="text-center">
         <p class="text-xs text-neutral-500">
           Developed in memory of 
