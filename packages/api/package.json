@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts --shims",
+    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts --shims --external playwright",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",
@@ -53,7 +53,6 @@
     "graceful-fs": "^4.2.11",
     "lmdb": "^3.4.2",
     "node-pty": "^1.0.0",
-    "playwright": "^1.54.1",
     "ws": "^8.18.2",
     "xstate": "^5.19.2",
     "zod": "^3.24.4"
@@ -66,6 +65,7 @@
     "@types/ws": "^8.18.1",
     "esbuild": "^0.25.0",
     "nodemon": "^3.1.10",
+    "playwright": "^1.54.1",
     "rollup-plugin-dts": "^6.2.3",
     "tsc-alias": "^1.8.10",
     "tsup": "^8.4.0",

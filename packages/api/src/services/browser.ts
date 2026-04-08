@@ -1,11 +1,14 @@
 /**
  * Browser Automation Service
- * 
+ *
  * Simple wrapper service for Playwright browser automation providing
  * a clean interface for common browser automation tasks.
+ *
+ * Playwright is loaded dynamically on first use — it is not shipped
+ * in the production build. If not installed, a descriptive error is thrown.
  */
 
-import { chromium, Browser, BrowserContext, Page, ElementHandle, BrowserType } from 'playwright';
+export type BrowserTypeName = 'chromium' | 'firefox' | 'webkit';
 
 export interface LaunchOptions {
   headless?: boolean;
@@ -15,26 +18,46 @@ export interface LaunchOptions {
   };
 }
 
-export class BrowserService {
-  private browser: Browser | null = null;
-  private context: BrowserContext | null = null;
-  private page: Page | null = null;
-  private browserType: BrowserType = chromium;
+let playwrightModule: typeof import('playwright') | null = null;
 
-  constructor(browserType: BrowserType = chromium) {
-    this.browserType = browserType;
+async function loadPlaywright(): Promise<typeof import('playwright')> {
+  if (playwrightModule) return playwrightModule;
+  try {
+    playwrightModule = await import('playwright');
+    return playwrightModule;
+  } catch {
+    throw new Error(
+      'Playwright is not installed. To use browser automation, install it with:\n' +
+      '  npm install playwright\n' +
+      'Then install browser binaries with:\n' +
+      '  npx playwright install chromium'
+    );
+  }
+}
+
+export class BrowserService {
+  private browser: any = null;
+  private context: any = null;
+  private page: any = null;
+  private browserTypeName: BrowserTypeName;
+
+  constructor(browserTypeName: BrowserTypeName = 'chromium') {
+    this.browserTypeName = browserTypeName;
   }
 
   // Browser lifecycle
   async launch(options: LaunchOptions = {}): Promise<void> {
-    this.browser = await this.browserType.launch({
+    const pw = await loadPlaywright();
+    const browserType = pw[this.browserTypeName];
+
+    this.browser = await browserType.launch({
       headless: options.headless ?? true,
     });
-    
+
     this.context = await this.browser.newContext({
       viewport: options.viewport,
     });
-    
+
     this.page = await this.context.newPage();
   }
 
@@ -48,7 +71,7 @@ export class BrowserService {
   }
 
   // Get current page instance
-  private getPage(): Page {
+  private getPage(): any {
     if (!this.page) {
       throw new Error('Browser not launched. Call launch() first.');
     }
@@ -119,7 +142,7 @@ export class BrowserService {
   }
 
   // Waiting
-  async waitForSelector(selector: string, timeout?: number): Promise<ElementHandle | null> {
+  async waitForSelector(selector: string, timeout?: number): Promise<any> {
     const page = this.getPage();
     return await page.waitForSelector(selector, { timeout });
   }
@@ -158,7 +181,7 @@ export class BrowserService {
   }
 
   // Tab management
-  async newPage(): Promise<Page> {
+  async newPage(): Promise<any> {
     if (!this.context) {
       throw new Error('Browser context not initialized. Call launch() first.');
     }
@@ -166,11 +189,11 @@ export class BrowserService {
     return newPage;
   }
 
-  async switchToPage(targetPage: Page): Promise<void> {
+  async switchToPage(targetPage: any): Promise<void> {
     this.page = targetPage;
   }
 
-  async closePage(targetPage: Page): Promise<void> {
+  async closePage(targetPage: any): Promise<void> {
     await targetPage.close();
     // If we closed the current page, switch to first available page
     if (this.page === targetPage && this.context) {
@@ -208,24 +231,25 @@ export class BrowserService {
   }
 
   // Direct access to playwright objects for advanced usage
-  getBrowser(): Browser | null {
+  getBrowser(): any {
     return this.browser;
   }
 
-  getContext(): BrowserContext | null {
+  getContext(): any {
     return this.context;
   }
 
-  getCurrentPage(): Page | null {
+  getCurrentPage(): any {
     return this.page;
   }
 }
 
 // Factory function for creating browser instances
-export function createBrowser(browserType?: BrowserType): BrowserService {
+export function createBrowser(browserType?: BrowserTypeName): BrowserService {
   return new BrowserService(browserType);
 }
 
-// Re-export browser types from playwright for convenience
-export { chromium, firefox, webkit } from 'playwright';
-export type { Browser, BrowserContext, Page } from 'playwright';
+// Async accessors for browser type launchers (for advanced DSL usage)
+export async function getChromium() { return (await loadPlaywright()).chromium; }
+export async function getFirefox() { return (await loadPlaywright()).firefox; }
+export async function getWebkit() { return (await loadPlaywright()).webkit; }

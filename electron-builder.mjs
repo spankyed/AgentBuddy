@@ -113,6 +113,9 @@ export default /** @type import('electron-builder').Configuration */
     // NOTE: mac-arm64 only — adjust if building for other platforms
     '!**/node-pty/prebuilds/win32-*',
     '!**/node-pty/prebuilds/darwin-x64',
+    // Exclude playwright (loaded dynamically on demand, not shipped in prod)
+    '!**/node_modules/playwright/**',
+    '!**/node_modules/playwright-core/**',
     // Exclude dev tool artifacts
     '!**/node_modules/.bin',
     '!**/node_modules/@types/**',

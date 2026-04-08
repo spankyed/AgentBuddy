@@ -41,7 +41,7 @@ const createConfig = (name, input, moduleName) => ({
     },
   },
   plugins: [dtsPlugin(), cleanupPlugin()],
-  external: [],
+  external: ['playwright'],
 });
 
 // Default-setup configs (unwrapped, outputs to both api/defs/dist/ and workspace sibling)
@@ -52,7 +52,7 @@ const createDefaultSetupConfig = (name, input) => ({
     { file: resolve(defaultSetupDefsDir, `${name}-defs.d.ts`), format: 'es' },
   ],
   plugins: [dtsPlugin(), cleanupPlugin()],
-  external: [],
+  external: ['playwright'],
 });
 
 // Export configurations for each DSL
