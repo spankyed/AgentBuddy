@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Production Build Script for AgentBuddy
-# Simplified build process with ASAR packaging
+# ASAR disabled — API server runs as a separate child process and needs filesystem access
 
 set -e  # Exit on error
 
@@ -30,7 +30,7 @@ echo ""
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
 # Force development mode so devDependencies (typescript, @types/*, etc.) are installed
 # even if NODE_ENV=production leaked from a previous session (see docs/issues/node-env-build-failure.md)
-NODE_ENV=development npm install --silent
+NODE_ENV=development npm install --loglevel warn
 unset NODE_ENV
 
 echo -e "${GREEN}✓${NC} Dependencies installed"
@@ -78,14 +78,14 @@ else
 fi
 npx electron-builder build --config electron-builder.mjs --mac --arm64
 
-# Quick validation - check for ASAR archive and unpacked native modules
+# Quick validation - check for app directory (ASAR disabled)
 APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/Resources"
-if [ ! -f "$APP_PATH/app.asar" ]; then
-  echo -e "  ❌ Build validation failed: app.asar not found"
+if [ ! -d "$APP_PATH/app" ]; then
+  echo -e "  ❌ Build validation failed: app directory not found"
   exit 1
 fi
-if [ ! -d "$APP_PATH/app.asar.unpacked" ]; then
-  echo -e "  ❌ Build validation failed: unpacked native modules not found"
+if [ ! -d "$APP_PATH/app/packages/api" ]; then
+  echo -e "  ❌ Build validation failed: API package not found"
   exit 1
 fi
 echo -e "${GREEN}✓${NC} Application packaged"
