@@ -108,11 +108,26 @@ export default /** @type import('electron-builder').Configuration */
     // Include compiled output
     'packages/*/dist/**',
     // Include API's local node_modules
-    'packages/api/node_modules/**/*'
+    'packages/api/node_modules/**/*',
+    // Exclude platform-specific prebuilds not needed for current target
+    '!**/node-pty/prebuilds/win32-*',
+    '!**/node-pty/prebuilds/darwin-x64',
+    // Exclude dev tool artifacts
+    '!**/node_modules/.bin',
+    '!**/node_modules/@types/**',
+    '!**/node_modules/**/docs/**',
+    '!**/node_modules/**/CHANGELOG*',
+    '!**/node_modules/**/.eslintrc*',
   ],
-  
-  // Disable ASAR - API needs full filesystem access to dependencies
-  asar: false,
+
+  // ASAR with selective unpacking for native modules that need filesystem access
+  asar: true,
+  asarUnpack: [
+    '**/node-pty/**',
+    '**/@vscode/ripgrep/**',
+    '**/lmdb/**',
+    '**/@lmdb/**',
+  ],
   
   // Extra resources
   extraResources: [

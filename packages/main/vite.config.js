@@ -10,7 +10,7 @@ export default /**
 ({
   build: {
     ssr: true,
-    sourcemap: 'inline',
+    sourcemap: process.env.NODE_ENV === 'development' ? 'inline' : false,
     outDir: 'dist',
     assetsDir: '.',
     target: `node${getNodeMajorVersion()}`,
