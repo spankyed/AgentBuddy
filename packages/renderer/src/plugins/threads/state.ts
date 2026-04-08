@@ -194,7 +194,9 @@ const threadsState = setup({
     // ---- Thread management actions ----
     openThreadChat: ({ self, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId;
-      // Request thread chat data from backend (internal — same system)
+      // Navigate to dashboard view (replaces old agent canvas navigation)
+      self.send({ type: 'VIEW_DASHBOARD' });
+      // Request thread chat data from backend
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_THREAD_CHAT',
