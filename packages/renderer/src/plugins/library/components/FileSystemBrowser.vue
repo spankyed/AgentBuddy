@@ -157,6 +157,16 @@
             <span>Create Index</span>
           </Button>
           -->
+          <Button
+            v-if="isInSymlinkContext"
+            @click="emit('REFRESH_FOLDER', { folderId: currentFolderId || currentSymlinkRootId! })"
+            variant="transparent"
+            size="sm"
+            class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+            title="Refresh symlink folder"
+          >
+            <RefreshCw class="w-4 h-4" />
+          </Button>
           <ContextMenuRoot>
             <ContextMenuTrigger as-child>
               <Button
