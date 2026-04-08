@@ -28,6 +28,16 @@ function getInitialView(): 'list' | 'kanban' {
   return 'list';
 }
 
+function extractChatSettings(chatSettings: AgentSettings) {
+  const hotkeys: HotkeysMap = {};
+  if (chatSettings.hotkeys) {
+    Object.entries(chatSettings.hotkeys).forEach(([key, value]) => {
+      if (value) hotkeys[key] = value;
+    });
+  }
+  return { chatSettings, hotkeys, modes: chatSettings.modes || [] };
+}
+
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 const defaultThread: ThreadCreateData | ThreadViewData = {
@@ -350,27 +360,14 @@ const threadsState = setup({
         value,
       });
     },
-    setThreadsSettings: assign(({ event, context }) => {
+    setThreadsSettings: assign(({ event }) => {
       const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
-      const result: Record<string, any> = {
+      const chat = (ev.settings as any)?.chat as AgentSettings | undefined;
+      return {
         settings: ev.settings,
-        availableTags: ev.settings?.tags || []
+        availableTags: ev.settings?.tags || [],
+        ...(chat ? extractChatSettings(chat) : {}),
       };
-
-      if (ev.settings?.chat) {
-        const chatSettings = ev.settings.chat;
-        result.chatSettings = chatSettings;
-        result.modes = chatSettings.modes || [];
-        const hotkeys: HotkeysMap = {};
-        if (chatSettings.hotkeys) {
-          Object.entries(chatSettings.hotkeys).forEach(([key, value]) => {
-            if (value) hotkeys[key] = value;
-          });
-        }
-        result.hotkeys = hotkeys;
-      }
-
-      return result;
     }),
     deleteThread: ({ event }) => {
       const { threadId } = typeOf('DELETE_THREAD', event);
@@ -601,28 +598,19 @@ const threadsState = setup({
         tab.id === typedEvent.data.currentThread?.id && tab.artifacts.length > 0
       );
 
-      const chatSettings = typedEvent.data.settings || { modes: [], hotkeys: {} };
-
-      const hotkeys: HotkeysMap = {};
-      if (chatSettings.hotkeys) {
-        Object.entries(chatSettings.hotkeys).forEach(([key, value]) => {
-          if (value) hotkeys[key] = value;
-        });
-      }
-
-      const modes = chatSettings.modes || [];
+      const extracted = extractChatSettings(typedEvent.data.settings || { modes: [], hotkeys: {} });
 
       const currentThread = typedEvent.data.currentThread;
       const forcedMode = currentThread?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {
-        const modeConfig = modes.find(m => m.id === forcedMode);
+        const modeConfig = extracted.modes.find(m => m.id === forcedMode);
         const newPhase = modeConfig?.phases?.length
           ? (forcedMode in context.phaseByMode ? context.phaseByMode[forcedMode] : modeConfig.phases[0].id)
           : undefined;
         modeUpdate = { mode: forcedMode, phase: newPhase };
       } else {
-        const visibleModes = modes.filter(m => !m.hidden);
+        const visibleModes = extracted.modes.filter(m => !m.hidden);
         const defaultMode = visibleModes[0];
         if (defaultMode) {
           const defaultPhase = defaultMode.phases?.length ? defaultMode.phases[0].id : undefined;
@@ -634,9 +622,7 @@ const threadsState = setup({
         currentThread,
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
-        hotkeys,
-        modes,
-        chatSettings,
+        ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
         ...modeUpdate
@@ -644,18 +630,7 @@ const threadsState = setup({
     }),
     handleChatSettingsUpdate: assign(({ event }) => {
       const typedEvent = typeOf('AGENT_SETTINGS_UPDATED', event);
-      const chatSettings = typedEvent.settings;
-
-      const hotkeys: HotkeysMap = {};
-      if (chatSettings.hotkeys) {
-        Object.entries(chatSettings.hotkeys).forEach(([key, value]) => {
-          if (value) hotkeys[key] = value;
-        });
-      }
-
-      const modes = chatSettings.modes || [];
-
-      return { hotkeys, modes, chatSettings };
+      return extractChatSettings(typedEvent.settings);
     }),
     sendOpenThreadView: ({ self, event }) => {
       const threadId = typeOf('VIEW_THREAD', event).threadId;
