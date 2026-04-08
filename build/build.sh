@@ -74,14 +74,14 @@ else
 fi
 npx electron-builder build --config electron-builder.mjs --mac --arm64
 
-# Quick validation - check for app directory (ASAR disabled)
+# Quick validation - check for ASAR archive and unpacked native modules
 APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/Resources"
-if [ ! -d "$APP_PATH/app" ]; then
-  echo -e "  ❌ Build validation failed: app directory not found"
+if [ ! -f "$APP_PATH/app.asar" ]; then
+  echo -e "  ❌ Build validation failed: app.asar not found"
   exit 1
 fi
-if [ ! -d "$APP_PATH/app/packages/api" ]; then
-  echo -e "  ❌ Build validation failed: API package not found"
+if [ ! -d "$APP_PATH/app.asar.unpacked" ]; then
+  echo -e "  ❌ Build validation failed: unpacked native modules not found"
   exit 1
 fi
 echo -e "${GREEN}✓${NC} Application packaged"
