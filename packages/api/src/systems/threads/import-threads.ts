@@ -144,6 +144,7 @@ export function importThreads(importDir: string): ImportResult {
           }
 
           // Restore media in image references
+          // NOTE: Wraps URL in markdown image syntax because restoreJsonMediaRefs operates on markdown content
           if (msg.references?.images) {
             let refsChanged = false
             for (const img of msg.references.images) {
@@ -235,7 +236,11 @@ export function importThreads(importDir: string): ImportResult {
     if (!thread.forkedFrom) continue
     const forkedId = thread.shortCode ? shortCodeMap.get(thread.shortCode) : undefined
     const sourceId = shortCodeMap.get(thread.forkedFrom)
-    if (forkedId && sourceId) {
+    if (!sourceId) {
+      result.errors.push(`Fork source "${thread.forkedFrom}" not found in export for "${thread.topic}"`)
+    } else if (!forkedId) {
+      result.errors.push(`Fork target shortCode not mapped for "${thread.topic}"`)
+    } else {
       try {
         repository.threadCommands.linkFork(sourceId, forkedId)
         result.relationsCreated++
