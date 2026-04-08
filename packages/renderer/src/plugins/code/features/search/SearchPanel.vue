@@ -5,11 +5,6 @@
       :icon="Search"
       title="Search"
     >
-      <template v-if="searchResults.length > 0" #toolbar>
-        <div class="px-3 py-1.5 text-xs text-neutral-400">
-          {{ totalMatches }} results in {{ searchResults.length }} files
-        </div>
-      </template>
     </CodePanelHeader>
 
     <!-- Show only error if no directory selected -->
@@ -98,6 +93,11 @@
 
     <!-- Search Results Section -->
     <div class="flex-1 overflow-auto">
+      <!-- Results summary -->
+      <div v-if="searchResults.length > 0" class="px-3 py-1.5 text-xs text-neutral-500 text-center border-b border-neutral-800 shrink-0">
+        {{ totalMatches }} results in {{ searchResults.length }} files
+      </div>
+
       <!-- Progress -->
       <div v-if="searchProgress" class="p-4 text-sm text-neutral-400">
         <div class="mb-1">Searching... {{ searchProgress.filesSearched }} files</div>
@@ -112,42 +112,41 @@
       </div>
 
       <!-- Results -->
-      <div v-else-if="searchResults.length > 0" class="py-2">
+      <div v-else-if="searchResults.length > 0" class="py-0.5">
         <div
           v-for="result in searchResults"
           :key="result.path"
-          class="mb-4"
+          class="mb-0.5"
         >
+          <!-- File header -->
           <div
             @click="toggleResultExpanded(result.path)"
-            class="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-neutral-800"
+            class="flex items-center gap-1.5 px-3 py-[5px] cursor-pointer hover:bg-neutral-800/60"
           >
-            <div class="flex items-center flex-1 min-w-0 gap-2">
-              <ChevronRight
-                :class="[
-                  'w-3 h-3 text-neutral-400 transition-transform',
-                  expandedResults.has(result.path) && 'rotate-90'
-                ]"
-              />
-              <span class="text-sm truncate text-neutral-100">{{ getRelativePath(result.path) }}</span>
-              <span class="text-xs text-neutral-500">({{ result.matches.length }} matches)</span>
-            </div>
+            <ChevronRight
+              :class="[
+                'w-3 h-3 shrink-0 text-neutral-500 transition-transform duration-150',
+                expandedResults.has(result.path) && 'rotate-90'
+              ]"
+            />
+            <span class="text-[13px] truncate text-neutral-200 font-medium">{{ getFileName(result.path) }}</span>
+            <span class="shrink-0 text-[11px] tabular-nums text-neutral-500 bg-neutral-700/40 px-1.5 py-0.5 rounded-full leading-none">{{ result.matches.length }}</span>
+            <span class="text-xs truncate text-neutral-600 ml-auto">{{ getFileDirectory(result.path) }}</span>
           </div>
 
-          <div v-if="expandedResults.has(result.path)" class="ml-6">
+          <!-- Match lines -->
+          <div v-if="expandedResults.has(result.path)" class="ml-5 mr-3 mb-1 border-l-2 border-neutral-700/60">
             <div
               v-for="(match, index) in result.matches"
               :key="`${result.path}-${index}`"
               @click="openMatch(result, match)"
-              class="px-4 py-1 cursor-pointer hover:bg-neutral-800"
+              class="flex items-baseline gap-1.5 py-[3px] pl-2.5 pr-2 cursor-pointer hover:bg-neutral-700/30 rounded-r-sm"
             >
-              <div class="flex items-baseline gap-2">
-                <span class="text-xs text-neutral-500 min-w-[3em]">{{ match.line }}:</span>
-                <div class="overflow-hidden font-mono text-xs text-neutral-300">
-                  <span>{{ match.lineText.substring(0, match.matchStart) }}</span>
-                  <span class="text-yellow-200 bg-yellow-600/30">{{ match.lineText.substring(match.matchStart, match.matchEnd) }}</span>
-                  <span>{{ match.lineText.substring(match.matchEnd) }}</span>
-                </div>
+              <span class="text-[11px] tabular-nums text-neutral-600 min-w-[2em] text-center shrink-0 select-none">{{ match.line }}</span>
+              <div class="overflow-hidden font-mono text-[12px] text-neutral-400 whitespace-nowrap text-ellipsis">
+                <span>{{ match.lineText.substring(0, match.matchStart) }}</span>
+                <span class="text-yellow-200 bg-yellow-500/25 rounded-sm px-[2px]">{{ match.lineText.substring(match.matchStart, match.matchEnd) }}</span>
+                <span>{{ match.lineText.substring(match.matchEnd) }}</span>
               </div>
             </div>
           </div>
@@ -305,6 +304,18 @@ const getRelativePath = (path: string) => {
   return path
 }
 
+const getFileName = (path: string) => {
+  const rel = getRelativePath(path)
+  return rel.split('/').pop() || rel
+}
+
+const getFileDirectory = (path: string) => {
+  const rel = getRelativePath(path)
+  const parts = rel.split('/')
+  if (parts.length <= 1) return ''
+  return parts.slice(0, -1).join('/')
+}
+
 const optionButtonClass = (active: boolean) => {
   return [
     'px-2 py-1 text-xs rounded transition-colors',
@@ -320,12 +331,12 @@ watch(searchOptions, (newOptions) => {
   excludePattern.value = newOptions.excludePattern
 })
 
-// Auto-expand first few results
+// Auto-expand all results
 watch(searchResults, (results) => {
-  // Auto-expand first 3 results
-  results.slice(0, 3).forEach((result: any) => {
+  results.forEach((result: any) => {
     expandedResults.value.add(result.path)
   })
 })
 </script>
+
 
