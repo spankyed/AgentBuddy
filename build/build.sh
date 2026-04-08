@@ -28,7 +28,7 @@ echo ""
 
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
-npm install --silent
+NODE_ENV=development npm install --silent
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 

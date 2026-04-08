@@ -17,6 +17,7 @@
     "node": ">=23.0.0"
   },
   "scripts": {
+    "preinstall": "[ \"$NODE_ENV\" = 'production' ] && echo '⚠️  NODE_ENV=production — devDependencies will be skipped. Run: unset NODE_ENV' >&2 || true",
     "postinstall": "cd packages/api && npm rebuild node-pty && chmod +x ../../node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper 2>/dev/null; true",
     "build": "npm run build -ws --if-present",
     "build-prod": "sh build/build.sh",
