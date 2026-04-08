@@ -2,7 +2,10 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import https from 'https'
 import { resolveForService } from '@/core/helpers/resolve-cli'
+import { createLogger } from '@/core/helpers/debug/logger'
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '../types'
+
+const logger = createLogger('gh-cli')
 
 const execFileAsync = promisify(execFile)
 
@@ -26,7 +29,7 @@ async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<str
     if (error.stderr) {
       const msg = error.stderr.trim()
       if (msg.includes('Resource not accessible by personal access token')) {
-        throw new Error('GitHub token missing required permissions. Run `gh auth refresh -s repo` or update your fine-grained token to include Pull Request access.')
+        throw new Error('GitHub token missing required permissions. Run `gh auth status` to check which token is active, then update its permissions or switch accounts with `gh auth switch`.')
       }
       throw new Error(msg)
     }
@@ -55,6 +58,7 @@ export async function checkAuth(cwd: string): Promise<{ available: boolean; prAc
     return { available: true, prAccess: true }
   } catch (error: any) {
     const msg = error?.message ?? ''
+    logger.warn('PR access probe failed:', msg)
     if (msg.includes('missing required permissions') || msg.includes('Resource not accessible')) {
       return { available: true, prAccess: false }
     }

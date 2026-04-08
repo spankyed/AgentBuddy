@@ -45,7 +45,7 @@
         class="flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
       >
         <AlertTriangle :size="12" class="shrink-0" />
-        <span>GitHub token missing PR permissions. Run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth refresh -s repo</code> or update your fine-grained token settings.</span>
+        <span>GitHub token missing PR permissions. Run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth status</code> to check your active token, then update its permissions or run <code class="px-1 py-0.5 rounded bg-neutral-800">gh auth switch</code>.</span>
       </div>
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
