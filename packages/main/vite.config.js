@@ -1,16 +1,13 @@
 import {getNodeMajorVersion} from '@app/electron-versions';
 import {spawn} from 'child_process';
 import electronPath from 'electron';
+import {defineConfig} from 'vite';
 import {viteStaticCopy} from 'vite-plugin-static-copy';
 
-export default /**
- * @type {import('vite').UserConfig}
- * @see https://vitejs.dev/config/
- */
-({
+export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
   build: {
     ssr: true,
-    sourcemap: 'inline',
+    sourcemap: mode === 'development' ? 'inline' : false,
     outDir: 'dist',
     assetsDir: '.',
     target: `node${getNodeMajorVersion()}`,
@@ -43,7 +40,7 @@ export default /**
     }),
     handleHotReload(),
   ],
-});
+}));
 
 
 /**

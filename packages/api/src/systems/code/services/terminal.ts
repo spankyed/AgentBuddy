@@ -35,6 +35,7 @@ class TerminalService {
     'DYLD_INSERT_LIBRARIES',
     'DYLD_LIBRARY_PATH',
     'ELECTRON_RUN_AS_NODE',
+    'NODE_ENV',
   ]
 
   create(options: TerminalCreate): TerminalInfo {

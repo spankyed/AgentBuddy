@@ -28,7 +28,11 @@ echo ""
 
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
-npm install --silent
+# Force development mode so devDependencies (typescript, @types/*, etc.) are installed
+# even if NODE_ENV=production leaked from a previous session (see docs/issues/node-env-build-failure.md)
+NODE_ENV=development npm install --silent
+unset NODE_ENV
+
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
@@ -74,14 +78,14 @@ else
 fi
 npx electron-builder build --config electron-builder.mjs --mac --arm64
 
-# Quick validation - check for app directory (ASAR disabled)
+# Quick validation - check for ASAR archive and unpacked native modules
 APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/Resources"
-if [ ! -d "$APP_PATH/app" ]; then
-  echo -e "  ❌ Build validation failed: app directory not found"
+if [ ! -f "$APP_PATH/app.asar" ]; then
+  echo -e "  ❌ Build validation failed: app.asar not found"
   exit 1
 fi
-if [ ! -d "$APP_PATH/app/packages/api" ]; then
-  echo -e "  ❌ Build validation failed: API package not found"
+if [ ! -d "$APP_PATH/app.asar.unpacked" ]; then
+  echo -e "  ❌ Build validation failed: unpacked native modules not found"
   exit 1
 fi
 echo -e "${GREEN}✓${NC} Application packaged"

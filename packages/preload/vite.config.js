@@ -1,14 +1,11 @@
 import {resolveModuleExportNames} from 'mlly';
 import {getChromeMajorVersion} from '@app/electron-versions';
+import {defineConfig} from 'vite';
 
-export default /**
- * @type {import('vite').UserConfig}
- * @see https://vitejs.dev/config/
- */
-({
+export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
   build: {
     ssr: true,
-    sourcemap: 'inline',
+    sourcemap: mode === 'development' ? 'inline' : false,
     outDir: 'dist',
     target: `chrome${getChromeMajorVersion()}`,
     assetsDir: '.',
@@ -28,7 +25,7 @@ export default /**
     reportCompressedSize: false,
   },
   plugins: [mockExposed(), handleHotReload()],
-});
+}));
 
 
 /**
