@@ -44,6 +44,10 @@ jobs:
           fi
 
       - name: Build, package, sign
+        env:
+          # @vscode/ripgrep downloads from GitHub API during postinstall;
+          # without auth the shared CI runner IP hits the 60 req/hr rate limit.
+          GITHUB_API_TOKEN: ${{ github.token }}
         run: |
           # Only export signing env vars if secrets are configured
           # (empty strings cause electron-builder to fail)
