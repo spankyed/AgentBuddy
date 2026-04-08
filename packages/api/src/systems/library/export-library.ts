@@ -26,6 +26,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const symlinkPath = entity.symlinkPath as string | undefined
   if (symlinkPath) {
     return {
+      id: entity.id as string,
       type: 'symlink',
       name: entity.name as string,
       symlinkPath,

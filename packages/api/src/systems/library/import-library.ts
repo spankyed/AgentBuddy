@@ -148,7 +148,7 @@ function processItems(
 
     switch (item.type) {
       case 'symlink':
-        importSymlink(item, parentId, result, i)
+        importSymlink(item, parentId, result, i, createdItems)
         break
       case 'collection':
         importCollection(item, parentId, result, i, importDir, hasMedia, createdItems)
@@ -163,7 +163,7 @@ function processItems(
   }
 }
 
-function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: ImportResult, index: number): void {
+function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: ImportResult, index: number, createdItems: CreatedItem[]): void {
   if (!item.name || !item.symlinkPath) {
     result.errors.push(`Symlink at index ${index} is missing required fields (name, symlinkPath)`)
     result.skipped++
@@ -177,8 +177,9 @@ function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: I
   }
 
   try {
-    repository.libraryCommands.createSymlinkCollection(item.name, item.symlinkPath, parentId)
+    const collection = repository.libraryCommands.createSymlinkCollection(item.name, item.symlinkPath, parentId)
     result.created++
+    createdItems.push({ id: collection.id, name: item.name, oldId: item.id, entityType: 'collection' })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     result.errors.push(`Failed to create symlink "${item.name}": ${message}`)

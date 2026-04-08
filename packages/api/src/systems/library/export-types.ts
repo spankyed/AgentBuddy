@@ -17,6 +17,7 @@ export interface ExportedCollection {
 }
 
 export interface ExportedSymlink {
+  id?: string
   type: 'symlink'
   name: string
   symlinkPath: string
