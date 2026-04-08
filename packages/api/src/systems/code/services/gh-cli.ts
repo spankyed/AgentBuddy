@@ -9,13 +9,21 @@ const logger = createLogger('gh-cli')
 
 const execFileAsync = promisify(execFile)
 
+/** Build env for gh CLI calls, stripping token env vars so gh uses its native keyring auth */
+function ghEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env }
+  delete env.GITHUB_TOKEN
+  delete env.GH_TOKEN
+  return env
+}
+
 async function runGh(args: string[], cwd: string, timeout = 30_000): Promise<string> {
   const ghPath = await resolveForService('gh')
   try {
     const { stdout } = await execFileAsync(ghPath, args, {
       cwd,
       timeout,
-      env: { ...process.env },
+      env: ghEnv(),
     })
     return stdout.trim()
   } catch (error: any) {
