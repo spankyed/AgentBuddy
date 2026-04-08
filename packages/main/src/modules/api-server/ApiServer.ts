@@ -84,6 +84,7 @@ export class ApiServer implements AppModule {
   private async startApiServer(): Promise<void> {
     if (this.processManager.isRunning()) return;
 
+    this.lastError = undefined; // Clear stale error so getStatus() doesn't report old crashes during restart
     logInfo('[MAIN] Starting API server...');
     broadcastEvent(API_EVENTS.STARTING);
 

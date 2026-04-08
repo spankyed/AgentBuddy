@@ -84,7 +84,7 @@ const apiStatus = {
   }>,
   relaunch: () => ipcRenderer.invoke('app:relaunch'),
   onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
-    const channels = ['api:stopped', 'api:error', 'api:restarting'];
+    const channels = ['api:stopped', 'api:error', 'api:restarting', 'api:started'];
     const handlers = channels.map(channel => {
       const handler = (_: Electron.IpcRendererEvent, data?: any) => {
         callback({ type: channel, ...data });
