@@ -121,14 +121,10 @@ export default /** @type import('electron-builder').Configuration */
     '!**/node_modules/**/.eslintrc*',
   ],
 
-  // ASAR with selective unpacking for native modules that need filesystem access
-  asar: true,
-  asarUnpack: [
-    '**/node-pty/**',
-    '**/@vscode/ripgrep/**',
-    '**/lmdb/**',
-    '**/@lmdb/**',
-  ],
+  // Disable ASAR — API server runs as a separate child process (spawn + ELECTRON_RUN_AS_NODE)
+  // which cannot access files inside an ASAR archive. The entire API package (dist + node_modules)
+  // must live on the real filesystem.
+  asar: false,
   
   // Extra resources
   extraResources: [
