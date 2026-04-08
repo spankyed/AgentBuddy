@@ -327,7 +327,7 @@ const openMatch = (result: typeof searchResults.value[0], match: typeof result.m
   // Tell the code plugin to scroll to this line once the file is active
   codeActor.send({
     type: 'UPDATE_STATE',
-    updates: { pendingRevealLine: { line: match.line, column: match.column } }
+    updates: { pendingRevealLine: { filePath: result.path, line: match.line, column: match.column, lineText: match.lineText } }
   })
 }
 

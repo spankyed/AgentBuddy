@@ -47,6 +47,7 @@
       @rename-terminal="renameTerminal"
       @kill-terminal="killTerminal"
       @editor-mount="tryRevealLine"
+      @editor-file-ready="tryRevealLine"
       class="flex-1 min-h-0"
     />
 
@@ -126,17 +127,47 @@ const { closeTerminal: closeTerminalProcess } = useTerminalActions(
 const fileEditorRef = ref<InstanceType<typeof FileEditor>>()
 const pendingRevealLine = useSelector(actor, (state) => state.context.pendingRevealLine)
 
-// Reveal pending line in editor (called from watcher and editor mount)
+// Reveal pending line in editor (called from watcher, editor mount, and file ready)
 const tryRevealLine = async () => {
   const reveal = pendingRevealLine.value
   if (!reveal) return
+  // Wait until the target file is actually active
+  if (reveal.filePath !== activeFilePath.value) return
   await nextTick()
-  const editor = fileEditorRef.value?.getEditor()
-  if (!editor) return
-  editor.revealLineInCenter(reveal.line)
-  editor.setPosition({ lineNumber: reveal.line, column: reveal.column })
-  editor.focus()
-  actor.send({ type: 'UPDATE_STATE', updates: { pendingRevealLine: null } })
+
+  const ref = fileEditorRef.value
+  if (!ref) return
+
+  // Monaco editor path
+  const monacoEditor = ref.getEditor()
+  if (monacoEditor) {
+    monacoEditor.revealLineInCenter(reveal.line)
+    monacoEditor.setPosition({ lineNumber: reveal.line, column: reveal.column })
+    monacoEditor.focus()
+    actor.send({ type: 'UPDATE_STATE', updates: { pendingRevealLine: null } })
+    return
+  }
+
+  // Tiptap (rich text / markdown) editor path
+  const tiptapEditor = ref.getTiptapEditor()
+  if (tiptapEditor) {
+    const searchText = reveal.lineText?.trim()
+    if (searchText) {
+      // Find a node containing the match text
+      let targetPos: number | null = null
+      tiptapEditor.state.doc.descendants((node, pos) => {
+        if (targetPos !== null) return false
+        if (node.isText && node.text?.includes(searchText)) {
+          targetPos = pos + (node.text.indexOf(searchText))
+        }
+      })
+      if (targetPos !== null) {
+        tiptapEditor.chain().setTextSelection(targetPos).focus().scrollIntoView().run()
+      }
+    }
+    actor.send({ type: 'UPDATE_STATE', updates: { pendingRevealLine: null } })
+    return
+  }
 }
 
 // Watch for pending reveal line (from search result clicks)

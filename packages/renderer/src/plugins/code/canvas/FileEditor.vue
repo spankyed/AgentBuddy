@@ -86,11 +86,13 @@
         <!-- Rich text editor for markdown files -->
         <div v-show="isRichText(activeFile)" class="h-full overflow-auto file-rich-text" style="background: #1e1e1e">
           <TiptapEditor
+            ref="tiptapEditorRef"
             v-if="isRichText(activeFile)"
             :key="activeFile.path"
             mode="editor"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
+            @vue:mounted="emit('editorMount')"
             class="h-full p-4 ml-2"
           />
         </div>
@@ -111,6 +113,7 @@
             :dsl-params="activeDslParams"
             class="h-full"
             @mount="emit('editorMount')"
+            @file-ready="emit('editorFileReady')"
           />
         </div>
       </div>
@@ -162,6 +165,7 @@ const emit = defineEmits<{
   'rename-terminal': [path: string, customTitle: string]
   'kill-terminal': [path: string]
   editorMount: []
+  editorFileReady: []
 }>()
 
 // Helper to check if a file is a terminal
@@ -246,9 +250,12 @@ const handleContentChange = (value: string) => {
 }
 
 const monacoEditorRef = ref<InstanceType<typeof MonacoEditor>>()
+const tiptapEditorRef = ref<InstanceType<typeof TiptapEditor>>()
 
 defineExpose({
   getEditor: () => monacoEditorRef.value?.getEditor(),
+  getTiptapEditor: () => tiptapEditorRef.value?.editor,
+  isActiveFileRichText: () => activeFile.value ? isRichText(activeFile.value) : false,
 })
 </script>
 

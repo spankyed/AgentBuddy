@@ -16,6 +16,7 @@
     @update:modelValue="$emit('update:modelValue', $event)"
     @change="$emit('change', $event)"
     @mount="$emit('mount', $event)"
+    @fileReady="$emit('fileReady')"
   />
 </template>
 
@@ -40,6 +41,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
   'change': [value: string]
   'mount': [editor: editor.IStandaloneCodeEditor]
+  'fileReady': []
 }>()
 
 const unifiedEditorRef = ref<InstanceType<typeof UnifiedMonacoEditor>>()

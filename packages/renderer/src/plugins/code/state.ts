@@ -87,7 +87,7 @@ export type Context = {
   tabViewHistory: string[]
   hotkeys: HotkeysMap
   settings?: CodeSettings
-  pendingRevealLine: { line: number; column: number } | null
+  pendingRevealLine: { filePath: string; line: number; column: number; lineText?: string } | null
 }
 
 export interface QuickOpenResult {

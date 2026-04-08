@@ -99,6 +99,7 @@ const emit = defineEmits<{
   'execute': []
   'mount': [editor: editor.IStandaloneCodeEditor]
   'cursorChange': [position: { line: number; col: number }]
+  'fileReady': []
 }>()
 
 // State
@@ -216,6 +217,7 @@ const switchToFile = (filePath: string, content: string) => {
   }
 
   currentValue.value = content
+  emit('fileReady')
 }
 
 // Event handlers
