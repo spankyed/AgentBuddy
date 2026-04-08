@@ -471,7 +471,7 @@ export const threadsSystem = setup({
 
         system.get(bus).send(emit(threads, {
           type: 'LOAD_CHAT_THREAD',
-          data: threadData
+          data: repository.chatQueries.threadData(threadId)
         }));
       } else {
         const userMessage: MessageEntity = {
@@ -562,7 +562,7 @@ export const threadsSystem = setup({
 
         system.get(bus).send(emit(threads, {
           type: 'LOAD_CHAT_THREAD',
-          data: threadData
+          data: repository.chatQueries.threadData(threadId)
         }));
       } else {
         const userMessage: MessageEntity = {
