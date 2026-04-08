@@ -1,5 +1,35 @@
 -e # Changelog
 
+## v0.1.1 (2026-04-08)
+
+### Features
+-  detect GitHub token source and show scenario-specific PR permission guidance
+- commit-panel): add dismissable errors with max height and view more toggle
+-  enhance note import functionality with document link handling and note reference remapping
+
+### Fixes
+-  include symlink collection IDs in library export for folder:// remapping
+-  sync chatSettings on THREADS_SETTINGS_UPDATED and DRY up extraction logic
+-  prevent commit panel filename from overlapping action buttons
+-  remap doc:// and folder:// reference pills during library import
+-  sync chatSettings in setThreadsSettings to prevent stale QuickPrompts
+-  only fire immediate BACKEND_ERROR from getStatus() when all restart attempts are exhausted
+- fix faq scroll
+-  prevent GITHUB_TOKEN env var from overriding gh CLI keyring auth
+-  update error messages for GitHub token permissions to include status check and account switch instructions
+-  narrow error handling in checkAuth function for permission checks
+-  remap document:// and note:// links during notes import
+-  allow notes import from directories containing only subdirectories
+
+### Other
+- move thread overhaul doc
+- style: render FAQ answers with tiptap markdown viewer and fix scroll
+- Clear lastError when startApiServer() begins so getStatus() doesn't report old crashes   - Add api:started to preload IPC channels for full backend lifecycle visibility
+- document thread export/import overhaul plan
+- docs: document GitHub token PR permissions false positive issue
+
+-e # Changelog
+
 ## v0.1.0 (2026-04-08)
 
 ### Features
