@@ -140,9 +140,9 @@
               v-for="(match, index) in result.matches"
               :key="`${result.path}-${index}`"
               @click="openMatch(result, match)"
-              class="flex items-baseline gap-1.5 py-[3px] pl-2.5 pr-2 cursor-pointer hover:bg-neutral-700/30 rounded-r-sm"
+              class="flex items-baseline gap-0 py-[3px] pl-2.5 pr-2 cursor-pointer hover:bg-neutral-700/30 rounded-r-sm"
             >
-              <span class="text-[11px] tabular-nums text-neutral-600 min-w-[2em] text-center shrink-0 select-none">{{ match.line }}</span>
+              <span class="text-[11px] tabular-nums text-neutral-600 min-w-[3em] text-right shrink-0 select-none pr-3">{{ match.line }}</span>
               <div class="overflow-hidden font-mono text-[12px] text-neutral-400 whitespace-nowrap text-ellipsis">
                 <span>{{ match.lineText.substring(0, match.matchStart) }}</span>
                 <span class="text-yellow-200 bg-yellow-500/25 rounded-sm px-[2px]">{{ match.lineText.substring(match.matchStart, match.matchEnd) }}</span>
