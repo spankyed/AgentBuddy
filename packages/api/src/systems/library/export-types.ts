@@ -1,6 +1,7 @@
 import type { ContentSection } from './types'
 
 export interface ExportedDocument {
+  id?: string
   type: 'document'
   name: string
   content: ContentSection[]
@@ -8,6 +9,7 @@ export interface ExportedDocument {
 }
 
 export interface ExportedCollection {
+  id?: string
   type: 'collection'
   name: string
   description?: string

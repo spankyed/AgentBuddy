@@ -6,6 +6,7 @@
  * - Otherwise scans for .md files → Markdown import (flat structure)
  *
  * Media files are copied to new entity directories and URLs rewritten.
+ * Reference pill links (doc://, folder://) are remapped to new entity IDs.
  */
 
 import * as fs from 'node:fs'
@@ -22,6 +23,66 @@ interface ImportResult {
   skipped: number
   mediaRestored: number
   errors: string[]
+}
+
+interface CreatedItem {
+  id: string
+  name: string
+  oldId?: string
+  entityType: 'document' | 'collection'
+}
+
+/** Remap doc:// and folder:// reference pills in all created documents using oldId→newId mapping with name-based fallback. */
+function remapRefs(createdItems: CreatedItem[]): void {
+  const oldIdToNewId = new Map<string, string>()
+  const docNameToId = new Map<string, string>()
+  const collectionNameToId = new Map<string, string>()
+
+  for (const item of createdItems) {
+    if (item.oldId) oldIdToNewId.set(item.oldId, item.id)
+    if (item.entityType === 'document' && !docNameToId.has(item.name)) {
+      docNameToId.set(item.name, item.id)
+    }
+    if (item.entityType === 'collection' && !collectionNameToId.has(item.name)) {
+      collectionNameToId.set(item.name, item.id)
+    }
+  }
+
+  const documents = createdItems.filter(i => i.entityType === 'document')
+
+  for (const item of documents) {
+    const doc = repository.libraryQueries.getDocument(item.id as EARS.EntityId)
+    if (!doc?.content) continue
+
+    const content = doc.content
+    let contentChanged = false
+
+    for (const section of content) {
+      if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
+        const updated = section.text.replace(
+          /\[([^\]]*)\]\((doc|folder):\/\/([^)]+)\)/g,
+          (match, linkText, protocol, oldId) => {
+            const newId = oldIdToNewId.get(oldId)
+              ?? (protocol === 'doc' ? docNameToId.get(linkText) : collectionNameToId.get(linkText))
+            return newId ? `[${linkText}](${protocol}://${newId})` : match
+          },
+        )
+        if (updated !== section.text) {
+          section.text = updated
+          contentChanged = true
+        }
+      }
+    }
+
+    if (contentChanged) {
+      repository.libraryCommands.updateDocument(
+        item.id as EARS.EntityId,
+        doc.name as string,
+        content,
+        (doc.tags as string[]) || [],
+      )
+    }
+  }
 }
 
 export function importLibrary(importDir: string): ImportResult {
@@ -62,8 +123,10 @@ function importLibraryJson(importDir: string, jsonPath: string): ImportResult {
   }
 
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
+  const createdItems: CreatedItem[] = []
 
-  processItems(items, undefined, result, importDir, hasMedia)
+  processItems(items, undefined, result, importDir, hasMedia, createdItems)
+  remapRefs(createdItems)
   return result
 }
 
@@ -73,6 +136,7 @@ function processItems(
   result: ImportResult,
   importDir: string,
   hasMedia: boolean,
+  createdItems: CreatedItem[],
 ): void {
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
@@ -87,10 +151,10 @@ function processItems(
         importSymlink(item, parentId, result, i)
         break
       case 'collection':
-        importCollection(item, parentId, result, i, importDir, hasMedia)
+        importCollection(item, parentId, result, i, importDir, hasMedia, createdItems)
         break
       case 'document':
-        importDocument(item, parentId, result, i, importDir, hasMedia)
+        importDocument(item, parentId, result, i, importDir, hasMedia, createdItems)
         break
       default:
         result.errors.push(`Item at index ${i} has unknown type "${item.type}"`)
@@ -129,6 +193,7 @@ function importCollection(
   index: number,
   importDir: string,
   hasMedia: boolean,
+  createdItems: CreatedItem[],
 ): void {
   if (!item.name) {
     result.errors.push(`Collection at index ${index} is missing required field "name"`)
@@ -139,10 +204,11 @@ function importCollection(
   try {
     const collection = repository.libraryCommands.createCollection(item.name, item.description, parentId)
     result.created++
+    createdItems.push({ id: collection.id, name: item.name, oldId: item.id, entityType: 'collection' })
 
     // Recurse into children
     if (Array.isArray(item.children) && item.children.length > 0) {
-      processItems(item.children, collection.id as EARS.EntityId, result, importDir, hasMedia)
+      processItems(item.children, collection.id as EARS.EntityId, result, importDir, hasMedia, createdItems)
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -158,6 +224,7 @@ function importDocument(
   index: number,
   importDir: string,
   hasMedia: boolean,
+  createdItems: CreatedItem[],
 ): void {
   if (!item.name) {
     result.errors.push(`Document at index ${index} is missing required field "name"`)
@@ -171,6 +238,7 @@ function importDocument(
 
     const document = repository.libraryCommands.createDocument(item.name, content, tags, parentId)
     result.created++
+    createdItems.push({ id: document.id, name: item.name, oldId: item.id, entityType: 'document' })
 
     if (!hasMedia) return
 
@@ -209,8 +277,10 @@ function importDocument(
 function importLibraryMarkdown(importDir: string): ImportResult {
   const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
+  const createdItems: CreatedItem[] = []
 
-  importMarkdownDir(importDir, undefined, result, importDir, hasMedia)
+  importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdItems)
+  remapRefs(createdItems)
   return result
 }
 
@@ -220,6 +290,7 @@ function importMarkdownDir(
   result: ImportResult,
   rootImportDir: string,
   hasMedia: boolean,
+  createdItems: CreatedItem[],
 ): void {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
 
@@ -231,16 +302,19 @@ function importMarkdownDir(
       // Subdirectory → collection
       let name = toDisplayName(entry.name)
       let description: string | undefined
+      let oldId: string | undefined
       const metaPath = path.join(fullPath, '_meta.md')
       if (fs.existsSync(metaPath)) {
         const meta = parseFrontmatter(fs.readFileSync(metaPath, 'utf-8'))
         if (meta.name) name = meta.name
         description = meta.description
+        oldId = meta.id
       }
       try {
         const collection = repository.libraryCommands.createCollection(name, description, parentId)
         result.created++
-        importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia)
+        createdItems.push({ id: collection.id, name, oldId, entityType: 'collection' })
+        importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia, createdItems)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         result.errors.push(`Failed to create collection "${name}": ${message}`)
@@ -252,7 +326,7 @@ function importMarkdownDir(
 
       try {
         const raw = fs.readFileSync(fullPath, 'utf-8')
-        const { tags, name: frontmatterName, body } = parseFrontmatter(raw)
+        const { tags, name: frontmatterName, id: oldId, body } = parseFrontmatter(raw)
         const name = frontmatterName || toDisplayName(basename)
 
         const content: ContentSection[] = body.trim()
@@ -261,6 +335,7 @@ function importMarkdownDir(
 
         const document = repository.libraryCommands.createDocument(name, content, tags, parentId)
         result.created++
+        createdItems.push({ id: document.id, name, oldId, entityType: 'document' })
 
         if (!hasMedia || content.length === 0) continue
 

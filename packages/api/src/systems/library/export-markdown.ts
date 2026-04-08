@@ -76,7 +76,7 @@ function writeItems(
       const filename = uniqueFilename(`${slug}.md`, usedNames)
       usedNames.add(filename)
 
-      const frontmatter = buildFrontmatter(item.tags, item.name)
+      const frontmatter = buildFrontmatter(item.tags, item.name, item.id)
       let body = serializeContentToMarkdown(item.content)
       body = rewriteMediaUrls(body, mediaFilenameMap)
 
@@ -89,7 +89,9 @@ function writeItems(
       const subDir = path.join(dir, dirName)
       ensureDirectoryExists(subDir)
 
-      const metaFields: string[] = [`name: "${escapeQuotes(item.name)}"`]
+      const metaFields: string[] = []
+      if (item.id) metaFields.push(`id: "${escapeQuotes(item.id)}"`)
+      metaFields.push(`name: "${escapeQuotes(item.name)}"`)
       if (item.description) metaFields.push(`description: "${escapeQuotes(item.description)}"`)
       const metaContent = `---\n${metaFields.join('\n')}\n---\n`
       writeExportFile(subDir, '_meta.md', metaContent)

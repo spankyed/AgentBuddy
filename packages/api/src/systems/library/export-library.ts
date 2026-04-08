@@ -50,6 +50,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
 
   for (const doc of documents) {
     children.push({
+      id: doc.id as string,
       type: 'document',
       name: doc.name as string,
       content: (doc.content as ContentSection[]) || [],
@@ -58,6 +59,7 @@ function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   }
 
   return {
+    id: entity.id as string,
     type: 'collection',
     name: entity.name as string,
     ...(entity.description ? { description: entity.description as string } : {}),
@@ -86,6 +88,7 @@ export function buildExportTree(): { items: ExportedItem[]; itemCount: number } 
     const collectionId = findDocumentCollection(doc.id as EARS.EntityId)
     if (!collectionId) {
       items.push({
+        id: doc.id as string,
         type: 'document',
         name: doc.name as string,
         content: (doc.content as ContentSection[]) || [],
