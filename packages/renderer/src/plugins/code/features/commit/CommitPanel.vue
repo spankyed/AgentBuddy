@@ -158,7 +158,25 @@
 
     <!-- Git Error (only show non-directory errors) -->
     <div v-if="gitError && !isNoDirectoryError" class="p-3 border-b border-red-800 bg-red-900/20">
-      <div class="text-sm text-red-400">{{ gitError }}</div>
+      <div class="flex items-start gap-2">
+        <div
+          ref="errorContentRef"
+          class="flex-1 text-sm text-red-400 whitespace-pre-wrap break-words"
+          :class="{ 'max-h-24 overflow-hidden': !isErrorExpanded }"
+        >{{ gitError }}</div>
+        <button
+          @click="dismissError"
+          class="shrink-0 p-0.5 rounded text-red-400 hover:text-red-200 hover:bg-red-900/40 transition-colors"
+          title="Dismiss"
+        >
+          <X :size="14" />
+        </button>
+      </div>
+      <button
+        v-if="isErrorOverflowing"
+        @click="isErrorExpanded = !isErrorExpanded"
+        class="mt-1 text-xs text-red-500 hover:text-red-300 transition-colors"
+      >{{ isErrorExpanded ? 'View less' : 'View more' }}</button>
     </div>
 
     <!-- Commit Message -->
@@ -512,6 +530,9 @@ const isStashesExpanded = ref(false)
 const showDropStashDialog = ref(false)
 const pendingDropIndex = ref<number | null>(null)
 const showClearStashesDialog = ref(false)
+const isErrorExpanded = ref(false)
+const errorContentRef = ref<HTMLElement | null>(null)
+const isErrorOverflowing = ref(false)
 const toast = ref<InstanceType<typeof ToastNotification>>()
 const syncFeedback = ref<string | null>(null)
 let syncClearTimer: ReturnType<typeof setTimeout> | undefined
@@ -545,6 +566,23 @@ const watchSyncOp = (
     }
   })
 }
+
+const dismissError = () => {
+  commitActor.send({ type: 'commit.DISMISS_ERROR' })
+  isErrorExpanded.value = false
+}
+
+watch(gitError, () => {
+  isErrorExpanded.value = false
+  nextTick(() => {
+    const el = errorContentRef.value
+    if (el) {
+      isErrorOverflowing.value = el.scrollHeight > el.clientHeight
+    } else {
+      isErrorOverflowing.value = false
+    }
+  })
+})
 
 watchSyncOp(isPulling, () => commitsBehind.value, 'Pull', 'Already up to date')
 watchSyncOp(isPushing, () => commitsAhead.value, 'Push', 'Nothing to push')

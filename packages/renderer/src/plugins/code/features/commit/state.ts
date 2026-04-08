@@ -89,6 +89,7 @@ export type Event =
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
+  | { type: 'commit.DISMISS_ERROR' }
   | { type: 'commit.GENERATE_MESSAGE' }
   | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
   | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
@@ -263,6 +264,8 @@ export const commitState = setup({
       isPulling: false,
       isGeneratingMessage: false
     }),
+
+    dismissError: assign({ gitError: null }),
 
     requestGenerateMessage: () => {
       sendToBackend('commit.GENERATE_MESSAGE', {})
@@ -448,6 +451,9 @@ export const commitState = setup({
         },
         'commit.ERROR_RECEIVED': {
           actions: 'handleErrorReceived'
+        },
+        'commit.DISMISS_ERROR': {
+          actions: 'dismissError'
         },
         'commit.SELECT_FILE': {
           actions: 'selectGitFile'
