@@ -33,9 +33,10 @@ export function importNotes(importDir: string): ImportResult {
     return importNotesJson(jsonPath)
   }
 
-  const entries = fs.readdirSync(importDir)
-  const hasMdFiles = entries.some(e => e.endsWith('.md'))
-  if (hasMdFiles) {
+  const entries = fs.readdirSync(importDir, { withFileTypes: true })
+  const hasMdFiles = entries.some(e => e.name.endsWith('.md'))
+  const hasSubdirs = entries.some(e => e.isDirectory() && e.name !== 'media' && !e.name.startsWith('.'))
+  if (hasMdFiles || hasSubdirs) {
     return importNotesMarkdown(importDir)
   }
 
