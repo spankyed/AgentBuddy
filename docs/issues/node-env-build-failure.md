@@ -14,8 +14,7 @@ error TS7016: Could not find a declaration file for module 'ws'.
 `NODE_ENV=production` is set in your shell. This makes `npm install` skip all `devDependencies` (including `@types/*`, `typescript`, `tsup`, `tsc-alias`).
 
 Common triggers:
-- Running a **prod build** (`npm run build-prod`) sets `NODE_ENV=production` and it persists in the shell session
-- The terminal service previously leaked `NODE_ENV=production` into spawned shells (fixed in `a390ad40`)
+- A previous shell command or tool set `NODE_ENV=production` and it persisted in the session
 
 ## Fix
 
@@ -38,14 +37,13 @@ Then rebuild:
 npm run build:be
 ```
 
-## Prevention
+## Mitigations
 
-- `build.sh` uses `NODE_ENV=development npm install` to force devDependencies during prod builds
-- `build.sh` runs `unset NODE_ENV` after install and at end of script
-- A `preinstall` warning in `package.json` alerts if `NODE_ENV=production` would skip devDependencies
-- The terminal service strips `NODE_ENV` from spawned shell environments
+- **Production build** (`build/build.sh`): Forces `NODE_ENV=development` for `npm install`, so prod builds always get devDependencies needed to compile
+- **Terminal service**: Unsets `NODE_ENV` in spawned terminals so the Electron host's production mode doesn't leak into user shells
+- **Preinstall warning**: Root `package.json` prints a warning if `NODE_ENV=production` is detected during `npm install`
 
-After running prod builds manually, run `unset NODE_ENV` or open a new terminal before resuming dev work.
+If `NODE_ENV=production` keeps appearing in your shell, check your shell profile (`~/.zshrc`, `~/.bashrc`) for any `export NODE_ENV=production` lines.
 
 ## Why the prod build installs devDependencies
 

@@ -28,8 +28,11 @@ echo ""
 
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
+# Force development mode so devDependencies (typescript, @types/*, etc.) are installed
+# even if NODE_ENV=production leaked from a previous session (see docs/issues/node-env-build-failure.md)
 NODE_ENV=development npm install --silent
 unset NODE_ENV
+
 echo -e "${GREEN}✓${NC} Dependencies installed"
 echo ""
 
@@ -125,6 +128,3 @@ echo "📦 Next steps:"
 echo "  1. Copy dev data: npm run copy-dev-data"
 echo "  2. Test the app: npm run prod-app"
 echo ""
-
-# Ensure NODE_ENV doesn't leak as production into subsequent commands
-unset NODE_ENV

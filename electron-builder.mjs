@@ -110,6 +110,7 @@ export default /** @type import('electron-builder').Configuration */
     // Include API's local node_modules
     'packages/api/node_modules/**/*',
     // Exclude platform-specific prebuilds not needed for current target
+    // NOTE: mac-arm64 only — adjust if building for other platforms
     '!**/node-pty/prebuilds/win32-*',
     '!**/node-pty/prebuilds/darwin-x64',
     // Exclude dev tool artifacts
