@@ -167,7 +167,7 @@ export const createApplicationState = () => setup({
 
       // Check if backend already failed before we started listening (race condition fix)
       window.electronAPI?.apiStatus?.getStatus().then((status) => {
-        if (status.error) {
+        if (status.error && !status.running && status.restartAttempts >= 3) {
           sendBack({ type: 'BACKEND_ERROR', error: status.error });
         }
       });
