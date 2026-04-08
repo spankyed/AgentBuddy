@@ -1,4 +1,5 @@
 export interface ExportedNote {
+  id?: string
   type: 'document' | 'tasklist' | 'task'
   title: string
   content: string

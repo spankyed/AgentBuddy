@@ -37,6 +37,7 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
     itemCount++
     const children = (childrenMap.get(note.id) || []).map(buildNode)
     return {
+      id: note.id,
       type: note.noteType,
       title: note.title,
       content: note.content,
@@ -91,6 +92,7 @@ function escapeQuotes(str: string): string {
 
 function buildNoteFrontmatter(note: ExportedNote): string {
   const fields: string[] = []
+  if (note.id) fields.push(`id: "${escapeQuotes(note.id)}"`)
   if (note.title) fields.push(`title: "${escapeQuotes(note.title)}"`)
   fields.push(`type: ${note.type}`)
   if (note.icon) fields.push(`icon: "${escapeQuotes(note.icon)}"`)

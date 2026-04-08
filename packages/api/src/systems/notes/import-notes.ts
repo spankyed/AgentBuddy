@@ -16,6 +16,7 @@ interface ImportResult {
 interface CreatedNote {
   id: string
   title: string
+  oldId?: string
 }
 
 function applyNoteUpdates(
@@ -46,14 +47,14 @@ function appendDocumentLink(parentId: string, childId: string, childTitle: strin
   repository.noteCommands.update(parentId as EARS.EntityId, { content: newContent })
 }
 
-/** Remap note:// reference links by matching link text to created note titles. */
+/** Remap note:// reference links using exact oldId→newId mapping, with title-based fallback for older exports. */
 function remapNoteRefs(createdNotes: CreatedNote[]): void {
+  const oldIdToNewId = new Map<string, string>()
   const titleToId = new Map<string, string>()
+
   for (const n of createdNotes) {
-    // First match wins (handles duplicate titles)
-    if (!titleToId.has(n.title)) {
-      titleToId.set(n.title, n.id)
-    }
+    if (n.oldId) oldIdToNewId.set(n.oldId, n.id)
+    if (!titleToId.has(n.title)) titleToId.set(n.title, n.id)
   }
 
   for (const n of createdNotes) {
@@ -61,9 +62,9 @@ function remapNoteRefs(createdNotes: CreatedNote[]): void {
     if (!note?.content) continue
 
     const updated = note.content.replace(
-      /\[([^\]]*)\]\(note:\/\/[^)]+\)/g,
-      (match, linkText) => {
-        const newId = titleToId.get(linkText)
+      /\[([^\]]*)\]\(note:\/\/([^)]+)\)/g,
+      (match, linkText, oldId) => {
+        const newId = oldIdToNewId.get(oldId) ?? titleToId.get(linkText)
         return newId ? `[${linkText}](note://${newId})` : match
       },
     )
@@ -158,7 +159,7 @@ function importNoteNodes(
         completed: node.completed ?? false,
       })
       result.created++
-      createdNotes.push({ id: note.id, title: node.title })
+      createdNotes.push({ id: note.id, title: node.title, oldId: node.id })
 
       // Restore media and apply fields not settable via create
       let restoredContent: string | undefined
@@ -193,6 +194,7 @@ function importNoteNodes(
 // ── Markdown Import ──────────────────────────────────────
 
 function parseFrontmatter(content: string): {
+  id?: string
   title?: string
   type: 'document' | 'tasklist' | 'task'
   icon: string | null
@@ -210,6 +212,7 @@ function parseFrontmatter(content: string): {
   const body = content.slice(match[0].length)
 
   const unescape = (s: string) => s.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+  const idMatch = frontmatter.match(/id:\s*"((?:[^"\\]|\\.)*)"/)
   const titleMatch = frontmatter.match(/title:\s*"((?:[^"\\]|\\.)*)"/)
   const typeMatch = frontmatter.match(/type:\s*(\w+)/)
   const iconMatch = frontmatter.match(/icon:\s*"((?:[^"\\]|\\.)*)"/)
@@ -218,6 +221,7 @@ function parseFrontmatter(content: string): {
   const completedMatch = frontmatter.match(/completed:\s*true/)
 
   return {
+    id: idMatch?.[1] ? unescape(idMatch[1]) : undefined,
     title: titleMatch?.[1] ? unescape(titleMatch[1]) : undefined,
     type: (typeMatch?.[1] as 'document' | 'tasklist' | 'task') ?? 'document',
     icon: iconMatch?.[1] ? unescape(iconMatch[1]) : null,
@@ -264,6 +268,7 @@ function importMarkdownDir(
         let hideCompletedChildren = false
         let noteType: 'document' | 'tasklist' | 'task' = 'document'
         let completed = false
+        let oldId: string | undefined
 
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
@@ -274,6 +279,7 @@ function importMarkdownDir(
           hideCompletedChildren = parsed.hideCompletedChildren
           noteType = parsed.type
           completed = parsed.completed
+          oldId = parsed.id
           if (parsed.title) name = parsed.title
         }
 
@@ -286,7 +292,7 @@ function importMarkdownDir(
           completed,
         })
         result.created++
-        createdNotes.push({ id: note.id, title: name })
+        createdNotes.push({ id: note.id, title: name, oldId })
 
         let restoredContent: string | undefined
         if (hasMedia && content) {
@@ -331,7 +337,7 @@ function importMarkdownDir(
           completed: parsed.completed,
         })
         result.created++
-        createdNotes.push({ id: note.id, title: name })
+        createdNotes.push({ id: note.id, title: name, oldId: parsed.id })
 
         let restoredContent: string | undefined
         if (hasMedia && cleanBody) {
