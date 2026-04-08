@@ -25,6 +25,7 @@
     "clean-prod": "sh build/prod/clean.sh",
     "verify-signing": "sh build/prod/verify-signing.sh",
     "release": "sh build/release/release.sh",
+    "undo-release": "bash build/release/undo-release.sh",
     "release:minor": "sh build/release/release.sh minor",
     "release:major": "sh build/release/release.sh major",
     "build-prod:signed": "sh -c 'set -a; . ./.env.signing; set +a; sh build/build.sh'",
