@@ -87,6 +87,7 @@ export type Context = {
   tabViewHistory: string[]
   hotkeys: HotkeysMap
   settings?: CodeSettings
+  pendingRevealLine: { line: number; column: number } | null
 }
 
 export interface QuickOpenResult {
@@ -877,6 +878,7 @@ const codeState = setup({
     tabViewHistory: [],
     // Default hotkeys for code plugin (will be overridden by settings)
     hotkeys: {},
+    pendingRevealLine: null,
   },
   states: {
     canvas: {

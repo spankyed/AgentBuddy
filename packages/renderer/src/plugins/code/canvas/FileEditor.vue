@@ -98,6 +98,7 @@
         <!-- Monaco editor for both regular files and diffs -->
         <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
           <MonacoEditor
+            ref="monacoEditorRef"
             v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
@@ -109,6 +110,7 @@
             :read-only="isDiffFile"
             :dsl-params="activeDslParams"
             class="h-full"
+            @mount="emit('editorMount')"
           />
         </div>
       </div>
@@ -117,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { FileCode } from 'lucide-vue-next'
 import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
@@ -159,6 +161,7 @@ const emit = defineEmits<{
   'unpin-group': [groupId: string]
   'rename-terminal': [path: string, customTitle: string]
   'kill-terminal': [path: string]
+  editorMount: []
 }>()
 
 // Helper to check if a file is a terminal
@@ -241,6 +244,12 @@ const handleContentChange = (value: string) => {
     emit('contentChange', props.activeFilePath, value)
   }
 }
+
+const monacoEditorRef = ref<InstanceType<typeof MonacoEditor>>()
+
+defineExpose({
+  getEditor: () => monacoEditorRef.value?.getEditor(),
+})
 </script>
 
 <style>

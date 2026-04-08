@@ -21,6 +21,7 @@
 
     <!-- Always use FileEditor which now handles both regular files and diffs -->
     <FileEditor
+      ref="fileEditorRef"
       :open-files="openFiles"
       :active-file-path="activeFilePath"
       :base-directory="baseDirectory"
@@ -45,6 +46,7 @@
       @unpin-group="unpinGroup"
       @rename-terminal="renameTerminal"
       @kill-terminal="killTerminal"
+      @editor-mount="tryRevealLine"
       class="flex-1 min-h-0"
     />
 
@@ -90,7 +92,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
 import { reorderTabs, nextActiveFromHistory } from '../utils/tab-management'
@@ -120,6 +122,25 @@ const { closeTerminal: closeTerminalProcess } = useTerminalActions(
   confirmTerminalClose,
   closeTerminalOnTabClose
 )
+
+const fileEditorRef = ref<InstanceType<typeof FileEditor>>()
+const pendingRevealLine = useSelector(actor, (state) => state.context.pendingRevealLine)
+
+// Reveal pending line in editor (called from watcher and editor mount)
+const tryRevealLine = async () => {
+  const reveal = pendingRevealLine.value
+  if (!reveal) return
+  await nextTick()
+  const editor = fileEditorRef.value?.getEditor()
+  if (!editor) return
+  editor.revealLineInCenter(reveal.line)
+  editor.setPosition({ lineNumber: reveal.line, column: reveal.column })
+  editor.focus()
+  actor.send({ type: 'UPDATE_STATE', updates: { pendingRevealLine: null } })
+}
+
+// Watch for pending reveal line (from search result clicks)
+watch([pendingRevealLine, activeFilePath], tryRevealLine)
 
 // Computed
 const activeFile = computed(() =>

@@ -138,7 +138,7 @@
             <div
               v-for="(match, index) in result.matches"
               :key="`${result.path}-${index}`"
-              @click="openMatch(result)"
+              @click="openMatch(result, match)"
               class="px-4 py-1 cursor-pointer hover:bg-neutral-800"
             >
               <div class="flex items-baseline gap-2">
@@ -283,7 +283,7 @@ const toggleResultExpanded = (path: string) => {
   }
 }
 
-const openMatch = (result: typeof searchResults.value[0]) => {
+const openMatch = (result: typeof searchResults.value[0], match: typeof result.matches[0]) => {
   // Open file through explorer
   const explorerActor = codeActor.system.get('explorer')
   explorerActor?.send({
@@ -291,7 +291,11 @@ const openMatch = (result: typeof searchResults.value[0]) => {
     path: result.path
   })
 
-  // TODO: Handle scrolling to specific match index in the editor
+  // Tell the code plugin to scroll to this line once the file is active
+  codeActor.send({
+    type: 'UPDATE_STATE',
+    updates: { pendingRevealLine: { line: match.line, column: match.column } }
+  })
 }
 
 const getRelativePath = (path: string) => {
