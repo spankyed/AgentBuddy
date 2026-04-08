@@ -352,10 +352,25 @@ const threadsState = setup({
     },
     setThreadsSettings: assign(({ event, context }) => {
       const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
-      return {
+      const result: Record<string, any> = {
         settings: ev.settings,
         availableTags: ev.settings?.tags || []
       };
+
+      if (ev.settings?.chat) {
+        const chatSettings = ev.settings.chat;
+        result.chatSettings = chatSettings;
+        result.modes = chatSettings.modes || [];
+        const hotkeys: HotkeysMap = {};
+        if (chatSettings.hotkeys) {
+          Object.entries(chatSettings.hotkeys).forEach(([key, value]) => {
+            if (value) hotkeys[key] = value;
+          });
+        }
+        result.hotkeys = hotkeys;
+      }
+
+      return result;
     }),
     deleteThread: ({ event }) => {
       const { threadId } = typeOf('DELETE_THREAD', event);
