@@ -2,9 +2,10 @@
   <BubbleMenu
     v-if="editor"
     :editor="editor"
-    :options="{ placement: 'top', offset: 8, strategy: 'fixed' }"
+    :options="menuOptions"
+    :append-to="appendTarget"
     :should-show="({ editor: e }) => e.isActive('image')"
-    class="flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
+    class="!z-[9999] flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg shadow-lg"
   >
     <div class="flex items-center gap-0.5 px-1.5 py-1">
       <button
@@ -70,6 +71,24 @@ const props = defineProps<{ editor: Editor }>()
 const emit = defineEmits<{
   (e: 'viewImage', src: string): void
 }>()
+
+const appendTarget = () => document.body
+
+function getScrollParent(el: HTMLElement | null): HTMLElement | Window {
+  while (el) {
+    const { overflowY } = getComputedStyle(el)
+    if (overflowY === 'auto' || overflowY === 'scroll') return el
+    el = el.parentElement
+  }
+  return window
+}
+
+const menuOptions = {
+  placement: 'top' as const,
+  offset: 8,
+  strategy: 'fixed' as const,
+  scrollTarget: getScrollParent(props.editor.view.dom),
+}
 
 const resizeVisible = ref(false)
 const imageWidth = ref(100)
