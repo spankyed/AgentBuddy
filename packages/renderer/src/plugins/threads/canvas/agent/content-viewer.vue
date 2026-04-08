@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full bg-neutral-900">
+  <div class="flex h-full bg-neutral-900" data-onboarding-id="agent-artifacts">
     <!-- Artifact List (left side, integrated in tab) -->
     <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
       <ArtifactList
