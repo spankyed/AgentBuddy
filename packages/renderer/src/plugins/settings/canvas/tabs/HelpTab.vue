@@ -17,8 +17,8 @@
               <ChevronDown class="w-4 h-4 text-neutral-400 transition-transform duration-200"
                 :class="expandedItems.includes(index) ? 'rotate-180' : ''" />
             </button>
-            <div v-if="expandedItems.includes(index)" class="px-5 pb-4 animate-fadeIn">
-              <p class="text-sm text-neutral-400 leading-relaxed whitespace-pre-line">{{ item.answer }}</p>
+            <div v-if="expandedItems.includes(index)" class="px-5 pt-1 pb-4 animate-fadeIn">
+              <TiptapEditor mode="viewer" :modelValue="item.answer" editorClass="faq-answer" />
             </div>
           </div>
         </div>
@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 interface FAQItem {
   id: string
@@ -77,14 +78,14 @@ const faqItems = ref<FAQItem[]>([
     question: "Why does the PR panel say my GitHub token is missing permissions?",
     answer: `The GitHub CLI (gh) can have multiple authenticated accounts, but only one is active at a time. The active token may lack the permissions needed for PR operations.
 
-Common scenarios:
-• GITHUB_TOKEN env var with a fine-grained PAT — needs explicit "Pull requests: Read and write" permission in GitHub > Settings > Developer settings > Fine-grained tokens.
-• GITHUB_TOKEN env var with a classic PAT — needs the "repo" scope in GitHub > Settings > Developer settings > Tokens (classic).
-• Keyring OAuth token — run "gh auth refresh -s repo" to add missing scopes.
+**Common scenarios:**
+- **GITHUB_TOKEN env var with a fine-grained PAT** — needs explicit "Pull requests: Read and write" permission in GitHub > Settings > Developer settings > Fine-grained tokens.
+- **GITHUB_TOKEN env var with a classic PAT** — needs the \`repo\` scope in GitHub > Settings > Developer settings > Tokens (classic).
+- **Keyring OAuth token** — run \`gh auth refresh -s repo\` to add missing scopes.
 
-To diagnose: run "gh auth status" in your terminal to see which token is active and its type. Token prefixes indicate the type: github_pat_ = fine-grained PAT, ghp_ = classic PAT, gho_ = OAuth.
+**To diagnose:** run \`gh auth status\` in your terminal to see which token is active and its type. Token prefixes indicate the type: \`github_pat_\` = fine-grained PAT, \`ghp_\` = classic PAT, \`gho_\` = OAuth.
 
-To switch accounts: run "gh auth switch" to change the active account. To stop using an env var token: unset the GITHUB_TOKEN environment variable.`,
+**To switch accounts:** run \`gh auth switch\` to change the active account. To stop using an env var token: unset the \`GITHUB_TOKEN\` environment variable.`,
     category: 'github',
     order: 3
   }
@@ -116,5 +117,10 @@ const toggleItem = (index: number) => {
 
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
+}
+
+:deep(.faq-answer) {
+  font-size: 0.8125rem;
+  color: rgb(163 163 163);
 }
 </style>
