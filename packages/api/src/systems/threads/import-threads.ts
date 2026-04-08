@@ -42,6 +42,11 @@ export function importThreads(importDir: string): ImportResult {
     return result
   }
 
+  if (!parsed.version || parsed.version < 2) {
+    result.errors.push(`Unsupported export version: ${parsed.version || 'unknown'}. Re-export with the latest version.`)
+    return result
+  }
+
   if (!parsed?.threads || !Array.isArray(parsed.threads)) {
     result.errors.push('Invalid import data: expected a threads array')
     return result
