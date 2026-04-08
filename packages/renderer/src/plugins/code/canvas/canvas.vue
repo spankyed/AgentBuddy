@@ -128,6 +128,7 @@ const fileEditorRef = ref<InstanceType<typeof FileEditor>>()
 const pendingRevealLine = useSelector(actor, (state) => state.context.pendingRevealLine)
 
 // Reveal pending line in editor (called from watcher, editor mount, and file ready)
+let revealRetryPending = false
 const tryRevealLine = async () => {
   const reveal = pendingRevealLine.value
   if (!reveal) return
@@ -167,6 +168,15 @@ const tryRevealLine = async () => {
     }
     actor.send({ type: 'UPDATE_STATE', updates: { pendingRevealLine: null } })
     return
+  }
+
+  // Neither editor ready yet (e.g. Monaco still initializing after v-if remount) — retry once
+  if (!revealRetryPending) {
+    revealRetryPending = true
+    setTimeout(() => {
+      revealRetryPending = false
+      tryRevealLine()
+    }, 50)
   }
 }
 
