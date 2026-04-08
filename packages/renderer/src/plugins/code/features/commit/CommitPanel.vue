@@ -295,7 +295,7 @@
                   ]"
                 >
                   <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                    <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
+                    <span class="text-sm font-medium text-neutral-200 truncate">{{ getFileDisplay(file.path, file).filename }}</span>
                     <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
                       {{ getFileDisplay(file.path, file).directory }}
                     </span>
@@ -364,7 +364,7 @@
                   ]"
                 >
                   <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                    <span class="text-sm font-medium text-neutral-200 flex-shrink-0">{{ getFileDisplay(file.path, file).filename }}</span>
+                    <span class="text-sm font-medium text-neutral-200 truncate">{{ getFileDisplay(file.path, file).filename }}</span>
                     <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate">
                       {{ getFileDisplay(file.path, file).directory }}
                     </span>
