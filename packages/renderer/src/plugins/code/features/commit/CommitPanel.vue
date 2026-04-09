@@ -217,13 +217,11 @@
             <label class="text-sm text-neutral-400">Commit Message</label>
           </div>
           <button
-            @click="generateMessage"
-            :disabled="isGeneratingMessage || gitStatus.length === 0"
-            class="p-1 rounded transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Generate commit message with AI"
+            disabled
+            class="p-1 rounded transition-colors text-neutral-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Out of order"
           >
-            <Sparkles v-if="!isGeneratingMessage" :size="14" />
-            <Loader2 v-else :size="14" class="animate-spin" />
+            <Sparkles :size="14" />
           </button>
         </div>
         <textarea
