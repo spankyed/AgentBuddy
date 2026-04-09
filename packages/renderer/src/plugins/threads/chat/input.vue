@@ -99,6 +99,7 @@
               v-model:open="popoverOpen"
               :prompts="quickPrompts || []"
               :disabled="disabled"
+              :virtual-reference="virtualRef"
               @select="handleQuickPromptSelect"
               @update="(prompts) => emit('update-quick-prompts', prompts)"
             />
@@ -195,6 +196,7 @@ const props = defineProps<{
   currentPhase?: string
   modes: AgentMode[]
   quickPrompts?: QuickPrompt[]
+  quickPromptCursor?: { x: number; y: number } | null
   disabled?: boolean
 }>()
 
@@ -210,6 +212,7 @@ const emit = defineEmits<{
   (e: 'phase-change', phase: string): void
   (e: 'open-lightbox', imageSrc: string): void
   (e: 'update-quick-prompts', prompts: QuickPrompt[]): void
+  (e: 'close-quick-prompts'): void
 }>()
 
 
@@ -224,6 +227,20 @@ const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const messageContent = ref('')
 const popoverOpen = ref(false)
 const navigatingHistory = ref(false)
+
+const virtualRef = computed(() => {
+  if (!props.quickPromptCursor) return null
+  const { x, y } = props.quickPromptCursor
+  return { getBoundingClientRect: () => new DOMRect(x, y, 0, 0) }
+})
+
+watch(() => props.quickPromptCursor, (cursor) => {
+  if (cursor) popoverOpen.value = true
+})
+
+watch(popoverOpen, (isOpen) => {
+  if (!isOpen && props.quickPromptCursor) emit('close-quick-prompts')
+})
 
 const HISTORY_STORAGE_KEY = 'chat-sent-history'
 const MAX_HISTORY = 100

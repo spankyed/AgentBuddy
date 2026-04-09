@@ -547,6 +547,7 @@ const codeState = setup({
       navigatePrevPanel: 'NAVIGATE_PREV_PANEL',
       navigateNextPanel: 'NAVIGATE_NEXT_PANEL',
       focusSearch: 'FOCUS_SEARCH',
+      quickOpen: 'SHOW_QUICK_OPEN',
     }),
 
     openTerminal: ({ context, self, system }) => {

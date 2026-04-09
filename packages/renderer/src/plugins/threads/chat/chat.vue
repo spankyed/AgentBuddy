@@ -29,12 +29,14 @@
           :current-phase="currentPhase"
           :modes="modes"
           :quick-prompts="quickPrompts"
+          :quick-prompt-cursor="quickPromptCursor"
           @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
           @send-command="(command: string, text: string, references?: MessageReferences) => actor.send({ type: 'SEND_COMMAND', command, text, references })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
           @open-lightbox="openLightbox"
           @update-quick-prompts="updateQuickPrompts"
+          @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
         />
       </div>
     </div>
@@ -116,6 +118,7 @@ const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
+const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
