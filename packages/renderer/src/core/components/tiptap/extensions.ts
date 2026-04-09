@@ -327,7 +327,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
   ]
 
   if (mode !== 'viewer') {
-    extensions.push(ListShiftEnter)
+    if (isChat) extensions.push(ListShiftEnter)
 
     if (placeholder) {
       extensions.push(
