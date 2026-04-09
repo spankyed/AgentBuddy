@@ -74,22 +74,22 @@
   <!-- Merged/Closed PR actions -->
   <div v-else-if="pr && (pr.state === 'MERGED' || pr.state === 'CLOSED')" class="flex items-center gap-1.5 px-3 py-2 border-t border-neutral-800 bg-neutral-800/30">
     <button
+      @click="$emit('checkout-base')"
+      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-blue-400 hover:bg-blue-900/30 transition-colors"
+      title="Checkout base branch"
+    >
+      <GitBranch :size="11" />
+      <span>Checkout Base</span>
+    </button>
+    <button
       @click="$emit('delete-branch')"
       :disabled="isDeletingBranch"
-      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
+      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50 ml-auto"
       title="Delete remote branch"
     >
       <Loader2 v-if="isDeletingBranch" :size="11" class="animate-spin" />
       <Trash2 v-else :size="11" />
       <span>Delete Branch</span>
-    </button>
-    <button
-      @click="$emit('checkout-base')"
-      class="flex items-center gap-1 px-2 py-1 text-xs rounded text-blue-400 hover:bg-blue-900/30 transition-colors ml-auto"
-      title="Checkout base branch"
-    >
-      <GitBranch :size="11" />
-      <span>Checkout Base</span>
     </button>
   </div>
 </template>
