@@ -5,6 +5,11 @@
   </div>
 </template>
 
+<script lang="ts">
+/** Persists scroll line across terminal tab switches (survives unmount/remount) */
+const savedScrollLines = new Map<string, number>()
+</script>
+
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
@@ -128,10 +133,21 @@ onMounted(() => {
     }, { passive: true })
   }
 
-  /* 3. Load any stored output or show loading content */
+  /* 3. Load stored output (restoring scroll position if previously saved) */
   const storedOutput = terminalEventBus.getOutput(props.terminalInfo.id)
+  const savedLine = savedScrollLines.get(props.terminalInfo.id)
+
+  if (savedLine != null) {
+    isPinnedToBottom.value = false
+    isScrollingProgrammatically = true
+  }
+
   if (storedOutput) {
-    term.write(storedOutput)
+    term.write(storedOutput, () => {
+      if (savedLine == null) return
+      term?.scrollToLine(savedLine)
+      requestAnimationFrame(() => { isScrollingProgrammatically = false })
+    })
   } else {
     showLoadingContent()
   }
@@ -186,7 +202,7 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(() => {
     fit()
     sendResize()
-    if (isPinnedToBottom) scrollToBottom()
+    if (isPinnedToBottom.value) scrollToBottom()
   })
   resizeObserver.observe(container.value)
 
@@ -195,9 +211,12 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (term && !isPinnedToBottom.value) savedScrollLines.set(props.terminalInfo.id, term.buffer.active.viewportY)
+  else savedScrollLines.delete(props.terminalInfo.id)
+
   resizeObserver?.disconnect()
   term?.dispose()
-  if (unsubscribe) unsubscribe()
+  unsubscribe?.()
 })
 
 /* --------------------------------------------------------------------------
