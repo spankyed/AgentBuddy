@@ -16,7 +16,7 @@
       <PopoverContent
         :side="virtualReference ? 'bottom' : 'top'"
         :side-offset="8"
-        align="start"
+        align="center"
         class="w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
       >
         <!-- Header -->
