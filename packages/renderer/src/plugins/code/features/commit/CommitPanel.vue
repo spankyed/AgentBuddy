@@ -120,7 +120,7 @@
           >{{ commitsAhead }}</span>
           <span
             v-else-if="commitsBehind > 0"
-            class="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[16px] h-4 px-0.5 text-[9px] font-bold leading-none text-white bg-amber-600 rounded-full"
+            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
           >{{ commitsBehind }}</span>
         </button>
 
