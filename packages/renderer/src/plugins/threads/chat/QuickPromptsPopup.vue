@@ -3,7 +3,7 @@
     <PopoverTrigger as-child>
       <button
         type="button"
-        class="hidden @md:block p-2 transition-colors text-neutral-500"
+        class="hidden @md:block p-2 text-neutral-500"
         :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
         aria-label="Quick message"
         :disabled="disabled"
@@ -23,7 +23,7 @@
           <span class="text-sm font-medium text-neutral-300">Quick Prompts</span>
           <button
             type="button"
-            class="p-1 rounded transition-colors"
+            class="p-1 rounded"
             :class="editing ? 'text-blue-400 hover:text-blue-300' : 'text-neutral-500 hover:text-neutral-300'"
             @click="editing = !editing"
           >
@@ -45,7 +45,7 @@
                     <button
                       type="button"
                       :data-prompt-id="prompt.id"
-                      class="w-full text-left px-3 py-2 pr-8 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors truncate"
+                      class="w-full text-left px-3 py-2 pr-8 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white truncate"
                       @click="selectPrompt(prompt.text)"
                       @mouseenter="checkTruncation(prompt)"
                     >
@@ -64,7 +64,7 @@
                 </TooltipRoot>
                 <button
                   type="button"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100"
                   title="Copy prompt"
                   @click.stop="copyPrompt(prompt.id, prompt.text)"
                 >
@@ -92,7 +92,7 @@
                 <div class="flex items-start gap-1 px-1 pr-3 pb-1 pt-2 bg-neutral-900 rounded-md">
                   <span
                     data-handle
-                    class="flex-shrink-0 cursor-grab text-neutral-600 hover:text-neutral-400 transition-colors p-1 mt-0.5 pointer-events-auto"
+                    class="flex-shrink-0 cursor-grab text-neutral-600 hover:text-neutral-400 p-1 mt-0.5 pointer-events-auto"
                     title="Drag to reorder"
                     @click.stop
                   >
@@ -103,20 +103,20 @@
                     v-model="editingText"
                     rows="1"
                     class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-hidden"
-                    @input="autoResize($event)"
-                    @blur="commitEdit(prompt.id)"
-                    @keydown.enter.exact.prevent="commitEdit(prompt.id)"
+                    @input="autoResizeAndUpdate($event, prompt.id)"
+                    @blur="finishEdit(prompt.id)"
+                    @keydown.enter.exact.prevent="finishEdit(prompt.id)"
                     @keydown.escape.prevent="cancelEdit"
                   />
                   <span
                     v-else
-                    class="flex-1 min-w-0 text-sm text-neutral-300 truncate cursor-text hover:text-white transition-colors"
+                    class="flex-1 min-w-0 text-sm text-neutral-300 truncate cursor-text hover:text-white"
                     :title="prompt.text"
                     @click="startEdit(prompt)"
                   >{{ prompt.text.split('\n')[0] }}<span v-if="prompt.text.includes('\n')" class="text-neutral-500">...</span></span>
                   <button
                     type="button"
-                    class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
+                    class="p-1 text-neutral-500 hover:text-red-400 flex-shrink-0"
                     @click="deletePrompt(prompt.id)"
                   >
                     <X :size="14" />
@@ -134,14 +134,14 @@
             v-model="newPromptText"
             rows="1"
             placeholder="Add prompt..."
-            class="flex-1 px-0 py-0.5 text-sm bg-transparent border-none text-white placeholder-neutral-600 focus:outline-none resize-none overflow-y-hidden"
+            class="flex-1 px-0 py-0.5 text-sm bg-transparent border-none text-white placeholder-neutral-600 focus:outline-none resize-none"
             style="max-height: calc(1.5em * 3 + 12px)"
             @input="autoResize($event)"
             @keydown.enter.exact.prevent="addPrompt"
           />
           <button
             type="button"
-            class="p-1 rounded transition-colors flex-shrink-0"
+            class="p-1 rounded flex-shrink-0"
             :class="newPromptText.trim() ? 'text-neutral-400 hover:text-white hover:bg-neutral-700/50' : 'text-neutral-700 cursor-not-allowed'"
             :disabled="!newPromptText.trim()"
             @click="addPrompt"
@@ -273,13 +273,16 @@ async function startEdit(prompt: QuickPrompt) {
 
 function commitEdit(id: string) {
   const trimmed = editingText.value.trim()
-  if (trimmed) {
-    const prompt = localPrompts.value.find(p => p.id === id)
-    if (prompt && prompt.text !== trimmed) {
-      prompt.text = trimmed
-      emit('update', [...localPrompts.value])
-    }
+  if (!trimmed) return
+  const prompt = localPrompts.value.find(p => p.id === id)
+  if (prompt && prompt.text !== trimmed) {
+    prompt.text = trimmed
+    emit('update', [...localPrompts.value])
   }
+}
+
+function finishEdit(id: string) {
+  commitEdit(id)
   editingId.value = null
 }
 
@@ -294,15 +297,23 @@ function deletePrompt(id: string) {
 }
 
 function resizeTextarea(el: HTMLTextAreaElement) {
-  el.style.overflow = 'auto'
+  el.style.overflowY = 'hidden'
   el.style.height = 'auto'
   const height = el.scrollHeight
   el.style.height = height + 1 + 'px'
-  el.style.overflow = 'hidden'
+  const maxHeight = parseFloat(getComputedStyle(el).maxHeight)
+  if (maxHeight && height + 1 > maxHeight) {
+    el.style.overflowY = 'auto'
+  }
 }
 
 function autoResize(event: Event) {
   resizeTextarea(event.target as HTMLTextAreaElement)
+}
+
+function autoResizeAndUpdate(event: Event, id: string) {
+  resizeTextarea(event.target as HTMLTextAreaElement)
+  commitEdit(id)
 }
 
 function addPrompt() {
@@ -336,6 +347,6 @@ function addPrompt() {
 }
 
 :deep(.arrangeable-list__transition-all) {
-  transition-duration: 0.2s;
+  transition-duration: 0s;
 }
 </style>
