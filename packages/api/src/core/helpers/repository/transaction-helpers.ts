@@ -1,6 +1,7 @@
 import { tx } from '@/core/ears/helpers/transaction';
 import { EARS } from '@/core/types';
 import { getTimestamp, generateShortCode, generateLabelWithCount } from '@/core/ears/helpers/entity-utils';
+import { exists } from './query-helpers';
 
 /**
  * Type-safe transaction helpers for common operations
@@ -47,8 +48,13 @@ export function createEntityWithDefaults<T extends {
     updatedAt: ts,
   } as Omit<T, 'id'>;
 
-  const id = providedId
-    ? tx(providedId, true).batchPut(entity).id()
+  // Use providedId if available and no collision exists, otherwise generate new
+  const resolvedId = providedId && !exists(providedId)
+    ? providedId
+    : undefined;
+
+  const id = resolvedId
+    ? tx(resolvedId, true).batchPut(entity).id()
     : tx(entityType).batchPut(entity).id();
 
   return { ...entity, id } as T & { id: EARS.EntityId };
