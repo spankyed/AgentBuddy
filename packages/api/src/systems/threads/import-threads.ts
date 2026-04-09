@@ -10,7 +10,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/core/types'
 import { tx } from '@/core/ears/helpers/transaction'
-import { resolveImportId } from '@/core/helpers/repository'
+import { hasIdCollision } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs } from '@/core/helpers/media'
 import { repository } from '@/repository'
 import type { ExportedThreadsData } from './export-types'
@@ -68,11 +68,18 @@ export function importThreads(importDir: string): ImportResult {
       const status = validStatuses.has(thread.status) ? thread.status : fallbackStatus
       const tags = thread.tags.filter(t => validTags.has(t))
 
+      // Skip entity if its ID already exists in the database
+      if (hasIdCollision(thread.id)) {
+        result.errors.push(`Skipped thread "${thread.topic}": entity ID already exists (${thread.id})`)
+        result.skipped++
+        continue
+      }
+
       const { id: newThreadId } = repository.threadCommands.create({
         topic: thread.topic,
         instructions: thread.instructions,
         tags,
-        id: resolveImportId(thread.id),
+        id: thread.id,
       })
 
       // Restore media from instructions

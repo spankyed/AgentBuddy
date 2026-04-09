@@ -13,7 +13,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import type { EARS } from '@/core/types'
-import { resolveImportId } from '@/core/helpers/repository'
+import { hasIdCollision } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import type { ContentSection } from './types'
 import { toDisplayName, parseFrontmatter, parseMarkdownSections } from './utils'
@@ -23,66 +23,6 @@ interface ImportResult {
   skipped: number
   mediaRestored: number
   errors: string[]
-}
-
-interface CreatedItem {
-  id: string
-  name: string
-  oldId?: string
-  entityType: 'document' | 'collection'
-}
-
-/** Remap doc:// and folder:// reference pills (fallback for imports without persisted IDs). */
-function remapRefs(createdItems: CreatedItem[]): void {
-  const oldIdToNewId = new Map<string, string>()
-  const docNameToId = new Map<string, string>()
-  const collectionNameToId = new Map<string, string>()
-
-  for (const item of createdItems) {
-    if (item.oldId) oldIdToNewId.set(item.oldId, item.id)
-    if (item.entityType === 'document' && !docNameToId.has(item.name)) {
-      docNameToId.set(item.name, item.id)
-    }
-    if (item.entityType === 'collection' && !collectionNameToId.has(item.name)) {
-      collectionNameToId.set(item.name, item.id)
-    }
-  }
-
-  const documents = createdItems.filter(i => i.entityType === 'document')
-
-  for (const item of documents) {
-    const doc = repository.libraryQueries.getDocument(item.id as EARS.EntityId)
-    if (!doc?.content) continue
-
-    const content = doc.content
-    let contentChanged = false
-
-    for (const section of content) {
-      if ((section.type === 'markdown' || section.type === 'text') && 'text' in section) {
-        const updated = section.text.replace(
-          /\[([^\]]*)\]\((doc|folder):\/\/([^)]+)\)/g,
-          (match, linkText, protocol, oldId) => {
-            const newId = oldIdToNewId.get(oldId)
-              ?? (protocol === 'doc' ? docNameToId.get(linkText) : collectionNameToId.get(linkText))
-            return newId ? `[${linkText}](${protocol}://${newId})` : match
-          },
-        )
-        if (updated !== section.text) {
-          section.text = updated
-          contentChanged = true
-        }
-      }
-    }
-
-    if (contentChanged) {
-      repository.libraryCommands.updateDocument(
-        item.id as EARS.EntityId,
-        doc.name as string,
-        content,
-        (doc.tags as string[]) || [],
-      )
-    }
-  }
 }
 
 export function importLibrary(importDir: string): ImportResult {
@@ -123,11 +63,7 @@ function importLibraryJson(importDir: string, jsonPath: string): ImportResult {
   }
 
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
-  const createdItems: CreatedItem[] = []
-
-  processItems(items, undefined, result, importDir, hasMedia, createdItems)
-  // Fallback remap when any item failed to preserve its ID (missing oldId or collision)
-  if (!createdItems.every(i => i.oldId && i.oldId === i.id)) remapRefs(createdItems)
+  processItems(items, undefined, result, importDir, hasMedia)
   return result
 }
 
@@ -137,7 +73,6 @@ function processItems(
   result: ImportResult,
   importDir: string,
   hasMedia: boolean,
-  createdItems: CreatedItem[],
 ): void {
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
@@ -149,13 +84,13 @@ function processItems(
 
     switch (item.type) {
       case 'symlink':
-        importSymlink(item, parentId, result, i, createdItems)
+        importSymlink(item, parentId, result, i)
         break
       case 'collection':
-        importCollection(item, parentId, result, i, importDir, hasMedia, createdItems)
+        importCollection(item, parentId, result, i, importDir, hasMedia)
         break
       case 'document':
-        importDocument(item, parentId, result, i, importDir, hasMedia, createdItems)
+        importDocument(item, parentId, result, i, importDir, hasMedia)
         break
       default:
         result.errors.push(`Item at index ${i} has unknown type "${item.type}"`)
@@ -164,7 +99,7 @@ function processItems(
   }
 }
 
-function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: ImportResult, index: number, createdItems: CreatedItem[]): void {
+function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: ImportResult, index: number): void {
   if (!item.name || !item.symlinkPath) {
     result.errors.push(`Symlink at index ${index} is missing required fields (name, symlinkPath)`)
     result.skipped++
@@ -177,13 +112,19 @@ function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: I
     return
   }
 
+  // Skip entity if its ID already exists in the database
+  if (hasIdCollision(item.id)) {
+    result.errors.push(`Skipped symlink "${item.name}": entity ID already exists (${item.id})`)
+    result.skipped++
+    return
+  }
+
   try {
-    const collection = repository.libraryCommands.createSymlinkCollection(
+    repository.libraryCommands.createSymlinkCollection(
       item.name, item.symlinkPath, parentId,
-      resolveImportId(item.id),
+      item.id as EARS.EntityId | undefined,
     )
     result.created++
-    createdItems.push({ id: collection.id, name: item.name, oldId: item.id, entityType: 'collection' })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     result.errors.push(`Failed to create symlink "${item.name}": ${message}`)
@@ -198,7 +139,6 @@ function importCollection(
   index: number,
   importDir: string,
   hasMedia: boolean,
-  createdItems: CreatedItem[],
 ): void {
   if (!item.name) {
     result.errors.push(`Collection at index ${index} is missing required field "name"`)
@@ -206,17 +146,23 @@ function importCollection(
     return
   }
 
+  // Skip entity if its ID already exists in the database
+  if (hasIdCollision(item.id)) {
+    result.errors.push(`Skipped collection "${item.name}": entity ID already exists (${item.id})`)
+    result.skipped++
+    return
+  }
+
   try {
     const collection = repository.libraryCommands.createCollection(
       item.name, item.description, parentId,
-      resolveImportId(item.id),
+      item.id as EARS.EntityId | undefined,
     )
     result.created++
-    createdItems.push({ id: collection.id, name: item.name, oldId: item.id, entityType: 'collection' })
 
     // Recurse into children
     if (Array.isArray(item.children) && item.children.length > 0) {
-      processItems(item.children, collection.id as EARS.EntityId, result, importDir, hasMedia, createdItems)
+      processItems(item.children, collection.id as EARS.EntityId, result, importDir, hasMedia)
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -232,10 +178,16 @@ function importDocument(
   index: number,
   importDir: string,
   hasMedia: boolean,
-  createdItems: CreatedItem[],
 ): void {
   if (!item.name) {
     result.errors.push(`Document at index ${index} is missing required field "name"`)
+    result.skipped++
+    return
+  }
+
+  // Skip entity if its ID already exists in the database
+  if (hasIdCollision(item.id)) {
+    result.errors.push(`Skipped document "${item.name}": entity ID already exists (${item.id})`)
     result.skipped++
     return
   }
@@ -246,10 +198,9 @@ function importDocument(
 
     const document = repository.libraryCommands.createDocument(
       item.name, content, tags, parentId,
-      resolveImportId(item.id),
+      item.id as EARS.EntityId | undefined,
     )
     result.created++
-    createdItems.push({ id: document.id, name: item.name, oldId: item.id, entityType: 'document' })
 
     if (!hasMedia) return
 
@@ -288,11 +239,7 @@ function importDocument(
 function importLibraryMarkdown(importDir: string): ImportResult {
   const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
-  const createdItems: CreatedItem[] = []
-
-  importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdItems)
-  // Fallback remap when any item failed to preserve its ID (missing oldId or collision)
-  if (!createdItems.every(i => i.oldId && i.oldId === i.id)) remapRefs(createdItems)
+  importMarkdownDir(importDir, undefined, result, importDir, hasMedia)
   return result
 }
 
@@ -302,7 +249,6 @@ function importMarkdownDir(
   result: ImportResult,
   rootImportDir: string,
   hasMedia: boolean,
-  createdItems: CreatedItem[],
 ): void {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
 
@@ -322,14 +268,21 @@ function importMarkdownDir(
         description = meta.description
         oldId = meta.id
       }
+
+      // Skip entity if its ID already exists in the database
+      if (hasIdCollision(oldId)) {
+        result.errors.push(`Skipped collection "${name}": entity ID already exists (${oldId})`)
+        result.skipped++
+        continue
+      }
+
       try {
         const collection = repository.libraryCommands.createCollection(
           name, description, parentId,
-          resolveImportId(oldId),
+          oldId as EARS.EntityId | undefined,
         )
         result.created++
-        createdItems.push({ id: collection.id, name, oldId, entityType: 'collection' })
-        importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia, createdItems)
+        importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         result.errors.push(`Failed to create collection "${name}": ${message}`)
@@ -344,16 +297,22 @@ function importMarkdownDir(
         const { tags, name: frontmatterName, id: oldId, body } = parseFrontmatter(raw)
         const name = frontmatterName || toDisplayName(basename)
 
+        // Skip entity if its ID already exists in the database
+        if (hasIdCollision(oldId)) {
+          result.errors.push(`Skipped document "${name}": entity ID already exists (${oldId})`)
+          result.skipped++
+          continue
+        }
+
         const content: ContentSection[] = body.trim()
           ? parseMarkdownSections(body)
           : []
 
         const document = repository.libraryCommands.createDocument(
           name, content, tags, parentId,
-          resolveImportId(oldId),
+          oldId as EARS.EntityId | undefined,
         )
         result.created++
-        createdItems.push({ id: document.id, name, oldId, entityType: 'document' })
 
         if (!hasMedia || content.length === 0) continue
 
