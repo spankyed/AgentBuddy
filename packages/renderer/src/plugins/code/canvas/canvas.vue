@@ -319,6 +319,10 @@ const handleContentChange = (path: string, content: string) => {
         // Compare content with originalContent to determine if file is truly modified
         // This handles undo to original state and prevents spurious Monaco events
         const isModified = content !== f.originalContent
+        // Tiptap normalizes markdown on mount — don't count initial transform as modification
+        if (!f.modified && f.isRichText && isModified) {
+          return { ...f, content, originalContent: content, modified: false }
+        }
         return { ...f, content, modified: isModified }
       }
       // For other tab types, just update content
