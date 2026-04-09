@@ -66,23 +66,25 @@
           <span class="truncate">Checking...</span>
         </button>
 
-        <!-- Back to current branch (left of selector when viewing another PR) -->
-        <button
-          v-if="isViewingOtherPR"
-          @click="handleBackToBranch()"
-          class="px-2 h-7 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
-          title="Back to current branch"
-        >
-          <ArrowLeft :size="13" />
-        </button>
+        <!-- Back button + PR Selector (mutually exclusive with checking spinner) -->
+        <template v-else>
+          <!-- Back to current branch (left of selector when viewing another PR) -->
+          <button
+            v-if="isViewingOtherPR"
+            @click="handleBackToBranch()"
+            class="px-2 h-7 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+            title="Back to current branch"
+          >
+            <ArrowLeft :size="13" />
+          </button>
 
-        <!-- PR Selector — always shown except when checking -->
-        <PRSelector
-          v-else
-          :openPRs="openPRs"
-          :selectedPR="selectedPR"
-          @select-pr="handleSelectPRFromDropdown"
-        />
+          <!-- PR Selector — always shown when not checking -->
+          <PRSelector
+            :openPRs="openPRs"
+            :selectedPR="selectedPR"
+            @select-pr="handleSelectPRFromDropdown"
+          />
+        </template>
 
         <!-- Action buttons (compact, right side) — hide branch-specific buttons when viewing another PR -->
         <template v-if="!selectedPR">
