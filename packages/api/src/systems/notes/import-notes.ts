@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
+import { hasIdCollision } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import { toDisplayName } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
@@ -11,12 +12,6 @@ interface ImportResult {
   skipped: number
   mediaRestored: number
   errors: string[]
-}
-
-interface CreatedNote {
-  id: string
-  title: string
-  oldId?: string
 }
 
 function applyNoteUpdates(
@@ -29,49 +24,6 @@ function applyNoteUpdates(
   if (opts.content !== undefined) updates.content = opts.content
   if (Object.keys(updates).length > 0) {
     repository.noteCommands.update(noteId as EARS.EntityId, updates)
-  }
-}
-
-/** Strip all document:// sub-document links from content (they'll be regenerated with correct IDs). */
-function stripDocumentLinks(content: string): string {
-  return content.replace(/\n*\[[^\]]*\]\(document:\/\/[^)]+\)/g, '')
-}
-
-/** Append a document:// sub-document link to a parent note's content. */
-function appendDocumentLink(parentId: string, childId: string, childTitle: string, childIcon: string | null): void {
-  const parent = repository.noteQueries.byId(parentId as EARS.EntityId)
-  if (!parent) return
-  const iconParam = childIcon ? `?icon=${encodeURIComponent(childIcon)}` : ''
-  const linkMarkdown = `\n\n[${childTitle}](document://${childId}${iconParam})`
-  const newContent = (parent.content || '') + linkMarkdown
-  repository.noteCommands.update(parentId as EARS.EntityId, { content: newContent })
-}
-
-/** Remap note:// reference links using exact oldId→newId mapping, with title-based fallback for older exports. */
-function remapNoteRefs(createdNotes: CreatedNote[]): void {
-  const oldIdToNewId = new Map<string, string>()
-  const titleToId = new Map<string, string>()
-
-  for (const n of createdNotes) {
-    if (n.oldId) oldIdToNewId.set(n.oldId, n.id)
-    if (!titleToId.has(n.title)) titleToId.set(n.title, n.id)
-  }
-
-  for (const n of createdNotes) {
-    const note = repository.noteQueries.byId(n.id as EARS.EntityId)
-    if (!note?.content) continue
-
-    const updated = note.content.replace(
-      /\[([^\]]*)\]\(note:\/\/([^)]+)\)/g,
-      (match, linkText, oldId) => {
-        const newId = oldIdToNewId.get(oldId) ?? titleToId.get(linkText)
-        return newId ? `[${linkText}](note://${newId})` : match
-      },
-    )
-
-    if (updated !== note.content) {
-      repository.noteCommands.update(n.id as EARS.EntityId, { content: updated })
-    }
   }
 }
 
@@ -101,9 +53,7 @@ export function importNotesFromData(data: ExportedNotes): ImportResult {
     result.errors.push('Invalid import data: expected object with "notes" array')
     return result
   }
-  const createdNotes: CreatedNote[] = []
-  importNoteNodes(data.notes, undefined, result, '', false, createdNotes)
-  remapNoteRefs(createdNotes)
+  importNoteNodes(data.notes, undefined, result, '', false)
   return result
 }
 
@@ -125,9 +75,7 @@ function importNotesJson(jsonPath: string): ImportResult {
     return result
   }
 
-  const createdNotes: CreatedNote[] = []
-  importNoteNodes(parsed.notes as ExportedNote[], undefined, result, importDir, hasMedia, createdNotes)
-  remapNoteRefs(createdNotes)
+  importNoteNodes(parsed.notes as ExportedNote[], undefined, result, importDir, hasMedia)
   return result
 }
 
@@ -137,7 +85,6 @@ function importNoteNodes(
   result: ImportResult,
   importDir: string,
   hasMedia: boolean,
-  createdNotes: CreatedNote[],
 ): void {
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i]
@@ -147,25 +94,30 @@ function importNoteNodes(
       continue
     }
 
-    try {
-      const cleanContent = stripDocumentLinks(node.content || '')
+    // Skip entity if its ID already exists in the database
+    if (hasIdCollision(node.id)) {
+      result.errors.push(`Skipped note "${node.title}": entity ID already exists (${node.id})`)
+      result.skipped++
+      continue
+    }
 
+    try {
       const note = repository.noteCommands.create({
         title: node.title,
-        content: cleanContent,
+        content: node.content || '',
         icon: node.icon,
         parentId,
         noteType: node.type,
         completed: node.completed ?? false,
         displayOrder: node.displayOrder ?? i,
+        id: node.id,
       })
       result.created++
-      createdNotes.push({ id: note.id, title: node.title, oldId: node.id })
 
       // Restore media and apply fields not settable via create
       let restoredContent: string | undefined
       if (hasMedia && note.id) {
-        const restored = restoreJsonMediaRefs(cleanContent, note.id, importDir)
+        const restored = restoreJsonMediaRefs(note.content, note.id, importDir)
         result.mediaRestored += restored.mediaRestored
         restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
       }
@@ -180,12 +132,7 @@ function importNoteNodes(
 
       // Recurse for children
       if (node.children && node.children.length > 0) {
-        importNoteNodes(node.children, note.id, result, importDir, hasMedia, createdNotes)
-      }
-
-      // Append document:// link to parent after children are created (skip for tasks)
-      if (parentId && node.type !== 'task') {
-        appendDocumentLink(parentId, note.id, node.title, node.icon)
+        importNoteNodes(node.children, note.id, result, importDir, hasMedia)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -245,9 +192,7 @@ function parseFrontmatter(content: string): {
 function importNotesMarkdown(importDir: string): ImportResult {
   const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
-  const createdNotes: CreatedNote[] = []
-  importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdNotes)
-  remapNoteRefs(createdNotes)
+  importMarkdownDir(importDir, undefined, result, importDir, hasMedia)
   return result
 }
 
@@ -257,7 +202,6 @@ function importMarkdownDir(
   result: ImportResult,
   rootImportDir: string,
   hasMedia: boolean,
-  createdNotes: CreatedNote[],
 ): void {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
 
@@ -285,7 +229,7 @@ function importMarkdownDir(
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
           const parsed = parseFrontmatter(raw)
-          content = stripDocumentLinks(parsed.body)
+          content = parsed.body
           icon = parsed.icon
           favorite = parsed.favorite
           hideCompletedChildren = parsed.hideCompletedChildren
@@ -297,6 +241,13 @@ function importMarkdownDir(
           if (parsed.title) name = parsed.title
         }
 
+        // Skip entity if its ID already exists in the database
+        if (hasIdCollision(oldId)) {
+          result.errors.push(`Skipped note "${name}": entity ID already exists (${oldId})`)
+          result.skipped++
+          continue
+        }
+
         const note = repository.noteCommands.create({
           title: name,
           content,
@@ -305,9 +256,9 @@ function importMarkdownDir(
           noteType,
           completed,
           displayOrder,
+          id: oldId,
         })
         result.created++
-        createdNotes.push({ id: note.id, title: name, oldId })
 
         let restoredContent: string | undefined
         if (hasMedia && content) {
@@ -325,12 +276,7 @@ function importMarkdownDir(
         }
 
         // Recurse for children (skip index.md)
-        importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia, createdNotes)
-
-        // Append document:// link to parent after this note is created (skip for tasks)
-        if (parentId && noteType !== 'task') {
-          appendDocumentLink(parentId, note.id, name, icon)
-        }
+        importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         result.errors.push(`Failed to create note "${name}": ${message}`)
@@ -344,23 +290,29 @@ function importMarkdownDir(
         const raw = fs.readFileSync(fullPath, 'utf-8')
         const parsed = parseFrontmatter(raw)
         name = parsed.title || name
-        const cleanBody = stripDocumentLinks(parsed.body)
+
+        // Skip entity if its ID already exists in the database
+        if (hasIdCollision(parsed.id)) {
+          result.errors.push(`Skipped note "${name}": entity ID already exists (${parsed.id})`)
+          result.skipped++
+          continue
+        }
 
         const note = repository.noteCommands.create({
           title: name,
-          content: cleanBody,
+          content: parsed.body,
           icon: parsed.icon,
           parentId,
           noteType: parsed.type,
           completed: parsed.completed,
           displayOrder: parsed.displayOrder,
+          id: parsed.id,
         })
         result.created++
-        createdNotes.push({ id: note.id, title: name, oldId: parsed.id })
 
         let restoredContent: string | undefined
-        if (hasMedia && cleanBody) {
-          const restored = restoreMarkdownMediaRefs(cleanBody, note.id, rootImportDir)
+        if (hasMedia && parsed.body) {
+          const restored = restoreMarkdownMediaRefs(parsed.body, note.id, rootImportDir)
           result.mediaRestored += restored.mediaRestored
           restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
         }
@@ -371,11 +323,6 @@ function importMarkdownDir(
         })
         if (parsed.savedDisplayOrder != null) {
           repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder: parsed.savedDisplayOrder })
-        }
-
-        // Append document:// link to parent (skip for tasks)
-        if (parentId && parsed.type !== 'task') {
-          appendDocumentLink(parentId, note.id, name, parsed.icon)
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

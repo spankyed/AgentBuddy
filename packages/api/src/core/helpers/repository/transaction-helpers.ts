@@ -24,19 +24,20 @@ export function prepareEntity<T extends { entityType: EARS.Entity }>(
 }
 
 // Create entity with auto-generated fields
-export function createEntityWithDefaults<T extends { 
+export function createEntityWithDefaults<T extends {
   entityType: EARS.Entity;
   shortCode?: string;
   label?: string;
 }>(
   entityType: EARS.Entity,
   data: Partial<T>,
-  prefix?: string
+  prefix?: string,
+  providedId?: EARS.EntityId,
 ): T & { id: EARS.EntityId } {
   const ts = getTimestamp();
   const shortCode = data.shortCode || generateShortCode(entityType, prefix || entityType.substring(0, 3).toUpperCase());
   const label = data.label || generateLabelWithCount(`New ${entityType}`, entityType);
-  
+
   const entity: Omit<T, 'id'> = {
     ...data,
     entityType,
@@ -45,11 +46,11 @@ export function createEntityWithDefaults<T extends {
     createdAt: ts,
     updatedAt: ts,
   } as Omit<T, 'id'>;
-  
-  const id = tx(entityType)
-    .batchPut(entity)
-    .id();
-    
+
+  const id = providedId
+    ? tx(providedId, true).batchPut(entity).id()
+    : tx(entityType).batchPut(entity).id();
+
   return { ...entity, id } as T & { id: EARS.EntityId };
 }
 

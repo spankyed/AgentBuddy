@@ -138,7 +138,7 @@ export const threadQueries = {
 
 // Commands
 export const threadCommands = {
-  create: (input: ThreadCreateData): { id: EARS.EntityId; shortCode: string; timestamp: number, status: string } => {
+  create: (input: ThreadCreateData & { id?: string }): { id: EARS.EntityId; shortCode: string; timestamp: number, status: string } => {
     if (!input.topic?.trim()) {
       throw new RepositoryError('Topic is required', RepositoryErrorCode.VALIDATION_ERROR);
     }
@@ -147,7 +147,9 @@ export const threadCommands = {
     const count = qx(EARS.Entity.Thread).count() + 1;
     const shortCode = `T-${count}` as ThreadTypeShortCode;
 
-    const id = tx(EARS.Entity.Thread).id();
+    const id = input.id
+      ? tx(input.id as EARS.EntityId, true).id()
+      : tx(EARS.Entity.Thread).id();
 
     const status = settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || "Backlog";
     tx(id).updateBatch({
