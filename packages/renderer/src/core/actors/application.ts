@@ -155,7 +155,7 @@ export const createApplicationState = () => setup({
       const handleKeyDown = (e: KeyboardEvent) => {
         // Skip when typing in tiptap editor (unless modifier-based hotkey)
         const target = e.target as HTMLElement;
-        if (target.closest?.('.ProseMirror') && !e.metaKey && !e.ctrlKey) return;
+        if ((target.closest?.('.ProseMirror') || target.closest?.('.monaco-editor')) && !e.metaKey && !e.ctrlKey) return;
 
         updateKeys(e, true);
 

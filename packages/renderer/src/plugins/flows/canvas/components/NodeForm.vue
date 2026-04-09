@@ -11,7 +11,7 @@
       class="absolute top-0 right-0 w-2/5 h-full z-[6] flex"
     >
       <!-- Form content -->
-      <div class="flex-1 bg-neutral-800" data-onboarding-id="flow-node-form">
+      <div class="flex-1 bg-neutral-800" data-onboarding-id="flow-node-form" @keydown.stop>
         <component
           :is="getFormComponent(selectedNode.nodeType)"
           :key="selectedNode.id"

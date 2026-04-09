@@ -17,6 +17,7 @@
       :edges-selectable="true"
       :edges-updatable="true"
       :delete-key-code="['Backspace', 'Delete']"
+      :pan-activation-key-code="null"
       :edge-updater-radius="10"
       :is-valid-connection="isValidConnection"
       @node-click="handleNodeClick"
