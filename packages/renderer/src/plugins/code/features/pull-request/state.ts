@@ -235,16 +235,20 @@ export const pullRequestState = setup({
         if (context.selectedPrFile) {
           const parentContext = getParentContext(self)
           const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
+          // Always non-preview for diff tabs
           const diffTab = {
             path: diffTabId,
             content: '',
             modified: false,
             isDiff: true,
             gitDiff: ev.data,
-            gitFile: context.selectedPrFile
+            gitFile: context.selectedPrFile,
+            isPreview: false as const
           }
+          // Remove any existing preview tab before adding the diff
+          const openFiles = (parentContext?.openFiles || []).filter((f: any) => !f.isPreview)
           const result = mergeTabs(
-            parentContext?.openFiles || [],
+            openFiles,
             [diffTab],
             diffTabId
           )

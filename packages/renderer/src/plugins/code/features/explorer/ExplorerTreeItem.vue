@@ -200,6 +200,7 @@ const selectItem = inject<(path: string, event: MouseEvent) => void>('explorer-s
 const expandDir = inject<(path: string) => void>('explorer-expand-dir')!
 const collapseDir = inject<(path: string) => void>('explorer-collapse-dir')!
 const openFile = inject<(path: string, editorMode?: 'richText' | 'plainText') => void>('explorer-open-file')!
+const promotePreview = inject<(path: string) => void>('explorer-promote-preview')!
 const getMdEditorDefault = inject<() => boolean>('explorer-md-editor-default')!
 const onRename = inject<(oldPath: string, newName: string) => void>('explorer-rename')!
 const onDelete = inject<(file: FileInfo) => void>('explorer-delete')!
@@ -304,8 +305,6 @@ function handleDoubleClick(e: MouseEvent) {
   e.stopPropagation()
   if (props.file.type === 'directory') {
     toggleExpand()
-  } else {
-    openFile(props.file.path)
   }
 }
 

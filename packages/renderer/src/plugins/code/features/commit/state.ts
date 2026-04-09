@@ -198,9 +198,12 @@ export const commitState = setup({
           modified: false,
           isDeleted: true,
           deletedFilePath: ev.file.path,
+          isPreview: false as const,
         }
+        // Remove any existing preview tab before adding
+        const openFiles = (parentContext?.openFiles || []).filter((f: any) => !f.isPreview)
         const result = mergeTabs(
-          parentContext?.openFiles || [],
+          openFiles,
           [deletedTab],
           deletedTab.path
         )
@@ -292,18 +295,21 @@ export const commitState = setup({
           const parentContext = getParentContext(self)
           const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
 
-          // Create diff tab
+          // Create diff tab (always non-preview)
           const diffTab = {
             path: diffTabId,
             content: '',
             modified: false,
             isDiff: true,
             gitDiff: ev.data,
-            gitFile: context.selectedGitFile
+            gitFile: context.selectedGitFile,
+            isPreview: false as const
           }
 
+          // Remove any existing preview tab before adding the diff
+          const openFiles = (parentContext?.openFiles || []).filter((f: any) => !f.isPreview)
           const result = mergeTabs(
-            parentContext?.openFiles || [],
+            openFiles,
             [diffTab],
             diffTabId // Set as active
           )
