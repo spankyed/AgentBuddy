@@ -303,12 +303,14 @@ const codeState = setup({
         openFiles = sortTabsByPinned([...openFiles, newTab])
       }
 
+      const activeFilePath = ev.extraUpdates?.activeFilePath ?? ev.tab.path
+
       return {
         ...context,
         ...(ev.extraUpdates || {}),
         openFiles,
-        activeFilePath: ev.tab.path,
-        tabViewHistory: pushTabViewHistory(context.tabViewHistory, ev.tab.path)
+        activeFilePath,
+        tabViewHistory: pushTabViewHistory(context.tabViewHistory, activeFilePath)
       }
     }),
     updateState: assign(({ event, context, system }) => {

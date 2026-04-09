@@ -1,8 +1,8 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { terminalEventBus } from '../../utils/terminal-events';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs, removeTabs, nextActiveFromHistory } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
+import { removeTabs, nextActiveFromHistory } from '../../utils/tab-management';
 
 export interface TerminalInfo {
   id: string
@@ -227,8 +227,6 @@ export const terminalState = setup({
         const ev = event as { type: 'terminal.CREATED'; data: TerminalInfo }
         const terminalInfo = ev.data
 
-        const parentContext = getParentContext(self)
-
         // Create terminal tab object
         const terminalTab = {
           path: `terminal:${terminalInfo.id}`,
@@ -238,13 +236,7 @@ export const terminalState = setup({
           terminalInfo: terminalInfo
         }
 
-        const result = mergeTabs(
-          parentContext?.openFiles || [],
-          [terminalTab],
-          terminalTab.path // Always set new terminal as active
-        )
-
-        updateParentState(self, result)
+        addTabToParent(self, terminalTab)
       })
     }),
 
@@ -308,13 +300,7 @@ export const terminalState = setup({
           terminalInfo: ev.terminalInfo
         }
 
-        const result = mergeTabs(
-          openFiles,
-          [terminalTab],
-          terminalTab.path // Always set this terminal as active
-        )
-
-        updateParentState(self, result)
+        addTabToParent(self, terminalTab)
       }
     },
 
@@ -341,7 +327,7 @@ export const terminalState = setup({
         return
       }
 
-      // Create terminal tab object
+      // Create terminal tab but keep current active tab
       const terminalTab = {
         path: terminalPath,
         content: '',
@@ -349,14 +335,9 @@ export const terminalState = setup({
         isTerminal: true,
         terminalInfo: ev.data
       }
-
-      const result = mergeTabs(
-        openFiles,
-        [terminalTab],
-        parentContext?.activeFilePath // Keep current active
-      )
-
-      updateParentState(self, result)
+      addTabToParent(self, terminalTab, false, {
+        activeFilePath: parentContext?.activeFilePath
+      })
     }
   }
 }).createMachine({
