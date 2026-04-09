@@ -10,7 +10,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/core/types'
 import { tx } from '@/core/ears/helpers/transaction'
-import { exists } from '@/core/helpers/repository'
+import { resolveImportId } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs } from '@/core/helpers/media'
 import { repository } from '@/repository'
 import type { ExportedThreadsData } from './export-types'
@@ -23,13 +23,6 @@ interface ImportResult {
   artifactsCreated: number
   mediaRestored: number
   errors: string[]
-}
-
-/** Resolve a provided ID for import: use it if valid and not already taken, otherwise undefined (auto-generate). */
-function resolveImportId(providedId: string | undefined): string | undefined {
-  if (!providedId) return undefined
-  if (exists(providedId as EARS.EntityId)) return undefined
-  return providedId
 }
 
 export function importThreads(importDir: string): ImportResult {
@@ -110,6 +103,7 @@ export function importThreads(importDir: string): ImportResult {
       if (thread.shortCode) {
         shortCodeMap.set(thread.shortCode, newThreadId)
       }
+
       // Create messages with full fields
       let lastMessageTimestamp = 0
       for (const msg of thread.messages) {

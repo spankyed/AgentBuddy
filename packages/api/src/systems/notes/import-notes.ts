@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
-import { exists } from '@/core/helpers/repository'
+import { resolveImportId } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import { toDisplayName } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
@@ -31,13 +31,6 @@ function applyNoteUpdates(
   if (Object.keys(updates).length > 0) {
     repository.noteCommands.update(noteId as EARS.EntityId, updates)
   }
-}
-
-/** Resolve a provided ID for import: use it if valid and not already taken, otherwise undefined (auto-generate). */
-function resolveImportId(providedId: string | undefined): string | undefined {
-  if (!providedId) return undefined
-  if (exists(providedId as EARS.EntityId)) return undefined
-  return providedId
 }
 
 /** Remap note:// and document:// reference links using oldId→newId mapping (fallback for imports without persisted IDs). */
@@ -96,8 +89,8 @@ export function importNotesFromData(data: ExportedNotes): ImportResult {
   }
   const createdNotes: CreatedNote[] = []
   importNoteNodes(data.notes, undefined, result, '', false, createdNotes)
-  // Fallback remap only when some notes lacked persisted IDs
-  if (createdNotes.some(n => n.oldId && n.oldId !== n.id)) remapNoteRefs(createdNotes)
+  // Fallback remap when any note failed to preserve its ID (missing oldId or collision)
+  if (!createdNotes.every(n => n.oldId && n.oldId === n.id)) remapNoteRefs(createdNotes)
   return result
 }
 
@@ -121,8 +114,8 @@ function importNotesJson(jsonPath: string): ImportResult {
 
   const createdNotes: CreatedNote[] = []
   importNoteNodes(parsed.notes as ExportedNote[], undefined, result, importDir, hasMedia, createdNotes)
-  // Fallback remap only when some notes lacked persisted IDs
-  if (createdNotes.some(n => n.oldId && n.oldId !== n.id)) remapNoteRefs(createdNotes)
+  // Fallback remap when any note failed to preserve its ID (missing oldId or collision)
+  if (!createdNotes.every(n => n.oldId && n.oldId === n.id)) remapNoteRefs(createdNotes)
   return result
 }
 
@@ -236,8 +229,8 @@ function importNotesMarkdown(importDir: string): ImportResult {
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
   const createdNotes: CreatedNote[] = []
   importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdNotes)
-  // Fallback remap only when some notes lacked persisted IDs
-  if (createdNotes.some(n => n.oldId && n.oldId !== n.id)) remapNoteRefs(createdNotes)
+  // Fallback remap when any note failed to preserve its ID (missing oldId or collision)
+  if (!createdNotes.every(n => n.oldId && n.oldId === n.id)) remapNoteRefs(createdNotes)
   return result
 }
 

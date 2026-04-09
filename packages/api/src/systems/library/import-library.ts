@@ -13,7 +13,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import type { EARS } from '@/core/types'
-import { exists } from '@/core/helpers/repository'
+import { resolveImportId } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import type { ContentSection } from './types'
 import { toDisplayName, parseFrontmatter, parseMarkdownSections } from './utils'
@@ -30,13 +30,6 @@ interface CreatedItem {
   name: string
   oldId?: string
   entityType: 'document' | 'collection'
-}
-
-/** Resolve a provided ID for import: use it if valid and not already taken, otherwise undefined (auto-generate). */
-function resolveImportId(providedId: string | undefined): EARS.EntityId | undefined {
-  if (!providedId) return undefined
-  if (exists(providedId as EARS.EntityId)) return undefined
-  return providedId as EARS.EntityId
 }
 
 /** Remap doc:// and folder:// reference pills (fallback for imports without persisted IDs). */
@@ -133,8 +126,8 @@ function importLibraryJson(importDir: string, jsonPath: string): ImportResult {
   const createdItems: CreatedItem[] = []
 
   processItems(items, undefined, result, importDir, hasMedia, createdItems)
-  // Fallback remap only when some items lacked persisted IDs
-  if (createdItems.some(i => i.oldId && i.oldId !== i.id)) remapRefs(createdItems)
+  // Fallback remap when any item failed to preserve its ID (missing oldId or collision)
+  if (!createdItems.every(i => i.oldId && i.oldId === i.id)) remapRefs(createdItems)
   return result
 }
 
@@ -298,8 +291,8 @@ function importLibraryMarkdown(importDir: string): ImportResult {
   const createdItems: CreatedItem[] = []
 
   importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdItems)
-  // Fallback remap only when some items lacked persisted IDs
-  if (createdItems.some(i => i.oldId && i.oldId !== i.id)) remapRefs(createdItems)
+  // Fallback remap when any item failed to preserve its ID (missing oldId or collision)
+  if (!createdItems.every(i => i.oldId && i.oldId === i.id)) remapRefs(createdItems)
   return result
 }
 
