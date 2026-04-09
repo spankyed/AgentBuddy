@@ -2,8 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { application } from '@/core/actors/application';
 
 export type { GhPullRequest, GhPRComment }
@@ -233,26 +232,16 @@ export const pullRequestState = setup({
       enqueue.assign({ prDiff: ev.data })
       enqueue(() => {
         if (context.selectedPrFile) {
-          const parentContext = getParentContext(self)
           const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
-          // Always non-preview for diff tabs
           const diffTab = {
             path: diffTabId,
             content: '',
             modified: false,
             isDiff: true,
             gitDiff: ev.data,
-            gitFile: context.selectedPrFile,
-            isPreview: false as const
+            gitFile: context.selectedPrFile
           }
-          // Remove any existing preview tab before adding the diff
-          const openFiles = (parentContext?.openFiles || []).filter((f: any) => !f.isPreview)
-          const result = mergeTabs(
-            openFiles,
-            [diffTab],
-            diffTabId
-          )
-          updateParentState(self, result)
+          addTabToParent(self, diffTab, true)
         }
       })
     }),

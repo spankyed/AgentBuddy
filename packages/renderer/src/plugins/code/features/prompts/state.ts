@@ -1,7 +1,6 @@
 import { setup } from 'xstate';
 import { trpc } from '@/core/trpc';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { PromptEntity } from '@app/api';
 
 const sendToBackend = (type: string, data: any) => {
@@ -79,14 +78,7 @@ export const promptsState = setup({
           isPrompt: true,
           promptEntity: ev.data
         }
-
-        // Add to open files
-        const { openFiles: updatedFiles, activeFilePath } = mergeTabs(openFiles, [promptTab], promptTab.path)
-
-        updateParentState(self, {
-          openFiles: updatedFiles,
-          activeFilePath: activeFilePath
-        })
+        addTabToParent(self, promptTab, true)
       }
     },
 

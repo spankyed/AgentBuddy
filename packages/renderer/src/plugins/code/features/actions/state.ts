@@ -1,7 +1,6 @@
 import { setup } from 'xstate';
 import { trpc } from '@/core/trpc';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { ActionEntity } from '@app/api';
 
 const sendToBackend = (type: string, data: any) => {
@@ -79,14 +78,7 @@ export const actionsState = setup({
           isAction: true,
           actionEntity: ev.data
         }
-
-        // Add to open files
-        const { openFiles: updatedFiles, activeFilePath } = mergeTabs(openFiles, [actionTab], actionTab.path)
-
-        updateParentState(self, {
-          openFiles: updatedFiles,
-          activeFilePath: activeFilePath
-        })
+        addTabToParent(self, actionTab, true)
       }
     },
 

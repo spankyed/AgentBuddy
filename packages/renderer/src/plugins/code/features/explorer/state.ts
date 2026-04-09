@@ -1,7 +1,7 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs, removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
+import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
 import { addRecentFile } from '../../utils/recent-files';
 import { imageExtensions } from '../../utils/file-icons';
 
@@ -56,7 +56,6 @@ export interface Context {
   selectedPaths: string[]
   revealPath: string | null
   pendingEditorMode: Map<string, 'richText' | 'plainText'>
-  pendingSkipPreview: Set<string>
 }
 
 // Quick open types
@@ -76,7 +75,7 @@ export type Event =
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
   | { type: 'explorer.DELETE_FILE'; path: string }
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
-  | { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText'; skipPreview?: boolean }
+  | { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText' }
   | { type: 'explorer.OPEN_FILES'; paths: string[] }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
@@ -143,72 +142,29 @@ export const explorerState = setup({
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
       const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
 
-      const skipPreview = context.pendingSkipPreview.has(ev.data.path)
-      const enablePreview = !skipPreview && (parentContext?.settings?.enablePreview ?? true)
-
-      let newSkipPreviewSet = context.pendingSkipPreview
-      if (skipPreview) {
-        newSkipPreviewSet = new Set(context.pendingSkipPreview)
-        newSkipPreviewSet.delete(ev.data.path)
+      // Build tab data — parent decides preview state via ADD_TAB
+      const isImageFile = !existingFile && imageExtensions.includes(ext)
+      const tab = {
+        path: ev.data.path,
+        content: ev.data.content,
+        originalContent: ev.data.content,
+        modified: false,
+        ...(existingFile ? {
+          externallyModified: false,
+          externalModificationTime: undefined,
+          pendingSaveConflict: false,
+        } : {}),
+        ...(isImageFile && { isImage: true }),
+        ...(isRichText && { isRichText: true }),
       }
-
-      if (existingFile) {
-        // Update content for existing file — promote from preview if re-opened
-        const updatedFiles = openFiles.map((f: any) =>
-          f.path === ev.data.path
-            ? {
-                ...f,
-                content: ev.data.content,
-                originalContent: ev.data.content,
-                modified: false,
-                externallyModified: false,
-                externalModificationTime: undefined,
-                pendingSaveConflict: false,
-                isRichText,
-                isPreview: false,
-              }
-            : f
-        )
-        updateParentState(self, {
-          openFiles: updatedFiles,
-          activeFilePath: ev.data.path,
-          isLoading: false,
-          recentlyOpenedFiles: updatedRecentFiles
-        })
-      } else {
-        // Add new file
-        const isImageFile = imageExtensions.includes(ext)
-
-        // When preview is enabled, remove existing preview tab before adding the new one
-        let baseFiles = openFiles
-        if (enablePreview) {
-          baseFiles = openFiles.filter((f: any) => !f.isPreview)
-        }
-
-        const newTab = {
-          path: ev.data.path,
-          content: ev.data.content,
-          originalContent: ev.data.content,
-          modified: false,
-          ...(isImageFile && { isImage: true }),
-          ...(isRichText && { isRichText: true }),
-          ...(enablePreview && { isPreview: true }),
-        }
-        const result = mergeTabs(
-          baseFiles,
-          [newTab],
-          ev.data.path
-        )
-        updateParentState(self, {
-          ...result,
-          isLoading: false,
-          recentlyOpenedFiles: updatedRecentFiles
-        })
-      }
+      addTabToParent(self, tab, false, {
+        isLoading: false,
+        recentlyOpenedFiles: updatedRecentFiles
+      })
 
       self.send({ type: 'explorer.REVEAL_IN_TREE', path: ev.data.path })
 
-      return { pendingEditorMode: newPendingMap, pendingSkipPreview: newSkipPreviewSet }
+      return { pendingEditorMode: newPendingMap }
     }),
 
     handleFileSaved: ({ event, self }) => {
@@ -336,27 +292,21 @@ export const explorerState = setup({
     },
 
     openFile: assign(({ event, context }) => {
-      const ev = event as { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText'; skipPreview?: boolean }
+      const ev = event as { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText' }
       sendToBackend('explorer.READ_FILE', { path: ev.path })
-      const updates: Partial<Context> = {}
       if (ev.editorMode) {
         const newMap = new Map(context.pendingEditorMode)
         newMap.set(ev.path, ev.editorMode)
-        updates.pendingEditorMode = newMap
+        return { pendingEditorMode: newMap }
       }
-      if (ev.skipPreview) {
-        const newSet = new Set(context.pendingSkipPreview)
-        newSet.add(ev.path)
-        updates.pendingSkipPreview = newSet
-      }
-      return updates
+      return {}
     }),
 
     openFiles: enqueueActions(({ enqueue, event }) => {
       const ev = event as { type: 'explorer.OPEN_FILES'; paths: string[] }
       ev.paths.forEach(path => {
         enqueue(({ self }) => {
-          self.send({ type: 'explorer.OPEN_FILE', path, skipPreview: true })
+          self.send({ type: 'explorer.OPEN_FILE', path })
         })
       })
     }),
@@ -382,7 +332,6 @@ export const explorerState = setup({
         selectedPaths: [] as string[],
         revealPath: null as string | null,
         pendingEditorMode: new Map<string, 'richText' | 'plainText'>(),
-        pendingSkipPreview: new Set<string>(),
       }
     }),
 
@@ -580,7 +529,6 @@ export const explorerState = setup({
     selectedPaths: [],
     revealPath: null,
     pendingEditorMode: new Map<string, 'richText' | 'plainText'>(),
-    pendingSkipPreview: new Set<string>(),
   },
   states: {
     idle: {

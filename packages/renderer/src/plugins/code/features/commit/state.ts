@@ -1,7 +1,6 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 
 
 // Git types
@@ -198,16 +197,8 @@ export const commitState = setup({
           modified: false,
           isDeleted: true,
           deletedFilePath: ev.file.path,
-          isPreview: false as const,
         }
-        // Remove any existing preview tab before adding
-        const openFiles = (parentContext?.openFiles || []).filter((f: any) => !f.isPreview)
-        const result = mergeTabs(
-          openFiles,
-          [deletedTab],
-          deletedTab.path
-        )
-        updateParentState(self, result)
+        addTabToParent(self, deletedTab, true)
         return
       }
 
@@ -292,29 +283,16 @@ export const commitState = setup({
       })
       enqueue(() => {
         if (context.selectedGitFile) {
-          const parentContext = getParentContext(self)
           const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-
-          // Create diff tab (always non-preview)
           const diffTab = {
             path: diffTabId,
             content: '',
             modified: false,
             isDiff: true,
             gitDiff: ev.data,
-            gitFile: context.selectedGitFile,
-            isPreview: false as const
+            gitFile: context.selectedGitFile
           }
-
-          // Remove any existing preview tab before adding the diff
-          const openFiles = (parentContext?.openFiles || []).filter((f: any) => !f.isPreview)
-          const result = mergeTabs(
-            openFiles,
-            [diffTab],
-            diffTabId // Set as active
-          )
-
-          updateParentState(self, result)
+          addTabToParent(self, diffTab, true)
         }
       })
     }),

@@ -182,9 +182,6 @@ provide('explorer-collapse-dir', (path: string) => {
 provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainText') => {
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
-provide('explorer-promote-preview', (path: string) => {
-  codeActor.send({ type: 'PROMOTE_PREVIEW_TAB', path })
-})
 
 const settingsActor = applicationState.system.get('settings')
 const mdEditorDefault = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.mdEditorDefault ?? false)

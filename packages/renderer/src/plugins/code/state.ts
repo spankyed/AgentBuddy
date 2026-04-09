@@ -2,7 +2,7 @@ import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@/core/breadcrumb';
 import { trpc } from '@/core/trpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
-import { saveOpenTabs, loadPersistedTabs } from './utils/persisted-tabs';
+import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups } from './utils/tab-groups';
@@ -105,6 +105,7 @@ export type Event =
   | OutgoingCodeEvents
   // Generic update event for child actors to update parent state
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
+  | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'SELECT_PANEL'; panel: PanelType }
   // Tab pinning events
@@ -277,6 +278,39 @@ const codeState = setup({
       saveOpenTabs(context.openFiles)
       saveTabGroups(context.tabGroups)
     },
+    addTab: assign(({ event, context }) => {
+      const ev = event as { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
+      const enablePreview = context.settings?.enablePreview ?? true
+      let openFiles = [...context.openFiles]
+
+      // Check if tab already exists
+      const existingIndex = openFiles.findIndex((f: any) => f.path === ev.tab.path)
+
+      if (existingIndex >= 0) {
+        // Tab exists — update content, KEEP preview state unchanged
+        openFiles[existingIndex] = { ...openFiles[existingIndex], ...ev.tab }
+      } else {
+        // New tab — parent decides preview state based on tab type
+        const isSpecialTab = ev.tab.isDiff || ev.tab.isTerminal || ev.tab.isAction || ev.tab.isPrompt || ev.tab.isDeleted
+        const shouldPreview = enablePreview && !isSpecialTab && !ev.replacePreview
+
+        // Remove old preview tab (only one preview at a time)
+        if (shouldPreview || ev.replacePreview) {
+          openFiles = openFiles.filter((f: any) => !f.isPreview)
+        }
+
+        const newTab = shouldPreview ? { ...ev.tab, isPreview: true } : ev.tab
+        openFiles = sortTabsByPinned([...openFiles, newTab])
+      }
+
+      return {
+        ...context,
+        ...(ev.extraUpdates || {}),
+        openFiles,
+        activeFilePath: ev.tab.path,
+        tabViewHistory: pushTabViewHistory(context.tabViewHistory, ev.tab.path)
+      }
+    }),
     updateState: assign(({ event, context, system }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       const updates = { ...context, ...ev.updates }
@@ -987,6 +1021,10 @@ const codeState = setup({
         // Simple state update from child machines
         UPDATE_STATE: {
           actions: ['notifyDirectoryChange', 'updateState', 'saveTabsAction']
+        },
+        // Add a new tab (race-free: always uses current parent state)
+        ADD_TAB: {
+          actions: ['addTab', 'saveTabsAction']
         },
         // Plugin initialization
         PLUGIN_ACTIVATED: {
