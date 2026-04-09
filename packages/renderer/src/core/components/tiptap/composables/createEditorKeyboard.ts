@@ -9,6 +9,13 @@ function shouldDeferEnter(view: EditorView): boolean {
 
   if ($head.parent.type.name === 'codeBlock') return true
 
+  // Defer when the paragraph text looks like a code block trigger (e.g. "```css" or "~~~python").
+  // Without this, Enter is intercepted for submit/splitBlock before the Tiptap inputRulesPlugin
+  // can run its handleKeyDown, which appends '\n' and matches the code block input rule regex
+  // /^```([a-z]+)?[\s\n]$/ to convert the paragraph into a code block node.
+  const text = $head.parent.textContent
+  if (/^```([a-z]+)?$/.test(text) || /^~~~([a-z]+)?$/.test(text)) return true
+
   for (let d = $head.depth; d > 0; d--) {
     if ($head.node(d).type.name === 'listItem') return true
   }
