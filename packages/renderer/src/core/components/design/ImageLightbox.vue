@@ -51,7 +51,7 @@ import {
   DialogContent,
   DialogTitle,
 } from 'reka-ui'
-import { X, Copy, Download } from 'lucide-vue-next'
+import { X, Copy, Download, ExternalLink } from 'lucide-vue-next'
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
 
 const props = defineProps<{
@@ -108,6 +108,18 @@ const contextMenuItems = computed<MenuItem[]>(() => [
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+    }
+  },
+  {
+    label: 'Open in default app',
+    icon: ExternalLink,
+    class: 'text-neutral-200',
+    action: async () => {
+      try {
+        await window.electronAPI.shell.openImageExternal(props.imageSrc)
+      } catch (error) {
+        console.error('Failed to open image externally:', error)
+      }
     }
   }
 ])

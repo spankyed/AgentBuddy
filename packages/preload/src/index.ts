@@ -44,6 +44,7 @@ const apiPort = getApiPort();
 const shell = {
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   showItemInFolder: (filePath: string) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
+  openImageExternal: (url: string) => ipcRenderer.invoke('shell:openImageExternal', url),
 };
 
 // Media utilities
