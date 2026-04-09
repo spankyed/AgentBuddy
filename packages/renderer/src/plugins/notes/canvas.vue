@@ -4,7 +4,7 @@
     <div v-if="state.hasTag('welcome')" class="flex flex-col h-full overflow-y-auto">
       <!-- Empty state: no notes at all -->
       <template v-if="notes.length === 0">
-        <div class="flex flex-col items-center justify-center h-full gap-4 text-neutral-400">
+        <div class="flex flex-col items-center pt-10 h-full gap-4 text-neutral-400">
           <NotebookText :size="48" class="text-neutral-600" />
           <p class="text-lg">Create your first note</p>
           <button

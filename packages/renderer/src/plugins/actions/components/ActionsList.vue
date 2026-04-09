@@ -95,7 +95,7 @@
         </table>
       </div>
       <!-- Empty State (only when no actions exist at all) -->
-      <div v-if="!hasActions" class="flex items-center justify-center h-full">
+      <div v-if="!hasActions" class="flex flex-col items-center pt-10 h-full">
         <div class="text-center">
           <Play class="w-12 h-12 mx-auto mb-4 text-neutral-600" />
           <h3 class="mb-2 text-lg font-medium text-neutral-300">No actions yet</h3>

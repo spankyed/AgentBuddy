@@ -76,7 +76,7 @@
     
     <!-- Collections List -->
     <div class="flex-1 overflow-y-auto">
-      <div v-if="collections.length === 0" class="flex flex-col items-center justify-center h-full">
+      <div v-if="collections.length === 0" class="flex flex-col items-center pt-10 h-full">
         <div class="flex flex-col items-center max-w-sm text-center">
           <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
             <Folder class="w-8 h-8 text-neutral-500" />

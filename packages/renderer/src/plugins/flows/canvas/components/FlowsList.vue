@@ -64,7 +64,7 @@
       </div>
 
       <!-- No search results -->
-      <div v-else-if="isSearchMode && searchQuery.trim()" class="flex flex-col items-center justify-center h-full px-6 text-center">
+      <div v-else-if="isSearchMode && searchQuery.trim()" class="flex flex-col items-center pt-10 h-full px-6 text-center">
         <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/30">
           <Search class="w-6 h-6 text-neutral-500" />
         </div>
@@ -72,7 +72,7 @@
       </div>
 
       <!-- Empty state -->
-      <div v-else class="flex flex-col items-center justify-center h-full px-6 text-center">
+      <div v-else class="flex flex-col items-center pt-10 h-full px-6 text-center">
         <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/30">
           <Workflow class="w-6 h-6 text-neutral-500" />
         </div>

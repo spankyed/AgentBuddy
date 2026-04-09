@@ -33,7 +33,7 @@
       <!-- Filtered Empty State -->
       <div
         v-else-if="hasActiveFilters"
-        class="flex flex-col items-center justify-center h-full"
+        class="flex flex-col items-center pt-10 h-full"
       >
         <div class="flex flex-col items-center max-w-sm text-center">
           <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
@@ -52,7 +52,7 @@
       <!-- Empty State -->
       <div
         v-else
-        class="flex flex-col items-center justify-center h-full"
+        class="flex flex-col items-center pt-10 h-full"
       >
         <div class="flex flex-col items-center max-w-sm text-center">
           <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
