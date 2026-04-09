@@ -1,3 +1,4 @@
+import 'highlight.js/styles/github-dark.css'
 import type { AnyExtension } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
