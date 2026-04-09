@@ -275,9 +275,12 @@ export const createApplicationState = () => setup({
       // Listen for Electron IPC crash notifications (instant detection)
       const cleanupApiStatus = window.electronAPI?.apiStatus?.onEvent((event) => {
         if (event.type === 'api:stopped' || event.type === 'api:error') {
+          const err = event.error as any;
+          const errorDetail = err?.message || err || 'The backend process stopped unexpectedly.';
+          const errorStack = err?.stack;
           sendBack({
             type: 'BACKEND_ERROR',
-            error: event.error || 'The backend process stopped unexpectedly.',
+            error: errorStack ? `${errorDetail}\n\n${errorStack}` : errorDetail,
           });
         }
       });

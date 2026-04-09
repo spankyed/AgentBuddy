@@ -163,7 +163,7 @@ export class ApiServer implements AppModule {
     } else {
       this.lastError = { message: stderr || `Backend process exited unexpectedly (code ${code})` };
     }
-    broadcastEvent(API_EVENTS.STOPPED);
+    broadcastEvent(API_EVENTS.STOPPED, { error: this.lastError });
 
     // Reset state
     this.actualPort = undefined;

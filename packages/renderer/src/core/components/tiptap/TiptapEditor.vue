@@ -101,12 +101,12 @@ function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: i
 }
 
 // Set content without recording in undo history so note switches can't be undone
-function resetContent(content: string) {
+function resetContent(content: string, resetSelection = false) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
   const parsed = (editor.value.storage as any).markdown.parser.parse(content)
   editor.value.chain().setMeta('addToHistory', false).setContent(parsed).run()
-  selectStart(editor.value)
+  if (resetSelection) selectStart(editor.value)
   lastResetMarkdown.value = getMarkdown()
   suppressNodeDeletionEvents.value = false
 }
@@ -169,7 +169,7 @@ watch(() => props.modelValue, (newVal) => {
 
 // Force-reset editor content on entity switch to prevent stale content display
 watch(() => props.entityId, () => {
-  resetContent(props.modelValue)
+  resetContent(props.modelValue, true)
 })
 
 watch(() => props.disabled, (disabled) => {
