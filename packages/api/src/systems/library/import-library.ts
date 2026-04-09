@@ -122,7 +122,7 @@ function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: I
   try {
     repository.libraryCommands.createSymlinkCollection(
       item.name, item.symlinkPath, parentId,
-      item.id as EARS.EntityId | undefined,
+      item.id,
     )
     result.created++
   } catch (err) {
@@ -156,7 +156,7 @@ function importCollection(
   try {
     const collection = repository.libraryCommands.createCollection(
       item.name, item.description, parentId,
-      item.id as EARS.EntityId | undefined,
+      item.id,
     )
     result.created++
 
@@ -198,7 +198,7 @@ function importDocument(
 
     const document = repository.libraryCommands.createDocument(
       item.name, content, tags, parentId,
-      item.id as EARS.EntityId | undefined,
+      item.id,
     )
     result.created++
 
@@ -279,7 +279,7 @@ function importMarkdownDir(
       try {
         const collection = repository.libraryCommands.createCollection(
           name, description, parentId,
-          oldId as EARS.EntityId | undefined,
+          oldId,
         )
         result.created++
         importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia)
@@ -310,7 +310,7 @@ function importMarkdownDir(
 
         const document = repository.libraryCommands.createDocument(
           name, content, tags, parentId,
-          oldId as EARS.EntityId | undefined,
+          oldId,
         )
         result.created++
 

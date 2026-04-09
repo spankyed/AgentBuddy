@@ -27,7 +27,7 @@ export const libraryCommands = {
     content: ContentSection[],
     tags: string[],
     collectionId?: EARS.EntityId,
-    providedId?: EARS.EntityId,
+    id?: string,
   ): DocumentDTO {
     const now = Date.now()
 
@@ -39,7 +39,7 @@ export const libraryCommands = {
     const displayOrder = getNextDisplayOrder(collectionId || null)
 
     // Create document entity
-    const builder = providedId ? tx(providedId, true) : tx(EARS.Entity.Document)
+    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Document)
     const documentId = builder.id()
 
     builder.updateBatch({
@@ -157,10 +157,10 @@ export const libraryCommands = {
     name: string,
     description?: string,
     parentId?: EARS.EntityId,
-    providedId?: EARS.EntityId,
+    id?: string,
   ): CollectionDTO {
     // Create collection entity
-    const builder = providedId ? tx(providedId, true) : tx(EARS.Entity.Collection)
+    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
     const collectionId = builder.id()
     const now = Date.now()
     
@@ -454,9 +454,9 @@ export const libraryCommands = {
     name: string,
     symlinkPath: string,
     parentId?: EARS.EntityId,
-    providedId?: EARS.EntityId,
+    id?: string,
   ): CollectionDTO {
-    const builder = providedId ? tx(providedId, true) : tx(EARS.Entity.Collection)
+    const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
     const collectionId = builder.id()
     const now = Date.now()
 

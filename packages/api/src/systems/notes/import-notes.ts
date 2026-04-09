@@ -117,7 +117,7 @@ function importNoteNodes(
       // Restore media and apply fields not settable via create
       let restoredContent: string | undefined
       if (hasMedia && note.id) {
-        const restored = restoreJsonMediaRefs(note.content || '', note.id, importDir)
+        const restored = restoreJsonMediaRefs(note.content, note.id, importDir)
         result.mediaRestored += restored.mediaRestored
         restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
       }
