@@ -104,6 +104,7 @@
         </label>
         <ComboboxRoot
           :model-value="selectedPrompt"
+          :disabled="noPrompts"
           ignore-filter
           class="relative w-full"
           :open="isPromptDropdownOpen"
@@ -112,7 +113,7 @@
         >
           <ComboboxAnchor class="w-full">
             <ComboboxTrigger as-child>
-              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :data-open="isPromptDropdownOpen">
+              <div class="inline-flex items-center justify-between w-full gap-2 px-3 py-2.5 text-sm leading-none transition-all duration-200 border rounded-md outline-none bg-neutral-800/50 border-neutral-700 text-neutral-200 hover:border-neutral-600 focus-within:border-neutral-600 focus-within:bg-neutral-800/70" :class="{ 'opacity-50 cursor-not-allowed': noPrompts }" :data-open="isPromptDropdownOpen">
                 <ComboboxInput
                   class="flex-1 bg-transparent outline-none placeholder-neutral-500"
                   :placeholder="selectedPrompt ? '' : 'Select a prompt template...'"
@@ -262,6 +263,8 @@ const fieldMappings = computed(() => {
   if (!mappings) return []
   return Array.isArray(mappings) ? mappings : [mappings]
 })
+
+const noPrompts = computed(() => !props.resources?.prompts?.length)
 
 // Computed filtered lists
 const filteredPrompts = computed(() => {
