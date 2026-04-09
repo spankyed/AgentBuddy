@@ -868,6 +868,7 @@ const flowsState = setup({
           positions: { ...positions, [tempId]: newPosition },
         },
         selectedNodeId: tempId as EARS.EntityId,
+        editingNodeId: tempId as EARS.EntityId,
         tempIdMap: {
           ...context.tempIdMap,
           [tempId]: tempId,
