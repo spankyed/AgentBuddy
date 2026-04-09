@@ -55,12 +55,12 @@
       </div>
 
       <!-- Top action row (always rendered to prevent layout shift, hidden in PR view) -->
-      <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1 px-2 border-b border-neutral-800 bg-neutral-800/50 h-[42px]" :class="{ 'hidden': viewMode === 'pr' }">
+      <div v-if="topRowStatus !== 'hidden'" class="flex items-center gap-1.5 px-4 py-2 border-b border-neutral-800 bg-neutral-800/50" :class="{ 'hidden': viewMode === 'pr' }">
         <!-- Checking spinner (replaces selector while checking) -->
         <button
           v-if="topRowStatus === 'checking'"
           disabled
-          class="flex items-center gap-1.5 px-2 py-1.5 text-sm rounded border border-transparent bg-neutral-700/50 text-neutral-500 flex-1 min-w-0 cursor-default"
+          class="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 text-xs rounded border border-neutral-700 bg-neutral-900 text-neutral-500 flex-1 min-w-0 cursor-default"
         >
           <Loader2 :size="12" class="animate-spin shrink-0" />
           <span class="truncate">Checking...</span>
@@ -80,7 +80,7 @@
             v-if="topRowStatus === 'publish'"
             @click="handlePublishBranch()"
             :disabled="isPushing"
-            class="flex items-center justify-center gap-1 px-2 py-1.5 text-sm rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 shrink-0"
+            class="flex items-center justify-center gap-1 px-2 h-7 text-sm rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 shrink-0"
           >
             <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
             <span>Publish</span>
@@ -88,14 +88,14 @@
           <button
             v-else-if="topRowStatus === 'no-pr'"
             @click="handleCreatePR()"
-            class="flex items-center justify-center px-2 py-1.5 text-sm rounded bg-green-600/80 text-white hover:bg-green-500 transition-colors shrink-0"
+            class="flex items-center justify-center px-2 h-7 text-sm rounded bg-green-600/80 text-white hover:bg-green-500 transition-colors shrink-0"
           >
             <span>Create PR</span>
           </button>
           <button
             v-else-if="topRowStatus === 'check-failed'"
             disabled
-            class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-neutral-700/50 text-neutral-500 shrink-0 cursor-default"
+            class="flex items-center gap-1 px-2 h-7 text-sm rounded bg-neutral-700/50 text-neutral-500 shrink-0 cursor-default"
           >
             <AlertCircle :size="12" class="shrink-0" />
             <span>Error</span>
@@ -104,7 +104,7 @@
         <button
           v-if="isViewingOtherPR"
           @click="handleBackToBranch()"
-          class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+          class="px-2 h-7 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
           title="Back to current branch"
         >
           <ArrowLeft :size="13" />
@@ -112,7 +112,7 @@
         <button
           v-if="selectedPR"
           @click="handleViewPRInfo()"
-          class="px-2 py-1 text-xs rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+          class="px-2 h-7 text-sm rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
           title="View PR details"
         >View</button>
       </div>

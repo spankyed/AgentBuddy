@@ -2,7 +2,7 @@
   <div ref="dropdownContainer" class="relative flex-1 min-w-0">
     <button
       @click="isDropdownOpen = !isDropdownOpen"
-      class="flex items-center w-full gap-1.5 px-2 py-1.5 text-sm rounded text-neutral-300 bg-neutral-700/50 hover:bg-neutral-600/50 transition-colors"
+      class="flex items-center w-full gap-1.5 pl-2 pr-2.5 py-1.5 text-xs rounded border border-neutral-700 text-neutral-300 bg-neutral-900 hover:bg-neutral-800 transition-colors"
     >
       <GitPullRequest :size="12" :class="[prStatusColor(selectedPR), 'shrink-0']" />
       <span class="truncate min-w-0 text-left">
