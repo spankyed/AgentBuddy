@@ -80,7 +80,7 @@
             v-if="topRowStatus === 'publish'"
             @click="handlePublishBranch()"
             :disabled="isPushing"
-            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 shrink-0"
+            class="flex items-center justify-center gap-1 px-2 py-1.5 text-sm rounded bg-blue-600/80 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 shrink-0"
           >
             <Loader2 v-if="isPushing" :size="12" class="animate-spin shrink-0" />
             <span>Publish</span>
@@ -88,7 +88,7 @@
           <button
             v-else-if="topRowStatus === 'no-pr'"
             @click="handleCreatePR()"
-            class="flex items-center justify-center px-2 py-1 text-xs rounded bg-green-600/80 text-white hover:bg-green-500 transition-colors shrink-0"
+            class="flex items-center justify-center px-2 py-1.5 text-sm rounded bg-green-600/80 text-white hover:bg-green-500 transition-colors shrink-0"
           >
             <span>Create PR</span>
           </button>
