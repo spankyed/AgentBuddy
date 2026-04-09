@@ -55,7 +55,18 @@ export const ListKeymap = Extension.create({
       return true
     }
 
+    const handleShiftEnter = () => {
+      const { editor } = this
+      for (const name of LIST_ITEMS) {
+        if (!editor.state.schema.nodes[name]) continue
+        if (!isNodeActive(editor.state, name)) continue
+        return editor.commands.splitListItem(name)
+      }
+      return false
+    }
+
     return {
+      'Shift-Enter': handleShiftEnter,
       Backspace: handleBackspace,
       'Mod-Backspace': handleBackspace,
     }
