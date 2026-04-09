@@ -1,46 +1,46 @@
 <template>
-  <div class="relative h-full w-full">
-    <TrackedContextMenuRoot>
-      <ContextMenuTrigger as-child>
+  <TrackedContextMenuRoot>
+    <ContextMenuTrigger as-child>
+      <div class="relative h-full w-full">
         <div ref="container" class="h-full w-full bg-[#1e1e1e]"></div>
-      </ContextMenuTrigger>
-      <ContextMenuPortal>
-        <ContextMenuContent :class="MENU_CONTENT_CLASS" :side-offset="5">
-          <ContextMenuItem
-            v-if="hasSelection"
-            @select="copySelection"
-            :class="MENU_ITEM_CLASS"
-          >
-            <Copy class="w-4 h-4" />
-            Copy
-          </ContextMenuItem>
-          <ContextMenuItem @select="pasteClipboard" :class="MENU_ITEM_CLASS">
-            <ClipboardPaste class="w-4 h-4" />
-            Paste
-          </ContextMenuItem>
-          <ContextMenuItem @select="selectAll" :class="MENU_ITEM_CLASS">
-            <TextSelect class="w-4 h-4" />
-            Select All
-          </ContextMenuItem>
-          <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
-          <ContextMenuItem @select="clearTerminal" :class="MENU_ITEM_CLASS">
-            <Eraser class="w-4 h-4" />
-            Clear
-          </ContextMenuItem>
-          <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
-          <ContextMenuItem @select="$emit('restart-terminal')" :class="MENU_ITEM_CLASS">
-            <RotateCcw class="w-4 h-4" />
-            Restart Terminal
-          </ContextMenuItem>
-          <ContextMenuItem @select="$emit('kill-terminal')" :class="MENU_ITEM_DANGER_CLASS">
-            <Trash2 class="w-4 h-4" />
-            Kill Terminal
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenuPortal>
-    </TrackedContextMenuRoot>
-    <ScrollToBottomFob :visible="showScrollFob" @click="scrollToBottom()" />
-  </div>
+        <ScrollToBottomFob :visible="showScrollFob" @click="scrollToBottom()" />
+        <ContextMenuPortal>
+          <ContextMenuContent :class="MENU_CONTENT_CLASS" :side-offset="5">
+            <ContextMenuItem
+              v-if="hasSelection"
+              @select="copySelection"
+              :class="MENU_ITEM_CLASS"
+            >
+              <Copy class="w-4 h-4" />
+              Copy
+            </ContextMenuItem>
+            <ContextMenuItem @select="pasteClipboard" :class="MENU_ITEM_CLASS">
+              <ClipboardPaste class="w-4 h-4" />
+              Paste
+            </ContextMenuItem>
+            <ContextMenuItem @select="selectAll" :class="MENU_ITEM_CLASS">
+              <TextSelect class="w-4 h-4" />
+              Select All
+            </ContextMenuItem>
+            <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+            <ContextMenuItem @select="clearTerminal" :class="MENU_ITEM_CLASS">
+              <Eraser class="w-4 h-4" />
+              Clear
+            </ContextMenuItem>
+            <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+            <ContextMenuItem @select="$emit('restart-terminal')" :class="MENU_ITEM_CLASS">
+              <RotateCcw class="w-4 h-4" />
+              Restart Terminal
+            </ContextMenuItem>
+            <ContextMenuItem @select="$emit('kill-terminal')" :class="MENU_ITEM_DANGER_CLASS">
+              <Trash2 class="w-4 h-4" />
+              Kill Terminal
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenuPortal>
+      </div>
+    </ContextMenuTrigger>
+  </TrackedContextMenuRoot>
 </template>
 
 <script lang="ts">
@@ -168,8 +168,8 @@ onMounted(() => {
     convertEol: true,
     cursorBlink: true,
     cursorStyle: 'bar',
-    scrollback: 10_000,
     allowProposedApi: true,
+    scrollback: 10_000,
     cols: props.terminalInfo.cols || 80,
     rows: props.terminalInfo.rows || 24,
     theme: {
