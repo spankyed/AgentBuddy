@@ -311,9 +311,9 @@ const handleContentChange = (path: string, content: string) => {
 
     const isModified = content !== f.originalContent
 
-    // Tiptap normalizes markdown on mount — update baseline, skip promotion
-    if (!f.modified && f.isRichText && isModified) {
-      return { ...f, content, originalContent: content, modified: false }
+    // Tiptap normalizes markdown on mount — update baseline once, skip promotion
+    if (!f.modified && f.isRichText && isModified && !f._richTextBaselineSet) {
+      return { ...f, content, originalContent: content, modified: false, _richTextBaselineSet: true }
     }
 
     if (f.isPreview && isModified) actor.send({ type: 'PROMOTE_PREVIEW_TAB', path })

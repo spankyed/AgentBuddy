@@ -35,6 +35,7 @@ export interface OpenFile {
   isImage?: boolean
   isBinary?: boolean
   isRichText?: boolean
+  _richTextBaselineSet?: boolean
   isPinned?: boolean
   groupId?: string
   isPreview?: boolean
