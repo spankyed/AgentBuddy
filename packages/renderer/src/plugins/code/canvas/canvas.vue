@@ -305,30 +305,19 @@ const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })
 const promotePreview = (path: string) => actor.send({ type: 'PROMOTE_PREVIEW_TAB', path })
 
 const handleContentChange = (path: string, content: string) => {
-  const file = openFiles.value.find(f => f.path === path)
-
-  // Promote preview tab on first edit
-  if (file?.isPreview) {
-    actor.send({ type: 'PROMOTE_PREVIEW_TAB', path })
-  }
-
   const newOpenFiles = openFiles.value.map(f => {
-    if (f.path === path) {
-      // Only compare originalContent for regular files (not terminals, actions, or prompts)
-      if ('originalContent' in f) {
-        // Compare content with originalContent to determine if file is truly modified
-        // This handles undo to original state and prevents spurious Monaco events
-        const isModified = content !== f.originalContent
-        // Tiptap normalizes markdown on mount — don't count initial transform as modification
-        if (!f.modified && f.isRichText && isModified) {
-          return { ...f, content, originalContent: content, modified: false }
-        }
-        return { ...f, content, modified: isModified }
-      }
-      // For other tab types, just update content
-      return { ...f, content, modified: true }
+    if (f.path !== path) return f
+    if (!('originalContent' in f)) return { ...f, content, modified: true }
+
+    const isModified = content !== f.originalContent
+
+    // Tiptap normalizes markdown on mount — update baseline, skip promotion
+    if (!f.modified && f.isRichText && isModified) {
+      return { ...f, content, originalContent: content, modified: false }
     }
-    return f
+
+    if (f.isPreview && isModified) actor.send({ type: 'PROMOTE_PREVIEW_TAB', path })
+    return { ...f, content, modified: isModified }
   })
 
   actor.send({
