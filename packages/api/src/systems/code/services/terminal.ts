@@ -67,7 +67,7 @@ class TerminalService {
       const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
 
       const ptyProcess = pty.spawn(shell, [], {
-        name: 'xterm-color',
+        name: 'xterm-256color',
         cols,
         rows,
         cwd,
@@ -298,6 +298,10 @@ class TerminalService {
       delete sanitized[blocked]
     }
 
+    // Set terminal identification so shells know they're in a capable terminal
+    sanitized.TERM_PROGRAM = 'AgentBuddy'
+    sanitized.COLORTERM = 'truecolor'
+
     return sanitized
   }
 
@@ -335,7 +339,7 @@ class TerminalService {
 
         // Spawn new pty process for the terminal
         const ptyProcess = pty.spawn(persistedTerminal.shell, [], {
-          name: 'xterm-color',
+          name: 'xterm-256color',
           cols: persistedTerminal.cols,
           rows: persistedTerminal.rows,
           cwd: persistedTerminal.cwd,
