@@ -125,6 +125,7 @@ export class FileSystemRepository {
           path: validPath,
           content: `data:${mimeType};base64,${base64}`,
           encoding: 'base64',
+          size: stats.size,
         }
       }
 
@@ -134,6 +135,7 @@ export class FileSystemRepository {
         path: validPath,
         content,
         encoding: 'utf-8',
+        size: stats.size,
       }
     } catch (error: any) {
       if (error.code === 'ENOENT') {

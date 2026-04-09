@@ -118,17 +118,20 @@ export const explorerState = setup({
     },
 
     handleFileContent: assign(({ event, context, self }) => {
-      const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string } }
+      const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string; size?: number } }
       const parentContext = getParentContext(self)
       const openFiles = parentContext?.openFiles || []
       const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
 
       // Determine editor mode: explicit request > setting default
+      // Large files (>300KB) skip Tiptap — it struggles with large documents
+      const MAX_RICH_TEXT_SIZE = 300 * 1024
       const ext = ev.data.path.split('.').pop()?.toLowerCase() || ''
       const pendingMode = context.pendingEditorMode.get(ev.data.path)
       const mdEditorDefault = parentContext?.settings?.mdEditorDefault ?? false
       const isRichText = pendingMode === 'plainText' ? false
         : (pendingMode === 'richText' || (mdEditorDefault && ext === 'md'))
+          && (ev.data.size ?? 0) < MAX_RICH_TEXT_SIZE
 
       let newPendingMap = context.pendingEditorMode
       if (pendingMode) {

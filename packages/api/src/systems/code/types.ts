@@ -19,6 +19,7 @@ export interface FileContent {
   path: string
   content: string
   encoding: string
+  size?: number
 }
 
 export interface FileOperation {
