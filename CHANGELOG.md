@@ -1,5 +1,36 @@
 -e # Changelog
 
+## v0.1.3 (2026-04-09)
+
+### Features
+-  add graceful exit when no releases exist on private repo
+-  add publish-release script to mirror releases to public repo
+-  pull latest after checking out base branch in PR panel
+-  add copy message button to stash entries in commit panel
+-  make diff tabs open as preview like regular files
+
+### Fixes
+-  prevent Tiptap normalization guard from firing on every edit
+-  prevent Tiptap markdown normalization from promoting preview tabs
+-  detect binary files and show info placeholder instead of garbled editor
+-  prevent Tiptap markdown normalization from showing false modified state
+-  center quick prompts menu horizontally on cursor for Cmd+D hotkey
+-  show PR selector alongside back button on sibling branches
+-  fix terminal fit logic to maintain scroll position when claude code go brr
+-  explorer double-click promotes preview tab instead of re-opening file
+-  add script to strip subdocument links from exported task/tasklist notes
+
+### Refactors
+-  migrate terminal tab creation to addTabToParent
+-  centralize preview tab logic in parent via ADD_TAB event
+
+### Other
+- disable AI commit message generation button, show as "Out of order"
+- Merge pull request #110 from spankyed/AS/fix-tab-previewing
+- rename undo-release script to unrelease
+
+-e # Changelog
+
 ## v0.1.2 (2026-04-09)
 
 ### Features
