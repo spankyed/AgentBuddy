@@ -117,7 +117,7 @@ export const brainSystem = setup({
     },
     
     logError: ({ event }) => {
-      // console.error('Brain system error:', typeOf('ERROR', event).error);
+      console.error('Brain system error:', (event as any).error);
     },
     startBrain: enqueueActions(({ context, enqueue, system }) => {
       // Stop existing brain if any using enqueue.stopChild

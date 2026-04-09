@@ -9,6 +9,7 @@ type StepMachineContext = {
   tNode: TNodeEntity;
   step: NodeEntity;
   eventTNodeId?: EARS.EntityId;
+  error?: any;
 };
 
 type StepEvent = {
@@ -94,6 +95,16 @@ export function createStepNodeSystem(
           eventTNodeId: context.eventTNodeId,
           isFlow: false,
         })),
+        notifyFailed: sendParent(({ context }) => ({
+          type: 'CHILD_COMPLETED',
+          stepId: context.step.id,
+          stepLabel: context.step.label,
+          tNodeId: context.tNodeId,
+          result: { error: context.error },
+          final: false,
+          eventTNodeId: context.eventTNodeId,
+          isFlow: false,
+        })),
       },
     }).createMachine({
       id: `step-machine`,
@@ -114,6 +125,7 @@ export function createStepNodeSystem(
             },
             ERROR: {
               target: 'failed',
+              actions: assign({ error: ({ event }) => event.error }),
             },
           },
         },
@@ -122,7 +134,7 @@ export function createStepNodeSystem(
           type: 'final',
         },
         failed: {
-          entry: ['markFailed'],
+          entry: ['markFailed', 'notifyFailed'],
           type: 'final',
         },
       },
