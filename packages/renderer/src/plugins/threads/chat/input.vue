@@ -237,7 +237,7 @@ const virtualRef = computed(() => {
 })
 
 watch(() => props.quickPromptCursor, (cursor) => {
-  if (cursor) popoverOpen.value = true
+  popoverOpen.value = !!cursor
 })
 
 watch(popoverOpen, (isOpen) => {

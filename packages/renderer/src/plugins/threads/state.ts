@@ -131,6 +131,7 @@ type UIEvent =
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'OPEN_QUICK_PROMPTS' }
   | { type: 'CLOSE_QUICK_PROMPTS' }
+  | { type: 'TOGGLE_QUICK_PROMPTS' }
   | { type: 'NAVIGATE_TO_SECRETS' }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
@@ -727,7 +728,7 @@ const threadsState = setup({
     },
     handleHotkey: createHotkeyProcessor({
       textToSpeech: 'TEXT_TO_SPEECH',
-      quickPrompts: 'OPEN_QUICK_PROMPTS',
+      quickPrompts: 'TOGGLE_QUICK_PROMPTS',
     }),
     textToSpeech: () => {
       console.log('[Threads] Text-to-speech triggered (stub)');
@@ -798,7 +799,8 @@ const threadsState = setup({
     },
   },
   guards: {
-    targetIs
+    targetIs,
+    quickPromptsOpen: ({ context }) => context.quickPromptCursor !== null,
   }
 }).createMachine({
   id,
@@ -935,6 +937,10 @@ const threadsState = setup({
     TEXT_TO_SPEECH: { actions: 'textToSpeech' },
     OPEN_QUICK_PROMPTS: { actions: 'openQuickPromptsAtCursor' },
     CLOSE_QUICK_PROMPTS: { actions: 'closeQuickPrompts' },
+    TOGGLE_QUICK_PROMPTS: [
+      { guard: 'quickPromptsOpen', actions: 'closeQuickPrompts' },
+      { actions: 'openQuickPromptsAtCursor' },
+    ],
     VIEW_THREAD: { actions: 'sendOpenThreadView' },
     LOAD_CHAT_THREAD: { actions: 'setThreadChatData' },
     REFRESH_RECENT_THREADS: { actions: 'setRefreshThreadsData' },
