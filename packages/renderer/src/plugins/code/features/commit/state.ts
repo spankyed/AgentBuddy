@@ -1,7 +1,6 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 
 
 // Git types
@@ -199,12 +198,7 @@ export const commitState = setup({
           isDeleted: true,
           deletedFilePath: ev.file.path,
         }
-        const result = mergeTabs(
-          parentContext?.openFiles || [],
-          [deletedTab],
-          deletedTab.path
-        )
-        updateParentState(self, result)
+        addTabToParent(self, deletedTab)
         return
       }
 
@@ -289,10 +283,7 @@ export const commitState = setup({
       })
       enqueue(() => {
         if (context.selectedGitFile) {
-          const parentContext = getParentContext(self)
           const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
-
-          // Create diff tab
           const diffTab = {
             path: diffTabId,
             content: '',
@@ -301,14 +292,7 @@ export const commitState = setup({
             gitDiff: ev.data,
             gitFile: context.selectedGitFile
           }
-
-          const result = mergeTabs(
-            parentContext?.openFiles || [],
-            [diffTab],
-            diffTabId // Set as active
-          )
-
-          updateParentState(self, result)
+          addTabToParent(self, diffTab)
         }
       })
     }),

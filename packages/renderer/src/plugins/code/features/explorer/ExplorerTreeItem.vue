@@ -304,8 +304,6 @@ function handleDoubleClick(e: MouseEvent) {
   e.stopPropagation()
   if (props.file.type === 'directory') {
     toggleExpand()
-  } else {
-    openFile(props.file.path)
   }
 }
 

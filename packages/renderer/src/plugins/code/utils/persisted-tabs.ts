@@ -22,6 +22,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
       .filter(tab => {
         // Skip diff tabs since we can't restore them
         if ('isDiff' in tab && tab.isDiff) return false
+        // Skip preview tabs — they're ephemeral
+        if ('isPreview' in tab && tab.isPreview) return false
         return true
       })
       .map((tab, index) => {

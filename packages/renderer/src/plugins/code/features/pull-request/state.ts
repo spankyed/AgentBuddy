@@ -2,8 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
-import { updateParentState, getParentContext } from '../../utils/parent-communication';
-import { mergeTabs } from '../../utils/tab-management';
+import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { application } from '@/core/actors/application';
 
 export type { GhPullRequest, GhPRComment }
@@ -233,7 +232,6 @@ export const pullRequestState = setup({
       enqueue.assign({ prDiff: ev.data })
       enqueue(() => {
         if (context.selectedPrFile) {
-          const parentContext = getParentContext(self)
           const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
           const diffTab = {
             path: diffTabId,
@@ -243,12 +241,7 @@ export const pullRequestState = setup({
             gitDiff: ev.data,
             gitFile: context.selectedPrFile
           }
-          const result = mergeTabs(
-            parentContext?.openFiles || [],
-            [diffTab],
-            diffTabId
-          )
-          updateParentState(self, result)
+          addTabToParent(self, diffTab)
         }
       })
     }),
