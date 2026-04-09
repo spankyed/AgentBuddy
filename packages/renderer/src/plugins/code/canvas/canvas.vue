@@ -46,6 +46,7 @@
       @unpin-group="unpinGroup"
       @rename-terminal="renameTerminal"
       @kill-terminal="killTerminal"
+      @restart-terminal="restartTerminal"
       @editor-mount="tryRevealLine"
       @editor-file-ready="tryRevealLine"
       class="flex-1 min-h-0"
@@ -290,6 +291,14 @@ const selectFile = (path: string) => {
 }
 
 const killTerminal = (path: string) => actor.send({ type: 'KILL_TERMINAL', path })
+
+const restartTerminal = (path: string) => {
+  const file = openFiles.value.find(f => f.path === path) as any
+  if (!file?.isTerminal) return
+  const { cwd, shell } = file.terminalInfo
+  actor.send({ type: 'KILL_TERMINAL', path })
+  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
+}
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })
 

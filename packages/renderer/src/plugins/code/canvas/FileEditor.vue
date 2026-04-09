@@ -43,6 +43,8 @@
             v-if="isTerminal(activeFile)"
             :key="activeFile.terminalInfo.id"
             :terminal-info="activeFile.terminalInfo"
+            @kill-terminal="$emit('kill-terminal', activeFile!.path)"
+            @restart-terminal="$emit('restart-terminal', activeFile!.path)"
             class="h-full"
           />
         </div>
@@ -164,6 +166,7 @@ const emit = defineEmits<{
   'unpin-group': [groupId: string]
   'rename-terminal': [path: string, customTitle: string]
   'kill-terminal': [path: string]
+  'restart-terminal': [path: string]
   editorMount: []
   editorFileReady: []
 }>()

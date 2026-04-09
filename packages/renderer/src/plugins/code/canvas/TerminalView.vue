@@ -1,6 +1,44 @@
 <template>
   <div class="relative h-full w-full">
-    <div ref="container" class="h-full w-full bg-[#1e1e1e]"></div>
+    <TrackedContextMenuRoot>
+      <ContextMenuTrigger as-child>
+        <div ref="container" class="h-full w-full bg-[#1e1e1e]"></div>
+      </ContextMenuTrigger>
+      <ContextMenuPortal>
+        <ContextMenuContent :class="MENU_CONTENT_CLASS" :side-offset="5">
+          <ContextMenuItem
+            v-if="hasSelection"
+            @select="copySelection"
+            :class="MENU_ITEM_CLASS"
+          >
+            <Copy class="w-4 h-4" />
+            Copy
+          </ContextMenuItem>
+          <ContextMenuItem @select="pasteClipboard" :class="MENU_ITEM_CLASS">
+            <ClipboardPaste class="w-4 h-4" />
+            Paste
+          </ContextMenuItem>
+          <ContextMenuItem @select="selectAll" :class="MENU_ITEM_CLASS">
+            <TextSelect class="w-4 h-4" />
+            Select All
+          </ContextMenuItem>
+          <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+          <ContextMenuItem @select="clearTerminal" :class="MENU_ITEM_CLASS">
+            <Eraser class="w-4 h-4" />
+            Clear
+          </ContextMenuItem>
+          <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+          <ContextMenuItem @select="$emit('restart-terminal')" :class="MENU_ITEM_CLASS">
+            <RotateCcw class="w-4 h-4" />
+            Restart Terminal
+          </ContextMenuItem>
+          <ContextMenuItem @select="$emit('kill-terminal')" :class="MENU_ITEM_DANGER_CLASS">
+            <Trash2 class="w-4 h-4" />
+            Kill Terminal
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenuPortal>
+    </TrackedContextMenuRoot>
     <ScrollToBottomFob :visible="showScrollFob" @click="scrollToBottom()" />
   </div>
 </template>
@@ -13,6 +51,16 @@ const savedScrollLines = new Map<string, number>()
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
+import {
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuPortal,
+  ContextMenuSeparator,
+} from 'reka-ui'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
+import { Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw, Trash2 } from 'lucide-vue-next'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -26,6 +74,11 @@ import '@xterm/xterm/css/xterm.css'
  * Props & actor -------------------------------------------------------------------------- */
 const props = defineProps<{
   terminalInfo: TerminalInfo
+}>()
+
+defineEmits<{
+  'kill-terminal': []
+  'restart-terminal': []
 }>()
 
 const codeActor: CodeState = applicationState.system.get(id)
@@ -42,6 +95,7 @@ let isShowingLoadingContent = false
 const isPinnedToBottom = ref(true)
 let isScrollingProgrammatically = false
 const showScrollFob = computed(() => !isPinnedToBottom.value)
+const hasSelection = ref(false)
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
@@ -67,12 +121,36 @@ const sendResize = () => {
 
 const showLoadingContent = () => {
   if (!term) return
-  
+
   term.write('\x1b[1;36m🚀 Starting terminal...\x1b[0m\r\n')
   term.write('\x1b[90mConnecting to shell: \x1b[0m' + (props.terminalInfo.shell || 'default') + '\r\n')
   term.write('\x1b[90mWorking directory: \x1b[0m' + props.terminalInfo.cwd + '\r\n\r\n')
-  
+
   isShowingLoadingContent = true
+}
+
+/* --------------------------------------------------------------------------
+ * Context menu actions ------------------------------------------------------------------- */
+const copySelection = () => {
+  if (!term) return
+  const selection = term.getSelection()
+  if (selection) navigator.clipboard.writeText(selection)
+}
+
+const pasteClipboard = async () => {
+  if (!term) return
+  const text = await navigator.clipboard.readText()
+  if (text) {
+    terminalActor?.send({ type: 'terminal.INPUT', terminalId: props.terminalInfo.id, data: text })
+  }
+}
+
+const selectAll = () => {
+  term?.selectAll()
+}
+
+const clearTerminal = () => {
+  term?.clear()
 }
 
 /* --------------------------------------------------------------------------
@@ -133,6 +211,11 @@ onMounted(() => {
     }, { passive: true })
   }
 
+  /* 2b. Track selection for context menu */
+  term.onSelectionChange(() => {
+    hasSelection.value = !!term?.getSelection()
+  })
+
   /* 3. Load stored output (restoring scroll position if previously saved) */
   const storedOutput = terminalEventBus.getOutput(props.terminalInfo.id)
   const savedLine = savedScrollLines.get(props.terminalInfo.id)
@@ -151,17 +234,17 @@ onMounted(() => {
   } else {
     showLoadingContent()
   }
-  
+
   /* 4. Subscribe to terminal output events */
   unsubscribe = terminalEventBus.subscribe(props.terminalInfo.id, (terminalId, data) => {
     if (!term) return
-    
+
     // Clear loading content on first real output
     if (isShowingLoadingContent) {
       term.clear()
       isShowingLoadingContent = false
     }
-    
+
     term.write(data, () => {
       if (isPinnedToBottom.value) scrollToBottom()
     })
@@ -178,18 +261,18 @@ onMounted(() => {
     if (event.type === 'keydown' && (event.key === 'Enter' || event.keyCode === 13) && event.shiftKey) {
       // Send a newline character (LF) instead of carriage return (CR)
       // This will move to the next line without executing the command
-      terminalActor?.send({ 
-        type: 'terminal.INPUT', 
-        terminalId: props.terminalInfo.id, 
-        data: '\n' 
+      terminalActor?.send({
+        type: 'terminal.INPUT',
+        terminalId: props.terminalInfo.id,
+        data: '\n'
       })
-      
+
       // Prevent the default Enter behavior
       event.preventDefault()
       event.stopPropagation()
       return false
     }
-    
+
     // Let all other keys pass through normally
     return true
   })
