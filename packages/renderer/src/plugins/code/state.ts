@@ -135,11 +135,52 @@ export type Event =
   | { type: 'OPEN_QUICK_OPEN_RESULT'; path: string }
   | { type: 'SEARCH_IN_FOLDER'; folder: string }
   | { type: 'SAVE_ACTIVE_FILE' }
-  | { type: 'CLOSE_ACTIVE_TAB' };
+  | { type: 'CLOSE_ACTIVE_TAB' }
+  | { type: 'CLOSE_TAB'; path: string }
+  | { type: 'KILL_TERMINAL'; path: string };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
 type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts';
+
+// Shared tab removal logic (tab removal + group cleanup + explorer notify)
+function removeTabLogic(context: Context, system: any, path: string) {
+  const file = context.openFiles.find(f => f.path === path)
+  const newOpenFiles = context.openFiles.filter(f => f.path !== path)
+  const newActiveFilePath = context.activeFilePath === path
+    ? nextActiveFromHistory(context.tabViewHistory, newOpenFiles)
+    : context.activeFilePath
+
+  const groupId = file && 'groupId' in file ? (file as any).groupId : undefined
+  let newTabGroups = context.tabGroups
+  if (groupId) {
+    const remaining = newOpenFiles.filter(f => 'groupId' in f && (f as any).groupId === groupId)
+    if (remaining.length === 0) newTabGroups = context.tabGroups.filter(g => g.id !== groupId)
+  }
+
+  system.get('explorer').send({ type: 'explorer.CLOSE_FILE', path })
+
+  return { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
+}
+
+// Close tab with terminal confirmation, then remove
+function closeTabWithConfirmation(context: Context, system: any, path: string) {
+  const file = context.openFiles.find(f => f.path === path)
+
+  if (file && 'isTerminal' in file && (file as any).isTerminal) {
+    const confirmClose = context.settings?.confirmTerminalClose ?? true
+    if (confirmClose) {
+      const terminalInfo = (file as any).terminalInfo
+      const name = terminalInfo.customTitle || terminalInfo.cwd.split('/').filter(Boolean).pop() || terminalInfo.title
+      if (!confirm(`Close terminal "${name}"?`)) return {}
+    }
+    if (context.settings?.closeTerminalOnTabClose ?? true) {
+      system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
+    }
+  }
+
+  return removeTabLogic(context, system, path)
+}
 
 // Directory will be loaded from backend EARS store
 
@@ -569,38 +610,20 @@ const codeState = setup({
       }
     },
     closeActiveTab: assign(({ context, system }) => {
-      const path = context.activeFilePath
-      if (!path) return {}
-
+      if (!context.activeFilePath) return {}
+      return closeTabWithConfirmation(context, system, context.activeFilePath)
+    }),
+    closeTab: assign(({ context, system, event }) => {
+      const { path } = event as { type: 'CLOSE_TAB'; path: string }
+      return closeTabWithConfirmation(context, system, path)
+    }),
+    killTerminal: assign(({ context, system, event }) => {
+      const { path } = event as { type: 'KILL_TERMINAL'; path: string }
       const file = context.openFiles.find(f => f.path === path)
-
-      // Handle terminal close with confirmation
-      if (file && 'isTerminal' in file && (file as any).isTerminal) {
-        const confirmClose = context.settings?.confirmTerminalClose ?? true
-        if (confirmClose) {
-          const terminalInfo = (file as any).terminalInfo
-          const name = terminalInfo.customTitle || terminalInfo.cwd.split('/').filter(Boolean).pop() || terminalInfo.title
-          if (!confirm(`Close terminal "${name}"?`)) return {}
-        }
-        if (context.settings?.closeTerminalOnTabClose ?? true) {
-          system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
-        }
-      }
-
-      const newOpenFiles = context.openFiles.filter(f => f.path !== path)
-      const newActiveFilePath = nextActiveFromHistory(context.tabViewHistory, newOpenFiles)
-
-      // Clean up empty groups
-      const groupId = file && 'groupId' in file ? (file as any).groupId : undefined
-      let newTabGroups = context.tabGroups
-      if (groupId) {
-        const remaining = newOpenFiles.filter(f => 'groupId' in f && (f as any).groupId === groupId)
-        if (remaining.length === 0) newTabGroups = context.tabGroups.filter(g => g.id !== groupId)
-      }
-
-      system.get('explorer').send({ type: 'explorer.CLOSE_FILE', path })
-
-      return { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
+      if (!file || !('isTerminal' in file)) return {}
+      // Kill without confirmation
+      system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
+      return removeTabLogic(context, system, path)
     }),
     openTerminal: ({ context, self, system }) => {
       // Look for an existing terminal at the active directory
@@ -1037,12 +1060,18 @@ const codeState = setup({
         OPEN_QUICK_OPEN_RESULT: {
           actions: ['openQuickOpenResult', 'hideQuickOpen']
         },
-        // File hotkey actions
+        // File actions (hotkeys + UI)
         SAVE_ACTIVE_FILE: {
           actions: 'saveActiveFile'
         },
         CLOSE_ACTIVE_TAB: {
           actions: ['closeActiveTab', 'saveTabsAction']
+        },
+        CLOSE_TAB: {
+          actions: ['closeTab', 'saveTabsAction']
+        },
+        KILL_TERMINAL: {
+          actions: ['killTerminal', 'saveTabsAction']
         }
       }
     }

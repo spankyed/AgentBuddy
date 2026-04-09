@@ -96,33 +96,17 @@ import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
-import { reorderTabs, nextActiveFromHistory } from '../utils/tab-management'
-import { useTerminalActions } from '../composables/useTerminalActions'
+import { reorderTabs } from '../utils/tab-management'
 
 const actor: CodeState = applicationState.system.get(id)
 const explorerActor = actor.system.get('explorer')
 const terminalActor = actor.system.get('terminal')
-const actionsActor = actor.system.get('codeActions')
-const promptsActor = actor.system.get('codePrompts')
-const settingsActor = applicationState.system.get('settings')
-
-// Terminal outputs are handled through state
 
 // State selectors
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
 const activeFilePath = useSelector(actor, (state) => state.context.activeFilePath)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
-const tabViewHistory = useSelector(actor, (state) => state.context.tabViewHistory)
-const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
-const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
-
-// Terminal actions composable
-const { closeTerminal: closeTerminalProcess } = useTerminalActions(
-  terminalActor,
-  confirmTerminalClose,
-  closeTerminalOnTabClose
-)
 
 const fileEditorRef = ref<InstanceType<typeof FileEditor>>()
 const pendingRevealLine = useSelector(actor, (state) => state.context.pendingRevealLine)
@@ -305,59 +289,9 @@ const selectFile = (path: string) => {
   })
 }
 
-const killTerminal = (path: string) => {
-  const file = openFiles.value.find(f => f.path === path)
-  if (!file || !('isTerminal' in file) || !file.isTerminal) return
-  const terminalInfo = (file as any).terminalInfo
-  // Kill the terminal process (skip confirmation — user explicitly chose "Kill")
-  closeTerminalProcess(terminalInfo, { skipConfirmation: true })
-  // Remove the tab
-  removeTab(path, file)
-}
+const killTerminal = (path: string) => actor.send({ type: 'KILL_TERMINAL', path })
 
-const removeTab = (path: string, file?: any) => {
-  file ??= openFiles.value.find(f => f.path === path)
-  const newOpenFiles = openFiles.value.filter(f => f.path !== path)
-  const newActiveFilePath = activeFilePath.value === path
-    ? nextActiveFromHistory(tabViewHistory.value, newOpenFiles)
-    : activeFilePath.value
-
-  const groupId = file && 'groupId' in file ? file.groupId : undefined
-  let newTabGroups = tabGroups.value
-
-  if (groupId) {
-    const remainingTabsInGroup = newOpenFiles.filter(
-      f => 'groupId' in f && f.groupId === groupId
-    )
-    if (remainingTabsInGroup.length === 0) {
-      newTabGroups = tabGroups.value.filter(g => g.id !== groupId)
-    }
-  }
-
-  actor.send({
-    type: 'UPDATE_STATE',
-    updates: { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
-  })
-
-  explorerActor?.send({ type: 'explorer.CLOSE_FILE', path })
-}
-
-const closeFile = (path: string) => {
-  const file = openFiles.value.find(f => f.path === path)
-  const isTerminal = file && 'isTerminal' in file && file.isTerminal
-
-  // Handle terminal closing with centralized logic
-  if (isTerminal) {
-    const terminalInfo = (file as any).terminalInfo
-    // Use composable for confirmation and process closing
-    // Returns false if user cancelled
-    if (!closeTerminalProcess(terminalInfo)) {
-      return
-    }
-  }
-
-  removeTab(path, file)
-}
+const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })
 
 const handleContentChange = (path: string, content: string) => {
   const newOpenFiles = openFiles.value.map(f => {
@@ -390,34 +324,7 @@ const handleReorder = (fromIndex: number, toIndex: number) => {
   })
 }
 
-const saveFile = async () => {
-  if (activeFile.value && !activeFile.value.isDiff) {
-    if (isAction(activeFile.value)) {
-      // Send event to actions state machine for action files
-      const actionId = activeFile.value.path.replace('action:', '')
-      actionsActor?.send({
-        type: 'codeActions.SAVE_ACTION',
-        actionId: actionId,
-        content: activeFile.value.content
-      })
-    } else if (isPrompt(activeFile.value)) {
-      // Send event to prompts state machine for prompt files
-      const promptId = activeFile.value.path.replace('prompt:', '')
-      promptsActor?.send({
-        type: 'codePrompts.SAVE_PROMPT',
-        promptId: promptId,
-        content: activeFile.value.content
-      })
-    } else {
-      // Send event to explorer state machine for regular files
-      explorerActor?.send({
-        type: 'explorer.WRITE_FILE',
-        path: activeFile.value.path,
-        content: activeFile.value.content
-      })
-    }
-  }
-}
+const saveFile = () => actor.send({ type: 'SAVE_ACTIVE_FILE' })
 
 const loadExternalChanges = () => {
   if (activeFile.value && activeFile.value.pendingSaveConflict) {
