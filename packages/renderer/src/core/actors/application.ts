@@ -96,7 +96,7 @@ export const createApplicationState = () => setup({
       const handleKeyDown = (e: KeyboardEvent) => {
         // Skip app hotkeys when typing in a tiptap editor
         const target = e.target as HTMLElement;
-        if (target.closest?.('.ProseMirror')) return;
+        if (target.closest?.('.ProseMirror') && !e.metaKey && !e.ctrlKey) return;
 
         const appActor = system.get(application);
 

@@ -18,6 +18,11 @@ import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core
 
 export const id = 'threads' as const;
 
+// Module-level mouse position tracker (read when hotkey fires)
+let mouseX = 0;
+let mouseY = 0;
+window.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; }, { passive: true });
+
 const THREADS_VIEW_KEY = 'threads-view-preference';
 
 function getInitialView(): 'list' | 'kanban' {
@@ -125,6 +130,8 @@ type UIEvent =
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
   | { type: 'SWITCH_MODE' }
+  | { type: 'OPEN_QUICK_PROMPTS' }
+  | { type: 'CLOSE_QUICK_PROMPTS' }
   | { type: 'NAVIGATE_TO_SECRETS' }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
@@ -183,6 +190,7 @@ interface ThreadsContext {
   chatSettings: AgentSettings;
   hasRequiredApiKeys: boolean;
   commands: CommandItem[];
+  quickPromptCursor: { x: number; y: number } | null;
 }
 
 // ---- State machine ----
@@ -720,11 +728,16 @@ const threadsState = setup({
     },
     handleHotkey: createHotkeyProcessor({
       textToSpeech: 'TEXT_TO_SPEECH',
-      switchMode: 'SWITCH_MODE'
+      switchMode: 'SWITCH_MODE',
+      quickPrompts: 'OPEN_QUICK_PROMPTS',
     }),
     textToSpeech: () => {
       console.log('[Threads] Text-to-speech triggered (stub)');
     },
+    openQuickPromptsAtCursor: assign(() => ({
+      quickPromptCursor: { x: mouseX, y: mouseY },
+    })),
+    closeQuickPrompts: assign({ quickPromptCursor: null }),
     switchMode: ({ context, self }) => {
       const visibleModes = context.modes.filter(m => !m.hidden && !m.disabled);
       if (!visibleModes.length) return;
@@ -833,6 +846,7 @@ const threadsState = setup({
     chatSettings: { modes: [], hotkeys: {} },
     hasRequiredApiKeys: true,
     commands: [],
+    quickPromptCursor: null,
   }),
   on: {
     // Thread management events
@@ -930,6 +944,8 @@ const threadsState = setup({
     HOTKEY_PRESSED: { actions: ['handleHotkey'] },
     TEXT_TO_SPEECH: { actions: 'textToSpeech' },
     SWITCH_MODE: { actions: 'switchMode' },
+    OPEN_QUICK_PROMPTS: { actions: 'openQuickPromptsAtCursor' },
+    CLOSE_QUICK_PROMPTS: { actions: 'closeQuickPrompts' },
     VIEW_THREAD: { actions: 'sendOpenThreadView' },
     LOAD_CHAT_THREAD: { actions: 'setThreadChatData' },
     REFRESH_RECENT_THREADS: { actions: 'setRefreshThreadsData' },

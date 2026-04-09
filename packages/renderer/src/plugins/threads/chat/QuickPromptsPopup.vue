@@ -1,6 +1,6 @@
 <template>
   <PopoverRoot v-model:open="open">
-    <PopoverTrigger as-child>
+    <PopoverTrigger v-if="!virtualReference" as-child>
       <button
         type="button"
         class="hidden @md:block p-2 text-neutral-500"
@@ -11,9 +11,10 @@
         <Sparkle :size="20" />
       </button>
     </PopoverTrigger>
+    <PopoverAnchor v-if="virtualReference" :reference="virtualReference" />
     <PopoverPortal>
       <PopoverContent
-        side="top"
+        :side="virtualReference ? 'bottom' : 'top'"
         :side-offset="8"
         align="start"
         class="w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
@@ -157,13 +158,15 @@
 <script setup lang="ts">
 import { ref, reactive, watch, nextTick } from 'vue'
 import { Sparkle, Pencil, X, Plus, Copy, Check, GripVertical } from 'lucide-vue-next'
-import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
+import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
+import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '@app/api'
 
 const props = defineProps<{
   prompts: QuickPrompt[]
   disabled?: boolean
+  virtualReference?: ReferenceElement | null
 }>()
 
 const emit = defineEmits<{
