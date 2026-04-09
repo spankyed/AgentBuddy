@@ -440,6 +440,9 @@
                 <div class="text-[11px] text-neutral-500 truncate">{{ stash.ref }} · {{ formatStashBranch(stash.message) }} · {{ formatStashDate(stash.date) }}</div>
               </div>
               <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <button @click.stop="copyStashMessage(stash)" class="p-0.5 hover:bg-neutral-700 rounded" title="Copy message">
+                  <Copy class="w-3 h-3 text-neutral-400" />
+                </button>
                 <button @click.stop="popStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Pop (apply & remove)">
                   <ArrowDownToLine class="w-3 h-3 text-neutral-400" />
                 </button>
@@ -796,6 +799,11 @@ const applyStash = (index: number) => {
 
 const popStash = (index: number) => {
   commitActor?.send({ type: 'commit.STASH_POP', index })
+}
+
+const copyStashMessage = (stash: any) => {
+  const message = formatStashMessage(stash)
+  navigator.clipboard.writeText(message)
 }
 
 const openDropStashDialog = (index: number) => {
