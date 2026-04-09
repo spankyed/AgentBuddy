@@ -1019,6 +1019,16 @@ export class GitRepository {
         }
       }
 
+      // After successful checkout, pull latest (best-effort)
+      try {
+        const hasUpstream = await this.isCurrentBranchPublished()
+        if (hasUpstream) {
+          await this.executeGitCommand(['pull'])
+        }
+      } catch {
+        // Pull failed (network issue, etc.) — checkout still succeeded, so ignore
+      }
+
       // Clear cache after branch switch
       this.clearCache()
     })

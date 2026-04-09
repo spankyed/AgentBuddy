@@ -76,10 +76,10 @@
     <button
       @click="$emit('checkout-base')"
       class="flex items-center gap-1 px-2 py-1 text-xs rounded text-blue-400 hover:bg-blue-900/30 transition-colors"
-      title="Checkout base branch"
+      title="Checkout and pull base branch"
     >
       <GitBranch :size="11" />
-      <span>Checkout Base</span>
+      <span>Checkout & Pull Base</span>
     </button>
     <button
       @click="$emit('delete-branch')"
