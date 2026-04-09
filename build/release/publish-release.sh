@@ -10,6 +10,10 @@ if [[ -n "${1:-}" ]]; then
   TAG="$1"
 else
   TAG=$(gh release list --repo "$PRIVATE_REPO" --limit 1 --json tagName -q '.[0].tagName')
+  if [[ -z "$TAG" ]]; then
+    echo "No releases found on $PRIVATE_REPO. Nothing to publish."
+    exit 0
+  fi
   echo "No tag specified, using latest: $TAG"
 fi
 
