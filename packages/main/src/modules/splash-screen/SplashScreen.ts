@@ -27,7 +27,7 @@ export class SplashScreen implements AppModule {
       transparent: true,
       alwaysOnTop: false,
       resizable: false,
-      movable: false,
+      movable: true,
       center: true,
       show: false,
       webPreferences: {

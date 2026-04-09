@@ -13,6 +13,7 @@ html, body {
 }
 
 body {
+    -webkit-app-region: drag;
     background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%);
     display: flex;
     justify-content: center;
