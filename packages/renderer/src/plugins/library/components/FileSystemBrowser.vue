@@ -607,6 +607,13 @@ function confirmSymlink() {
 const renameItem = (item: LibraryItem) => startEditingItem(item.id, item.name)
 
 function deleteItem(item: LibraryItem) {
+  // Empty folders can be deleted without confirmation
+  if (item.type === 'folder' && item.childCount === 0 && !item.isSymlink) {
+    emit('SELECT_ITEMS', { itemIds: [item.id] })
+    emit('DELETE_SELECTED_ITEMS')
+    return
+  }
+
   const isSymlinkFolder = item.type === 'folder' && (item as any).isSymlink
   deleteDialog.currentItem = item
   deleteDialog.isUnlink = isSymlinkFolder
