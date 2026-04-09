@@ -33,6 +33,7 @@ export interface OpenFile {
   externalModificationTime?: Date
   pendingSaveConflict?: boolean
   isImage?: boolean
+  isBinary?: boolean
   isRichText?: boolean
   isPinned?: boolean
   groupId?: string

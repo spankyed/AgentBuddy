@@ -130,12 +130,14 @@ export class FileSystemRepository {
       }
 
       const content = await fs.readFile(validPath, 'utf-8')
+      const isBinary = content.includes('\0')
 
       return {
         path: validPath,
-        content,
+        content: isBinary ? '' : content,
         encoding: 'utf-8',
         size: stats.size,
+        ...(isBinary && { isBinary: true }),
       }
     } catch (error: any) {
       if (error.code === 'ENOENT') {

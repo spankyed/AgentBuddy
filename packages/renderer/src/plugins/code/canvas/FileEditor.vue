@@ -86,6 +86,15 @@
           />
         </div>
 
+        <!-- Binary file info -->
+        <div v-else-if="isBinaryFile" class="h-full flex items-center justify-center" style="background: #1e1e1e">
+          <div class="text-center">
+            <FileWarning class="w-12 h-12 mx-auto mb-3 text-neutral-600" />
+            <p class="text-neutral-400 text-sm">This is a binary file and cannot be displayed</p>
+            <p class="text-neutral-600 text-xs mt-1">{{ activeFile?.path.split('/').pop() }}</p>
+          </div>
+        </div>
+
         <!-- Rich text editor for markdown files -->
         <div v-show="isRichText(activeFile)" class="h-full overflow-auto file-rich-text" style="background: #1e1e1e">
           <TiptapEditor
@@ -101,10 +110,10 @@
         </div>
 
         <!-- Monaco editor for both regular files and diffs -->
-        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
+        <div v-show="!isTerminal(activeFile) && !isImage(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff" class="h-full overflow-hidden">
           <MonacoEditor
             ref="monacoEditorRef"
-            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
+            v-if="!isTerminal(activeFile) && !isImage(activeFile) && !isBinaryFile && !isRichText(activeFile) && !isDeletedFile && !isImageDiff"
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             :file-path="activeFilePath || undefined"
@@ -126,7 +135,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { FileCode } from 'lucide-vue-next'
+import { FileCode, FileWarning } from 'lucide-vue-next'
 import MonacoEditor from './MonacoEditor.vue'
 import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
@@ -198,6 +207,11 @@ const isImageDiff = computed(() => {
   if (!isDiffFile.value || !activeFile.value) return false
   const diff = getDiffContent(activeFile.value)
   return diff?.isImage === true
+})
+
+// Helper to check if file is binary
+const isBinaryFile = computed(() => {
+  return activeFile.value && 'isBinary' in activeFile.value && activeFile.value.isBinary === true
 })
 
 // Helper to check if file is a deleted file placeholder

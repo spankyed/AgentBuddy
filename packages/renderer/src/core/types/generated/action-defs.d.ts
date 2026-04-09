@@ -140,6 +140,7 @@ interface FileContent {
     content: string;
     encoding: string;
     size?: number;
+    isBinary?: boolean;
 }
 interface CodeSystemError {
     code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';

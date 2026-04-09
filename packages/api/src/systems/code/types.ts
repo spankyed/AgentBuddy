@@ -20,6 +20,7 @@ export interface FileContent {
   content: string
   encoding: string
   size?: number
+  isBinary?: boolean
 }
 
 export interface FileOperation {

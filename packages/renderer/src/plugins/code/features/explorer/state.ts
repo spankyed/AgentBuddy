@@ -117,7 +117,7 @@ export const explorerState = setup({
     },
 
     handleFileContent: assign(({ event, context, self }) => {
-      const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string; size?: number } }
+      const ev = event as { type: 'explorer.FILE_CONTENT'; data: { path: string; content: string; encoding: string; size?: number; isBinary?: boolean } }
       const parentContext = getParentContext(self)
       const openFiles = parentContext?.openFiles || []
       const existingFile = openFiles.find((f: any) => f.path === ev.data.path)
@@ -155,6 +155,7 @@ export const explorerState = setup({
           pendingSaveConflict: false,
         } : {}),
         ...(isImageFile && { isImage: true }),
+        ...(ev.data.isBinary && { isBinary: true }),
         ...(isRichText && { isRichText: true }),
       }
       addTabToParent(self, tab, false, {
