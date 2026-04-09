@@ -36,6 +36,7 @@ export interface OpenFile {
   isRichText?: boolean
   isPinned?: boolean
   groupId?: string
+  isPreview?: boolean
 }
 
 export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'
@@ -137,7 +138,8 @@ export type Event =
   | { type: 'SAVE_ACTIVE_FILE' }
   | { type: 'CLOSE_ACTIVE_TAB' }
   | { type: 'CLOSE_TAB'; path: string }
-  | { type: 'KILL_TERMINAL'; path: string };
+  | { type: 'KILL_TERMINAL'; path: string }
+  | { type: 'PROMOTE_PREVIEW_TAB'; path: string };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -677,6 +679,16 @@ const codeState = setup({
       self.send({ type: 'SELECT_PANEL', panel: 'search' })
     },
 
+    promotePreviewTab: assign(({ event, context }) => {
+      const ev = event as { type: 'PROMOTE_PREVIEW_TAB'; path: string }
+      return {
+        ...context,
+        openFiles: context.openFiles.map(file =>
+          file.path === ev.path ? { ...file, isPreview: false } : file
+        )
+      }
+    }),
+
     pinTab: assign(({ event, context }) => {
       const ev = event as { type: 'PIN_TAB'; path: string }
 
@@ -685,7 +697,7 @@ const codeState = setup({
       const groupId = tab && 'groupId' in tab ? tab.groupId : undefined
 
       const updatedFiles = context.openFiles.map(file =>
-        file.path === ev.path ? { ...file, isPinned: true, groupId: undefined } : file
+        file.path === ev.path ? { ...file, isPinned: true, groupId: undefined, isPreview: false } : file
       )
 
       // Delete group if now empty
@@ -788,7 +800,7 @@ const codeState = setup({
       const updatedFiles = ev.tabPaths
         ? context.openFiles.map(file =>
             ev.tabPaths!.includes(file.path)
-              ? { ...file, groupId: newGroup.id, isPinned: shouldPinGroup }
+              ? { ...file, groupId: newGroup.id, isPinned: shouldPinGroup, isPreview: false }
               : file
           )
         : context.openFiles
@@ -877,7 +889,7 @@ const codeState = setup({
       // Set tab's isPinned to match the group's pinned status
       const updatedFiles = context.openFiles.map(file =>
         file.path === ev.path
-          ? { ...file, groupId: ev.groupId, isPinned: shouldPin }
+          ? { ...file, groupId: ev.groupId, isPinned: shouldPin, isPreview: false }
           : file
       )
 
@@ -1072,6 +1084,9 @@ const codeState = setup({
         },
         KILL_TERMINAL: {
           actions: ['killTerminal', 'saveTabsAction']
+        },
+        PROMOTE_PREVIEW_TAB: {
+          actions: ['promotePreviewTab', 'saveTabsAction']
         }
       }
     }

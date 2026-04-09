@@ -47,6 +47,7 @@
       @rename-terminal="renameTerminal"
       @kill-terminal="killTerminal"
       @restart-terminal="restartTerminal"
+      @promote-preview="promotePreview"
       @editor-mount="tryRevealLine"
       @editor-file-ready="tryRevealLine"
       class="flex-1 min-h-0"
@@ -301,19 +302,22 @@ const restartTerminal = (path: string) => {
 }
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })
+const promotePreview = (path: string) => actor.send({ type: 'PROMOTE_PREVIEW_TAB', path })
 
 const handleContentChange = (path: string, content: string) => {
   const newOpenFiles = openFiles.value.map(f => {
     if (f.path === path) {
+      // Promote preview tab on edit
+      const clearPreview = f.isPreview ? { isPreview: false } : {}
       // Only compare originalContent for regular files (not terminals, actions, or prompts)
       if ('originalContent' in f) {
         // Compare content with originalContent to determine if file is truly modified
         // This handles undo to original state and prevents spurious Monaco events
         const isModified = content !== f.originalContent
-        return { ...f, content, modified: isModified }
+        return { ...f, content, modified: isModified, ...clearPreview }
       }
       // For other tab types, just update content
-      return { ...f, content, modified: true }
+      return { ...f, content, modified: true, ...clearPreview }
     }
     return f
   })

@@ -123,6 +123,165 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
+interface FileInfo {
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+    size?: number;
+    modifiedAt?: Date;
+    extension?: string;
+}
+interface DirectoryContent {
+    path: string;
+    files: FileInfo[];
+}
+interface FileContent {
+    path: string;
+    content: string;
+    encoding: string;
+}
+interface CodeSystemError {
+    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
+    message: string;
+    path?: string;
+}
+interface SearchMatch {
+    line: number;
+    column: number;
+    lineText: string;
+    matchStart: number;
+    matchEnd: number;
+}
+interface SearchResult {
+    path: string;
+    matches: SearchMatch[];
+    fileSize?: number;
+}
+interface SearchProgress {
+    filesSearched: number;
+    totalFiles: number;
+    currentFile?: string;
+}
+interface GitStatusFile {
+    path: string;
+    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
+    staged: boolean;
+    originalPath?: string;
+    score?: number;
+}
+interface GitDiff {
+    path: string;
+    diff: string;
+    staged: boolean;
+    originalContent?: string;
+    modifiedContent?: string;
+    isImage?: boolean;
+}
+interface StashEntry {
+    index: number;
+    ref: string;
+    message: string;
+    date: string;
+}
+interface GhPullRequest {
+    number: number;
+    title: string;
+    body: string;
+    headRefName: string;
+    baseRefName: string;
+    state: 'OPEN' | 'CLOSED' | 'MERGED';
+    url: string;
+    isDraft: boolean;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+    commits?: {
+        oid: string;
+        messageHeadline: string;
+        committedDate: string;
+    }[];
+}
+interface GhPRComment {
+    id: string;
+    body: string;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    url: string;
+    viewerDidAuthor: boolean;
+}
+interface GhReviewThread {
+    id: string;
+    isResolved: boolean;
+    isOutdated: boolean;
+    path: string;
+    line: number | null;
+    comments: GhReviewComment[];
+}
+interface GhReviewComment {
+    id: string;
+    databaseId: number;
+    body: string;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    viewerDidAuthor: boolean;
+}
+interface TerminalInfo {
+    id: EARS.EntityId;
+    title: string;
+    customTitle?: string;
+    pid: number;
+    shell?: string;
+    cwd: string;
+    active: boolean;
+    cols: number;
+    rows: number;
+}
+interface QuickOpenResult {
+    path: string;
+    relativePath: string;
+    name: string;
+    type: 'file' | 'directory';
+    extension?: string;
+    score?: number;
+}
+interface CodeSettings {
+    hotkeys: {
+        openTerminal?: KeyboardShortcut | null;
+        navigatePrevPanel?: KeyboardShortcut | null;
+        navigateNextPanel?: KeyboardShortcut | null;
+        focusSearch?: KeyboardShortcut | null;
+        [key: string]: KeyboardShortcut | null | undefined;
+    };
+    restoreTerminals?: boolean;
+    defaultBaseDirectory?: string | null;
+    lastDirectoryOpened?: string | null;
+    enableShellIntegration?: boolean;
+    confirmTerminalClose?: boolean;
+    closeTerminalOnTabClose?: boolean;
+    mdEditorDefault?: boolean;
+    enablePreview?: boolean;
+    autoFetchRemote?: boolean;
+    autoFetchIntervalSeconds?: number;
+}
+type CodeConnectedData = {
+    baseDirectory: string | null;
+    settings?: CodeSettings;
+};
+
+type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
+type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
+interface ActiveTokenInfo {
+    source: TokenSource;
+    kind: TokenKind;
+    prefix: string;
+}
+
 interface FileChangeInfo {
     path: string;
     modifiedAt: Date;
@@ -527,153 +686,6 @@ interface ArtifactItem {
     };
 }
 
-interface FileInfo {
-    name: string;
-    path: string;
-    type: 'file' | 'directory';
-    size?: number;
-    modifiedAt?: Date;
-    extension?: string;
-}
-interface DirectoryContent {
-    path: string;
-    files: FileInfo[];
-}
-interface FileContent {
-    path: string;
-    content: string;
-    encoding: string;
-}
-interface CodeSystemError {
-    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
-    message: string;
-    path?: string;
-}
-interface SearchMatch {
-    line: number;
-    column: number;
-    lineText: string;
-    matchStart: number;
-    matchEnd: number;
-}
-interface SearchResult {
-    path: string;
-    matches: SearchMatch[];
-    fileSize?: number;
-}
-interface SearchProgress {
-    filesSearched: number;
-    totalFiles: number;
-    currentFile?: string;
-}
-interface GitStatusFile {
-    path: string;
-    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
-    staged: boolean;
-    originalPath?: string;
-    score?: number;
-}
-interface GitDiff {
-    path: string;
-    diff: string;
-    staged: boolean;
-    originalContent?: string;
-    modifiedContent?: string;
-}
-interface StashEntry {
-    index: number;
-    ref: string;
-    message: string;
-    date: string;
-}
-interface GhPullRequest {
-    number: number;
-    title: string;
-    body: string;
-    headRefName: string;
-    baseRefName: string;
-    state: 'OPEN' | 'CLOSED' | 'MERGED';
-    url: string;
-    isDraft: boolean;
-    author: {
-        login: string;
-    };
-    createdAt: string;
-    updatedAt: string;
-    commits?: {
-        oid: string;
-        messageHeadline: string;
-        committedDate: string;
-    }[];
-}
-interface GhPRComment {
-    id: string;
-    body: string;
-    author: {
-        login: string;
-    };
-    createdAt: string;
-    url: string;
-    viewerDidAuthor: boolean;
-}
-interface GhReviewThread {
-    id: string;
-    isResolved: boolean;
-    isOutdated: boolean;
-    path: string;
-    line: number | null;
-    comments: GhReviewComment[];
-}
-interface GhReviewComment {
-    id: string;
-    databaseId: number;
-    body: string;
-    author: {
-        login: string;
-    };
-    createdAt: string;
-    viewerDidAuthor: boolean;
-}
-interface TerminalInfo {
-    id: EARS.EntityId;
-    title: string;
-    customTitle?: string;
-    pid: number;
-    shell?: string;
-    cwd: string;
-    active: boolean;
-    cols: number;
-    rows: number;
-}
-interface QuickOpenResult {
-    path: string;
-    relativePath: string;
-    name: string;
-    type: 'file' | 'directory';
-    extension?: string;
-    score?: number;
-}
-interface CodeSettings {
-    hotkeys: {
-        openTerminal?: KeyboardShortcut | null;
-        navigatePrevPanel?: KeyboardShortcut | null;
-        navigateNextPanel?: KeyboardShortcut | null;
-        focusSearch?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    restoreTerminals?: boolean;
-    defaultBaseDirectory?: string | null;
-    lastDirectoryOpened?: string | null;
-    enableShellIntegration?: boolean;
-    confirmTerminalClose?: boolean;
-    closeTerminalOnTabClose?: boolean;
-    mdEditorDefault?: boolean;
-}
-type CodeConnectedData = {
-    baseDirectory: string | null;
-    settings?: CodeSettings;
-};
-
 type DocumentShortCode = `DOC-${number}`;
 interface FieldContent {
     type: 'field';
@@ -840,144 +852,6 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GO_BACK_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
-        systemId: zod.ZodLiteral<"brain">;
-        flowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"START_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"KILL_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESTART_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PAUSE_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESUME_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1103,6 +977,144 @@ declare const events: {
         type: "IMPORT_SETUP_PACK";
         systemId: "settings";
         directory: string;
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GO_BACK_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
+        systemId: zod.ZodLiteral<"brain">;
+        flowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"START_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"KILL_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTART_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PAUSE_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESUME_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1274,12 +1286,6 @@ declare const events: {
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1289,14 +1295,14 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         }, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1306,6 +1312,12 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1313,12 +1325,6 @@ declare const events: {
         type: "USER_MSG";
         systemId: "threads";
         references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1328,6 +1334,12 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -1338,12 +1350,6 @@ declare const events: {
         type: "USER_MSG";
         systemId: "threads";
         references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1353,6 +1359,12 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -1527,12 +1539,6 @@ declare const events: {
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1542,14 +1548,14 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         }, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1559,6 +1565,12 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1567,12 +1579,6 @@ declare const events: {
         type: "USER_COMMAND";
         systemId: "threads";
         references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1582,6 +1588,12 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -1593,12 +1605,6 @@ declare const events: {
         type: "USER_COMMAND";
         systemId: "threads";
         references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1608,6 +1614,12 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
+            }[] | undefined;
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -2164,9 +2176,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -2174,9 +2186,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -3797,6 +3809,64 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        resolvedPath?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORTED";
+        result: SeedResult;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORT_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -3841,63 +3911,6 @@ declare const events: {
     } | {
         type: "BRAIN_RESUMED";
         pluginId: "brain";
-    } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_IMPORTED";
-        result: SeedResult;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_IMPORT_FAILED";
-        error: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -4666,6 +4679,8 @@ declare const events: {
         type: "pr.GH_AUTH_CHECKED";
         data: {
             available: boolean;
+            prAccess: boolean;
+            activeToken: ActiveTokenInfo | null;
         };
         pluginId: "code";
     } | {
@@ -5493,7 +5508,7 @@ declare function createEntityWithDefaults<T extends {
     entityType: EARS.Entity;
     shortCode?: string;
     label?: string;
-}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string): T & {
+}>(entityType: EARS.Entity, data: Partial<T>, prefix?: string, providedId?: EARS.EntityId): T & {
     id: EARS.EntityId;
 };
 declare function updateEntity(id: EARS.EntityId, updates: Record<string, any>, skipTimestamp?: boolean): void;
@@ -6195,7 +6210,9 @@ declare const services: {
             };
             readonly createThreadFromMessage: (text: string) => {
                 threadId: EARS.EntityId;
-                threadData: ReturnType<(input: ThreadCreateData) => {
+                threadData: ReturnType<(input: ThreadCreateData & {
+                    id?: string;
+                }) => {
                     id: EARS.EntityId;
                     shortCode: string;
                     timestamp: number;
@@ -6328,10 +6345,10 @@ declare const services: {
             readonly getAllDocuments: () => DocumentDTO[];
         };
         readonly libraryCommands: {
-            readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId) => DocumentDTO;
+            readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string) => DocumentDTO;
             readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId) => DocumentDTO;
             readonly deleteDocument: (id: EARS.EntityId) => void;
-            readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId) => CollectionDTO;
+            readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string) => CollectionDTO;
             readonly updateCollection: (id: EARS.EntityId, name: string, description?: string) => CollectionDTO;
             readonly deleteCollection: (id: EARS.EntityId) => void;
             readonly moveDocument: (documentId: EARS.EntityId, newCollectionId?: EARS.EntityId) => DocumentDTO;
@@ -6340,7 +6357,7 @@ declare const services: {
             readonly moveItems: (ids: EARS.EntityId[], targetFolderId: EARS.EntityId | null) => void;
             readonly migrateDocumentShortCodes: () => void;
             readonly migrateDisplayOrders: () => void;
-            readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId) => CollectionDTO;
+            readonly createSymlinkCollection: (name: string, symlinkPath: string, parentId?: EARS.EntityId, id?: string) => CollectionDTO;
             readonly updateSymlinkPath: (collectionId: EARS.EntityId, newPath: string) => CollectionDTO;
             readonly updateDocumentTags: (documentId: EARS.EntityId, tags: string[]) => void;
         };
@@ -6439,7 +6456,9 @@ declare const services: {
             readonly connectedData: () => ThreadConnectedData;
         };
         readonly threadCommands: {
-            readonly create: (input: ThreadCreateData) => {
+            readonly create: (input: ThreadCreateData & {
+                id?: string;
+            }) => {
                 id: EARS.EntityId;
                 shortCode: string;
                 timestamp: number;
@@ -6483,6 +6502,7 @@ declare const services: {
                 displayOrder?: number;
                 noteType?: "document" | "tasklist" | "task";
                 completed?: boolean;
+                id?: string;
             }) => NoteEntity;
             readonly update: (id: EARS.EntityId, updates: {
                 title?: string;

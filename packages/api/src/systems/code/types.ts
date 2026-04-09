@@ -219,6 +219,7 @@ export interface CodeSettings {
   confirmTerminalClose?: boolean;
   closeTerminalOnTabClose?: boolean;
   mdEditorDefault?: boolean;
+  enablePreview?: boolean;
   autoFetchRemote?: boolean;
   autoFetchIntervalSeconds?: number;
 }

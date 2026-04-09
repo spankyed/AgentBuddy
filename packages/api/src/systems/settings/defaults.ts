@@ -78,6 +78,7 @@ export const defaultSettings: SettingsData = {
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,
       mdEditorDefault: true,
+      enablePreview: true,
       autoFetchRemote: false,
       autoFetchIntervalSeconds: 180,
     },

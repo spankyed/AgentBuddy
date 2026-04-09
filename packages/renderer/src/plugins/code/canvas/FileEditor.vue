@@ -25,6 +25,7 @@
       @unpin-group="(groupId) => $emit('unpin-group', groupId)"
       @rename-terminal="(path, customTitle) => $emit('rename-terminal', path, customTitle)"
       @kill-terminal="(path) => $emit('kill-terminal', path)"
+      @promote-preview="(path) => $emit('promote-preview', path)"
     />
 
     <!-- Editor -->
@@ -167,6 +168,7 @@ const emit = defineEmits<{
   'rename-terminal': [path: string, customTitle: string]
   'kill-terminal': [path: string]
   'restart-terminal': [path: string]
+  'promote-preview': [path: string]
   editorMount: []
   editorFileReady: []
 }>()

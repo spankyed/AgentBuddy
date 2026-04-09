@@ -294,18 +294,21 @@ interface CodeContent {
 type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 
 interface ExportedDocument {
+    id?: string;
     type: 'document';
     name: string;
     content: ContentSection[];
     tags: string[];
 }
 interface ExportedCollection {
+    id?: string;
     type: 'collection';
     name: string;
     description?: string;
     children: ExportedItem[];
 }
 interface ExportedSymlink {
+    id?: string;
     type: 'symlink';
     name: string;
     symlinkPath: string;
@@ -376,6 +379,7 @@ interface ButtonConfig {
 }
 
 interface ExportedNote {
+    id?: string;
     type: 'document' | 'tasklist' | 'task';
     title: string;
     content: string;
@@ -383,6 +387,8 @@ interface ExportedNote {
     completed: boolean;
     hideCompletedChildren: boolean;
     favorite: boolean;
+    displayOrder?: number;
+    savedDisplayOrder?: number;
     children: ExportedNote[];
 }
 interface ExportedNotes {

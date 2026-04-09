@@ -56,6 +56,7 @@ export interface Context {
   selectedPaths: string[]
   revealPath: string | null
   pendingEditorMode: Map<string, 'richText' | 'plainText'>
+  pendingSkipPreview: Set<string>
 }
 
 // Quick open types
@@ -75,7 +76,7 @@ export type Event =
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
   | { type: 'explorer.DELETE_FILE'; path: string }
   | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
-  | { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText' }
+  | { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText'; skipPreview?: boolean }
   | { type: 'explorer.OPEN_FILES'; paths: string[] }
   | { type: 'explorer.WRITE_FILE'; path: string; content: string }
   | { type: 'explorer.CLOSE_FILE'; path: string }
@@ -139,8 +140,17 @@ export const explorerState = setup({
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
       const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
 
+      const skipPreview = context.pendingSkipPreview.has(ev.data.path)
+      const enablePreview = !skipPreview && (parentContext?.settings?.enablePreview ?? true)
+
+      let newSkipPreviewSet = context.pendingSkipPreview
+      if (skipPreview) {
+        newSkipPreviewSet = new Set(context.pendingSkipPreview)
+        newSkipPreviewSet.delete(ev.data.path)
+      }
+
       if (existingFile) {
-        // Update content for existing file
+        // Update content for existing file — promote from preview if re-opened
         const updatedFiles = openFiles.map((f: any) =>
           f.path === ev.data.path
             ? {
@@ -152,6 +162,7 @@ export const explorerState = setup({
                 externalModificationTime: undefined,
                 pendingSaveConflict: false,
                 isRichText,
+                isPreview: false,
               }
             : f
         )
@@ -164,6 +175,13 @@ export const explorerState = setup({
       } else {
         // Add new file
         const isImageFile = imageExtensions.includes(ext)
+
+        // When preview is enabled, remove existing preview tab before adding the new one
+        let baseFiles = openFiles
+        if (enablePreview) {
+          baseFiles = openFiles.filter((f: any) => !f.isPreview)
+        }
+
         const newTab = {
           path: ev.data.path,
           content: ev.data.content,
@@ -171,9 +189,10 @@ export const explorerState = setup({
           modified: false,
           ...(isImageFile && { isImage: true }),
           ...(isRichText && { isRichText: true }),
+          ...(enablePreview && { isPreview: true }),
         }
         const result = mergeTabs(
-          openFiles,
+          baseFiles,
           [newTab],
           ev.data.path
         )
@@ -186,7 +205,7 @@ export const explorerState = setup({
 
       self.send({ type: 'explorer.REVEAL_IN_TREE', path: ev.data.path })
 
-      return { pendingEditorMode: newPendingMap }
+      return { pendingEditorMode: newPendingMap, pendingSkipPreview: newSkipPreviewSet }
     }),
 
     handleFileSaved: ({ event, self }) => {
@@ -314,21 +333,27 @@ export const explorerState = setup({
     },
 
     openFile: assign(({ event, context }) => {
-      const ev = event as { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText' }
+      const ev = event as { type: 'explorer.OPEN_FILE'; path: string; editorMode?: 'richText' | 'plainText'; skipPreview?: boolean }
       sendToBackend('explorer.READ_FILE', { path: ev.path })
+      const updates: Partial<Context> = {}
       if (ev.editorMode) {
         const newMap = new Map(context.pendingEditorMode)
         newMap.set(ev.path, ev.editorMode)
-        return { pendingEditorMode: newMap }
+        updates.pendingEditorMode = newMap
       }
-      return {}
+      if (ev.skipPreview) {
+        const newSet = new Set(context.pendingSkipPreview)
+        newSet.add(ev.path)
+        updates.pendingSkipPreview = newSet
+      }
+      return updates
     }),
 
     openFiles: enqueueActions(({ enqueue, event }) => {
       const ev = event as { type: 'explorer.OPEN_FILES'; paths: string[] }
       ev.paths.forEach(path => {
         enqueue(({ self }) => {
-          self.send({ type: 'explorer.OPEN_FILE', path })
+          self.send({ type: 'explorer.OPEN_FILE', path, skipPreview: true })
         })
       })
     }),
@@ -354,6 +379,7 @@ export const explorerState = setup({
         selectedPaths: [] as string[],
         revealPath: null as string | null,
         pendingEditorMode: new Map<string, 'richText' | 'plainText'>(),
+        pendingSkipPreview: new Set<string>(),
       }
     }),
 
@@ -551,6 +577,7 @@ export const explorerState = setup({
     selectedPaths: [],
     revealPath: null,
     pendingEditorMode: new Map<string, 'richText' | 'plainText'>(),
+    pendingSkipPreview: new Set<string>(),
   },
   states: {
     idle: {
