@@ -66,6 +66,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { applicationState } from '@/main'
 import { id, type CodeState } from '@/plugins/code/state'
 import type { TerminalInfo } from '@/plugins/code/features/terminal/state'
@@ -207,6 +208,7 @@ term.loadAddon(new ClipboardAddon())
 
   /* 2. Mount & fit */
   term.open(container.value)
+  try { term.loadAddon(new WebglAddon()) } catch { /* falls back to canvas renderer */ }
   term.element!.style.height = '100%'
   fit()
   sendResize()
