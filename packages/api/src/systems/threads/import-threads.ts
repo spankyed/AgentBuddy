@@ -68,7 +68,6 @@ export function importThreads(importDir: string): ImportResult {
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'
 
   const shortCodeMap = new Map<string, EARS.EntityId>()
-  const createdThreadIds: EARS.EntityId[] = []
 
   // Pass 1: Create threads, messages, artifacts
   for (const thread of parsed.threads) {
@@ -111,8 +110,6 @@ export function importThreads(importDir: string): ImportResult {
       if (thread.shortCode) {
         shortCodeMap.set(thread.shortCode, newThreadId)
       }
-      createdThreadIds.push(newThreadId)
-
       // Create messages with full fields
       let lastMessageTimestamp = 0
       for (const msg of thread.messages) {
