@@ -139,8 +139,10 @@ export const explorerState = setup({
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
       const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
 
+      const enablePreview = parentContext?.settings?.enablePreview ?? true
+
       if (existingFile) {
-        // Update content for existing file
+        // Update content for existing file — promote from preview if re-opened
         const updatedFiles = openFiles.map((f: any) =>
           f.path === ev.data.path
             ? {
@@ -152,6 +154,7 @@ export const explorerState = setup({
                 externalModificationTime: undefined,
                 pendingSaveConflict: false,
                 isRichText,
+                isPreview: false,
               }
             : f
         )
@@ -164,6 +167,13 @@ export const explorerState = setup({
       } else {
         // Add new file
         const isImageFile = imageExtensions.includes(ext)
+
+        // When preview is enabled, remove existing preview tab before adding the new one
+        let baseFiles = openFiles
+        if (enablePreview) {
+          baseFiles = openFiles.filter((f: any) => !f.isPreview)
+        }
+
         const newTab = {
           path: ev.data.path,
           content: ev.data.content,
@@ -171,9 +181,10 @@ export const explorerState = setup({
           modified: false,
           ...(isImageFile && { isImage: true }),
           ...(isRichText && { isRichText: true }),
+          ...(enablePreview && { isPreview: true }),
         }
         const result = mergeTabs(
-          openFiles,
+          baseFiles,
           [newTab],
           ev.data.path
         )

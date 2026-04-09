@@ -25,6 +25,7 @@ export interface ActionTab {
   pendingSaveConflict?: boolean
   isPinned?: boolean
   groupId?: string
+  isPreview?: boolean
 }
 
 export type Event =

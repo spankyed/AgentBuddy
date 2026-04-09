@@ -41,6 +41,24 @@
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <div class="flex-1">
+            <label for="enable-preview" class="text-sm font-medium text-neutral-200">
+              Enable preview tabs
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Single-clicking a file opens it as a preview. Preview tabs are replaced when opening another file. Double-click or edit to keep.
+            </p>
+          </div>
+          <input
+            id="enable-preview"
+            v-model="enablePreview"
+            type="checkbox"
+            @change="saveEnablePreviewSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
             <label for="md-editor-default" class="text-sm font-medium text-neutral-200">
               Use rich text editor for Markdown files
             </label>
@@ -300,6 +318,7 @@ const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
 const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
 const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
+const enablePreview = ref(props.settings?.enablePreview ?? true)
 const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
 const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? false)
@@ -350,6 +369,13 @@ const saveCloseTerminalOnTabCloseSetting = () => {
   emit('update-setting', {
     path: ['closeTerminalOnTabClose'],
     value: closeTerminalOnTabClose.value
+  })
+}
+
+const saveEnablePreviewSetting = () => {
+  emit('update-setting', {
+    path: ['enablePreview'],
+    value: enablePreview.value
   })
 }
 
