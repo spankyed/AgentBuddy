@@ -12,7 +12,6 @@ interface PersistedTab {
   order: number // Track original position
   isPinned?: boolean // Track pinned state
   groupId?: string // Track group membership
-  isPreview?: boolean // Track preview state
 }
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
@@ -33,8 +32,7 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             terminalId: tab.terminalInfo.id,
             order: index,
             isPinned: tab.isPinned,
-            groupId: tab.groupId,
-            isPreview: tab.isPreview
+            groupId: tab.groupId
           }
         }
         if ('isAction' in tab && tab.isAction) {
@@ -44,8 +42,7 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             actionId: tab.path.replace('action:', ''),
             order: index,
             isPinned: tab.isPinned,
-            groupId: tab.groupId,
-            isPreview: (tab as any).isPreview
+            groupId: tab.groupId
           }
         }
         if ('isPrompt' in tab && tab.isPrompt) {
@@ -55,8 +52,7 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             promptId: tab.path.replace('prompt:', ''),
             order: index,
             isPinned: tab.isPinned,
-            groupId: tab.groupId,
-            isPreview: (tab as any).isPreview
+            groupId: tab.groupId
           }
         }
         return {
@@ -64,8 +60,7 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
           type: 'file' as const,
           order: index,
           isPinned: tab.isPinned,
-          groupId: tab.groupId,
-          isPreview: (tab as any).isPreview
+          groupId: tab.groupId
         }
       })
 

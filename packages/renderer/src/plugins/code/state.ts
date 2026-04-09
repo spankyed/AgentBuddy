@@ -75,7 +75,7 @@ export type Context = {
   selectedPanel: PanelType
   tabsRestored?: boolean
   pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
-  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean; isPreview?: boolean }>  // Track metadata to apply after restoration
+  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean }>  // Track metadata to apply after restoration
   // Tab groups state
   tabGroups: TabGroup[]
   // Quick open state
@@ -289,8 +289,7 @@ const codeState = setup({
             return {
               ...file,
               groupId: metadata.groupId,
-              isPinned: metadata.isPinned,
-              isPreview: metadata.isPreview
+              isPinned: metadata.isPinned
             }
           }
           return file
@@ -356,14 +355,13 @@ const codeState = setup({
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
 
-      // Create a map of path -> metadata (groupId, isPinned, isPreview) to apply after tabs are created
-      const metadataMap = new Map<string, { groupId?: string; isPinned?: boolean; isPreview?: boolean }>()
+      // Create a map of path -> metadata (groupId, isPinned) to apply after tabs are created
+      const metadataMap = new Map<string, { groupId?: string; isPinned?: boolean }>()
       persistedTabs.forEach(tab => {
-        if (tab.groupId || tab.isPinned || tab.isPreview) {
+        if (tab.groupId || tab.isPinned) {
           metadataMap.set(tab.path, {
             groupId: tab.groupId,
-            isPinned: tab.isPinned,
-            isPreview: tab.isPreview
+            isPinned: tab.isPinned
           })
         }
       })
@@ -802,7 +800,7 @@ const codeState = setup({
       const updatedFiles = ev.tabPaths
         ? context.openFiles.map(file =>
             ev.tabPaths!.includes(file.path)
-              ? { ...file, groupId: newGroup.id, isPinned: shouldPinGroup }
+              ? { ...file, groupId: newGroup.id, isPinned: shouldPinGroup, isPreview: false }
               : file
           )
         : context.openFiles
