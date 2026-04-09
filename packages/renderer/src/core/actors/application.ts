@@ -92,22 +92,81 @@ export const createApplicationState = () => setup({
     input: {} as ApplicationParams,
   },
   actors: {
+    // Key state tracking ported from @vueuse/core useMagicKeys
+    // Handles: per-modifier dependency tracking, ordered cleanup on modifier release,
+    // macOS Meta keyup bug (#1312), blur/focus reset (#1350)
     hotkeyListener: fromCallback(({ system }) => {
+      const current = new Set<string>();
+      const metaDeps = new Set<string>();
+      const depsMap = new Map<string, Set<string>>([
+        ['Meta', metaDeps],
+        ['Shift', new Set<string>()],
+        ['Alt', new Set<string>()],
+      ]);
+
+      function updateDeps(value: boolean, e: KeyboardEvent, keys: string[]) {
+        if (!value || typeof e.getModifierState !== 'function') return;
+        for (const [modifier, depsSet] of depsMap) {
+          if (e.getModifierState(modifier)) {
+            keys.forEach(key => depsSet.add(key));
+            break;
+          }
+        }
+      }
+
+      function clearDeps(value: boolean, key: string) {
+        if (value) return;
+        const depsMapKey = `${key[0].toUpperCase()}${key.slice(1)}`;
+        const deps = depsMap.get(depsMapKey);
+        if (!(['shift', 'alt'].includes(key)) || !deps) return;
+        // Ordered cleanup: only clear keys pressed at or after the modifier,
+        // preserving keys that were pressed before it
+        const depsArray = Array.from(deps);
+        const depsIndex = depsArray.indexOf(key);
+        depsArray.forEach((dep, index) => {
+          if (index >= depsIndex) current.delete(dep);
+        });
+        deps.clear();
+      }
+
+      function updateKeys(e: KeyboardEvent, value: boolean) {
+        const key = e.key?.toLowerCase();
+        if (!key) return;
+
+        if (value) current.add(key);
+        else current.delete(key);
+
+        const code = e.code?.toLowerCase();
+        if (code) {
+          if (value) current.add(code);
+          else current.delete(code);
+        }
+
+        updateDeps(value, e, [...current]);
+        clearDeps(value, key);
+
+        // macOS: Meta release doesn't fire keyup for keys held with it (#1312)
+        if (key === 'meta' && !value) {
+          for (const dep of metaDeps) current.delete(dep);
+          metaDeps.clear();
+        }
+      }
+
       const handleKeyDown = (e: KeyboardEvent) => {
-        // Skip app hotkeys when typing in a tiptap editor
+        // Skip when typing in tiptap editor (unless modifier-based hotkey)
         const target = e.target as HTMLElement;
         if (target.closest?.('.ProseMirror') && !e.metaKey && !e.ctrlKey) return;
 
-        const appActor = system.get(application);
+        updateKeys(e, true);
 
-        // Create hotkey event and send to be processed
+        const appActor = system.get(application);
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
           key: e.key,
-          metaKey: e.metaKey,
-          ctrlKey: e.ctrlKey,
-          altKey: e.altKey,
-          shiftKey: e.shiftKey,
+          metaKey: current.has('meta'),
+          ctrlKey: current.has('control'),
+          altKey: current.has('alt'),
+          shiftKey: current.has('shift'),
           preventDefault: () => e.preventDefault()
         };
 
@@ -118,10 +177,25 @@ export const createApplicationState = () => setup({
         });
       };
 
+      const handleKeyUp = (e: KeyboardEvent) => {
+        updateKeys(e, false);
+      };
+
+      const reset = () => {
+        current.clear();
+        for (const deps of depsMap.values()) deps.clear();
+      };
+
       window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      window.addEventListener('blur', reset);
+      window.addEventListener('focus', reset);
 
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('blur', reset);
+        window.removeEventListener('focus', reset);
       };
     }),
 
