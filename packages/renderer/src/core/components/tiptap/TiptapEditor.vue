@@ -89,6 +89,8 @@ const { suppressNodeDeletionEvents, onTransaction: subDocOnTransaction } = useSu
 })
 
 const lastResetMarkdown = ref<string | null>(null)
+// Track values we've emitted to recognize echoes from parent (debounced round-trip)
+const emittedValues = new Set<string>()
 
 function getMarkdown(): string {
   return (editor.value!.storage as any).markdown.getMarkdown()
@@ -156,6 +158,7 @@ const editor = useEditor({
     const md = getMarkdown()
     if (lastResetMarkdown.value !== null && md === lastResetMarkdown.value) return
     lastResetMarkdown.value = null
+    emittedValues.add(md)
     emit('update:modelValue', md)
   },
   ...(cfg.subDocumentTracking && { onTransaction: subDocOnTransaction }),
@@ -164,11 +167,13 @@ const editor = useEditor({
 // Sync modelValue changes from parent into the editor
 watch(() => props.modelValue, (newVal) => {
   if (!editor.value) return
+  if (emittedValues.delete(newVal)) return
   if (newVal !== getMarkdown()) resetContent(newVal)
 })
 
 // Force-reset editor content on entity switch to prevent stale content display
 watch(() => props.entityId, () => {
+  emittedValues.clear()
   resetContent(props.modelValue, true)
 })
 
