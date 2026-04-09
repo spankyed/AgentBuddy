@@ -21,6 +21,7 @@ import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
 import { CommandViewerDecoration } from './command-viewer-decoration'
+import { getEditorConfig } from './editor-config'
 const ListShiftEnter = Extension.create({
   name: 'listShiftEnter',
   addKeyboardShortcuts() {
@@ -287,7 +288,7 @@ function createFullExtensions(mode: TiptapMode): AnyExtension[] {
 }
 
 export function createExtensions({ mode, variant = 'full', placeholder, isCommand }: CreateExtensionsOptions) {
-  const isChat = variant === 'chat'
+  const cfg = getEditorConfig(mode, variant)
 
   const extensions: AnyExtension[] = [
     StarterKit.configure({
@@ -301,42 +302,29 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
           { itemName: 'taskItem', wrapperNames: ['taskList'] },
         ],
       },
-      ...(isChat && mode !== 'viewer' && {
-        heading: false,
-        strike: false,
-        horizontalRule: false,
-        trailingNode: false,
-      }),
+      ...(!cfg.richFormatting && { heading: false, strike: false, horizontalRule: false, trailingNode: false }),
     }),
     Markdown.configure({
-      html: !isChat,
+      html: cfg.markdownHtml,
       transformCopiedText: true,
       transformPastedText: true,
     }),
     MarkdownParseFixes,
-    CodeBlockLowlight.configure({
-      lowlight,
-    }),
+    CodeBlockLowlight.configure({ lowlight }),
     Link.configure({
       openOnClick: false,
       autolink: true,
       protocols: ['note', 'thread', 'doc'],
     }),
-    ...(isChat ? [ReferenceNode, ...(mode === 'input' ? [CommandSuggestion] : []), ...(mode === 'viewer' && isCommand ? [CommandViewerDecoration] : [])] : [...createFullExtensions(mode), ReferenceNode]),
+    ReferenceNode,
     EmptyLinePreserver,
   ]
 
-  if (mode !== 'viewer') {
-    if (isChat) extensions.push(ListShiftEnter)
-
-    if (placeholder) {
-      extensions.push(
-        Placeholder.configure({
-          placeholder,
-        }),
-      )
-    }
-  }
+  if (cfg.fullExtensions) extensions.push(...createFullExtensions(mode))
+  if (cfg.commandSuggestion) extensions.push(CommandSuggestion)
+  if (cfg.commandViewerDeco && isCommand) extensions.push(CommandViewerDecoration)
+  if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
+  if (placeholder) extensions.push(Placeholder.configure({ placeholder }))
 
   return extensions
 }

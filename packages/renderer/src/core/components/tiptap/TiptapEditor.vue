@@ -4,15 +4,15 @@
     :class="[`tiptap-${mode}`, $attrs.class]"
   >
     <template v-if="editor">
-      <template v-if="mode === 'editor' && variant === 'full' && !hideGutter">
+      <template v-if="cfg.blockMenu && !hideGutter">
         <TiptapBlockMenu :editor="editor" />
         <TiptapImageBubbleMenu :editor="editor" @view-image="(src: string) => emit('imageClick', src)" />
       </template>
-      <TiptapBubbleMenu v-if="mode === 'editor' || (mode === 'input' && variant === 'chat')" :editor="editor" />
+      <TiptapBubbleMenu v-if="cfg.textBubbleMenu" :editor="editor" />
     </template>
     <editor-content :editor="editor" :class="editorClass" />
-    <ReferenceSuggestionPopup v-if="editor && mode !== 'viewer'" :editor="editor" :variant="variant" />
-    <CommandSuggestionPopup v-if="editor && mode === 'input' && variant === 'chat'" :editor="editor" />
+    <ReferenceSuggestionPopup v-if="editor && cfg.referencePopup" :editor="editor" :variant="variant" />
+    <CommandSuggestionPopup v-if="editor && cfg.commandPopup" :editor="editor" />
   </div>
 </template>
 
@@ -22,6 +22,7 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
 import { splitBlock } from '@tiptap/pm/commands'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
+import { getEditorConfig } from './editor-config'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
 import TiptapBubbleMenu from './TiptapBubbleMenu.vue'
 import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
@@ -67,6 +68,8 @@ const emit = defineEmits<{
 }>()
 
 defineOptions({ inheritAttrs: false })
+
+const cfg = getEditorConfig(props.mode, props.variant)
 
 function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: import('@tiptap/pm/view').EditorView }) {
   const { tr } = e.state
@@ -139,7 +142,7 @@ async function uploadAndInsertImage(file: File, editorInstance: ReturnType<typeo
   }
 }
 
-const editorOnlyProps = props.mode === 'editor' ? {
+const clickProps = cfg.editorInteractions ? {
   handleClick: (_view: any, _pos: any, event: MouseEvent) => {
     // Sub-document links open on regular click (no modifier needed)
     const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
@@ -207,9 +210,7 @@ const editorOnlyProps = props.mode === 'editor' ? {
     }
     return handled
   },
-} : {}
-
-const viewerClickProps = props.mode === 'viewer' ? {
+} : cfg.viewerImageClick ? {
   handleClick: (_view: any, _pos: any, event: MouseEvent) => {
     const img = (event.target as HTMLElement).closest('img')
     if (img?.src) {
@@ -220,7 +221,7 @@ const viewerClickProps = props.mode === 'viewer' ? {
   },
 } : {}
 
-const editorOnlyTransaction = props.mode === 'editor' ? {
+const transactionHandler = cfg.subDocumentTracking ? {
   onTransaction: ({ transaction }: { transaction: any }) => {
     if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
     const oldIds = collectSubDocumentLinkIds(transaction.before)
@@ -259,7 +260,7 @@ const editor = useEditor({
     isCommand: props.isCommand,
   }),
   content: props.modelValue,
-  editable: props.mode !== 'viewer' && !props.disabled,
+  editable: cfg.editable && !props.disabled,
   editorProps: {
     handleKeyDown: (view, event) => {
       // ⌘+Shift+V → paste as plain text, parsed as markdown for structure
@@ -272,7 +273,7 @@ const editor = useEditor({
         return true
       }
 
-      if (props.mode === 'input') {
+      if (cfg.historyNavigation) {
         const isEmpty = !view.state.doc.textContent.trim()
 
         if (event.key === 'ArrowUp' && (isEmpty || props.inHistoryMode)) {
@@ -303,7 +304,7 @@ const editor = useEditor({
         return true
       }
 
-      if (props.mode === 'input' && event.key === 'Enter') {
+      if (cfg.enterSubmit && event.key === 'Enter') {
         if (shouldDeferEnter(view)) return false
 
         if (event.shiftKey) {
@@ -316,8 +317,7 @@ const editor = useEditor({
 
       return false
     },
-    ...editorOnlyProps,
-    ...viewerClickProps,
+    ...clickProps,
   },
   onCreate: ({ editor: e }) => {
     selectStart(e)
@@ -329,7 +329,7 @@ const editor = useEditor({
     lastResetMarkdown.value = null
     emit('update:modelValue', md)
   },
-  ...editorOnlyTransaction,
+  ...transactionHandler,
 })
 
 // Sync modelValue changes from parent into the editor
@@ -348,7 +348,7 @@ watch(() => props.entityId, () => {
 // Sync disabled/editable
 watch(() => props.disabled, (disabled) => {
   if (editor.value) {
-    editor.value.setEditable(!disabled && props.mode !== 'viewer')
+    editor.value.setEditable(!disabled && cfg.editable)
   }
 })
 
