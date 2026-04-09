@@ -1,6 +1,7 @@
 <template>
   <PopoverRoot v-model:open="open">
-    <PopoverTrigger v-if="!virtualReference" as-child>
+    <PopoverAnchor v-if="virtualReference" :reference="virtualReference" />
+    <PopoverTrigger as-child>
       <button
         type="button"
         class="hidden @md:block p-2 text-neutral-500"
@@ -11,7 +12,6 @@
         <Sparkle :size="20" />
       </button>
     </PopoverTrigger>
-    <PopoverAnchor v-if="virtualReference" :reference="virtualReference" />
     <PopoverPortal>
       <PopoverContent
         :side="virtualReference ? 'bottom' : 'top'"
