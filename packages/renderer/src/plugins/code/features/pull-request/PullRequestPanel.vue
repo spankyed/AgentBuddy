@@ -66,6 +66,16 @@
           <span class="truncate">Checking...</span>
         </button>
 
+        <!-- Back to current branch (left of selector when viewing another PR) -->
+        <button
+          v-if="isViewingOtherPR"
+          @click="handleBackToBranch()"
+          class="px-2 h-7 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
+          title="Back to current branch"
+        >
+          <ArrowLeft :size="13" />
+        </button>
+
         <!-- PR Selector — always shown except when checking -->
         <PRSelector
           v-else
@@ -101,14 +111,6 @@
             <span>Error</span>
           </button>
         </template>
-        <button
-          v-if="isViewingOtherPR"
-          @click="handleBackToBranch()"
-          class="px-2 h-7 rounded transition-colors text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/50 shrink-0"
-          title="Back to current branch"
-        >
-          <ArrowLeft :size="13" />
-        </button>
         <button
           v-if="selectedPR"
           @click="handleViewPRInfo()"
