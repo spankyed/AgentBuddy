@@ -102,7 +102,17 @@ const hasSelection = ref(false)
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------------------- */
-const fit = () => fitAddon?.fit()
+const fit = () => {
+  if (!fitAddon || !term) return
+  const wasPinned = isPinnedToBottom.value
+  isScrollingProgrammatically = true
+  fitAddon.fit()
+  if (wasPinned) {
+    isPinnedToBottom.value = true
+    term.scrollToBottom()
+  }
+  requestAnimationFrame(() => { isScrollingProgrammatically = false })
+}
 
 const scrollToBottom = () => {
   if (!term) return
