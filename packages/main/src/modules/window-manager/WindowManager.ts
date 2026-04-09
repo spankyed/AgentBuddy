@@ -9,6 +9,7 @@ import {WINDOW_CONFIG} from './constants.js';
 import {SPLASH_CONFIG} from '../splash-screen/constants.js';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import {getMediaBasePath} from '../media-protocol/paths.js';
 
 class WindowManager implements AppModule {
@@ -207,6 +208,37 @@ class WindowManager implements AppModule {
     // Handle revealing files in OS file explorer
     ipcMain.handle('shell:showItemInFolder', async (_event, filePath: string) => {
       shell.showItemInFolder(filePath);
+    });
+
+    // Handle opening an image in the default image app
+    ipcMain.handle('shell:openImageExternal', async (_event, url: string) => {
+      const mimeToExt: Record<string, string> = {
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/svg+xml': '.svg',
+        'image/bmp': '.bmp',
+      };
+
+      let buffer: Buffer;
+      let ext = '.png';
+
+      if (url.startsWith('data:')) {
+        const match = url.match(/^data:(image\/[^;]+);base64,(.+)$/);
+        if (!match) throw new Error('Invalid data URL');
+        ext = mimeToExt[match[1]] || '.png';
+        buffer = Buffer.from(match[2], 'base64');
+      } else {
+        const response = await fetch(url);
+        const contentType = response.headers.get('content-type') || '';
+        ext = mimeToExt[contentType] || '.png';
+        buffer = Buffer.from(await response.arrayBuffer());
+      }
+
+      const tmpPath = join(os.tmpdir(), `agentbuddy-${crypto.randomUUID()}${ext}`);
+      await fs.writeFile(tmpPath, buffer);
+      await shell.openPath(tmpPath);
     });
 
     // Media upload handler
