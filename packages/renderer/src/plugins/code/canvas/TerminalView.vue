@@ -294,11 +294,16 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  if (term && !isPinnedToBottom.value) savedScrollLines.set(props.terminalInfo.id, term.buffer.active.viewportY)
+  const t = term
+  if (t && !isPinnedToBottom.value) savedScrollLines.set(props.terminalInfo.id, t.buffer.active.viewportY)
   else savedScrollLines.delete(props.terminalInfo.id)
 
   resizeObserver?.disconnect()
-  term?.dispose()
+  // Null refs before dispose so queued ResizeObserver callbacks hit existing null guards
+  resizeObserver = null
+  fitAddon = null
+  term = null
+  t?.dispose()
   unsubscribe?.()
 })
 
