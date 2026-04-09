@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Undo a release for AgentBuddy
-# Usage: npm run undo-release [version] [--dry-run]
+# Usage: npm run unrelease [version] [--dry-run]
 #
 # Reverses what release.sh does:
 # 1. Deletes the GitHub release (if it exists)
@@ -30,7 +30,7 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=true ;;
     v*) VERSION="$arg" ;;
     [0-9]*) VERSION="v$arg" ;;
-    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: undo-release.sh [version] [--dry-run]"; exit 1 ;;
+    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: unrelease.sh [version] [--dry-run]"; exit 1 ;;
   esac
 done
 
