@@ -2,6 +2,7 @@
   <div
     class="tiptap-wrapper"
     :class="[`tiptap-${mode}`, $attrs.class]"
+    @click="onWrapperClick"
   >
     <template v-if="editor">
       <template v-if="cfg.blockMenu && !hideGutter">
@@ -73,6 +74,14 @@ const emit = defineEmits<{
 defineOptions({ inheritAttrs: false })
 
 const cfg = getEditorConfig(props.mode, props.variant)
+
+function onWrapperClick(event: MouseEvent) {
+  if (!cfg.editable || !editor.value) return
+  const target = event.target as HTMLElement
+  if (target === event.currentTarget || target.classList.contains('tiptap-wrapper')) {
+    editor.value.chain().focus('end').run()
+  }
+}
 
 const { suppressNodeDeletionEvents, onTransaction: subDocOnTransaction } = useSubDocumentTracking({
   subDocumentLinkDeleted: (id) => emit('subDocumentLinkDeleted', id),

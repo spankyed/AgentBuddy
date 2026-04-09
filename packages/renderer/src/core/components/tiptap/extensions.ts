@@ -26,6 +26,7 @@ import { EmptyLinePreserver } from './extensions/empty-line-preserver'
 import { BlockquotePipe } from './extensions/blockquote-pipe'
 import { DetailsBlock, DetailsBlockSummary, DetailsBlockContent } from './extensions/details-block'
 import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder'
+import { CustomHorizontalRule } from './extensions/custom-horizontal-rule'
 
 const lowlight = createLowlight(common)
 
@@ -65,13 +66,17 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       codeBlock: false,
       link: false,
       blockquote: false,
+      gapcursor: false,
+      horizontalRule: false,
+      dropcursor: { color: 'rgb(96 165 250 / 0.5)', width: 4 },
+      code: { HTMLAttributes: { spellcheck: 'false' } },
       listKeymap: {
         listTypes: [
           { itemName: 'listItem', wrapperNames: ['bulletList', 'orderedList'] },
           { itemName: 'taskItem', wrapperNames: ['taskList'] },
         ],
       },
-      ...(!cfg.richFormatting && { heading: false, strike: false, horizontalRule: false, trailingNode: false }),
+      ...(!cfg.richFormatting && { heading: false, strike: false, trailingNode: false }),
     }),
     Markdown.configure({
       html: cfg.markdownHtml,
@@ -90,7 +95,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     Underline,
   ]
 
-  if (cfg.richFormatting) extensions.push(Color, Highlight.configure({ multicolor: true }))
+  if (cfg.richFormatting) extensions.push(Color, Highlight.configure({ multicolor: true }), CustomHorizontalRule)
   if (cfg.fullExtensions) extensions.push(...createFullExtensions(mode))
   if (cfg.commandSuggestion) extensions.push(CommandSuggestion)
   if (cfg.commandViewerDeco && isCommand) extensions.push(CommandViewerDecoration)
