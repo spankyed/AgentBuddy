@@ -163,13 +163,14 @@ export class ApiServer implements AppModule {
     } else {
       this.lastError = { message: stderr || `Backend process exited unexpectedly (code ${code})` };
     }
-    broadcastEvent(API_EVENTS.STOPPED, { error: this.lastError });
+    const willRestart = !this.isShuttingDown && this.restartAttempts < API_CONFIG.MAX_RESTART_ATTEMPTS;
+    broadcastEvent(API_EVENTS.STOPPED, { error: this.lastError, restarting: willRestart });
 
     // Reset state
     this.actualPort = undefined;
 
     // Handle restart
-    if (!this.isShuttingDown && this.restartAttempts < API_CONFIG.MAX_RESTART_ATTEMPTS) {
+    if (willRestart) {
       this.restartAttempts++;
       logWarn(`[MAIN] Restarting API server (attempt ${this.restartAttempts}/${API_CONFIG.MAX_RESTART_ATTEMPTS})...`);
       broadcastEvent(API_EVENTS.RESTARTING, {
