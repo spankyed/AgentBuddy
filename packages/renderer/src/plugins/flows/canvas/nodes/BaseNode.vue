@@ -82,7 +82,7 @@
     <template v-if="editable && sourceHandles && sourceHandles.length > 0">
       <AddHandle
         v-for="handle in sourceHandles"
-        :key="handle.id"
+        :key="`${handle.id}-${handle.offsetY ?? 'c'}`"
         :node-id="id"
         :handle-id="handle.id"
         :offset-y="handle.offsetY"
