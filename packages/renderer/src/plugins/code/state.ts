@@ -133,7 +133,9 @@ export type Event =
   | { type: 'UPDATE_QUICK_OPEN_QUERY'; query: string }
   | { type: 'SELECT_QUICK_OPEN_RESULT'; index: number }
   | { type: 'OPEN_QUICK_OPEN_RESULT'; path: string }
-  | { type: 'SEARCH_IN_FOLDER'; folder: string };
+  | { type: 'SEARCH_IN_FOLDER'; folder: string }
+  | { type: 'SAVE_ACTIVE_FILE' }
+  | { type: 'CLOSE_ACTIVE_TAB' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -548,8 +550,58 @@ const codeState = setup({
       navigateNextPanel: 'NAVIGATE_NEXT_PANEL',
       focusSearch: 'FOCUS_SEARCH',
       quickOpen: 'SHOW_QUICK_OPEN',
+      saveFile: 'SAVE_ACTIVE_FILE',
+      closeTab: 'CLOSE_ACTIVE_TAB',
     }),
 
+    saveActiveFile: ({ context, system }) => {
+      const activeFile = context.openFiles.find(f => f.path === context.activeFilePath)
+      if (!activeFile || activeFile.isDiff) return
+
+      if ('isAction' in activeFile && (activeFile as any).isAction) {
+        const actionId = activeFile.path.replace('action:', '')
+        system.get('codeActions').send({ type: 'codeActions.SAVE_ACTION', actionId, content: activeFile.content })
+      } else if ('isPrompt' in activeFile && (activeFile as any).isPrompt) {
+        const promptId = activeFile.path.replace('prompt:', '')
+        system.get('codePrompts').send({ type: 'codePrompts.SAVE_PROMPT', promptId, content: activeFile.content })
+      } else {
+        system.get('explorer').send({ type: 'explorer.WRITE_FILE', path: activeFile.path, content: activeFile.content })
+      }
+    },
+    closeActiveTab: assign(({ context, system }) => {
+      const path = context.activeFilePath
+      if (!path) return {}
+
+      const file = context.openFiles.find(f => f.path === path)
+
+      // Handle terminal close with confirmation
+      if (file && 'isTerminal' in file && (file as any).isTerminal) {
+        const confirmClose = context.settings?.confirmTerminalClose ?? true
+        if (confirmClose) {
+          const terminalInfo = (file as any).terminalInfo
+          const name = terminalInfo.customTitle || terminalInfo.cwd.split('/').filter(Boolean).pop() || terminalInfo.title
+          if (!confirm(`Close terminal "${name}"?`)) return {}
+        }
+        if (context.settings?.closeTerminalOnTabClose ?? true) {
+          system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
+        }
+      }
+
+      const newOpenFiles = context.openFiles.filter(f => f.path !== path)
+      const newActiveFilePath = nextActiveFromHistory(context.tabViewHistory, newOpenFiles)
+
+      // Clean up empty groups
+      const groupId = file && 'groupId' in file ? (file as any).groupId : undefined
+      let newTabGroups = context.tabGroups
+      if (groupId) {
+        const remaining = newOpenFiles.filter(f => 'groupId' in f && (f as any).groupId === groupId)
+        if (remaining.length === 0) newTabGroups = context.tabGroups.filter(g => g.id !== groupId)
+      }
+
+      system.get('explorer').send({ type: 'explorer.CLOSE_FILE', path })
+
+      return { openFiles: newOpenFiles, activeFilePath: newActiveFilePath, tabGroups: newTabGroups }
+    }),
     openTerminal: ({ context, self, system }) => {
       // Look for an existing terminal at the active directory
       // const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
@@ -984,6 +1036,13 @@ const codeState = setup({
         },
         OPEN_QUICK_OPEN_RESULT: {
           actions: ['openQuickOpenResult', 'hideQuickOpen']
+        },
+        // File hotkey actions
+        SAVE_ACTIVE_FILE: {
+          actions: 'saveActiveFile'
+        },
+        CLOSE_ACTIVE_TAB: {
+          actions: ['closeActiveTab', 'saveTabsAction']
         }
       }
     }

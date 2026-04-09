@@ -68,6 +68,8 @@ export const defaultSettings: SettingsData = {
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] },
         focusSearch: { key: 'f', modifiers: ['cmd', 'shift'] },
         quickOpen: { key: 'p', modifiers: ['cmd'] },
+        saveFile: { key: 's', modifiers: ['cmd'] },
+        closeTab: { key: 'w', modifiers: ['cmd'] },
       },
       restoreTerminals: true,
       defaultBaseDirectory: null,

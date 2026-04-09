@@ -93,7 +93,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
 import { reorderTabs, nextActiveFromHistory } from '../utils/tab-management'
@@ -533,35 +533,8 @@ const unpinGroup = (groupId: string) => {
   actor.send({ type: 'UNPIN_GROUP', groupId })
 }
 
-// Keyboard shortcuts (Quick Open handled via centralized hotkey system in state.ts)
-const handleKeyDown = (e: KeyboardEvent) => {
-  // Save file: Cmd/Ctrl + S (exact — no shift/alt to avoid collisions)
-  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 's') {
-    e.preventDefault()
-    if (activeFile.value && activeFile.value.modified && !activeFile.value.isDiff) {
-      saveFile()
-    }
-  }
-
-  // Close tab: Cmd/Ctrl + W (exact — no shift/alt to avoid collisions)
-  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'w') {
-    e.preventDefault()
-    if (activeFilePath.value) {
-      closeFile(activeFilePath.value)
-    }
-  }
-}
-
-// Terminal output is handled through state management
-
-// Add keyboard event listener on mount
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-})
-
 // Cleanup on unmount
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
   if (refreshTimeout) {
     clearTimeout(refreshTimeout)
   }
