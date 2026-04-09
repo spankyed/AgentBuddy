@@ -61,13 +61,12 @@ export async function actionNodeHandler(
   const actionNode = node as ActionNode;
   const nodeData = tNode.nodeAttributes || {};
   
-  brainInspect(`Executing action node: ${node.label}`, {
-    tNode,
-    node,
-    nodeAttributeKeys: Object.keys(nodeData),
-  });
-  
   try {
+    brainInspect(`Executing action node: ${node.label}`, {
+      tNode,
+      node,
+      nodeAttributeKeys: Object.keys(nodeData),
+    });
     // Inline code mode: execute actionFn directly without entity lookup
     if (actionNode.mode === 'code' && actionNode.actionFn) {
       const params: Record<string, any> = {

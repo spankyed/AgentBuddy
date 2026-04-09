@@ -41,12 +41,16 @@ export function createStepNodeSystem(
       },
       actions: {
         executeStep: ({ context, self }) => {
-          brainInspect(
-            `Executing step: ${context.step.label} (${context.step.nodeType})`,
-          );
+          try {
+            brainInspect(
+              `Executing step: ${context.step.label} (${context.step.nodeType})`,
+            );
 
-          // Delegate to step executor with TNode
-          executeNode(context.tNode, context.step, executionContext, self);
+            // Delegate to step executor with TNode
+            executeNode(context.tNode, context.step, executionContext, self);
+          } catch (error) {
+            self.send({ type: 'ERROR', error: error instanceof Error ? error.message : String(error) });
+          }
         },
         storeResult: ({ context, event }) => {
           if (context.tNodeId && event.type === 'COMPLETE' && event.result !== undefined) {

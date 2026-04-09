@@ -91,9 +91,8 @@ export async function llmNodeHandler(
 ) {
   const nodeData = tNode.nodeAttributes || {};
 
-  brainInspect(`Executing LLM node: ${node.label}`, { nodeData });
-
   try {
+    brainInspect(`Executing LLM node: ${node.label}`, { nodeData });
     // Generate the prompt using pre-mapped params
     const prompt = generatePrompt(tNode, node as LLMNode);
 

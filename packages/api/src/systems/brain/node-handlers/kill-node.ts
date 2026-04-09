@@ -19,4 +19,6 @@ export function killNodeHandler(
   if (flowActor) {
     flowActor.send({ type: 'KILL_FLOW' });
   }
+
+  actor.send({ type: 'COMPLETE', result: { killed: true } });
 }
