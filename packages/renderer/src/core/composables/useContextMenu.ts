@@ -1,6 +1,6 @@
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import type { Component } from 'vue'
-import { onMenuOpenChange } from './useMenuState'
+import { useTrackedMenuOpen } from './useMenuState'
 
 export interface MenuItem {
   label: string
@@ -33,7 +33,7 @@ export function useContextMenu() {
   onMounted(() => document.addEventListener('mousedown', handleClickOutside))
   onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 
-  watch(showMenu, (val) => onMenuOpenChange(val))
+  useTrackedMenuOpen(showMenu)
 
   return { showMenu, menuRef, menuPos, open }
 }

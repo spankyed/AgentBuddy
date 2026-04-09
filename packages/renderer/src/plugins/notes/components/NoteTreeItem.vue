@@ -218,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
 import { Check, ChevronRight, CircleCheck, Copy, Eye, EyeOff, FileText, FilePlus, ListChecks, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-vue-next'
 import {
@@ -231,7 +231,7 @@ import {
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 
 const INDENT_PX = 8
 const BASE_PADDING_PX = 8
@@ -316,7 +316,7 @@ const menuItems = computed<MenuItem[]>(() => {
 })
 
 const dropdownOpen = ref(false)
-watch(dropdownOpen, onMenuOpenChange)
+useTrackedMenuOpen(dropdownOpen)
 const { showMenu: showContextMenu, menuPos: contextMenuPos, open: openContextMenu } = useContextMenu()
 
 function handleContextMenu(e: MouseEvent) {

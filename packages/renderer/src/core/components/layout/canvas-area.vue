@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { ChevronRight, EllipsisVertical } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
@@ -75,11 +75,11 @@ import {
   DropdownMenuSeparator,
 } from 'reka-ui'
 import PluginMenuItems from './PluginMenuItems.vue'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 import type { ContextMenuItem as ContextMenuItemType } from '@/core/context-menu'
 
 const menuOpen = ref(false)
-watch(menuOpen, onMenuOpenChange)
+useTrackedMenuOpen(menuOpen)
 
 interface Props {
   label: string

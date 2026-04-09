@@ -21,9 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, toRef, onMounted, onUnmounted } from 'vue'
 import type { MenuItem } from '@/core/composables/useContextMenu'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 
 const props = defineProps<{
   show: boolean
@@ -46,5 +46,5 @@ function handleClickOutside(e: MouseEvent) {
 onMounted(() => document.addEventListener('mousedown', handleClickOutside))
 onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 
-watch(() => props.show, (val) => onMenuOpenChange(val))
+useTrackedMenuOpen(toRef(props, 'show'))
 </script>

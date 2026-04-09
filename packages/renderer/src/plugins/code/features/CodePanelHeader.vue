@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex items-center justify-between h-header px-4 border-b border-neutral-800 panel-header">
+    <div class="flex items-center justify-between h-header px-4 border-b border-neutral-800 panel-header" :class="{ 'panel-drag': !isAnyMenuOpen }">
       <div class="flex items-center gap-2 min-w-0">
         <component :is="icon" :size="16" class="text-neutral-400 shrink-0" />
         <div class="flex items-center gap-1.5 text-sm min-w-0">
@@ -97,6 +97,7 @@ import { computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/plugins/code/state'
+import { isAnyMenuOpen } from '@/core/composables/useMenuState'
 import BaseDirectoryMenu from '@/plugins/code/features/explorer/components/BaseDirectoryMenu.vue'
 import {
   FolderOpen,
@@ -177,7 +178,11 @@ const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal'
 </script>
 
 <style scoped>
-.panel-header > * {
+.panel-drag {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.panel-drag > * {
   -webkit-app-region: no-drag;
 }
 </style>

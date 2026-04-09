@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -117,7 +117,7 @@ import {
 import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal, Copy } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
 import { useProjectActions } from '../composables/useProjectActions'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 
 const props = defineProps<{
   baseDirectory: string
@@ -131,7 +131,7 @@ defineEmits<{
 
 const copyPath = () => navigator.clipboard.writeText(props.baseDirectory)
 const menuOpen = ref(false)
-watch(menuOpen, onMenuOpenChange)
+useTrackedMenuOpen(menuOpen)
 
 const { allProjects } = useProjectActions()
 

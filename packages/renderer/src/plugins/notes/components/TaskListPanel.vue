@@ -143,7 +143,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import type { NoteDTO } from '@app/api'
 import { Copy, Plus, ListChecks, Eye, EyeOff, FilePlus, MoreHorizontal, Trash2 } from 'lucide-vue-next'
 import {
@@ -157,7 +157,7 @@ import NoteTreeItem from './NoteTreeItem.vue'
 import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
 import { useNoteTreeDragDrop } from '../composables/useNoteTreeDragDrop'
 import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 
 const props = defineProps<{
   tasks: NoteDTO[]
@@ -200,7 +200,7 @@ const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDrag
   })
 
 const dropdownOpen = ref(false)
-watch(dropdownOpen, onMenuOpenChange)
+useTrackedMenuOpen(dropdownOpen)
 const { showMenu: showHeaderMenu, menuPos: headerMenuPos, open: openHeaderMenu } = useContextMenu()
 
 function handleHeaderContextMenu(e: MouseEvent) {

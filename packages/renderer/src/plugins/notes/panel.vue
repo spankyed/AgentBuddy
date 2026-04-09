@@ -191,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
@@ -206,13 +206,13 @@ import {
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 import type { MenuItem } from '@/core/composables/useContextMenu'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
 
 const actor: NotesState = applicationState.system.get(id)
 
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)
-watch(dropdownOpen, onMenuOpenChange)
+useTrackedMenuOpen(dropdownOpen)
 
 const createMenuItems = computed<MenuItem[]>(() => [
   { label: 'New TaskList', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
