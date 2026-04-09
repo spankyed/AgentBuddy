@@ -28,10 +28,10 @@ import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import ReferenceSuggestionPopup from './ReferenceSuggestionPopup.vue'
 import CommandSuggestionPopup from './CommandSuggestionPopup.vue'
 import { commandSuggestionPluginKey } from './command-suggestion-plugin'
-import { createImageHandlers } from './composables/useImageUpload'
-import { createEditorClickHandler, createViewerClickHandler } from './composables/useEditorClickHandler'
+import { createImageHandlers } from './composables/createImageHandlers'
+import { createEditorClickHandler, createViewerClickHandler } from './composables/createEditorClickHandler'
 import { useSubDocumentTracking } from './composables/useSubDocumentTracking'
-import { createKeyboardHandler } from './composables/useEditorKeyboard'
+import { createKeyboardHandler } from './composables/createEditorKeyboard'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
@@ -91,6 +91,7 @@ function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: i
   e.view.dispatch(tr)
 }
 
+// Set content without recording in undo history so note switches can't be undone
 function resetContent(content: string) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
@@ -151,11 +152,13 @@ const editor = useEditor({
   ...(cfg.subDocumentTracking && { onTransaction: subDocOnTransaction }),
 })
 
+// Sync modelValue changes from parent into the editor
 watch(() => props.modelValue, (newVal) => {
   if (!editor.value) return
   if (newVal !== getMarkdown()) resetContent(newVal)
 })
 
+// Force-reset editor content on entity switch to prevent stale content display
 watch(() => props.entityId, () => {
   resetContent(props.modelValue)
 })

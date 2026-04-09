@@ -174,7 +174,6 @@ export function useBlockHandle(getEditor: () => Editor) {
     dropIndicatorTop,
     resolveBlock,
     updateButtonPosition,
-    getBlockNodeAt,
     onDragHandleMouseDown,
     onDragHandleMouseUp,
     onDragStart,
