@@ -12,7 +12,7 @@ import { SubDocumentLink } from './sub-document-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
-import { mergeAttributes, wrappingInputRule, InputRule, Extension } from '@tiptap/core'
+import { mergeAttributes, wrappingInputRule, InputRule, Extension, isNodeActive } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
 import Paragraph from '@tiptap/extension-paragraph'
 import { Selection } from '@tiptap/pm/state'
@@ -21,7 +21,21 @@ import { common, createLowlight } from 'lowlight'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
 import { CommandViewerDecoration } from './command-viewer-decoration'
-import { ListKeymap } from './list-keymap'
+const ListShiftEnter = Extension.create({
+  name: 'listShiftEnter',
+  addKeyboardShortcuts() {
+    return {
+      'Shift-Enter': ({ editor }) => {
+        for (const name of ['listItem', 'taskItem']) {
+          if (!editor.state.schema.nodes[name]) continue
+          if (!isNodeActive(editor.state, name)) continue
+          return editor.commands.splitListItem(name)
+        }
+        return false
+      },
+    }
+  },
+})
 
 const lowlight = createLowlight(common)
 
@@ -281,7 +295,12 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       codeBlock: false,
       link: false,
       blockquote: false,
-      listKeymap: false,
+      listKeymap: {
+        listTypes: [
+          { itemName: 'listItem', wrapperNames: ['bulletList', 'orderedList'] },
+          { itemName: 'taskItem', wrapperNames: ['taskList'] },
+        ],
+      },
       ...(isChat && mode !== 'viewer' && {
         heading: false,
         strike: false,
@@ -308,7 +327,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
   ]
 
   if (mode !== 'viewer') {
-    extensions.push(ListKeymap)
+    extensions.push(ListShiftEnter)
 
     if (placeholder) {
       extensions.push(

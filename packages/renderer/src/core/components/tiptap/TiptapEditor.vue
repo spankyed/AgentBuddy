@@ -248,9 +248,6 @@ function shouldDeferEnter(view: import('@tiptap/pm/view').EditorView): boolean {
     if ($head.node(d).type.name === 'listItem') return true
   }
 
-  const textBefore = $head.parent.textBetween(0, $head.parentOffset, undefined, '\ufffc')
-  if (/^(`{3}|~{3})[a-z]*$/.test(textBefore)) return true
-
   return false
 }
 
@@ -299,12 +296,6 @@ const editor = useEditor({
         // Select the full block and let ProseMirror + tiptap-markdown handle cut + clipboard
         editor.value?.commands.setTextSelection({ from: $from.before(depth), to: $from.after(depth) })
         return false
-      }
-
-      if (event.key === 'Tab') {
-        const cmd = event.shiftKey ? 'liftListItem' : 'sinkListItem'
-        editor.value?.commands[cmd]('listItem') || editor.value?.commands[cmd]('taskItem')
-        return true
       }
 
       if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
