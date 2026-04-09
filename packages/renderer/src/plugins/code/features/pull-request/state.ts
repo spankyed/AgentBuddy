@@ -160,7 +160,6 @@ export const pullRequestState = setup({
     refreshPrStatus: ({ self }) => {
       const parentContext = getParentContext(self)
       if (!parentContext?.baseDirectory) {
-        self.send({ type: 'pr.ERROR', message: 'No directory selected. Please select a directory first.' })
         return
       }
       sendToBackend('pr.LIST_OPEN_PRS', {})
@@ -798,7 +797,7 @@ export const pullRequestState = setup({
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
         // Reset check state to show "Checking..." during git changes and directory switches
-        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, prCheckCompleted: false, isGhChecking: true, viewMode: 'files' as const }), 'refreshPrStatus'] },
+        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, prCheckCompleted: false, isGhChecking: true, viewMode: 'files' as const, prError: null }), 'refreshPrStatus'] },
         'CODE_STARTUP': {
           actions: [
             assign({
