@@ -241,7 +241,7 @@ export const pullRequestState = setup({
             gitDiff: ev.data,
             gitFile: context.selectedPrFile
           }
-          addTabToParent(self, diffTab, true)
+          addTabToParent(self, diffTab)
         }
       })
     }),

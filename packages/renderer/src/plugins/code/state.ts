@@ -291,7 +291,7 @@ const codeState = setup({
         openFiles[existingIndex] = { ...openFiles[existingIndex], ...ev.tab }
       } else {
         // New tab — parent decides preview state based on tab type
-        const isSpecialTab = ev.tab.isDiff || ev.tab.isTerminal || ev.tab.isAction || ev.tab.isPrompt || ev.tab.isDeleted
+        const isSpecialTab = ev.tab.isTerminal || ev.tab.isAction || ev.tab.isPrompt
         const shouldPreview = enablePreview && !isSpecialTab && !ev.replacePreview
 
         // Remove old preview tab (only one preview at a time)

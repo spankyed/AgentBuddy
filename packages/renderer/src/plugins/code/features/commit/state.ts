@@ -198,7 +198,7 @@ export const commitState = setup({
           isDeleted: true,
           deletedFilePath: ev.file.path,
         }
-        addTabToParent(self, deletedTab, true)
+        addTabToParent(self, deletedTab)
         return
       }
 
@@ -292,7 +292,7 @@ export const commitState = setup({
             gitDiff: ev.data,
             gitFile: context.selectedGitFile
           }
-          addTabToParent(self, diffTab, true)
+          addTabToParent(self, diffTab)
         }
       })
     }),
