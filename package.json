@@ -51,7 +51,8 @@
     "compile:flows": "npm run compile:flows --workspace @app/default-setup",
     "compile:library": "npm run compile:library --workspace @app/default-setup",
     "compile:notes": "npm run compile:notes --workspace @app/default-setup",
-    "build:speech-macos": "cd native/speech/macos && bash build.sh"
+    "build:speech-macos": "cd native/speech/macos && bash build.sh",
+    "publish-release": "bash build/release/publish-release.sh"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",
