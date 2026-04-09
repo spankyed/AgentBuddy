@@ -40,6 +40,7 @@
             :in-history-mode="historyIndex !== -1"
             @history-prev="onHistoryPrev"
             @history-next="onHistoryNext"
+            @clear-input="onClearInput"
           />
         </div>
 
@@ -263,6 +264,7 @@ function saveHistory(history: string[]) {
 
 const sentHistory = ref<string[]>(loadHistory())
 const historyIndex = ref(-1)
+const lastClearedContent = ref<string | null>(null)
 
 const commandHighlight = computed(() => {
   return tiptapRef.value?.commandActive || tiptapRef.value?.commandModeActive
@@ -279,6 +281,15 @@ const onContentUpdate = (md: string) => {
   if (!navigatingHistory.value) {
     historyIndex.value = -1
   }
+}
+
+function onClearInput() {
+  const editor = tiptapRef.value?.editor
+  if (!editor) return
+  const md = messageContent.value
+  if (!md.trim()) return
+  lastClearedContent.value = md
+  editor.commands.clearContent(true)
 }
 
 function onHistoryPrev() {
@@ -301,7 +312,15 @@ function onHistoryNext() {
   const editor = tiptapRef.value?.editor
   if (!editor) return
 
-  if (historyIndex.value === -1) return
+  if (historyIndex.value === -1) {
+    if (lastClearedContent.value) {
+      navigatingHistory.value = true
+      editor.commands.setContent(lastClearedContent.value)
+      lastClearedContent.value = null
+      navigatingHistory.value = false
+    }
+    return
+  }
 
   if (historyIndex.value < sentHistory.value.length - 1) {
     historyIndex.value++
@@ -472,6 +491,7 @@ const handleSubmit = async () => {
     sentHistory.value.push(md)
     saveHistory(sentHistory.value)
     historyIndex.value = -1
+    lastClearedContent.value = null
     editor.commands.clearContent(true)
     messageContent.value = ''
     clearAll()

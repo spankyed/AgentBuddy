@@ -2,6 +2,8 @@ import type { Editor } from '@tiptap/vue-3'
 import type { EditorView } from '@tiptap/pm/view'
 import { splitBlock } from '@tiptap/pm/commands'
 import type { EditorConfig } from '../editor-config'
+import { commandSuggestionPluginKey } from '../command-suggestion-plugin'
+import { referenceSuggestionPluginKey } from '../reference-suggestion-plugin'
 
 /** Returns true when ProseMirror's default Enter behavior should take over. */
 function shouldDeferEnter(view: EditorView): boolean {
@@ -32,11 +34,32 @@ interface KeyboardOptions {
     focusTitle: () => void
     historyPrev: () => void
     historyNext: () => void
+    clearInput: () => void
   }
 }
 
 export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, emit }: KeyboardOptions) {
+  let lastEscTime = 0
+
   return (view: EditorView, event: KeyboardEvent) => {
+    // Double-ESC → clear input (skip when a popup is active so ESC just closes it)
+    if (event.key === 'Escape') {
+      const cmdState = commandSuggestionPluginKey.getState(view.state)
+      const refState = referenceSuggestionPluginKey.getState(view.state)
+      if (cmdState?.active || refState?.active) {
+        lastEscTime = 0
+        return false
+      }
+      const now = Date.now()
+      if (now - lastEscTime < 300) {
+        lastEscTime = 0
+        emit.clearInput()
+        return true
+      }
+      lastEscTime = now
+      return false
+    }
+
     // Trap Tab inside the editor — listKeymap handles indent/outdent in lists
     if (event.key === 'Tab') {
       const { $head } = view.state.selection

@@ -68,6 +68,7 @@ const emit = defineEmits<{
   (e: 'focusTitle'): void
   (e: 'history-prev'): void
   (e: 'history-next'): void
+  (e: 'clearInput'): void
   (e: 'imageClick', src: string): void
 }>()
 
@@ -133,6 +134,7 @@ const handleKeyDown = createKeyboardHandler({
     focusTitle: () => emit('focusTitle'),
     historyPrev: () => emit('history-prev'),
     historyNext: () => emit('history-next'),
+    clearInput: () => emit('clearInput'),
   },
 })
 
