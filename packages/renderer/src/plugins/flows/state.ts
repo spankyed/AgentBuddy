@@ -815,12 +815,21 @@ const flowsState = setup({
         ? { x: sourcePos.x + nodeOffset.xOffset, y: sourcePos.y + nodeOffset.yOffset }
         : { x: nodeOffset.fallbackX, y: nodeOffset.fallbackY }
 
-      // Resolve sourceHandle — fallback to next branch index for switch nodes
+      // Resolve sourceHandle — fallback to next handle index for multi-exit nodes
       let resolvedSourceHandle = ev.sourceHandle
       if (!resolvedSourceHandle) {
         const sourceNode = context.graph.nodes.find(n => n.id === ev.sourceNodeId)
         if (sourceNode?.nodeType === 'switch') {
           resolvedSourceHandle = `branch-${nextBranchIndex(context.graph.edges, ev.sourceNodeId)}`
+        } else if (sourceNode?.nodeType === 'listener') {
+          const existingExits = context.graph.edges
+            .filter(e => e.source === ev.sourceNodeId && e.sourceHandle)
+            .map(e => {
+              const match = e.sourceHandle!.match(/exit-(\d+)/)
+              return match ? parseInt(match[1], 10) : -1
+            })
+          const nextIndex = existingExits.length > 0 ? Math.max(...existingExits) + 1 : 0
+          resolvedSourceHandle = `exit-${nextIndex}`
         }
       }
 
