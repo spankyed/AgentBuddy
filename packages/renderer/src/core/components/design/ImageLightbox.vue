@@ -116,7 +116,7 @@ const contextMenuItems = computed<MenuItem[]>(() => [
     class: 'text-neutral-200',
     action: async () => {
       try {
-        await window.electronAPI.shell.openImageExternal(props.imageSrc)
+        await window.electronAPI?.shell?.openExternal(props.imageSrc)
       } catch (error) {
         console.error('Failed to open image externally:', error)
       }
