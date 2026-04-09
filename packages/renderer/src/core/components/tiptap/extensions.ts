@@ -11,6 +11,9 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import Underline from '@tiptap/extension-underline'
 import { ResizableImage } from './resizable-image'
 import { SubDocumentLink } from './sub-document-link'
 import { ReferenceNode } from './reference-node'
@@ -22,6 +25,7 @@ import { MarkdownParseFixes } from './extensions/markdown-parse-fixes'
 import { EmptyLinePreserver } from './extensions/empty-line-preserver'
 import { BlockquotePipe } from './extensions/blockquote-pipe'
 import { DetailsBlock, DetailsBlockSummary, DetailsBlockContent } from './extensions/details-block'
+import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder'
 
 const lowlight = createLowlight(common)
 
@@ -83,13 +87,24 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     }),
     ReferenceNode,
     EmptyLinePreserver,
+    Underline,
   ]
 
+  if (cfg.richFormatting) extensions.push(Color, Highlight.configure({ multicolor: true }))
   if (cfg.fullExtensions) extensions.push(...createFullExtensions(mode))
   if (cfg.commandSuggestion) extensions.push(CommandSuggestion)
   if (cfg.commandViewerDeco && isCommand) extensions.push(CommandViewerDecoration)
   if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
-  if (placeholder) extensions.push(Placeholder.configure({ placeholder }))
+  if (cfg.editorInteractions) extensions.push(ImageUploadPlaceholder)
+  if (placeholder) extensions.push(Placeholder.configure({
+    placeholder: ({ node }) => {
+      if (node.type.name === 'heading') return `Heading ${node.attrs.level}`
+      if (node.type.name === 'codeBlock') return 'Write code...'
+      if (node.type.name === 'detailsSummary') return 'Toggle summary'
+      return placeholder
+    },
+    includeChildren: true,
+  }))
 
   return extensions
 }

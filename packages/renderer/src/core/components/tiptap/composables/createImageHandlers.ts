@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/vue-3'
+import { addUploadPlaceholder, removeUploadPlaceholder } from '../extensions/image-upload-placeholder'
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -15,14 +16,25 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
+let placeholderCounter = 0
+
 async function uploadAndInsertImage(file: File, editor: Editor | undefined, entityId: string | undefined, pos?: number) {
   if (!editor || !entityId) return false
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) return false
   if (file.size > MAX_IMAGE_SIZE) return false
 
+  const insertPos = pos ?? editor.state.selection.from
+  const id = `upload-${++placeholderCounter}`
+  const previewUrl = URL.createObjectURL(file)
+
+  addUploadPlaceholder(editor.view, id, insertPos, previewUrl)
+
   try {
     const base64 = await fileToBase64(file)
     const url = await window.electronAPI?.media.upload(entityId, base64, file.type)
+    URL.revokeObjectURL(previewUrl)
+    removeUploadPlaceholder(editor.view, id)
+
     if (!url) return false
 
     if (pos !== undefined) {
@@ -32,6 +44,8 @@ async function uploadAndInsertImage(file: File, editor: Editor | undefined, enti
     }
     return true
   } catch (err) {
+    URL.revokeObjectURL(previewUrl)
+    removeUploadPlaceholder(editor.view, id)
     console.error('Failed to upload image:', err)
     return false
   }

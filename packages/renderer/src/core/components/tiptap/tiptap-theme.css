@@ -135,6 +135,7 @@
   background: transparent;
   cursor: pointer;
   vertical-align: middle;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .tiptap-wrapper .ProseMirror ul[data-type="taskList"] li label input[type="checkbox"]:checked {
@@ -147,6 +148,11 @@
 .tiptap-wrapper .ProseMirror ul[data-type="taskList"] li > div {
   padding-left: 1px;
   flex: 1;
+}
+
+.tiptap-wrapper .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: rgb(115 115 115);
 }
 
 /* Table */
@@ -238,8 +244,8 @@
   font-weight: 600;
 }
 
-/* Placeholder */
-.tiptap-wrapper .ProseMirror p.is-editor-empty:first-child::before {
+/* Placeholder — generic for all empty block types */
+.tiptap-wrapper .ProseMirror .is-empty::before {
   content: attr(data-placeholder);
   float: left;
   color: rgb(115 115 115); /* neutral-500 */
@@ -276,6 +282,11 @@
   border-radius: 0.5rem;
   margin: 0.5em 0;
   border: 1px solid rgb(38 38 38); /* border-neutral-800 */
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tiptap-editor .ProseMirror img:hover {
+  filter: brightness(0.9);
 }
 
 /* Gapcursor (appears between block nodes like images) */
@@ -286,6 +297,7 @@
 .tiptap-wrapper .ProseMirror img.ProseMirror-selectednode {
   outline: none;
   box-shadow: 0 0 0 2px rgb(96 165 250);
+  transition: box-shadow 0.15s ease;
 }
 
 .tiptap-wrapper .ProseMirror[contenteditable="false"] img.ProseMirror-selectednode {
@@ -495,4 +507,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 180px;
+}
+
+/* Image upload placeholder */
+.image-upload-placeholder {
+  position: relative;
+  opacity: 0.4;
+  margin: 0.5em 0;
+}
+
+.image-upload-placeholder img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+
+.image-upload-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgb(96 165 250 / 0.3);
+  border-top-color: rgb(96 165 250);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Floating menu entrance animation */
+.bubble-menu,
+.animation-bubble-in {
+  animation: bubble-in 0.15s ease-out;
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

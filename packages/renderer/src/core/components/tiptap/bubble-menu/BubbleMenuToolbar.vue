@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
-import { Bold, Italic, Strikethrough, Code, Link } from 'lucide-vue-next'
+import { Bold, Italic, Underline, Strikethrough, Code, Link } from 'lucide-vue-next'
 
 const props = defineProps<{ editor: Editor }>()
 const emit = defineEmits<{ (e: 'toggle-link'): void }>()
@@ -40,6 +40,13 @@ const items = computed(() => {
       icon: Italic,
       isActive: () => e.isActive('italic'),
       command: () => e.chain().focus().toggleItalic().run(),
+    },
+    {
+      action: 'underline',
+      title: 'Underline',
+      icon: Underline,
+      isActive: () => e.isActive('underline'),
+      command: () => e.chain().focus().toggleUnderline().run(),
     },
     {
       action: 'strike',
