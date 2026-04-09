@@ -30,6 +30,16 @@ interface KeyboardOptions {
 
 export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, emit }: KeyboardOptions) {
   return (view: EditorView, event: KeyboardEvent) => {
+    // Trap Tab inside the editor — listKeymap handles indent/outdent in lists
+    if (event.key === 'Tab') {
+      const { $head } = view.state.selection
+      for (let d = $head.depth; d > 0; d--) {
+        const nodeName = $head.node(d).type.name
+        if (nodeName === 'listItem' || nodeName === 'taskItem') return false
+      }
+      return true
+    }
+
     // ⌘+Shift+V → paste as plain text, parsed as markdown for structure
     if (event.key === 'v' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
