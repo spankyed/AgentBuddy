@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuRoot v-if="terminalPath" @update:open="onMenuOpenChange">
+  <TrackedContextMenuRoot v-if="terminalPath">
     <ContextMenuTrigger as-child>
       <slot />
     </ContextMenuTrigger>
@@ -15,7 +15,7 @@
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenuPortal>
-  </ContextMenuRoot>
+  </TrackedContextMenuRoot>
 
   <slot v-else />
 </template>
@@ -23,14 +23,13 @@
 <script setup lang="ts">
 import { Terminal } from 'lucide-vue-next'
 import {
-  ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '../constants'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 
 defineProps<{
   terminalPath?: string

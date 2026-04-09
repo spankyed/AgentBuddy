@@ -282,7 +282,7 @@
             </button>
           </div>
           <div class="space-y-1">
-            <ContextMenuRoot v-for="file in stagedFiles" :key="`staged-${file.path}`" @update:open="onMenuOpenChange">
+            <TrackedContextMenuRoot v-for="file in stagedFiles" :key="`staged-${file.path}`">
               <ContextMenuTrigger as-child>
                 <div
                   @click="selectFile(file)"
@@ -333,7 +333,7 @@
                   </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenuPortal>
-            </ContextMenuRoot>
+            </TrackedContextMenuRoot>
           </div>
         </div>
 
@@ -351,7 +351,7 @@
             </div>
           </div>
           <div class="space-y-1">
-            <ContextMenuRoot v-for="file in unstagedFiles" :key="`unstaged-${file.path}`" @update:open="onMenuOpenChange">
+            <TrackedContextMenuRoot v-for="file in unstagedFiles" :key="`unstaged-${file.path}`">
               <ContextMenuTrigger as-child>
                 <div
                   @click="selectFile(file)"
@@ -408,7 +408,7 @@
                   </ContextMenuItem>
                 </ContextMenuContent>
               </ContextMenuPortal>
-            </ContextMenuRoot>
+            </TrackedContextMenuRoot>
           </div>
         </div>
       </div>
@@ -485,9 +485,9 @@ import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy } from 'lucide-vue-next'
-import { ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
+import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'

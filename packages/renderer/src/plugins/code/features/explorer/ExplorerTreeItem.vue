@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuRoot @update:open="onMenuOpenChange">
+  <TrackedContextMenuRoot>
     <ContextMenuTrigger as-child>
       <div
         ref="itemEl"
@@ -139,7 +139,7 @@
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenuPortal>
-  </ContextMenuRoot>
+  </TrackedContextMenuRoot>
 
   <!-- Loading indicator for expanding directory -->
   <div v-if="file.type === 'directory' && isExpanded && isLoading">
@@ -173,7 +173,6 @@ import {
   FileText,
 } from 'lucide-vue-next'
 import {
-  ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
@@ -188,7 +187,7 @@ import {
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
 import { getFileIcon } from '../../utils/file-icons'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import type { FileInfo } from './state'
 
 const props = defineProps<{

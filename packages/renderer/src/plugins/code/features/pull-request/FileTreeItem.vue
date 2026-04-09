@@ -35,7 +35,7 @@
     </div>
     
     <!-- File -->
-    <ContextMenuRoot v-else @update:open="onMenuOpenChange">
+    <TrackedContextMenuRoot v-else>
       <ContextMenuTrigger as-child>
         <div
           class="flex items-center w-full gap-2 px-2 py-1 transition-colors rounded hover:bg-neutral-800 cursor-pointer min-w-0"
@@ -69,7 +69,7 @@
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenuPortal>
-    </ContextMenuRoot>
+    </TrackedContextMenuRoot>
   </div>
 </template>
 
@@ -77,11 +77,11 @@
 import { ref, computed, watch } from 'vue'
 import { ChevronRight, Folder, FileCode, File, Copy } from 'lucide-vue-next'
 import {
-  ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
+  ContextMenuTrigger, ContextMenuContent,
   ContextMenuItem, ContextMenuPortal
 } from 'reka-ui'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '@/plugins/code/features/explorer/constants'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import type { TreeNode } from './types'
 

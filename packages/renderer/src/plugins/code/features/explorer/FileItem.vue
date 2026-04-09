@@ -1,5 +1,5 @@
 <template>
-  <ContextMenuRoot @update:open="onMenuOpenChange">
+  <TrackedContextMenuRoot>
     <ContextMenuTrigger as-child>
       <div
         @click="handleClick"
@@ -99,7 +99,7 @@
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenuPortal>
-  </ContextMenuRoot>
+  </TrackedContextMenuRoot>
 </template>
 
 <script setup lang="ts">
@@ -112,7 +112,6 @@ import {
   Terminal,
 } from 'lucide-vue-next'
 import {
-  ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
@@ -127,7 +126,7 @@ import {
 import ProjectMenuItems from './components/ProjectMenuItems.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
 import { getFileIcon } from '../../utils/file-icons'
-import { onMenuOpenChange } from '@/core/composables/useMenuState'
+import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 
 interface FileItem {
   path: string
