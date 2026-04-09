@@ -54,6 +54,7 @@ export const noteCommands = {
     displayOrder?: number;
     noteType?: 'document' | 'tasklist' | 'task';
     completed?: boolean;
+    id?: string;
   }): NoteEntity => {
     if (!input.title?.trim()) {
       throw new RepositoryError('Title is required', RepositoryErrorCode.VALIDATION_ERROR);
@@ -89,7 +90,8 @@ export const noteCommands = {
         displayOrder,
         lastSeen: 0,
       } as any,
-      'NOTE'
+      'NOTE',
+      input.id as EARS.EntityId | undefined,
     );
 
     // Create parent-child relationship

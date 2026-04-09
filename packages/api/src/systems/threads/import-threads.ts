@@ -3,14 +3,14 @@
  *
  * Imports threads from an exported JSON file, recreating messages with full data
  * (blocks, references, commands), artifacts, fork relations, and media.
- * Remaps thread:// links in message text and context references.
+ * Persists original entity IDs to preserve thread:// links and cross-entity context references.
  */
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { EARS } from '@/core/types'
-import { qx } from '@/core/ears/helpers/query'
 import { tx } from '@/core/ears/helpers/transaction'
+import { exists } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs } from '@/core/helpers/media'
 import { repository } from '@/repository'
 import type { ExportedThreadsData } from './export-types'
@@ -23,6 +23,13 @@ interface ImportResult {
   artifactsCreated: number
   mediaRestored: number
   errors: string[]
+}
+
+/** Resolve a provided ID for import: use it if valid and not already taken, otherwise undefined (auto-generate). */
+function resolveImportId(providedId: string | undefined): string | undefined {
+  if (!providedId) return undefined
+  if (exists(providedId as EARS.EntityId)) return undefined
+  return providedId
 }
 
 export function importThreads(importDir: string): ImportResult {
@@ -61,7 +68,6 @@ export function importThreads(importDir: string): ImportResult {
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'
 
   const shortCodeMap = new Map<string, EARS.EntityId>()
-  const oldIdToNewId = new Map<string, EARS.EntityId>()
   const createdThreadIds: EARS.EntityId[] = []
 
   // Pass 1: Create threads, messages, artifacts
@@ -74,6 +80,7 @@ export function importThreads(importDir: string): ImportResult {
         topic: thread.topic,
         instructions: thread.instructions,
         tags,
+        id: resolveImportId(thread.id),
       })
 
       // Restore media from instructions
@@ -100,12 +107,9 @@ export function importThreads(importDir: string): ImportResult {
         tx(newThreadId).updateBatch(updates)
       }
 
-      // Build ID mappings
+      // Build shortCode mapping (still needed for fork/linked thread relations)
       if (thread.shortCode) {
         shortCodeMap.set(thread.shortCode, newThreadId)
-      }
-      if (thread.id) {
-        oldIdToNewId.set(thread.id, newThreadId)
       }
       createdThreadIds.push(newThreadId)
 
@@ -202,7 +206,7 @@ export function importThreads(importDir: string): ImportResult {
     }
   }
 
-  // Pass 2: Restore relations
+  // Pass 2: Restore relations (uses shortCodes, not entity IDs)
   for (const thread of parsed.threads) {
     if (!thread.linkedThreads?.length || !thread.shortCode) continue
 
@@ -251,65 +255,8 @@ export function importThreads(importDir: string): ImportResult {
     }
   }
 
-  // Pass 3: Remap thread:// links in message text and context references
-  remapThreadRefs(oldIdToNewId, shortCodeMap, createdThreadIds)
+  // No remapThreadRefs needed — entity IDs are persisted, so thread:// links
+  // and cross-entity context references (note, document, folder, etc.) are all valid.
 
   return result
-}
-
-/** Remap thread:// links in message text and context references using oldId→newId mapping. */
-function remapThreadRefs(
-  oldIdToNewId: Map<string, EARS.EntityId>,
-  shortCodeToNewId: Map<string, EARS.EntityId>,
-  createdThreadIds: EARS.EntityId[],
-): void {
-  for (const threadId of createdThreadIds) {
-    const messages = qx(threadId)
-      .linksPick(
-        EARS.RelKind.CONTAINS,
-        ['id', 'text', 'references'] as const,
-        EARS.Entity.Message,
-      ) ?? []
-
-    for (const msg of messages) {
-      if (!msg.id) continue
-      let textChanged = false
-      let refsChanged = false
-
-      // Remap thread:// links in text
-      let updatedText = msg.text || ''
-      updatedText = updatedText.replace(
-        /\[([^\]]*)\]\(thread:\/\/([^)]+)\)/g,
-        (_match: string, linkText: string, oldRef: string) => {
-          const newId = oldIdToNewId.get(oldRef) ?? shortCodeToNewId.get(oldRef)
-          if (newId) {
-            textChanged = true
-            return `[${linkText}](thread://${newId})`
-          }
-          return _match
-        },
-      )
-
-      // Remap context references
-      const refs = msg.references as any
-      if (refs?.context && Array.isArray(refs.context)) {
-        for (const ctx of refs.context) {
-          if (ctx.refType === 'thread') {
-            const newId = oldIdToNewId.get(ctx.refId) ?? shortCodeToNewId.get(ctx.refId)
-            if (newId) {
-              ctx.refId = newId
-              refsChanged = true
-            }
-          }
-        }
-      }
-
-      const updates: Record<string, any> = {}
-      if (textChanged) updates.text = updatedText
-      if (refsChanged) updates.references = refs
-      if (Object.keys(updates).length > 0) {
-        tx(msg.id as EARS.EntityId).updateBatch(updates)
-      }
-    }
-  }
 }

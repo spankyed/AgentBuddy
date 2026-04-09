@@ -6,16 +6,16 @@
  * - Otherwise scans for .md files → Markdown import (flat structure)
  *
  * Media files are copied to new entity directories and URLs rewritten.
- * Reference pill links (doc://, folder://) are remapped to new entity IDs.
+ * Entity IDs are persisted from export data to preserve doc:// and folder:// reference pills.
  */
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import type { EARS } from '@/core/types'
+import { exists } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import type { ContentSection } from './types'
-import type { ExportedLibrary } from './export-types'
 import { toDisplayName, parseFrontmatter, parseMarkdownSections } from './utils'
 
 interface ImportResult {
@@ -32,7 +32,14 @@ interface CreatedItem {
   entityType: 'document' | 'collection'
 }
 
-/** Remap doc:// and folder:// reference pills in all created documents using oldId→newId mapping with name-based fallback. */
+/** Resolve a provided ID for import: use it if valid and not already taken, otherwise undefined (auto-generate). */
+function resolveImportId(providedId: string | undefined): EARS.EntityId | undefined {
+  if (!providedId) return undefined
+  if (exists(providedId as EARS.EntityId)) return undefined
+  return providedId as EARS.EntityId
+}
+
+/** Remap doc:// and folder:// reference pills (fallback for imports without persisted IDs). */
 function remapRefs(createdItems: CreatedItem[]): void {
   const oldIdToNewId = new Map<string, string>()
   const docNameToId = new Map<string, string>()
@@ -126,7 +133,8 @@ function importLibraryJson(importDir: string, jsonPath: string): ImportResult {
   const createdItems: CreatedItem[] = []
 
   processItems(items, undefined, result, importDir, hasMedia, createdItems)
-  remapRefs(createdItems)
+  // Fallback remap only when some items lacked persisted IDs
+  if (createdItems.some(i => i.oldId && i.oldId !== i.id)) remapRefs(createdItems)
   return result
 }
 
@@ -177,7 +185,10 @@ function importSymlink(item: any, parentId: EARS.EntityId | undefined, result: I
   }
 
   try {
-    const collection = repository.libraryCommands.createSymlinkCollection(item.name, item.symlinkPath, parentId)
+    const collection = repository.libraryCommands.createSymlinkCollection(
+      item.name, item.symlinkPath, parentId,
+      resolveImportId(item.id),
+    )
     result.created++
     createdItems.push({ id: collection.id, name: item.name, oldId: item.id, entityType: 'collection' })
   } catch (err) {
@@ -203,7 +214,10 @@ function importCollection(
   }
 
   try {
-    const collection = repository.libraryCommands.createCollection(item.name, item.description, parentId)
+    const collection = repository.libraryCommands.createCollection(
+      item.name, item.description, parentId,
+      resolveImportId(item.id),
+    )
     result.created++
     createdItems.push({ id: collection.id, name: item.name, oldId: item.id, entityType: 'collection' })
 
@@ -237,7 +251,10 @@ function importDocument(
     const content: ContentSection[] = Array.isArray(item.content) ? item.content : []
     const tags: string[] = Array.isArray(item.tags) ? item.tags : []
 
-    const document = repository.libraryCommands.createDocument(item.name, content, tags, parentId)
+    const document = repository.libraryCommands.createDocument(
+      item.name, content, tags, parentId,
+      resolveImportId(item.id),
+    )
     result.created++
     createdItems.push({ id: document.id, name: item.name, oldId: item.id, entityType: 'document' })
 
@@ -281,7 +298,8 @@ function importLibraryMarkdown(importDir: string): ImportResult {
   const createdItems: CreatedItem[] = []
 
   importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdItems)
-  remapRefs(createdItems)
+  // Fallback remap only when some items lacked persisted IDs
+  if (createdItems.some(i => i.oldId && i.oldId !== i.id)) remapRefs(createdItems)
   return result
 }
 
@@ -312,7 +330,10 @@ function importMarkdownDir(
         oldId = meta.id
       }
       try {
-        const collection = repository.libraryCommands.createCollection(name, description, parentId)
+        const collection = repository.libraryCommands.createCollection(
+          name, description, parentId,
+          resolveImportId(oldId),
+        )
         result.created++
         createdItems.push({ id: collection.id, name, oldId, entityType: 'collection' })
         importMarkdownDir(fullPath, collection.id as EARS.EntityId, result, rootImportDir, hasMedia, createdItems)
@@ -334,7 +355,10 @@ function importMarkdownDir(
           ? parseMarkdownSections(body)
           : []
 
-        const document = repository.libraryCommands.createDocument(name, content, tags, parentId)
+        const document = repository.libraryCommands.createDocument(
+          name, content, tags, parentId,
+          resolveImportId(oldId),
+        )
         result.created++
         createdItems.push({ id: document.id, name, oldId, entityType: 'document' })
 

@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
+import { exists } from '@/core/helpers/repository'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import { toDisplayName } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
@@ -32,22 +33,14 @@ function applyNoteUpdates(
   }
 }
 
-/** Strip all document:// sub-document links from content (they'll be regenerated with correct IDs). */
-function stripDocumentLinks(content: string): string {
-  return content.replace(/\n*\[[^\]]*\]\(document:\/\/[^)]+\)/g, '')
+/** Resolve a provided ID for import: use it if valid and not already taken, otherwise undefined (auto-generate). */
+function resolveImportId(providedId: string | undefined): string | undefined {
+  if (!providedId) return undefined
+  if (exists(providedId as EARS.EntityId)) return undefined
+  return providedId
 }
 
-/** Append a document:// sub-document link to a parent note's content. */
-function appendDocumentLink(parentId: string, childId: string, childTitle: string, childIcon: string | null): void {
-  const parent = repository.noteQueries.byId(parentId as EARS.EntityId)
-  if (!parent) return
-  const iconParam = childIcon ? `?icon=${encodeURIComponent(childIcon)}` : ''
-  const linkMarkdown = `\n\n[${childTitle}](document://${childId}${iconParam})`
-  const newContent = (parent.content || '') + linkMarkdown
-  repository.noteCommands.update(parentId as EARS.EntityId, { content: newContent })
-}
-
-/** Remap note:// reference links using exact oldId→newId mapping, with title-based fallback for older exports. */
+/** Remap note:// and document:// reference links using oldId→newId mapping (fallback for imports without persisted IDs). */
 function remapNoteRefs(createdNotes: CreatedNote[]): void {
   const oldIdToNewId = new Map<string, string>()
   const titleToId = new Map<string, string>()
@@ -62,10 +55,10 @@ function remapNoteRefs(createdNotes: CreatedNote[]): void {
     if (!note?.content) continue
 
     const updated = note.content.replace(
-      /\[([^\]]*)\]\(note:\/\/([^)]+)\)/g,
-      (match, linkText, oldId) => {
+      /\[([^\]]*)\]\((note|document):\/\/([^)]+)\)/g,
+      (match, linkText, protocol, oldId) => {
         const newId = oldIdToNewId.get(oldId) ?? titleToId.get(linkText)
-        return newId ? `[${linkText}](note://${newId})` : match
+        return newId ? `[${linkText}](${protocol}://${newId})` : match
       },
     )
 
@@ -103,7 +96,8 @@ export function importNotesFromData(data: ExportedNotes): ImportResult {
   }
   const createdNotes: CreatedNote[] = []
   importNoteNodes(data.notes, undefined, result, '', false, createdNotes)
-  remapNoteRefs(createdNotes)
+  // Fallback remap only when some notes lacked persisted IDs
+  if (createdNotes.some(n => n.oldId && n.oldId !== n.id)) remapNoteRefs(createdNotes)
   return result
 }
 
@@ -127,7 +121,8 @@ function importNotesJson(jsonPath: string): ImportResult {
 
   const createdNotes: CreatedNote[] = []
   importNoteNodes(parsed.notes as ExportedNote[], undefined, result, importDir, hasMedia, createdNotes)
-  remapNoteRefs(createdNotes)
+  // Fallback remap only when some notes lacked persisted IDs
+  if (createdNotes.some(n => n.oldId && n.oldId !== n.id)) remapNoteRefs(createdNotes)
   return result
 }
 
@@ -148,16 +143,15 @@ function importNoteNodes(
     }
 
     try {
-      const cleanContent = stripDocumentLinks(node.content || '')
-
       const note = repository.noteCommands.create({
         title: node.title,
-        content: cleanContent,
+        content: node.content || '',
         icon: node.icon,
         parentId,
         noteType: node.type,
         completed: node.completed ?? false,
         displayOrder: node.displayOrder ?? i,
+        id: resolveImportId(node.id),
       })
       result.created++
       createdNotes.push({ id: note.id, title: node.title, oldId: node.id })
@@ -165,7 +159,7 @@ function importNoteNodes(
       // Restore media and apply fields not settable via create
       let restoredContent: string | undefined
       if (hasMedia && note.id) {
-        const restored = restoreJsonMediaRefs(cleanContent, note.id, importDir)
+        const restored = restoreJsonMediaRefs(note.content || '', note.id, importDir)
         result.mediaRestored += restored.mediaRestored
         restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
       }
@@ -181,11 +175,6 @@ function importNoteNodes(
       // Recurse for children
       if (node.children && node.children.length > 0) {
         importNoteNodes(node.children, note.id, result, importDir, hasMedia, createdNotes)
-      }
-
-      // Append document:// link to parent after children are created (skip for tasks)
-      if (parentId && node.type !== 'task') {
-        appendDocumentLink(parentId, note.id, node.title, node.icon)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -247,7 +236,8 @@ function importNotesMarkdown(importDir: string): ImportResult {
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
   const createdNotes: CreatedNote[] = []
   importMarkdownDir(importDir, undefined, result, importDir, hasMedia, createdNotes)
-  remapNoteRefs(createdNotes)
+  // Fallback remap only when some notes lacked persisted IDs
+  if (createdNotes.some(n => n.oldId && n.oldId !== n.id)) remapNoteRefs(createdNotes)
   return result
 }
 
@@ -285,7 +275,7 @@ function importMarkdownDir(
         if (fs.existsSync(indexPath)) {
           const raw = fs.readFileSync(indexPath, 'utf-8')
           const parsed = parseFrontmatter(raw)
-          content = stripDocumentLinks(parsed.body)
+          content = parsed.body
           icon = parsed.icon
           favorite = parsed.favorite
           hideCompletedChildren = parsed.hideCompletedChildren
@@ -305,6 +295,7 @@ function importMarkdownDir(
           noteType,
           completed,
           displayOrder,
+          id: resolveImportId(oldId),
         })
         result.created++
         createdNotes.push({ id: note.id, title: name, oldId })
@@ -326,11 +317,6 @@ function importMarkdownDir(
 
         // Recurse for children (skip index.md)
         importMarkdownDir(fullPath, note.id, result, rootImportDir, hasMedia, createdNotes)
-
-        // Append document:// link to parent after this note is created (skip for tasks)
-        if (parentId && noteType !== 'task') {
-          appendDocumentLink(parentId, note.id, name, icon)
-        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         result.errors.push(`Failed to create note "${name}": ${message}`)
@@ -344,23 +330,23 @@ function importMarkdownDir(
         const raw = fs.readFileSync(fullPath, 'utf-8')
         const parsed = parseFrontmatter(raw)
         name = parsed.title || name
-        const cleanBody = stripDocumentLinks(parsed.body)
 
         const note = repository.noteCommands.create({
           title: name,
-          content: cleanBody,
+          content: parsed.body,
           icon: parsed.icon,
           parentId,
           noteType: parsed.type,
           completed: parsed.completed,
           displayOrder: parsed.displayOrder,
+          id: resolveImportId(parsed.id),
         })
         result.created++
         createdNotes.push({ id: note.id, title: name, oldId: parsed.id })
 
         let restoredContent: string | undefined
-        if (hasMedia && cleanBody) {
-          const restored = restoreMarkdownMediaRefs(cleanBody, note.id, rootImportDir)
+        if (hasMedia && parsed.body) {
+          const restored = restoreMarkdownMediaRefs(parsed.body, note.id, rootImportDir)
           result.mediaRestored += restored.mediaRestored
           restoredContent = restored.mediaRestored > 0 ? restored.content : undefined
         }
@@ -371,11 +357,6 @@ function importMarkdownDir(
         })
         if (parsed.savedDisplayOrder != null) {
           repository.noteCommands.update(note.id as EARS.EntityId, { savedDisplayOrder: parsed.savedDisplayOrder })
-        }
-
-        // Append document:// link to parent (skip for tasks)
-        if (parentId && parsed.type !== 'task') {
-          appendDocumentLink(parentId, note.id, name, parsed.icon)
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
