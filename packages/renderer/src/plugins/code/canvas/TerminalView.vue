@@ -64,7 +64,6 @@ import { Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw, Trash2 } from 'luc
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { SearchAddon } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { ClipboardAddon } from '@xterm/addon-clipboard'
 import { applicationState } from '@/main'
@@ -204,8 +203,7 @@ onMounted(() => {
   const unicode11 = new Unicode11Addon()
   term.loadAddon(unicode11)
   term.unicode.activeVersion = '11'
-  term.loadAddon(new SearchAddon())
-  term.loadAddon(new ClipboardAddon())
+term.loadAddon(new ClipboardAddon())
 
   /* 2. Mount & fit */
   term.open(container.value)
