@@ -28,10 +28,6 @@ const threadsPlugin: Plugin = {
       global: false
     },
     {
-      action: 'switchMode',
-      global: true
-    },
-    {
       action: 'quickPrompts',
       global: true
     }

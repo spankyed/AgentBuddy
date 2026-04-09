@@ -129,7 +129,6 @@ type UIEvent =
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
-  | { type: 'SWITCH_MODE' }
   | { type: 'OPEN_QUICK_PROMPTS' }
   | { type: 'CLOSE_QUICK_PROMPTS' }
   | { type: 'NAVIGATE_TO_SECRETS' }
@@ -728,7 +727,6 @@ const threadsState = setup({
     },
     handleHotkey: createHotkeyProcessor({
       textToSpeech: 'TEXT_TO_SPEECH',
-      switchMode: 'SWITCH_MODE',
       quickPrompts: 'OPEN_QUICK_PROMPTS',
     }),
     textToSpeech: () => {
@@ -738,14 +736,6 @@ const threadsState = setup({
       quickPromptCursor: { x: mouseX, y: mouseY },
     })),
     closeQuickPrompts: assign({ quickPromptCursor: null }),
-    switchMode: ({ context, self }) => {
-      const visibleModes = context.modes.filter(m => !m.hidden && !m.disabled);
-      if (!visibleModes.length) return;
-
-      const currentIndex = visibleModes.findIndex(m => m.id === context.mode);
-      const nextMode = visibleModes[(currentIndex + 1) % visibleModes.length];
-      self.send({ type: 'SET_MODE', mode: nextMode.id });
-    },
     respondToBlockInteraction: ({ context, event }) => {
       const { messageId, response } = typeOf('RESPOND_TO_BLOCK_INTERACTION', event);
 
@@ -943,7 +933,6 @@ const threadsState = setup({
     // ---- Chat/agent events (always active regardless of view state) ----
     HOTKEY_PRESSED: { actions: ['handleHotkey'] },
     TEXT_TO_SPEECH: { actions: 'textToSpeech' },
-    SWITCH_MODE: { actions: 'switchMode' },
     OPEN_QUICK_PROMPTS: { actions: 'openQuickPromptsAtCursor' },
     CLOSE_QUICK_PROMPTS: { actions: 'closeQuickPrompts' },
     VIEW_THREAD: { actions: 'sendOpenThreadView' },

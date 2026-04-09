@@ -2,6 +2,7 @@
   <div class="flex flex-col w-full">
     <form
       @submit.prevent="handleSubmit"
+      @keydown.shift.tab.prevent="cycleMode"
       class="@container pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
       <div
@@ -401,6 +402,15 @@ const handleQuickPromptSelect = (text: string) => {
   const editor = tiptapRef.value?.editor
   if (!editor) return
   editor.chain().focus('end').insertContent(text + ' ').run()
+}
+
+const cycleMode = () => {
+  if (props.disabled) return
+  const modes = visibleModes.value
+  if (!modes.length) return
+  const currentIndex = modes.findIndex(m => m.id === props.currentMode)
+  const nextMode = modes[(currentIndex + 1) % modes.length]
+  emit('mode-change', nextMode.id)
 }
 
 const handleModeChange = (newMode: string) => {

@@ -105,7 +105,6 @@ export const defaultSettings: SettingsData = {
         ],
         hotkeys: {
           textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
-          switchMode: { key: 'Tab', modifiers: ['shift'], global: true },
           quickPrompts: { key: 'd', modifiers: ['cmd'], global: true }
         },
         quickPrompts: [
