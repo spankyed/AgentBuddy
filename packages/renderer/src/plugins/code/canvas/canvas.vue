@@ -533,24 +533,18 @@ const unpinGroup = (groupId: string) => {
   actor.send({ type: 'UNPIN_GROUP', groupId })
 }
 
-// Keyboard shortcuts
+// Keyboard shortcuts (Quick Open handled via centralized hotkey system in state.ts)
 const handleKeyDown = (e: KeyboardEvent) => {
-  // Quick Open: Cmd/Ctrl + P
-  if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
-    e.preventDefault()
-    actor.send({ type: 'SHOW_QUICK_OPEN' })
-  }
-
-  // Save file: Cmd/Ctrl + S
-  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+  // Save file: Cmd/Ctrl + S (exact — no shift/alt to avoid collisions)
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 's') {
     e.preventDefault()
     if (activeFile.value && activeFile.value.modified && !activeFile.value.isDiff) {
       saveFile()
     }
   }
 
-  // Close tab: Cmd/Ctrl + W
-  if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+  // Close tab: Cmd/Ctrl + W (exact — no shift/alt to avoid collisions)
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === 'w') {
     e.preventDefault()
     if (activeFilePath.value) {
       closeFile(activeFilePath.value)

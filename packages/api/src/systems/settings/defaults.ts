@@ -66,7 +66,8 @@ export const defaultSettings: SettingsData = {
         openTerminal: { key: '`', modifiers: ['ctrl'] },
         navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] },
-        focusSearch: { key: 'f', modifiers: ['cmd', 'shift'] }
+        focusSearch: { key: 'f', modifiers: ['cmd', 'shift'] },
+        quickOpen: { key: 'p', modifiers: ['cmd'] },
       },
       restoreTerminals: true,
       defaultBaseDirectory: null,
