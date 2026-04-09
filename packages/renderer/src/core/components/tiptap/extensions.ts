@@ -7,94 +7,28 @@ import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import { ResizableImage } from './resizable-image'
-import { SubDocumentLink } from './sub-document-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import Details, { DetailsSummary, DetailsContent } from '@tiptap/extension-details'
-import { mergeAttributes, wrappingInputRule, InputRule, Extension, isNodeActive } from '@tiptap/core'
-import Blockquote from '@tiptap/extension-blockquote'
-import Paragraph from '@tiptap/extension-paragraph'
-import { Selection } from '@tiptap/pm/state'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import Underline from '@tiptap/extension-underline'
+import { ResizableImage } from './resizable-image'
+import { SubDocumentLink } from './sub-document-link'
 import { ReferenceNode } from './reference-node'
 import { CommandSuggestion } from './command-extension'
 import { CommandViewerDecoration } from './command-viewer-decoration'
 import { getEditorConfig } from './editor-config'
-const ListShiftEnter = Extension.create({
-  name: 'listShiftEnter',
-  addKeyboardShortcuts() {
-    return {
-      'Shift-Enter': ({ editor }) => {
-        for (const name of ['listItem', 'taskItem']) {
-          if (!editor.state.schema.nodes[name]) continue
-          if (!isNodeActive(editor.state, name)) continue
-          return editor.commands.splitListItem(name)
-        }
-        return false
-      },
-    }
-  },
-})
+import { ListShiftEnter } from './extensions/list-shift-enter'
+import { MarkdownParseFixes } from './extensions/markdown-parse-fixes'
+import { EmptyLinePreserver } from './extensions/empty-line-preserver'
+import { BlockquotePipe } from './extensions/blockquote-pipe'
+import { DetailsBlock, DetailsBlockSummary, DetailsBlockContent } from './extensions/details-block'
+import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder'
+import { CustomHorizontalRule } from './extensions/custom-horizontal-rule'
 
 const lowlight = createLowlight(common)
-
-const MarkdownParseFixes = Extension.create({
-  name: 'markdownParseFixes',
-  addStorage() {
-    return {
-      markdown: {
-        parse: {
-          setup(markdownit: any) {
-            if (markdownit._markdownParseFixes) return
-            markdownit._markdownParseFixes = true
-
-            markdownit.core.ruler.after('block', 'fix-empty-task-items', (state: any) => {
-              for (const token of state.tokens) {
-                if (token.type === 'inline' && /^\[[ xX]\]$/.test(token.content)) {
-                  token.content += ' '
-                }
-              }
-            })
-
-            // Convert &nbsp;-only paragraphs back to empty paragraphs
-            markdownit.core.ruler.push('strip-nbsp-empty-lines', (state: any) => {
-              for (const token of state.tokens) {
-                if (token.type === 'inline' && token.content === '\u00a0') {
-                  token.content = ''
-                  token.children = []
-                }
-              }
-            })
-          },
-        },
-      },
-    }
-  },
-})
-
-// Empty paragraphs serialize as &nbsp; so they survive markdown round-trip
-const EmptyLinePreserver = Paragraph.extend({
-  addStorage() {
-    return {
-      markdown: {
-        serialize(state: any, node: any) {
-          if (node.childCount === 0) state.write('&nbsp;')
-          else state.renderInline(node)
-          state.closeBlock(node)
-        },
-        parse: {},
-      },
-    }
-  },
-})
-
-function applyAttributes(dom: HTMLElement, ...sources: Record<string, any>[]) {
-  for (const [key, value] of Object.entries(mergeAttributes(...sources))) {
-    dom.setAttribute(key, value)
-  }
-}
 
 export type TiptapMode = 'editor' | 'input' | 'viewer'
 export type TiptapVariant = 'full' | 'chat'
@@ -108,182 +42,18 @@ interface CreateExtensionsOptions {
 
 function createFullExtensions(mode: TiptapMode): AnyExtension[] {
   return [
-    Blockquote.extend({
-      addInputRules() {
-        return [
-          wrappingInputRule({
-            find: /^\s*\|\s$/,
-            type: this.type,
-          }),
-        ]
-      },
-    }),
+    BlockquotePipe,
     SubDocumentLink,
-    Table.configure({
-      resizable: mode !== 'viewer',
-    }),
+    Table.configure({ resizable: mode !== 'viewer' }),
     TableRow,
     TableCell,
     TableHeader,
     TaskList,
-    TaskItem.configure({
-      nested: true,
-    }),
-    ResizableImage.configure({
-      inline: false,
-      allowBase64: false,
-    }),
-    DetailsSummary.extend({
-      addStorage() {
-        return {
-          markdown: {
-            serialize(state: any, node: any) {
-              state.write('<summary>')
-              state.renderInline(node)
-              state.write('</summary>')
-              state.closeBlock(node)
-            },
-            parse: {},
-          },
-        }
-      },
-    }),
-    DetailsContent.extend({
-      // CSS handles visibility via parent's is-open class, so remove default hidden attribute
-      addNodeView() {
-        return ({ HTMLAttributes }) => {
-          const dom = document.createElement('div')
-          applyAttributes(dom, this.options.HTMLAttributes, HTMLAttributes, { 'data-type': this.name })
-          return { dom, contentDOM: dom }
-        }
-      },
-      addStorage() {
-        return {
-          markdown: {
-            serialize(state: any, node: any) {
-              state.write('\n')
-              state.renderContent(node)
-            },
-            parse: {},
-          },
-        }
-      },
-    }),
-    Details.extend({
-      addInputRules() {
-        return [
-          new InputRule({
-            find: /^\s*>\s$/,
-            handler: ({ range, chain }) => {
-              chain().deleteRange(range).setDetails().run()
-            },
-          }),
-        ]
-      },
-      addKeyboardShortcuts() {
-        const parentShortcuts = this.parent?.()
-        return {
-          ...parentShortcuts,
-          Enter: (args) => {
-            const { state, view } = args.editor
-            const { $head } = state.selection
-
-            // Only intercept: cursor in summary + content visible
-            if (
-              $head.parent.type === state.schema.nodes.detailsSummary &&
-              (view.domAtPos($head.after() + 1).node as HTMLElement).offsetParent !== null
-            ) {
-              // Move cursor into existing content instead of inserting new paragraph at index 0
-              const sel = Selection.near(state.doc.resolve($head.after() + 1), 1)
-              view.dispatch(state.tr.setSelection(sel).scrollIntoView())
-              return true
-            }
-
-            return parentShortcuts?.Enter?.(args) ?? false
-          },
-        }
-      },
-      addAttributes() {
-        return {
-          open: {
-            default: true,
-            parseHTML: element => element.hasAttribute('open'),
-            renderHTML: ({ open }) => (open ? { open: '' } : {}),
-          },
-        }
-      },
-      addStorage() {
-        return {
-          markdown: {
-            serialize(state: any, node: any) {
-              state.write(node.attrs.open ? '<details open>\n' : '<details>\n')
-              state.renderContent(node)
-              state.ensureNewLine()
-              state.write('</details>')
-              state.closeBlock(node)
-            },
-            parse: {},
-          },
-        }
-      },
-      // Apply is-open class synchronously instead of via setTimeout
-      addNodeView() {
-        return ({ editor, getPos, node, HTMLAttributes }) => {
-          const dom = document.createElement('div')
-          applyAttributes(dom, this.options.HTMLAttributes, HTMLAttributes, { 'data-type': this.name })
-
-          const toggle = document.createElement('button')
-          toggle.type = 'button'
-          dom.append(toggle)
-
-          const content = document.createElement('div')
-          dom.append(content)
-
-          if (node.attrs.open) {
-            dom.classList.add(this.options.openClassName)
-          }
-
-          toggle.addEventListener('click', () => {
-            dom.classList.toggle(this.options.openClassName)
-
-            if (!this.options.persist) {
-              editor.commands.focus(undefined, { scrollIntoView: false })
-              return
-            }
-
-            if (editor.isEditable && typeof getPos === 'function') {
-              const { from, to } = editor.state.selection
-              editor
-                .chain()
-                .command(({ tr }) => {
-                  const pos = getPos()
-                  if (pos == null) return false
-                  const currentNode = tr.doc.nodeAt(pos)
-                  if (currentNode?.type !== this.type) return false
-                  tr.setNodeMarkup(pos, undefined, { open: !currentNode.attrs.open })
-                  return true
-                })
-                .setTextSelection({ from, to })
-                .focus(undefined, { scrollIntoView: false })
-                .run()
-            }
-          })
-
-          return {
-            dom,
-            contentDOM: content,
-            update: (updatedNode: any) => {
-              if (updatedNode.type !== this.type) return false
-              dom.classList.toggle(this.options.openClassName, !!updatedNode.attrs.open)
-              return true
-            },
-          }
-        }
-      },
-    }).configure({
-      persist: true,
-      HTMLAttributes: { class: 'details-block' },
-    }),
+    TaskItem.configure({ nested: true }),
+    ResizableImage.configure({ inline: false, allowBase64: false }),
+    DetailsBlockSummary,
+    DetailsBlockContent,
+    DetailsBlock,
   ]
 }
 
@@ -296,13 +66,17 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       codeBlock: false,
       link: false,
       blockquote: false,
+      gapcursor: false,
+      horizontalRule: false,
+      dropcursor: { color: 'rgb(96 165 250 / 0.5)', width: 4 },
+      code: { HTMLAttributes: { spellcheck: 'false' } },
       listKeymap: {
         listTypes: [
           { itemName: 'listItem', wrapperNames: ['bulletList', 'orderedList'] },
           { itemName: 'taskItem', wrapperNames: ['taskList'] },
         ],
       },
-      ...(!cfg.richFormatting && { heading: false, strike: false, horizontalRule: false, trailingNode: false }),
+      ...(!cfg.richFormatting && { heading: false, strike: false, trailingNode: false }),
     }),
     Markdown.configure({
       html: cfg.markdownHtml,
@@ -318,13 +92,24 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     }),
     ReferenceNode,
     EmptyLinePreserver,
+    Underline,
   ]
 
+  if (cfg.richFormatting) extensions.push(Color, Highlight.configure({ multicolor: true }), CustomHorizontalRule)
   if (cfg.fullExtensions) extensions.push(...createFullExtensions(mode))
   if (cfg.commandSuggestion) extensions.push(CommandSuggestion)
   if (cfg.commandViewerDeco && isCommand) extensions.push(CommandViewerDecoration)
   if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
-  if (placeholder) extensions.push(Placeholder.configure({ placeholder }))
+  if (cfg.editorInteractions) extensions.push(ImageUploadPlaceholder)
+  if (placeholder) extensions.push(Placeholder.configure({
+    placeholder: ({ node }) => {
+      if (node.type.name === 'heading') return `Heading ${node.attrs.level}`
+      if (node.type.name === 'codeBlock') return 'Write code...'
+      if (node.type.name === 'detailsSummary') return 'Toggle summary'
+      return placeholder
+    },
+    includeChildren: true,
+  }))
 
   return extensions
 }

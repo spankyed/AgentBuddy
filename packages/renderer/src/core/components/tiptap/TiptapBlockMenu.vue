@@ -56,7 +56,7 @@
 import { ref, reactive, computed, watch, nextTick, inject, onMounted, onBeforeUnmount } from 'vue'
 import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from './injection-keys'
 import type { Editor } from '@tiptap/vue-3'
-import { NodeSelection } from '@tiptap/pm/state'
+import { useBlockHandle } from './composables/useBlockHandle'
 import {
   Plus,
   GripVertical,
@@ -81,123 +81,19 @@ const plusBtnRef = ref<HTMLElement | null>(null)
 const handleRef = ref<HTMLElement | null>(null)
 const dropdownStyle = reactive({ top: '0px', left: '0px' })
 
-const buttonVisible = ref(false)
-const buttonTop = ref(0)
-const hoveredBlockEl = ref<HTMLElement | null>(null)
-const dropIndicatorTop = ref<number | null>(null)
-let dragState: { pos: number; node: any } | null = null
-
-function getBlockNodeAt(blockEl: HTMLElement) {
-  const pos = props.editor.view.posAtDOM(blockEl, 0)
-  const $pos = props.editor.state.doc.resolve(pos)
-  const topPos = $pos.before(1)
-  return { pos: topPos, node: props.editor.state.doc.nodeAt(topPos)! }
-}
-
-function onDragHandleMouseDown() {
-  if (!hoveredBlockEl.value) return
-  const { pos } = getBlockNodeAt(hoveredBlockEl.value)
-  try {
-    const tr = props.editor.state.tr.setSelection(NodeSelection.create(props.editor.state.doc, pos))
-    props.editor.view.dispatch(tr)
-  } catch { /* node type doesn't support NodeSelection */ }
-}
-
-function onDragHandleMouseUp() {
-  props.editor.view.focus()
-}
-
-function onDragStart(event: DragEvent) {
-  if (!hoveredBlockEl.value || !event.dataTransfer) return
-  dragState = getBlockNodeAt(hoveredBlockEl.value)
-  event.dataTransfer.effectAllowed = 'move'
-  event.dataTransfer.setData('application/x-block-drag', '')
-  event.dataTransfer.setDragImage(hoveredBlockEl.value, 0, 0)
-}
-
-function onDragEnd() {
-  dropIndicatorTop.value = null
-  dragState = null
-}
-
-function getDropBoundary(clientY: number): { indicatorY: number; insertPos: number } {
-  const editor = props.editor
-  const editorDom = editor.view.dom as HTMLElement
-  const wrapper = editorDom.closest('.tiptap-editor') as HTMLElement
-  const wrapperTop = wrapper?.getBoundingClientRect().top ?? 0
-  const children = Array.from(editorDom.children) as HTMLElement[]
-
-  for (const child of children) {
-    const r = child.getBoundingClientRect()
-    if (clientY < (r.top + r.bottom) / 2) {
-      const pos = editor.view.posAtDOM(child, 0)
-      const insertPos = editor.state.doc.resolve(pos).before(1)
-      return { indicatorY: r.top - wrapperTop, insertPos }
-    }
-  }
-  return { indicatorY: (children.at(-1)?.getBoundingClientRect().bottom ?? 0) - wrapperTop, insertPos: editor.state.doc.content.size }
-}
-
-function onEditorDragOver(event: DragEvent) {
-  if (!dragState) return
-  event.preventDefault()
-  event.stopPropagation()
-  dropIndicatorTop.value = getDropBoundary(event.clientY).indicatorY
-}
-
-function onEditorDrop(event: DragEvent) {
-  if (!dragState) return
-  event.preventDefault()
-  event.stopPropagation()
-
-  const { pos: sourcePos, node } = dragState
-  const { insertPos } = getDropBoundary(event.clientY)
-
-  let tr = props.editor.state.tr.delete(sourcePos, sourcePos + node.nodeSize)
-  const mapped = Math.min(tr.mapping.map(insertPos), tr.doc.content.size)
-  tr = tr.insert(mapped, node)
-  props.editor.view.dispatch(tr)
-
-  dropIndicatorTop.value = null
-  dragState = null
-}
-
-function walkToDirectChild(node: HTMLElement | null, parent: HTMLElement): HTMLElement | null {
-  while (node && node.parentElement !== parent) node = node.parentElement
-  return node?.parentElement === parent ? node : null
-}
-
-function resolveBlock(node: Node, editorDom: HTMLElement): HTMLElement | null {
-  const el = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node) as HTMLElement
-  return walkToDirectChild(el, editorDom)
-}
-
-function updateButtonPosition(block: HTMLElement) {
-  const wrapper = (props.editor.view.dom as HTMLElement).closest('.tiptap-editor') as HTMLElement
-  if (wrapper) {
-    buttonTop.value = block.getBoundingClientRect().top - wrapper.getBoundingClientRect().top
-  }
-}
-
-function findBlockFromGutter(editorDom: HTMLElement, event: MouseEvent): HTMLElement | null {
-  const rect = editorDom.getBoundingClientRect()
-  const contentX = rect.left + (parseFloat(getComputedStyle(editorDom).paddingLeft) || 0) + 4
-  const pos = props.editor.view.posAtCoords({ left: contentX, top: event.clientY })
-  if (pos) {
-    const block = resolveBlock(props.editor.view.domAtPos(pos.pos).node, editorDom)
-    if (block) return block
-  }
-  // Fallback for atom nodes (e.g. subdocument links): find nearest child by vertical position
-  let closest: HTMLElement | null = null
-  let closestDist = Infinity
-  for (const child of editorDom.children) {
-    const r = child.getBoundingClientRect()
-    if (event.clientY >= r.top && event.clientY <= r.bottom) return child as HTMLElement
-    const dist = Math.min(Math.abs(event.clientY - r.top), Math.abs(event.clientY - r.bottom))
-    if (dist < closestDist) { closestDist = dist; closest = child as HTMLElement }
-  }
-  return closest
-}
+const {
+  buttonVisible,
+  buttonTop,
+  hoveredBlockEl,
+  dropIndicatorTop,
+  resolveBlock,
+  updateButtonPosition,
+  onDragHandleMouseDown,
+  onDragHandleMouseUp,
+  onDragStart,
+  onDragEnd,
+  mount,
+} = useBlockHandle(() => props.editor)
 
 function onPlusClick() {
   if (open.value) { open.value = false; return }
@@ -227,27 +123,6 @@ function onPlusClick() {
   })
 }
 
-function onEditorMouseMove(event: MouseEvent) {
-  if (open.value) return
-  if (!props.editor.state.selection.empty) return
-
-  const editorDom = props.editor.view.dom as HTMLElement
-  const block = walkToDirectChild(event.target as HTMLElement, editorDom) ?? findBlockFromGutter(editorDom, event)
-
-  if (!block) {
-    buttonVisible.value = false
-    return
-  }
-
-  hoveredBlockEl.value = block
-  buttonVisible.value = true
-  updateButtonPosition(block)
-}
-
-function onEditorMouseLeave() {
-  if (!open.value) buttonVisible.value = false
-}
-
 watch(open, async (isOpen) => {
   if (isOpen && plusBtnRef.value) {
     await nextTick()
@@ -255,9 +130,7 @@ watch(open, async (isOpen) => {
     dropdownStyle.top = `${rect.bottom + 4}px`
     dropdownStyle.left = `${rect.left}px`
   }
-  if (!isOpen) {
-    buttonVisible.value = false
-  }
+  if (!isOpen) buttonVisible.value = false
 })
 
 const extraItems = inject(EXTRA_BLOCK_ITEMS_KEY, [])
@@ -297,9 +170,7 @@ function onClickOutside(event: MouseEvent) {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && open.value) {
-    open.value = false
-  }
+  if (event.key === 'Escape' && open.value) open.value = false
 }
 
 function onTransaction({ transaction }: { transaction: any }) {
@@ -309,26 +180,19 @@ function onTransaction({ transaction }: { transaction: any }) {
   }
 }
 
+let unmountHandle: (() => void) | null = null
+
 onMounted(() => {
-  const editorDom = props.editor.view.dom as HTMLElement
-  editorDom.addEventListener('mousemove', onEditorMouseMove)
-  editorDom.addEventListener('mouseleave', onEditorMouseLeave)
-  document.addEventListener('dragover', onEditorDragOver, true)
-  document.addEventListener('drop', onEditorDrop, true)
+  unmountHandle = mount(() => open.value)
   document.addEventListener('click', onClickOutside)
   document.addEventListener('keydown', onKeydown)
   props.editor.on('transaction', onTransaction)
 })
 
 onBeforeUnmount(() => {
+  unmountHandle?.()
   document.removeEventListener('click', onClickOutside)
   document.removeEventListener('keydown', onKeydown)
   props.editor.off('transaction', onTransaction)
-  document.removeEventListener('dragover', onEditorDragOver, true)
-  document.removeEventListener('drop', onEditorDrop, true)
-  if (props.editor.isDestroyed) return
-  const editorDom = props.editor.view.dom as HTMLElement
-  editorDom.removeEventListener('mousemove', onEditorMouseMove)
-  editorDom.removeEventListener('mouseleave', onEditorMouseLeave)
 })
 </script>

@@ -2,6 +2,7 @@
   <div
     class="tiptap-wrapper"
     :class="[`tiptap-${mode}`, $attrs.class]"
+    @click="onWrapperClick"
   >
     <template v-if="editor">
       <template v-if="cfg.blockMenu && !hideGutter">
@@ -20,7 +21,6 @@
 import { ref, computed, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Selection } from '@tiptap/pm/state'
-import { splitBlock } from '@tiptap/pm/commands'
 import { createExtensions, type TiptapMode, type TiptapVariant } from './extensions'
 import { getEditorConfig } from './editor-config'
 import TiptapBlockMenu from './TiptapBlockMenu.vue'
@@ -29,6 +29,10 @@ import TiptapImageBubbleMenu from './TiptapImageBubbleMenu.vue'
 import ReferenceSuggestionPopup from './ReferenceSuggestionPopup.vue'
 import CommandSuggestionPopup from './CommandSuggestionPopup.vue'
 import { commandSuggestionPluginKey } from './command-suggestion-plugin'
+import { createImageHandlers } from './composables/createImageHandlers'
+import { createEditorClickHandler, createViewerClickHandler } from './composables/createEditorClickHandler'
+import { useSubDocumentTracking } from './composables/useSubDocumentTracking'
+import { createKeyboardHandler } from './composables/createEditorKeyboard'
 import './tiptap-theme.css'
 
 const props = withDefaults(defineProps<{
@@ -71,186 +75,64 @@ defineOptions({ inheritAttrs: false })
 
 const cfg = getEditorConfig(props.mode, props.variant)
 
-function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: import('@tiptap/pm/view').EditorView }) {
-  const { tr } = e.state
-  tr.setSelection(Selection.atStart(e.state.doc))
-  e.view.dispatch(tr)
+function onWrapperClick(event: MouseEvent) {
+  if (!cfg.editable || !editor.value) return
+  const target = event.target as HTMLElement
+  if (target === event.currentTarget || target.classList.contains('tiptap-wrapper')) {
+    editor.value.chain().focus('end').run()
+  }
 }
 
-const suppressNodeDeletionEvents = ref(false)
+const { suppressNodeDeletionEvents, onTransaction: subDocOnTransaction } = useSubDocumentTracking({
+  subDocumentLinkDeleted: (id) => emit('subDocumentLinkDeleted', id),
+  subDocumentLinkRestored: (id) => emit('subDocumentLinkRestored', id),
+})
+
 const lastResetMarkdown = ref<string | null>(null)
 
 function getMarkdown(): string {
   return (editor.value!.storage as any).markdown.getMarkdown()
 }
 
+function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: import('@tiptap/pm/view').EditorView }) {
+  const { tr } = e.state
+  tr.setSelection(Selection.atStart(e.state.doc))
+  e.view.dispatch(tr)
+}
+
+// Set content without recording in undo history so note switches can't be undone
 function resetContent(content: string) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
   const parsed = (editor.value.storage as any).markdown.parser.parse(content)
-  // Set content without recording in undo history so note switches can't be undone
   editor.value.chain().setMeta('addToHistory', false).setContent(parsed).run()
   selectStart(editor.value)
   lastResetMarkdown.value = getMarkdown()
   suppressNodeDeletionEvents.value = false
 }
 
-function collectSubDocumentLinkIds(doc: any): Set<string> {
-  const ids = new Set<string>()
-  doc.descendants((node: any) => {
-    if (node.type.name === 'subDocumentLink' && node.attrs.noteId) {
-      ids.add(node.attrs.noteId)
-    }
-  })
-  return ids
-}
+// Build editorProps from composables
+const imageHandlers = cfg.editorInteractions
+  ? createImageHandlers(() => editor.value, () => props.entityId, () => props.disableImages || !props.entityId)
+  : {}
 
-const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+const clickHandler = cfg.editorInteractions
+  ? { handleClick: createEditorClickHandler({ noteLinkClick: (id) => emit('noteLinkClick', id), imageClick: (src) => emit('imageClick', src) }) }
+  : cfg.viewerImageClick
+    ? { handleClick: createViewerClickHandler({ imageClick: (src) => emit('imageClick', src) }) }
+    : {}
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1]) // strip data URI prefix
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-async function uploadAndInsertImage(file: File, editorInstance: ReturnType<typeof useEditor>['value'], pos?: number) {
-  if (!editorInstance || !props.entityId) return false
-  if (!ALLOWED_IMAGE_TYPES.has(file.type)) return false
-  if (file.size > MAX_IMAGE_SIZE) return false
-
-  try {
-    const base64 = await fileToBase64(file)
-    const url = await window.electronAPI?.media.upload(props.entityId, base64, file.type)
-    if (!url) return false
-
-    if (pos !== undefined) {
-      editorInstance.chain().focus().insertContentAt(pos, { type: 'image', attrs: { src: url } }).run()
-    } else {
-      editorInstance.chain().focus().setImage({ src: url }).run()
-    }
-    return true
-  } catch (err) {
-    console.error('Failed to upload image:', err)
-    return false
-  }
-}
-
-const clickProps = cfg.editorInteractions ? {
-  handleClick: (_view: any, _pos: any, event: MouseEvent) => {
-    // Sub-document links open on regular click (no modifier needed)
-    const subDocumentEl = (event.target as HTMLElement).closest('.sub-document-link')
-    if (subDocumentEl) {
-      const noteId = subDocumentEl.getAttribute('data-note-id')
-      if (noteId) {
-        emit('noteLinkClick', noteId)
-        return true
-      }
-    }
-    // document:// inline links also open on regular click (no modifier needed)
-    const anchor = (event.target as HTMLElement).closest('a')
-    const href = anchor?.getAttribute('href')
-    if (href?.startsWith('document://')) {
-      emit('noteLinkClick', href.slice('document://'.length))
-      return true
-    }
-    // Cmd+click on image → open lightbox
-    if (event.metaKey || event.ctrlKey) {
-      const img = (event.target as HTMLElement).closest('img')
-      if (img?.src) {
-        emit('imageClick', img.src)
-        return true
-      }
-    }
-    // Other links require ctrl/cmd+click in editor mode
-    if (!(event.ctrlKey || event.metaKey)) return false
-    if (!href) return false
-    if (href.startsWith('note://')) {
-      emit('noteLinkClick', href.slice('note://'.length))
-      return true
-    }
-    const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-    window.electronAPI?.shell?.openExternal(url)
-    return true
+const handleKeyDown = createKeyboardHandler({
+  cfg,
+  getEditor: () => editor.value,
+  getInHistoryMode: () => props.inHistoryMode,
+  emit: {
+    submit: () => emit('submit'),
+    focusTitle: () => emit('focusTitle'),
+    historyPrev: () => emit('history-prev'),
+    historyNext: () => emit('history-next'),
   },
-  handlePaste: (_view: any, event: ClipboardEvent) => {
-    if (props.disableImages || !props.entityId) return false
-    const items = event.clipboardData?.items
-    if (!items) return false
-
-    let handled = false
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (!file) continue
-        if (!handled) { event.preventDefault(); handled = true }
-        uploadAndInsertImage(file, editor.value)
-      }
-    }
-    return handled
-  },
-  handleDrop: (view: any, event: DragEvent) => {
-    if (props.disableImages || !props.entityId) return false
-    const files = event.dataTransfer?.files
-    if (!files?.length) return false
-
-    let handled = false
-    for (const file of files) {
-      if (file.type.startsWith('image/')) {
-        if (!handled) { event.preventDefault(); handled = true }
-        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
-        uploadAndInsertImage(file, editor.value, coords?.pos)
-      }
-    }
-    return handled
-  },
-} : cfg.viewerImageClick ? {
-  handleClick: (_view: any, _pos: any, event: MouseEvent) => {
-    const img = (event.target as HTMLElement).closest('img')
-    if (img?.src) {
-      emit('imageClick', img.src)
-      return true
-    }
-    return false
-  },
-} : {}
-
-const transactionHandler = cfg.subDocumentTracking ? {
-  onTransaction: ({ transaction }: { transaction: any }) => {
-    if (!transaction.docChanged || suppressNodeDeletionEvents.value) return
-    const oldIds = collectSubDocumentLinkIds(transaction.before)
-    const newIds = collectSubDocumentLinkIds(transaction.doc)
-    for (const id of oldIds) {
-      if (!newIds.has(id)) {
-        emit('subDocumentLinkDeleted', id)
-      }
-    }
-    for (const id of newIds) {
-      if (!oldIds.has(id)) {
-        emit('subDocumentLinkRestored', id)
-      }
-    }
-  },
-} : {}
-
-/** Returns true when ProseMirror's default Enter behavior should take over. */
-function shouldDeferEnter(view: import('@tiptap/pm/view').EditorView): boolean {
-  const { $head } = view.state.selection
-
-  if ($head.parent.type.name === 'codeBlock') return true
-
-  for (let d = $head.depth; d > 0; d--) {
-    if ($head.node(d).type.name === 'listItem') return true
-  }
-
-  return false
-}
+})
 
 const editor = useEditor({
   extensions: createExtensions({
@@ -262,82 +144,27 @@ const editor = useEditor({
   content: props.modelValue,
   editable: cfg.editable && !props.disabled,
   editorProps: {
-    handleKeyDown: (view, event) => {
-      // ⌘+Shift+V → paste as plain text, parsed as markdown for structure
-      if (event.key === 'v' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault()
-        navigator.clipboard.readText().then(text => {
-          if (!text || !editor.value) return
-          editor.value.commands.insertContent(text)
-        })
-        return true
-      }
-
-      if (cfg.historyNavigation) {
-        const isEmpty = !view.state.doc.textContent.trim()
-
-        if (event.key === 'ArrowUp' && (isEmpty || props.inHistoryMode)) {
-          emit('history-prev')
-          return true
-        }
-        if (event.key === 'ArrowDown' && (isEmpty || props.inHistoryMode)) {
-          emit('history-next')
-          return true
-        }
-      }
-
-      // ⌘/Ctrl+X on empty selection → select entire line block, let ProseMirror cut it
-      if (event.key === 'x' && (event.metaKey || event.ctrlKey) && view.state.selection.empty) {
-        const { $from } = view.state.selection
-
-        // Walk up past single-child wrappers so the whole block is cut (e.g. listItem, blockquote)
-        let depth = $from.depth
-        while (depth > 1 && $from.node(depth - 1).childCount === 1) depth--
-
-        // Select the full block and let ProseMirror + tiptap-markdown handle cut + clipboard
-        editor.value?.commands.setTextSelection({ from: $from.before(depth), to: $from.after(depth) })
-        return false
-      }
-
-      if ((event.key === 'ArrowUp' || event.key === 'ArrowLeft') && view.state.selection.from <= 1) {
-        emit('focusTitle')
-        return true
-      }
-
-      if (cfg.enterSubmit && event.key === 'Enter') {
-        if (shouldDeferEnter(view)) return false
-
-        if (event.shiftKey) {
-          return splitBlock(view.state, view.dispatch)
-        }
-
-        emit('submit')
-        return true
-      }
-
-      return false
-    },
-    ...clickProps,
+    handleKeyDown,
+    ...clickHandler,
+    ...imageHandlers,
   },
   onCreate: ({ editor: e }) => {
     selectStart(e)
   },
-  onUpdate: ({ editor: e }) => {
+  onUpdate: () => {
     if (suppressNodeDeletionEvents.value) return
     const md = getMarkdown()
     if (lastResetMarkdown.value !== null && md === lastResetMarkdown.value) return
     lastResetMarkdown.value = null
     emit('update:modelValue', md)
   },
-  ...transactionHandler,
+  ...(cfg.subDocumentTracking && { onTransaction: subDocOnTransaction }),
 })
 
 // Sync modelValue changes from parent into the editor
 watch(() => props.modelValue, (newVal) => {
   if (!editor.value) return
-  if (newVal !== getMarkdown()) {
-    resetContent(newVal)
-  }
+  if (newVal !== getMarkdown()) resetContent(newVal)
 })
 
 // Force-reset editor content on entity switch to prevent stale content display
@@ -345,11 +172,8 @@ watch(() => props.entityId, () => {
   resetContent(props.modelValue)
 })
 
-// Sync disabled/editable
 watch(() => props.disabled, (disabled) => {
-  if (editor.value) {
-    editor.value.setEditable(!disabled && cfg.editable)
-  }
+  if (editor.value) editor.value.setEditable(!disabled && cfg.editable)
 })
 
 const commandPluginState = computed(() => {
