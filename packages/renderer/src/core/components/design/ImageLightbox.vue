@@ -8,7 +8,7 @@
         <div class="lightbox-image-wrapper">
           <img
             :src="imageSrc"
-            class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            class="max-w-[90vw] max-h-[90vh] min-w-[120px] min-h-[120px] object-contain rounded-lg"
             @contextmenu.prevent="handleContextMenu"
           />
 
