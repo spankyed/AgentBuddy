@@ -381,11 +381,9 @@ const codeState = setup({
       isLoading: false,
       error: null
     }),
-    initializePlugin: ({ context, system }) => {
-      // Always initialize all child machines
-      system.get('explorer')?.send({ type: 'explorer.INITIALIZE', baseDirectory: context.baseDirectory });
+    initializePlugin: ({ system }) => {
+      // Explorer is initialized via the CODE_CONNECTED broadcast — no re-init needed here.
       system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
-      // Actions and prompts are loaded by their respective main plugin actors
     },
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {

@@ -69,7 +69,6 @@ export interface QuickOpenResult {
 }
 
 export type Event =
-  | { type: 'explorer.INITIALIZE'; baseDirectory: string }
   | { type: 'explorer.LIST_FILES'; path: string }
   | { type: 'explorer.CREATE_FILE'; name: string }
   | { type: 'explorer.CREATE_DIRECTORY'; path: string }
@@ -276,13 +275,6 @@ export const explorerState = setup({
     assignError: ({ event, self }) => {
       const ev = event as { type: 'explorer.ERROR'; message: string }
       updateParentState(self, { error: ev.message, isLoading: false })
-    },
-
-    initialize: ({ event, self }) => {
-      const ev = event as { type: 'explorer.INITIALIZE'; baseDirectory: string }
-      if (ev.baseDirectory) {
-        self.send({ type: 'explorer.SET_BASE_DIRECTORY', path: ev.baseDirectory })
-      }
     },
 
     handleCodeConnected: ({ event, self }) => {
@@ -551,9 +543,6 @@ export const explorerState = setup({
         },
         'explorer.RENAME_FILE': {
           actions: 'renameFile'
-        },
-        'explorer.INITIALIZE': {
-          actions: 'initialize'
         },
         'explorer.OPEN_FILE': {
           actions: 'openFile'
