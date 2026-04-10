@@ -2,16 +2,31 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
-import { hasIdCollision } from '@/core/helpers/repository'
+import { hasIdCollision, findWhere, findById } from '@/core/helpers/repository'
+import { qx } from '@/core/ears/helpers/query'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
 import { toDisplayName } from '@/systems/library/utils'
 import type { ExportedNote, ExportedNotes } from './export-types'
+import type { NoteEntity } from './types'
 
 interface ImportResult {
   created: number
+  updated: number
   skipped: number
   mediaRestored: number
   errors: string[]
+}
+
+/**
+ * Find an existing note by title within a given parent (or at root level).
+ */
+function findExistingNote(title: string, parentId: string | undefined): NoteEntity | undefined {
+  const candidates = findWhere<NoteEntity>(EARS.Entity.Note, 'title', title)
+  return candidates.find(note => {
+    const parents = qx(note.id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()
+    const noteParentId = parents.length > 0 ? parents[0] : undefined
+    return noteParentId === parentId
+  })
 }
 
 function applyNoteUpdates(
@@ -41,14 +56,14 @@ export function importNotes(importDir: string): ImportResult {
     return importNotesMarkdown(importDir)
   }
 
-  return { created: 0, skipped: 0, mediaRestored: 0, errors: [`No exported-notes.json or .md files found in ${importDir}`] }
+  return { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [`No exported-notes.json or .md files found in ${importDir}`] }
 }
 
 // ── JSON Import ──────────────────────────────────────────
 
 /** Import notes from an in-memory ExportedNotes object (no media restoration). */
 export function importNotesFromData(data: ExportedNotes): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }
   if (!data?.notes || !Array.isArray(data.notes)) {
     result.errors.push('Invalid import data: expected object with "notes" array')
     return result
@@ -58,7 +73,7 @@ export function importNotesFromData(data: ExportedNotes): ImportResult {
 }
 
 function importNotesJson(jsonPath: string): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }
   const importDir = path.dirname(jsonPath)
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
 
@@ -91,6 +106,37 @@ function importNoteNodes(
     if (!node || !node.type || !node.title) {
       result.errors.push(`Note at index ${i} is missing required fields`)
       result.skipped++
+      continue
+    }
+
+    // Check for existing note with same title at the same level
+    const existing = findExistingNote(node.title, parentId)
+    if (existing) {
+      try {
+        repository.noteCommands.update(existing.id, {
+          content: node.content || '',
+          icon: node.icon,
+          completed: node.completed ?? false,
+          displayOrder: node.displayOrder ?? i,
+        })
+        applyNoteUpdates(existing.id as string, {
+          favorite: node.favorite,
+          hideCompletedChildren: node.hideCompletedChildren,
+        })
+        if (node.savedDisplayOrder != null) {
+          repository.noteCommands.update(existing.id, { savedDisplayOrder: node.savedDisplayOrder })
+        }
+        result.updated++
+
+        // Recurse for children using existing note's ID
+        if (node.children && node.children.length > 0) {
+          importNoteNodes(node.children, existing.id as string, result, importDir, hasMedia)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        result.errors.push(`Failed to update note "${node.title}": ${message}`)
+        result.skipped++
+      }
       continue
     }
 
@@ -190,7 +236,7 @@ function parseFrontmatter(content: string): {
 }
 
 function importNotesMarkdown(importDir: string): ImportResult {
-  const result: ImportResult = { created: 0, skipped: 0, mediaRestored: 0, errors: [] }
+  const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
   importMarkdownDir(importDir, undefined, result, importDir, hasMedia)
   return result

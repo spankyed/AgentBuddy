@@ -325,6 +325,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
   if (notesData) {
     const importResult = importNotesFromData(notesData);
     result.notes.created = importResult.created;
+    result.notes.updated = importResult.updated;
     result.notes.skipped = importResult.skipped;
     if (importResult.errors.length > 0) {
       importResult.errors.forEach(e => console.warn(`[seed] notes: ${e}`));

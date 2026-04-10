@@ -41,7 +41,7 @@
             <p>Prompts — {{ importResult.prompts.created }} created, {{ importResult.prompts.updated }} updated</p>
             <p>Flows — {{ importResult.flows.created }} created, {{ importResult.flows.skipped }} skipped</p>
             <p>Library — {{ importResult.library.created }} created, {{ importResult.library.updated }} updated</p>
-            <p>Notes — {{ importResult.notes.created }} created, {{ importResult.notes.skipped }} skipped</p>
+            <p>Notes — {{ importResult.notes.created }} created, {{ importResult.notes.updated }} updated</p>
           </div>
         </div>
 
