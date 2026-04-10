@@ -124,7 +124,7 @@ export async function action(
     const workingDir = services.cli.git.getWorkingDir();
     const fileName = `pr-${pr.number}.md`;
     const filePath = workingDir + '/' + fileName;
-    await services.cli.writeFile(filePath, markdown);
+    await services.filesystem.writeFile(filePath, markdown);
 
     if (threadId) {
       services.chat.sendBlockMessage({

@@ -5,6 +5,27 @@ import * as ai from 'ai';
 import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
+interface FileEntry {
+    name: string;
+    isDirectory: boolean;
+}
+interface FileStat {
+    size: number;
+    mtime: Date;
+    isDirectory: boolean;
+    isFile: boolean;
+}
+interface FilesystemServiceType {
+    writeFile(filePath: string, content: string): Promise<void>;
+    readFile(filePath: string): Promise<string>;
+    exists(filePath: string): Promise<boolean>;
+    mkdir(dirPath: string): Promise<void>;
+    readDir(dirPath: string): Promise<FileEntry[]>;
+    remove(targetPath: string): Promise<void>;
+    rename(oldPath: string, newPath: string): Promise<void>;
+    stat(filePath: string): Promise<FileStat>;
+}
+
 declare namespace EARS {
     export enum Entity {
         Agent = "Agent",
@@ -5232,7 +5253,6 @@ interface CliServiceType {
             name: string;
         }): Promise<GhReviewThread[]>;
     };
-    writeFile(filePath: string, content: string): Promise<void>;
 }
 
 interface TextStreamOptions {
@@ -6585,6 +6605,7 @@ declare const services: {
     brain: typeof brain;
     media: typeof media;
     cli: CliServiceType;
+    filesystem: FilesystemServiceType;
 };
 
 /**

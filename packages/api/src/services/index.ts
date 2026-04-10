@@ -14,6 +14,7 @@ import * as artifact from './artifact';
 import * as brain from './brain';
 import * as media from './media';
 import { cliService } from './cli';
+import { filesystemService } from './filesystem';
 
 const services = {
   logger: loggerService,
@@ -32,6 +33,7 @@ const services = {
   brain,
   media,
   cli: cliService,
+  filesystem: filesystemService,
 }
 
 export default services;

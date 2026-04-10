@@ -1,5 +1,3 @@
-import * as fs from 'fs/promises'
-import * as path from 'path'
 import { GitRepository } from '@/systems/code/services/git'
 import * as ghCli from '@/systems/code/services/gh-cli'
 import { repository } from '@/repository'
@@ -22,7 +20,6 @@ export interface CliServiceType {
     getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }>
     getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]>
   }
-  writeFile(filePath: string, content: string): Promise<void>
 }
 
 function createCliService(): CliServiceType {
@@ -76,10 +73,6 @@ function createCliService(): CliServiceType {
         const cwd = resolveCwd()
         return ghCli.getReviewThreads(cwd, number, repo)
       },
-    },
-    async writeFile(filePath: string, content: string): Promise<void> {
-      await fs.mkdir(path.dirname(filePath), { recursive: true })
-      await fs.writeFile(filePath, content, 'utf-8')
     },
   }
 }
