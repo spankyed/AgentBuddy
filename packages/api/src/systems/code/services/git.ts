@@ -90,6 +90,13 @@ export class GitRepository {
       baseDir: workingDirectory,
       binary: 'git',
       maxConcurrentProcesses: 1,
+      // Prepend `git -c color.ui=never ...` to every invocation. Without this,
+      // users with `color.ui=always` in their git config get ANSI escape codes
+      // in output, which breaks NUL-separated parsers (e.g. getBranchDiff) and
+      // simple-git's typed output parsers (e.g. .status(), .branch()). The
+      // pre-simple-git executeGitCommand helper did the same thing; the
+      // migration dropped it and broke the PR panel for affected users.
+      config: ['color.ui=never'],
     })
   }
 
