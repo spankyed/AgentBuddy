@@ -320,6 +320,15 @@ export interface QueryOptions {
   includeHookEvents?: boolean
   replayUserMessages?: boolean
 
+  /**
+   * Keep stdin open after the initial `prompt` is written so the caller can
+   * drive follow-up turns via `handle.send()`. Default `false` — the CLI's
+   * stream-json mode blocks waiting for more stdin input after emitting the
+   * `result` line, so leaving stdin open deadlocks callers that just drain
+   * events in a `for await`. If you set this, you OWN `handle.close()`.
+   */
+  keepStdinOpen?: boolean
+
   // Callbacks
   onPermissionRequest?: PermissionHandler
   onControlRequest?: ControlRequestHandler

@@ -22,7 +22,19 @@ import {
   ClaudeExitError,
   ClaudeProtocolError,
 } from '@/services/claude-code/errors'
-import { finaliseNoResult } from '@/services/claude-code/query'
+import { finaliseNoResult, query } from '@/services/claude-code/query'
+import type { StreamHandle } from '@/services/claude-code/runner'
+import type { DecodedLine } from '@/services/claude-code/ndjson'
+
+vi.mock('@/services/claude-code/runner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/claude-code/runner')>()
+  return {
+    ...actual,
+    spawnStream: vi.fn(),
+  }
+})
+
+import { spawnStream } from '@/services/claude-code/runner'
 
 describe('finaliseNoResult', () => {
   const args = ['--print', '--input-format', 'stream-json'] as const
@@ -123,5 +135,170 @@ describe('finaliseNoResult', () => {
       )
       expect(err).toBeInstanceOf(ClaudeProtocolError)
     })
+  })
+})
+
+// ─── query() end-to-end plumbing with a mocked StreamHandle ─────────────────
+// Regression coverage for the stdin-EOF deadlock: before the fix, providing
+// an initial `prompt` would write the turn but never close stdin, so the CLI
+// sat idle after emitting the `result` line, the pump's stdout `for await`
+// never terminated, and the consumer's drain loop hung on iteration #4.
+
+/** Build a fake StreamHandle backed by a manual line queue. */
+function makeMockStream() {
+  const writes: unknown[] = []
+  let endInputCalls = 0
+  let killed = false
+
+  // Queue of lines to feed into the pump. `null` marks end-of-stream.
+  const queue: Array<DecodedLine | null> = []
+  const waiters: Array<(v: IteratorResult<DecodedLine>) => void> = []
+
+  const pushLine = (line: DecodedLine | null) => {
+    const waiter = waiters.shift()
+    if (waiter) {
+      if (line === null) waiter({ value: undefined as unknown as DecodedLine, done: true })
+      else waiter({ value: line, done: false })
+    } else {
+      queue.push(line)
+    }
+  }
+
+  const lines: AsyncIterable<DecodedLine> = {
+    [Symbol.asyncIterator]() {
+      return {
+        next: () => {
+          if (queue.length > 0) {
+            const next = queue.shift()!
+            if (next === null) return Promise.resolve({ value: undefined as unknown as DecodedLine, done: true })
+            return Promise.resolve({ value: next, done: false })
+          }
+          return new Promise<IteratorResult<DecodedLine>>(resolve => waiters.push(resolve))
+        },
+      }
+    },
+  }
+
+  let exitResolve: ((v: { exitCode: number; signal: null; stderr: string }) => void) | null = null
+  const exitPromise = new Promise<{ exitCode: number; signal: null; stderr: string }>(resolve => {
+    exitResolve = resolve
+  })
+
+  const handle: StreamHandle = {
+    child: {} as StreamHandle['child'],
+    lines,
+    write(value: unknown) {
+      writes.push(value)
+    },
+    endInput() {
+      endInputCalls++
+      // Simulate the CLI's reaction to EOF: flush any queued lines then end.
+      // (In the tests below we preload the queue before the consumer drains.)
+      pushLine(null)
+      exitResolve?.({ exitCode: 0, signal: null, stderr: '' })
+    },
+    done() {
+      return exitPromise
+    },
+    kill() {
+      killed = true
+    },
+  }
+
+  return {
+    handle,
+    writes,
+    get endInputCalls() { return endInputCalls },
+    get killed() { return killed },
+    /** Enqueue a well-formed decoded line for the pump to consume. */
+    pushEvent(line: unknown) {
+      pushLine({ ok: true, value: line })
+    },
+    /** Force the stream to end without the caller calling endInput (multi-turn path). */
+    forceExit() {
+      pushLine(null)
+      exitResolve?.({ exitCode: 0, signal: null, stderr: '' })
+    },
+  }
+}
+
+describe('query() — stdin EOF handling (single-turn default)', () => {
+  beforeEach(() => {
+    vi.mocked(spawnStream).mockReset()
+  })
+
+  it('closes stdin after writing the initial prompt (no deadlock)', async () => {
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    // Preload the 3 events the CLI would emit in response to a simple turn.
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-1' })
+    mock.pushEvent({ type: 'assistant', message: { role: 'assistant', content: [] } })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-1',
+      result: 'hi there',
+      duration_ms: 42,
+    })
+
+    const handle = await query({ prompt: 'hi' })
+
+    // Initial user turn was written.
+    expect(mock.writes).toHaveLength(1)
+    expect((mock.writes[0] as { type: string }).type).toBe('user')
+
+    // CRITICAL: stdin was EOF'd immediately after the initial write.
+    expect(mock.endInputCalls).toBe(1)
+
+    // Consumer drain — must terminate, not hang.
+    const received: string[] = []
+    for await (const ev of handle.events) {
+      received.push((ev as { type: string }).type)
+    }
+    expect(received).toEqual(['system', 'assistant', 'result'])
+
+    // Result promise resolved with the normalised payload.
+    const result = await handle.result
+    expect(result.sessionId).toBe('sess-1')
+    expect(result.text).toBe('hi there')
+    expect(result.durationMs).toBe(42)
+  })
+
+  it('does NOT close stdin when keepStdinOpen: true (multi-turn opt-in)', async () => {
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    const handle = await query({ prompt: 'hi', keepStdinOpen: true })
+
+    // Initial turn written, but stdin left open for send() / close().
+    expect(mock.writes).toHaveLength(1)
+    expect(mock.endInputCalls).toBe(0)
+
+    // Caller-side cleanup: explicit close() EOFs stdin.
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-2' })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-2',
+      result: 'bye',
+    })
+    await handle.close()
+
+    expect(mock.endInputCalls).toBe(1)
+  })
+
+  it('does not write a turn or close stdin when no prompt is provided', async () => {
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    const handle = await query({})
+
+    expect(mock.writes).toHaveLength(0)
+    expect(mock.endInputCalls).toBe(0)
+
+    // Force an exit so the test doesn't leak open handles.
+    mock.forceExit()
+    await handle.close()
   })
 })

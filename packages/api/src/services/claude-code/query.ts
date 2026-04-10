@@ -8,9 +8,17 @@
  *     control-request traffic, which is handled internally)
  *   - a `result` promise that resolves with the final normalised result
  *
- * Multi-turn conversations are supported by calling `handle.send(text)` after
- * construction — new user messages get framed as NDJSON and written to stdin
- * until the caller calls `handle.close()` or the CLI emits a `result` line.
+ * Two modes, picked by whether an initial `prompt` is provided:
+ *
+ *  1. **Single-turn (default)**: pass `{ prompt }`. The wrapper writes the
+ *     turn, immediately EOFs stdin, and the CLI runs once + exits. Drain
+ *     `handle.events` in a `for await` and then `await handle.result`.
+ *     No cleanup needed — the child unwinds itself.
+ *
+ *  2. **Multi-turn (opt-in)**: pass `{ keepStdinOpen: true, prompt }` OR
+ *     pass no prompt. The wrapper leaves stdin open; the caller drives
+ *     follow-up turns via `handle.send(text)` and MUST call `handle.close()`
+ *     when done. Forgetting to close hangs the child until process exit.
  *
  * The implementation uses a fan-out: the raw NDJSON stream from the child is
  * consumed once by an internal pump that (a) routes control requests to the
@@ -99,11 +107,18 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
       eventQueue.fail(err)
     })
 
-  // Push the initial user turn, if any. If the caller didn't pass a prompt,
-  // they intend to call `send()` themselves (e.g. resuming a session with no
-  // new text, or driving a fully interactive loop).
+  // Push the initial user turn, if any. When we have an initial prompt and
+  // the caller didn't explicitly opt into multi-turn, close stdin immediately
+  // — the CLI's stream-json `--print` mode waits indefinitely for further
+  // stdin input after emitting the `result` line, which would deadlock
+  // callers that drain events in a straight `for await`. Callers driving the
+  // stream manually via `handle.send()` must leave `prompt` undefined OR set
+  // `keepStdinOpen: true` and own the `handle.close()` lifecycle.
   if (opts.prompt !== undefined) {
     writeUserTurn(stream, opts.prompt)
+    if (!opts.keepStdinOpen) {
+      stream.endInput()
+    }
   }
 
   // Wire child exit into the result promise. This is the single place that
