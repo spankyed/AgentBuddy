@@ -23,6 +23,7 @@ import { argsFromOptions } from './args'
 import { createControlRouter } from './control'
 import {
   ClaudeAbortError,
+  type ClaudeCodeError,
   ClaudeExitError,
   ClaudeProtocolError,
   ClaudeResultError,
@@ -80,8 +81,17 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
   const sessionId = deferred<string>()
   const resultPromise = deferred<QueryResult>()
 
+  // Attach no-op catches immediately so Node doesn't treat a rejection that
+  // lands before the caller's `await` as an unhandled rejection. The caller's
+  // later `await handle.result` / `await handle.sessionId` still observes the
+  // error — attaching a handler doesn't consume it for other awaiters.
+  sessionId.promise.catch(() => {})
+  resultPromise.promise.catch(() => {})
+
   // Pump: single reader over the child's NDJSON stream. Runs until the
-  // generator completes (child exited).
+  // generator completes (child exited). Pump no longer rejects on its own —
+  // the `stream.done()` handler below is the single source of truth for
+  // "what happened at child exit".
   const pumpPromise = pump(stream, router, eventQueue, sessionId, resultPromise)
     .catch(err => {
       sessionId.reject(err)
@@ -96,21 +106,31 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     writeUserTurn(stream, opts.prompt)
   }
 
-  // Wire child exit into the result promise: if the child dies before we've
-  // seen a result line, reject with ClaudeExitError.
-  stream.done().then(({ exitCode, signal, stderr }) => {
+  // Wire child exit into the result promise. This is the single place that
+  // decides "did the query complete successfully?" after the child exits —
+  // `finaliseNoResult` classifies the exit state with full stderr context.
+  stream.done().then(async ({ exitCode, signal, stderr }) => {
+    // Drain pump before deciding final state — avoids racing stdout 'end'
+    // (which finishes pump) against child 'close' (which fires stream.done).
+    await pumpPromise
     eventQueue.close()
-    if (opts.signal?.aborted) {
-      sessionId.reject(new ClaudeAbortError(opts.signal.reason))
-      resultPromise.reject(new ClaudeAbortError(opts.signal.reason))
-      return
-    }
-    if (!resultPromise.settled && exitCode !== 0) {
-      const err = new ClaudeExitError(exitCode, signal, stderr, args)
-      sessionId.reject(err)
-      resultPromise.reject(err)
-    }
-  }).catch(() => { /* already surfaced via pump */ })
+
+    if (resultPromise.settled) return
+
+    const err = finaliseNoResult(
+      { exitCode, signal, stderr },
+      args,
+      opts.signal,
+    )
+    sessionId.reject(err)
+    resultPromise.reject(err)
+  }).catch(err => {
+    // Defensive: stream.done() itself shouldn't throw, but if it does, route
+    // the error into the same rejection channels so nothing is left dangling.
+    sessionId.reject(err)
+    resultPromise.reject(err)
+    eventQueue.fail(err)
+  })
 
   // ─── Public handle ────────────────────────────────────────────────────────
 
@@ -224,12 +244,38 @@ async function pump(
     eventQueue.push(line)
   }
 
-  // Stream closed normally — if we never saw a result, something's off.
-  if (!resultPromise.settled) {
-    resultPromise.reject(
-      new ClaudeProtocolError('child stream ended without a result line'),
-    )
+  // Note: we intentionally do NOT reject the result promise here. The
+  // `stream.done()` handler in `query()` is the single source of truth for
+  // "stream ended" — it has access to exit code, signal, and stderr, so it
+  // can produce a richer error than pump can from inside the read loop.
+}
+
+/**
+ * Decide what happened when the child exits WITHOUT having emitted a
+ * `{type:'result'}` line. Classifies the exit state and produces a typed
+ * error suitable for rejecting `sessionId` / `resultPromise`.
+ *
+ * Exported for tests.
+ */
+export function finaliseNoResult(
+  exitInfo: { exitCode: number; signal: NodeJS.Signals | null; stderr: string },
+  args: readonly string[],
+  abortSignal: AbortSignal | undefined,
+): ClaudeCodeError {
+  if (abortSignal?.aborted) {
+    return new ClaudeAbortError(abortSignal.reason)
   }
+  if (exitInfo.exitCode !== 0) {
+    return new ClaudeExitError(exitInfo.exitCode, exitInfo.signal, exitInfo.stderr, args)
+  }
+  // Clean exit but no result line — legitimate CLI behaviour for some
+  // control_request paths (e.g. `end_session`), but still an error from the
+  // caller's perspective. Include stderr tail so future occurrences are
+  // actually diagnosable.
+  const tail = exitInfo.stderr ? exitInfo.stderr.trim().slice(-500) : ''
+  return new ClaudeProtocolError(
+    `child stream ended without a result line${tail ? `: ${tail}` : ''}`,
+  )
 }
 
 /**
