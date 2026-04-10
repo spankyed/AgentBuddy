@@ -6,7 +6,7 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
-import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings } from '@app/api'
+import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType } from '@app/api'
 import { trpc } from '@/core/trpc'
 import plugins from '@/plugins'
 import { applicationState } from '@/main'
@@ -20,10 +20,33 @@ export type SettingsState = ActorRefFrom<typeof settingsState>
 // Use backend types directly
 
 export interface SetupPackImport {
-  status: 'idle' | 'importing' | 'success' | 'error';
+  status: 'idle' | 'previewing' | 'selecting' | 'importing' | 'success' | 'error';
+  directory: string | null;
+  preview: SetupPackPreview | null;
+  /** Per-type selection: array of keys currently ticked. */
+  selection: Record<SetupPackType, string[]>;
+  /** Which type rows are currently expanded in the UI. */
+  expanded: Record<SetupPackType, boolean>;
   result: any | null;
   error: string | null;
 }
+
+const EMPTY_SELECTION: Record<SetupPackType, string[]> = {
+  actions: [], prompts: [], flows: [], library: [], notes: [],
+};
+const COLLAPSED: Record<SetupPackType, boolean> = {
+  actions: false, prompts: false, flows: false, library: false, notes: false,
+};
+
+const IDLE_SETUP_PACK: SetupPackImport = {
+  status: 'idle',
+  directory: null,
+  preview: null,
+  selection: { ...EMPTY_SELECTION },
+  expanded: { ...COLLAPSED },
+  result: null,
+  error: null,
+};
 
 export interface SettingsContext {
   settings: SettingsData | null;
@@ -43,12 +66,19 @@ type UIEvent =
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
-  | { type: 'SETUP_PACK.IMPORT'; directory: string }
+  | { type: 'SETUP_PACK.PREVIEW'; directory: string }
+  | { type: 'SETUP_PACK.TOGGLE_EXPAND'; key: SetupPackType }
+  | { type: 'SETUP_PACK.TOGGLE_TYPE_ALL'; key: SetupPackType }
+  | { type: 'SETUP_PACK.TOGGLE_ITEM'; key: SetupPackType; item: string }
+  | { type: 'SETUP_PACK.CONFIRM_IMPORT' }
+  | { type: 'SETUP_PACK.CANCEL' }
   | { type: 'SETUP_PACK.RESET_STATUS' }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'SETUP_PACK_IMPORTED'; result: any }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
+  | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
+  | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
   | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
   | { type: 'SECRETS.EVENT.CREATED'; id: string; provider: string; customName?: string }
   | { type: 'SECRETS.EVENT.UPDATED'; id: string }
@@ -179,34 +209,174 @@ const settingsState = setup({
       };
     }),
 
-    importSetupPack: assign(({ event }) => {
-      const ev = event as { type: 'SETUP_PACK.IMPORT'; directory: string };
+    previewSetupPack: assign(({ context, event }) => {
+      const ev = event as { type: 'SETUP_PACK.PREVIEW'; directory: string };
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'IMPORT_SETUP_PACK',
+        type: 'PREVIEW_SETUP_PACK',
         directory: ev.directory,
       } as any);
       return {
-        setupPackImport: { status: 'importing' as const, result: null, error: null },
+        setupPackImport: {
+          ...context.setupPackImport,
+          status: 'previewing' as const,
+          directory: ev.directory,
+          preview: null,
+          selection: { ...EMPTY_SELECTION },
+          expanded: { ...COLLAPSED },
+          result: null,
+          error: null,
+        },
       };
     }),
 
-    setSetupPackImported: assign(({ event }) => {
+    setSetupPackPreview: assign(({ context, event }) => {
+      const ev = event as { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview };
+      const selection: Record<SetupPackType, string[]> = {
+        actions: ev.preview.actions.map(i => i.key),
+        prompts: ev.preview.prompts.map(i => i.key),
+        flows: ev.preview.flows.map(i => i.key),
+        library: ev.preview.library.map(i => i.key),
+        notes: ev.preview.notes.map(i => i.key),
+      };
+      return {
+        setupPackImport: {
+          ...context.setupPackImport,
+          status: 'selecting' as const,
+          preview: ev.preview,
+          selection,
+          expanded: { ...COLLAPSED },
+          result: null,
+          error: null,
+        },
+      };
+    }),
+
+    setSetupPackPreviewFailed: assign(({ context, event }) => {
+      const ev = event as { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string };
+      return {
+        setupPackImport: {
+          ...context.setupPackImport,
+          status: 'error' as const,
+          preview: null,
+          result: null,
+          error: ev.error,
+        },
+      };
+    }),
+
+    toggleSetupPackExpand: assign(({ context, event }) => {
+      const ev = event as { type: 'SETUP_PACK.TOGGLE_EXPAND'; key: SetupPackType };
+      return {
+        setupPackImport: {
+          ...context.setupPackImport,
+          expanded: {
+            ...context.setupPackImport.expanded,
+            [ev.key]: !context.setupPackImport.expanded[ev.key],
+          },
+        },
+      };
+    }),
+
+    toggleSetupPackTypeAll: assign(({ context, event }) => {
+      const ev = event as { type: 'SETUP_PACK.TOGGLE_TYPE_ALL'; key: SetupPackType };
+      const preview = context.setupPackImport.preview;
+      if (!preview) return {};
+      const currentlySelected = context.setupPackImport.selection[ev.key];
+      const allKeys = preview[ev.key].map(i => i.key);
+      const nextSelection = currentlySelected.length === allKeys.length ? [] : allKeys;
+      return {
+        setupPackImport: {
+          ...context.setupPackImport,
+          selection: {
+            ...context.setupPackImport.selection,
+            [ev.key]: nextSelection,
+          },
+        },
+      };
+    }),
+
+    toggleSetupPackItem: assign(({ context, event }) => {
+      const ev = event as { type: 'SETUP_PACK.TOGGLE_ITEM'; key: SetupPackType; item: string };
+      const current = context.setupPackImport.selection[ev.key];
+      const next = current.includes(ev.item)
+        ? current.filter(k => k !== ev.item)
+        : [...current, ev.item];
+      return {
+        setupPackImport: {
+          ...context.setupPackImport,
+          selection: {
+            ...context.setupPackImport.selection,
+            [ev.key]: next,
+          },
+        },
+      };
+    }),
+
+    confirmSetupPackImport: assign(({ context }) => {
+      const { directory, preview, selection } = context.setupPackImport;
+      if (!directory || !preview) return {};
+
+      // For each type, null = all items selected (import everything), otherwise send the array.
+      const toIncludeField = (key: SetupPackType): string[] | null => {
+        const selected = selection[key];
+        const total = preview[key].length;
+        return selected.length === total ? null : selected;
+      };
+
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'IMPORT_SETUP_PACK',
+        directory,
+        include: {
+          actions: toIncludeField('actions'),
+          prompts: toIncludeField('prompts'),
+          flows: toIncludeField('flows'),
+          library: toIncludeField('library'),
+          notes: toIncludeField('notes'),
+        },
+      } as any);
+
+      return {
+        setupPackImport: {
+          ...context.setupPackImport,
+          status: 'importing' as const,
+          result: null,
+          error: null,
+        },
+      };
+    }),
+
+    cancelSetupPack: assign(() => ({
+      setupPackImport: { ...IDLE_SETUP_PACK, selection: { ...EMPTY_SELECTION }, expanded: { ...COLLAPSED } },
+    })),
+
+    setSetupPackImported: assign(({ context, event }) => {
       const ev = event as { type: 'SETUP_PACK_IMPORTED'; result: any };
       return {
-        setupPackImport: { status: 'success' as const, result: ev.result, error: null },
+        setupPackImport: {
+          ...context.setupPackImport,
+          status: 'success' as const,
+          result: ev.result,
+          error: null,
+        },
       };
     }),
 
-    setSetupPackImportFailed: assign(({ event }) => {
+    setSetupPackImportFailed: assign(({ context, event }) => {
       const ev = event as { type: 'SETUP_PACK_IMPORT_FAILED'; error: string };
       return {
-        setupPackImport: { status: 'error' as const, result: null, error: ev.error },
+        setupPackImport: {
+          ...context.setupPackImport,
+          status: 'error' as const,
+          result: null,
+          error: ev.error,
+        },
       };
     }),
 
     resetSetupPackStatus: assign(() => ({
-      setupPackImport: { status: 'idle' as const, result: null, error: null },
+      setupPackImport: { ...IDLE_SETUP_PACK, selection: { ...EMPTY_SELECTION }, expanded: { ...COLLAPSED } },
     })),
   },
 }).createMachine({
@@ -222,7 +392,7 @@ const settingsState = setup({
       settings: null,
       secretsData: [],
       cliTestResults: {},
-      setupPackImport: { status: 'idle', result: null, error: null },
+      setupPackImport: { ...IDLE_SETUP_PACK, selection: { ...EMPTY_SELECTION }, expanded: { ...COLLAPSED } },
       activeTab: 'general',
       generalNavItem: 'personal',
       selectedPluginId: defaultPluginId,
@@ -279,11 +449,32 @@ const settingsState = setup({
         'CLI_TEST_RESULT': {
           actions: 'setCliTestResult',
         },
-        'SETUP_PACK.IMPORT': {
-          actions: 'importSetupPack',
+        'SETUP_PACK.PREVIEW': {
+          actions: 'previewSetupPack',
+        },
+        'SETUP_PACK.TOGGLE_EXPAND': {
+          actions: 'toggleSetupPackExpand',
+        },
+        'SETUP_PACK.TOGGLE_TYPE_ALL': {
+          actions: 'toggleSetupPackTypeAll',
+        },
+        'SETUP_PACK.TOGGLE_ITEM': {
+          actions: 'toggleSetupPackItem',
+        },
+        'SETUP_PACK.CONFIRM_IMPORT': {
+          actions: 'confirmSetupPackImport',
+        },
+        'SETUP_PACK.CANCEL': {
+          actions: 'cancelSetupPack',
         },
         'SETUP_PACK.RESET_STATUS': {
           actions: 'resetSetupPackStatus',
+        },
+        SETUP_PACK_PREVIEW: {
+          actions: 'setSetupPackPreview',
+        },
+        SETUP_PACK_PREVIEW_FAILED: {
+          actions: 'setSetupPackPreviewFailed',
         },
         SETUP_PACK_IMPORTED: {
           actions: 'setSetupPackImported',

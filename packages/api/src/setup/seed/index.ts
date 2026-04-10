@@ -23,7 +23,7 @@ import type { ContentSection, Document, Collection } from '@/systems/library/typ
 import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
 import { getMediaPath } from '@/core/helpers/paths';
 import { importNotesFromData } from '@/systems/notes/import-notes';
-import type { ExportedNotes } from '@/systems/notes/export-types';
+import type { ExportedNotes, ExportedNote } from '@/systems/notes/export-types';
 
 interface SeedCounts {
   created: number;
@@ -37,6 +37,30 @@ export interface SeedResult {
   flows: SeedCounts;
   library: SeedCounts;
   notes: SeedCounts;
+}
+
+/**
+ * Per-type item filter. `true` / `undefined` = import everything.
+ * A `Set<string>` restricts the section to only those top-level keys.
+ * An empty set skips the section entirely.
+ */
+export type SeedIncludeSet = true | ReadonlySet<string>;
+export interface SeedInclude {
+  actions?: SeedIncludeSet;
+  prompts?: SeedIncludeSet;
+  flows?: SeedIncludeSet;
+  library?: SeedIncludeSet;
+  notes?: SeedIncludeSet;
+}
+
+function shouldSeedAll(inc: SeedIncludeSet | undefined): boolean {
+  return inc === undefined || inc === true;
+}
+
+function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[] {
+  if (shouldSeedAll(inc)) return items;
+  const set = inc as ReadonlySet<string>;
+  return items.filter(item => set.has(getKey(item)));
 }
 
 const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
@@ -73,11 +97,17 @@ function seedCollection<T>(opts: {
   create: (item: T) => void;
   update: (id: EARS.EntityId, item: T) => void;
   log: (...args: any[]) => void;
+  include?: SeedIncludeSet;
 }): SeedCounts {
   const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
-  const data = loadJSON<T[]>(opts.file);
-  if (!data) {
+  const raw = loadJSON<T[]>(opts.file);
+  if (!raw) {
     opts.log(`  ${opts.label} file not found, skipping`);
+    return counts;
+  }
+  const data = filterByInclude(raw, opts.getKey, opts.include);
+  if (data.length === 0 && !shouldSeedAll(opts.include)) {
+    opts.log(`  ${opts.label} section skipped by include filter`);
     return counts;
   }
   for (const item of data) {
@@ -199,11 +229,15 @@ function seedFlows(
   flowsDSL: FlowDSL,
   result: SeedResult,
   log: (...args: any[]) => void,
+  include: SeedIncludeSet | undefined,
 ): void {
   const existingLabels = new Set(findAll<FlowEntity>(EARS.Entity.Flow).map(f => f.label));
 
   const filteredDSL: FlowDSL = {};
   for (const [key, entry] of Object.entries(flowsDSL)) {
+    if (!shouldSeedAll(include) && !(include as ReadonlySet<string>).has(key)) {
+      continue;
+    }
     if (existingLabels.has(key)) {
       log(`  flow skipped: ${key}`);
       result.flows.skipped++;
@@ -244,13 +278,26 @@ function seedFlows(
   validNames.forEach(name => log(`  flow created: ${name}`));
 }
 
-export function seedData(options?: { verbose?: boolean; force?: boolean; compiledDir?: string }): SeedResult | null {
+export function seedData(options?: {
+  verbose?: boolean;
+  force?: boolean;
+  compiledDir?: string;
+  include?: SeedInclude;
+}): SeedResult | null {
   const log = options?.verbose ? console.log.bind(console) : () => {};
 
   const compiledDir = options?.compiledDir ?? DEFAULT_COMPILED_DIR;
+  const include = options?.include;
+  const isFullImport =
+    !include ||
+    (shouldSeedAll(include.actions) &&
+     shouldSeedAll(include.prompts) &&
+     shouldSeedAll(include.flows) &&
+     shouldSeedAll(include.library) &&
+     shouldSeedAll(include.notes));
 
-  // Skip if data unchanged (hash match)
-  if (!options?.force) {
+  // Skip if data unchanged (hash match) — only meaningful for full imports
+  if (!options?.force && isFullImport) {
     const internal = settingsQueries.getInternalSettings();
     const currentHash = computeSeedHash(compiledDir);
     if (internal.seedHash === currentHash) {
@@ -282,6 +329,7 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
       input: item.input, actionFn: item.actionFn, output: item.output,
     }),
     log,
+    include: include?.actions,
   });
 
   // --- Prompts ---
@@ -299,43 +347,76 @@ export function seedData(options?: { verbose?: boolean; force?: boolean; compile
       inputs: item.inputs, templateFn: item.templateFn,
     }),
     log,
+    include: include?.prompts,
   });
 
   // --- Flows ---
-  const flowsDSL = loadJSON<FlowDSL>(path.join(compiledDir, 'compiled-flows.json'));
-  if (flowsDSL) {
-    seedFlows(flowsDSL, result, log);
+  const runFlows =
+    shouldSeedAll(include?.flows) || (include?.flows as ReadonlySet<string>).size > 0;
+  if (runFlows) {
+    const flowsDSL = loadJSON<FlowDSL>(path.join(compiledDir, 'compiled-flows.json'));
+    if (flowsDSL) {
+      seedFlows(flowsDSL, result, log, include?.flows);
+    } else {
+      log('  compiled-flows.json not found, skipping flows');
+    }
   } else {
-    log('  compiled-flows.json not found, skipping flows');
+    log('  flows section skipped by include filter');
   }
 
   // --- Library Docs ---
-  const libraryFile = path.join(compiledDir, 'compiled-library.json');
-  const libraryData = loadJSON<ExportedLibrary | ExportedItem[]>(libraryFile);
-  if (libraryData) {
-    const items = Array.isArray(libraryData) ? libraryData : libraryData.items;
-    const mediaDir = path.join(compiledDir, 'media');
-    seedLibraryTree(items ?? [], undefined, result.library, log, mediaDir);
+  const runLibrary =
+    shouldSeedAll(include?.library) || (include?.library as ReadonlySet<string>).size > 0;
+  if (runLibrary) {
+    const libraryFile = path.join(compiledDir, 'compiled-library.json');
+    const libraryData = loadJSON<ExportedLibrary | ExportedItem[]>(libraryFile);
+    if (libraryData) {
+      const allItems = Array.isArray(libraryData) ? libraryData : libraryData.items;
+      const items = shouldSeedAll(include?.library)
+        ? (allItems ?? [])
+        : (allItems ?? []).filter(i => (include!.library as ReadonlySet<string>).has(i.name));
+      const mediaDir = path.join(compiledDir, 'media');
+      seedLibraryTree(items, undefined, result.library, log, mediaDir);
+    } else {
+      log('  compiled-library.json not found, skipping library');
+    }
   } else {
-    log('  compiled-library.json not found, skipping library');
+    log('  library section skipped by include filter');
   }
 
   // --- Notes ---
-  const notesData = loadJSON<ExportedNotes>(path.join(compiledDir, 'compiled-notes.json'));
-  if (notesData) {
-    const importResult = importNotesFromData(notesData);
-    result.notes.created = importResult.created;
-    result.notes.updated = importResult.updated;
-    result.notes.skipped = importResult.skipped;
-    if (importResult.errors.length > 0) {
-      importResult.errors.forEach(e => console.warn(`[seed] notes: ${e}`));
+  const runNotes =
+    shouldSeedAll(include?.notes) || (include?.notes as ReadonlySet<string>).size > 0;
+  if (runNotes) {
+    const notesData = loadJSON<ExportedNotes>(path.join(compiledDir, 'compiled-notes.json'));
+    if (notesData) {
+      const filteredNotes: ExportedNotes = shouldSeedAll(include?.notes)
+        ? notesData
+        : {
+            ...notesData,
+            notes: (notesData.notes ?? []).filter(n =>
+              (include!.notes as ReadonlySet<string>).has(n.title),
+            ),
+          };
+      const importResult = importNotesFromData(filteredNotes);
+      result.notes.created = importResult.created;
+      result.notes.updated = importResult.updated;
+      result.notes.skipped = importResult.skipped;
+      if (importResult.errors.length > 0) {
+        importResult.errors.forEach(e => console.warn(`[seed] notes: ${e}`));
+      }
+    } else {
+      log('  compiled-notes.json not found, skipping notes');
     }
   } else {
-    log('  compiled-notes.json not found, skipping notes');
+    log('  notes section skipped by include filter');
   }
 
-  // Store content hash
-  settingsCommands.updateSettings('internal', null, ['seedHash'], computeSeedHash(compiledDir));
+  // Store content hash — only when a full import ran (partial imports must not
+  // suppress the next automatic boot seed).
+  if (isFullImport) {
+    settingsCommands.updateSettings('internal', null, ['seedHash'], computeSeedHash(compiledDir));
+  }
 
   return result;
 }

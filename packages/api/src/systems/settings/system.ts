@@ -10,12 +10,37 @@ import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 import { threads } from '@/systems/threads/system';
-import { seedData, type SeedResult } from '@/setup/seed/index';
+import { seedData, type SeedResult, type SeedInclude } from '@/setup/seed/index';
+import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '@/setup/seed/preview';
 import { testCli, isCliName, clearCliPathCache } from '@/core/helpers/resolve-cli';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
 export const settings = 'settings' as const;
+
+/**
+ * Convert the JSON-safe include shape from the frontend
+ * (`null = all items, [] = skip, string[] = filter`) into the `SeedInclude`
+ * structure consumed by `seedData`.
+ */
+function toSeedInclude(
+  include: {
+    actions: string[] | null;
+    prompts: string[] | null;
+    flows: string[] | null;
+    library: string[] | null;
+    notes: string[] | null;
+  },
+): SeedInclude {
+  const conv = (v: string[] | null) => (v === null ? true : new Set(v));
+  return {
+    actions: conv(include.actions),
+    prompts: conv(include.prompts),
+    flows: conv(include.flows),
+    library: conv(include.library),
+    notes: conv(include.notes),
+  };
+}
 
 const busEvent = systemBus(settings);
 
@@ -46,8 +71,18 @@ export const IncomingSettingsEvents = [
   busEvent('TEST_CLI_PROVIDER', {
     provider: z.string(),
   }),
+  busEvent('PREVIEW_SETUP_PACK', {
+    directory: z.string(),
+  }),
   busEvent('IMPORT_SETUP_PACK', {
     directory: z.string(),
+    include: z.object({
+      actions: z.array(z.string()).nullable(),
+      prompts: z.array(z.string()).nullable(),
+      flows: z.array(z.string()).nullable(),
+      library: z.array(z.string()).nullable(),
+      notes: z.array(z.string()).nullable(),
+    }).optional(),
   }),
 ] as const
 
@@ -63,6 +98,8 @@ export type OutgoingSettingsEvents =
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
   | { type: 'SETUP_PACK_IMPORTED'; result: SeedResult }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
+  | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
+  | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
@@ -335,10 +372,22 @@ export const settingsSystem = setup({
       });
     },
 
+    previewSetupPack: ({ system, event }) => {
+      const ev = typeOf('PREVIEW_SETUP_PACK', event);
+      try {
+        const preview = readSetupPackPreview(ev.directory);
+        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW', preview }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW_FAILED', error: message }));
+      }
+    },
+
     importSetupPack: ({ system, event }) => {
       const ev = typeOf('IMPORT_SETUP_PACK', event);
       try {
-        const result = seedData({ force: true, verbose: true, compiledDir: ev.directory });
+        const include = ev.include ? toSeedInclude(ev.include) : undefined;
+        const result = seedData({ force: true, verbose: true, compiledDir: ev.directory, include });
         if (result) {
           system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORTED', result }));
         } else {
@@ -405,6 +454,9 @@ export const settingsSystem = setup({
         },
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',
+        },
+        PREVIEW_SETUP_PACK: {
+          actions: 'previewSetupPack',
         },
         IMPORT_SETUP_PACK: {
           actions: 'importSetupPack',

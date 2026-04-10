@@ -32,6 +32,7 @@ export type * from './systems/code/types';
 
 export type { OutgoingSettingsEvents } from './systems/settings/system';
 export type * from './systems/settings/types';
+export type { SetupPackPreview, SetupPackPreviewItem, SetupPackType } from './setup/seed/preview';
 
 export type { OutgoingNotesEvents } from './systems/notes/system';
 export type * from './systems/notes/types';
