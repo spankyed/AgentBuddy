@@ -74,8 +74,14 @@ describe('argsFromOptions', () => {
 
   describe('permissions', () => {
     it('maps permissionMode', () => {
-      const args = argsFromOptions({ permissionMode: 'strict' })
-      expectContains(args, ['--permission-mode', 'strict'])
+      const args = argsFromOptions({ permissionMode: 'default' })
+      expectContains(args, ['--permission-mode', 'default'])
+    })
+
+    it.each([
+      'default', 'acceptEdits', 'plan', 'bypassPermissions', 'dontAsk', 'auto',
+    ] as const)('%s is accepted and emitted verbatim', (mode) => {
+      expectContains(argsFromOptions({ permissionMode: mode }), ['--permission-mode', mode])
     })
 
     it('emits --dangerously-skip-permissions only when flagged', () => {

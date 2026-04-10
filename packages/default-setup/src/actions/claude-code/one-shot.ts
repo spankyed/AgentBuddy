@@ -56,7 +56,7 @@ export async function action(
       prompt,
       cwd,
       model,
-      permissionMode: 'strict',
+      permissionMode: 'default',
       // Default to read-only so one-shots can't silently mutate the workspace.
       allowedTools: allowedTools ?? ['Read', 'Glob', 'Grep'],
       systemPrompt,

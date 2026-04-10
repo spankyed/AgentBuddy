@@ -14,7 +14,26 @@ import { z } from 'zod'
 
 // ─── Primitives ──────────────────────────────────────────────────────────────
 
-export const PermissionModeSchema = z.enum(['auto', 'bypass', 'strict', 'approve_all'])
+/**
+ * Permission modes accepted by `claude --permission-mode`. Names match the
+ * CLI's Commander validator exactly (see the leaked source at
+ * `src/types/permissions.ts` or the error message the CLI prints when you
+ * pass an unknown value).
+ *
+ * Interoperation note: only `default`, `plan`, and `acceptEdits` emit
+ * `can_use_tool` control_requests that our wrapper's `onPermissionRequest`
+ * hook can intercept. `bypassPermissions` and `dontAsk` short-circuit the
+ * permission resolver entirely; `auto` is feature-gated and uses an ML
+ * classifier instead of prompting.
+ */
+export const PermissionModeSchema = z.enum([
+  'default',
+  'acceptEdits',
+  'plan',
+  'bypassPermissions',
+  'dontAsk',
+  'auto',
+])
 export type PermissionMode = z.infer<typeof PermissionModeSchema>
 
 export const ThinkingSchema = z.enum(['enabled', 'adaptive', 'disabled'])

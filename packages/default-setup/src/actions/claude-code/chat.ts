@@ -129,7 +129,7 @@ export async function action(
       resume: resumeSessionId,
       model,
       includePartialMessages: true,
-      permissionMode: 'strict',
+      permissionMode: 'default',
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       disallowedTools,
       systemPrompt: composedSystemPrompt,
