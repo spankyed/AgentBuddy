@@ -29,7 +29,7 @@ import {
 } from './errors'
 import { spawnStream, type StreamHandle } from './runner'
 import type {
-  ControlRequestLine,
+  KnownStreamLine,
   QueryOptions,
   QueryResult,
   ResultLine,
@@ -162,6 +162,11 @@ function writeUserTurn(stream: StreamHandle, turn: string | UserInputMessage): v
  * Drain the child's NDJSON stream, dispatching control requests, forwarding
  * everything else to the event queue, and resolving sessionId / result at
  * the appropriate moments.
+ *
+ * Uses a discriminator switch on `KnownStreamLine` so narrowing is exhaustive
+ * without casts. Any `line.type` value not in the known set falls through to
+ * the default branch and is forwarded to the queue as an `UnknownLine` — the
+ * CLI can add new types without crashing the pump.
  */
 async function pump(
   stream: StreamHandle,
@@ -182,40 +187,38 @@ async function pump(
       continue
     }
 
-    const line = decoded.value as StreamLine
+    const line = decoded.value as KnownStreamLine
 
-    // Control traffic is handled entirely inside the router; never surfaced.
-    // The narrow can't resolve ControlRequestLine vs UnknownLine (both match
-    // `type:string`), so cast after the discriminator check.
-    if (line.type === 'control_request') {
-      const response = await router.handle(line as ControlRequestLine)
-      stream.write(response)
-      continue
-    }
-    if (line.type === 'control_cancel_request' || line.type === 'keep_alive') {
-      continue
-    }
-
-    // First system/init gives us the session id. Resolve once.
-    if (line.type === 'system' && (line as { subtype?: string }).subtype === 'init') {
-      const sid = (line as { session_id?: string }).session_id
-      if (sid && !sessionId.settled) sessionId.resolve(sid)
-    }
-
-    // Result line marks turn (or session) completion.
-    if (line.type === 'result') {
-      const normalised = normaliseResult(line as ResultLine)
-      if (looksLikeErrorSubtype(normalised.raw.subtype)) {
-        resultPromise.reject(
-          new ClaudeResultError(
-            normalised.raw.subtype,
-            normalised.raw.errors ?? [],
-            normalised.sessionId,
-          ),
-        )
-      } else if (!resultPromise.settled) {
-        resultPromise.resolve(normalised)
+    switch (line.type) {
+      case 'control_request': {
+        // Handled entirely inside the router; never surfaced to the caller.
+        const response = await router.handle(line)
+        stream.write(response)
+        continue
       }
+
+      case 'control_cancel_request':
+      case 'control_response':
+      case 'keep_alive':
+        // Swallowed — not interesting to the public event iterator.
+        continue
+
+      case 'system':
+        // First `system/init` gives us the session id. Resolve once.
+        if (line.subtype === 'init' && line.session_id && !sessionId.settled) {
+          sessionId.resolve(line.session_id)
+        }
+        break
+
+      case 'result':
+        handleResult(line, resultPromise)
+        break
+
+      default:
+        // user / assistant / stream_event / tool_progress / rate_limit_event
+        // / tool_use_summary / unknown passthrough. Nothing special to do;
+        // fall through to the queue push below.
+        break
     }
 
     eventQueue.push(line)
@@ -229,8 +232,38 @@ async function pump(
   }
 }
 
-function looksLikeErrorSubtype(subtype: string): boolean {
-  return subtype !== 'success' && subtype.startsWith('error')
+/**
+ * Known `result.subtype` values from the leaked Claude Code source —
+ * `src/entrypoints/sdk/coreSchemas.ts`. Anything outside this set is a
+ * protocol violation and the caller should know about it rather than
+ * silently resolving with empty text.
+ */
+const KNOWN_RESULT_SUBTYPES = new Set<string>([
+  'success',
+  'error_during_execution',
+  'error_max_turns',
+  'error_max_budget_usd',
+  'error_max_structured_output_retries',
+])
+
+function handleResult(raw: ResultLine, resultPromise: Deferred<QueryResult>): void {
+  if (resultPromise.settled) return
+
+  if (!KNOWN_RESULT_SUBTYPES.has(raw.subtype)) {
+    resultPromise.reject(
+      new ClaudeProtocolError(`unknown result subtype "${raw.subtype}"`),
+    )
+    return
+  }
+
+  if (raw.subtype === 'success') {
+    resultPromise.resolve(normaliseResult(raw))
+    return
+  }
+
+  resultPromise.reject(
+    new ClaudeResultError(raw.subtype, raw.errors ?? [], raw.session_id),
+  )
 }
 
 function normaliseResult(raw: ResultLine): QueryResult {

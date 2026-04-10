@@ -14,11 +14,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { awaitMessageResponse } from './_helpers/await-message-response';
 import { createStreamWriter } from './_helpers/stream-writer';
-import {
-  getClaudeState,
-  persistClaudeState,
-  clearClaudeState,
-} from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'Claude Code Chat',
@@ -153,12 +149,11 @@ export async function action(
       }
 
       if (line.type === 'assistant') {
-        // Full assistant message — only used when includePartialMessages missed deltas.
+        // With includePartialMessages, stream_event deltas already populated
+        // the text. Only render tool_use blocks here — there's no delta
+        // equivalent for them, so this is the sole place they surface.
         const blocks = line.message?.content || [];
         for (const block of blocks) {
-          if (block?.type === 'text' && typeof block.text === 'string' && !writer.text.endsWith(block.text)) {
-            writer.push(block.text);
-          }
           if (block?.type === 'tool_use') {
             const note = `\n\n> 🔧 ${block.name}${block.input ? ` (${shortenInput(block.input)})` : ''}\n\n`;
             writer.pushImmediate(note);
@@ -195,8 +190,8 @@ export async function action(
     const message = err?.message || 'Claude Code request failed';
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
     // Intentionally NOT clearing thread.context on error — the session may
-    // still be valid on disk; let the user retry or call reset explicitly.
-    void clearClaudeState; // keep helper referenced for inlining
+    // still be valid on disk; let the user retry or call the reset action
+    // explicitly.
     return { success: false, error: message, messageId };
   }
 }

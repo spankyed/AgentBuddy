@@ -4,9 +4,12 @@
  * The CLI does not expose a `claude session` subcommand — session data lives
  * on disk as JSONL files under `$CLAUDE_CONFIG_DIR` (default `~/.claude`),
  * organised per-project. This module reads those files directly for list /
- * view / get, and uses file operations for rm. Rename, tag, and fork are
- * implemented by appending metadata entries the CLI understands, with a note
- * in the JSDoc that callers should prefer the interactive CLI for them.
+ * view / get, and uses file operations for rm.
+ *
+ * The `_experimental_*` functions (rename, tag, fork) reverse-engineer the
+ * CLI's JSONL metadata format and may silently do the wrong thing if the CLI
+ * changes its on-disk layout. They stay experimental until we either add
+ * golden-file tests against a real CLI or migrate to a supported path.
  *
  * Important: session JSONL files can be large (multi-MB). `view()` parses
  * them fully, so callers should paginate (`limit`/`offset`) on long sessions.
@@ -17,6 +20,10 @@ import * as path from 'path'
 import * as os from 'os'
 import { randomUUID } from 'crypto'
 
+import { createLogger } from '@/core/helpers/debug/logger'
+
+const logger = createLogger('claude-code-sessions')
+
 // ─── Directory discovery ─────────────────────────────────────────────────────
 
 /** Root of the CLI's config, honouring $CLAUDE_CONFIG_DIR. */
@@ -25,17 +32,41 @@ export function configDir(): string {
 }
 
 /**
- * Claude Code encodes the project working directory into a subdir name by
- * replacing path separators with dashes (e.g. `/Users/me/app` →
- * `-Users-me-app`). This mirrors the CLI's own bucket-per-project scheme
- * observed in `~/.claude/projects/…`.
+ * Project bucket path inside the CLI's config dir.
+ *
+ * The CLI stores each project's sessions under
+ * `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>/<session-id>.jsonl`.
  */
 export function projectBucket(cwd: string): string {
   return path.join(configDir(), 'projects', encodeProjectPath(cwd))
 }
 
-function encodeProjectPath(cwd: string): string {
-  return cwd.replace(/[\\/]/g, '-').replace(/^-/, '-')
+/**
+ * Mirror of the CLI's `sanitizePath` — see the leaked source at
+ * `src/utils/sessionStoragePortable.ts:311`. Replaces every non-alphanumeric
+ * byte with `-`; if the result exceeds `MAX_SANITIZED_LENGTH`, truncate and
+ * append a hash suffix so long paths remain distinguishable.
+ *
+ * Exported for tests.
+ */
+export const MAX_SANITIZED_LENGTH = 200
+
+export function encodeProjectPath(cwd: string): string {
+  const sanitized = cwd.replace(/[^a-zA-Z0-9]/g, '-')
+  if (sanitized.length <= MAX_SANITIZED_LENGTH) return sanitized
+  return `${sanitized.slice(0, MAX_SANITIZED_LENGTH)}-${djb2(cwd).toString(36)}`
+}
+
+/**
+ * djb2 string hash (Dan Bernstein). Matches the CLI's non-Bun fallback
+ * (`simpleHash`) so long-cwd encodings align between the two processes.
+ */
+function djb2(s: string): number {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  }
+  return h >>> 0
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -158,37 +189,55 @@ export async function remove(
   await fs.promises.rm(subdir, { recursive: true, force: true })
 }
 
+// ─── Experimental write operations ───────────────────────────────────────────
+//
+// These three write synthetic metadata lines into session JSONL files. The
+// on-disk format is reverse-engineered, so upstream changes will break them
+// silently. They live under `_experimental_` prefixes so call sites see the
+// risk in their import lines, and they log a one-time warning on first use.
+
+const _experimentalWarned = new Set<string>()
+function warnExperimental(name: string): void {
+  if (_experimentalWarned.has(name)) return
+  _experimentalWarned.add(name)
+  logger.warn(
+    `claudeCode.sessions.${name}() is experimental — the JSONL metadata format is reverse-engineered and may break with CLI upgrades. Prefer the CLI's own UI for now.`,
+  )
+}
+
 /**
- * Rename a session. Appends a metadata entry the CLI interprets on load.
+ * Rename a session by appending a metadata entry. @experimental
  *
- * Caveat: this reverse-engineers the JSONL metadata format; if the CLI
- * changes how renames are stored, prefer `claude --resume <id>` + the
- * interactive rename flow.
+ * @see warnExperimental — logs once per process on first call.
  */
-export async function rename(
+export async function _experimental_rename(
   id: string,
   title: string,
   opts: { cwd?: string } = {},
 ): Promise<void> {
+  warnExperimental('_experimental_rename')
   await appendMetadata(id, { type: 'metadata', title, updatedAt: new Date().toISOString() }, opts)
 }
 
-export async function tag(
+/** Add/remove a session tag by appending a metadata entry. @experimental */
+export async function _experimental_tag(
   id: string,
   tag: string | null,
   opts: { cwd?: string } = {},
 ): Promise<void> {
+  warnExperimental('_experimental_tag')
   await appendMetadata(id, { type: 'metadata', tag, updatedAt: new Date().toISOString() }, opts)
 }
 
 /**
- * Fork a session at a specific point. Copies the JSONL up to (and optionally
- * truncated at) a given message UUID and returns the new session id.
+ * Fork a session at a specific message UUID. Copies the JSONL (optionally
+ * truncated) and returns the new session id. @experimental
  */
-export async function fork(
+export async function _experimental_fork(
   id: string,
   opts: { upToMessageId?: string; title?: string; cwd?: string } = {},
 ): Promise<{ sessionId: string; file: string }> {
+  warnExperimental('_experimental_fork')
   const cwd = opts.cwd ?? process.cwd()
   const bucket = projectBucket(cwd)
   const source = path.join(bucket, `${id}.jsonl`)
@@ -214,6 +263,17 @@ export async function fork(
 
   return { sessionId: newId, file: target }
 }
+
+// ─── Deprecated aliases ──────────────────────────────────────────────────────
+// Kept for source compatibility with the original Phase 1 API. Forward to
+// the _experimental_ versions — same runtime behaviour, same warning.
+
+/** @deprecated Use `_experimental_rename` to acknowledge the risk. */
+export const rename = _experimental_rename
+/** @deprecated Use `_experimental_tag` to acknowledge the risk. */
+export const tag = _experimental_tag
+/** @deprecated Use `_experimental_fork` to acknowledge the risk. */
+export const fork = _experimental_fork
 
 // ─── Internals ───────────────────────────────────────────────────────────────
 

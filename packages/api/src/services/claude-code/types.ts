@@ -168,10 +168,11 @@ export const UnknownLineSchema = z.object({ type: z.string() }).passthrough()
 export type UnknownLine = z.infer<typeof UnknownLineSchema>
 
 /**
- * Discriminated union of every line the CLI may emit on stdout.
- * Use `parseStreamLine()` (see ndjson.ts) to decode safely.
+ * Every line type we explicitly recognise. Each variant has a literal
+ * `type` discriminator so a `switch(line.type)` narrows exhaustively
+ * without casts. Used internally by `pump()` in `query.ts`.
  */
-export type StreamLine =
+export type KnownStreamLine =
   | UserStreamLine
   | AssistantStreamLine
   | StreamEventLine
@@ -184,7 +185,13 @@ export type StreamLine =
   | ControlResponseLine
   | ControlCancelLine
   | KeepAliveLine
-  | UnknownLine
+
+/**
+ * Public stream-line type. Callers iterate these out of `query().events`.
+ * Includes `UnknownLine` as a catch-all so the CLI can add new top-level
+ * types without breaking the wrapper.
+ */
+export type StreamLine = KnownStreamLine | UnknownLine
 
 // ─── Control-request payloads we explicitly understand ───────────────────────
 
