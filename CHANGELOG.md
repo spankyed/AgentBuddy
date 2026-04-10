@@ -1,5 +1,43 @@
 -e # Changelog
 
+## v0.1.5 (2026-04-10)
+
+### Features
+- default-setup): register pr2md in internal/commands library doc
+- flows): disable LLM node in palette
+- code): show head → base branches on PR create form
+- code): add rich hover tooltip for PR merge button
+- settings): selective setup pack import with per-item picker
+-  add number key shortcuts to Quick Prompts popup
+-  add "Open in Finder" to library and code plugin context menus
+-  enhance PR to Markdown action to support GitHub PR URLs and save output to file
+
+### Fixes
+- settings): address review findings on setup pack import
+- code): handle unmerged files in status parser, revert, and stash ops
+- pr): enhance merge button state management and visual feedback
+- code): disable PR merge button when PR is unmergeable
+- code): stop wiping explorer tree state on plugin re-activation
+- code): restore pinned tabs and order correctly after refresh
+- tiptap): remove duplicate Underline extension registration
+- terminal): drop xterm responses emitted during stored-output replay
+-  prioritize filename over directory in source control file rows
+- settings): open memorial link via shell.openExternal
+-  deduplicate notes on setup pack import
+
+### Refactors
+- seed): make runBootSeed the sole writer of seedHash
+-  make TiptapEditor gutter opt-in via showGutter prop
+-  move writeFile from cli to dedicated filesystem service
+
+### Other
+- - n pr panel, the merge button should disable if you cant merge (insufficient permissions, CI still checking, etc.) Act as a senior SE to investigate thoroughly, than report back with a plan to fix.
+- style(commit): use green badge for push indicator
+- style(settings): restyle CLI provider rows as cards
+- update readme
+
+-e # Changelog
+
 ## v0.1.4 (2026-04-09)
 
 ### Features
