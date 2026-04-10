@@ -156,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick } from 'vue'
+import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import { Sparkle, Pencil, X, Plus, Copy, Check, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
 import type { ReferenceElement } from '@floating-ui/vue'
@@ -209,7 +209,9 @@ watch(open, async (isOpen) => {
     editingId.value = null
     newPromptText.value = ''
     truncatedIds.clear()
+    window.removeEventListener('keydown', handleNumberKey, true)
   } else {
+    window.addEventListener('keydown', handleNumberKey, true)
     await nextTick()
     for (const prompt of props.prompts) {
       if (prompt.text.includes('\n')) {
@@ -222,6 +224,23 @@ watch(open, async (isOpen) => {
       }
     }
   }
+})
+
+function handleNumberKey(e: KeyboardEvent) {
+  if (editing.value) return
+  if (e.metaKey || e.ctrlKey || e.altKey) return
+  const idx = Number(e.key) - 1
+  if (!Number.isInteger(idx) || idx < 0 || idx > 8) return
+  const prompt = props.prompts[idx]
+  if (!prompt) return
+  e.preventDefault()
+  e.stopPropagation()
+  navigator.clipboard.writeText(prompt.text)
+  open.value = false
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleNumberKey, true)
 })
 
 function checkTruncation(prompt: QuickPrompt) {
