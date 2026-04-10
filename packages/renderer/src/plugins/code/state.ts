@@ -189,32 +189,32 @@ function closeTabWithConfirmation(context: Context, system: any, path: string) {
 
 // Directory will be loaded from backend EARS store
 
-// Helper function to reorder tabs based on stored order
-function reorderTabsByStoredOrder(
-  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
+// Insert a newly-restored tab into its persisted slot. Non-persisted tabs (or
+// tabs appearing after all persisted ones have been placed) go to the end.
+function insertByPersistedOrder<T extends { path: string }>(
+  openFiles: T[],
+  newTab: T,
   pendingOrder: Array<{ path: string; order: number }>
-): (OpenFile | TerminalTab | ActionTab | PromptTab)[] | null {
-  // Check if all pending tabs have been loaded
-  const pendingPaths = pendingOrder.map(t => t.path)
-  const loadedPaths = openFiles.map(f => f.path)
-  const allTabsLoaded = pendingPaths.every(path => loadedPaths.includes(path))
+): T[] {
+  const orderMap = new Map(pendingOrder.map(t => [t.path, t.order]))
+  const newOrder = orderMap.get(newTab.path)
 
-  if (!allTabsLoaded) {
-    // Not all tabs loaded yet, wait
-    return null
+  // Not a persisted tab — append at the end (unpinned section).
+  if (newOrder === undefined) {
+    return [...openFiles, newTab]
   }
 
-  // Create a map of path to order
-  const orderMap = new Map(pendingOrder.map(t => [t.path, t.order]))
-
-  // Sort tabs by their original order
-  const sorted = [...openFiles].sort((a, b) => {
-    const orderA = orderMap.get(a.path) ?? Number.MAX_SAFE_INTEGER
-    const orderB = orderMap.get(b.path) ?? Number.MAX_SAFE_INTEGER
-    return orderA - orderB
+  // Find the first existing tab whose persisted order is greater than newTab's.
+  const insertAt = openFiles.findIndex(f => {
+    const o = orderMap.get(f.path)
+    return o !== undefined && o > newOrder
   })
 
-  return sorted
+  if (insertAt === -1) {
+    return [...openFiles, newTab]
+  }
+
+  return [...openFiles.slice(0, insertAt), newTab, ...openFiles.slice(insertAt)]
 }
 
 // Helper to check and delete empty groups
@@ -285,75 +285,78 @@ const codeState = setup({
       const enablePreview = context.settings?.enablePreview ?? true
       let openFiles = [...context.openFiles]
 
+      // If this tab has persisted metadata waiting, this is a restore insertion.
+      // Hydrate isPinned/groupId onto the incoming tab BEFORE it lands in openFiles.
+      const persistedMetadata = context.pendingPersistedMetadata?.get(ev.tab.path)
+      const incomingTab = persistedMetadata
+        ? { ...ev.tab, groupId: persistedMetadata.groupId, isPinned: persistedMetadata.isPinned }
+        : ev.tab
+      const isRestoring = persistedMetadata !== undefined
+
       // Check if tab already exists
-      const existingIndex = openFiles.findIndex((f: any) => f.path === ev.tab.path)
+      const existingIndex = openFiles.findIndex((f: any) => f.path === incomingTab.path)
 
       if (existingIndex >= 0) {
         // Tab exists — update content, KEEP preview state unchanged
-        openFiles[existingIndex] = { ...openFiles[existingIndex], ...ev.tab }
+        openFiles[existingIndex] = { ...openFiles[existingIndex], ...incomingTab }
       } else {
-        // New tab — parent decides preview state based on tab type
-        const isSpecialTab = ev.tab.isTerminal || ev.tab.isAction || ev.tab.isPrompt
-        const shouldPreview = enablePreview && !isSpecialTab && !ev.replacePreview
+        // New tab — parent decides preview state based on tab type.
+        // Restored tabs must never come back as ephemeral previews.
+        const isSpecialTab = incomingTab.isTerminal || incomingTab.isAction || incomingTab.isPrompt
+        const shouldPreview = !isRestoring && enablePreview && !isSpecialTab && !ev.replacePreview
 
         // Remove old preview tab (only one preview at a time)
         if (shouldPreview || ev.replacePreview) {
           openFiles = openFiles.filter((f: any) => !f.isPreview)
         }
 
-        const newTab = shouldPreview ? { ...ev.tab, isPreview: true } : ev.tab
-        openFiles = sortTabsByPinned([...openFiles, newTab])
+        const newTab = shouldPreview ? { ...incomingTab, isPreview: true } : incomingTab
+        // During restore, place the tab in its persisted slot. Otherwise keep
+        // the pinned-first invariant via sortTabsByPinned.
+        openFiles = context.pendingTabOrder
+          ? insertByPersistedOrder(openFiles, newTab, context.pendingTabOrder)
+          : sortTabsByPinned([...openFiles, newTab])
       }
 
-      const activeFilePath = ev.extraUpdates?.activeFilePath ?? ev.tab.path
+      // Consume the pending-metadata entry for this tab, if any. Treat the map
+      // as immutable — clone before mutating.
+      let pendingPersistedMetadata = context.pendingPersistedMetadata
+      if (persistedMetadata && pendingPersistedMetadata) {
+        const next = new Map(pendingPersistedMetadata)
+        next.delete(incomingTab.path)
+        pendingPersistedMetadata = next.size > 0 ? next : undefined
+      }
+
+      // Clear pendingTabOrder once every persisted path is now present in openFiles.
+      let pendingTabOrder = context.pendingTabOrder
+      if (pendingTabOrder) {
+        const openPaths = new Set(openFiles.map(f => f.path))
+        const allPlaced = pendingTabOrder.every(t => openPaths.has(t.path))
+        if (allPlaced) pendingTabOrder = undefined
+      }
+
+      // During restore, don't bounce activeFilePath as tabs stream in — leave
+      // the previously-active tab focused. For user-initiated opens, focus the
+      // new tab as before.
+      const activeFilePath = isRestoring
+        ? context.activeFilePath
+        : (ev.extraUpdates?.activeFilePath ?? incomingTab.path)
 
       return {
         ...context,
         ...(ev.extraUpdates || {}),
         openFiles,
         activeFilePath,
-        tabViewHistory: pushTabViewHistory(context.tabViewHistory, activeFilePath)
+        pendingPersistedMetadata,
+        pendingTabOrder,
+        tabViewHistory: activeFilePath
+          ? pushTabViewHistory(context.tabViewHistory, activeFilePath)
+          : context.tabViewHistory
       }
     }),
-    updateState: assign(({ event, context, system }) => {
+    updateState: assign(({ event, context }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       const updates = { ...context, ...ev.updates }
-
-      // Apply persisted metadata (groupId, isPinned) to newly created tabs
-      if (context.pendingPersistedMetadata && ev.updates.openFiles && ev.updates.openFiles.length > 0) {
-        const patchedFiles = ev.updates.openFiles.map(file => {
-          const metadata = context.pendingPersistedMetadata!.get(file.path)
-          if (metadata) {
-            return {
-              ...file,
-              groupId: metadata.groupId,
-              isPinned: metadata.isPinned
-            }
-          }
-          return file
-        })
-
-        // Check if we've applied all pending metadata
-        const appliedCount = patchedFiles.filter(f =>
-          context.pendingPersistedMetadata!.has(f.path)
-        ).length
-
-        updates.openFiles = patchedFiles
-
-        // Clear pending metadata if all tabs have been restored
-        if (appliedCount === context.pendingPersistedMetadata!.size) {
-          updates.pendingPersistedMetadata = undefined
-        }
-      }
-
-      // Check if we need to reorder tabs based on pending order
-      if (context.pendingTabOrder && updates.openFiles && updates.openFiles.length > 0) {
-        const reorderedFiles = reorderTabsByStoredOrder(updates.openFiles, context.pendingTabOrder)
-        if (reorderedFiles) {
-          updates.openFiles = reorderedFiles
-          updates.pendingTabOrder = undefined // Clear pending order after applying
-        }
-      }
 
       // Auto-clean history when tabs are removed
       if (ev.updates.openFiles && ev.updates.openFiles.length < context.openFiles.length) {
