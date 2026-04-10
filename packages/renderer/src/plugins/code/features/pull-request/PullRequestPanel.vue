@@ -159,6 +159,7 @@
           :body="createBody"
           :baseBranch="createBaseBranch"
           :defaultBaseBranch="prBaseBranch"
+          :headBranch="currentBranch"
           :branches="availableBranches"
           :isCreating="isCreating"
           @update-field="handleUpdateField"

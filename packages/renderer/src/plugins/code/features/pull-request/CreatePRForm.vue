@@ -26,20 +26,30 @@
       </div>
     </div>
 
-    <!-- Base branch -->
+    <!-- Branches: head → base -->
     <div>
-      <label class="block text-xs text-neutral-400 mb-1">Base branch</label>
-      <select
-        :value="baseBranch || defaultBaseBranch"
-        @change="$emit('update-field', 'baseBranch', ($event.target as HTMLSelectElement).value)"
-        class="w-full px-2 py-1.5 text-xs rounded bg-neutral-800 border border-neutral-700 text-neutral-200 focus:outline-none focus:border-blue-600 appearance-none cursor-pointer"
-      >
-        <option
-          v-for="branch in branchOptions"
-          :key="branch"
-          :value="branch"
-        >{{ branch }}</option>
-      </select>
+      <label class="block text-xs text-neutral-400 mb-1">Merge into</label>
+      <div class="flex items-center gap-1.5">
+        <div
+          class="flex items-center gap-1 px-2 py-1.5 text-xs rounded bg-neutral-800/60 border border-neutral-700 text-neutral-300 min-w-0"
+          :title="headBranch || 'Current branch'"
+        >
+          <GitBranch :size="11" class="shrink-0 text-neutral-500" />
+          <span class="truncate">{{ headBranch || '(current branch)' }}</span>
+        </div>
+        <ArrowRight :size="12" class="shrink-0 text-neutral-500" />
+        <select
+          :value="baseBranch || defaultBaseBranch"
+          @change="$emit('update-field', 'baseBranch', ($event.target as HTMLSelectElement).value)"
+          class="flex-1 min-w-0 px-2 py-1.5 text-xs rounded bg-neutral-800 border border-neutral-700 text-neutral-200 focus:outline-none focus:border-blue-600 appearance-none cursor-pointer"
+        >
+          <option
+            v-for="branch in branchOptions"
+            :key="branch"
+            :value="branch"
+          >{{ branch }}</option>
+        </select>
+      </div>
     </div>
 
     <!-- Actions -->
@@ -67,7 +77,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GitPullRequest, Loader2, FileEdit } from 'lucide-vue-next'
+import { GitPullRequest, Loader2, FileEdit, GitBranch, ArrowRight } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 const props = defineProps<{
@@ -75,6 +85,7 @@ const props = defineProps<{
   body: string
   baseBranch: string
   defaultBaseBranch: string
+  headBranch: string
   branches: string[]
   isCreating: boolean
 }>()
