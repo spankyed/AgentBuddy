@@ -2,13 +2,31 @@ import type { ActionMeta, Services, Z } from '../../types';
 
 export const meta: ActionMeta = {
   label: 'PR to Markdown',
-  description: 'Renders current branch PR comments to markdown in the chat thread',
+  description: 'Renders PR comments and review threads to a local markdown file',
   category: 'commands',
   input: {
-    text: { type: 'string', description: 'Optional PR number', required: false },
-    threadId: { type: 'string', description: 'Thread ID for output', required: false },
+    text: { type: 'string', description: 'PR number or GitHub PR URL', required: false },
+    threadId: { type: 'string', description: 'Thread ID for feedback', required: false },
   },
 };
+
+function parseArg(text: string): { number: number; repo?: { owner: string; name: string } } | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const urlMatch = trimmed.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+  if (urlMatch) {
+    return {
+      number: parseInt(urlMatch[3], 10),
+      repo: { owner: urlMatch[1], name: urlMatch[2] },
+    };
+  }
+
+  const num = parseInt(trimmed, 10);
+  if (!isNaN(num)) return { number: num };
+
+  return null;
+}
 
 function formatDate(iso: string): string {
   return iso.slice(0, 10);
@@ -77,30 +95,18 @@ export async function action(
   const { text, threadId } = params;
 
   try {
-    let prNumber: number | undefined;
-    if (text?.trim()) {
-      prNumber = parseInt(text.trim(), 10);
-      if (isNaN(prNumber)) {
-        if (threadId) {
-          services.chat.sendBlockMessage({
-            threadId,
-            text: `Invalid PR number: "${text.trim()}"`,
-            blocks: [],
-          });
-        }
-        return { success: false, error: 'Invalid PR number' };
-      }
-    }
-
+    const parsed = text ? parseArg(text) : null;
     let pr: any;
-    if (prNumber) {
-      const details = await services.cli.gh.getPRDetails(prNumber);
-      pr = details;
+    let repo: { owner: string; name: string } | undefined;
+
+    if (parsed) {
+      repo = parsed.repo;
+      pr = await services.cli.gh.getPRDetails(parsed.number, repo);
     } else {
       const branchPR = await services.cli.gh.getPRForBranch();
       if (!branchPR) {
+        const branch = await services.cli.git.getCurrentBranch();
         if (threadId) {
-          const branch = await services.cli.git.getCurrentBranch();
           services.chat.sendBlockMessage({
             threadId,
             text: `No PR found for branch "${branch}"`,
@@ -112,18 +118,23 @@ export async function action(
       pr = await services.cli.gh.getPRDetails(branchPR.number);
     }
 
-    const threads = await services.cli.gh.getReviewThreads(pr.number);
+    const threads = await services.cli.gh.getReviewThreads(pr.number, repo);
     const markdown = formatPRMarkdown(pr, pr.comments || [], threads);
+
+    const workingDir = services.cli.git.getWorkingDir();
+    const fileName = `pr-${pr.number}.md`;
+    const filePath = workingDir + '/' + fileName;
+    await services.cli.writeFile(filePath, markdown);
 
     if (threadId) {
       services.chat.sendBlockMessage({
         threadId,
-        text: markdown,
+        text: `Wrote PR #${pr.number} to ${fileName}`,
         blocks: [],
       });
     }
 
-    return { success: true, prNumber: pr.number, markdown };
+    return { success: true, prNumber: pr.number, filePath };
   } catch (error: any) {
     const errorMsg = error?.message || 'Failed to fetch PR';
     if (threadId) {

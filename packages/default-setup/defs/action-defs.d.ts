@@ -5221,11 +5221,18 @@ interface CliServiceType {
     };
     gh: {
         getPRForBranch(branch?: string): Promise<GhPullRequest | null>;
-        getPRDetails(number: number): Promise<GhPullRequest & {
+        getPRDetails(number: number, repo?: {
+            owner: string;
+            name: string;
+        }): Promise<GhPullRequest & {
             comments: GhPRComment[];
         }>;
-        getReviewThreads(number: number): Promise<GhReviewThread[]>;
+        getReviewThreads(number: number, repo?: {
+            owner: string;
+            name: string;
+        }): Promise<GhReviewThread[]>;
     };
+    writeFile(filePath: string, content: string): Promise<void>;
 }
 
 interface TextStreamOptions {

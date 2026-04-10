@@ -129,11 +129,10 @@ export async function listOpenPRs(cwd: string): Promise<GhPullRequest[]> {
   return parseJson<GhPullRequest[]>(output, 'listing PRs')
 }
 
-export async function getPRDetails(cwd: string, number: number): Promise<GhPullRequest & { comments: GhPRComment[] }> {
-  const output = await runGh([
-    'pr', 'view', String(number),
-    '--json', `${PR_DETAIL_FIELDS},comments`,
-  ], cwd)
+export async function getPRDetails(cwd: string, number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }> {
+  const args = ['pr', 'view', String(number), '--json', `${PR_DETAIL_FIELDS},comments`]
+  if (repo) args.push('--repo', `${repo.owner}/${repo.name}`)
+  const output = await runGh(args, cwd)
   return parseJson<GhPullRequest & { comments: GhPRComment[] }>(output, `PR #${number}`)
 }
 
@@ -224,8 +223,8 @@ export async function deletePRComment(cwd: string, commentId: number): Promise<v
 
 // --- Review thread operations ---
 
-export async function getReviewThreads(cwd: string, number: number): Promise<GhReviewThread[]> {
-  const { owner, name } = await getRepoInfo(cwd)
+export async function getReviewThreads(cwd: string, number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]> {
+  const { owner, name } = repo || await getRepoInfo(cwd)
   const query = `query($owner:String!,$name:String!,$number:Int!){
     repository(owner:$owner,name:$name){
       pullRequest(number:$number){

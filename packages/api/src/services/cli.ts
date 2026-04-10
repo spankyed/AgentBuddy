@@ -1,3 +1,5 @@
+import * as fs from 'fs/promises'
+import * as path from 'path'
 import { GitRepository } from '@/systems/code/services/git'
 import * as ghCli from '@/systems/code/services/gh-cli'
 import { repository } from '@/repository'
@@ -17,9 +19,10 @@ export interface CliServiceType {
   }
   gh: {
     getPRForBranch(branch?: string): Promise<GhPullRequest | null>
-    getPRDetails(number: number): Promise<GhPullRequest & { comments: GhPRComment[] }>
-    getReviewThreads(number: number): Promise<GhReviewThread[]>
+    getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }>
+    getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]>
   }
+  writeFile(filePath: string, content: string): Promise<void>
 }
 
 function createCliService(): CliServiceType {
@@ -65,14 +68,18 @@ function createCliService(): CliServiceType {
         const branchName = branch || await getGitRepo().getCurrentBranch()
         return ghCli.getPRForBranch(cwd, branchName)
       },
-      async getPRDetails(number: number): Promise<GhPullRequest & { comments: GhPRComment[] }> {
+      async getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }> {
         const cwd = resolveCwd()
-        return ghCli.getPRDetails(cwd, number)
+        return ghCli.getPRDetails(cwd, number, repo)
       },
-      async getReviewThreads(number: number): Promise<GhReviewThread[]> {
+      async getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]> {
         const cwd = resolveCwd()
-        return ghCli.getReviewThreads(cwd, number)
+        return ghCli.getReviewThreads(cwd, number, repo)
       },
+    },
+    async writeFile(filePath: string, content: string): Promise<void> {
+      await fs.mkdir(path.dirname(filePath), { recursive: true })
+      await fs.writeFile(filePath, content, 'utf-8')
     },
   }
 }
