@@ -1,5 +1,19 @@
 -e # Changelog
 
+## v0.1.4 (2026-04-09)
+
+### Features
+-  add command listener flow with gcmsg and pr2md commands
+
+### Fixes
+-  pass correct options object to selectPath in setup pack import
+-  rename publish-release script to public-release in package.json
+
+### Other
+- Merge pull request #111 from spankyed/AS/DS-command-listener
+
+-e # Changelog
+
 ## v0.1.3 (2026-04-09)
 
 ### Features
