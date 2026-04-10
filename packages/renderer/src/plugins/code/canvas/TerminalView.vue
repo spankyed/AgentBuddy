@@ -95,6 +95,7 @@ let fitAddon: FitAddon | null = null
 let resizeObserver: ResizeObserver | null = null
 let unsubscribe: (() => void) | null = null
 let isShowingLoadingContent = false
+let isReplaying = false
 const isPinnedToBottom = ref(true)
 let isScrollingProgrammatically = false
 const showScrollFob = computed(() => !isPinnedToBottom.value)
@@ -247,10 +248,13 @@ term.loadAddon(new ClipboardAddon())
   }
 
   if (storedOutput) {
+    isReplaying = true
     term.write(storedOutput, () => {
-      if (savedLine == null) return
-      term?.scrollToLine(savedLine)
-      requestAnimationFrame(() => { isScrollingProgrammatically = false })
+      if (savedLine != null) {
+        term?.scrollToLine(savedLine)
+        requestAnimationFrame(() => { isScrollingProgrammatically = false })
+      }
+      isReplaying = false
     })
   } else {
     showLoadingContent()
@@ -273,6 +277,10 @@ term.loadAddon(new ClipboardAddon())
 
   /* 5. PTY -> FE communication */
   term.onData(data => {
+    // Ignore synthesized responses (DA/DSR/OSC color queries) emitted by xterm
+    // while it parses replayed stored output on remount. Forwarding those to the
+    // pty would inject them as "user input" into the shell.
+    if (isReplaying) return
     terminalActor?.send({ type: 'terminal.INPUT', terminalId: props.terminalInfo.id, data })
   })
 
