@@ -79,7 +79,11 @@ export function parseActiveToken(output: string): ActiveTokenInfo | null {
 }
 
 const PR_JSON_FIELDS = 'number,title,headRefName,baseRefName,state,body,url,isDraft,author,createdAt,updatedAt'
-const PR_DETAIL_FIELDS = `${PR_JSON_FIELDS},commits`
+// Mergeability fields — slower for GitHub to compute, so excluded from the dropdown list query
+// but included whenever we fetch a single PR (details view or branch auto-load).
+const PR_MERGE_FIELDS = 'mergeable,mergeStateStatus,reviewDecision,statusCheckRollup'
+const PR_DETAIL_FIELDS = `${PR_JSON_FIELDS},commits,${PR_MERGE_FIELDS}`
+const PR_BRANCH_FIELDS = `${PR_JSON_FIELDS},${PR_MERGE_FIELDS}`
 
 export async function checkAuth(cwd: string): Promise<{ available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null }> {
   let activeToken: ActiveTokenInfo | null = null
@@ -141,7 +145,7 @@ export async function getPRForBranch(cwd: string, branch: string): Promise<GhPul
     const output = await runGh([
       'pr', 'list',
       '--head', branch,
-      '--json', PR_JSON_FIELDS,
+      '--json', PR_BRANCH_FIELDS,
       '--state', 'all',
       '--limit', '3',
     ], cwd)

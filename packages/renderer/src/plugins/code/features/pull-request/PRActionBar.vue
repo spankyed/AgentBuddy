@@ -6,9 +6,9 @@
       <div class="flex">
         <button
           @click="$emit('merge', selectedMethod)"
-          :disabled="isMerging || pr.isDraft"
+          :disabled="!canMerge"
+          :title="mergeTooltip"
           class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-l bg-green-700/80 text-white hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          :title="pr.isDraft ? 'Cannot merge a draft PR' : 'Merge pull request'"
         >
           <Loader2 v-if="isMerging" :size="11" class="animate-spin" />
           <GitMerge v-else :size="11" />
@@ -16,7 +16,8 @@
         </button>
         <button
           @click="showMergeOptions = !showMergeOptions"
-          :disabled="isMerging || pr.isDraft"
+          :disabled="!canMerge"
+          :title="mergeTooltip"
           class="px-1 py-1 rounded-r bg-green-700/80 text-white hover:bg-green-600 transition-colors border-l border-green-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronDown :size="11" />
@@ -95,18 +96,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { GitMerge, GitBranch, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2 } from 'lucide-vue-next'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
 
-defineProps<{
+const props = defineProps<{
   pr: GhPullRequest | null
   isMerging: boolean
   isClosing: boolean
   isTogglingDraft: boolean
   isDeletingBranch: boolean
 }>()
+
+type StatusCheck = NonNullable<GhPullRequest['statusCheckRollup']>[number]
+
+const FAILING_CONCLUSIONS = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'])
+const PENDING_STATUSES = new Set(['QUEUED', 'IN_PROGRESS', 'PENDING'])
+
+const isFailing = (c: StatusCheck) =>
+  (c.conclusion && FAILING_CONCLUSIONS.has(c.conclusion)) || c.state === 'FAILURE' || c.state === 'ERROR'
+
+const isPending = (c: StatusCheck) =>
+  (c.status && PENDING_STATUSES.has(c.status) && !c.conclusion) || (!c.status && c.state === 'PENDING')
+
+/** Reason the PR cannot be merged, or null when it can. */
+const mergeBlockReason = computed<string | null>(() => {
+  const pr = props.pr
+  if (!pr) return 'No pull request selected'
+  if (props.isMerging) return 'Merging…'
+  if (pr.isDraft) return 'Cannot merge a draft PR'
+
+  if (pr.mergeable === 'CONFLICTING' || pr.mergeStateStatus === 'DIRTY') return 'Cannot merge — branch has conflicts with base'
+  if (pr.mergeStateStatus === 'BEHIND') return 'Branch is out of date with base — update it first'
+  if (pr.reviewDecision === 'CHANGES_REQUESTED') return 'Cannot merge — changes have been requested'
+  if (pr.reviewDecision === 'REVIEW_REQUIRED') return 'Cannot merge — required review is missing'
+
+  const checks = pr.statusCheckRollup ?? []
+  if (checks.some(isFailing)) return 'Cannot merge — status checks are failing'
+  if (checks.some(isPending)) return 'Cannot merge — status checks are still running'
+
+  if (pr.mergeStateStatus === 'BLOCKED') return 'Cannot merge — blocked by branch protection rules'
+  if (pr.mergeable === 'UNKNOWN' || pr.mergeStateStatus === 'UNKNOWN') return 'Checking mergeability…'
+
+  return null
+})
+
+const canMerge = computed(() => mergeBlockReason.value === null)
+const mergeTooltip = computed(() => mergeBlockReason.value ?? 'Merge pull request')
 
 defineEmits<{
   'merge': [method: 'merge' | 'squash' | 'rebase']

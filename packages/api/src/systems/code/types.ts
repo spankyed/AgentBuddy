@@ -117,6 +117,16 @@ export interface GhPullRequest {
   createdAt: string
   updatedAt: string
   commits?: { oid: string; messageHeadline: string; committedDate: string }[]
+  // Mergeability — populated by detail / branch-PR fetches, not by the light list fetch.
+  mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+  mergeStateStatus?: 'BEHIND' | 'BLOCKED' | 'CLEAN' | 'DIRTY' | 'DRAFT' | 'HAS_HOOKS' | 'UNKNOWN' | 'UNSTABLE'
+  reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
+  statusCheckRollup?: Array<{
+    name?: string
+    status?: string     // QUEUED | IN_PROGRESS | COMPLETED | PENDING
+    conclusion?: string // SUCCESS | FAILURE | NEUTRAL | CANCELLED | SKIPPED | TIMED_OUT | ACTION_REQUIRED | STALE
+    state?: string      // legacy commit status: SUCCESS | PENDING | FAILURE | ERROR
+  }>
 }
 
 export interface GhPRComment {
