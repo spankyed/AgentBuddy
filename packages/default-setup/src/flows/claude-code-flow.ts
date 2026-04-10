@@ -21,10 +21,10 @@ export default {
       [[
         branch([
           {
-            if: "$.event.data.payload.mode === 'work'",
+            if: "$.event.data.payload.mode == 'work'",
             steps: [
               action("Claude Code Chat", {
-                label: "chat",
+                label: "work",
                 map: {
                   threadId: "$.event.data.payload.threadId",
                   text: "$.event.data.payload.text",

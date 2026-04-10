@@ -473,6 +473,27 @@ describe('compile', () => {
       expect(pred.value).toBe('hello');
     });
 
+    it('"$.key === \'value\'" -> EQUALS, value: "value" (strict equality)', () => {
+      const pred = parsedPredicate("$.key === 'value'");
+      expect(pred.key).toBe('$.key');
+      expect(pred.operator).toBe(BinaryOperator.EQUALS);
+      expect(pred.value).toBe('value');
+    });
+
+    it('"$.key !== \'value\'" -> NOT_EQUALS, value: "value"', () => {
+      const pred = parsedPredicate("$.key !== 'value'");
+      expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
+      expect(pred.value).toBe('value');
+    });
+
+    it('=== parsed before == (longest match first, regression for stray `= \'…\'`)', () => {
+      // Regression guard: the old parser split at the first `==` inside `===`,
+      // leaving `= 'work'` as the value and silently breaking work-mode routing.
+      const pred = parsedPredicate("$.event.data.payload.mode === 'work'");
+      expect(pred.value).toBe('work');
+      expect(pred.value).not.toContain('=');
+    });
+
     it('path references: "$.a == $.b" -> value kept as "$.b"', () => {
       const pred = parsedPredicate('$.a == $.b');
       expect(pred.value).toBe('$.b');
