@@ -14,7 +14,6 @@ import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
 import Color from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
-import Underline from '@tiptap/extension-underline'
 import { ResizableImage } from './resizable-image'
 import { SubDocumentLink } from './sub-document-link'
 import { ReferenceNode } from './reference-node'
@@ -93,7 +92,6 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     }),
     ReferenceNode,
     EmptyLinePreserver,
-    Underline,
   ]
 
   if (cfg.richFormatting) extensions.push(Color, Highlight.configure({ multicolor: true }), CustomHorizontalRule)
