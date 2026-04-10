@@ -159,6 +159,11 @@ export const createApplicationState = () => setup({
 
         updateKeys(e, true);
 
+        // If an earlier handler (Tiptap/ProseMirror, Monaco, etc.) already consumed
+        // the event, don't also run it through the global hotkey map. Prevents e.g.
+        // Cmd+B both bolding text in the editor AND toggling the inspection panel.
+        if (e.defaultPrevented) return;
+
         const appActor = system.get(application);
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',

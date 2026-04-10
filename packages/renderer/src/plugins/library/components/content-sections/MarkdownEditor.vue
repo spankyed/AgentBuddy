@@ -2,6 +2,7 @@
   <div>
     <TiptapEditor
       mode="editor"
+      show-gutter
       :model-value="content.text"
       :entity-id="entityId"
       placeholder="Enter markdown content..."

@@ -102,6 +102,7 @@
             v-if="isRichText(activeFile)"
             :key="activeFile.path"
             mode="editor"
+            show-gutter
             :model-value="activeFile.content"
             @update:model-value="handleContentChange"
             @vue:mounted="emit('editorMount')"

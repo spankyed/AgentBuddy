@@ -76,7 +76,6 @@
       <div v-if="editing" class="min-h-[120px] max-h-[350px] overflow-y-auto rounded bg-neutral-800 border border-neutral-700 p-2">
         <TiptapEditor
           mode="editor"
-          hideGutter
           :modelValue="editBody"
           @update:modelValue="editBody = $event"
           placeholder="Describe your changes..."

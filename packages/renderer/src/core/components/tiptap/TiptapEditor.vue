@@ -5,7 +5,7 @@
     @click="onWrapperClick"
   >
     <template v-if="editor">
-      <template v-if="cfg.blockMenu && !hideGutter">
+      <template v-if="cfg.blockMenu && showGutter">
         <TiptapBlockMenu :editor="editor" />
         <TiptapImageBubbleMenu :editor="editor" @view-image="(src: string) => emit('imageClick', src)" />
       </template>
@@ -44,7 +44,7 @@ const props = withDefaults(defineProps<{
   editorClass?: string
   entityId?: string
   disableImages?: boolean
-  hideGutter?: boolean
+  showGutter?: boolean
   isCommand?: boolean
   inHistoryMode?: boolean
 }>(), {
@@ -55,6 +55,7 @@ const props = withDefaults(defineProps<{
   editorClass: '',
   entityId: undefined,
   disableImages: false,
+  showGutter: false,
   isCommand: false,
   inHistoryMode: false,
 })

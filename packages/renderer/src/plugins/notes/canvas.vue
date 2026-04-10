@@ -242,6 +242,7 @@
             ref="editorRef"
             :key="editingNote.id"
             mode="editor"
+            show-gutter
             :model-value="editingNote.content"
             :entity-id="editingNote.id"
             placeholder="Start writing..."

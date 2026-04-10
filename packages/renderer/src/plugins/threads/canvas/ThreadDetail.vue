@@ -60,6 +60,7 @@
             <div class="border rounded-md border-neutral-700 p-3 pr-6 pl-1">
               <TiptapEditor
                 mode="editor"
+                show-gutter
                 :model-value="instructions"
                 :entity-id="threadId || mediaEntityId"
                 placeholder="Enter instructions for the agent"

@@ -65,7 +65,6 @@
           <div class="rounded bg-neutral-800 border border-neutral-700 p-2 min-h-[60px] max-h-[150px] overflow-y-auto">
             <TiptapEditor
               mode="editor"
-            hideGutter
               :modelValue="editCommentBody"
               @update:modelValue="editCommentBody = $event"
               editorClass="pr-comment-editor"
@@ -97,7 +96,6 @@
         <div class="px-3 py-1.5 pb-8 min-h-[32px] max-h-[120px] overflow-y-auto">
           <TiptapEditor
             mode="editor"
-            hideGutter
             :modelValue="newCommentBody"
             @update:modelValue="newCommentBody = $event"
             placeholder="Write a comment..."
@@ -183,7 +181,6 @@
               <div class="rounded bg-neutral-800 border border-neutral-700 p-2 min-h-[60px] max-h-[150px] overflow-y-auto">
                 <TiptapEditor
                   mode="editor"
-                  hideGutter
                   :modelValue="editReviewCommentBody"
                   @update:modelValue="editReviewCommentBody = $event"
                   editorClass="pr-comment-editor"
@@ -213,7 +210,6 @@
             <div class="px-3 py-1.5 pb-8 min-h-[32px] max-h-[100px] overflow-y-auto">
               <TiptapEditor
                 mode="editor"
-                hideGutter
                 :modelValue="replyBody"
                 @update:modelValue="replyBody = $event"
                 placeholder="Reply..."

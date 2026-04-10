@@ -13,7 +13,7 @@ export interface EditorConfig {
   subDocumentTracking: boolean  // onTransaction for sub-doc link add/remove
   historyNavigation: boolean    // arrow key message history
   enterSubmit: boolean          // Enter submits, Shift+Enter splits
-  blockMenu: boolean            // block menu + image bubble (also gated by hideGutter)
+  blockMenu: boolean            // block menu + image bubble (also gated by showGutter prop)
   textBubbleMenu: boolean
   referencePopup: boolean
   commandPopup: boolean
