@@ -43,6 +43,9 @@ function isStashConflictMessage(msg: string): boolean {
   return /CONFLICT|Merge conflict/i.test(msg)
 }
 
+/** Characters allowed in a git branch name (used to guard command injection). */
+const VALID_BRANCH_NAME = /^[a-zA-Z0-9._/-]+$/
+
 /** Map a single porcelain XY character (M, A, D, R, C, ?, T, U) to our status. */
 function mapPorcelainCode(code: string): GitStatusFile['status'] {
   const letter = code.charAt(0)
@@ -63,15 +66,22 @@ export class GitRepository {
   private cache = new Map<string, CachedResult<any>>()
   private readonly CACHE_TTL = 5000 // 5 seconds
   private readonly PARENT_BRANCH_SEARCH_DEPTH = 25
-  /** Serializes all git process invocations to prevent index.lock races. */
+  /** Serializes the entire JS body of each public method (git calls,
+   * fs ops, cache mutations) so composite multi-step operations stay
+   * atomic. simple-git's maxConcurrentProcesses:1 only serializes the
+   * git process spawns themselves; it does NOT guard multi-step JS
+   * sequences like getStatus → fs.unlink → git.checkout → cache.delete
+   * inside revertFiles. Do not remove. */
   private commandQueue: Promise<void> = Promise.resolve()
   private _writeInProgress = 0
   private _writeCompleteCallbacks: (() => void)[] = []
   private _lastFetchTimestamp = 0
   private _autoFetchEnabled = false
   private _fetchThrottleMs = 180_000
-  /** simple-git instance. maxConcurrentProcesses:1 so it serializes
-   * internally as a belt-and-suspenders alongside our enqueueCommand. */
+  private _forceFetchNext = false
+  /** simple-git instance. maxConcurrentProcesses:1 serializes git
+   * process spawns within this instance; JS-level atomicity is provided
+   * by `enqueueCommand` (see above). */
   private git: SimpleGit
 
   constructor(private workingDirectory: string) {
@@ -105,9 +115,7 @@ export class GitRepository {
     }
   }
 
-  /** Run fn serially on the command queue. Every public method wraps its
-   * body in this to prevent git index.lock races, even though simple-git's
-   * maxConcurrentProcesses:1 already serializes within one instance. */
+  /** Run fn serially on the command queue. See `commandQueue` field doc. */
   private enqueueCommand<T>(fn: () => Promise<T>): Promise<T> {
     const op = this.commandQueue.then(fn, fn)
     this.commandQueue = op.then(() => {}, () => {})
@@ -128,6 +136,33 @@ export class GitRepository {
         }
       }
     }
+  }
+
+  /** Run a read op serialized on the queue. Throws with `errMsg` as fallback
+   * if the inner function throws a message-less error. */
+  private run<T>(errMsg: string, fn: () => Promise<T>): Promise<T> {
+    return this.enqueueCommand(async () => {
+      try { return await fn() }
+      catch (err: any) { throw new Error(err?.message || errMsg) }
+    })
+  }
+
+  /** Run a read op serialized on the queue. Returns `fallback` on any error. */
+  private runSafe<T>(fallback: T, fn: () => Promise<T>): Promise<T> {
+    return this.enqueueCommand(async () => {
+      try { return await fn() }
+      catch { return fallback }
+    })
+  }
+
+  /** Run a write op: write flag + queue + error wrapping. Cache invalidation
+   * stays explicit at each call site — some methods clear only `'status'`
+   * while others clear the whole cache. */
+  private runWrite<T>(errMsg: string, fn: () => Promise<T>): Promise<T> {
+    return this.withWriteFlag(() => this.enqueueCommand(async () => {
+      try { return await fn() }
+      catch (err: any) { throw new Error(err?.message || errMsg) }
+    }))
   }
 
   private validateWorkingDirectory(dir: string): void {
@@ -161,6 +196,25 @@ export class GitRepository {
     this.cache.clear()
   }
 
+  /** Strip the working-directory prefix from an absolute path, leaving
+   * already-relative paths untouched. Intentionally NOT `path.relative()`
+   * — that would return `..` segments for paths outside the working dir,
+   * while we want a pass-through. */
+  private toRelativePath(p: string): string {
+    return p.startsWith(this.workingDirectory)
+      ? p.slice(this.workingDirectory.length + 1)
+      : p
+  }
+
+  /** Build a git rev reference for a branch + path. Files with `:` or
+   * a leading `-` need `branch:./path` syntax so they're not interpreted
+   * as options or as path-spec separators. */
+  private buildBranchRef(branch: string, filePath: string): string {
+    return (filePath.includes(':') || filePath.startsWith('-'))
+      ? `${branch}:./${filePath}`
+      : `${branch}:${filePath}`
+  }
+
   private async isDirectory(filePath: string): Promise<boolean> {
     try {
       const fullPath = path.join(this.workingDirectory, filePath)
@@ -172,53 +226,20 @@ export class GitRepository {
   }
 
   private async getUntrackedFilesInDirectory(dirPath: string): Promise<GitStatusFile[]> {
-    return this.enqueueCommand(async () => {
-      try {
-        const output = await this.git.raw(['ls-files', '--others', '--exclude-standard', dirPath])
-        const files = output.trim().split('\n').filter(Boolean)
-        return files.map(filePath => ({
-          path: filePath,
-          status: 'untracked' as const,
-          staged: false,
-        }))
-      } catch {
-        return []
-      }
+    return this.runSafe<GitStatusFile[]>([], async () => {
+      const output = await this.git.raw(['ls-files', '--others', '--exclude-standard', dirPath])
+      return output.trim().split('\n').filter(Boolean).map(filePath => ({
+        path: filePath,
+        status: 'untracked' as const,
+        staged: false,
+      }))
     })
   }
   
-  // Invalidate specific cache entries when files change
-  invalidateCache(paths?: string[]): void {
-    if (!paths || paths.length === 0) {
-      // Clear everything if no specific paths
-      this.clearCache()
-      return
-    }
-    
-    // Always invalidate status when any file changes
-    this.cache.delete('status')
-    
-    // If .git files changed, invalidate branch-related caches
-    if (paths.some(p => p.includes('.git'))) {
-      this.cache.delete('baseBranch')
-      this.cache.delete('prBaseBranch')
-      this.cache.delete('gitRepoValidated')
-    }
-    
-    // Invalidate binary file cache for changed files
-    paths.forEach(path => {
-      this.cache.delete(`binary:${path}`)
-    })
-  }
-
   async getCurrentBranch(): Promise<string> {
-    return this.enqueueCommand(async () => {
-      try {
-        const output = await this.git.revparse(['--abbrev-ref', 'HEAD'])
-        return output.trim()
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to get current branch')
-      }
+    return this.run('Failed to get current branch', async () => {
+      const output = await this.git.revparse(['--abbrev-ref', 'HEAD'])
+      return output.trim()
     })
   }
 
@@ -409,63 +430,17 @@ export class GitRepository {
   }
 
   async getDiff(filePath?: string, staged: boolean = false): Promise<string> {
-    // For untracked files, we need to show the file content as an addition
     if (filePath) {
       const status = await this.getStatus()
       const fileStatus = status.find(f => f.path === filePath && f.staged === staged)
-      
       if (fileStatus?.status === 'untracked') {
-        const fullPath = path.join(this.workingDirectory, filePath)
-        
-        // Check if it's a directory
-        if (await this.isDirectory(filePath)) {
-          // Return a synthetic diff for directories
-          let diff = `diff --git a/${filePath} b/${filePath}\n`
-          diff += `new directory\n`
-          diff += `Unable to show diff for directory\n`
-          return diff
-        }
-        
-        // Check if file is binary
-        if (await this.isBinaryFile(fullPath)) {
-          // Return a synthetic diff for binary files
-          const relativePath = path.relative(this.workingDirectory, fullPath)
-          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
-          diff += `new file mode 100644\n`
-          diff += `index 0000000..0000000\n`
-          diff += `Binary files /dev/null and b/${relativePath} differ\n`
-          return diff
-        }
-        
-        // Read the file content and format it as a diff
-        try {
-          const content = await fs.readFile(fullPath, 'utf8')
-          const lines = content.split(/\r?\n/) // Handle CRLF
-          
-          // Format as a git diff for a new file
-          const relativePath = path.relative(this.workingDirectory, fullPath)
-          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
-          diff += `new file mode 100644\n`
-          diff += `index 0000000..0000000\n`
-          diff += `--- /dev/null\n`
-          diff += `+++ b/${relativePath}\n`
-          diff += `@@ -0,0 +1,${lines.length} @@\n`
-          diff += lines.map(line => `+${line}`).join('\n')
-          
-          return diff
-        } catch (error) {
-          throw new Error(`Failed to read untracked file: ${error}`)
-        }
+        return this.getUntrackedFileDiff(filePath)
       }
     }
-    
+
     const args: string[] = ['--binary', '-M']
-    if (staged) {
-      args.push('--cached')
-    }
-    if (filePath) {
-      args.push('--', filePath)
-    }
+    if (staged) args.push('--cached')
+    if (filePath) args.push('--', filePath)
 
     return this.enqueueCommand(async () => {
       try {
@@ -476,36 +451,64 @@ export class GitRepository {
     })
   }
 
+  /** Build a synthetic unified diff for an untracked file. Handles
+   * directory, binary, and text sub-cases. */
+  private async getUntrackedFileDiff(filePath: string): Promise<string> {
+    if (await this.isDirectory(filePath)) {
+      return `diff --git a/${filePath} b/${filePath}\n`
+        + `new directory\n`
+        + `Unable to show diff for directory\n`
+    }
+
+    const fullPath = path.join(this.workingDirectory, filePath)
+    const relativePath = path.relative(this.workingDirectory, fullPath)
+
+    if (await this.isBinaryFile(fullPath)) {
+      return `diff --git a/${relativePath} b/${relativePath}\n`
+        + `new file mode 100644\n`
+        + `index 0000000..0000000\n`
+        + `Binary files /dev/null and b/${relativePath} differ\n`
+    }
+
+    try {
+      const content = await fs.readFile(fullPath, 'utf8')
+      const lines = content.split(/\r?\n/) // Handle CRLF
+      return `diff --git a/${relativePath} b/${relativePath}\n`
+        + `new file mode 100644\n`
+        + `index 0000000..0000000\n`
+        + `--- /dev/null\n`
+        + `+++ b/${relativePath}\n`
+        + `@@ -0,0 +1,${lines.length} @@\n`
+        + lines.map(line => `+${line}`).join('\n')
+    } catch (error) {
+      throw new Error(`Failed to read untracked file: ${error}`)
+    }
+  }
+
   async getFileContent(filePath: string, version: 'HEAD' | 'working' | 'index' = 'working'): Promise<string> {
+    const relativePath = this.toRelativePath(filePath)
+
     if (version === 'working') {
       // Working-tree reads don't touch the git index — no queue needed
       try {
-        const relativePath = filePath.startsWith(this.workingDirectory)
-          ? filePath.slice(this.workingDirectory.length + 1)
-          : filePath
-
         if (await this.isDirectory(relativePath)) {
           return ''
         }
-
         const fullPath = path.join(this.workingDirectory, relativePath)
         return await fs.readFile(fullPath, 'utf8')
       } catch (error) {
         throw new Error(`Failed to read file: ${error}`)
       }
-    } else {
-      const relativePath = filePath.startsWith(this.workingDirectory)
-        ? filePath.slice(this.workingDirectory.length + 1)
-        : filePath
-      const ref = version === 'HEAD' ? `HEAD:${relativePath}` : `:${relativePath}`
-      return this.enqueueCommand(async () => {
-        try {
-          return await this.git.show([ref])
-        } catch {
-          return ''
-        }
-      })
     }
+
+    const ref = version === 'HEAD' ? `HEAD:${relativePath}` : `:${relativePath}`
+    return this.enqueueCommand(async () => {
+      try {
+        return await this.git.show([ref])
+      } catch {
+        return ''
+      }
+    })
   }
 
   /**
@@ -518,9 +521,7 @@ export class GitRepository {
       return this.getFileContent(filePath, version)
     }
 
-    const relativePath = filePath.startsWith(this.workingDirectory)
-      ? filePath.slice(this.workingDirectory.length + 1)
-      : filePath
+    const relativePath = this.toRelativePath(filePath)
 
     if (version === 'working') {
       try {
@@ -553,10 +554,7 @@ export class GitRepository {
     }
 
     try {
-      const ref = filePath.includes(':') || filePath.startsWith('-')
-        ? `${branch}:./${filePath}`
-        : `${branch}:${filePath}`
-      const buffer = await this.executeGitCommandBinary(['show', ref])
+      const buffer = await this.executeGitCommandBinary(['show', this.buildBranchRef(branch, filePath)])
       if (!buffer || buffer.length === 0) return ''
       return `data:${mimeType};base64,${buffer.toString('base64')}`
     } catch {
@@ -585,117 +583,65 @@ export class GitRepository {
 
   async stageFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.add(filePaths)
-        this.cache.delete('status')
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to stage files')
-      }
-    }))
+    await this.runWrite('Failed to stage files', async () => {
+      await this.git.add(filePaths)
+      this.cache.delete('status')
+    })
   }
 
   async unstageFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.reset(['HEAD', ...filePaths])
-        this.cache.delete('status')
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to unstage files')
-      }
-    }))
-  }
-
-  async revertFile(filePath: string): Promise<void> {
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      const status = await this.getStatus()
-      const fileStatus = status.find(f => f.path === filePath)
-
-      if (fileStatus?.status === 'untracked') {
-        const fullPath = path.join(this.workingDirectory, filePath)
-        await fs.unlink(fullPath)
-      } else if (fileStatus?.status === 'unmerged') {
-        // `git checkout --` refuses unmerged paths; explicit HEAD ref works
-        // and clears the conflict state in both the index and worktree.
-        try {
-          await this.git.checkout(['HEAD', '--', filePath])
-        } catch (err: any) {
-          throw new Error(err?.message || `Failed to revert file: ${filePath}`)
-        }
-      } else {
-        try {
-          await this.git.checkout(['--', filePath])
-        } catch (err: any) {
-          throw new Error(err?.message || `Failed to revert file: ${filePath}`)
-        }
-      }
+    await this.runWrite('Failed to unstage files', async () => {
+      await this.git.reset(['HEAD', ...filePaths])
       this.cache.delete('status')
-    }))
+    })
   }
 
   async revertFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
+    await this.runWrite('Failed to revert files', async () => {
       const status = await this.getStatus()
       const statusMap = new Map(status.map(f => [f.path, f.status]))
 
-      const untrackedPaths = filePaths.filter(p => statusMap.get(p) === 'untracked')
-      const unmergedPaths = filePaths.filter(p => statusMap.get(p) === 'unmerged')
-      const trackedPaths = filePaths.filter(p => {
+      const untrackedPaths: string[] = []
+      const unmergedPaths: string[] = []
+      const trackedPaths: string[] = []
+      for (const p of filePaths) {
         const s = statusMap.get(p)
-        return s !== 'untracked' && s !== 'unmerged'
-      })
+        if (s === 'untracked') untrackedPaths.push(p)
+        else if (s === 'unmerged') unmergedPaths.push(p)
+        else trackedPaths.push(p)
+      }
 
-      // Delete untracked files
+      // Untracked files: plain filesystem delete.
       for (const filePath of untrackedPaths) {
-        const fullPath = path.join(this.workingDirectory, filePath)
-        await fs.unlink(fullPath)
+        await fs.unlink(path.join(this.workingDirectory, filePath))
       }
 
-      // Revert unmerged files via explicit HEAD ref (plain `checkout --` errors)
+      // Unmerged files need `checkout HEAD --` to clear the conflict state;
+      // plain `checkout --` refuses unmerged paths.
       if (unmergedPaths.length > 0) {
-        try {
-          await this.git.checkout(['HEAD', '--', ...unmergedPaths])
-        } catch (err: any) {
-          throw new Error(err?.message || 'Failed to revert unmerged files')
-        }
+        await this.git.checkout(['HEAD', '--', ...unmergedPaths])
       }
-
-      // Revert tracked files
       if (trackedPaths.length > 0) {
-        try {
-          await this.git.checkout(['--', ...trackedPaths])
-        } catch (err: any) {
-          throw new Error(err?.message || 'Failed to revert files')
-        }
+        await this.git.checkout(['--', ...trackedPaths])
       }
 
       this.cache.delete('status')
-    }))
+    })
   }
 
   async commit(message: string): Promise<void> {
     if (!message.trim()) {
       throw new Error('Commit message cannot be empty')
     }
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.commit(message)
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to commit')
-      }
-    }))
+    await this.runWrite('Failed to commit', async () => {
+      await this.git.commit(message)
+    })
   }
 
   async isGitRepository(): Promise<boolean> {
-    return this.enqueueCommand(async () => {
-      try {
-        return await this.git.checkIsRepo()
-      } catch {
-        return false
-      }
-    })
+    return this.runSafe(false, () => this.git.checkIsRepo())
   }
 
   async hasUncommittedChanges(): Promise<boolean> {
@@ -832,34 +778,28 @@ export class GitRepository {
   }
 
   private async getCommitDistance(branch: string): Promise<number> {
-    return this.enqueueCommand(async () => {
-      try {
-        const output = await this.git.raw(['rev-list', '--count', `${branch}..HEAD`])
-        const n = parseInt(output.trim(), 10)
-        return Number.isFinite(n) ? n : Infinity
-      } catch {
-        return Infinity
-      }
+    return this.runSafe(Infinity, async () => {
+      const output = await this.git.raw(['rev-list', '--count', `${branch}..HEAD`])
+      const n = parseInt(output.trim(), 10)
+      return Number.isFinite(n) ? n : Infinity
     })
   }
 
   private async getNearbyMergedBranches(depth: number): Promise<string[]> {
-    return this.enqueueCommand(async () => {
+    // The primary form with `HEAD~N` errors on shallow history; fall back
+    // to all merged branches in that case. Both branches are swallowed to
+    // an empty list on final failure.
+    return this.runSafe<string[]>([], async () => {
       try {
         const output = await this.git.raw([
           'branch', '--merged', 'HEAD', '--contains', `HEAD~${depth}`, '--format=%(refname:short)',
         ])
         return output.trim().split('\n').filter(Boolean)
       } catch {
-        // Falls back to all merged branches if HEAD~N is invalid (e.g., repo has < N commits)
-        try {
-          const fallback = await this.git.raw([
-            'branch', '--merged', 'HEAD', '--format=%(refname:short)',
-          ])
-          return fallback.trim().split('\n').filter(Boolean)
-        } catch {
-          return []
-        }
+        const fallback = await this.git.raw([
+          'branch', '--merged', 'HEAD', '--format=%(refname:short)',
+        ])
+        return fallback.trim().split('\n').filter(Boolean)
       }
     })
   }
@@ -867,16 +807,10 @@ export class GitRepository {
   async getBranchDiff(baseBranch: string, targetBranch?: string): Promise<GitStatusFile[]> {
     const target = targetBranch || 'HEAD'
 
-    return this.enqueueCommand(async () => {
-      let output: string
-      try {
-        // NUL-separated, with rename/copy detection. Pass through `.raw()`
-        // because simple-git's diff helpers don't surface the -z form we need.
-        output = await this.git.raw(['diff', '--name-status', '-z', '-M', '-C', `${baseBranch}...${target}`])
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to get branch diff')
-      }
-
+    return this.run('Failed to get branch diff', async () => {
+      // NUL-separated, with rename/copy detection. Pass through `.raw()`
+      // because simple-git's diff helpers don't surface the -z form we need.
+      const output = await this.git.raw(['diff', '--name-status', '-z', '-M', '-C', `${baseBranch}...${target}`])
       const files: GitStatusFile[] = []
       const parts = output.split('\0').filter(Boolean)
 
@@ -915,80 +849,51 @@ export class GitRepository {
   async getFileDiffBetweenBranches(filePath: string, baseBranch: string, targetBranch?: string): Promise<string> {
     const target = targetBranch || 'HEAD'
 
-    // Validate branch names to prevent injection
-    if (!/^[a-zA-Z0-9._/-]+$/.test(baseBranch) || !/^[a-zA-Z0-9._/-]+$/.test(target)) {
+    if (!VALID_BRANCH_NAME.test(baseBranch) || !VALID_BRANCH_NAME.test(target)) {
       throw new Error('Invalid branch name')
     }
 
-    return this.enqueueCommand(async () => {
-      try {
-        return await this.git.raw(['diff', '--binary', '-M', `${baseBranch}...${target}`, '--', filePath])
-      } catch (err: any) {
-        // `git diff` exits 1 when there are differences — but simple-git only
-        // throws on actual errors, so a thrown error here is a real failure.
-        throw new Error(err?.message || 'Failed to get file diff between branches')
-      }
-    })
+    return this.run('Failed to get file diff between branches', () =>
+      this.git.raw(['diff', '--binary', '-M', `${baseBranch}...${target}`, '--', filePath])
+    )
   }
 
   async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
-    // For files with special characters (colons, leading dash), use rev:./path
-    // syntax which is safer.
-    const ref = (filePath.includes(':') || filePath.startsWith('-'))
-      ? `${branch}:./${filePath}`
-      : `${branch}:${filePath}`
-
-    return this.enqueueCommand(async () => {
-      try {
-        return await this.git.show([ref])
-      } catch {
-        // File might not exist in that branch — not an error.
-        return ''
-      }
-    })
+    // File might not exist in that branch — swallow to empty.
+    const ref = this.buildBranchRef(branch, filePath)
+    return this.runSafe('', () => this.git.show([ref]))
   }
 
   async fetchRemoteBranch(branch: string): Promise<void> {
+    // Best-effort — errors are intentionally swallowed.
     return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.fetch('origin', branch)
-      } catch { /* best-effort fetch, swallow errors to preserve old behavior */ }
+      try { await this.git.fetch('origin', branch) } catch { /* ignore */ }
     }))
   }
 
   async deleteRemoteBranch(branch: string): Promise<void> {
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.push('origin', branch, ['--delete'])
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to delete remote branch')
-      }
-    }))
+    await this.runWrite('Failed to delete remote branch', async () => {
+      await this.git.push('origin', branch, ['--delete'])
+    })
   }
 
   async getAllBranches(): Promise<string[]> {
-    return this.enqueueCommand(async () => {
-      try {
-        // simple-git's branch() parses into a BranchSummary with typed `all`
-        // and `branches`. Sort-by-committerdate has to be specified via args.
-        const summary = await this.git.branch(['-a', '--no-color', '--sort=-committerdate'])
-        const seen = new Set<string>()
-        const result: string[] = []
-        for (const raw of summary.all) {
-          // Skip HEAD pointer entries.
-          if (raw.includes('HEAD ->')) continue
-          // Strip remotes/origin/ prefix.
-          const name = raw.startsWith('remotes/origin/')
-            ? raw.slice('remotes/origin/'.length)
-            : raw
-          if (!name || seen.has(name)) continue
-          seen.add(name)
-          result.push(name)
-        }
-        return result
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to get branches')
+    return this.run('Failed to get branches', async () => {
+      // simple-git's branch() parses into a BranchSummary with typed `all`.
+      // Sort-by-committerdate has to be specified via args.
+      const summary = await this.git.branch(['-a', '--no-color', '--sort=-committerdate'])
+      const seen = new Set<string>()
+      const result: string[] = []
+      for (const raw of summary.all) {
+        if (raw.includes('HEAD ->')) continue // skip HEAD pointer
+        const name = raw.startsWith('remotes/origin/')
+          ? raw.slice('remotes/origin/'.length)
+          : raw
+        if (!name || seen.has(name)) continue
+        seen.add(name)
+        result.push(name)
       }
+      return result
     })
   }
 
@@ -997,8 +902,7 @@ export class GitRepository {
       throw new Error('Branch name cannot be empty')
     }
     
-    // Validate branch name to prevent command injection
-    if (!/^[a-zA-Z0-9._\/-]+$/.test(branchName)) {
+    if (!VALID_BRANCH_NAME.test(branchName)) {
       throw new Error('Invalid branch name. Branch names can only contain letters, numbers, dots, underscores, hyphens, and forward slashes.')
     }
     
@@ -1053,8 +957,6 @@ export class GitRepository {
     }
   }
 
-  private _forceFetchNext = false
-
   /**
    * Force a fetch on the next getCommitsAheadBehind() call,
    * regardless of the auto-fetch toggle or throttle timer.
@@ -1078,33 +980,26 @@ export class GitRepository {
   }
 
   async getCommitsAheadBehind(): Promise<{ ahead: number; behind: number }> {
+    const zero = { ahead: 0, behind: 0 }
     try {
-      // Check if we have an upstream branch
       const upstream = await this.getUpstreamBranch()
-      if (!upstream) {
-        return { ahead: 0, behind: 0 }
-      }
+      if (!upstream) return zero
 
-      // Fetch remote refs at most once per minute so @{u} stays reasonably fresh
+      // Fetch remote refs at most once per throttle interval (default 3min;
+      // see setFetchConfig) so @{u} stays reasonably fresh.
       await this.fetchIfStale()
 
-      return this.enqueueCommand(async () => {
-        try {
-          const aheadOut = await this.git.raw(['rev-list', '--count', '@{u}..HEAD'])
-          const behindOut = await this.git.raw(['rev-list', '--count', 'HEAD..@{u}'])
-          return {
-            ahead: parseInt(aheadOut.trim() || '0', 10) || 0,
-            behind: parseInt(behindOut.trim() || '0', 10) || 0,
-          }
-        } catch {
-          return { ahead: 0, behind: 0 }
+      return this.runSafe(zero, async () => {
+        const aheadOut = await this.git.raw(['rev-list', '--count', '@{u}..HEAD'])
+        const behindOut = await this.git.raw(['rev-list', '--count', 'HEAD..@{u}'])
+        return {
+          ahead: parseInt(aheadOut.trim() || '0', 10) || 0,
+          behind: parseInt(behindOut.trim() || '0', 10) || 0,
         }
       })
     } catch (error) {
-      // Log the error for debugging
       console.error('getCommitsAheadBehind error:', error)
-      // If there's an error, return zeros
-      return { ahead: 0, behind: 0 }
+      return zero
     }
   }
 
@@ -1180,45 +1075,29 @@ export class GitRepository {
   // --- Stash operations ---
 
   async stashPush(message?: string, stagedOnly?: boolean): Promise<string> {
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      const args = ['push']
-      if (message) {
-        args.push('-m', message)
-      }
-      if (stagedOnly) {
-        args.push('--staged')
-      } else {
-        args.push('--include-untracked')
-      }
-      try {
-        const output = await this.git.stash(args)
-        this.clearCache()
-        return output || 'Changes stashed'
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to stash changes')
-      }
-    }))
+    const args = ['push']
+    if (message) args.push('-m', message)
+    args.push(stagedOnly ? '--staged' : '--include-untracked')
+
+    return this.runWrite('Failed to stash changes', async () => {
+      const output = await this.git.stash(args)
+      this.clearCache()
+      return output || 'Changes stashed'
+    })
   }
 
   async stashList(): Promise<StashEntry[]> {
-    return this.enqueueCommand(async () => {
-      try {
-        // simple-git's stashList() returns a LogResult typed as
-        // { all: DefaultLogFields[], latest, total }. Each entry has
-        // hash/date/message/refs/body/author_*. We derive our own format.
-        const log = await this.git.stashList()
-        return log.all.map((entry, i) => ({
-          index: i,
-          ref: `stash@{${i}}`,
-          message: entry.message || '',
-          date: entry.date || '',
-        }))
-      } catch (err: any) {
-        // Empty stash list is not an error
-        const msg = String(err?.message || '')
-        if (msg.includes('unknown revision')) return []
-        throw new Error(msg || 'Failed to list stashes')
-      }
+    // Empty stash list surfaces as "unknown revision" from git — swallow it.
+    return this.runSafe<StashEntry[]>([], async () => {
+      // simple-git's stashList() returns a LogResult with typed entries
+      // (hash/date/message/refs/body/author_*). Map to our StashEntry shape.
+      const log = await this.git.stashList()
+      return log.all.map((entry, i) => ({
+        index: i,
+        ref: `stash@{${i}}`,
+        message: entry.message || '',
+        date: entry.date || '',
+      }))
     })
   }
 
@@ -1230,8 +1109,8 @@ export class GitRepository {
       } catch (err: any) {
         const msg = String(err?.message || '')
         if (isStashConflictMessage(msg)) {
-          // Stash was applied — unmerged files now exist. Refresh cache so
-          // the UI picks them up, then signal the conflict upward.
+          // Partial success: stash was applied but left unmerged files.
+          // Refresh cache so the UI sees them, then signal upward.
           this.clearCache()
           throw new StashConflictError(msg || 'Stash applied with conflicts')
         }
@@ -1248,8 +1127,8 @@ export class GitRepository {
       } catch (err: any) {
         const msg = String(err?.message || '')
         if (isStashConflictMessage(msg)) {
-          // `git stash pop` with conflicts leaves the stash in place and
-          // still applies unmerged files — refresh cache and signal conflict.
+          // Partial success (same as stashApply). Note: `git stash pop`
+          // with conflicts leaves the stash entry in place.
           this.clearCache()
           throw new StashConflictError(msg || 'Stash popped with conflicts — stash retained')
         }
@@ -1259,45 +1138,33 @@ export class GitRepository {
   }
 
   async stashDrop(index: number): Promise<void> {
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.stash(['drop', `stash@{${index}}`])
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to drop stash')
-      }
-    }))
+    await this.runWrite('Failed to drop stash', async () => {
+      await this.git.stash(['drop', `stash@{${index}}`])
+    })
   }
 
   async stashClear(): Promise<void> {
-    return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      try {
-        await this.git.stash(['clear'])
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to clear stashes')
-      }
-    }))
+    await this.runWrite('Failed to clear stashes', async () => {
+      await this.git.stash(['clear'])
+    })
   }
 
   async getCommitsBetweenBranches(baseBranch: string, targetBranch = 'HEAD'): Promise<{ subject: string; body: string }[]> {
-    return this.enqueueCommand(async () => {
-      try {
-        // simple-git's log() returns DefaultLogFields with message/body. Pass
-        // format via the typed `format` option so body is preserved verbatim.
-        const log = await this.git.log({
-          from: baseBranch,
-          to: targetBranch,
-          format: { subject: '%s', body: '%b' },
-          '--reverse': null,
-        } as any)
-        return log.all
-          .map((entry: any) => ({
-            subject: String(entry.subject || '').trim(),
-            body: String(entry.body || '').trim(),
-          }))
-          .filter(c => c.subject)
-      } catch {
-        return []
-      }
+    return this.runSafe<{ subject: string; body: string }[]>([], async () => {
+      // simple-git's log() returns DefaultLogFields with message/body. Pass
+      // format via the typed `format` option so body is preserved verbatim.
+      const log = await this.git.log({
+        from: baseBranch,
+        to: targetBranch,
+        format: { subject: '%s', body: '%b' },
+        '--reverse': null,
+      } as any)
+      return log.all
+        .map((entry: any) => ({
+          subject: String(entry.subject || '').trim(),
+          body: String(entry.body || '').trim(),
+        }))
+        .filter(c => c.subject)
     })
   }
 }
