@@ -6,7 +6,7 @@ import { initializeLogCapture } from '@/core/helpers/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
-import { seedData } from '@/setup/seed/index';
+import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 
@@ -31,7 +31,7 @@ export async function setupBackend(): Promise<void> {
   runMigrations();
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
-  seedData();
+  runBootSeed();
 
   // Start backend actor
   const backendActor = createActor(backendSystem, {

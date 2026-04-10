@@ -387,12 +387,8 @@ export const settingsSystem = setup({
       const ev = typeOf('IMPORT_SETUP_PACK', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
-        const result = seedData({ force: true, verbose: true, compiledDir: ev.directory, include });
-        if (result) {
-          system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORTED', result }));
-        } else {
-          system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORT_FAILED', error: 'Seed returned no result' }));
-        }
+        const result = seedData({ compiledDir: ev.directory, include, verbose: true });
+        system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORTED', result }));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORT_FAILED', error: message }));

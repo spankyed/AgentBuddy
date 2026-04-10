@@ -20,16 +20,13 @@ async function run() {
   console.log('Seeding compiled artifacts...\n');
   const result = seedData({
     verbose: true,
-    force: true,
     compiledDir: path.resolve(process.cwd(), 'packages/default-setup/dist'),
   });
 
-  if (result) {
-    console.log('\nSeed summary:');
-    console.log(`  Actions  — created: ${result.actions.created}, skipped: ${result.actions.skipped}`);
-    console.log(`  Prompts  — created: ${result.prompts.created}, skipped: ${result.prompts.skipped}`);
-    console.log(`  Flows    — created: ${result.flows.created}, skipped: ${result.flows.skipped}`);
-  }
+  console.log('\nSeed summary:');
+  console.log(`  Actions  — created: ${result.actions.created}, skipped: ${result.actions.skipped}`);
+  console.log(`  Prompts  — created: ${result.prompts.created}, skipped: ${result.prompts.skipped}`);
+  console.log(`  Flows    — created: ${result.flows.created}, skipped: ${result.flows.skipped}`);
 
   closePersistence();
 }

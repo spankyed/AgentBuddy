@@ -278,34 +278,20 @@ function seedFlows(
   validNames.forEach(name => log(`  flow created: ${name}`));
 }
 
-export function seedData(options?: {
-  verbose?: boolean;
-  force?: boolean;
-  compiledDir?: string;
+/**
+ * Pure importer: reads compiled artifacts from `compiledDir`, applies the
+ * optional `include` filter, and writes to LMDB via the per-system
+ * repositories. Always runs; never touches `settings.internal.seedHash`
+ * (that's `runBootSeed`'s job exclusively).
+ */
+export function seedData(options: {
+  compiledDir: string;
   include?: SeedInclude;
-}): SeedResult | null {
-  const log = options?.verbose ? console.log.bind(console) : () => {};
-
-  const compiledDir = path.resolve(options?.compiledDir ?? DEFAULT_COMPILED_DIR);
-  const isDefaultDir = compiledDir === path.resolve(DEFAULT_COMPILED_DIR);
-  const include = options?.include;
-  const isFullImport =
-    !include ||
-    (shouldSeedAll(include.actions) &&
-     shouldSeedAll(include.prompts) &&
-     shouldSeedAll(include.flows) &&
-     shouldSeedAll(include.library) &&
-     shouldSeedAll(include.notes));
-
-  // Skip if data unchanged (hash match) — only meaningful for full imports
-  if (!options?.force && isFullImport) {
-    const internal = settingsQueries.getInternalSettings();
-    const currentHash = computeSeedHash(compiledDir);
-    if (internal.seedHash === currentHash) {
-      log('  seed skipped: data unchanged');
-      return null;
-    }
-  }
+  verbose?: boolean;
+}): SeedResult {
+  const log = options.verbose ? console.log.bind(console) : () => {};
+  const compiledDir = options.compiledDir;
+  const include = options.include;
 
   const result: SeedResult = {
     actions: { created: 0, updated: 0, skipped: 0 },
@@ -413,13 +399,32 @@ export function seedData(options?: {
     log('  notes section skipped by include filter');
   }
 
-  // Store content hash — only when a full import ran against the default
-  // directory. Partial imports, or imports from a custom directory, must not
-  // advance the global hash: doing so would suppress the next automatic boot
-  // seed (which always runs against DEFAULT_COMPILED_DIR).
-  if (isFullImport && isDefaultDir) {
-    settingsCommands.updateSettings('internal', null, ['seedHash'], computeSeedHash(compiledDir));
+  return result;
+}
+
+/**
+ * Boot-time auto-seed. The **sole** writer of `settings.internal.seedHash`.
+ *
+ * Compares the hash of the default compiled directory against the last value
+ * we stored. If they match, nothing to do — returns `null`. Otherwise runs a
+ * full import and advances the stored hash so the next boot can short-circuit.
+ *
+ * Must not be called from the interactive import handler or the CLI — both
+ * route through `seedData` directly so that this remains the only function in
+ * the codebase that touches the hash.
+ */
+export function runBootSeed(options?: { verbose?: boolean }): SeedResult | null {
+  const log = options?.verbose ? console.log.bind(console) : () => {};
+  const compiledDir = DEFAULT_COMPILED_DIR;
+  const currentHash = computeSeedHash(compiledDir);
+  const storedHash = settingsQueries.getInternalSettings().seedHash;
+
+  if (storedHash === currentHash) {
+    log('  seed skipped: data unchanged');
+    return null;
   }
 
+  const result = seedData({ compiledDir, verbose: options?.verbose });
+  settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   return result;
 }
