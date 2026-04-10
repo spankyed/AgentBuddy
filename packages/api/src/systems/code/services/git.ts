@@ -6,6 +6,19 @@ import { GitStatusFile, StashEntry } from '../types'
 
 const execFileAsync = promisify(execFile)
 
+// Git porcelain v1 status codes that indicate an unmerged/conflict state.
+// These occupy BOTH the index and worktree slots and must be rendered as a
+// single row (not duplicated across staged/unstaged sections).
+const UNMERGED_XY_CODES = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'])
+
+/** Thrown when a stash apply/pop succeeds partially but leaves conflicts. */
+export class StashConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'StashConflictError'
+  }
+}
+
 const IMAGE_MIME_TYPES: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -266,12 +279,24 @@ export class GitRepository {
       const indexStatus = entry[0]
       const workingStatus = entry[1]
       const rest = entry.substring(3)
-      
+
       // Handle renames - with -z flag, git status uses NUL-separated format
       // For renames: XY newpath\0oldpath (the XY line contains the new path,
       // and the entry after NUL is the original/old path per git docs)
       let fileName: string = rest
       let originalPath: string | undefined
+
+      // Unmerged/conflict entries (UU, AA, DD, AU, UA, UD, DU) — emit exactly
+      // once. Both XY chars are non-space, so the default staged/unstaged
+      // branches below would double-count these.
+      if (UNMERGED_XY_CODES.has(`${indexStatus}${workingStatus}`)) {
+        files.push({
+          path: fileName,
+          status: 'unmerged',
+          staged: false, // conflicts are not committable until resolved
+        })
+        continue
+      }
 
       // Handle staged files
       if (indexStatus !== ' ' && indexStatus !== '?') {
@@ -656,6 +681,13 @@ export class GitRepository {
       if (fileStatus?.status === 'untracked') {
         const fullPath = path.join(this.workingDirectory, filePath)
         await fs.unlink(fullPath)
+      } else if (fileStatus?.status === 'unmerged') {
+        // `git checkout --` refuses unmerged paths; explicit HEAD ref works
+        // and clears the conflict state in both the index and worktree.
+        const result = await this.executeGitCommand(['checkout', 'HEAD', '--', filePath])
+        if (!result.success) {
+          throw new Error(result.error || `Failed to revert file: ${filePath}`)
+        }
       } else {
         const result = await this.executeGitCommand(['checkout', '--', filePath])
         if (!result.success) {
@@ -673,12 +705,24 @@ export class GitRepository {
       const statusMap = new Map(status.map(f => [f.path, f.status]))
 
       const untrackedPaths = filePaths.filter(p => statusMap.get(p) === 'untracked')
-      const trackedPaths = filePaths.filter(p => statusMap.get(p) !== 'untracked')
+      const unmergedPaths = filePaths.filter(p => statusMap.get(p) === 'unmerged')
+      const trackedPaths = filePaths.filter(p => {
+        const s = statusMap.get(p)
+        return s !== 'untracked' && s !== 'unmerged'
+      })
 
       // Delete untracked files
       for (const filePath of untrackedPaths) {
         const fullPath = path.join(this.workingDirectory, filePath)
         await fs.unlink(fullPath)
+      }
+
+      // Revert unmerged files via explicit HEAD ref (plain `checkout --` errors)
+      if (unmergedPaths.length > 0) {
+        const result = await this.executeGitCommand(['checkout', 'HEAD', '--', ...unmergedPaths])
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to revert unmerged files')
+        }
       }
 
       // Revert tracked files
@@ -1213,6 +1257,12 @@ export class GitRepository {
     return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['stash', 'apply', `stash@{${index}}`])
       if (!result.success) {
+        if (this.isStashConflict(result)) {
+          // Stash was applied — unmerged files now exist. Refresh cache so
+          // the UI picks them up, then signal the conflict upward.
+          this.clearCache()
+          throw new StashConflictError(result.error || 'Stash applied with conflicts')
+        }
         throw new Error(result.error || 'Failed to apply stash')
       }
       this.clearCache()
@@ -1223,10 +1273,22 @@ export class GitRepository {
     return this.withWriteFlag(async () => {
       const result = await this.executeGitCommand(['stash', 'pop', `stash@{${index}}`])
       if (!result.success) {
+        if (this.isStashConflict(result)) {
+          // `git stash pop` with conflicts leaves the stash in place and
+          // still applies unmerged files — refresh cache and signal conflict.
+          this.clearCache()
+          throw new StashConflictError(result.error || 'Stash popped with conflicts — stash retained')
+        }
         throw new Error(result.error || 'Failed to pop stash')
       }
       this.clearCache()
     })
+  }
+
+  private isStashConflict(result: { success: boolean; error?: string; output?: string }): boolean {
+    if (result.success) return false
+    const text = `${result.error || ''}\n${result.output || ''}`
+    return /CONFLICT|Merge conflict/i.test(text)
   }
 
   async stashDrop(index: number): Promise<void> {

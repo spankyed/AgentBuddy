@@ -3,7 +3,7 @@ import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/helpers/event-helpers'
 import { z } from 'zod'
-import { GitRepository } from '../services/git'
+import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff, StashEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
@@ -638,6 +638,17 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
+        if (error instanceof StashConflictError) {
+          // Partial success — files are applied but unmerged. Report as a
+          // non-fatal status message and still refresh UI state.
+          const wrapped = emit(pluginId, {
+            type: 'commit.STASH_SUCCESS',
+            data: { message: error.message }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+          self.send({ type: 'commit.GIT_STATUS_CHANGED' })
+          return
+        }
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
@@ -661,6 +672,18 @@ export const commitSystem = setup({
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
       } catch (error: any) {
+        if (error instanceof StashConflictError) {
+          // Partial success — stash is applied with conflicts and is still
+          // in the stash list. Report non-fatally and refresh UI state.
+          const wrapped = emit(pluginId, {
+            type: 'commit.STASH_SUCCESS',
+            data: { message: error.message }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+          self.send({ type: 'commit.GIT_STATUS_CHANGED' })
+          self.send({ type: 'commit.STASH_LIST' })
+          return
+        }
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
