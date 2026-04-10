@@ -103,6 +103,21 @@ export interface MessageEntity extends BaseEntity {
   command?: string;
 }
 
+/**
+ * Free-form per-thread scratchpad for features that need to persist small
+ * amounts of state alongside a thread. Keys are namespaced by feature name
+ * (e.g. `claudeCode`) so multiple features don't collide. Anything goes
+ * under a feature key — this is intentionally untyped at the container
+ * level so new contributors don't need to edit this file.
+ */
+export interface ThreadContext {
+  claudeCode?: {
+    sessionId?: string;
+    lastTurnAt?: number;
+  };
+  [featureKey: string]: unknown;
+}
+
 export interface ThreadEntity extends BaseEntity {
   entityType: EARS.Entity.Thread;
   topic: string;
@@ -116,6 +131,7 @@ export interface ThreadEntity extends BaseEntity {
   tags?: string[]; // Tag names from settings
   forcedMode?: 'birth'; // Force a specific mode for this thread
   pinned?: boolean; // Thread tab should stay pinned in the UI
+  context?: ThreadContext; // Free-form per-feature state (e.g. claudeCode.sessionId)
 }
 
 export interface ArtifactEntity extends BaseEntity {
@@ -137,6 +153,7 @@ export type ThreadEditFields = Simplify<
   Pick<ThreadEntity, 'topic' | 'instructions'>
   & { status?: ThreadEntity['status'] }
   & { tags?: string[] }  // Just tag names
+  & { context?: ThreadContext }  // Free-form per-feature state (see ThreadContext)
   & ThreadLinkedFields
 >;
 export type ThreadLinkedFields = {

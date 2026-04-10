@@ -425,6 +425,20 @@ interface MessageEntity extends BaseEntity {
     isCommand?: boolean;
     command?: string;
 }
+/**
+ * Free-form per-thread scratchpad for features that need to persist small
+ * amounts of state alongside a thread. Keys are namespaced by feature name
+ * (e.g. `claudeCode`) so multiple features don't collide. Anything goes
+ * under a feature key — this is intentionally untyped at the container
+ * level so new contributors don't need to edit this file.
+ */
+interface ThreadContext {
+    claudeCode?: {
+        sessionId?: string;
+        lastTurnAt?: number;
+    };
+    [featureKey: string]: unknown;
+}
 interface ThreadEntity extends BaseEntity {
     entityType: EARS.Entity.Thread;
     topic: string;
@@ -438,6 +452,7 @@ interface ThreadEntity extends BaseEntity {
     tags?: string[];
     forcedMode?: 'birth';
     pinned?: boolean;
+    context?: ThreadContext;
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
@@ -454,6 +469,8 @@ type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'instructions'> & 
     status?: ThreadEntity['status'];
 } & {
     tags?: string[];
+} & {
+    context?: ThreadContext;
 } & ThreadLinkedFields>;
 type ThreadLinkedFields = {
     linkedThreads?: ThreadLinkItem[];
@@ -1192,6 +1209,12 @@ declare const events: {
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1201,14 +1224,14 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         }, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1218,12 +1241,6 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1231,6 +1248,12 @@ declare const events: {
         type: "USER_MSG";
         systemId: "threads";
         references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1240,12 +1263,6 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -1256,6 +1273,12 @@ declare const events: {
         type: "USER_MSG";
         systemId: "threads";
         references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1265,12 +1288,6 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -1445,6 +1462,12 @@ declare const events: {
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1454,14 +1477,14 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         }, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1471,12 +1494,6 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1485,6 +1502,12 @@ declare const events: {
         type: "USER_COMMAND";
         systemId: "threads";
         references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1494,12 +1517,6 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -1511,6 +1528,12 @@ declare const events: {
         type: "USER_COMMAND";
         systemId: "threads";
         references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refId: string;
+            }[] | undefined;
             images?: {
                 url: string;
                 name: string;
@@ -1520,12 +1543,6 @@ declare const events: {
                 name: string;
                 typeLabel: string;
                 isImage: boolean;
-            }[] | undefined;
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
             }[] | undefined;
         } | undefined;
         threadId?: string | undefined;
@@ -5918,6 +5935,24 @@ interface QueryHandle {
     kill(): void;
 }
 
+interface SessionInfo {
+    id: string;
+    file: string;
+    cwd?: string;
+    title?: string;
+    tags?: string[];
+    modifiedAt: Date;
+    size: number;
+    firstMessageAt?: Date;
+    lastMessageAt?: Date;
+}
+interface SessionListOptions {
+    /** Working directory whose sessions to list. Defaults to `process.cwd()`. */
+    cwd?: string;
+    limit?: number;
+    offset?: number;
+}
+
 /**
  * `claude auth` — login, logout, status.
  *
@@ -5965,6 +6000,7 @@ interface CliServiceType {
         }): Promise<QueryHandle>;
         version(): Promise<string>;
         authStatus(): Promise<AuthStatus>;
+        listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>;
         getWorkingDir(): string;
     };
 }
@@ -7230,6 +7266,7 @@ declare const services: {
                 lastMessageTimestamp?: number;
                 lastVisitedTimestamp?: number;
                 forcedMode?: ThreadEntity["forcedMode"] | null;
+                context?: ThreadEntity["context"];
             }) => void;
             readonly markAsVisited: (id: EARS.EntityId) => void;
             readonly linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId) => void;

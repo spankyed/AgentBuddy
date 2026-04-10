@@ -3,7 +3,7 @@ import * as ghCli from '@/systems/code/services/gh-cli'
 import { repository } from '@/repository'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/systems/code/types'
 import { claudeCode } from '@/services/claude-code'
-import type { QueryOptions, QueryHandle, AuthStatus } from '@/services/claude-code'
+import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions } from '@/services/claude-code'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -31,6 +31,7 @@ export interface CliServiceType {
     query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
     version(): Promise<string>
     authStatus(): Promise<AuthStatus>
+    listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
     getWorkingDir(): string
   }
 }
@@ -97,6 +98,10 @@ function createCliService(): CliServiceType {
       },
       authStatus() {
         return claudeCode.auth.status()
+      },
+      listSessions(opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return claudeCode.sessions.list({ ...opts, cwd })
       },
       getWorkingDir() {
         return resolveCwd()

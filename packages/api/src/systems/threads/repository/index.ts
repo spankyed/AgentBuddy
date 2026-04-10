@@ -188,6 +188,7 @@ export const threadCommands = {
     lastMessageTimestamp?: number;
     lastVisitedTimestamp?: number;
     forcedMode?: ThreadEntity['forcedMode'] | null;
+    context?: ThreadEntity['context'];  // Free-form per-feature state (ThreadContext)
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
