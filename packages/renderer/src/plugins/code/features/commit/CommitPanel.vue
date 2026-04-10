@@ -116,7 +116,7 @@
           <ArrowDownToLine v-else :size="14" />
           <span
             v-if="commitsAhead > 0"
-            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-blue-600 rounded-full"
+            class="absolute -top-1 -right-1 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold leading-none text-white bg-green-600 rounded-full"
           >{{ commitsAhead }}</span>
           <span
             v-else-if="commitsBehind > 0"
