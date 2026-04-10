@@ -66,6 +66,14 @@
         </ContextMenuItem>
 
         <ContextMenuItem
+          @select="openInFinder"
+          :class="MENU_ITEM_CLASS"
+        >
+          <FolderOpen class="w-4 h-4" />
+          Open in Finder
+        </ContextMenuItem>
+
+        <ContextMenuItem
           v-if="file.type === 'directory'"
           @select="$emit('open-terminal', file.path)"
           :class="MENU_ITEM_CLASS"
@@ -110,6 +118,7 @@ import {
   Trash2,
   Copy,
   Terminal,
+  FolderOpen,
 } from 'lucide-vue-next'
 import {
   ContextMenuTrigger,
@@ -239,5 +248,9 @@ const copyAbsolutePath = async () => {
   } catch (err) {
     console.error('Failed to copy absolute path to clipboard:', err)
   }
+}
+
+const openInFinder = () => {
+  window.electronAPI?.shell.showItemInFolder(props.file.path)
 }
 </script>

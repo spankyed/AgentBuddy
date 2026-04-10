@@ -93,20 +93,27 @@
         >
           <Copy class="w-4 h-4" /> Copy Id
         </ContextMenuItem>
-        <template v-if="isSymlinkedItem && item.type === 'folder'">
-          <ContextMenuItem
-            @select="refreshFolder(item.id)"
-            class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
-          >
-            <RefreshCw class="w-4 h-4" /> Refresh
-          </ContextMenuItem>
-          <ContextMenuItem
-            @select="copyFolderPath(item)"
-            class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
-          >
-            <Copy class="w-4 h-4" /> Copy Path
-          </ContextMenuItem>
-        </template>
+        <ContextMenuItem
+          v-if="isSymlinkedItem && item.type === 'folder'"
+          @select="refreshFolder(item.id)"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+        >
+          <RefreshCw class="w-4 h-4" /> Refresh
+        </ContextMenuItem>
+        <ContextMenuItem
+          v-if="hasSymlinkPath"
+          @select="copyFolderPath(item)"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+        >
+          <Copy class="w-4 h-4" /> Copy Path
+        </ContextMenuItem>
+        <ContextMenuItem
+          v-if="hasSymlinkPath"
+          @select="openInFinder(item)"
+          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+        >
+          <FolderOpen class="w-4 h-4" /> Open in Finder
+        </ContextMenuItem>
         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
         <ContextMenuItem
           v-if="isBrokenSymlink"
@@ -174,7 +181,7 @@
 
 <script setup lang="ts">
 import { computed, inject, ref, reactive, nextTick } from 'vue'
-import { ChevronRight, Folder, FileText, Edit2, Trash2, Link2, Link2Off, Unlink, RefreshCw, Copy } from 'lucide-vue-next'
+import { ChevronRight, Folder, FileText, Edit2, Trash2, Link2, Link2Off, Unlink, RefreshCw, Copy, FolderOpen } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuContent,
@@ -197,6 +204,7 @@ const renameItem = inject<(item: LibraryItem) => void>('tree-rename-item')!
 const deleteItem = inject<(item: LibraryItem) => void>('tree-delete-item')!
 const refreshFolder = inject<(folderId: string) => void>('tree-refresh-folder')!
 const copyFolderPath = inject<(item: LibraryItem) => void>('tree-copy-folder-path')!
+const openInFinder = inject<(item: LibraryItem) => void>('tree-open-in-finder')!
 const getEditingItemId = inject<() => string | null>('tree-get-editing-item-id')!
 const getEditingName = inject<() => string>('tree-get-editing-name')!
 const setEditingName = inject<(name: string) => void>('tree-set-editing-name')!
@@ -224,6 +232,7 @@ const relinkForm = reactive({ show: false, path: '' })
 const isSymlinkFolder = computed(() => props.item.type === 'folder' && (props.item as any).isSymlink)
 const isBrokenSymlink = computed(() => isSymlinkFolder.value && (props.item as any).isBroken)
 const isSymlinkedItem = computed(() => (props.item as any).isSymlinked || (props.item as any).isSymlink)
+const hasSymlinkPath = computed(() => !!((props.item as any).symlinkPath || (props.item as any).filePath))
 const isSelected = computed(() => selectedItems().includes(props.item.id))
 const isExpanded = computed(() => expandedFolderIds().includes(props.item.id))
 const isLoading = computed(() => loadingFolderIds().includes(props.item.id))

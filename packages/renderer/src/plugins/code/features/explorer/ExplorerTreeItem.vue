@@ -88,6 +88,14 @@
         </ContextMenuItem>
 
         <ContextMenuItem
+          @select="openInFinder"
+          :class="MENU_ITEM_CLASS"
+        >
+          <FolderOpen class="w-4 h-4" />
+          Open in Finder
+        </ContextMenuItem>
+
+        <ContextMenuItem
           v-if="file.type !== 'directory' && file.extension === 'md'"
           @select="openFile(file.path, getMdEditorDefault() ? 'plainText' : 'richText')"
           :class="MENU_ITEM_CLASS"
@@ -171,6 +179,7 @@ import {
   Terminal,
   Search,
   FileText,
+  FolderOpen,
 } from 'lucide-vue-next'
 import {
   ContextMenuTrigger,
@@ -346,6 +355,10 @@ async function copyAbsolutePath() {
   } catch (err) {
     console.error('Failed to copy path:', err)
   }
+}
+
+function openInFinder() {
+  window.electronAPI?.shell.showItemInFolder(props.file.path)
 }
 
 async function copyRelativePath() {

@@ -43,6 +43,13 @@
               <Copy class="w-4 h-4" />
               Copy Path
             </DropdownMenuItem>
+            <DropdownMenuItem
+              @select="openInFinder()"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Open in Finder
+            </DropdownMenuItem>
             <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
             <DropdownMenuSub v-if="allProjects.length > 0">
               <DropdownMenuSubTrigger
@@ -130,6 +137,7 @@ defineEmits<{
 }>()
 
 const copyPath = () => navigator.clipboard.writeText(props.baseDirectory)
+const openInFinder = () => window.electronAPI?.shell.showItemInFolder(props.baseDirectory)
 const menuOpen = ref(false)
 useTrackedMenuOpen(menuOpen)
 

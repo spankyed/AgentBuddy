@@ -98,6 +98,12 @@
                         >
                           <Copy class="w-4 h-4" /> Copy Path
                         </ContextMenuItem>
+                        <ContextMenuItem
+                          @select="openBreadcrumbInFinder(crumb)"
+                          class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                        >
+                          <FolderOpen class="w-4 h-4" /> Open in Finder
+                        </ContextMenuItem>
                         <ContextMenuSeparator class="h-px my-1 bg-neutral-700" />
                         <ContextMenuItem
                           @select="emit('REFRESH_FOLDER', { folderId: crumb.id! })"
@@ -430,6 +436,10 @@ provide('tree-copy-folder-path', (item: LibraryItem) => {
   const fullPath = getSymlinkItemFullPath(item)
   if (fullPath) navigator.clipboard.writeText(fullPath)
 })
+provide('tree-open-in-finder', (item: LibraryItem) => {
+  const fullPath = getSymlinkItemFullPath(item)
+  if (fullPath) window.electronAPI?.shell.showItemInFolder(fullPath)
+})
 provide('tree-get-editing-item-id', () => editingItemId.value)
 provide('tree-get-editing-name', () => editingName.value)
 provide('tree-set-editing-name', (name: string) => { editingName.value = name })
@@ -510,6 +520,11 @@ function getBreadcrumbPath(crumb: BreadcrumbItem): string | null {
 function copyBreadcrumbPath(crumb: BreadcrumbItem) {
   const fullPath = getBreadcrumbPath(crumb)
   if (fullPath) navigator.clipboard.writeText(fullPath)
+}
+
+function openBreadcrumbInFinder(crumb: BreadcrumbItem) {
+  const fullPath = getBreadcrumbPath(crumb)
+  if (fullPath) window.electronAPI?.shell.showItemInFolder(fullPath)
 }
 
 function sortItems(items: LibraryItem[]): LibraryItem[] {
