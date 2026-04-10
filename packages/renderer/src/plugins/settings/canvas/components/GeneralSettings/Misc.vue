@@ -69,7 +69,7 @@ const importResult = computed(() => setupPackImport.value?.result)
 const importError = computed(() => setupPackImport.value?.error)
 
 async function selectAndImport() {
-  const result = await (window as any).electronAPI?.fileUtils?.selectPath?.('directory')
+  const result = await (window as any).electronAPI?.fileUtils?.selectPath?.({ type: 'directory' })
   if (!result) return
 
   actor.send({ type: 'SETUP_PACK.IMPORT', directory: result })
