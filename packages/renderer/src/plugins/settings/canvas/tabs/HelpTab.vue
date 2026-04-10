@@ -29,11 +29,10 @@
     <div class="shrink-0 bg-neutral-900 py-4">
       <div class="text-center">
         <p class="text-xs text-neutral-500">
-          Developed in memory of 
-          <a 
-            href="https://www.postandcourier.com/northaugusta/archive/news/profile-kathie-ulrich/article_d1f14448-0fc8-54df-a1b0-3c404c99cfcc.html" 
-            target="_blank" 
-            rel="noopener noreferrer"
+          Developed in memory of
+          <a
+            href="#"
+            @click.prevent="openMemorialLink"
             class="text-neutral-400 hover:text-neutral-300 underline transition-colors"
           >
             Kathie Lovett Ulrich
@@ -48,6 +47,12 @@
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+
+const MEMORIAL_URL = 'https://www.postandcourier.com/northaugusta/archive/news/profile-kathie-ulrich/article_d1f14448-0fc8-54df-a1b0-3c404c99cfcc.html'
+
+function openMemorialLink() {
+  window.electronAPI?.shell?.openExternal(MEMORIAL_URL)
+}
 
 interface FAQItem {
   id: string
