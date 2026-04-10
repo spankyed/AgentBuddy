@@ -5,22 +5,19 @@
       <p class="mt-1 text-xs text-neutral-500">Leave path blank to auto-detect. Click Test to verify and resolve.</p>
     </div>
 
-    <div class="space-y-3">
+    <div class="space-y-2">
       <CliProviderRow
         v-for="p in providers"
         :key="p.key"
         v-model="cliPathValues[p.key]"
+        :label="p.label"
+        :installHint="p.installHint"
+        :installCmd="p.installCmd"
         placeholder="Path override (auto-detected if empty)"
         :testResult="cliTestResults?.[p.key]"
         @update:modelValue="debouncedSaveCliPaths()"
         @test="testCliProvider(p.key)"
-      >
-        <label class="block text-sm font-medium text-gray-200">{{ p.label }}</label>
-        <div class="mt-1 flex items-center gap-2">
-          <span class="text-xs text-neutral-500">{{ p.installHint }}</span>
-          <CliCommand>{{ p.installCmd }}</CliCommand>
-        </div>
-      </CliProviderRow>
+      />
     </div>
   </div>
 </template>
@@ -31,7 +28,6 @@ import { useDebounce } from '@/core/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import CliProviderRow from './CliProviderRow.vue'
-import CliCommand from './CliCommand.vue'
 
 interface Props {
   settings?: {
