@@ -7,15 +7,15 @@
         class="palette-item w-full group relative overflow-hidden"
         :class="[
           getPaletteItemClasses(item.type),
-          !item.isImplemented && 'opacity-50 cursor-not-allowed'
+          isItemInactive(item) && 'opacity-50 cursor-not-allowed'
         ]"
-        :draggable="item.isImplemented"
-        @dragstart="(e) => item.isImplemented && handleDragStart(e, item.type)"
-        @click="item.isImplemented && $emit('palette-click', item.type)"
+        :draggable="!isItemInactive(item)"
+        @dragstart="(e) => !isItemInactive(item) && handleDragStart(e, item.type)"
+        @click="!isItemInactive(item) && $emit('palette-click', item.type)"
       >
         <!-- Glow effect on hover -->
         <div
-          v-if="item.isImplemented"
+          v-if="!isItemInactive(item)"
           class="absolute inset-0 transition-opacity duration-300 opacity-0 group-hover:opacity-100 blur-xl"
           :class="getPaletteGlowClasses(item.type)"
         />
@@ -30,7 +30,7 @@
 
           <!-- Label -->
           <span class="text-xs font-medium tracking-tight transition-colors duration-200"
-            :class="item.isImplemented ? 'text-white/90 group-hover:text-white' : 'text-neutral-500'">
+            :class="!isItemInactive(item) ? 'text-white/90 group-hover:text-white' : 'text-neutral-500'">
             {{ item.label }}
           </span>
 
@@ -67,6 +67,7 @@ interface PaletteItem {
   label: string
   icon: any
   isImplemented?: boolean
+  isDisabled?: boolean
 }
 
 const props = withDefaults(defineProps<{
@@ -79,6 +80,10 @@ const emit = defineEmits<{
   'palette-click': [nodeType: string]
   'drag-start': [e: DragEvent, nodeType: string]
 }>()
+
+function isItemInactive(item: PaletteItem): boolean {
+  return !item.isImplemented || Boolean(item.isDisabled)
+}
 
 function handleDragStart(e: DragEvent, nodeType: string) {
   e.dataTransfer?.setData('application/vueflow', nodeType)

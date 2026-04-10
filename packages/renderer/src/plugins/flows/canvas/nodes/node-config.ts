@@ -33,6 +33,7 @@ export interface NodeConfig {
   }
   component?: string // Vue component name for the canvas
   isImplemented?: boolean // Whether the node type is fully implemented
+  isDisabled?: boolean // Whether the node type is temporarily disabled (shown in palette but not interactive)
 }
 
 export interface NodeStyleOptions {
@@ -251,7 +252,8 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     hoverBgColor: 'group-hover:bg-indigo-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     component: 'VariableNode',
-    isImplemented: true
+    isImplemented: true,
+    isDisabled: true
   },
   flow: {
     type: 'flow',
@@ -509,16 +511,16 @@ export const getAllNodeTypes = (): NodeKind[] => {
 export const getPaletteItems = () => {
   return Object.values(nodeConfigs)
     .filter((config): config is NodeConfig => Boolean(config) && config.isImplemented === true)
-    .map(({ type, label, icon, isImplemented }) => ({ type, label, icon, isImplemented }))
+    .map(({ type, label, icon, isImplemented, isDisabled }) => ({ type, label, icon, isImplemented, isDisabled }))
 }
 
 /**
  * Returns node types that can be created as a "next step" connection.
- * Filters to implemented nodes that accept inputs.
+ * Filters to implemented, non-disabled nodes that accept inputs.
  */
 export const getConnectableNodeTypes = () => {
   return getPaletteItems().filter(item => {
-    if (!item.isImplemented) return false
+    if (!item.isImplemented || item.isDisabled) return false
     const config = getNodeConfig(item.type)
     return config && config.connectionRules.inputs !== 0
   })
