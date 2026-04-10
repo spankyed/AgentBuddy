@@ -69,15 +69,19 @@ export async function action(
     askForPermissions?: boolean;
   };
 
+  const log = services.logger;
+  log.debug('chat action invoked', { threadId, mode: params.mode, phase, textLen: text?.length });
+
   if (!threadId || !text?.trim()) {
     return { success: false, error: 'threadId and text are required' };
   }
   // Note: the mode gate lives in the claude-code flow's `branch()` node.
-  // This action is only invoked when the flow's switch matches `mode === 'work'`.
+  // This action is only invoked when the flow's switch matches `mode == 'work'`.
 
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
   const resumeSessionId = prior?.sessionId;
+  log.debug('resume state resolved', { resumeSessionId: resumeSessionId ?? null });
 
   // Create the empty assistant message we'll stream into.
   const { messageId } = services.chat.sendBlockMessage({
@@ -85,6 +89,7 @@ export async function action(
     text: '',
     blocks: [],
   });
+  log.debug('placeholder message created', { messageId });
 
   const writer = createStreamWriter(services, messageId, { intervalMs: 80 });
 
@@ -124,6 +129,14 @@ export async function action(
 
   // ─── Fire the query ───────────────────────────────────────────────────────
   try {
+    log.debug('invoking claudeCode.query', {
+      model,
+      resumeSessionId: resumeSessionId ?? null,
+      permissionMode: 'default',
+      allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
+      hasSystemPrompt: !!composedSystemPrompt,
+      askForPermissions,
+    });
     const handle = await services.cli.claudeCode.query({
       prompt: text,
       resume: resumeSessionId,
@@ -135,11 +148,17 @@ export async function action(
       systemPrompt: composedSystemPrompt,
       onPermissionRequest,
     });
+    log.debug('query handle received, draining events');
 
     // Drain the event stream. We accumulate assistant text and annotate
     // tool-use lifecycle inline so the user sees the agent thinking.
+    let eventCount = 0;
     for await (const ev of handle.events) {
       const line = ev as any;
+      eventCount++;
+      if (eventCount <= 5 || eventCount % 20 === 0) {
+        log.debug('stream event', { n: eventCount, type: line?.type });
+      }
 
       if (line.type === 'stream_event') {
         // Anthropic text deltas. Shape: { event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } }
@@ -170,8 +189,16 @@ export async function action(
       }
     }
 
+    log.debug('stream drained, awaiting final result', { eventCount });
+
     // Final result: grab sessionId + costing and persist back to the thread.
     const result = await handle.result;
+    log.debug('final result received', {
+      sessionId: result.sessionId,
+      textLen: result.text?.length ?? 0,
+      costUsd: result.totalCostUsd,
+      durationMs: result.durationMs,
+    });
 
     persistClaudeState(services, threadId, {
       sessionId: result.sessionId,
@@ -179,6 +206,7 @@ export async function action(
     });
 
     writer.finalize(writer.text || result.text);
+    log.debug('chat action completed');
 
     return {
       success: true,
@@ -190,6 +218,7 @@ export async function action(
     };
   } catch (err: any) {
     const message = err?.message || 'Claude Code request failed';
+    log.error('chat action failed', { message, stack: err?.stack });
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
     // Intentionally NOT clearing thread.context on error — the session may
     // still be valid on disk; let the user retry or call the reset action

@@ -1,7 +1,10 @@
 import { createLogger } from '@/core/helpers/debug/logger';
 
-// Toggle this flag to enable/disable brain inspect logs
-export let INSPECT_ENABLED = false;
+// Toggle this flag to enable/disable brain inspect logs. Default ON in dev so
+// switch/action/flow transitions are visible without the user having to click
+// the toggle in the UI; the persisted setting (if any) takes over once the
+// brain system hydrates — see brain/system.ts toggleInspect.
+export let INSPECT_ENABLED = process.env.NODE_ENV !== 'production';
 
 // Create a logger instance for the brain system
 const logger = createLogger('brain');
