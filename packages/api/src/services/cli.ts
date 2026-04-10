@@ -2,6 +2,8 @@ import { GitRepository } from '@/systems/code/services/git'
 import * as ghCli from '@/systems/code/services/gh-cli'
 import { repository } from '@/repository'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/systems/code/types'
+import { claudeCode } from '@/services/claude-code'
+import type { QueryOptions, QueryHandle, AuthStatus } from '@/services/claude-code'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -19,6 +21,17 @@ export interface CliServiceType {
     getPRForBranch(branch?: string): Promise<GhPullRequest | null>
     getPRDetails(number: number, repo?: { owner: string; name: string }): Promise<GhPullRequest & { comments: GhPRComment[] }>
     getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]>
+  }
+  /**
+   * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
+   * plugins, skills, …) is available via `import { claudeCode } from
+   * '@/services/claude-code'`.
+   */
+  claudeCode: {
+    query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
+    version(): Promise<string>
+    authStatus(): Promise<AuthStatus>
+    getWorkingDir(): string
   }
 }
 
@@ -72,6 +85,21 @@ function createCliService(): CliServiceType {
       async getReviewThreads(number: number, repo?: { owner: string; name: string }): Promise<GhReviewThread[]> {
         const cwd = resolveCwd()
         return ghCli.getReviewThreads(cwd, number, repo)
+      },
+    },
+    claudeCode: {
+      query(opts) {
+        const cwd = opts.cwd ?? resolveCwd()
+        return claudeCode.query({ ...opts, cwd })
+      },
+      version() {
+        return claudeCode.system.version()
+      },
+      authStatus() {
+        return claudeCode.auth.status()
+      },
+      getWorkingDir() {
+        return resolveCwd()
       },
     },
   }

@@ -1,0 +1,328 @@
+/**
+ * Type definitions + Zod schemas for the Claude Code stream-json wire protocol.
+ *
+ * The CLI is fast-moving and routinely adds fields; every object schema uses
+ * `.passthrough()` so unknown fields survive round-trips and we only validate
+ * the bits we actually read. Inferred TS types are exported next to each schema.
+ *
+ * Source of truth for field shapes: the stream-json writer at
+ * `src/cli/structuredIO.ts` and the SDK Zod schemas at
+ * `src/entrypoints/sdk/coreSchemas.ts` in the leaked Claude Code source.
+ */
+
+import { z } from 'zod'
+
+// ─── Primitives ──────────────────────────────────────────────────────────────
+
+export const PermissionModeSchema = z.enum(['auto', 'bypass', 'strict', 'approve_all'])
+export type PermissionMode = z.infer<typeof PermissionModeSchema>
+
+export const ThinkingSchema = z.enum(['enabled', 'adaptive', 'disabled'])
+export type Thinking = z.infer<typeof ThinkingSchema>
+
+export const EffortSchema = z.enum(['low', 'medium', 'high', 'max'])
+export type Effort = z.infer<typeof EffortSchema>
+
+export const SettingScopeSchema = z.enum(['user', 'project', 'local'])
+export type SettingScope = z.infer<typeof SettingScopeSchema>
+
+// ─── Stream-json stdout lines (discriminated union on `type`) ────────────────
+
+const withUuid = z.object({
+  uuid: z.string().optional(),
+  session_id: z.string().optional(),
+})
+
+/** `{type:'user', message:{role:'user', content:...}}` — replayed user turn. */
+export const UserStreamLineSchema = withUuid.extend({
+  type: z.literal('user'),
+  message: z.object({
+    role: z.literal('user'),
+    content: z.union([z.string(), z.array(z.any())]),
+  }).passthrough(),
+  parent_tool_use_id: z.string().nullable().optional(),
+  isReplay: z.boolean().optional(),
+  isSynthetic: z.boolean().optional(),
+}).passthrough()
+export type UserStreamLine = z.infer<typeof UserStreamLineSchema>
+
+/** `{type:'assistant', message:{role:'assistant', content:[...blocks]}}` */
+export const AssistantStreamLineSchema = withUuid.extend({
+  type: z.literal('assistant'),
+  message: z.object({
+    role: z.literal('assistant'),
+    content: z.array(z.any()),
+  }).passthrough(),
+  parent_tool_use_id: z.string().nullable().optional(),
+  error: z.object({
+    type: z.string(),
+    message: z.string(),
+  }).passthrough().optional(),
+}).passthrough()
+export type AssistantStreamLine = z.infer<typeof AssistantStreamLineSchema>
+
+/** `{type:'stream_event', event:{...}}` — partial message chunks. */
+export const StreamEventLineSchema = withUuid.extend({
+  type: z.literal('stream_event'),
+  event: z.object({ type: z.string() }).passthrough(),
+  parent_tool_use_id: z.string().nullable().optional(),
+}).passthrough()
+export type StreamEventLine = z.infer<typeof StreamEventLineSchema>
+
+/** Tool-use progress heartbeat. */
+export const ToolProgressLineSchema = withUuid.extend({
+  type: z.literal('tool_progress'),
+  tool_use_id: z.string(),
+  tool_name: z.string(),
+  elapsed_time_seconds: z.number().optional(),
+  parent_tool_use_id: z.string().nullable().optional(),
+}).passthrough()
+export type ToolProgressLine = z.infer<typeof ToolProgressLineSchema>
+
+/** System lines — many subtypes, all passthrough. */
+export const SystemLineSchema = withUuid.extend({
+  type: z.literal('system'),
+  subtype: z.string(),
+}).passthrough()
+export type SystemLine = z.infer<typeof SystemLineSchema>
+
+/** `system/init` — the well-typed subset callers usually want. */
+export interface SystemInitLine extends SystemLine {
+  subtype: 'init'
+  session_id: string
+  cwd?: string
+  model?: string
+  tools?: string[]
+  mcp_servers?: Array<{ name: string; status: string }>
+  permissionMode?: PermissionMode
+  slash_commands?: string[]
+  output_style?: string
+  claude_code_version?: string
+}
+
+/** Rate limit warnings. */
+export const RateLimitLineSchema = withUuid.extend({
+  type: z.literal('rate_limit_event'),
+  rate_limit_info: z.object({}).passthrough(),
+}).passthrough()
+export type RateLimitLine = z.infer<typeof RateLimitLineSchema>
+
+/** Tool-use summary ("Read 2 files, wrote 1 file"). */
+export const ToolUseSummaryLineSchema = withUuid.extend({
+  type: z.literal('tool_use_summary'),
+  summary: z.string(),
+  preceding_tool_use_ids: z.array(z.string()).optional(),
+}).passthrough()
+export type ToolUseSummaryLine = z.infer<typeof ToolUseSummaryLineSchema>
+
+/** Final result line — marks turn completion. */
+export const ResultLineSchema = withUuid.extend({
+  type: z.literal('result'),
+  subtype: z.string(),
+  is_error: z.boolean().optional(),
+  duration_ms: z.number().optional(),
+  duration_api_ms: z.number().optional(),
+  num_turns: z.number().optional(),
+  result: z.string().optional(),
+  stop_reason: z.string().nullable().optional(),
+  total_cost_usd: z.number().optional(),
+  usage: z.object({}).passthrough().optional(),
+  modelUsage: z.record(z.any()).optional(),
+  permission_denials: z.array(z.object({}).passthrough()).optional(),
+  structured_output: z.unknown().optional(),
+  errors: z.array(z.string()).optional(),
+}).passthrough()
+export type ResultLine = z.infer<typeof ResultLineSchema>
+
+/** Control request from CLI → wrapper. Dispatched to the control router. */
+export const ControlRequestLineSchema = z.object({
+  type: z.literal('control_request'),
+  request_id: z.string(),
+  request: z.object({ subtype: z.string() }).passthrough(),
+}).passthrough()
+export type ControlRequestLine = z.infer<typeof ControlRequestLineSchema>
+
+/** Control response — normally wrapper → CLI, but can echo on stdout too. */
+export const ControlResponseLineSchema = z.object({
+  type: z.literal('control_response'),
+  response: z.object({
+    subtype: z.enum(['success', 'error']),
+    request_id: z.string(),
+  }).passthrough(),
+}).passthrough()
+export type ControlResponseLine = z.infer<typeof ControlResponseLineSchema>
+
+/** `control_cancel_request` — CLI withdraws a pending control request. */
+export const ControlCancelLineSchema = z.object({
+  type: z.literal('control_cancel_request'),
+  request_id: z.string(),
+}).passthrough()
+export type ControlCancelLine = z.infer<typeof ControlCancelLineSchema>
+
+/** `keep_alive` — NDJSON heartbeat, silently ignored by readers. */
+export const KeepAliveLineSchema = z.object({ type: z.literal('keep_alive') })
+export type KeepAliveLine = z.infer<typeof KeepAliveLineSchema>
+
+/** Fallthrough catch-all: the CLI adds new top-level types regularly. */
+export const UnknownLineSchema = z.object({ type: z.string() }).passthrough()
+export type UnknownLine = z.infer<typeof UnknownLineSchema>
+
+/**
+ * Discriminated union of every line the CLI may emit on stdout.
+ * Use `parseStreamLine()` (see ndjson.ts) to decode safely.
+ */
+export type StreamLine =
+  | UserStreamLine
+  | AssistantStreamLine
+  | StreamEventLine
+  | ToolProgressLine
+  | SystemLine
+  | RateLimitLine
+  | ToolUseSummaryLine
+  | ResultLine
+  | ControlRequestLine
+  | ControlResponseLine
+  | ControlCancelLine
+  | KeepAliveLine
+  | UnknownLine
+
+// ─── Control-request payloads we explicitly understand ───────────────────────
+
+/** `control_request` subtype=`can_use_tool` — the permission prompt. */
+export interface CanUseToolRequest {
+  subtype: 'can_use_tool'
+  tool_name: string
+  input: Record<string, unknown>
+  tool_use_id: string
+  agent_id?: string
+  blocked_path?: string
+  decision_reason?: string
+  title?: string
+  description?: string
+}
+
+/** `control_request` subtype=`initialize` — session handshake. */
+export interface InitializeRequest {
+  subtype: 'initialize'
+  hooks?: Record<string, unknown>
+  sdkMcpServers?: string[]
+  systemPrompt?: string
+  appendSystemPrompt?: string
+  agents?: Record<string, unknown>
+}
+
+/** The response shape for `can_use_tool`. */
+export type PermissionDecision =
+  | { behavior: 'allow'; updatedInput?: Record<string, unknown> }
+  | { behavior: 'deny'; message?: string }
+
+/** Caller hook: decide a tool permission request. */
+export type PermissionHandler = (
+  request: CanUseToolRequest,
+) => PermissionDecision | Promise<PermissionDecision>
+
+/** Caller hook: handle arbitrary control request subtypes we don't special-case. */
+export type ControlRequestHandler = (
+  request: { subtype: string } & Record<string, unknown>,
+) => unknown | Promise<unknown>
+
+// ─── Query options ───────────────────────────────────────────────────────────
+
+/**
+ * Every option supported by `claude --print`. Grouped by concern.
+ *
+ * These translate 1:1 to CLI flags via `argsFromOptions()` — if you add a
+ * field here, add the mapping there and a unit test covering it.
+ */
+export interface QueryOptions {
+  // Turn content
+  prompt?: string
+
+  // Runtime
+  cwd?: string
+  env?: NodeJS.ProcessEnv
+  signal?: AbortSignal
+  cliPath?: string
+
+  // Model / behaviour
+  model?: string
+  fallbackModel?: string
+  effort?: Effort
+  thinking?: Thinking
+  maxThinkingTokens?: number
+  maxTurns?: number
+  maxBudgetUsd?: number
+  betas?: string[]
+  agent?: string
+  agents?: Record<string, { description: string; prompt: string }>
+
+  // Permissions
+  permissionMode?: PermissionMode
+  dangerouslySkipPermissions?: boolean
+  allowedTools?: string[]
+  disallowedTools?: string[]
+  tools?: string[] | 'default'
+
+  // System prompt
+  systemPrompt?: string
+  appendSystemPrompt?: string
+  systemPromptFile?: string
+  appendSystemPromptFile?: string
+
+  // MCP / plugins / dirs
+  mcpConfig?: string[]
+  strictMcpConfig?: boolean
+  pluginDir?: string[]
+  addDir?: string[]
+
+  // Settings
+  settings?: string
+  settingSources?: SettingScope[]
+
+  // Structured output
+  jsonSchema?: unknown
+
+  // Session control
+  sessionId?: string
+  continue?: boolean
+  resume?: string | true
+  forkSession?: boolean
+  noSessionPersistence?: boolean
+
+  // Streaming knobs
+  includePartialMessages?: boolean
+  includeHookEvents?: boolean
+  replayUserMessages?: boolean
+
+  // Callbacks
+  onPermissionRequest?: PermissionHandler
+  onControlRequest?: ControlRequestHandler
+}
+
+// ─── Stdin messages (wrapper → CLI) ──────────────────────────────────────────
+
+/** User message written to stdin during a stream-json conversation. */
+export interface UserInputMessage {
+  type: 'user'
+  message: {
+    role: 'user'
+    content: string | Array<Record<string, unknown>>
+  }
+  parent_tool_use_id?: string | null
+  session_id?: string
+}
+
+// ─── Result facade ───────────────────────────────────────────────────────────
+
+/** Normalised result returned from `query().result`. */
+export interface QueryResult {
+  sessionId: string
+  text: string
+  durationMs: number
+  numTurns: number
+  totalCostUsd: number
+  usage?: Record<string, unknown>
+  structuredOutput?: unknown
+  permissionDenials: Array<Record<string, unknown>>
+  raw: ResultLine
+}
