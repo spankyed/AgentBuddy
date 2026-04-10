@@ -11,10 +11,12 @@ import type { ExportedNotes } from '@/systems/notes/export-types';
 
 export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes';
 
+export type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
+
 export interface SetupPackPreviewItem {
   key: string;
   description?: string;
-  kind?: string;
+  kind?: SetupPackItemKind;
   childCount?: number;
 }
 

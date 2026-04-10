@@ -23,7 +23,7 @@ import type { ContentSection, Document, Collection } from '@/systems/library/typ
 import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
 import { getMediaPath } from '@/core/helpers/paths';
 import { importNotesFromData } from '@/systems/notes/import-notes';
-import type { ExportedNotes, ExportedNote } from '@/systems/notes/export-types';
+import type { ExportedNotes } from '@/systems/notes/export-types';
 
 interface SeedCounts {
   created: number;
@@ -286,7 +286,8 @@ export function seedData(options?: {
 }): SeedResult | null {
   const log = options?.verbose ? console.log.bind(console) : () => {};
 
-  const compiledDir = options?.compiledDir ?? DEFAULT_COMPILED_DIR;
+  const compiledDir = path.resolve(options?.compiledDir ?? DEFAULT_COMPILED_DIR);
+  const isDefaultDir = compiledDir === path.resolve(DEFAULT_COMPILED_DIR);
   const include = options?.include;
   const isFullImport =
     !include ||
@@ -412,9 +413,11 @@ export function seedData(options?: {
     log('  notes section skipped by include filter');
   }
 
-  // Store content hash — only when a full import ran (partial imports must not
-  // suppress the next automatic boot seed).
-  if (isFullImport) {
+  // Store content hash — only when a full import ran against the default
+  // directory. Partial imports, or imports from a custom directory, must not
+  // advance the global hash: doing so would suppress the next automatic boot
+  // seed (which always runs against DEFAULT_COMPILED_DIR).
+  if (isFullImport && isDefaultDir) {
     settingsCommands.updateSettings('internal', null, ['seedHash'], computeSeedHash(compiledDir));
   }
 

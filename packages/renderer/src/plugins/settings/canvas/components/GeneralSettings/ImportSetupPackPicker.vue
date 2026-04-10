@@ -10,6 +10,7 @@
       <div v-for="row in rows" :key="row.key">
         <!-- Header row -->
         <div
+          :title="row.hint"
           :class="[
             'flex items-center gap-3 px-3 py-2.5 select-none',
             row.isEmpty ? 'opacity-40' : 'hover:bg-neutral-800/40',
@@ -31,9 +32,12 @@
           <!-- Header checkbox -->
           <input
             type="checkbox"
+            role="checkbox"
             class="w-4 h-4 cursor-pointer disabled:cursor-not-allowed accent-blue-600"
             :checked="row.allSelected"
             :indeterminate.prop="row.indeterminate"
+            :aria-checked="row.indeterminate ? 'mixed' : row.allSelected"
+            :aria-label="`Select all ${row.label}`"
             :disabled="row.isEmpty || importing"
             @change="emit('toggle-type-all', row.key)"
           />
@@ -154,6 +158,7 @@ interface Row {
   key: SetupPackType
   label: string
   icon: any
+  hint?: string
   totalCount: number
   selectedCount: number
   allSelected: boolean
@@ -162,10 +167,15 @@ interface Row {
   missing: boolean
 }
 
-const TYPE_META: { key: SetupPackType; label: string; icon: any }[] = [
+const TYPE_META: { key: SetupPackType; label: string; icon: any; hint?: string }[] = [
   { key: 'actions', label: 'Actions', icon: Zap },
   { key: 'prompts', label: 'Prompts', icon: MessageSquare },
-  { key: 'flows', label: 'Flows', icon: GitBranch },
+  {
+    key: 'flows',
+    label: 'Flows',
+    icon: GitBranch,
+    hint: 'Flows reference actions and prompts by label. Any referenced action/prompt must already exist in the database (or be imported in the same run) or the flow will be skipped.',
+  },
   { key: 'library', label: 'Library', icon: Library },
   { key: 'notes', label: 'Notes', icon: StickyNote },
 ]
@@ -180,6 +190,7 @@ const rows = computed<Row[]>(() =>
       key: meta.key,
       label: meta.label,
       icon: meta.icon,
+      hint: meta.hint,
       totalCount,
       selectedCount,
       allSelected: totalCount > 0 && selectedCount === totalCount,

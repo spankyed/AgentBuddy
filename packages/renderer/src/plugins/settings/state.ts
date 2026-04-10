@@ -31,6 +31,8 @@ export interface SetupPackImport {
   error: string | null;
 }
 
+// Read-only templates. Consumers must use `freshSetupPack()` (or spread)
+// so the module-level defaults stay pristine.
 const EMPTY_SELECTION: Record<SetupPackType, string[]> = {
   actions: [], prompts: [], flows: [], library: [], notes: [],
 };
@@ -38,15 +40,17 @@ const COLLAPSED: Record<SetupPackType, boolean> = {
   actions: false, prompts: false, flows: false, library: false, notes: false,
 };
 
-const IDLE_SETUP_PACK: SetupPackImport = {
-  status: 'idle',
-  directory: null,
-  preview: null,
-  selection: { ...EMPTY_SELECTION },
-  expanded: { ...COLLAPSED },
-  result: null,
-  error: null,
-};
+function freshSetupPack(): SetupPackImport {
+  return {
+    status: 'idle',
+    directory: null,
+    preview: null,
+    selection: { ...EMPTY_SELECTION },
+    expanded: { ...COLLAPSED },
+    result: null,
+    error: null,
+  };
+}
 
 export interface SettingsContext {
   settings: SettingsData | null;
@@ -317,10 +321,13 @@ const settingsState = setup({
       const { directory, preview, selection } = context.setupPackImport;
       if (!directory || !preview) return {};
 
-      // For each type, null = all items selected (import everything), otherwise send the array.
+      // null = import all items of this type, [] = skip, string[] = filter.
+      // A zero-total type (missing from the pack, or simply empty) should be
+      // skipped — not treated as "import everything".
       const toIncludeField = (key: SetupPackType): string[] | null => {
         const selected = selection[key];
         const total = preview[key].length;
+        if (total === 0) return [];
         return selected.length === total ? null : selected;
       };
 
@@ -348,7 +355,7 @@ const settingsState = setup({
     }),
 
     cancelSetupPack: assign(() => ({
-      setupPackImport: { ...IDLE_SETUP_PACK, selection: { ...EMPTY_SELECTION }, expanded: { ...COLLAPSED } },
+      setupPackImport: freshSetupPack(),
     })),
 
     setSetupPackImported: assign(({ context, event }) => {
@@ -376,7 +383,7 @@ const settingsState = setup({
     }),
 
     resetSetupPackStatus: assign(() => ({
-      setupPackImport: { ...IDLE_SETUP_PACK, selection: { ...EMPTY_SELECTION }, expanded: { ...COLLAPSED } },
+      setupPackImport: freshSetupPack(),
     })),
   },
 }).createMachine({
@@ -392,7 +399,7 @@ const settingsState = setup({
       settings: null,
       secretsData: [],
       cliTestResults: {},
-      setupPackImport: { ...IDLE_SETUP_PACK, selection: { ...EMPTY_SELECTION }, expanded: { ...COLLAPSED } },
+      setupPackImport: freshSetupPack(),
       activeTab: 'general',
       generalNavItem: 'personal',
       selectedPluginId: defaultPluginId,
