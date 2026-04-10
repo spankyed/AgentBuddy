@@ -225,15 +225,18 @@ export class GitRepository {
     }
   }
 
-  private async getUntrackedFilesInDirectory(dirPath: string): Promise<GitStatusFile[]> {
-    return this.runSafe<GitStatusFile[]>([], async () => {
+  /** Unqueued — safe to call from inside an existing `enqueueCommand` scope. */
+  private async _getUntrackedFilesInDirectoryInternal(dirPath: string): Promise<GitStatusFile[]> {
+    try {
       const output = await this.git.raw(['ls-files', '--others', '--exclude-standard', dirPath])
       return output.trim().split('\n').filter(Boolean).map(filePath => ({
         path: filePath,
         status: 'untracked' as const,
         staged: false,
       }))
-    })
+    } catch {
+      return []
+    }
   }
   
   async getCurrentBranch(): Promise<string> {
@@ -246,89 +249,96 @@ export class GitRepository {
   async getStatus(): Promise<GitStatusFile[]> {
     const cached = this.getCached<GitStatusFile[]>('status')
     if (cached) return cached
+    return this.enqueueCommand(() => this._getStatusInternal())
+  }
 
-    return this.enqueueCommand(async () => {
-      const status = await this.git.status()
-      const files: GitStatusFile[] = []
+  /** Compute current status directly — no outer queue wrap. Write methods
+   * already running inside `enqueueCommand` must call THIS, not `getStatus`,
+   * to avoid nesting `enqueueCommand` (which deadlocks the promise queue). */
+  private async _getStatusInternal(): Promise<GitStatusFile[]> {
+    const cached = this.getCached<GitStatusFile[]>('status')
+    if (cached) return cached
 
-      // Conflicts are first-class on simple-git's StatusResult. Emit one row
-      // per conflicted file — no double-counting across staged/unstaged.
-      const conflictSet = new Set(status.conflicted)
+    const status = await this.git.status()
+    const files: GitStatusFile[] = []
 
-      // Map of new path -> original path for renames, from typed `renamed`.
-      const renameMap = new Map<string, string>()
-      for (const r of status.renamed) {
-        renameMap.set(r.to, r.from)
+    // Conflicts are first-class on simple-git's StatusResult. Emit one row
+    // per conflicted file — no double-counting across staged/unstaged.
+    const conflictSet = new Set(status.conflicted)
+
+    // Map of new path -> original path for renames, from typed `renamed`.
+    const renameMap = new Map<string, string>()
+    for (const r of status.renamed) {
+      renameMap.set(r.to, r.from)
+    }
+
+    for (const f of status.files) {
+      // simple-git sometimes encodes renames in the path as "from -> to".
+      // Normalize to just the new path + originalPath.
+      let filePath = f.path
+      let originalPath: string | undefined
+      const arrow = ' -> '
+      const arrowIdx = filePath.indexOf(arrow)
+      if (arrowIdx !== -1) {
+        originalPath = filePath.slice(0, arrowIdx)
+        filePath = filePath.slice(arrowIdx + arrow.length)
+      } else if (renameMap.has(filePath)) {
+        originalPath = renameMap.get(filePath)
       }
 
-      for (const f of status.files) {
-        // simple-git sometimes encodes renames in the path as "from -> to".
-        // Normalize to just the new path + originalPath.
-        let filePath = f.path
-        let originalPath: string | undefined
-        const arrow = ' -> '
-        const arrowIdx = filePath.indexOf(arrow)
-        if (arrowIdx !== -1) {
-          originalPath = filePath.slice(0, arrowIdx)
-          filePath = filePath.slice(arrowIdx + arrow.length)
-        } else if (renameMap.has(filePath)) {
-          originalPath = renameMap.get(filePath)
-        }
+      if (conflictSet.has(filePath) || conflictSet.has(f.path)) {
+        files.push({
+          path: filePath,
+          status: 'unmerged',
+          staged: false,
+        })
+        continue
+      }
 
-        if (conflictSet.has(filePath) || conflictSet.has(f.path)) {
+      const indexStatus = f.index
+      const workingStatus = f.working_dir
+
+      if (indexStatus !== ' ' && indexStatus !== '?') {
+        files.push({
+          path: filePath,
+          status: mapPorcelainCode(indexStatus),
+          staged: true,
+          originalPath,
+        })
+      }
+
+      if (workingStatus !== ' ' && workingStatus !== '?') {
+        files.push({
+          path: filePath,
+          status: mapPorcelainCode(workingStatus),
+          staged: false,
+        })
+      }
+
+      if (indexStatus === '?' && workingStatus === '?') {
+        if (!files.some(x => x.path === filePath)) {
           files.push({
             path: filePath,
-            status: 'unmerged',
+            status: 'untracked',
             staged: false,
           })
-          continue
-        }
-
-        const indexStatus = f.index
-        const workingStatus = f.working_dir
-
-        if (indexStatus !== ' ' && indexStatus !== '?') {
-          files.push({
-            path: filePath,
-            status: mapPorcelainCode(indexStatus),
-            staged: true,
-            originalPath,
-          })
-        }
-
-        if (workingStatus !== ' ' && workingStatus !== '?') {
-          files.push({
-            path: filePath,
-            status: mapPorcelainCode(workingStatus),
-            staged: false,
-          })
-        }
-
-        if (indexStatus === '?' && workingStatus === '?') {
-          if (!files.some(x => x.path === filePath)) {
-            files.push({
-              path: filePath,
-              status: 'untracked',
-              staged: false,
-            })
-          }
         }
       }
+    }
 
-      // Expand untracked directories to their individual files.
-      const expandedFiles: GitStatusFile[] = []
-      for (const file of files) {
-        if (file.status === 'untracked' && await this.isDirectory(file.path)) {
-          const dirFiles = await this.getUntrackedFilesInDirectory(file.path)
-          expandedFiles.push(...dirFiles)
-        } else {
-          expandedFiles.push(file)
-        }
+    // Expand untracked directories to their individual files.
+    const expandedFiles: GitStatusFile[] = []
+    for (const file of files) {
+      if (file.status === 'untracked' && await this.isDirectory(file.path)) {
+        const dirFiles = await this._getUntrackedFilesInDirectoryInternal(file.path)
+        expandedFiles.push(...dirFiles)
+      } else {
+        expandedFiles.push(file)
       }
+    }
 
-      this.setCached('status', expandedFiles)
-      return expandedFiles
-    })
+    this.setCached('status', expandedFiles)
+    return expandedFiles
   }
 
   private async isBinaryFile(filePath: string): Promise<boolean> {
@@ -442,13 +452,7 @@ export class GitRepository {
     if (staged) args.push('--cached')
     if (filePath) args.push('--', filePath)
 
-    return this.enqueueCommand(async () => {
-      try {
-        return await this.git.diff(args)
-      } catch (err: any) {
-        throw new Error(err?.message || 'Failed to get diff')
-      }
-    })
+    return this.run('Failed to get diff', () => this.git.diff(args))
   }
 
   /** Build a synthetic unified diff for an untracked file. Handles
@@ -502,13 +506,7 @@ export class GitRepository {
     }
 
     const ref = version === 'HEAD' ? `HEAD:${relativePath}` : `:${relativePath}`
-    return this.enqueueCommand(async () => {
-      try {
-        return await this.git.show([ref])
-      } catch {
-        return ''
-      }
-    })
+    return this.runSafe('', () => this.git.show([ref]))
   }
 
   /**
@@ -600,7 +598,9 @@ export class GitRepository {
   async revertFiles(filePaths: string[]): Promise<void> {
     if (filePaths.length === 0) return
     await this.runWrite('Failed to revert files', async () => {
-      const status = await this.getStatus()
+      // Unqueued status read — calling `getStatus` here would re-enter
+      // `enqueueCommand` and deadlock.
+      const status = await this._getStatusInternal()
       const statusMap = new Map(status.map(f => [f.path, f.status]))
 
       const untrackedPaths: string[] = []
@@ -932,10 +932,10 @@ export class GitRepository {
         }
       }
 
-      // After successful checkout, pull latest (best-effort)
+      // After successful checkout, pull latest (best-effort). Use the
+      // unqueued upstream check to avoid re-entering `enqueueCommand`.
       try {
-        const hasUpstream = await this.isCurrentBranchPublished()
-        if (hasUpstream) {
+        if (await this._hasUpstreamInternal()) {
           await this.git.pull()
         }
       } catch {
@@ -953,6 +953,17 @@ export class GitRepository {
       return upstream !== null
     } catch {
       // If there's an error checking upstream, assume unpublished
+      return false
+    }
+  }
+
+  /** Unqueued upstream-exists check. Safe to call from inside an existing
+   * `enqueueCommand` scope without risking a nested-queue deadlock. */
+  private async _hasUpstreamInternal(): Promise<boolean> {
+    try {
+      await this.git.revparse(['--abbrev-ref', '--symbolic-full-name', '@{u}'])
+      return true
+    } catch {
       return false
     }
   }
@@ -1005,11 +1016,11 @@ export class GitRepository {
 
   async pushBranch(branchName?: string): Promise<void> {
     return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      // Get current branch if not specified
-      const branch = branchName || await this.getCurrentBranch()
-
-      // Check if branch is published
-      const isPublished = await this.isCurrentBranchPublished()
+      // Resolve current branch and upstream state via unqueued internals —
+      // calling `getCurrentBranch` / `isCurrentBranchPublished` here would
+      // re-enter `enqueueCommand` and deadlock the promise queue.
+      const branch = branchName || (await this.git.revparse(['--abbrev-ref', 'HEAD'])).trim()
+      const isPublished = await this._hasUpstreamInternal()
 
       try {
         if (isPublished) {
@@ -1040,8 +1051,8 @@ export class GitRepository {
 
   async pullBranch(): Promise<void> {
     return this.withWriteFlag(() => this.enqueueCommand(async () => {
-      // Check if we have an upstream branch
-      const hasUpstream = await this.isCurrentBranchPublished()
+      // Unqueued upstream check — see pushBranch for rationale.
+      const hasUpstream = await this._hasUpstreamInternal()
       if (!hasUpstream) {
         throw new Error('No upstream branch to pull from. Push your branch first.')
       }
@@ -1087,17 +1098,26 @@ export class GitRepository {
   }
 
   async stashList(): Promise<StashEntry[]> {
-    // Empty stash list surfaces as "unknown revision" from git — swallow it.
-    return this.runSafe<StashEntry[]>([], async () => {
-      // simple-git's stashList() returns a LogResult with typed entries
-      // (hash/date/message/refs/body/author_*). Map to our StashEntry shape.
-      const log = await this.git.stashList()
-      return log.all.map((entry, i) => ({
-        index: i,
-        ref: `stash@{${i}}`,
-        message: entry.message || '',
-        date: entry.date || '',
-      }))
+    // `runSafe` is too blunt here — we want to swallow ONLY the "empty stash
+    // list" case (which git surfaces as "unknown revision") and surface every
+    // other error so broken stash refs or corrupt repo state don't vanish
+    // behind a silently-empty list.
+    return this.enqueueCommand(async () => {
+      try {
+        // simple-git's stashList() returns a LogResult with typed entries
+        // (hash/date/message/refs/body/author_*). Map to our StashEntry shape.
+        const log = await this.git.stashList()
+        return log.all.map((entry, i) => ({
+          index: i,
+          ref: `stash@{${i}}`,
+          message: entry.message || '',
+          date: entry.date || '',
+        }))
+      } catch (err: any) {
+        const msg = String(err?.message || '')
+        if (msg.includes('unknown revision')) return []
+        throw new Error(msg || 'Failed to list stashes')
+      }
     })
   }
 
