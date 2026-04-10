@@ -37,6 +37,13 @@ import {
 
 export interface ExecOnceOptions {
   cwd?: string
+  /**
+   * Override the env passed to the child. Defaults to a copy of `process.env`
+   * with `ANTHROPIC_API_KEY` removed so the CLI uses its own stored auth
+   * (`claude auth login`) instead of an env-var key meant for the server's
+   * LLM client. Pass an explicit object if you want no scrubbing — the
+   * helper assumes you know what you're doing and does not post-process it.
+   */
   env?: NodeJS.ProcessEnv
   /** Bytes piped to stdin. Pass `undefined` to leave stdin closed. */
   input?: string
@@ -55,6 +62,13 @@ export interface ExecOnceResult {
 
 export interface SpawnStreamOptions {
   cwd?: string
+  /**
+   * Override the env passed to the child. Defaults to a copy of `process.env`
+   * with `ANTHROPIC_API_KEY` removed so the CLI uses its own stored auth
+   * (`claude auth login`) instead of an env-var key meant for the server's
+   * LLM client. Pass an explicit object if you want no scrubbing — the
+   * helper assumes you know what you're doing and does not post-process it.
+   */
   env?: NodeJS.ProcessEnv
   signal?: AbortSignal
   cliPath?: string
@@ -73,6 +87,34 @@ export interface StreamHandle {
   done(): Promise<{ exitCode: number; signal: NodeJS.Signals | null; stderr: string }>
   /** Forcefully kill the child. */
   kill(signal?: NodeJS.Signals): void
+}
+
+// ─── Env scrubbing ───────────────────────────────────────────────────────────
+
+/**
+ * Build the environment for a spawned Claude CLI child process.
+ *
+ * The API server auto-loads `packages/api/.env` via `dotenv/config`, which
+ * populates `ANTHROPIC_API_KEY` for the server's own LLM client
+ * (`services/llm.ts`). The Claude CLI treats env-var API keys as an
+ * "external" credential and prefers them over the user's stored
+ * `claude auth login` session — so without this scrub, every CLI
+ * subprocess we spawn would try to authenticate with the llm.ts key and
+ * fail with "Invalid API key · Fix external API key".
+ *
+ * If the caller explicitly passes an `env` override, we assume they know
+ * what they're doing (e.g. an integration test or a truly external key)
+ * and leave it untouched.
+ *
+ * Exported for direct unit testing — testing via the real `spawn()` path
+ * would require mocking `child_process`, which is needlessly heavy for a
+ * pure function.
+ */
+export function buildChildEnv(override?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  if (override) return override
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  delete env.ANTHROPIC_API_KEY
+  return env
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -95,7 +137,7 @@ export async function execOnce(
     try {
       child = spawn(cliPath, args as string[], {
         cwd: opts.cwd,
-        env: opts.env ?? process.env,
+        env: buildChildEnv(opts.env),
         stdio: ['pipe', 'pipe', 'pipe'],
       })
     } catch (err) {
@@ -172,7 +214,7 @@ export async function spawnStream(
   try {
     child = spawn(cliPath, args as string[], {
       cwd: opts.cwd,
-      env: opts.env ?? process.env,
+      env: buildChildEnv(opts.env),
       stdio: ['pipe', 'pipe', 'pipe'],
     }) as ChildProcessByStdio<Writable, Readable, Readable>
   } catch (err) {
