@@ -4,23 +4,38 @@
     <!-- Merge -->
     <div ref="mergeContainer" class="relative">
       <div class="flex">
-        <button
-          @click="$emit('merge', selectedMethod)"
-          :disabled="!canMerge"
-          :title="mergeTooltip"
-          :class="MAIN_BTN_CLASSES[mergeVariant]"
-          class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-l transition-colors"
-        >
-          <Loader2 v-if="mergeVariant === 'merging' || mergeVariant === 'pending'" :size="11" class="animate-spin" />
-          <AlertTriangle v-else-if="mergeVariant === 'error'" :size="11" />
-          <Ban v-else-if="mergeVariant === 'blocked'" :size="11" />
-          <GitMerge v-else :size="11" />
-          <span>{{ mergeMethodList.find(m => m.value === selectedMethod)?.shortLabel }}</span>
-        </button>
+        <HoverCardRoot :open-delay="300" :close-delay="100">
+          <HoverCardTrigger as-child>
+            <button
+              @click="$emit('merge', selectedMethod)"
+              :disabled="!canMerge"
+              :aria-label="mergeTooltip"
+              :class="MAIN_BTN_CLASSES[mergeVariant]"
+              class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-l transition-colors"
+            >
+              <Loader2 v-if="mergeVariant === 'merging' || mergeVariant === 'pending'" :size="11" class="animate-spin" />
+              <AlertTriangle v-else-if="mergeVariant === 'error'" :size="11" />
+              <Ban v-else-if="mergeVariant === 'blocked'" :size="11" />
+              <GitMerge v-else :size="11" />
+              <span>{{ mergeMethodList.find(m => m.value === selectedMethod)?.shortLabel }}</span>
+            </button>
+          </HoverCardTrigger>
+          <HoverCardPortal>
+            <HoverCardContent
+              :side="'top'"
+              :align="'start'"
+              :side-offset="8"
+              class="z-50"
+            >
+              <MergeButtonTooltip :variant="mergeVariant" :pr="pr" />
+              <HoverCardArrow class="fill-neutral-700" />
+            </HoverCardContent>
+          </HoverCardPortal>
+        </HoverCardRoot>
         <button
           @click="showMergeOptions = !showMergeOptions"
           :disabled="!canMerge"
-          :title="mergeTooltip"
+          :aria-label="mergeTooltip"
           :class="CHEVRON_BTN_CLASSES[mergeVariant]"
           class="px-1 py-1 rounded-r transition-colors"
         >
@@ -105,8 +120,13 @@ import {
   GitMerge, GitBranch, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2,
   AlertTriangle, Ban,
 } from 'lucide-vue-next'
+import {
+  HoverCardRoot, HoverCardTrigger, HoverCardContent, HoverCardPortal, HoverCardArrow,
+} from 'reka-ui'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
+import { isFailing, isPending } from './merge-checks'
+import MergeButtonTooltip, { type MergeVariant } from './MergeButtonTooltip.vue'
 
 const props = defineProps<{
   pr: GhPullRequest | null
@@ -115,18 +135,6 @@ const props = defineProps<{
   isTogglingDraft: boolean
   isDeletingBranch: boolean
 }>()
-
-type StatusCheck = NonNullable<GhPullRequest['statusCheckRollup']>[number]
-type MergeVariant = 'clean' | 'merging' | 'blocked' | 'error' | 'pending'
-
-const FAILING_CONCLUSIONS = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'])
-const PENDING_STATUSES = new Set(['QUEUED', 'IN_PROGRESS', 'PENDING'])
-
-const isFailing = (c: StatusCheck) =>
-  (c.conclusion && FAILING_CONCLUSIONS.has(c.conclusion)) || c.state === 'FAILURE' || c.state === 'ERROR'
-
-const isPending = (c: StatusCheck) =>
-  (c.status && PENDING_STATUSES.has(c.status) && !c.conclusion) || (!c.status && c.state === 'PENDING')
 
 /** Semantic state of the merge button: drives color, icon, tooltip, and disabled flag. */
 const mergeState = computed<{ variant: MergeVariant; reason: string }>(() => {
