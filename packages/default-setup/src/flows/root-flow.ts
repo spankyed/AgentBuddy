@@ -5,7 +5,7 @@ export default {
   "Root Flow": {
     root: true,
     tracks: entryWithListeners(
-      [], // no entry steps, just keep_alive
+      [subflow("Command Listener", { label: "start command listener" })],
       [
         {
           event: "tour.complete",

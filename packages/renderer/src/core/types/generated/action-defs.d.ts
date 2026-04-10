@@ -7,15 +7,6 @@ import * as ai from 'ai';
 import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
-interface TextStreamOptions {
-    chunkSize?: number;
-    delayMs?: number;
-}
-declare class TextStreamService {
-    streamText(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
-    streamTextByChars(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
-}
-
 declare namespace EARS {
     export enum Entity {
         Agent = "Agent",
@@ -122,159 +113,6 @@ interface BaseEntity {
     createdAt: number;
     updatedAt?: number;
 }
-
-interface FileInfo {
-    name: string;
-    path: string;
-    type: 'file' | 'directory';
-    size?: number;
-    modifiedAt?: Date;
-    extension?: string;
-}
-interface DirectoryContent {
-    path: string;
-    files: FileInfo[];
-}
-interface FileContent {
-    path: string;
-    content: string;
-    encoding: string;
-    size?: number;
-    isBinary?: boolean;
-}
-interface CodeSystemError {
-    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
-    message: string;
-    path?: string;
-}
-interface SearchMatch {
-    line: number;
-    column: number;
-    lineText: string;
-    matchStart: number;
-    matchEnd: number;
-}
-interface SearchResult {
-    path: string;
-    matches: SearchMatch[];
-    fileSize?: number;
-}
-interface SearchProgress {
-    filesSearched: number;
-    totalFiles: number;
-    currentFile?: string;
-}
-interface GitStatusFile {
-    path: string;
-    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
-    staged: boolean;
-    originalPath?: string;
-    score?: number;
-}
-interface GitDiff {
-    path: string;
-    diff: string;
-    staged: boolean;
-    originalContent?: string;
-    modifiedContent?: string;
-    isImage?: boolean;
-}
-interface StashEntry {
-    index: number;
-    ref: string;
-    message: string;
-    date: string;
-}
-interface GhPullRequest {
-    number: number;
-    title: string;
-    body: string;
-    headRefName: string;
-    baseRefName: string;
-    state: 'OPEN' | 'CLOSED' | 'MERGED';
-    url: string;
-    isDraft: boolean;
-    author: {
-        login: string;
-    };
-    createdAt: string;
-    updatedAt: string;
-    commits?: {
-        oid: string;
-        messageHeadline: string;
-        committedDate: string;
-    }[];
-}
-interface GhPRComment {
-    id: string;
-    body: string;
-    author: {
-        login: string;
-    };
-    createdAt: string;
-    url: string;
-    viewerDidAuthor: boolean;
-}
-interface GhReviewThread {
-    id: string;
-    isResolved: boolean;
-    isOutdated: boolean;
-    path: string;
-    line: number | null;
-    comments: GhReviewComment[];
-}
-interface GhReviewComment {
-    id: string;
-    databaseId: number;
-    body: string;
-    author: {
-        login: string;
-    };
-    createdAt: string;
-    viewerDidAuthor: boolean;
-}
-interface TerminalInfo {
-    id: EARS.EntityId;
-    title: string;
-    customTitle?: string;
-    pid: number;
-    shell?: string;
-    cwd: string;
-    active: boolean;
-    cols: number;
-    rows: number;
-}
-interface QuickOpenResult {
-    path: string;
-    relativePath: string;
-    name: string;
-    type: 'file' | 'directory';
-    extension?: string;
-    score?: number;
-}
-interface CodeSettings {
-    hotkeys: {
-        openTerminal?: KeyboardShortcut | null;
-        navigatePrevPanel?: KeyboardShortcut | null;
-        navigateNextPanel?: KeyboardShortcut | null;
-        focusSearch?: KeyboardShortcut | null;
-        [key: string]: KeyboardShortcut | null | undefined;
-    };
-    restoreTerminals?: boolean;
-    defaultBaseDirectory?: string | null;
-    lastDirectoryOpened?: string | null;
-    enableShellIntegration?: boolean;
-    confirmTerminalClose?: boolean;
-    closeTerminalOnTabClose?: boolean;
-    mdEditorDefault?: boolean;
-    enablePreview?: boolean;
-    autoFetchRemote?: boolean;
-    autoFetchIntervalSeconds?: number;
-}
-type CodeConnectedData = {
-    baseDirectory: string | null;
-    settings?: CodeSettings;
-};
 
 type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
 type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
@@ -5223,6 +5061,184 @@ interface AssistantSettings {
     birthdate: string | null;
 }
 
+interface FileInfo {
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+    size?: number;
+    modifiedAt?: Date;
+    extension?: string;
+}
+interface DirectoryContent {
+    path: string;
+    files: FileInfo[];
+}
+interface FileContent {
+    path: string;
+    content: string;
+    encoding: string;
+    size?: number;
+    isBinary?: boolean;
+}
+interface CodeSystemError {
+    code: 'NOT_FOUND' | 'PERMISSION_DENIED' | 'INVALID_PATH' | 'IO_ERROR' | 'FILE_TOO_LARGE' | 'SEARCH_ERROR';
+    message: string;
+    path?: string;
+}
+interface SearchMatch {
+    line: number;
+    column: number;
+    lineText: string;
+    matchStart: number;
+    matchEnd: number;
+}
+interface SearchResult {
+    path: string;
+    matches: SearchMatch[];
+    fileSize?: number;
+}
+interface SearchProgress {
+    filesSearched: number;
+    totalFiles: number;
+    currentFile?: string;
+}
+interface GitStatusFile {
+    path: string;
+    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'copied' | 'typechange' | 'unmerged';
+    staged: boolean;
+    originalPath?: string;
+    score?: number;
+}
+interface GitDiff {
+    path: string;
+    diff: string;
+    staged: boolean;
+    originalContent?: string;
+    modifiedContent?: string;
+    isImage?: boolean;
+}
+interface StashEntry {
+    index: number;
+    ref: string;
+    message: string;
+    date: string;
+}
+interface GhPullRequest {
+    number: number;
+    title: string;
+    body: string;
+    headRefName: string;
+    baseRefName: string;
+    state: 'OPEN' | 'CLOSED' | 'MERGED';
+    url: string;
+    isDraft: boolean;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+    commits?: {
+        oid: string;
+        messageHeadline: string;
+        committedDate: string;
+    }[];
+}
+interface GhPRComment {
+    id: string;
+    body: string;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    url: string;
+    viewerDidAuthor: boolean;
+}
+interface GhReviewThread {
+    id: string;
+    isResolved: boolean;
+    isOutdated: boolean;
+    path: string;
+    line: number | null;
+    comments: GhReviewComment[];
+}
+interface GhReviewComment {
+    id: string;
+    databaseId: number;
+    body: string;
+    author: {
+        login: string;
+    };
+    createdAt: string;
+    viewerDidAuthor: boolean;
+}
+interface TerminalInfo {
+    id: EARS.EntityId;
+    title: string;
+    customTitle?: string;
+    pid: number;
+    shell?: string;
+    cwd: string;
+    active: boolean;
+    cols: number;
+    rows: number;
+}
+interface QuickOpenResult {
+    path: string;
+    relativePath: string;
+    name: string;
+    type: 'file' | 'directory';
+    extension?: string;
+    score?: number;
+}
+interface CodeSettings {
+    hotkeys: {
+        openTerminal?: KeyboardShortcut | null;
+        navigatePrevPanel?: KeyboardShortcut | null;
+        navigateNextPanel?: KeyboardShortcut | null;
+        focusSearch?: KeyboardShortcut | null;
+        [key: string]: KeyboardShortcut | null | undefined;
+    };
+    restoreTerminals?: boolean;
+    defaultBaseDirectory?: string | null;
+    lastDirectoryOpened?: string | null;
+    enableShellIntegration?: boolean;
+    confirmTerminalClose?: boolean;
+    closeTerminalOnTabClose?: boolean;
+    mdEditorDefault?: boolean;
+    enablePreview?: boolean;
+    autoFetchRemote?: boolean;
+    autoFetchIntervalSeconds?: number;
+}
+type CodeConnectedData = {
+    baseDirectory: string | null;
+    settings?: CodeSettings;
+};
+
+interface CliServiceType {
+    git: {
+        commit(message: string): Promise<void>;
+        getStatus(): Promise<GitStatusFile[]>;
+        getCurrentBranch(): Promise<string>;
+        getWorkingDir(): string;
+    };
+    gh: {
+        getPRForBranch(branch?: string): Promise<GhPullRequest | null>;
+        getPRDetails(number: number): Promise<GhPullRequest & {
+            comments: GhPRComment[];
+        }>;
+        getReviewThreads(number: number): Promise<GhReviewThread[]>;
+    };
+}
+
+interface TextStreamOptions {
+    chunkSize?: number;
+    delayMs?: number;
+}
+declare class TextStreamService {
+    streamText(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
+    streamTextByChars(text: string, options?: TextStreamOptions): AsyncGenerator<string, void, unknown>;
+}
+
 /**
  * Settings Service
  *
@@ -6535,6 +6551,7 @@ declare const services: {
     artifact: typeof artifact;
     brain: typeof brain;
     media: typeof media;
+    cli: CliServiceType;
 };
 
 /**

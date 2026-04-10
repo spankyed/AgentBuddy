@@ -13,6 +13,7 @@ import * as chat from './chat';
 import * as artifact from './artifact';
 import * as brain from './brain';
 import * as media from './media';
+import { cliService } from './cli';
 
 const services = {
   logger: loggerService,
@@ -30,6 +31,7 @@ const services = {
   artifact,
   brain,
   media,
+  cli: cliService,
 }
 
 export default services;
