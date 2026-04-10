@@ -5,12 +5,12 @@
  * Uses helper functions from _patterns.ts for concise DSL authoring.
  */
 import type { FlowDSL } from '../types';
-import { entryTrack, branch, entryWithListeners, action, fire, subflow } from '../flows/_patterns';
+import { entry, on, keepAlive, branch, action, fire, subflow } from '../flows/_patterns';
 
 export default {
   /** Linear: entry → action → fire */
   'Analysis Flow': [
-    entryTrack([
+    entry([
       action('Analyze Text', { label: 'analyze' }),
       fire('analysis.complete', { label: 'notify' }),
     ]),
@@ -18,7 +18,7 @@ export default {
 
   /** Branching: action → switch → per-branch steps */
   'Support Flow': [
-    entryTrack([
+    entry([
       action('Analyze Text', { label: 'classify' }),
       branch(
         [
@@ -34,53 +34,54 @@ export default {
     ]),
   ],
 
-  /** Long-running: entry with keep_alive + multiple event listeners */
-  'Monitor Flow': entryWithListeners(
-    [action('Initialize', { label: 'init' })],
-    [
-      { event: 'user.message', label: 'Handle Message', exits: [[
-        action('Process', { label: 'process' }),
-        fire('message.processed'),
-      ]]},
-      { event: 'user.disconnect', label: 'Handle Disconnect', exits: [[
-        fire('session.ended', { label: 'end' }),
-      ]]},
-    ],
-  ),
+  /** Long-running: init step + keep_alive + event listeners */
+  'Monitor Flow': [
+    entry([
+      action('Initialize', { label: 'init' }),
+      keepAlive(),
+    ]),
+    on('user.message', [[
+      action('Process', { label: 'process' }),
+      fire('message.processed'),
+    ]], 'Handle Message'),
+    on('user.disconnect', [[
+      fire('session.ended', { label: 'end' }),
+    ]], 'Handle Disconnect'),
+  ],
 
   /** Parallel exits: one listener triggers independent chains */
-  'Notification Flow': entryWithListeners(
-    [action('Initialize', { label: 'init' })],
-    [
-      { event: 'order.placed', label: 'Handle Order', exits: [
-        [
-          action('Send Email', { label: 'email' }),
-          fire('email.sent'),
-        ],
-        [
-          action('Update Inventory', { label: 'inventory' }),
-          fire('inventory.updated'),
-        ],
-      ]},
-    ],
-  ),
+  'Notification Flow': [
+    entry([
+      action('Initialize', { label: 'init' }),
+      keepAlive(),
+    ]),
+    on('order.placed', [
+      [
+        action('Send Email', { label: 'email' }),
+        fire('email.sent'),
+      ],
+      [
+        action('Update Inventory', { label: 'inventory' }),
+        fire('inventory.updated'),
+      ],
+    ], 'Handle Order'),
+  ],
 
-  /** Parallel entry exits: spawn independent sequences on flow start */
-  'Setup Flow': entryWithListeners(
-    [
+  /** Parallel entry branches: spawn independent chains on flow start */
+  'Setup Flow': [
+    entry(
       [action('Load Config', { label: 'config' })],
       [action('Warm Cache', { label: 'cache' })],
-    ],
-    [
-      { event: 'user.ready', label: 'Handle Ready', exits: [[
-        action('Greet User', { label: 'greet' }),
-      ]]},
-    ],
-  ),
+      [keepAlive()],
+    ),
+    on('user.ready', [[
+      action('Greet User', { label: 'greet' }),
+    ]], 'Handle Ready'),
+  ],
 
   /** Sub-flow: delegate to another flow */
   'Orchestrator Flow': [
-    entryTrack([
+    entry([
       subflow('Analysis Flow', { label: 'run analysis' }),
       fire('orchestration.complete'),
     ]),
