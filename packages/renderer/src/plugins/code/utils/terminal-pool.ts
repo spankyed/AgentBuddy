@@ -1,0 +1,203 @@
+import { Terminal, type IDisposable } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { ClipboardAddon } from '@xterm/addon-clipboard'
+import { WebglAddon } from '@xterm/addon-webgl'
+import { terminalEventBus } from './terminal-events'
+import type { TerminalInfo } from '../features/terminal/state'
+import '@xterm/xterm/css/xterm.css'
+
+/**
+ * Long-lived xterm.js instance pool keyed by terminal id.
+ *
+ * Each entry owns a detached wrapper div with a Terminal mounted into it.
+ * TerminalView.vue re-parents the wrapper into its own container on mount and
+ * removes it on unmount. The xterm instance survives tab switches, so there
+ * is no replay-on-remount cycle and no class of bugs where synthesized DA/DSR/
+ * OSC responses get forwarded to the pty.
+ *
+ * The pool is the sole subscriber to terminalEventBus for each terminal, so
+ * pty output is written into the xterm whether or not any view is mounted.
+ */
+
+const THEME = {
+  background: '#1e1e1e',
+  foreground: '#d4d4d4',
+  cursor: '#d4d4d4',
+  cursorAccent: '#1e1e1e',
+  black: '#000000',
+  red: '#cd3131',
+  green: '#0dbc79',
+  yellow: '#e5e510',
+  blue: '#2472c8',
+  magenta: '#bc3fbc',
+  cyan: '#11a8cd',
+  white: '#e5e5e5',
+  brightBlack: '#666666',
+  brightRed: '#f14c4c',
+  brightGreen: '#23d18b',
+  brightYellow: '#f5f543',
+  brightBlue: '#3b8eea',
+  brightMagenta: '#d670d6',
+  brightCyan: '#29b8db',
+  brightWhite: '#e5e5e5'
+} as const
+
+export interface PoolEntry {
+  terminalId: string
+  term: Terminal
+  fitAddon: FitAddon
+  wrapper: HTMLDivElement
+  disposables: IDisposable[]
+  attachedContainer: HTMLElement | null
+  isShowingLoadingContent: boolean
+}
+
+const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
+  term.write('\x1b[1;36m🚀 Starting terminal...\x1b[0m\r\n')
+  term.write('\x1b[90mConnecting to shell: \x1b[0m' + (info.shell || 'default') + '\r\n')
+  term.write('\x1b[90mWorking directory: \x1b[0m' + info.cwd + '\r\n\r\n')
+}
+
+class TerminalPool {
+  private entries = new Map<string, PoolEntry>()
+
+  get(terminalId: string): PoolEntry | undefined {
+    return this.entries.get(terminalId)
+  }
+
+  /**
+   * Returns an existing entry or constructs a new one. Pass `sendInput` as the
+   * callback to forward xterm's onData (user input + synthesized responses
+   * from live queries) to the backend pty. The callback is wired only AFTER
+   * any initial seed from terminalEventBus has been fully parsed, so
+   * synthesized responses during the seed are dropped.
+   */
+  ensure(info: TerminalInfo, sendInput: (data: string) => void): PoolEntry {
+    const existing = this.entries.get(info.id)
+    if (existing) return existing
+
+    const term = new Terminal({
+      fontFamily: 'JetBrains Mono, Cascadia Code, Fira Code, Menlo, monospace',
+      fontSize: 14,
+      convertEol: true,
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      allowProposedApi: true,
+      scrollback: 10_000,
+      cols: info.cols || 80,
+      rows: info.rows || 24,
+      theme: { ...THEME }
+    })
+
+    const fitAddon = new FitAddon()
+    term.loadAddon(fitAddon)
+    term.loadAddon(new WebLinksAddon((_event, url) => {
+      window.electronAPI?.shell?.openExternal(url)
+    }))
+    const unicode11 = new Unicode11Addon()
+    term.loadAddon(unicode11)
+    term.unicode.activeVersion = '11'
+    term.loadAddon(new ClipboardAddon())
+
+    const wrapper = document.createElement('div')
+    wrapper.style.height = '100%'
+    wrapper.style.width = '100%'
+
+    term.open(wrapper)
+    try { term.loadAddon(new WebglAddon()) } catch { /* falls back to canvas renderer */ }
+    if (term.element) term.element.style.height = '100%'
+
+    const entry: PoolEntry = {
+      terminalId: info.id,
+      term,
+      fitAddon,
+      wrapper,
+      disposables: [],
+      attachedContainer: null,
+      isShowingLoadingContent: false
+    }
+
+    // Shift+Enter inserts a newline instead of executing. Wired once here
+    // because attachCustomKeyEventHandler is a setter, not an event.
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.type === 'keydown' && (event.key === 'Enter' || event.keyCode === 13) && event.shiftKey) {
+        sendInput('\n')
+        event.preventDefault()
+        event.stopPropagation()
+        return false
+      }
+      return true
+    })
+
+    // Subscribe to pty output for this terminal. This happens BEFORE the seed
+    // so writes are queued in order behind the seed (xterm processes writes
+    // FIFO, so cbSeed fires before any live data is parsed).
+    const unsubscribe = terminalEventBus.subscribe(info.id, (_id, data) => {
+      if (entry.isShowingLoadingContent) {
+        term.clear()
+        entry.isShowingLoadingContent = false
+      }
+      term.write(data)
+    })
+    entry.disposables.push({ dispose: unsubscribe })
+
+    // Seed from persisted output (first open after app restart) and wire
+    // onData only after the seed has been fully parsed, so any DA/DSR/OSC
+    // responses xterm synthesizes during the seed go nowhere.
+    const storedOutput = terminalEventBus.getOutput(info.id)
+    if (storedOutput) {
+      term.write(storedOutput, () => {
+        entry.disposables.push(term.onData(sendInput))
+      })
+    } else {
+      showLoadingContent(term, info)
+      entry.isShowingLoadingContent = true
+      entry.disposables.push(term.onData(sendInput))
+    }
+
+    this.entries.set(info.id, entry)
+    return entry
+  }
+
+  /** Attach (or re-attach) the entry's wrapper into a host container. */
+  attach(terminalId: string, host: HTMLElement): PoolEntry | null {
+    const entry = this.entries.get(terminalId)
+    if (!entry) return null
+
+    if (entry.attachedContainer && entry.attachedContainer !== host) {
+      entry.wrapper.remove()
+    }
+    host.appendChild(entry.wrapper)
+    entry.attachedContainer = host
+    return entry
+  }
+
+  /** Detach the wrapper from its host without disposing the xterm. */
+  detach(terminalId: string): void {
+    const entry = this.entries.get(terminalId)
+    if (!entry) return
+    entry.wrapper.remove()
+    entry.attachedContainer = null
+  }
+
+  /** Dispose xterm + all wire-level disposables. Call on terminal.CLOSED. */
+  dispose(terminalId: string): void {
+    const entry = this.entries.get(terminalId)
+    if (!entry) return
+
+    for (const d of entry.disposables) {
+      try { d.dispose() } catch (e) { console.error('[terminalPool] dispose failed:', e) }
+    }
+    entry.disposables.length = 0
+
+    try { entry.term.dispose() } catch (e) { console.error('[terminalPool] term.dispose failed:', e) }
+
+    entry.wrapper.remove()
+    entry.attachedContainer = null
+    this.entries.delete(terminalId)
+  }
+}
+
+export const terminalPool = new TerminalPool()

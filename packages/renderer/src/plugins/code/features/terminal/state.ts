@@ -1,6 +1,7 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { trpc } from '@/core/trpc';
 import { terminalEventBus } from '../../utils/terminal-events';
+import { terminalPool } from '../../utils/terminal-pool';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { removeTabs, nextActiveFromHistory } from '../../utils/tab-management';
 
@@ -214,6 +215,7 @@ export const terminalState = setup({
     cleanupTerminalOutput: ({ event }) => {
       const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
       terminalEventBus.clearOutput(ev.data.terminalId)
+      terminalPool.dispose(ev.data.terminalId)
     },
 
     handleTerminalOutput: ({ event }) => {

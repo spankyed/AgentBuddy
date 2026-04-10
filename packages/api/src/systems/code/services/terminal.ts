@@ -9,8 +9,8 @@ import { repository } from '@/repository'
 interface Terminal {
   info: TerminalInfo
   pty: pty.IPty
-  dataHandler?: (data: string) => void
-  exitHandler?: (exitCode: number, signal?: number) => void
+  dataDisposable?: pty.IDisposable
+  exitDisposable?: pty.IDisposable
 }
 
 class TerminalService {
@@ -183,20 +183,17 @@ class TerminalService {
     if (!terminal) return false
 
     try {
-      // Clean up handlers
-      if (terminal.dataHandler) {
-        terminal.dataHandler = undefined
-      }
-      if (terminal.exitHandler) {
-        terminal.exitHandler = undefined
-      }
-      
+      terminal.dataDisposable?.dispose()
+      terminal.dataDisposable = undefined
+      terminal.exitDisposable?.dispose()
+      terminal.exitDisposable = undefined
+
       terminal.pty.kill()
       this.terminals.delete(id)
-      
+
       // Mark as closed in EARS storage
       repository.terminalCommands.markClosed(id as EARS.EntityId)
-      
+
       return true
     } catch (error) {
       console.error('Error killing terminal:', error)
@@ -207,6 +204,8 @@ class TerminalService {
   killAll(): void {
     for (const [id, terminal] of this.terminals) {
       try {
+        terminal.dataDisposable?.dispose()
+        terminal.exitDisposable?.dispose()
         terminal.pty.kill()
       } catch (error) {
         console.error(`Error killing terminal ${id}:`, error)
@@ -219,34 +218,24 @@ class TerminalService {
     const terminal = this.terminals.get(id)
     if (!terminal) return
 
-    // Remove previous handler if exists
-    if (terminal.dataHandler) {
-      terminal.pty.onData((data) => {}) // Clear by setting empty handler
-    }
-
-    terminal.dataHandler = callback
-    terminal.pty.onData(callback)
+    terminal.dataDisposable?.dispose()
+    terminal.dataDisposable = terminal.pty.onData(callback)
   }
 
   onExit(id: string, callback: (exitCode: number, signal?: number) => void): void {
     const terminal = this.terminals.get(id)
     if (!terminal) return
 
-    // Wrap the callback to ensure cleanup
-    const wrappedCallback = ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
-      // Clean up handlers before removing terminal
-      if (terminal.dataHandler) {
-        terminal.dataHandler = undefined
-      }
-      if (terminal.exitHandler) {
-        terminal.exitHandler = undefined
-      }
+    terminal.exitDisposable?.dispose()
+    terminal.exitDisposable = terminal.pty.onExit(({ exitCode, signal }) => {
+      // Dispose listeners before removing terminal
+      terminal.dataDisposable?.dispose()
+      terminal.dataDisposable = undefined
+      terminal.exitDisposable?.dispose()
+      terminal.exitDisposable = undefined
       this.terminals.delete(id)
       callback(exitCode, signal)
-    }
-
-    terminal.exitHandler = callback
-    terminal.pty.onExit(wrappedCallback)
+    })
   }
 
   private validateShell(shell: string): string {
