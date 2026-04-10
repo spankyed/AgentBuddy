@@ -169,8 +169,16 @@ function evaluateCodePredicate(condition: Condition, context: ExecutionContext):
 }
 
 /**
- * Evaluate conditions in order and return the index of the first matching condition
- * The last condition is typically the else/default (has no predicate)
+ * Evaluate conditions in order and return the index of the first matching
+ * condition, or -1 if none match.
+ *
+ * The compiler appends an `else` (if present in the DSL) as a trailing
+ * predicate-less condition, and `evaluatePredicate(undefined)` returns true
+ * — so the "else" branch naturally matches here without any special-casing.
+ * When there is no else and every predicate is false, we return -1 and let
+ * the caller signal the chain to end via a `noMatch` completion flag; we
+ * deliberately do NOT fall through to the last condition (see git blame for
+ * the prior bug where we did).
  */
 function evaluateConditions(conditions: Condition[], context: ExecutionContext): number {
   for (let i = 0; i < conditions.length; i++) {
@@ -186,10 +194,7 @@ function evaluateConditions(conditions: Condition[], context: ExecutionContext):
     }
   }
 
-  // This shouldn't happen if the last condition is always the else (no predicate)
-  // But just in case, return the last index as fallback
-  brainLogger.warn('No condition matched and no else branch found, using last condition');
-  return conditions.length - 1;
+  return -1;
 }
 
 /**
@@ -223,8 +228,26 @@ export function switchNodeHandler(
       return;
     }
 
-    // Evaluate conditions and get the matching branch index
+    // Evaluate conditions and get the matching branch index (-1 if none).
     const branchIndex = evaluateConditions(conditions, executionContext);
+
+    if (branchIndex === -1) {
+      // No condition matched and there is no else. End this chain cleanly
+      // without spawning any downstream step. Other parallel chains in the
+      // parent flow (including keep_alive branches) are unaffected.
+      brainInspect(`Switch node '${node.label}': no condition matched, ending chain`);
+      actor.send({
+        type: 'COMPLETE',
+        result: {
+          nodeType: 'switch',
+          branchIndex: -1,
+          sourceHandle: undefined,
+          noMatch: true,
+        },
+      });
+      return;
+    }
+
     const matchedCondition = conditions[branchIndex];
 
     brainInspect(`Switch node resolved to branch ${branchIndex}`, {

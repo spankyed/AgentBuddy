@@ -51,7 +51,6 @@ export async function action(
   const {
     threadId,
     text,
-    mode,
     phase,
     model,
     allowedTools,
@@ -73,16 +72,8 @@ export async function action(
   if (!threadId || !text?.trim()) {
     return { success: false, error: 'threadId and text are required' };
   }
-
-  // Mode gate. The claude-code flow routes every user.message here, and this
-  // action is the single place that decides whether Claude Code should
-  // actually run. Any mode other than `work` is a silent no-op so the flow
-  // doesn't fight with other mode-specific handlers that listen on the same
-  // event. See claude-code-flow.ts for the rationale (brain switch-node bug
-  // + DSL validator forbids empty-else branches).
-  if (mode !== 'work') {
-    return { success: true, skipped: true, reason: `mode "${mode ?? '(unset)'}" is not "work"` };
-  }
+  // Note: the mode gate lives in the claude-code flow's `branch()` node.
+  // This action is only invoked when the flow's switch matches `mode === 'work'`.
 
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
