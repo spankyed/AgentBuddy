@@ -8,9 +8,12 @@
           @click="$emit('merge', selectedMethod)"
           :disabled="!canMerge"
           :title="mergeTooltip"
-          class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-l bg-green-700/80 text-white hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="MAIN_BTN_CLASSES[mergeVariant]"
+          class="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-l transition-colors"
         >
-          <Loader2 v-if="isMerging" :size="11" class="animate-spin" />
+          <Loader2 v-if="mergeVariant === 'merging' || mergeVariant === 'pending'" :size="11" class="animate-spin" />
+          <AlertTriangle v-else-if="mergeVariant === 'error'" :size="11" />
+          <Ban v-else-if="mergeVariant === 'blocked'" :size="11" />
           <GitMerge v-else :size="11" />
           <span>{{ mergeMethodList.find(m => m.value === selectedMethod)?.shortLabel }}</span>
         </button>
@@ -18,7 +21,8 @@
           @click="showMergeOptions = !showMergeOptions"
           :disabled="!canMerge"
           :title="mergeTooltip"
-          class="px-1 py-1 rounded-r bg-green-700/80 text-white hover:bg-green-600 transition-colors border-l border-green-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="CHEVRON_BTN_CLASSES[mergeVariant]"
+          class="px-1 py-1 rounded-r transition-colors"
         >
           <ChevronDown :size="11" />
         </button>
@@ -97,7 +101,10 @@
 
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
-import { GitMerge, GitBranch, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2 } from 'lucide-vue-next'
+import {
+  GitMerge, GitBranch, ChevronDown, Check, XCircle, FileEdit, Loader2, Trash2,
+  AlertTriangle, Ban,
+} from 'lucide-vue-next'
 import { useClickOutside } from '@/core/composables/useClickOutside'
 import type { GhPullRequest } from '@app/api'
 
@@ -110,6 +117,7 @@ const props = defineProps<{
 }>()
 
 type StatusCheck = NonNullable<GhPullRequest['statusCheckRollup']>[number]
+type MergeVariant = 'clean' | 'merging' | 'blocked' | 'error' | 'pending'
 
 const FAILING_CONCLUSIONS = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'])
 const PENDING_STATUSES = new Set(['QUEUED', 'IN_PROGRESS', 'PENDING'])
@@ -120,30 +128,53 @@ const isFailing = (c: StatusCheck) =>
 const isPending = (c: StatusCheck) =>
   (c.status && PENDING_STATUSES.has(c.status) && !c.conclusion) || (!c.status && c.state === 'PENDING')
 
-/** Reason the PR cannot be merged, or null when it can. */
-const mergeBlockReason = computed<string | null>(() => {
+/** Semantic state of the merge button: drives color, icon, tooltip, and disabled flag. */
+const mergeState = computed<{ variant: MergeVariant; reason: string }>(() => {
   const pr = props.pr
-  if (!pr) return 'No pull request selected'
-  if (props.isMerging) return 'Merging…'
-  if (pr.isDraft) return 'Cannot merge a draft PR'
+  if (props.isMerging) return { variant: 'merging', reason: 'Merging…' }
+  if (!pr)             return { variant: 'blocked', reason: 'No pull request selected' }
+  if (pr.isDraft)      return { variant: 'blocked', reason: 'Cannot merge a draft PR' }
 
-  if (pr.mergeable === 'CONFLICTING' || pr.mergeStateStatus === 'DIRTY') return 'Cannot merge — branch has conflicts with base'
-  if (pr.mergeStateStatus === 'BEHIND') return 'Branch is out of date with base — update it first'
-  if (pr.reviewDecision === 'CHANGES_REQUESTED') return 'Cannot merge — changes have been requested'
-  if (pr.reviewDecision === 'REVIEW_REQUIRED') return 'Cannot merge — required review is missing'
+  if (pr.mergeable === 'CONFLICTING' || pr.mergeStateStatus === 'DIRTY')
+    return { variant: 'error', reason: 'Cannot merge — branch has conflicts with base' }
+  if (pr.mergeStateStatus === 'BEHIND')
+    return { variant: 'blocked', reason: 'Branch is out of date with base — update it first' }
+  if (pr.reviewDecision === 'CHANGES_REQUESTED')
+    return { variant: 'error', reason: 'Cannot merge — changes have been requested' }
+  if (pr.reviewDecision === 'REVIEW_REQUIRED')
+    return { variant: 'blocked', reason: 'Cannot merge — required review is missing' }
 
   const checks = pr.statusCheckRollup ?? []
-  if (checks.some(isFailing)) return 'Cannot merge — status checks are failing'
-  if (checks.some(isPending)) return 'Cannot merge — status checks are still running'
+  if (checks.some(isFailing)) return { variant: 'error',   reason: 'Cannot merge — status checks are failing' }
+  if (checks.some(isPending)) return { variant: 'pending', reason: 'Cannot merge — status checks are still running' }
 
-  if (pr.mergeStateStatus === 'BLOCKED') return 'Cannot merge — blocked by branch protection rules'
-  if (pr.mergeable === 'UNKNOWN' || pr.mergeStateStatus === 'UNKNOWN') return 'Checking mergeability…'
+  if (pr.mergeStateStatus === 'BLOCKED')
+    return { variant: 'blocked', reason: 'Cannot merge — blocked by branch protection rules' }
+  if (pr.mergeable === 'UNKNOWN' || pr.mergeStateStatus === 'UNKNOWN')
+    return { variant: 'pending', reason: 'Checking mergeability…' }
 
-  return null
+  return { variant: 'clean', reason: 'Merge pull request' }
 })
 
-const canMerge = computed(() => mergeBlockReason.value === null)
-const mergeTooltip = computed(() => mergeBlockReason.value ?? 'Merge pull request')
+const canMerge = computed(() => mergeState.value.variant === 'clean')
+const mergeTooltip = computed(() => mergeState.value.reason)
+const mergeVariant = computed(() => mergeState.value.variant)
+
+const MAIN_BTN_CLASSES: Record<MergeVariant, string> = {
+  clean:   'bg-green-700/80 text-white hover:bg-green-600',
+  merging: 'bg-green-700/60 text-white cursor-wait',
+  blocked: 'bg-neutral-700/60 text-neutral-400 cursor-not-allowed',
+  error:   'bg-red-950/50 text-red-300 border border-red-900/60 cursor-not-allowed',
+  pending: 'bg-amber-950/50 text-amber-300 border border-amber-900/60 cursor-not-allowed',
+}
+
+const CHEVRON_BTN_CLASSES: Record<MergeVariant, string> = {
+  clean:   'bg-green-700/80 text-white hover:bg-green-600 border-l border-green-600/50',
+  merging: 'bg-green-700/60 text-white cursor-wait border-l border-green-600/50',
+  blocked: 'bg-neutral-700/60 text-neutral-400 cursor-not-allowed border-l border-neutral-600/60',
+  error:   'bg-red-950/50 text-red-300 cursor-not-allowed border-l border-red-900/60',
+  pending: 'bg-amber-950/50 text-amber-300 cursor-not-allowed border-l border-amber-900/60',
+}
 
 defineEmits<{
   'merge': [method: 'merge' | 'squash' | 'rebase']
