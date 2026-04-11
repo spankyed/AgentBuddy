@@ -38,6 +38,7 @@
     "start:inspect": "npm run build:be && ELECTRON_INSPECT=true node packages/dev-mode.js",
     "start:no-build": "node packages/dev-mode.js",
     "build:be": "npm run build --workspace @app/api",
+    "prebuild:be": "npm run compile",
     "typecheck": "npm run typecheck:fe && npm run typecheck:be && echo '✅ All type checks passed!'",
     "typecheck:fe": "npm run type-check --workspace @app/renderer && echo '✅ Frontend type check passed'",
     "typecheck:be": "cd packages/api && npx tsc -p . --noEmit && echo '✅ Backend type check passed'",
