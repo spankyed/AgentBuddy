@@ -718,4 +718,66 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     // But all the content types made it through.
     expect(received).toEqual(['system', 'result'])
   })
+
+  it('forwards user-type lines carrying tool_result blocks to the consumer iterator', async () => {
+    // Regression guard for the tool-execution-error channel. The CLI
+    // reports every tool outcome (success or failure) via a `user`-role
+    // message whose `message.content` is an array containing a
+    // `tool_result` block with `tool_use_id`, optional `is_error`, and
+    // `content` carrying either the result payload or a
+    // `<tool_use_error>…</tool_use_error>` envelope.
+    //
+    // Before chat.ts grew a handler for these lines, failed Edit/Write
+    // tools were silently flipped to 'ok' at finalise(), so the UI
+    // showed a fake green checkmark for actual failures. This test
+    // pins the wrapper-level contract: the pump MUST forward the full
+    // user line (including `message.content`'s array shape and all
+    // tool_result fields) to the consumer iterator so downstream
+    // handlers can act on it. If this regresses, the chat.ts branch
+    // won't receive anything to handle.
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-tr-1' })
+    mock.pushEvent({
+      type: 'user',
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_edit_1',
+            content: '<tool_use_error>String to replace not found in file.</tool_use_error>',
+            is_error: true,
+          },
+        ],
+      },
+      parent_tool_use_id: null,
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-tr-1',
+      result: '',
+    })
+
+    const handle = await query({ prompt: 'edit' })
+
+    const received: Array<{ type: string; message?: unknown }> = []
+    for await (const ev of handle.events) {
+      received.push(ev as { type: string; message?: unknown })
+    }
+
+    // The user event with tool_result content survived the pump and
+    // reached the consumer — chat.ts's branch can now act on it.
+    const userEvt = received.find(e => e.type === 'user')
+    expect(userEvt).toBeDefined()
+    const content = (userEvt?.message as { content?: unknown[] })?.content
+    expect(Array.isArray(content)).toBe(true)
+    const toolResult = (content as Array<Record<string, unknown>>)[0]
+    expect(toolResult.type).toBe('tool_result')
+    expect(toolResult.is_error).toBe(true)
+    expect(toolResult.tool_use_id).toBe('toolu_edit_1')
+    expect(String(toolResult.content)).toContain('String to replace not found')
+  })
 })

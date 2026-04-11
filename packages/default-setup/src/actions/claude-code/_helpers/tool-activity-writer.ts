@@ -165,7 +165,10 @@ export function createToolActivityWriter(
         return;
       }
       // Any entry still marked 'running' at finalise time is stranded —
-      // mark it 'ok' so the group doesn't visually lie.
+      // mark it 'ok' so the group doesn't visually lie. `'error'` (set by
+      // chat.ts's `user`/tool_result handler) and `'denied'` (set by the
+      // permission flow) are preserved intentionally — they're meaningful
+      // terminal states and must NOT be overwritten by this finaliser.
       for (const e of entries) {
         if (e.status === 'running') e.status = 'ok';
       }

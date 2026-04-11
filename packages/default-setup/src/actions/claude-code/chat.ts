@@ -308,19 +308,65 @@ export async function action(
         continue;
       }
 
+      if (line.type === 'user') {
+        // Tool results flow back on `user`-role messages. The CLI wraps every
+        // tool outcome (success or failure) as a `tool_result` content block
+        // with `is_error` indicating failure and `content` carrying either
+        // the result payload (success) or a `<tool_use_error>…</tool_use_error>`
+        // envelope (failure). See leaked CLI source:
+        //   src/services/tools/toolExecution.ts:400,479 (success + failure shapes)
+        //   src/services/tools/StreamingToolExecutor.ts:351 (is_error === true filter)
+        //
+        // Before this branch existed, tool failures were silently dropped:
+        // entries stayed in 'running' until finalise() force-flipped them
+        // to 'ok', so a failing Edit rendered as a fake green checkmark.
+        // Now we own status transitions for both the success and failure
+        // cases; tool_use_summary only sets the outputSummary text.
+        const content = (line.message as { content?: unknown })?.content;
+        if (!Array.isArray(content)) continue;
+
+        for (const block of content) {
+          const b = block as { type?: string; tool_use_id?: unknown; content?: unknown; is_error?: unknown };
+          if (b?.type !== 'tool_result') continue;
+          const toolUseId = b.tool_use_id;
+          if (typeof toolUseId !== 'string') continue;
+
+          const resultText = extractToolResultText(b.content);
+          const isError = b.is_error === true;
+          const displayText = isError ? stripToolUseErrorEnvelope(resultText) : resultText;
+          const outputSummary = displayText.length > 120
+            ? displayText.slice(0, 117) + '…'
+            : displayText;
+
+          toolActivity.update(toolUseId, {
+            status: isError ? 'error' : 'ok',
+            outputSummary: outputSummary || undefined,
+            ...(isError ? { details: { error: displayText } } : {}),
+          });
+
+          if (isError) {
+            log.warn('tool execution failed', {
+              tool_use_id: toolUseId,
+              preview: displayText.slice(0, 200),
+            });
+          }
+        }
+        continue;
+      }
+
       if (line.type === 'tool_use_summary') {
         // CLI reports a summary string covering one or more prior tool_uses.
-        // Apply the summary to every referenced tool and flip the status to
-        // 'ok' so the row renders with a green check.
+        // Apply it as supplementary outputSummary text ONLY — status
+        // transitions are owned by the `user`/tool_result handler above.
+        // Touching status here would race with tool_result and could
+        // incorrectly mark a failed tool as 'ok' depending on CLI ordering.
         const ids: string[] = Array.isArray(line.preceding_tool_use_ids)
           ? line.preceding_tool_use_ids
           : [];
         const summaryText: string = typeof line.summary === 'string' ? line.summary : '';
+        if (!summaryText) continue;
         for (const id of ids) {
-          toolActivity.update(id, {
-            status: 'ok',
-            outputSummary: summaryText || undefined,
-          });
+          toolActivity.update(id, { outputSummary: summaryText });
         }
         continue;
       }
@@ -342,7 +388,12 @@ export async function action(
       lastTurnAt: Date.now(),
     });
 
-    toolActivity.finalise('done');
+    // Upgrade the block-level state to 'error' if any tool call failed —
+    // ToolActivityBlock.vue auto-opens the collapsed details on the
+    // streaming→error transition so the user sees the failure without
+    // having to click into the block.
+    const hadToolErrors = toolActivity.entries.some(e => e.status === 'error');
+    toolActivity.finalise(hadToolErrors ? 'error' : 'done');
     // Close out the session card: bump turn + cost counters and flip to idle.
     updateSessionArtifact(services, threadId, (prev) => ({
       status: 'idle',
@@ -460,4 +511,35 @@ function deriveDiffTitle(userText: string): string {
   if (!firstLine) return 'Claude Code changes';
   if (firstLine.length <= 60) return firstLine;
   return firstLine.slice(0, 57) + '…';
+}
+
+/**
+ * Normalise a `tool_result` block's `content` field to a plain string.
+ * The Claude Code CLI emits two shapes depending on tool output:
+ *   - string: plain result text (most tools)
+ *   - array:  [{ type:'text', text:'...' }, ...] for multi-part results
+ * Anything else (null, number, unexpected shape) flattens to an empty
+ * string so the downstream display logic doesn't have to branch again.
+ */
+function extractToolResultText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map(b => (b && typeof b === 'object' && 'text' in b ? String((b as { text?: unknown }).text ?? '') : ''))
+      .filter(Boolean)
+      .join('\n');
+  }
+  return '';
+}
+
+/**
+ * Strip the `<tool_use_error>…</tool_use_error>` envelope the CLI wraps
+ * around tool-failure messages (see leaked CLI source at
+ * `src/services/tools/toolExecution.ts:479-481`). Leaves the human
+ * readable error text unwrapped. Non-envelope inputs pass through
+ * unchanged (with whitespace trimmed).
+ */
+function stripToolUseErrorEnvelope(raw: string): string {
+  const m = raw.match(/^\s*<tool_use_error>([\s\S]*?)<\/tool_use_error>\s*$/);
+  return m ? m[1].trim() : raw.trim();
 }
