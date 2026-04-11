@@ -175,6 +175,13 @@ export const defaultSettings: SettingsData = {
     logs: {
       maxLogs: 1000, // Default to 1000 logs
       excludedSources: [] // No sources excluded by default
+    },
+    claudeCode: {
+      binaryPath: '',              // Empty → auto-detect via `which claude`
+      defaultModel: '',            // e.g. 'sonnet' — empty lets the CLI decide
+      defaultPermissionMode: 'default', // 'default' | 'auto' | 'plan'
+      appendSystemPrompt: '',
+      defaultCwd: '',
     }
   },
   internal: {

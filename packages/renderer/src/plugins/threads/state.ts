@@ -139,6 +139,22 @@ type UIEvent =
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
+  | {
+      type: 'CC_PERMISSION_RESPONSE'
+      messageId: string
+      requestId: string
+      decision: 'allow' | 'allow_session' | 'deny'
+      scope?: string
+    }
+  | { type: 'CC_CANCEL' }
+  | {
+      type: 'SET_CC_CREATE_OPTIONS'
+      enabled: boolean
+      cwd?: string
+      model?: string
+      permissionMode?: string
+      appendSystemPrompt?: string
+    }
 
 type ThreadEvents =
   | UIEvent
@@ -797,6 +813,48 @@ const threadsState = setup({
       const { messageId, threadId } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'REVERT_THREAD', messageId, threadId });
     },
+    sendCCPermissionResponse: ({ context, event }) => {
+      const e = typeOf('CC_PERMISSION_RESPONSE', event);
+      const threadId = context.currentThread?.id;
+      if (!threadId) return;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CC_PERMISSION_RESPONSE',
+        threadId,
+        messageId: e.messageId,
+        requestId: e.requestId,
+        decision: e.decision,
+        ...(e.scope && { scope: e.scope }),
+      } as any);
+    },
+    sendCCCancel: ({ context }) => {
+      const threadId = context.currentThread?.id;
+      if (!threadId) return;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'CC_CANCEL',
+        threadId,
+      } as any);
+    },
+    setCCCreateOptions: assign(({ context, event }) => {
+      const e = typeOf('SET_CC_CREATE_OPTIONS', event);
+      if (!e.enabled) {
+        const { claudeCode, forcedMode, ...rest } = context.create as any;
+        return { create: { ...rest } };
+      }
+      return {
+        create: {
+          ...context.create,
+          forcedMode: 'claude-code',
+          claudeCode: {
+            cwd: e.cwd || '',
+            ...(e.model && { model: e.model }),
+            ...(e.permissionMode && { permissionMode: e.permissionMode }),
+            ...(e.appendSystemPrompt && { appendSystemPrompt: e.appendSystemPrompt }),
+          },
+        } as any,
+      };
+    }),
   },
   guards: {
     targetIs,
@@ -978,6 +1036,9 @@ const threadsState = setup({
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
+    CC_PERMISSION_RESPONSE: { actions: 'sendCCPermissionResponse' },
+    CC_CANCEL: { actions: 'sendCCCancel' },
+    SET_CC_CREATE_OPTIONS: { actions: 'setCCCreateOptions' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: [

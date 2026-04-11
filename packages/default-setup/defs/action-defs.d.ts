@@ -5,27 +5,6 @@ import * as ai from 'ai';
 import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
-interface FileEntry {
-    name: string;
-    isDirectory: boolean;
-}
-interface FileStat {
-    size: number;
-    mtime: Date;
-    isDirectory: boolean;
-    isFile: boolean;
-}
-interface FilesystemServiceType {
-    writeFile(filePath: string, content: string): Promise<void>;
-    readFile(filePath: string): Promise<string>;
-    exists(filePath: string): Promise<boolean>;
-    mkdir(dirPath: string): Promise<void>;
-    readDir(dirPath: string): Promise<FileEntry[]>;
-    remove(targetPath: string): Promise<void>;
-    rename(oldPath: string, newPath: string): Promise<void>;
-    stat(filePath: string): Promise<FileStat>;
-}
-
 declare namespace EARS {
     export enum Entity {
         Agent = "Agent",
@@ -48,7 +27,8 @@ declare namespace EARS {
         Settings = "Settings",
         FAQ = "FAQ",
         Secret = "Secret",
-        Note = "Note"
+        Note = "Note",
+        ClaudeCodeSession = "ClaudeCodeSession"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {
@@ -131,6 +111,121 @@ interface BaseEntity {
     entityType: EARS.Entity;
     createdAt: number;
     updatedAt?: number;
+}
+
+/**
+ * ClaudeCodeSession repository — thin CRUD layer using qx/tx.
+ *
+ * qx() / tx() are synchronous — do NOT await them.
+ */
+
+interface ClaudeCodeSessionRecord {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.ClaudeCodeSession;
+    threadId: EARS.EntityId;
+    cliSessionId?: string;
+    cwd: string;
+    model?: string;
+    permissionMode?: string;
+    appendSystemPrompt?: string;
+    addDirs?: string[];
+    createdAt: number;
+    lastActivityAt: number;
+    updatedAt?: number;
+}
+interface CreateSessionInput {
+    threadId: EARS.EntityId;
+    cwd: string;
+    model?: string;
+    permissionMode?: string;
+    appendSystemPrompt?: string;
+    addDirs?: string[];
+}
+
+/**
+ * MCP-wire shape for a permission decision. This is the minimal shape the
+ * permission MCP bridge needs to return to the Claude Code CLI.
+ */
+type PermissionDecision = {
+    decision: 'allow' | 'deny';
+    updatedInput?: unknown;
+    message?: string;
+};
+/**
+ * UI-shape for a permission decision. The Resolve Claude Code Permission
+ * action carries this from the frontend; the per-turn action is responsible
+ * for translating it into a `PermissionDecision` before the MCP bridge sees
+ * it.
+ */
+type PermissionUiDecision = {
+    decision: 'allow' | 'allow_session' | 'deny';
+    scope?: string;
+};
+interface PermissionRequest {
+    turnId: string;
+    requestId: string;
+    toolName: string;
+    toolInput: unknown;
+}
+interface Deferred<T> {
+    promise: Promise<T>;
+    resolve: (v: T) => void;
+    reject: (err: unknown) => void;
+}
+interface PendingPermission {
+    deferred: Deferred<PermissionUiDecision>;
+    turnId: string;
+    request: PermissionRequest;
+}
+interface RunTurnArgs {
+    session: ClaudeCodeSessionRecord;
+    text: string;
+}
+interface RunTurnCallbacks {
+    onEvent: (event: unknown) => void;
+    onPermissionRequest: (req: PermissionRequest) => Promise<PermissionDecision>;
+    onSessionIdCaptured: (sessionId: string) => void;
+    onStderr?: (chunk: string) => void;
+}
+interface RunTurnResult {
+    usage?: unknown;
+    totalCostUsd?: number;
+    exitCode: number | null;
+    exitSignal: NodeJS.Signals | null;
+}
+interface ClaudeCodeService {
+    resolveBinary(): string;
+    createSession(threadId: EARS.EntityId, opts: Omit<CreateSessionInput, 'threadId'>): ClaudeCodeSessionRecord;
+    getSession(threadId: EARS.EntityId): ClaudeCodeSessionRecord | null;
+    attachSessionId(threadId: EARS.EntityId, cliSessionId: string): void;
+    runTurn(args: RunTurnArgs, cb: RunTurnCallbacks): Promise<RunTurnResult>;
+    cancelActiveTurn(threadId: EARS.EntityId): void;
+    pendingPermissions: {
+        register(requestId: string, pending: PendingPermission): void;
+        resolve(requestId: string, decision: PermissionUiDecision): void;
+        rejectAllForTurn(turnId: string): void;
+    };
+}
+
+interface FileEntry {
+    name: string;
+    isDirectory: boolean;
+}
+interface FileStat {
+    size: number;
+    mtime: Date;
+    isDirectory: boolean;
+    isFile: boolean;
+}
+interface FilesystemServiceType {
+    writeFile(filePath: string, content: string): Promise<void>;
+    readFile(filePath: string): Promise<string>;
+    exists(filePath: string): Promise<boolean>;
+    mkdir(dirPath: string): Promise<void>;
+    readDir(dirPath: string): Promise<FileEntry[]>;
+    remove(targetPath: string): Promise<void>;
+    rename(oldPath: string, newPath: string): Promise<void>;
+    stat(filePath: string): Promise<FileStat>;
 }
 
 type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
@@ -350,7 +445,7 @@ interface ActionsStartupData {
     categories?: Category[];
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
+type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool_use' | 'tool_result' | 'thinking' | 'permission_request' | 'diff' | 'error';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -434,8 +529,20 @@ interface ThreadEntity extends BaseEntity {
     shortCode?: string;
     status: string;
     tags?: string[];
-    forcedMode?: 'birth';
+    forcedMode?: 'birth' | 'claude-code';
     pinned?: boolean;
+}
+/**
+ * Options carried on `ThreadCreateData` when `forcedMode === 'claude-code'`.
+ * Kept as a nested object so the base `ThreadCreateData` shape stays cohesive
+ * and other forced-mode kinds can add their own sub-object in the future.
+ */
+interface ClaudeCodeThreadOptions {
+    cwd: string;
+    model?: string;
+    permissionMode?: string;
+    appendSystemPrompt?: string;
+    addDirs?: string[];
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
@@ -458,8 +565,10 @@ type ThreadLinkedFields = {
 };
 type ThreadCreateData = Simplify<ThreadEditFields & {
     role?: EARS.RoleKind;
-    forcedMode?: 'birth';
+    forcedMode?: 'birth' | 'claude-code';
     pinned?: boolean;
+    /** Claude Code options — only relevant when forcedMode === 'claude-code'. */
+    claudeCode?: ClaudeCodeThreadOptions;
 }>;
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
 type ThreadExtendedData = ThreadLinkedFields & {
@@ -825,17 +934,62 @@ declare const events: {
         systemId: "settings";
         provider: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PREVIEW_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }, {
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
         systemId: zod.ZodLiteral<"settings">;
         directory: zod.ZodString;
+        include: zod.ZodOptional<zod.ZodObject<{
+            actions: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            prompts: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            flows: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            library: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            notes: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }, {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "IMPORT_SETUP_PACK";
         systemId: "settings";
         directory: string;
+        include?: {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
     }, {
         type: "IMPORT_SETUP_PACK";
         systemId: "settings";
         directory: string;
+        include?: {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -988,6 +1142,26 @@ declare const events: {
             relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }>, "many">>;
         parentThreadId: zod.ZodOptional<zod.ZodString>;
+        forcedMode: zod.ZodOptional<zod.ZodEnum<["birth", "claude-code"]>>;
+        claudeCode: zod.ZodOptional<zod.ZodObject<{
+            cwd: zod.ZodString;
+            model: zod.ZodOptional<zod.ZodString>;
+            permissionMode: zod.ZodOptional<zod.ZodString>;
+            appendSystemPrompt: zod.ZodOptional<zod.ZodString>;
+            addDirs: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            cwd: string;
+            model?: string | undefined;
+            permissionMode?: string | undefined;
+            appendSystemPrompt?: string | undefined;
+            addDirs?: string[] | undefined;
+        }, {
+            cwd: string;
+            model?: string | undefined;
+            permissionMode?: string | undefined;
+            appendSystemPrompt?: string | undefined;
+            addDirs?: string[] | undefined;
+        }>>;
         topic: zod.ZodString;
         tags: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
         instructions: zod.ZodString;
@@ -1001,6 +1175,14 @@ declare const events: {
             id: string;
             relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }[] | undefined;
+        forcedMode?: "birth" | "claude-code" | undefined;
+        claudeCode?: {
+            cwd: string;
+            model?: string | undefined;
+            permissionMode?: string | undefined;
+            appendSystemPrompt?: string | undefined;
+            addDirs?: string[] | undefined;
+        } | undefined;
         parentThreadId?: string | undefined;
     }, {
         topic: string;
@@ -1012,6 +1194,14 @@ declare const events: {
             id: string;
             relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
         }[] | undefined;
+        forcedMode?: "birth" | "claude-code" | undefined;
+        claudeCode?: {
+            cwd: string;
+            model?: string | undefined;
+            permissionMode?: string | undefined;
+            appendSystemPrompt?: string | undefined;
+            addDirs?: string[] | undefined;
+        } | undefined;
         parentThreadId?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"VIEW_THREAD">;
@@ -1484,6 +1674,42 @@ declare const events: {
         threadId?: string | undefined;
         mode?: string | undefined;
         phase?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CC_PERMISSION_RESPONSE">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        messageId: zod.ZodString;
+        requestId: zod.ZodString;
+        decision: zod.ZodEnum<["allow", "allow_session", "deny"]>;
+        scope: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CC_PERMISSION_RESPONSE";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+        requestId: string;
+        decision: "allow" | "allow_session" | "deny";
+        scope?: string | undefined;
+    }, {
+        type: "CC_PERMISSION_RESPONSE";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+        requestId: string;
+        decision: "allow" | "allow_session" | "deny";
+        scope?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CC_CANCEL">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CC_CANCEL";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        type: "CC_CANCEL";
+        systemId: "threads";
+        threadId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -3699,6 +3925,14 @@ declare const events: {
         error: string;
         pluginId: "settings";
     } | {
+        type: "SETUP_PACK_PREVIEW";
+        preview: SetupPackPreview;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_PREVIEW_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
         type: "SECRETS.EVENT.LOADED";
         data: SecretData[];
         pluginId: "settings";
@@ -4926,6 +5160,28 @@ interface FlowExtendedData {
     edges: EdgeEntity[];
 }
 
+/**
+ * Setup Pack Preview — reads compiled artifacts from a directory and
+ * reports the top-level items available for selective import.
+ */
+type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes';
+type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
+interface SetupPackPreviewItem {
+    key: string;
+    description?: string;
+    kind?: SetupPackItemKind;
+    childCount?: number;
+}
+interface SetupPackPreview {
+    directory: string;
+    actions: SetupPackPreviewItem[];
+    prompts: SetupPackPreviewItem[];
+    flows: SetupPackPreviewItem[];
+    library: SetupPackPreviewItem[];
+    notes: SetupPackPreviewItem[];
+    missing: SetupPackType[];
+}
+
 interface SafeLinkOptions {
     /** Additional info to store with the relation */
     info?: unknown;
@@ -4970,7 +5226,7 @@ declare function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boole
         roles?: string | string[];
     }) => /*elided*/ any;
     readonly destroy: (skipPersistence?: boolean) => never;
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
 };
 
 type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
@@ -5161,6 +5417,15 @@ interface GhPullRequest {
         messageHeadline: string;
         committedDate: string;
     }[];
+    mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+    mergeStateStatus?: 'BEHIND' | 'BLOCKED' | 'CLEAN' | 'DIRTY' | 'DRAFT' | 'HAS_HOOKS' | 'UNKNOWN' | 'UNSTABLE';
+    reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
+    statusCheckRollup?: Array<{
+        name?: string;
+        status?: string;
+        conclusion?: string;
+        state?: string;
+    }>;
 }
 interface GhPRComment {
     id: string;
@@ -5596,16 +5861,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
     readonly reverse: () => /*elided*/ any;
     readonly limit: (n: number) => /*elided*/ any;
     readonly page: (size: number, cursor?: string | null) => {
-        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
+        readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`)[];
         readonly nextCursor: string | null;
     };
     readonly distinct: (field?: string) => /*elided*/ any;
     readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
-    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+    readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`)[];
+    readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
     readonly count: () => number;
-    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
-    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | null;
+    readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
+    readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}` | null;
     readonly exists: () => boolean;
     readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
     readonly forEach: (fn: (i: EARS.EntityId) => void) => {
@@ -5635,16 +5900,16 @@ declare const qx: (seed?: EARS.EntityId | EARS.Entity | readonly EARS.Entity[] |
         readonly reverse: () => /*elided*/ any;
         readonly limit: (n: number) => /*elided*/ any;
         readonly page: (size: number, cursor?: string | null) => {
-            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
+            readonly items: (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`)[];
             readonly nextCursor: string | null;
         };
         readonly distinct: (field?: string) => /*elided*/ any;
         readonly groupBy: (field: string) => Map<unknown, /*elided*/ any>;
-        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`)[];
-        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+        readonly ids: () => (`Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`)[];
+        readonly id: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
         readonly count: () => number;
-        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
-        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | null;
+        readonly first: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
+        readonly last: () => `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}` | null;
         readonly exists: () => boolean;
         readonly map: <T>(fn: (i: EARS.EntityId) => T) => T[];
         readonly forEach: /*elided*/ any;
@@ -6252,7 +6517,7 @@ declare const services: {
         readonly chatQueries: {
             readonly hasRequiredApiKeys: () => boolean;
             readonly threadArtifacts: (threadId: EARS.EntityId) => {
-                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
                 type: unknown;
                 title: unknown;
                 content: unknown;
@@ -6510,7 +6775,7 @@ declare const services: {
             readonly kanbanItems: () => {
                 content: {
                     workItems: {
-                        id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
+                        id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}` | `ClaudeCodeSession-${string}`;
                         name: string;
                         time: string;
                         date: string;
@@ -6606,6 +6871,7 @@ declare const services: {
     media: typeof media;
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
+    claudeCode: ClaudeCodeService;
 };
 
 /**

@@ -22,7 +22,8 @@ declare namespace EARS {
         Settings = "Settings",
         FAQ = "FAQ",
         Secret = "Secret",
-        Note = "Note"
+        Note = "Note",
+        ClaudeCodeSession = "ClaudeCodeSession"
     }
     export type EntityId = `${Entity}-${string}`;
     const RelKindValues: {

@@ -153,6 +153,15 @@ export interface LogsSettings {
   excludedSources: string[]; // Array of source patterns to exclude from display
 }
 
+// Claude Code service settings
+export interface ClaudeCodeSettings {
+  binaryPath?: string;              // Empty → auto-detect via `which claude`
+  defaultModel?: string;            // e.g. 'sonnet'
+  defaultPermissionMode?: 'default' | 'auto' | 'plan';
+  appendSystemPrompt?: string;
+  defaultCwd?: string;
+}
+
 export interface PluginSettings {
   _meta?: {
     visibility?: PluginVisibilitySettings;

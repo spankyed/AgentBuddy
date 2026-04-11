@@ -97,6 +97,45 @@
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
       />
+
+      <!-- Claude Code: Tool Use -->
+      <ToolUseBlock
+        v-else-if="(block.type as string) === 'tool_use'"
+        :id="(block.props as any).id"
+        :name="(block.props as any).name"
+        :input="(block.props as any).input"
+        :output="(block.props as any).output"
+        :status="(block.props as any).status"
+      />
+
+      <!-- Claude Code: Thinking -->
+      <ThinkingBlock
+        v-else-if="(block.type as string) === 'thinking'"
+        :text="(block.props as any).text"
+      />
+
+      <!-- Claude Code: Permission Request -->
+      <PermissionRequestBlock
+        v-else-if="(block.type as string) === 'permission_request'"
+        :request-id="(block.props as any).requestId"
+        :tool-name="(block.props as any).toolName"
+        :input="(block.props as any).input"
+        :status="(block.props as any).status"
+        @respond="(decision) => handleCCPermissionResponse((block.props as any).requestId, decision)"
+      />
+
+      <!-- Claude Code: Diff -->
+      <DiffBlock
+        v-else-if="(block.type as string) === 'diff'"
+        :file-path="(block.props as any).filePath"
+        :diff="(block.props as any).diff"
+      />
+
+      <!-- Claude Code: Error -->
+      <ErrorBlock
+        v-else-if="(block.type as string) === 'error'"
+        :text="(block.props as any).text"
+      />
     </template>
   </div>
 </template>
@@ -107,6 +146,11 @@ import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
 import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
+import ToolUseBlock from './blocks/ToolUseBlock.vue'
+import ThinkingBlock from './blocks/ThinkingBlock.vue'
+import PermissionRequestBlock from './blocks/PermissionRequestBlock.vue'
+import DiffBlock from './blocks/DiffBlock.vue'
+import ErrorBlock from './blocks/ErrorBlock.vue'
 import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
 import TextInput from './inputs/TextInput.vue'
@@ -153,6 +197,19 @@ const handleDeny = (reason?: string) => {
 const handleCancel = () => {
   // Send cancelled response to backend
   handleBlockResponse({ cancelled: true })
+}
+
+// Claude Code permission block → forward to backend via threads plugin.
+const handleCCPermissionResponse = (
+  requestId: string,
+  decision: 'allow' | 'allow_session' | 'deny',
+) => {
+  threadsActor.send({
+    type: 'CC_PERMISSION_RESPONSE',
+    messageId: props.messageId,
+    requestId,
+    decision,
+  } as any)
 }
 
 const handleNavigate = (link: Link) => {

@@ -21,6 +21,19 @@
         </div>
         <ScrollToBottomFob :visible="!isNearBottom && messages.length > 0" @click="scrollToBottom('smooth')" />
       </div>
+      <!-- Claude Code: Stop turn button (visible only when thread is cc) -->
+      <div
+        v-if="isClaudeCodeThread"
+        class="flex-shrink-0 w-full flex justify-end px-3 py-1"
+      >
+        <button
+          type="button"
+          class="text-[11px] px-3 py-1 rounded bg-red-800/40 text-red-200 hover:bg-red-800/60"
+          @click="actor.send({ type: 'CC_CANCEL' } as any)"
+        >
+          Stop
+        </button>
+      </div>
       <!-- Input -->
       <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
         <ChatInput
@@ -113,6 +126,10 @@ import { trpc } from '@/core/trpc'
 const actor: ThreadsState = applicationState.system.get(id);
 const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
+const isClaudeCodeThread = useSelector(
+  actor,
+  (state) => (state.context.currentThread as AgentThreadData | undefined)?.forcedMode as unknown as string === 'claude-code',
+)
 const recentThreads = useSelector(actor, (state) => (state.context.recentThreads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)

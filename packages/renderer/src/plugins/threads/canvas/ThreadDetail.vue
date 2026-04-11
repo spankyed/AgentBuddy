@@ -100,6 +100,70 @@
               class="w-full"
             />
           </CollapsibleSection>
+
+          <!-- Claude Code session options (create mode only) -->
+          <div v-if="!isViewMode" class="border-t border-neutral-800 pt-4">
+            <label class="flex items-center gap-2 text-sm text-neutral-300 mb-3">
+              <input type="checkbox" :checked="ccEnabled" @change="onCCToggle" />
+              <span>Claude Code session</span>
+            </label>
+            <div v-if="ccEnabled" class="space-y-3 pl-6">
+              <div>
+                <label class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">
+                  Working directory
+                </label>
+                <input
+                  :value="ccCwd"
+                  @input="e => onCCFieldChange('cwd', (e.target as HTMLInputElement).value)"
+                  type="text"
+                  placeholder="/absolute/path/to/project"
+                  class="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">
+                  Model
+                </label>
+                <select
+                  :value="ccModel"
+                  @change="e => onCCFieldChange('model', (e.target as HTMLSelectElement).value)"
+                  class="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-100"
+                >
+                  <option value="">Default</option>
+                  <option value="sonnet">sonnet</option>
+                  <option value="opus">opus</option>
+                  <option value="haiku">haiku</option>
+                </select>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">
+                  Permission mode
+                </label>
+                <select
+                  :value="ccPermissionMode"
+                  @change="e => onCCFieldChange('permissionMode', (e.target as HTMLSelectElement).value)"
+                  class="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-100"
+                >
+                  <option value="default">default</option>
+                  <option value="acceptEdits">acceptEdits</option>
+                  <option value="plan">plan</option>
+                  <option value="bypassPermissions">bypassPermissions</option>
+                </select>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-medium tracking-wider uppercase text-neutral-400">
+                  Append system prompt
+                </label>
+                <textarea
+                  :value="ccAppendSystemPrompt"
+                  @input="e => onCCFieldChange('appendSystemPrompt', (e.target as HTMLTextAreaElement).value)"
+                  rows="3"
+                  placeholder="Optional extra system prompt text"
+                  class="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-100 focus:outline-none focus:border-blue-500"
+                ></textarea>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Messages Section (view only) -->
@@ -214,6 +278,37 @@ const onMessagesToggle = (isOpen: boolean) => {
       messagesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }
+};
+
+// Claude Code create-form state (lives in context.create.claudeCode).
+const ccState = useSelector(actor, (state) => state.context.create as any);
+const ccEnabled = computed(() => ccState.value?.forcedMode === 'claude-code');
+const ccCwd = computed(() => ccState.value?.claudeCode?.cwd || '');
+const ccModel = computed(() => ccState.value?.claudeCode?.model || '');
+const ccPermissionMode = computed(() => ccState.value?.claudeCode?.permissionMode || 'default');
+const ccAppendSystemPrompt = computed(() => ccState.value?.claudeCode?.appendSystemPrompt || '');
+
+const onCCToggle = (ev: Event) => {
+  const enabled = (ev.target as HTMLInputElement).checked;
+  actor.send({
+    type: 'SET_CC_CREATE_OPTIONS',
+    enabled,
+    cwd: ccCwd.value,
+    model: ccModel.value || undefined,
+    permissionMode: ccPermissionMode.value || undefined,
+    appendSystemPrompt: ccAppendSystemPrompt.value || undefined,
+  } as any);
+};
+
+const onCCFieldChange = (key: 'cwd' | 'model' | 'permissionMode' | 'appendSystemPrompt', value: string) => {
+  actor.send({
+    type: 'SET_CC_CREATE_OPTIONS',
+    enabled: true,
+    cwd: key === 'cwd' ? value : ccCwd.value,
+    model: key === 'model' ? value || undefined : ccModel.value || undefined,
+    permissionMode: key === 'permissionMode' ? value || undefined : ccPermissionMode.value || undefined,
+    appendSystemPrompt: key === 'appendSystemPrompt' ? value || undefined : ccAppendSystemPrompt.value || undefined,
+  } as any);
 };
 
 const getTagStyles = (tagName: string) => {

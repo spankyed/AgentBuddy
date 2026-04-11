@@ -3,7 +3,23 @@ import type { Simplify } from "@/core/helpers/type-helpers";
 import type { EARS } from "@/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
+export type BlockType =
+  | 'prompt'
+  | 'note'
+  | 'file-picker'
+  | 'choice'
+  | 'text'
+  | 'approval'
+  | 'actions'
+  | 'link'
+  | 'button-group'
+  // Claude Code block types
+  | 'tool_use'
+  | 'tool_result'
+  | 'thinking'
+  | 'permission_request'
+  | 'diff'
+  | 'error';
 
 export interface BlockConfig {
   type: BlockType;
@@ -114,8 +130,21 @@ export interface ThreadEntity extends BaseEntity {
   shortCode?: string;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
-  forcedMode?: 'birth'; // Force a specific mode for this thread
+  forcedMode?: 'birth' | 'claude-code'; // Force a specific mode for this thread
   pinned?: boolean; // Thread tab should stay pinned in the UI
+}
+
+/**
+ * Options carried on `ThreadCreateData` when `forcedMode === 'claude-code'`.
+ * Kept as a nested object so the base `ThreadCreateData` shape stays cohesive
+ * and other forced-mode kinds can add their own sub-object in the future.
+ */
+export interface ClaudeCodeThreadOptions {
+  cwd: string;
+  model?: string;
+  permissionMode?: string;
+  appendSystemPrompt?: string;
+  addDirs?: string[];
 }
 
 export interface ArtifactEntity extends BaseEntity {
@@ -147,8 +176,10 @@ export type ThreadCreateData = Simplify<
   ThreadEditFields
   & {
     role?: EARS.RoleKind;  // Optional role to grant (e.g., for special threads like birth)
-    forcedMode?: 'birth';  // Optional forced mode for special threads
+    forcedMode?: 'birth' | 'claude-code';  // Optional forced mode for special threads
     pinned?: boolean;  // Pin the thread tab in the UI
+    /** Claude Code options — only relevant when forcedMode === 'claude-code'. */
+    claudeCode?: ClaudeCodeThreadOptions;
   }
 >;
 export type ThreadViewData = Simplify<

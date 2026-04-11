@@ -61,6 +61,14 @@ export const IncomingThreadsEvents = [
     ...threadSchema,
     linkedThreads: relatedThreadsSchema.optional(),
     parentThreadId: z.string().optional(),
+    forcedMode: z.enum(['birth', 'claude-code']).optional(),
+    claudeCode: z.object({
+      cwd: z.string(),
+      model: z.string().optional(),
+      permissionMode: z.string().optional(),
+      appendSystemPrompt: z.string().optional(),
+      addDirs: z.array(z.string()).optional(),
+    }).optional(),
   }),
   busEvent('VIEW_THREAD', { threadId: z.string() }),
   busEvent('UPDATE_THREAD_STATUS', {
@@ -110,6 +118,18 @@ export const IncomingThreadsEvents = [
     phase: z.string().optional(),
     threadId: z.string().optional(),
     references: referencesSchema,
+  }),
+  // Claude Code — permission decision from the thread UI
+  busEvent('CC_PERMISSION_RESPONSE', {
+    threadId: z.string(),
+    messageId: z.string(),
+    requestId: z.string(),
+    decision: z.enum(['allow', 'allow_session', 'deny']),
+    scope: z.string().optional(),
+  }),
+  // Claude Code — user-initiated cancel of an in-flight turn
+  busEvent('CC_CANCEL', {
+    threadId: z.string(),
   }),
 ] as const
 
@@ -179,7 +199,51 @@ export const threadsSystem = setup({
         instructions: thread.instructions,
         tags: thread.tags as string[],
         linkedThreads: thread.linkedThreads as ThreadLinkItem[],
+        ...(thread.forcedMode && { forcedMode: thread.forcedMode }),
       });
+
+      // Claude Code side-effect: persist a session record and trigger the
+      // "Claude Code Session" flow via brain. Bail out loudly if the thread
+      // was requested as claude-code but no cwd was provided — we do NOT
+      // want a half-configured session floating around.
+      if (thread.forcedMode === 'claude-code') {
+        const cc = thread.claudeCode;
+        if (!cc?.cwd) {
+          logger.error('CREATE_THREAD claude-code requires claudeCode.cwd', {
+            threadId: newThreadId,
+          });
+        } else {
+          try {
+            services.claudeCode.createSession(newThreadId, {
+              cwd: cc.cwd,
+              ...(cc.model && { model: cc.model }),
+              ...(cc.permissionMode && { permissionMode: cc.permissionMode }),
+              ...(cc.appendSystemPrompt && { appendSystemPrompt: cc.appendSystemPrompt }),
+              ...(cc.addDirs && cc.addDirs.length && { addDirs: cc.addDirs }),
+            });
+          } catch (err) {
+            logger.error('claudeCode.createSession failed', {
+              threadId: newThreadId,
+              error: (err as Error).message,
+            });
+          }
+
+          // Kick the flow for the new thread.
+          const brainActor = getActor(system, brain);
+          brainActor.send({
+            type: 'TRIGGER_BRAIN_EVENT',
+            eventType: 'claude.code.session.start',
+            payload: {
+              threadId: newThreadId,
+              cwd: cc.cwd,
+              model: cc.model,
+              permissionMode: cc.permissionMode,
+              appendSystemPrompt: cc.appendSystemPrompt,
+              addDirs: cc.addDirs,
+            },
+          });
+        }
+      }
 
       if (thread.parentThreadId) {
         repository.threadCommands.update(
@@ -651,6 +715,25 @@ export const threadsSystem = setup({
         payload: { threadId, messageId },
       });
     },
+    // Claude Code — re-emit permission decision as a brain event the
+    // Claude Code Session flow is listening on.
+    forwardCCPermissionResponse: ({ system, event }) => {
+      const payload = typeOf('CC_PERMISSION_RESPONSE', event);
+      getActor(system, brain).send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'claude.code.permission.response',
+        payload,
+      });
+    },
+    // Claude Code — re-emit cancel as a brain event.
+    forwardCCCancel: ({ system, event }) => {
+      const payload = typeOf('CC_CANCEL', event);
+      getActor(system, brain).send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'claude.code.cancel',
+        payload,
+      });
+    },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
@@ -743,6 +826,12 @@ export const threadsSystem = setup({
           },
           REVERT_THREAD: {
             actions: 'revertThread',
+          },
+          CC_PERMISSION_RESPONSE: {
+            actions: 'forwardCCPermissionResponse',
+          },
+          CC_CANCEL: {
+            actions: 'forwardCCCancel',
           },
         },
       },
