@@ -6,10 +6,11 @@
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node", "vitest/globals"]
   },
   "include": [
-    "src/**/*.ts", "build/**/*.ts", "defs/**/*.ts"
+    "src/**/*.ts", "build/**/*.ts", "defs/**/*.ts", "tests/**/*.ts"
   ],
   "exclude": [
     "src/**/*.example.ts",

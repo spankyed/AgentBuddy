@@ -9,19 +9,14 @@
  * stale `{ value: 'yes' | 'no' }` shape that the frontend doesn't emit.
  * The canonical shape is `{ approved: boolean, reason?: string }`.
  *
- * The helper lives in `packages/default-setup/src/actions/claude-code/_helpers/`
- * because that's where the backend consumer (chat.ts) lives. It's pure
- * (no `services`, no sandbox), so vitest in `packages/api/` can import
- * it via a relative path walking across the workspace boundary. If that
- * ever breaks — e.g. after a monorepo reorganisation — co-locate the
- * helper in `packages/api/src/services/claude-code/` and update both
- * this import path and `chat.ts`'s import.
+ * Colocated with the helper under test (`src/actions/claude-code/_helpers/`)
+ * so ownership is clear and renames / moves stay within one package.
  */
 
 import {
   parseApprovalDecision,
   type ApprovalDecision,
-} from '../../../default-setup/src/actions/claude-code/_helpers/approval-response'
+} from '../../src/actions/claude-code/_helpers/approval-response'
 
 describe('parseApprovalDecision', () => {
   // ─── Canonical happy paths ─────────────────────────────────────────────
@@ -70,7 +65,7 @@ describe('parseApprovalDecision', () => {
     [{ approved: 1 }, 'truthy non-boolean'],
     [{ approved: null }, 'null approved'],
     [{ cancelled: true }, 'cancelled dismissal shape'],
-  ] as const)('unknown shape %p (%s) → deny', (input) => {
+  ] as const)('unknown shape %p (%s) → deny', (input, _description) => {
     expect(parseApprovalDecision(input).allow).toBe(false)
   })
 

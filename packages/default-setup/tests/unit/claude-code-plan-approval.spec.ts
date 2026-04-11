@@ -12,19 +12,15 @@
  * inside the pump's control_request dispatch and must not break the
  * stream on malformed payloads.
  *
- * Helpers live in `packages/default-setup/src/actions/claude-code/_helpers/`
- * because that's where the consumer (chat.ts) lives. They're pure
- * functions with no `services` or sandbox deps, so vitest in
- * `packages/api/` can import them via a relative path walking across
- * the workspace boundary — same pattern established by
- * `claude-code-approval-response.spec.ts`.
+ * Colocated with the helper under test (`src/actions/claude-code/_helpers/`)
+ * so ownership is clear and renames / moves stay within one package.
  */
 
 import {
   parseExitPlanModeInput,
   buildPlanApprovalContext,
   type ParsedPlanInput,
-} from '../../../default-setup/src/actions/claude-code/_helpers/plan-approval'
+} from '../../src/actions/claude-code/_helpers/plan-approval'
 
 describe('parseExitPlanModeInput', () => {
   it('canonical SDK input shape → full parsed result', () => {
@@ -81,7 +77,7 @@ describe('parseExitPlanModeInput', () => {
     expect(parseExitPlanModeInput({ plan: 'x', allowedPrompts: {} }).allowedPrompts).toEqual([])
   })
 
-  it.each([null, undefined, 'string', 42, [], true])(
+  it.each([null, undefined, 'string', 42, [], true] as const)(
     'non-object input %p → empty parsed shape',
     (input) => {
       expect(parseExitPlanModeInput(input)).toEqual({ plan: '', allowedPrompts: [] })
