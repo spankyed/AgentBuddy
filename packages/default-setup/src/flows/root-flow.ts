@@ -15,11 +15,11 @@ export default {
         // "stay alive" without relying on that implementation detail.
         [keepAlive()],
       ),
-      on(
-        "tour.complete",
-        [[subflow("Onboarding Flow", { label: "run onboarding" })]],
-        "Start Onboarding",
-      ),
+      // on(
+      //   "tour.complete",
+      //   [[subflow("Onboarding Flow", { label: "run onboarding" })]],
+      //   "Start Onboarding",
+      // ),
     ],
   },
 } satisfies FlowDSL;

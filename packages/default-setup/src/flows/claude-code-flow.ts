@@ -1,5 +1,5 @@
 import type { FlowDSL } from '../types';
-import { on, action, branch } from './_patterns';
+import { entry, on, keepAlive, action, branch } from './_patterns';
 
 /**
  * Claude Code work-mode flow.
