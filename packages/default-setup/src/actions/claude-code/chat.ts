@@ -236,6 +236,26 @@ export async function action(
       }
 
       if (line.type === 'stream_event') {
+        // Inter-message paragraph break. A single Claude Code turn often
+        // chains multiple Anthropic model calls (text → tool → more text →
+        // tool → final text); each call begins with a fresh `message_start`
+        // event. Without a separator, the next message's deltas concatenate
+        // directly onto the previous message's trailing byte (commonly a
+        // `:` before a tool call), so users see "…implementation:Let me
+        // check…" as one run-on line. Insert `\n\n` at every `message_start`
+        // after the first so markdown-it produces separate <p> elements and
+        // the chat viewer's `.tiptap-viewer-chat p { margin: 0.75em 0 }`
+        // rule breathes them apart. Skip sub-agent streams via the
+        // `parent_tool_use_id` guard so boundaries from nested Task calls
+        // don't inject spurious breaks into the main bubble.
+        if (
+          line.event?.type === 'message_start' &&
+          !line.parent_tool_use_id &&
+          writer.text.length > 0
+        ) {
+          writer.push('\n\n');
+        }
+
         // Anthropic text deltas. Shape: { event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } }
         const delta = line.event?.delta;
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
