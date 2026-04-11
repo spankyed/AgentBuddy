@@ -320,14 +320,6 @@ interface ExportedLibrary {
 }
 type ExportFormat = 'markdown' | 'json';
 
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-
 /**
  * Prompt template types and definitions
  */
@@ -343,6 +335,14 @@ interface TemplateInput {
     defaultValue?: any;
     commonSources?: string[];
     example?: any;
+}
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
 }
 
 interface LinkEvent {

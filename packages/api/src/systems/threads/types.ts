@@ -3,11 +3,45 @@ import type { Simplify } from "@/core/helpers/type-helpers";
 import type { EARS } from "@/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
+export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity';
 
 export interface BlockConfig {
   type: BlockType;
   props: Record<string, any>;
+}
+
+// Tool-activity block — collapsible group of Claude Code tool calls within one turn.
+// Replaces the prior per-tool `> 🔧 name` blockquote spam with a single compact
+// group that shows a live status label while streaming and freezes to a summary
+// line once the turn ends. See design doc in `.claude/plans/` for full rationale.
+export interface ToolActivityEntry {
+  /** Stable id. Usually the CLI's `tool_use_id`. */
+  id: string;
+  /** Tool name as reported by the CLI: Read, Write, Edit, Glob, Grep, Bash, … */
+  tool: string;
+  /** One-line human summary of the input (e.g. a truncated file path). */
+  summary: string;
+  /** Row status drives the per-row icon and label. */
+  status: 'running' | 'ok' | 'denied' | 'error';
+  /** Wall-clock duration once the tool has reported progress/completion. */
+  durationMs?: number;
+  /** One-line output summary if the tool reported one (e.g. "3 matches"). */
+  outputSummary?: string;
+  /** Optional full details revealed when the row is expanded. */
+  details?: { input?: unknown; output?: string; error?: string };
+}
+
+export interface ToolActivityBlockProps {
+  /** Tool entries in arrival order. Append-only during the turn. */
+  entries: ToolActivityEntry[];
+  /** Live status label shown when collapsed (e.g. "Reading 3 files…"). */
+  label: string;
+  /** Group state — drives spinner visibility and label tense. */
+  state: 'streaming' | 'done' | 'error';
+  /** Initial open/closed state. User toggles win after first interaction. */
+  defaultOpen?: boolean;
+  /** Optional pointer to a promoted artifact (Phase C). */
+  artifactRef?: { artifactId: string; label: string };
 }
 
 // Link block types

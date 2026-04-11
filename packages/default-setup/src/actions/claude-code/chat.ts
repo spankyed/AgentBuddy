@@ -14,6 +14,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { awaitMessageResponse } from './_helpers/await-message-response';
 import { createStreamWriter } from './_helpers/stream-writer';
+import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
@@ -92,6 +93,7 @@ export async function action(
   log.debug('placeholder message created', { messageId });
 
   const writer = createStreamWriter(services, messageId, { intervalMs: 80 });
+  const toolActivity = createToolActivityWriter(services, messageId, { intervalMs: 250 });
 
   // Phase-aware system-prompt nudging (plan/edit/review).
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
@@ -171,20 +173,54 @@ export async function action(
 
       if (line.type === 'assistant') {
         // With includePartialMessages, stream_event deltas already populated
-        // the text. Only render tool_use blocks here — there's no delta
-        // equivalent for them, so this is the sole place they surface.
+        // the text. Extract tool_use blocks into the tool-activity writer —
+        // they become rows in a collapsible group rather than inline
+        // `> 🔧 name` blockquotes flooding the prose.
         const blocks = line.message?.content || [];
         for (const block of blocks) {
           if (block?.type === 'tool_use') {
-            const note = `\n\n> 🔧 ${block.name}${block.input ? ` (${shortenInput(block.input)})` : ''}\n\n`;
-            writer.pushImmediate(note);
+            // Flush any pending prose text first so the activity block
+            // visually lands after the prose that prompted it — we can't
+            // truly interleave blocks into text (see tool-activity-writer
+            // docstring), but at least the prose-up-to-now commits first.
+            writer.flush();
+            toolActivity.append({
+              id: block.id || `tu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              tool: block.name,
+              summary: block.input ? shortenInput(block.input) : '',
+              status: 'running',
+              details: { input: block.input },
+            });
           }
         }
         continue;
       }
 
       if (line.type === 'tool_progress') {
-        // Lightweight heartbeat — we already posted the tool_use note, no more text.
+        // Heartbeat with elapsed time. Update the matching row's duration
+        // (if the CLI reports one) so the group label stays fresh.
+        if (line.tool_use_id && typeof line.elapsed_time_seconds === 'number') {
+          toolActivity.update(line.tool_use_id, {
+            durationMs: Math.round(line.elapsed_time_seconds * 1000),
+          });
+        }
+        continue;
+      }
+
+      if (line.type === 'tool_use_summary') {
+        // CLI reports a summary string covering one or more prior tool_uses.
+        // Apply the summary to every referenced tool and flip the status to
+        // 'ok' so the row renders with a green check.
+        const ids: string[] = Array.isArray(line.preceding_tool_use_ids)
+          ? line.preceding_tool_use_ids
+          : [];
+        const summaryText: string = typeof line.summary === 'string' ? line.summary : '';
+        for (const id of ids) {
+          toolActivity.update(id, {
+            status: 'ok',
+            outputSummary: summaryText || undefined,
+          });
+        }
         continue;
       }
     }
@@ -205,6 +241,7 @@ export async function action(
       lastTurnAt: Date.now(),
     });
 
+    toolActivity.finalise('done');
     writer.finalize(writer.text || result.text);
     log.debug('chat action completed');
 
@@ -219,6 +256,7 @@ export async function action(
   } catch (err: any) {
     const message = err?.message || 'Claude Code request failed';
     log.error('chat action failed', { message, stack: err?.stack });
+    toolActivity.finalise('error');
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
     // Intentionally NOT clearing thread.context on error — the session may
     // still be valid on disk; let the user retry or call the reset action

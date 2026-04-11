@@ -97,6 +97,15 @@
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
       />
+
+      <!-- Tool Activity Block — collapsible group of Claude Code tool calls -->
+      <ToolActivityBlock
+        v-else-if="block.type === 'tool-activity'"
+        :entries="(block.props as any).entries"
+        :label="(block.props as any).label"
+        :state="(block.props as any).state"
+        :default-open="(block.props as any).defaultOpen"
+      />
     </template>
   </div>
 </template>
@@ -107,6 +116,7 @@ import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
 import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
+import ToolActivityBlock from './blocks/ToolActivityBlock.vue'
 import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
 import TextInput from './inputs/TextInput.vue'
