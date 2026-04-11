@@ -557,3 +557,41 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── Chat viewer — breathing room for streamed prose ─────────────────────
+ * The base `.tiptap-wrapper .ProseMirror` rules earlier in this file were
+ * calibrated for the note editor (wide pane, generous side padding, users
+ * tolerating density). Chat bubbles need more visual separation between
+ * blocks — frontier chat apps (ChatGPT / Claude.ai / Cursor) give
+ * paragraphs ~11px gaps and headings ~15px top margins at comparable font
+ * sizes. These overrides apply ONLY to `viewer:chat` so note rendering is
+ * unaffected. The existing `> *:first-child` / `> *:last-child` collapse
+ * rules continue to keep the bubble edges flush.
+ */
+.tiptap-viewer-chat .ProseMirror p {
+  margin: 0.75em 0;
+}
+
+.tiptap-viewer-chat .ProseMirror h1 {
+  margin: 1em 0 0.25em;
+}
+.tiptap-viewer-chat .ProseMirror h2 {
+  margin: 0.9em 0 0.25em;
+}
+.tiptap-viewer-chat .ProseMirror h3 {
+  margin: 0.75em 0 0.2em;
+}
+
+.tiptap-viewer-chat .ProseMirror ul,
+.tiptap-viewer-chat .ProseMirror ol {
+  margin: 0.75em 0;
+}
+
+.tiptap-viewer-chat .ProseMirror pre,
+.tiptap-viewer-chat .ProseMirror blockquote {
+  margin: 0.85em 0;
+}
+
+.tiptap-viewer-chat .ProseMirror hr {
+  margin: 1.25em 0;
+}

@@ -1,7 +1,7 @@
 <template>
   <div
     class="tiptap-wrapper"
-    :class="[`tiptap-${mode}`, $attrs.class]"
+    :class="[`tiptap-${mode}`, `tiptap-${mode}-${variant}`, $attrs.class]"
     @click="onWrapperClick"
   >
     <template v-if="editor">
