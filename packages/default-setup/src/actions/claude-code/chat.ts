@@ -13,6 +13,7 @@
 
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { awaitMessageResponse } from './_helpers/await-message-response';
+import { parseApprovalDecision } from './_helpers/approval-response';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
@@ -148,8 +149,13 @@ export async function action(
 
         try {
           const response = await awaitMessageResponse(services, approval.messageId);
-          // Approval block responses look like { value: 'yes' | 'no', reason? }
-          const allow = response?.value === 'yes' || response?.value === true || response === 'yes';
+          // Approval block responses arrive as `{ approved: boolean, reason?: string }`
+          // — emitted by InteractionContainer.vue's handleApprove/handleDeny and
+          // forwarded through the threads system unchanged. `MessageEntity.blockResponse`
+          // is typed as `any`, so a TypeScript mismatch at the call site would not
+          // be caught at compile time. `parseApprovalDecision` is the single source
+          // of truth for the shape contract and is covered by a dedicated unit test.
+          const { allow, reason } = parseApprovalDecision(response);
           log.debug('permission response received', {
             decision: allow ? 'allow' : 'deny',
             durationMs: Date.now() - handlerStartedAt,
@@ -157,7 +163,7 @@ export async function action(
           updateSessionArtifact(services, threadId, { status: 'streaming' });
           return allow
             ? { behavior: 'allow' as const }
-            : { behavior: 'deny' as const, message: response?.reason || 'User denied' };
+            : { behavior: 'deny' as const, message: reason || 'User denied' };
         } catch (err: any) {
           const errorMessage = err?.message || 'Approval failed';
           log.error('permission handler failed', {

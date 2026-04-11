@@ -25,8 +25,13 @@ export interface AwaitMessageResponseOptions {
  * Wait for the user's response to a specific interactive block.
  *
  * Resolves with `event.payload.response` (shape depends on the block type
- * — `{ value, reason? }` for approval blocks, the raw choice id for choice
- * blocks, etc.). Rejects on timeout or abort.
+ * — `{ approved: boolean, reason?: string }` for approval blocks, a raw
+ * value for choice blocks, `{ cancelled: true }` when the user dismisses
+ * the interaction). Rejects on timeout or abort. For approval blocks
+ * specifically, callers should narrow via `parseApprovalDecision` from
+ * `./approval-response` rather than open-coding the shape check — the
+ * `blockResponse` field is typed `any` end-to-end and shape drift is
+ * otherwise silent.
  *
  * Cleans up the listener on every exit path, including thrown errors.
  */
