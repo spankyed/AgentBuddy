@@ -104,12 +104,21 @@ function selectStart(e: { state: import('@tiptap/pm/state').EditorState, view: i
   e.view.dispatch(tr)
 }
 
-// Set content without recording in undo history so note switches can't be undone
+// Set content without recording in undo history so note switches can't be undone.
+//
+// Do NOT call `markdown.parser.parse(content)` here and pass the HTML result
+// to setContent. The tiptap-markdown Markdown extension already overrides
+// `setContent` to call `parser.parse` internally
+// (see node_modules/tiptap-markdown/src/Markdown.js:22-39). A manual pre-parse
+// produces an HTML string, which the override then parses as markdown a
+// second time — and with `markdownHtml: false` on the chat viewer, markdown-it
+// escapes HTML tags into literal text, so the user sees raw `<p>`, `<code>`,
+// `<h2>` characters in their streaming bubble. Pass the markdown string
+// straight through and let the override handle the single parse.
 function resetContent(content: string, resetSelection = false) {
   if (!editor.value) return
   suppressNodeDeletionEvents.value = true
-  const parsed = (editor.value.storage as any).markdown.parser.parse(content)
-  editor.value.chain().setMeta('addToHistory', false).setContent(parsed).run()
+  editor.value.chain().setMeta('addToHistory', false).setContent(content).run()
   if (resetSelection) selectStart(editor.value)
   lastResetMarkdown.value = getMarkdown()
   suppressNodeDeletionEvents.value = false
