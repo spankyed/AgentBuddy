@@ -27,6 +27,7 @@
  * between "internal logic" and "caller" without races.
  */
 
+import { createLogger } from '@/core/helpers/debug/logger'
 import { argsFromOptions } from './args'
 import { createControlRouter } from './control'
 import {
@@ -37,6 +38,8 @@ import {
   ClaudeResultError,
 } from './errors'
 import { spawnStream, type StreamHandle } from './runner'
+
+const logger = createLogger('claude-code-query')
 import type {
   KnownStreamLine,
   QueryOptions,
@@ -107,17 +110,69 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
       eventQueue.fail(err)
     })
 
-  // Push the initial user turn, if any. When we have an initial prompt and
-  // the caller didn't explicitly opt into multi-turn, close stdin immediately
-  // — the CLI's stream-json `--print` mode waits indefinitely for further
-  // stdin input after emitting the `result` line, which would deadlock
-  // callers that drain events in a straight `for await`. Callers driving the
-  // stream manually via `handle.send()` must leave `prompt` undefined OR set
-  // `keepStdinOpen: true` and own the `handle.close()` lifecycle.
+  // SDK handshake. The CLI auto-initializes on the first user message
+  // (see leaked src/cli/print.ts:4059 — "First prompt message implicitly
+  // initializes if not already done"), so this line is technically
+  // redundant for the basic flow. But the canonical SDK host sends an
+  // explicit `initialize` control_request first, and doing the same
+  // closes any subtle code path where the CLI's stdio permission
+  // emission might depend on seeing an explicit init. It's cheap (one
+  // NDJSON line), idempotent (the CLI ignores subsequent initialize
+  // requests once its main loop has flipped `initialized = true`), and
+  // the response comes back as a `control_response` which our pump
+  // swallows silently via the existing `control_response` branch.
+  //
+  // Minimum viable payload: just the subtype. We don't declare hooks,
+  // SDK MCP servers, prompt suggestions, or agent progress summaries
+  // because we don't use those features. Future work may populate them.
+  stream.write({
+    type: 'control_request',
+    request_id: `wrapper-initialize-${Date.now()}`,
+    request: {
+      subtype: 'initialize',
+      hooks: {},
+    },
+  })
+  logger.debug('initialize control_request sent')
+
+  // Push the initial user turn, if any. Stdin lifecycle note: we used to
+  // call `stream.endInput()` synchronously right after `writeUserTurn` to
+  // prevent a deadlock where `--print` mode kept waiting for more stdin
+  // input after emitting its `result` line. That was correct for the
+  // deadlock but broke the stdio permission flow, which is inherently
+  // bidirectional: the CLI emits `can_use_tool` control_requests on stdout
+  // and expects our `control_response` back on stdin. With stdin already
+  // EOF'd, either (a) our response-writes silently no-op via the
+  // `if (!child.stdin.writable) return` guard in runner.ts and the CLI
+  // waits forever for a response, or — as seen in the latest live repro —
+  // (b) the CLI detects stdin EOF *before* attempting to emit the
+  // control_request and short-circuits to its non-interactive fallback
+  // (prose "please approve in your terminal"), never emitting
+  // `can_use_tool` at all. Either failure mode manifests as "tools stuck
+  // in running state, no approval block visible."
+  //
+  // The correct lifecycle is: keep stdin open through the turn so the
+  // control-request round-trip can complete, and close it AFTER the result
+  // promise settles (which is when the pump sees the terminal `result`
+  // line and signals turn completion). The CLI then observes stdin EOF +
+  // its own already-emitted result and exits cleanly — same behaviour the
+  // original stdin-EOF fix was protecting, just timed correctly.
+  //
+  // `.then(autoClose, autoClose)` is deliberate: we close stdin on both
+  // resolve and reject so aborts, parse errors, and child-crash rejections
+  // still flush EOF cleanly. `stream.endInput()` is already idempotent
+  // (runner.ts guards on `child.stdin.writable`) and wrapped in try/catch
+  // as extra belt-and-suspenders for the "child already gone" edge case.
+  //
+  // Multi-turn callers (`keepStdinOpen: true`) bypass this entirely and
+  // own the close lifecycle via `handle.close()`.
   if (opts.prompt !== undefined) {
     writeUserTurn(stream, opts.prompt)
     if (!opts.keepStdinOpen) {
-      stream.endInput()
+      const autoClose = () => {
+        try { stream.endInput() } catch { /* already closed or child gone */ }
+      }
+      resultPromise.promise.then(autoClose, autoClose)
     }
   }
 
@@ -227,6 +282,17 @@ async function pump(
     switch (line.type) {
       case 'control_request': {
         // Handled entirely inside the router; never surfaced to the caller.
+        // Log the receipt so we have ground truth next time the permission
+        // flow stalls — if we don't see this line in the backend console
+        // during a work-mode turn that needs approval, the CLI isn't
+        // emitting `can_use_tool` (wrong argv / wrong mode); if we DO see
+        // it but `permission handler invoked` from chat.ts never fires,
+        // the router dispatch is broken.
+        const req = (line as unknown as { request?: { subtype?: string }; request_id?: string })
+        logger.debug('control_request received', {
+          subtype: req.request?.subtype,
+          request_id: req.request_id,
+        })
         const response = await router.handle(line)
         stream.write(response)
         continue

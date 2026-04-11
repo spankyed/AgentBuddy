@@ -16,7 +16,10 @@ export default defineConfig(async () => {
   test: {
     globals: true,                   // use `describe/it/expect` without imports
     environment: 'node',             // happy in pure Node (no jsdom needed here)
-    include: ['tests/unit/**/*.spec.ts'],
+    include: ['tests/unit/**/*.spec.ts', 'tests/integration/**/*.spec.ts'],
+    // Integration tests spawn real subprocesses and gate themselves on env
+    // vars (RUN_INTEGRATION=1) so default `npm test` runs skip them cleanly.
+    testTimeout: 120_000,
     // ❶  there is **no** `tsconfig` option – remove it
   },
 

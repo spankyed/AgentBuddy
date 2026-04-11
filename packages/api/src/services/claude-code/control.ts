@@ -27,6 +27,7 @@
  *     `{subtype:'error'}` control_responses so the conversation continues
  */
 
+import { createLogger } from '@/core/helpers/debug/logger'
 import type {
   CanUseToolRequest,
   ControlRequestHandler,
@@ -34,6 +35,8 @@ import type {
   PermissionDecision,
   PermissionHandler,
 } from './types'
+
+const logger = createLogger('claude-code-control')
 
 export interface ControlRouter {
   /** Dispatch one control_request line. Returns the response value to send. */
@@ -87,9 +90,18 @@ async function dispatch(
 ): Promise<unknown> {
   if (subtype === 'can_use_tool') {
     const req = request as unknown as CanUseToolRequest
+    logger.debug('dispatching can_use_tool', {
+      tool_name: req.tool_name,
+      tool_use_id: req.tool_use_id,
+      hasHandler: !!opts.onPermissionRequest,
+    })
     const decision: PermissionDecision = opts.onPermissionRequest
       ? await opts.onPermissionRequest(req)
       : { behavior: 'deny', message: 'No permission handler configured' }
+    logger.debug('can_use_tool decision resolved', {
+      tool_name: req.tool_name,
+      behavior: decision.behavior,
+    })
     return decision
   }
 
@@ -97,8 +109,10 @@ async function dispatch(
   // …) are forwarded to the generic hook so callers can extend without
   // patching this file.
   if (opts.onControlRequest) {
+    logger.debug('dispatching generic control_request', { subtype })
     return await opts.onControlRequest(request as { subtype: string } & Record<string, unknown>)
   }
+  logger.warn('unhandled control_request subtype', { subtype })
   throw new Error(`unhandled control_request subtype "${subtype}"`)
 }
 

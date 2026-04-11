@@ -139,10 +139,17 @@ describe('finaliseNoResult', () => {
 })
 
 // ─── query() end-to-end plumbing with a mocked StreamHandle ─────────────────
-// Regression coverage for the stdin-EOF deadlock: before the fix, providing
-// an initial `prompt` would write the turn but never close stdin, so the CLI
-// sat idle after emitting the `result` line, the pump's stdout `for await`
-// never terminated, and the consumer's drain loop hung on iteration #4.
+// Regression coverage for the stdin-EOF deadlock AND its follow-up fix: the
+// original deadlock was "never closing stdin", which left the CLI waiting
+// for more input after emitting `result`. The naive fix was to close stdin
+// synchronously right after writing the user turn — which worked for the
+// deadlock but broke the bidirectional stdio permission flow (the CLI sees
+// stdin EOF before it needs to ask for permission and either silently
+// drops our response writes or short-circuits to its non-interactive
+// fallback without emitting `can_use_tool` at all). The actual fix is to
+// defer `stream.endInput()` until the `resultPromise` settles, so stdin
+// stays writable during the turn and closes only after the CLI has
+// emitted its terminal `result` line. These tests pin down that timing.
 
 /** Build a fake StreamHandle backed by a manual line queue. */
 function makeMockStream() {
@@ -227,7 +234,13 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
     vi.mocked(spawnStream).mockReset()
   })
 
-  it('closes stdin after writing the initial prompt (no deadlock)', async () => {
+  it('closes stdin AFTER the turn completes — not synchronously on write', async () => {
+    // CRITICAL invariant for the stdio permission flow: stdin must stay
+    // writable while the pump is draining events, so any intermediate
+    // `control_request { subtype: 'can_use_tool' }` can round-trip a
+    // response back to the CLI. F1' moves the `stream.endInput()` call
+    // from "immediately after writeUserTurn" to "after resultPromise
+    // settles", which this test pins down.
     const mock = makeMockStream()
     vi.mocked(spawnStream).mockResolvedValue(mock.handle)
 
@@ -244,12 +257,18 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
 
     const handle = await query({ prompt: 'hi' })
 
-    // Initial user turn was written.
-    expect(mock.writes).toHaveLength(1)
-    expect((mock.writes[0] as { type: string }).type).toBe('user')
+    // Two writes: [0] = initialize control_request (SDK handshake),
+    // [1] = user turn. Initialize is sent unconditionally at spawn time
+    // so the CLI's stdio permission flow knows we're an SDK host.
+    expect(mock.writes).toHaveLength(2)
+    expect((mock.writes[0] as { type: string; request: { subtype: string } }).type).toBe('control_request')
+    expect((mock.writes[0] as { type: string; request: { subtype: string } }).request.subtype).toBe('initialize')
+    expect((mock.writes[1] as { type: string }).type).toBe('user')
 
-    // CRITICAL: stdin was EOF'd immediately after the initial write.
-    expect(mock.endInputCalls).toBe(1)
+    // CRITICAL: stdin is NOT yet closed — the turn hasn't begun draining.
+    // This is the guard the old test got wrong: the old implementation
+    // would fire endInput synchronously here, which was the bug.
+    expect(mock.endInputCalls).toBe(0)
 
     // Consumer drain — must terminate, not hang.
     const received: string[] = []
@@ -263,6 +282,12 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
     expect(result.sessionId).toBe('sess-1')
     expect(result.text).toBe('hi there')
     expect(result.durationMs).toBe(42)
+
+    // After the result promise settles, the deferred autoClose fires and
+    // stdin is finally EOF'd — flip the CLI into its clean exit path.
+    // Wait a microtask for the `.then` callback to run.
+    await Promise.resolve()
+    expect(mock.endInputCalls).toBe(1)
   })
 
   it('does NOT close stdin when keepStdinOpen: true (multi-turn opt-in)', async () => {
@@ -271,8 +296,11 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
 
     const handle = await query({ prompt: 'hi', keepStdinOpen: true })
 
-    // Initial turn written, but stdin left open for send() / close().
-    expect(mock.writes).toHaveLength(1)
+    // Two writes: initialize + user turn. stdin is left open for
+    // send() / close() since the caller opted into multi-turn.
+    expect(mock.writes).toHaveLength(2)
+    expect((mock.writes[0] as { type: string }).type).toBe('control_request')
+    expect((mock.writes[1] as { type: string }).type).toBe('user')
     expect(mock.endInputCalls).toBe(0)
 
     // Caller-side cleanup: explicit close() EOFs stdin.
@@ -288,17 +316,406 @@ describe('query() — stdin EOF handling (single-turn default)', () => {
     expect(mock.endInputCalls).toBe(1)
   })
 
-  it('does not write a turn or close stdin when no prompt is provided', async () => {
+  it('sends only the initialize handshake when no prompt is provided', async () => {
     const mock = makeMockStream()
     vi.mocked(spawnStream).mockResolvedValue(mock.handle)
 
     const handle = await query({})
 
-    expect(mock.writes).toHaveLength(0)
+    // One write: the initialize control_request. No user turn because
+    // the caller didn't pass `prompt` (multi-turn via send() mode).
+    expect(mock.writes).toHaveLength(1)
+    expect((mock.writes[0] as { type: string; request: { subtype: string } }).type).toBe('control_request')
+    expect((mock.writes[0] as { type: string; request: { subtype: string } }).request.subtype).toBe('initialize')
     expect(mock.endInputCalls).toBe(0)
 
     // Force an exit so the test doesn't leak open handles.
     mock.forceExit()
     await handle.close()
+  })
+})
+
+// ─── query() permission round-trip — end-to-end through the pump + router ───
+// These tests simulate the CLI emitting a `control_request` with
+// `subtype: 'can_use_tool'` and verify every hop in the chain:
+//   1. pump receives the line and routes it to the router
+//   2. router dispatches to `onPermissionRequest`
+//   3. the permission handler's decision is shaped into a control_response
+//   4. pump writes the response back to stdin via `stream.write`
+//   5. the permission line is NOT surfaced to the consumer's event iterator
+//
+// The user-visible symptom that prompted these tests: Claude Code tool calls
+// like `Edit` silently fail with "please approve in your terminal" prose
+// instead of firing the in-chat approval block. The hypothesis is that
+// either (a) the CLI isn't emitting `can_use_tool` at all (argv / SDK-host
+// handshake issue), or (b) the wrapper is dropping / mis-routing the line.
+// These tests pin down (b) — if the chain is broken somewhere in our
+// wrapper, these tests will fail. If they pass, (b) is ruled out and the
+// investigation moves upstream to the CLI subprocess itself.
+
+describe('query() — permission flow round-trip (pump + router + handler)', () => {
+  beforeEach(() => {
+    vi.mocked(spawnStream).mockReset()
+  })
+
+  /** Shape-typed helper for mock.writes entries. */
+  type ControlResponseWrite = {
+    type: 'control_response'
+    response: {
+      subtype: 'success' | 'error'
+      request_id: string
+      response?: unknown
+      error?: string
+    }
+  }
+  function isControlResponseWrite(w: unknown): w is ControlResponseWrite {
+    return !!w && typeof w === 'object' && (w as any).type === 'control_response'
+  }
+
+  it('routes can_use_tool to onPermissionRequest and writes an allow response back', async () => {
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    const handlerCalls: any[] = []
+    const onPermissionRequest = async (req: any) => {
+      handlerCalls.push(req)
+      return { behavior: 'allow' as const }
+    }
+
+    // Preload the sequence a real CLI would emit for a single tool use:
+    //   1. system/init  (session start)
+    //   2. assistant    (Claude announces the tool call in its content blocks)
+    //   3. control_request (can_use_tool — "may I run Edit on foo.ts?")
+    //   4. result       (turn complete)
+    // The control_request is what our wrapper must handle. If the chain
+    // breaks, the handler won't fire OR the response won't be written.
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-1' })
+    mock.pushEvent({
+      type: 'assistant',
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tu-edit-1',
+            name: 'Edit',
+            input: { file_path: 'foo.ts', old_string: 'a', new_string: 'b' },
+          },
+        ],
+      },
+    })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-can-use-1',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Edit',
+        input: { file_path: 'foo.ts', old_string: 'a', new_string: 'b' },
+        tool_use_id: 'tu-edit-1',
+      },
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-perm-1',
+      result: 'done',
+      duration_ms: 50,
+    })
+
+    const handle = await query({
+      prompt: 'edit the file',
+      onPermissionRequest,
+    })
+
+    // Drain the consumer event iterator. Only init / assistant / result
+    // should surface — control_request is handled internally by the pump
+    // and must never reach the consumer.
+    const received: string[] = []
+    for await (const ev of handle.events) {
+      received.push((ev as { type: string }).type)
+    }
+    expect(received).toEqual(['system', 'assistant', 'result'])
+
+    // ─── Step 1: the handler fired exactly once with the right payload ─
+    expect(handlerCalls).toHaveLength(1)
+    expect(handlerCalls[0].subtype).toBe('can_use_tool')
+    expect(handlerCalls[0].tool_name).toBe('Edit')
+    expect(handlerCalls[0].tool_use_id).toBe('tu-edit-1')
+    expect(handlerCalls[0].input).toEqual({
+      file_path: 'foo.ts',
+      old_string: 'a',
+      new_string: 'b',
+    })
+
+    // ─── Step 2: a control_response was written back via stream.write ──
+    // Writes so far: [0]=initialize, [1]=user turn, [2]=control_response.
+    const responseWrites = mock.writes.filter(isControlResponseWrite)
+    expect(responseWrites).toHaveLength(1)
+    const resp = responseWrites[0]
+    expect(resp.response.subtype).toBe('success')
+    expect(resp.response.request_id).toBe('req-can-use-1')
+    expect(resp.response.response).toEqual({ behavior: 'allow' })
+
+    // Sanity: the turn completed cleanly, result resolved.
+    const result = await handle.result
+    expect(result.sessionId).toBe('sess-perm-1')
+    expect(result.text).toBe('done')
+  })
+
+  it('forwards a deny decision from the handler through to stream.write', async () => {
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    const onPermissionRequest = async (_req: any) => ({
+      behavior: 'deny' as const,
+      message: 'user clicked deny',
+    })
+
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-2' })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-deny-1',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Bash',
+        input: { command: 'rm -rf /' },
+        tool_use_id: 'tu-bash-1',
+      },
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-perm-2',
+      result: 'denied',
+      duration_ms: 10,
+    })
+
+    const handle = await query({
+      prompt: 'dangerous op',
+      onPermissionRequest,
+    })
+    for await (const _ev of handle.events) { /* drain */ }
+
+    const responseWrites = mock.writes.filter(isControlResponseWrite)
+    expect(responseWrites).toHaveLength(1)
+    expect(responseWrites[0].response.subtype).toBe('success')
+    expect(responseWrites[0].response.request_id).toBe('req-deny-1')
+    expect(responseWrites[0].response.response).toEqual({
+      behavior: 'deny',
+      message: 'user clicked deny',
+    })
+  })
+
+  it('defaults to deny when no onPermissionRequest is wired', async () => {
+    // This is the "nothing's connected" baseline — if no handler is passed,
+    // the control router at control.ts:88-93 returns
+    // { behavior: 'deny', message: 'No permission handler configured' }.
+    // This test guards against a regression where the wrapper silently
+    // swallows can_use_tool requests (which would leave the CLI hanging
+    // forever waiting for a response).
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-3' })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-noop-1',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Edit',
+        input: { file_path: 'foo.ts' },
+        tool_use_id: 'tu-no-handler',
+      },
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-perm-3',
+      result: '',
+    })
+
+    const handle = await query({
+      prompt: 'hi',
+      // NOTE: no onPermissionRequest
+    })
+    for await (const _ev of handle.events) { /* drain */ }
+
+    const responseWrites = mock.writes.filter(isControlResponseWrite)
+    expect(responseWrites).toHaveLength(1)
+    expect(responseWrites[0].response.subtype).toBe('success')
+    expect((responseWrites[0].response.response as any).behavior).toBe('deny')
+    expect((responseWrites[0].response.response as any).message).toBe(
+      'No permission handler configured',
+    )
+  })
+
+  it('passes through extra CLI fields on the can_use_tool request (schema is permissive)', async () => {
+    // The leaked CLI source at src/cli/structuredIO.ts:590-606 emits
+    // can_use_tool requests with extra optional fields: permission_suggestions,
+    // blocked_path, decision_reason, agent_id, title, display_name, description.
+    // Our ControlRequestLineSchema uses .passthrough() so unknown fields
+    // survive — but that's worth a regression test because a single switch
+    // to .strict() would silently drop control_requests and route them to
+    // __parse_error, which the pump swallows.
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    const handlerCalls: any[] = []
+    const onPermissionRequest = async (req: any) => {
+      handlerCalls.push(req)
+      return { behavior: 'allow' as const }
+    }
+
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-4' })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-extras-1',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Edit',
+        input: { file_path: 'foo.ts' },
+        tool_use_id: 'tu-extras',
+        // Fields the real CLI adds that our type interface doesn't explicitly list:
+        permission_suggestions: [{ type: 'allow_once' }],
+        blocked_path: '/etc/passwd',
+        decision_reason: { type: 'mode', mode: 'default' },
+        agent_id: 'agent-1',
+        title: 'Allow Edit?',
+        display_name: 'Edit file',
+        description: 'The agent wants to modify foo.ts',
+      },
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-perm-4',
+      result: '',
+    })
+
+    const handle = await query({ prompt: 'edit', onPermissionRequest })
+    for await (const _ev of handle.events) { /* drain */ }
+
+    // Handler should receive the full request including the extra fields.
+    expect(handlerCalls).toHaveLength(1)
+    expect(handlerCalls[0].tool_name).toBe('Edit')
+    expect(handlerCalls[0].blocked_path).toBe('/etc/passwd')
+    expect(handlerCalls[0].title).toBe('Allow Edit?')
+    expect(handlerCalls[0].description).toBe('The agent wants to modify foo.ts')
+    expect(handlerCalls[0].permission_suggestions).toEqual([{ type: 'allow_once' }])
+
+    // And a successful round-trip still fired.
+    const responseWrites = mock.writes.filter(isControlResponseWrite)
+    expect(responseWrites).toHaveLength(1)
+    expect(responseWrites[0].response.request_id).toBe('req-extras-1')
+  })
+
+  it('handles multiple can_use_tool requests in one turn with matching request_ids', async () => {
+    // A real turn can emit multiple tool calls that each need permission.
+    // The router's dedupe key is `request_id`, so each distinct id must
+    // round-trip independently with its own response.
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    const handlerCalls: any[] = []
+    const onPermissionRequest = async (req: any) => {
+      handlerCalls.push(req)
+      // Alternating allow/deny based on tool name for easy assertions
+      return req.tool_name === 'Edit'
+        ? { behavior: 'allow' as const }
+        : { behavior: 'deny' as const, message: 'bash is scary' }
+    }
+
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-5' })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-multi-1',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Edit',
+        input: { file_path: 'a.ts' },
+        tool_use_id: 'tu-1',
+      },
+    })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-multi-2',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Bash',
+        input: { command: 'ls' },
+        tool_use_id: 'tu-2',
+      },
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-perm-5',
+      result: '',
+    })
+
+    const handle = await query({ prompt: 'do stuff', onPermissionRequest })
+    for await (const _ev of handle.events) { /* drain */ }
+
+    expect(handlerCalls).toHaveLength(2)
+    expect(handlerCalls[0].tool_name).toBe('Edit')
+    expect(handlerCalls[1].tool_name).toBe('Bash')
+
+    const responseWrites = mock.writes.filter(isControlResponseWrite)
+    expect(responseWrites).toHaveLength(2)
+
+    // Edit's response: allow
+    const editResp = responseWrites.find(r => r.response.request_id === 'req-multi-1')
+    expect(editResp?.response.response).toEqual({ behavior: 'allow' })
+
+    // Bash's response: deny with message
+    const bashResp = responseWrites.find(r => r.response.request_id === 'req-multi-2')
+    expect(bashResp?.response.response).toEqual({
+      behavior: 'deny',
+      message: 'bash is scary',
+    })
+  })
+
+  it('does NOT surface control_request lines to the consumer event iterator', async () => {
+    // Regression guard: the pump's `case 'control_request'` branch calls
+    // `continue` immediately after `stream.write(response)`, bypassing the
+    // `eventQueue.push(line)` at the bottom of the loop. If a future edit
+    // accidentally drops the `continue`, control_request lines would leak
+    // into the public event iterator and break the consumer's assumption
+    // that they only see user/assistant/stream_event/tool_progress/…
+    const mock = makeMockStream()
+    vi.mocked(spawnStream).mockResolvedValue(mock.handle)
+
+    mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-leak' })
+    mock.pushEvent({
+      type: 'control_request',
+      request_id: 'req-leak',
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Edit',
+        input: {},
+        tool_use_id: 'tu-leak',
+      },
+    })
+    mock.pushEvent({
+      type: 'result',
+      subtype: 'success',
+      session_id: 'sess-leak',
+      result: '',
+    })
+
+    const handle = await query({
+      prompt: 'hi',
+      onPermissionRequest: async () => ({ behavior: 'allow' as const }),
+    })
+
+    const received: string[] = []
+    for await (const ev of handle.events) {
+      received.push((ev as { type: string }).type)
+    }
+
+    // No 'control_request' entry in the consumer stream.
+    expect(received).not.toContain('control_request')
+    // But all the content types made it through.
+    expect(received).toEqual(['system', 'result'])
   })
 })
