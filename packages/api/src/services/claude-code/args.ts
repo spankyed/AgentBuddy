@@ -46,6 +46,21 @@ export function argsFromOptions(opts: QueryOptions): string[] {
     else if (opts.tools.length === 0) args.push('--tools', '')
     else args.push('--tools', ...opts.tools)
   }
+  // Permission prompt tool — MUST be 'stdio' for the CLI to emit `can_use_tool`
+  // control_requests over stdout. Without this flag the CLI falls back to its
+  // internal ask/deny resolver, which in non-interactive --print mode silently
+  // denies Edit/Write/Bash and makes Claude narrate the denial as "please
+  // approve in your terminal" prose. See the leaked source:
+  //   src/cli/print.ts:4267-4293 (getCanUseToolFn — the branch that enables
+  //     the stdio stream-based flow vs the internal-resolver fallback)
+  //   src/cli/print.ts:803-805   (options.sdkUrl / options.permissionPromptToolName
+  //     → effectivePermissionPromptToolName)
+  //   src/main.tsx:988           (argv parser for the hidden --permission-prompt-tool flag)
+  // Always emit — our wrapper is an SDK host by construction, there is no
+  // scenario where we'd want the internal-resolver fallback. Callers who want
+  // to bypass permissions entirely should set `permissionMode: 'bypassPermissions'`,
+  // which short-circuits BEFORE reaching the prompt tool.
+  args.push('--permission-prompt-tool', 'stdio')
 
   // ─── System prompt ────────────────────────────────────────────────────────
   if (opts.systemPrompt) args.push('--system-prompt', opts.systemPrompt)

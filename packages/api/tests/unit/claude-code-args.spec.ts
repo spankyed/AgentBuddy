@@ -31,6 +31,16 @@ describe('argsFromOptions', () => {
       expect(args).toContain('--verbose')
     })
 
+    it('always emits --permission-prompt-tool stdio', () => {
+      // Load-bearing: without this flag the CLI's getCanUseToolFn takes the
+      // no-prompt-tool branch (internal resolver), never emits `can_use_tool`
+      // control_requests, and falls back to prose-based permission denials.
+      // See leaked CLI source at src/cli/print.ts:4267-4293 and args.ts
+      // for the full leaked-source reference comment.
+      const args = argsFromOptions({})
+      expectContains(args, ['--permission-prompt-tool', 'stdio'])
+    })
+
     it('emits no optional flags when options are empty', () => {
       const args = argsFromOptions({})
       // Sanity: no common optional flags leak in from defaults.
