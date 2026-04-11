@@ -16,6 +16,13 @@ export interface CliServiceType {
     getStatus(): Promise<GitStatusFile[]>
     getCurrentBranch(): Promise<string>
     getWorkingDir(): string
+    /**
+     * Return the unified diff for the working copy vs HEAD. Pass a list of
+     * paths to restrict to specific files; omit to get all changes. Used by
+     * the Claude Code chat action to assemble a `diff` artifact after file-
+     * mutating tool calls (Write/Edit/NotebookEdit).
+     */
+    getDiff(paths?: string[]): Promise<string>
   }
   gh: {
     getPRForBranch(branch?: string): Promise<GhPullRequest | null>
@@ -71,6 +78,17 @@ function createCliService(): CliServiceType {
       },
       getWorkingDir(): string {
         return resolveCwd()
+      },
+      async getDiff(paths?: string[]): Promise<string> {
+        const repo = getGitRepo()
+        if (!paths || paths.length === 0) {
+          return repo.getDiff()
+        }
+        // GitRepository.getDiff takes one file path at a time; concatenate
+        // the per-file diffs so the caller gets a single unified-diff blob
+        // they can split on `^diff --git a/…`.
+        const chunks = await Promise.all(paths.map(p => repo.getDiff(p)))
+        return chunks.filter(Boolean).join('\n')
       },
     },
     gh: {

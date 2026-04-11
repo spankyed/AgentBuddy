@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { FileText, Code, CheckSquare, Image, LayoutDashboard, MessageSquare, ListTodo, Layers } from 'lucide-vue-next';
+import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList } from 'lucide-vue-next';
 import type { ArtifactItem, ArtifactType } from '@app/api';
 
 defineProps<{
@@ -38,6 +38,11 @@ function getIcon(type: ArtifactType) {
     todo: ListTodo,
     project: Layers,
     json: FileText,
+    graph: Network,
+    table: Table,
+    'claude-session': Wrench,
+    diff: GitBranch,
+    plan: ClipboardList,
   };
   return icons[type] || FileText;
 }

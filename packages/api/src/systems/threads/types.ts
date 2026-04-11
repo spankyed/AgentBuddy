@@ -173,7 +173,7 @@ export interface ArtifactEntity extends BaseEntity {
   title?: string;
   // biome-ignore lint/suspicious/noExplicitAny: Content can be various types
   content: string | any;
-  artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack';
+  artifactType: ArtifactType;
 }
 
 export const ThreadRelations = ['parent_of', 'blocks', 'blocked_by', 'duplicates'] as const;
@@ -303,14 +303,75 @@ export interface Tab {
 }
 
 export type ArtifactType =
-  'text'
+  | 'text'
   | 'code'
   | 'review'
   | 'image'
   | 'slack'
   | 'todo'
   | 'project'
-  | 'json';
+  | 'json'
+  | 'graph'
+  | 'table'
+  // Claude Code artifacts (see packages/default-setup/src/actions/claude-code/ROADMAP.md)
+  | 'claude-session'
+  | 'diff'
+  | 'plan';
+
+// ─── Claude Code artifact content shapes ─────────────────────────────────────
+// Documentation types — `ArtifactEntity.content` is `any` at the storage
+// layer, these shapes just describe the expected payload for each artifact
+// so renderers can be written against a known structure.
+
+export interface ClaudeSessionArtifactContent {
+  /** Claude CLI session id (empty string until the first system/init event). */
+  sessionId: string;
+  /** Model name reported by the CLI ("claude-sonnet-4-6" etc.). */
+  model: string;
+  /** Working directory the CLI is running in. */
+  cwd: string;
+  /** Epoch ms when the session artifact was created. */
+  startedAt: number;
+  /** Epoch ms of the most recent turn. */
+  lastTurnAt: number;
+  /** Number of turns executed in this session. */
+  turns: number;
+  /** Running cost total in USD across all turns. */
+  totalCostUsd: number;
+  /** High-level session status. Drives the status dot in the UI. */
+  status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended';
+  /** Total tool calls across all turns in this session. */
+  toolCallCount: number;
+  /** The most recent tool the agent used (for the sidebar summary line). */
+  lastTool?: { name: string; summary: string; at: number };
+}
+
+export interface DiffArtifactContent {
+  files: Array<{
+    path: string;
+    /** Unified diff text for this file. */
+    patch: string;
+    added: number;
+    removed: number;
+    changeType: 'added' | 'modified' | 'deleted' | 'renamed';
+  }>;
+  /** Aggregate summary e.g. "12 files, +420 -87". */
+  summary: string;
+}
+
+export interface PlanArtifactContent {
+  /** Raw markdown notes body. Phase D-min uses this as the only content field. */
+  notes: string;
+  /** Overall plan status. Approve/Reject buttons mutate this. */
+  status: 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+  /** Structured steps. Phase D-min leaves this empty; full Phase D will parse from notes. */
+  steps: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    status: 'pending' | 'in-progress' | 'done' | 'skipped';
+  }>;
+}
 
 export interface ArtifactItem {
   id: string;

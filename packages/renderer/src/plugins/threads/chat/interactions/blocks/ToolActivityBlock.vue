@@ -20,6 +20,17 @@
       <span v-else-if="badge" class="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{{ badge }}</span>
     </button>
 
+    <!-- Artifact ref link — shown below the header when set (Phase C diff) -->
+    <button
+      v-if="artifactRef && state !== 'streaming'"
+      type="button"
+      class="w-full text-left px-3 py-1.5 border-t border-neutral-800/60 text-xs text-neutral-400 hover:bg-neutral-700/30 hover:text-neutral-200 transition-colors flex items-center gap-1.5"
+      @click.stop="selectArtifact"
+    >
+      <ArrowRight class="w-3 h-3 flex-shrink-0" />
+      <span class="truncate">View changes ({{ artifactRef.label }})</span>
+    </button>
+
     <!-- Expanded list of entries — capped height with internal scroll for long turns -->
     <div
       v-if="isOpen && entries.length > 0"
@@ -67,8 +78,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle } from 'lucide-vue-next'
+import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import { computeLabel, computeBadge } from './tool-activity-label'
+import { applicationState } from '@/main'
+import { id as threadsId } from '@/plugins/threads/state'
 
 interface ToolActivityEntry {
   id: string
@@ -80,11 +93,17 @@ interface ToolActivityEntry {
   details?: { input?: unknown; output?: string; error?: string }
 }
 
+interface ArtifactRef {
+  artifactId: string
+  label: string
+}
+
 interface Props {
   entries: ToolActivityEntry[]
   label: string
   state: 'streaming' | 'done' | 'error'
   defaultOpen?: boolean
+  artifactRef?: ArtifactRef
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -137,6 +156,14 @@ const badge = computed(() => computeBadge(props.entries, props.state))
 
 const entries = computed(() => props.entries)
 const state = computed(() => props.state)
+const artifactRef = computed(() => props.artifactRef)
+
+// Jump to the referenced artifact in the right panel when the link is clicked.
+function selectArtifact() {
+  if (!props.artifactRef) return
+  const threadsActor = applicationState.system.get(threadsId)
+  threadsActor.send({ type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
+}
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`

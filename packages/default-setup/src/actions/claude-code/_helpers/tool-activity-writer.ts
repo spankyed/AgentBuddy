@@ -51,6 +51,13 @@ export interface ToolActivityWriter {
   flush(): void;
   /** Freeze the block to its final state. Writes immediately. */
   finalise(state: 'done' | 'error'): void;
+  /**
+   * Attach an artifact reference to the block (Phase C: diff artifact).
+   * Writes immediately so the renderer shows the "View changes" link.
+   * Safe to call after `finalise` — it overwrites the previous block with
+   * the same entries+state plus the new `artifactRef` field.
+   */
+  setArtifactRef(ref: { artifactId: string; label: string }): void;
   /** Current entries (read-only snapshot). */
   readonly entries: ReadonlyArray<ToolActivityEntry>;
   /** Whether the writer has produced any entries yet. */
@@ -73,6 +80,8 @@ export function createToolActivityWriter(
   let lastFlushAt = 0;
   /** Once true, we've pushed at least one block — finalise(0-entries) should clear. */
   let hasWrittenOnce = false;
+  /** Optional artifact ref attached via setArtifactRef (Phase C). */
+  let artifactRef: { artifactId: string; label: string } | undefined;
 
   const buildBlockProps = (): ToolActivityBlockProps => ({
     // Fresh array copy so frontend reactivity sees a new reference on every write.
@@ -80,6 +89,7 @@ export function createToolActivityWriter(
     label: computeLabel(entries, state),
     state,
     defaultOpen: false,
+    ...(artifactRef && { artifactRef }),
   });
 
   const writeNow = (): void => {
@@ -132,6 +142,14 @@ export function createToolActivityWriter(
 
     flush(): void {
       if (entries.length === 0) return;
+      writeNow();
+    },
+
+    setArtifactRef(ref: { artifactId: string; label: string }): void {
+      artifactRef = ref;
+      if (entries.length === 0) return;
+      // Writing immediately is safe even after finalise — same entries+state,
+      // just with the new artifactRef field included in the block props.
       writeNow();
     },
 

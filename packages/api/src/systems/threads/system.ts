@@ -137,6 +137,7 @@ export type OutgoingThreadsEvents =
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
+  | { type: 'ARTIFACT_UPDATED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }

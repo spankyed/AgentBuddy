@@ -675,4 +675,42 @@ export const chatCommands = {
 
     return { artifactId };
   },
+
+  /**
+   * Patch an existing artifact's title and/or content in place.
+   *
+   * Used by `services.artifact.updateAndNotify` for artifacts that need to
+   * mutate across turns (e.g. the Claude Code session card, which tracks
+   * live status / cost / turn count).
+   */
+  updateArtifact: (
+    artifactId: EARS.EntityId,
+    patch: { title?: string; content?: unknown },
+  ): void => {
+    const txn = tx(artifactId);
+    if (patch.title !== undefined) txn.put('title', patch.title);
+    if (patch.content !== undefined) txn.put('content', patch.content);
+    txn.put('updatedAt', Date.now()).id();
+  },
+
+  /**
+   * Find an artifact by (thread, artifactType). Used by upsert helpers to
+   * avoid creating duplicates on repeated turns. Returns the first match
+   * (there should only ever be one for singleton types like claude-session).
+   */
+  findArtifactByType: (
+    threadId: EARS.EntityId,
+    artifactType: ArtifactType,
+  ): ArtifactEntity | undefined => {
+    const candidates = qx(threadId)
+      .linksPick(
+        EARS.RelKind.HAS,
+        ['artifactType'] as const,
+        EARS.Entity.Artifact,
+      )
+      .filter(({ artifactType: t }) => t === artifactType);
+    const first = candidates[0];
+    if (!first?.id) return undefined;
+    return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
+  },
 } as const;

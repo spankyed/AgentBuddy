@@ -702,6 +702,29 @@ const threadsState = setup({
       );
       return { tabs };
     }),
+    updateArtifact: assign(({ context, event }) => {
+      // ARTIFACT_UPDATED carries a patch on .artifact — merge title/content
+      // into the matching artifact in the target tab. Missing fields are
+      // preserved so partial updates work.
+      const typedEvent = typeOf('ARTIFACT_UPDATED', event) as any;
+      const { tabId, artifact: patch } = typedEvent;
+      const tabs = context.tabs.map(tab => {
+        if (tab.id !== tabId) return tab;
+        return {
+          ...tab,
+          artifacts: tab.artifacts.map(a => {
+            if (a.id !== patch.id) return a;
+            return {
+              ...a,
+              ...(patch.title !== undefined && { title: patch.title }),
+              ...(patch.content !== undefined && { content: patch.content }),
+              metadata: { ...a.metadata, ...(patch.metadata || {}) },
+            };
+          }),
+        };
+      });
+      return { tabs };
+    }),
     updateTodoTask: assign(({ context, event }) => {
       const { artifactId, taskId, completed } = typeOf('UPDATE_TODO_TASK', event);
       const tabs = context.tabs.map(tab => ({
@@ -991,6 +1014,7 @@ const threadsState = setup({
     CLOSE_TAB: { actions: 'closeTab' },
     SELECT_ARTIFACT: { actions: 'selectArtifact' },
     ARTIFACT_ADDED: { actions: 'addArtifact' },
+    ARTIFACT_UPDATED: { actions: 'updateArtifact' },
     THREAD_TAB_REQUESTED: {
       actions: assign(({ context, event }) => {
         const { threadId, topic, artifacts, pinned } = typeOf('THREAD_TAB_REQUESTED', event);

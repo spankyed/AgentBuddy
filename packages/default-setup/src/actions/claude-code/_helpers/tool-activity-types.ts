@@ -28,5 +28,10 @@ export interface ToolActivityBlockProps {
   label: string;
   state: 'streaming' | 'done' | 'error';
   defaultOpen?: boolean;
+  /**
+   * Optional pointer to a thread artifact promoted from this turn's tool
+   * activity (Phase C: diff artifact). The renderer shows a small
+   * "→ View changes" link beneath the collapsed header when set.
+   */
   artifactRef?: { artifactId: string; label: string };
 }

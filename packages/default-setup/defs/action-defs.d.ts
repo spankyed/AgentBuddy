@@ -456,7 +456,7 @@ interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
     title?: string;
     content: string | any;
-    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack';
+    artifactType: ArtifactType;
 }
 declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
 type ThreadLinkRelation = typeof ThreadRelations[number];
@@ -549,7 +549,7 @@ interface Tab {
     selectedArtifactId?: string;
     pinned?: boolean;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'claude-session' | 'diff' | 'plan';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
@@ -728,144 +728,6 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GO_BACK_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
-        systemId: zod.ZodLiteral<"brain">;
-        flowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"START_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"KILL_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESTART_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PAUSE_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESUME_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -1036,6 +898,144 @@ declare const events: {
             library: string[] | null;
             notes: string[] | null;
         } | undefined;
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GO_BACK_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
+        systemId: zod.ZodLiteral<"brain">;
+        flowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"START_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"KILL_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTART_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PAUSE_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESUME_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -2097,9 +2097,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -2107,9 +2107,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -3730,51 +3730,6 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "INSPECT_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_KILLED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_STARTED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_PAUSED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_RESUMED";
-        pluginId: "brain";
-    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         pluginId: "settings";
@@ -3841,6 +3796,51 @@ declare const events: {
         message: string;
         pluginId: "settings";
     } | {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "INSPECT_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_KILLED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_STARTED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_PAUSED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_RESUMED";
+        pluginId: "brain";
+    } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
         pluginId: "threads";
@@ -3900,6 +3900,11 @@ declare const events: {
         pluginId: "threads";
     } | {
         type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "threads";
+    } | {
+        type: "ARTIFACT_UPDATED";
         tabId: string;
         artifact: any;
         pluginId: "threads";
@@ -6008,6 +6013,13 @@ interface CliServiceType {
         getStatus(): Promise<GitStatusFile[]>;
         getCurrentBranch(): Promise<string>;
         getWorkingDir(): string;
+        /**
+         * Return the unified diff for the working copy vs HEAD. Pass a list of
+         * paths to restrict to specific files; omit to get all changes. Used by
+         * the Claude Code chat action to assemble a `diff` artifact after file-
+         * mutating tool calls (Write/Edit/NotebookEdit).
+         */
+        getDiff(paths?: string[]): Promise<string>;
     };
     gh: {
         getPRForBranch(branch?: string): Promise<GhPullRequest | null>;
@@ -6856,6 +6868,12 @@ interface CreateArtifactOptions {
     content: any;
     threadId?: EARS.EntityId;
 }
+interface UpdateArtifactOptions {
+    title?: string;
+    content?: unknown;
+    /** Thread to emit the ARTIFACT_UPDATED event for. If omitted, no event is sent. */
+    threadId?: EARS.EntityId;
+}
 /**
  * Create a new artifact and notify the frontend (with side effects)
  *
@@ -6879,12 +6897,36 @@ interface CreateArtifactOptions {
 declare function createAndNotify(options: CreateArtifactOptions): {
     artifactId: EARS.EntityId;
 };
+/**
+ * Patch an existing artifact's title and/or content in place, and notify
+ * the frontend so the panel re-renders with the new data.
+ *
+ * Used for artifacts that mutate across turns (e.g. the Claude Code session
+ * card, which tracks live status/cost/turn count). The `ARTIFACT_UPDATED`
+ * event mirrors `ARTIFACT_ADDED` but carries only the fields that changed.
+ */
+declare function updateAndNotify(artifactId: EARS.EntityId, options: UpdateArtifactOptions): void;
+/**
+ * Find-or-create an artifact by (thread, artifactType). Guarantees at most
+ * one artifact of the given type per thread. Useful for singletons like the
+ * Claude Code session card that should only ever exist once per thread.
+ */
+declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: ArtifactType, initial: {
+    title: string;
+    content: any;
+}): {
+    artifactId: EARS.EntityId;
+    created: boolean;
+};
 
 type artifact_CreateArtifactOptions = CreateArtifactOptions;
+type artifact_UpdateArtifactOptions = UpdateArtifactOptions;
 declare const artifact_createAndNotify: typeof createAndNotify;
+declare const artifact_findOrCreateByType: typeof findOrCreateByType;
+declare const artifact_updateAndNotify: typeof updateAndNotify;
 declare namespace artifact {
-  export { artifact_createAndNotify as createAndNotify };
-  export type { artifact_CreateArtifactOptions as CreateArtifactOptions };
+  export { artifact_createAndNotify as createAndNotify, artifact_findOrCreateByType as findOrCreateByType, artifact_updateAndNotify as updateAndNotify };
+  export type { artifact_CreateArtifactOptions as CreateArtifactOptions, artifact_UpdateArtifactOptions as UpdateArtifactOptions };
 }
 
 interface BrainEventPayload {
@@ -7110,6 +7152,11 @@ declare const services: {
             }) => {
                 artifactId: EARS.EntityId;
             };
+            readonly updateArtifact: (artifactId: EARS.EntityId, patch: {
+                title?: string;
+                content?: unknown;
+            }) => void;
+            readonly findArtifactByType: (threadId: EARS.EntityId, artifactType: ArtifactType) => ArtifactEntity | undefined;
         };
         readonly brainQueries: {
             readonly rootFlowTNode: () => EARS.EntityId | undefined;
