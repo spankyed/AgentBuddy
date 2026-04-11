@@ -43,7 +43,9 @@ describe('createControlRouter', () => {
       const router = createControlRouter({
         onPermissionRequest: async (req) => {
           calls.push(req)
-          return { behavior: 'allow' }
+          // Echo req.input back as updatedInput — required by the CLI's
+          // Zod validator at PermissionPromptToolResultSchema.ts:44-63.
+          return { behavior: 'allow', updatedInput: req.input }
         },
       })
 
@@ -59,7 +61,10 @@ describe('createControlRouter', () => {
       expect(isSuccess(response)).toBe(true)
       if (isSuccess(response)) {
         expect(response.response.request_id).toBe('r1')
-        expect(response.response.response).toEqual({ behavior: 'allow' })
+        expect(response.response.response).toEqual({
+          behavior: 'allow',
+          updatedInput: { command: 'ls' },
+        })
       }
     })
 

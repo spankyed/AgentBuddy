@@ -180,8 +180,13 @@ export async function action(
             });
             resolvePlanDraft(services, threadId, allow ? 'approved' : 'rejected');
             updateSessionArtifact(services, threadId, { status: 'streaming' });
+            // `updatedInput` is required by the CLI's Zod validator at
+            // PermissionPromptToolResultSchema.ts:44-63 — missing it
+            // produces a `ZodError: invalid_union` that the CLI surfaces
+            // as "Tool permission request failed: …" on the tool row.
+            // We echo `req.input` verbatim (we don't modify plan inputs).
             return allow
-              ? { behavior: 'allow' as const }
+              ? { behavior: 'allow' as const, updatedInput: req.input }
               : { behavior: 'deny' as const, message: reason || 'Plan rejected by user' };
           } catch (err: any) {
             const errorMessage = err?.message || 'Plan approval failed';
@@ -237,8 +242,13 @@ export async function action(
             durationMs: Date.now() - handlerStartedAt,
           });
           updateSessionArtifact(services, threadId, { status: 'streaming' });
+          // `updatedInput` is required by the CLI's Zod validator at
+          // PermissionPromptToolResultSchema.ts:44-63 — missing it
+          // produces a `ZodError: invalid_union` that the CLI surfaces
+          // as "Tool permission request failed: …" on the tool row.
+          // We echo `req.input` verbatim (we don't modify the tool input).
           return allow
-            ? { behavior: 'allow' as const }
+            ? { behavior: 'allow' as const, updatedInput: req.input }
             : { behavior: 'deny' as const, message: reason || 'User denied' };
         } catch (err: any) {
           const errorMessage = err?.message || 'Approval failed';

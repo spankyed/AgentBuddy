@@ -379,7 +379,9 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const handlerCalls: any[] = []
     const onPermissionRequest = async (req: any) => {
       handlerCalls.push(req)
-      return { behavior: 'allow' as const }
+      // Echo req.input back as updatedInput — required by the CLI's Zod
+      // validator at PermissionPromptToolResultSchema.ts:44-63.
+      return { behavior: 'allow' as const, updatedInput: req.input }
     }
 
     // Preload the sequence a real CLI would emit for a single tool use:
@@ -389,6 +391,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     //   4. result       (turn complete)
     // The control_request is what our wrapper must handle. If the chain
     // breaks, the handler won't fire OR the response won't be written.
+    const editInput = { file_path: 'foo.ts', old_string: 'a', new_string: 'b' }
     mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-1' })
     mock.pushEvent({
       type: 'assistant',
@@ -399,7 +402,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
             type: 'tool_use',
             id: 'tu-edit-1',
             name: 'Edit',
-            input: { file_path: 'foo.ts', old_string: 'a', new_string: 'b' },
+            input: editInput,
           },
         ],
       },
@@ -410,7 +413,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
       request: {
         subtype: 'can_use_tool',
         tool_name: 'Edit',
-        input: { file_path: 'foo.ts', old_string: 'a', new_string: 'b' },
+        input: editInput,
         tool_use_id: 'tu-edit-1',
       },
     })
@@ -454,7 +457,9 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const resp = responseWrites[0]
     expect(resp.response.subtype).toBe('success')
     expect(resp.response.request_id).toBe('req-can-use-1')
-    expect(resp.response.response).toEqual({ behavior: 'allow' })
+    // The CLI's PermissionPromptToolResultSchema requires `updatedInput`
+    // on allow — echo the original tool input verbatim.
+    expect(resp.response.response).toEqual({ behavior: 'allow', updatedInput: editInput })
 
     // Sanity: the turn completed cleanly, result resolved.
     const result = await handle.result
@@ -563,7 +568,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const handlerCalls: any[] = []
     const onPermissionRequest = async (req: any) => {
       handlerCalls.push(req)
-      return { behavior: 'allow' as const }
+      return { behavior: 'allow' as const, updatedInput: req.input }
     }
 
     mock.pushEvent({ type: 'system', subtype: 'init', session_id: 'sess-perm-4' })
@@ -621,7 +626,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
       handlerCalls.push(req)
       // Alternating allow/deny based on tool name for easy assertions
       return req.tool_name === 'Edit'
-        ? { behavior: 'allow' as const }
+        ? { behavior: 'allow' as const, updatedInput: req.input }
         : { behavior: 'deny' as const, message: 'bash is scary' }
     }
 
@@ -663,9 +668,9 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
     const responseWrites = mock.writes.filter(isControlResponseWrite)
     expect(responseWrites).toHaveLength(2)
 
-    // Edit's response: allow
+    // Edit's response: allow (with updatedInput echoing the original tool input)
     const editResp = responseWrites.find(r => r.response.request_id === 'req-multi-1')
-    expect(editResp?.response.response).toEqual({ behavior: 'allow' })
+    expect(editResp?.response.response).toEqual({ behavior: 'allow', updatedInput: { file_path: 'a.ts' } })
 
     // Bash's response: deny with message
     const bashResp = responseWrites.find(r => r.response.request_id === 'req-multi-2')
@@ -705,7 +710,7 @@ describe('query() — permission flow round-trip (pump + router + handler)', () 
 
     const handle = await query({
       prompt: 'hi',
-      onPermissionRequest: async () => ({ behavior: 'allow' as const }),
+      onPermissionRequest: async () => ({ behavior: 'allow' as const, updatedInput: {} }),
     })
 
     const received: string[] = []

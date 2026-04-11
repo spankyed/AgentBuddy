@@ -237,10 +237,39 @@ export interface InitializeRequest {
   agents?: Record<string, unknown>
 }
 
-/** The response shape for `can_use_tool`. */
+/**
+ * The response shape for `can_use_tool`, as required by the Claude Code
+ * CLI at:
+ *   packages/claude-code/src/utils/permissions/PermissionPromptToolResultSchema.ts
+ *
+ * - `allow` MUST include `updatedInput` (Record<string, unknown>). The CLI
+ *   treats an empty object as "run with the original tool input", so
+ *   callers that don't intend to modify the input should echo `req.input`
+ *   back verbatim — this is the safer default.
+ * - `deny` MUST include a `message` string. Callers that don't have a
+ *   specific reason should send a generic "User denied".
+ *
+ * Malformed responses (missing required fields) are rejected by the CLI
+ * with a `ZodError: invalid_union` that surfaces as "Tool permission
+ * request failed: …" on the user's tool-activity row. Both required
+ * fields are enforced statically here so that class of bug can't
+ * silently reoccur at the call site.
+ */
 export type PermissionDecision =
-  | { behavior: 'allow'; updatedInput?: Record<string, unknown> }
-  | { behavior: 'deny'; message?: string }
+  | {
+      behavior: 'allow'
+      updatedInput: Record<string, unknown>
+      updatedPermissions?: Array<Record<string, unknown>>
+      toolUseID?: string
+      decisionClassification?: 'user_temporary' | 'user_permanent' | 'user_reject'
+    }
+  | {
+      behavior: 'deny'
+      message: string
+      interrupt?: boolean
+      toolUseID?: string
+      decisionClassification?: 'user_temporary' | 'user_permanent' | 'user_reject'
+    }
 
 /** Caller hook: decide a tool permission request. */
 export type PermissionHandler = (
