@@ -15,7 +15,7 @@
 import type { Services } from '../../../types';
 
 export interface AwaitMessageResponseOptions {
-  /** How long to wait before giving up. Default: 2 minutes. */
+  /** How long to wait before giving up. Default: 10 minutes. */
   timeoutMs?: number;
   /** Abort signal for cooperative cancellation. */
   signal?: AbortSignal;
@@ -35,7 +35,10 @@ export async function awaitMessageResponse(
   messageId: string,
   opts: AwaitMessageResponseOptions = {},
 ): Promise<any> {
-  const timeoutMs = opts.timeoutMs ?? 120_000;
+  // Default: 10 minutes. Approval blocks are user-driven — a 2-minute
+  // timeout fires while users are still reading / thinking, which
+  // silently denied and left Claude to generate prose fallback.
+  const timeoutMs = opts.timeoutMs ?? 600_000;
   const listenerId = `cc-await-${messageId}`;
 
   return await new Promise((resolve, reject) => {

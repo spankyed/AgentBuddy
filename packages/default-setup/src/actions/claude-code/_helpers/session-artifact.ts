@@ -20,6 +20,21 @@
 
 import type { Services, EntityId } from '../../../types';
 
+/**
+ * Local mirror of `PermissionMode` (from `@/services/claude-code/types` on
+ * the backend). Duplicated here so helper files in this folder can typecheck
+ * without reaching across package boundaries — the default-setup sandbox
+ * doesn't re-export backend types and regenerating defs for every edit is
+ * too slow. Keep in sync with the canonical union.
+ */
+export type PermissionMode =
+  | 'default'
+  | 'acceptEdits'
+  | 'plan'
+  | 'bypassPermissions'
+  | 'dontAsk'
+  | 'auto';
+
 export interface SessionArtifactContent {
   sessionId: string;
   model: string;
@@ -31,6 +46,13 @@ export interface SessionArtifactContent {
   status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended';
   toolCallCount: number;
   lastTool?: { name: string; summary: string; at: number };
+  /**
+   * Permission policy for the next turn. Optional for backwards compat
+   * with session artifacts persisted before this field was introduced —
+   * read through `readSessionPermissionMode` which coalesces to
+   * `'default'`. See ClaudeSessionArtifactContent in threads/types.ts.
+   */
+  permissionMode?: PermissionMode;
 }
 
 /** Thread → session artifact id. Survives across calls within one process. */
@@ -49,8 +71,33 @@ function makeInitialContent(partial: Partial<SessionArtifactContent>): SessionAr
     totalCostUsd: 0,
     status: 'streaming',
     toolCallCount: 0,
+    permissionMode: 'default',
     ...partial,
   };
+}
+
+/**
+ * Read the permission mode stored on the session artifact. Returns the
+ * user's current choice from the right-panel segmented control, or
+ * `'default'` if the artifact has no stored value yet.
+ *
+ * Called by `chat.ts` at action entry to determine what `permissionMode`
+ * to pass to the CLI for this turn. This is the single source of truth —
+ * changing the mode via the UI directly mutates the artifact, and the
+ * next turn picks up the new value automatically.
+ */
+export function readSessionPermissionMode(
+  services: Services,
+  threadId: EntityId,
+): PermissionMode {
+  const artifacts = services.repository.chatQueries.threadArtifacts(threadId) as Array<{
+    id: EntityId;
+    type: string;
+    content: unknown;
+  }>;
+  const session = artifacts.find(a => a.type === 'claude-session');
+  const content = session?.content as Partial<SessionArtifactContent> | undefined;
+  return content?.permissionMode ?? 'default';
 }
 
 /**

@@ -1,6 +1,7 @@
 import { BaseEntity } from "@/core/ears";
 import type { Simplify } from "@/core/helpers/type-helpers";
 import type { EARS } from "@/types";
+import type { PermissionMode } from "@/services/claude-code/types";
 
 // Block-based interaction system (composable architecture)
 export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity';
@@ -344,6 +345,18 @@ export interface ClaudeSessionArtifactContent {
   toolCallCount: number;
   /** The most recent tool the agent used (for the sidebar summary line). */
   lastTool?: { name: string; summary: string; at: number };
+  /**
+   * Permission policy for the next turn. Mutated by the user via the
+   * session artifact's segmented control in the right panel and read by
+   * `chat.ts` at action entry. The three useful values are:
+   *   - `'default'` — CLI emits `can_use_tool` per Edit/Write/Bash (Ask mode)
+   *   - `'acceptEdits'` — CLI auto-approves Edit/Write (Auto mode); Bash still prompts
+   *   - `'plan'` — read-only; CLI produces a plan, makes no file changes
+   * Other `PermissionMode` variants are allowed by the type but not
+   * surfaced in the UI. Optional for backwards compat with artifacts
+   * persisted before this field existed; readers coalesce to `'default'`.
+   */
+  permissionMode?: PermissionMode;
 }
 
 export interface DiffArtifactContent {

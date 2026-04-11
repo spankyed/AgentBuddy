@@ -111,6 +111,14 @@ export const IncomingThreadsEvents = [
     threadId: z.string().optional(),
     references: referencesSchema,
   }),
+  // User toggled the permission mode on the claude-session artifact's
+  // segmented control. Mutates `content.permissionMode` on the session
+  // artifact in place; the next work-mode turn reads it via
+  // `readSessionPermissionMode` in chat.ts.
+  busEvent('UPDATE_CLAUDE_PERMISSION_MODE', {
+    threadId: z.string(),
+    mode: z.string(),
+  }),
 ] as const
 
 export type ThreadsInternalEvents =
@@ -673,6 +681,27 @@ export const threadsSystem = setup({
         blockResponse: response,
         ...(result.blocks && { blocks: result.blocks })
       }));
+    },
+    updateClaudePermissionMode: ({ event }) => {
+      // User clicked Ask / Auto / Plan on the claude-session artifact's
+      // segmented control. Mutate `content.permissionMode` on the session
+      // artifact in place and notify the frontend. The next work-mode turn
+      // reads it via `readSessionPermissionMode` in chat.ts.
+      const { threadId, mode } = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event);
+      const existing = repository.chatCommands.findArtifactByType(
+        threadId as EARS.EntityId,
+        'claude-session',
+      );
+      if (!existing?.id) {
+        logger.warn('UPDATE_CLAUDE_PERMISSION_MODE: no claude-session artifact for thread', { threadId });
+        return;
+      }
+      const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
+      const nextContent = { ...prevContent, permissionMode: mode };
+      services.artifact.updateAndNotify(existing.id, {
+        content: nextContent,
+        threadId: threadId as EARS.EntityId,
+      });
     }
   },
 }).createMachine(
@@ -738,6 +767,9 @@ export const threadsSystem = setup({
           },
           USER_COMMAND: {
             actions: 'forwardUserCommand',
+          },
+          UPDATE_CLAUDE_PERMISSION_MODE: {
+            actions: 'updateClaudePermissionMode',
           },
           FORK_THREAD: {
             actions: 'forkThread',

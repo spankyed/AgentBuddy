@@ -137,6 +137,7 @@ type UIEvent =
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
+  | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -816,6 +817,18 @@ const threadsState = setup({
       const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
     },
+    updateClaudePermissionMode: ({ event }) => {
+      // User clicked a button in the session artifact's Permission row.
+      // Forward the mutation to the threads system, which updates the
+      // artifact's content.permissionMode and emits ARTIFACT_UPDATED back.
+      const typedEvent = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event) as any;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_CLAUDE_PERMISSION_MODE',
+        threadId: typedEvent.threadId,
+        mode: typedEvent.mode,
+      });
+    },
     revertThread: ({ event }) => {
       const { messageId, threadId } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'REVERT_THREAD', messageId, threadId });
@@ -1001,6 +1014,7 @@ const threadsState = setup({
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
+    UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: [

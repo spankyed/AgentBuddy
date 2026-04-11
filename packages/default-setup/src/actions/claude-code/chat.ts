@@ -15,7 +15,7 @@ import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { awaitMessageResponse } from './_helpers/await-message-response';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { ensureSessionArtifact, updateSessionArtifact } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 
@@ -109,6 +109,12 @@ export async function action(
   });
   updateSessionArtifact(services, threadId, { status: 'streaming' });
 
+  // Read the user's current permission-mode choice from the session
+  // artifact (set via the segmented control on the right panel card).
+  // Falls back to 'default' for brand-new threads.
+  const activePermissionMode = readSessionPermissionMode(services, threadId);
+  log.debug('active permission mode', { permissionMode: activePermissionMode });
+
   // Phase-aware system-prompt nudging (plan/edit/review).
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
   const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
@@ -116,6 +122,11 @@ export async function action(
   // ─── Permission handler (control_request → approval block → response) ────
   const onPermissionRequest = askForPermissions
     ? async (req: { tool_name: string; input: Record<string, unknown>; tool_use_id: string }) => {
+        const handlerStartedAt = Date.now();
+        log.debug('permission handler invoked', {
+          tool_name: req.tool_name,
+          tool_use_id: req.tool_use_id,
+        });
         // Preserve any streamed text written so far before the approval block.
         writer.flush();
         // Flip the session card into "awaiting-permission" so the status dot
@@ -133,18 +144,49 @@ export async function action(
           allowReason: true,
           forkable: false,
         });
+        log.debug('approval block sent', { messageId: approval.messageId, tool: req.tool_name });
 
         try {
           const response = await awaitMessageResponse(services, approval.messageId);
           // Approval block responses look like { value: 'yes' | 'no', reason? }
           const allow = response?.value === 'yes' || response?.value === true || response === 'yes';
+          log.debug('permission response received', {
+            decision: allow ? 'allow' : 'deny',
+            durationMs: Date.now() - handlerStartedAt,
+          });
           updateSessionArtifact(services, threadId, { status: 'streaming' });
           return allow
             ? { behavior: 'allow' as const }
             : { behavior: 'deny' as const, message: response?.reason || 'User denied' };
         } catch (err: any) {
+          const errorMessage = err?.message || 'Approval failed';
+          log.error('permission handler failed', {
+            error: errorMessage,
+            durationMs: Date.now() - handlerStartedAt,
+          });
           updateSessionArtifact(services, threadId, { status: 'streaming' });
-          return { behavior: 'deny' as const, message: err?.message || 'Approval failed' };
+          // When the 10-minute default timeout fires, inject a visible note
+          // block into the thread so the user sees WHY Claude was denied
+          // instead of getting silent prose fallback. This only fires on
+          // actual timeouts — an allow/deny click returns cleanly via the
+          // try branch above.
+          if (errorMessage.includes('timed out')) {
+            services.chat.sendBlockMessage({
+              threadId,
+              text: '',
+              blocks: [
+                {
+                  type: 'note',
+                  props: {
+                    content: `Approval request for \`${req.tool_name}\` timed out — Claude was denied. Send another message to retry.`,
+                    variant: 'error',
+                    label: 'Permission timeout',
+                  },
+                },
+              ],
+            });
+          }
+          return { behavior: 'deny' as const, message: errorMessage };
         }
       }
     : undefined;
@@ -154,7 +196,7 @@ export async function action(
     log.debug('invoking claudeCode.query', {
       model,
       resumeSessionId: resumeSessionId ?? null,
-      permissionMode: 'default',
+      permissionMode: activePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       hasSystemPrompt: !!composedSystemPrompt,
       askForPermissions,
@@ -164,7 +206,7 @@ export async function action(
       resume: resumeSessionId,
       model,
       includePartialMessages: true,
-      permissionMode: 'default',
+      permissionMode: activePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       disallowedTools,
       systemPrompt: composedSystemPrompt,
