@@ -16,6 +16,9 @@ import { on, action, branch } from './_patterns';
  */
 export default {
   "Claude Code": [
+    entry(
+      [keepAlive()],
+    ),
     on(
       "user.message",
       [[
