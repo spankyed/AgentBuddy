@@ -17,6 +17,8 @@ import { parseApprovalDecision } from './_helpers/approval-response';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
+import { createPlanDraft, resolvePlanDraft } from './_helpers/plan-artifact';
+import { parseExitPlanModeInput, buildPlanApprovalContext } from './_helpers/plan-approval';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 
@@ -134,6 +136,80 @@ export async function action(
         // turns yellow while we wait for the user. Reset below after the
         // response (allow or deny).
         updateSessionArtifact(services, threadId, { status: 'awaiting-permission' });
+
+        // ─── ExitPlanMode — dedicated plan-approval flow ──────────────
+        // Claude calls this tool to signal "ready to exit plan mode and
+        // start implementing". The SDK-normalised input carries the
+        // plan as markdown (see leaked CLI source at
+        //   packages/claude-code/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:97-108
+        // ) plus an optional list of `allowedPrompts` describing what
+        // follow-up Bash permissions Claude expects. Render the plan
+        // as a proper plan artifact in the right-panel canvas AND
+        // send a plan-specific approval block in chat, so the user
+        // reviews the actual plan rather than a JSON dump of
+        // `{ plan, planFilePath, allowedPrompts }`.
+        if (req.tool_name === 'ExitPlanMode') {
+          const parsed = parseExitPlanModeInput(req.input);
+          const planArtifactId = createPlanDraft(services, threadId, parsed.plan);
+          log.debug('plan artifact created (draft)', {
+            planArtifactId,
+            planLen: parsed.plan.length,
+            allowedPromptCount: parsed.allowedPrompts.length,
+          });
+
+          const approval = services.chat.sendApprovalBlock({
+            threadId,
+            text: 'Claude Code is ready to implement — review the plan and approve.',
+            prompt: 'Approve this plan and start implementing?',
+            context: buildPlanApprovalContext(parsed),
+            requireReason: false,
+            allowReason: true,
+            forkable: false,
+          });
+          log.debug('plan approval block sent', {
+            messageId: approval.messageId,
+            planArtifactId,
+          });
+
+          try {
+            const response = await awaitMessageResponse(services, approval.messageId);
+            const { allow, reason } = parseApprovalDecision(response);
+            log.debug('plan approval response received', {
+              decision: allow ? 'allow' : 'deny',
+              durationMs: Date.now() - handlerStartedAt,
+            });
+            resolvePlanDraft(services, threadId, allow ? 'approved' : 'rejected');
+            updateSessionArtifact(services, threadId, { status: 'streaming' });
+            return allow
+              ? { behavior: 'allow' as const }
+              : { behavior: 'deny' as const, message: reason || 'Plan rejected by user' };
+          } catch (err: any) {
+            const errorMessage = err?.message || 'Plan approval failed';
+            log.error('plan approval handler failed', {
+              error: errorMessage,
+              durationMs: Date.now() - handlerStartedAt,
+            });
+            resolvePlanDraft(services, threadId, 'rejected');
+            updateSessionArtifact(services, threadId, { status: 'streaming' });
+            if (errorMessage.includes('timed out')) {
+              services.chat.sendBlockMessage({
+                threadId,
+                text: '',
+                blocks: [
+                  {
+                    type: 'note',
+                    props: {
+                      content: 'Plan approval timed out — Claude was denied. Send another message to retry.',
+                      variant: 'error',
+                      label: 'Plan approval timeout',
+                    },
+                  },
+                ],
+              });
+            }
+            return { behavior: 'deny' as const, message: errorMessage };
+          }
+        }
 
         const contextSummary = `Tool: ${req.tool_name}\nInput:\n${JSON.stringify(req.input, null, 2)}`;
         const approval = services.chat.sendApprovalBlock({
@@ -278,6 +354,14 @@ export async function action(
         const blocks = line.message?.content || [];
         for (const block of blocks) {
           if (block?.type === 'tool_use') {
+            // ExitPlanMode is a meta-signal ("ready to exit plan mode")
+            // rather than an operational tool the user cares about
+            // logging. The plan artifact and dedicated plan-approval
+            // block (see onPermissionRequest branch above) are the
+            // real UX — don't also clutter the tool-activity block
+            // with a row, and don't bump the session tool counter.
+            if (block.name === 'ExitPlanMode') continue;
+
             // Flush any pending prose text first so the activity block
             // visually lands after the prose that prompted it — we can't
             // truly interleave blocks into text (see tool-activity-writer
@@ -437,22 +521,12 @@ export async function action(
       log.warn('diff artifact assembly failed', { message: diffErr?.message });
     }
 
-    // ─── Phase D-min: create a plan artifact stub in plan mode ─────────
-    // Only fires if the caller explicitly requested plan mode (no user-
-    // facing toggle yet — needs a separate follow-up task).
-    if ((params as any).permissionMode === 'plan' && result.text) {
-      try {
-        services.artifact.createAndNotify({
-          artifactType: 'plan',
-          title: 'Plan',
-          content: { notes: result.text, status: 'draft', steps: [] },
-          threadId,
-        });
-        log.debug('plan artifact created');
-      } catch (planErr: any) {
-        log.warn('plan artifact creation failed', { message: planErr?.message });
-      }
-    }
+    // Plan artifacts are now created inline during ExitPlanMode approval
+    // (see the `req.tool_name === 'ExitPlanMode'` branch in
+    // onPermissionRequest above), not after the result lands. The prior
+    // Phase D-min post-result stub used `result.text` as the plan body,
+    // which by the time `result` arrives in the plan-mode happy path is
+    // actually the post-implementation summary — wrong content. Removed.
 
     writer.finalize(writer.text || result.text);
     log.debug('chat action completed');
