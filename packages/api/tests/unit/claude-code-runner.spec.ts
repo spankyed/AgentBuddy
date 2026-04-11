@@ -41,4 +41,26 @@ describe('buildChildEnv', () => {
     // so the parent's own env must stay intact (llm.ts still needs the key).
     expect(process.env.ANTHROPIC_API_KEY).toBe('sk-ant-dev-placeholder')
   })
+
+  it('sets ENABLE_TOOL_SEARCH=0 so deferred tools (ExitPlanMode, …) are always in Claude\'s initial tools list', () => {
+    // Regression guard for the plan-mode UX breakage: Claude Code's
+    // tool-search mode defaults to enabled, which hides every tool
+    // tagged `shouldDefer: true` (including ExitPlanMode) from Claude
+    // on the first turn. Without this env var, plan-mode sessions
+    // never fire our ExitPlanMode approval flow because Claude can't
+    // actually call the tool. See the leaked-source comment in
+    // runner.ts's `buildChildEnv` for the full chain.
+    const env = buildChildEnv()
+    expect(env.ENABLE_TOOL_SEARCH).toBe('0')
+  })
+
+  it('does not force ENABLE_TOOL_SEARCH when the caller passes an explicit override', () => {
+    // The override path is for callers (integration tests, explicit
+    // harnesses) that want to fully own the child env. We must NOT
+    // silently add defaults to their object.
+    const override = { FOO: 'bar' }
+    const env = buildChildEnv(override)
+    expect(env).toBe(override) // identity — still no copy, no mutation
+    expect(env.ENABLE_TOOL_SEARCH).toBeUndefined()
+  })
 })
