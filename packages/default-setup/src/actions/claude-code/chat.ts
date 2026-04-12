@@ -14,6 +14,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { awaitMessageResponse } from './_helpers/await-message-response';
 import { parseApprovalDecision } from './_helpers/approval-response';
+import { isPlanFileWrite } from './_helpers/auto-approve';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
@@ -130,6 +131,35 @@ export async function action(
           tool_name: req.tool_name,
           tool_use_id: req.tool_use_id,
         });
+
+        // ─── Auto-approve plan-file writes in plan phase ─────────────
+        // During plan phase, Claude naturally writes planning markdown
+        // into `.claude/plans/`. Prompting the user for each one is pure
+        // friction — they already committed to the plan-phase workflow
+        // and saving plan docs IS the workflow. Short-circuit these
+        // before the approval-block ceremony so the session card never
+        // flickers to "awaiting-permission" for a file the user would
+        // always approve anyway.
+        //
+        // Intentionally scoped tight:
+        //   - `phase === 'plan'` only — work/review phases still prompt
+        //   - `Write` tool only — Edit to an existing plan file still
+        //     prompts (explicit modifications to existing plans should
+        //     surface to the user)
+        //   - `.claude/plans/**/*.md` only — other paths and non-md
+        //     files in that folder still prompt
+        //
+        // The path match is structural (see `isPlanFileWrite` for the
+        // regex anchor details) so crafted paths like
+        // `.claude/plans-evil/foo.md` can't bypass the check.
+        if (phase === 'plan' && isPlanFileWrite(req.tool_name, req.input)) {
+          log.debug('auto-approved plan-file write', {
+            tool_name: req.tool_name,
+            file_path: (req.input as { file_path?: unknown }).file_path,
+          });
+          return { behavior: 'allow' as const, updatedInput: req.input };
+        }
+
         // Preserve any streamed text written so far before the approval block.
         writer.flush();
         // Flip the session card into "awaiting-permission" so the status dot
