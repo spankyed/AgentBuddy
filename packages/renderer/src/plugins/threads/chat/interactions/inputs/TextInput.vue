@@ -150,14 +150,22 @@ watch(inputValue, (newValue) => {
   }
 })
 
-// Response display text
+// Response display text. TextInput's `emit('submit', value)` always
+// passes a plain string (see handleSubmit / selectSuggestion below),
+// and InteractionContainer's handleCancel emits `{ cancelled: true }`
+// as the sole object-shaped sentinel. The old `.value ?? JSON.stringify`
+// fallback was dead code from a stale assumption — no block in this
+// folder has ever emitted a `{ value }` shape. Anything object-shaped
+// that isn't the cancellation sentinel is unexpected garbage; show a
+// JSON dump so it's debuggable rather than silently eaten.
 const responseText = computed(() => {
-  if (!props.response) return ''
-  if (typeof props.response === 'object') {
-    if (props.response.cancelled) return 'Skipped'
-    return props.response.value ?? JSON.stringify(props.response)
+  const r = props.response
+  if (r == null) return ''
+  if (typeof r === 'object') {
+    if ((r as { cancelled?: unknown }).cancelled === true) return 'Skipped'
+    return JSON.stringify(r)
   }
-  return String(props.response)
+  return String(r)
 })
 
 // Cleanup timer on unmount

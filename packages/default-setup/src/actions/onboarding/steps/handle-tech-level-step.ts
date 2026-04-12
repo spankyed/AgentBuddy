@@ -1,13 +1,18 @@
 import type { EntityId, Services } from '../../../types';
 import { TECH_LEVELS, type OnboardingState } from '../onboarding-helpers';
+import type { ParsedStepResponse } from '../_helpers/parse-step-response';
 
 export function handleTechLevelStep(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
-  responseValue: any,
+  parsed: Extract<ParsedStepResponse, { step: 'tech-level' }>,
 ) {
-  const techLevel = typeof responseValue === 'string' ? responseValue : responseValue?.id ?? 'comfortable';
+  // Fall back to 'comfortable' on empty or cancelled. The old
+  // `responseValue?.id` object fallback is removed — it was dead
+  // code; no frontend block emits an object with an `.id` field,
+  // ChoiceInput emits a raw string (the choice id itself).
+  const techLevel = parsed.techLevel && !parsed.cancelled ? parsed.techLevel : 'comfortable';
   state.data.techLevel = techLevel;
 
   if (techLevel === 'beginner') {
