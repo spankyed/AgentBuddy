@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 
 const quotes = [
   '"If a chatbot speaks in a forest and no one reads the output, does it still hallucinate?"',
@@ -122,6 +122,12 @@ const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromp
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
+const isStreaming = computed(() => {
+  const msgs = messages.value
+  if (!msgs.length) return false
+  const last = msgs[msgs.length - 1]
+  return last.sender !== 'user' && !last.responseTimestamp
+})
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
 const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
@@ -211,6 +217,11 @@ watch(messages, async (newMsgs, oldMsgs) => {
     scrollToBottom('instant')
     // Re-scroll after browser paint to catch async content (Tiptap editors, images)
     requestAnimationFrame(() => scrollToBottom('instant'))
+    // Async content (Tiptap editors, images) finishes rendering within
+    // ~200-500ms. After that, pinned has no purpose — clear it so the
+    // ResizeObserver stops auto-scrolling on layout changes like
+    // expanding a tool-activity block.
+    setTimeout(() => { pinned = false }, 500)
   } else {
     pinned = false
     if (isNearBottom.value) scrollToBottom('smooth')
@@ -220,7 +231,7 @@ watch(messages, async (newMsgs, oldMsgs) => {
 watch(messagesContent, (el, _, onCleanup) => {
   if (!el) return
   const observer = new ResizeObserver(() => {
-    if (pinned || isNearBottom.value) {
+    if (pinned || isStreaming.value) {
       scrollToBottom('instant')
     }
   })
