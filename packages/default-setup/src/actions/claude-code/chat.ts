@@ -95,8 +95,8 @@ export async function action(
   log.debug('resume state resolved', { resumeSessionId: resumeSessionId ?? null });
 
   // Create the empty assistant message we'll stream into. Writers are
-  // reassigned on each `message_start` boundary so each Anthropic model
-  // call gets its own message bubble (see the split handler below).
+  // reassigned when a user interaction (approval, question) triggers a
+  // message split — see the `splitOnNextMessageStart` flag below.
   let currentMessageId = services.chat.sendBlockMessage({
     threadId,
     text: '',
@@ -106,6 +106,12 @@ export async function action(
 
   let writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
   let toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
+
+  // Set by onPermissionRequest after a user-interactive flow (approval,
+  // question answer). The next `message_start` will split into a new
+  // message. Auto-approved tools (Read, Glob, Grep, plan-file writes)
+  // do NOT set this — their tool chains stay in one message.
+  let splitOnNextMessageStart = false;
 
   // Track file-mutation paths across all messages for the diff artifact.
   // After message splitting, `toolActivity.entries` only sees the LAST
@@ -228,6 +234,7 @@ export async function action(
             durationMs: Date.now() - handlerStartedAt,
           });
           updateSessionArtifact(services, threadId, { status: 'streaming' });
+          splitOnNextMessageStart = true;
 
           return {
             behavior: 'allow' as const,
@@ -285,6 +292,7 @@ export async function action(
             });
             resolvePlanDraft(services, threadId, allow ? 'approved' : 'rejected');
             updateSessionArtifact(services, threadId, { status: 'streaming' });
+            splitOnNextMessageStart = true;
             // `updatedInput` is required by the CLI's Zod validator at
             // PermissionPromptToolResultSchema.ts:44-63 — missing it
             // produces a `ZodError: invalid_union` that the CLI surfaces
@@ -347,6 +355,7 @@ export async function action(
             durationMs: Date.now() - handlerStartedAt,
           });
           updateSessionArtifact(services, threadId, { status: 'streaming' });
+          splitOnNextMessageStart = true;
           // `updatedInput` is required by the CLI's Zod validator at
           // PermissionPromptToolResultSchema.ts:44-63 — missing it
           // produces a `ZodError: invalid_union` that the CLI surfaces
@@ -433,22 +442,18 @@ export async function action(
       }
 
       if (line.type === 'stream_event') {
-        // ─── Message boundary: split on model-call transitions ─────
-        // Each Anthropic model call begins with `message_start`. When
-        // the current message already has content (text or tool entries),
-        // seal it and create a new message so the next model call's
-        // output gets its own bubble. This prevents:
-        //   - post-tool text rendering above the tool-activity block
-        //     (message.vue renders text above blocks by design)
-        //   - post-ExitPlanMode implementation output merging into the
-        //     planning message
-        // Skip sub-agent boundaries via `parent_tool_use_id` so nested
-        // Task calls don't inject spurious splits.
+        // ─── Message boundary: split after user interactions ──────
+        // Split into a new message only when `onPermissionRequest`
+        // flagged a user interaction (approval, question answer).
+        // Auto-approved tool chains (Read → Grep → Read) stay in
+        // one message — no flag, no split.
         if (
           line.event?.type === 'message_start' &&
           !line.parent_tool_use_id &&
+          splitOnNextMessageStart &&
           (writer.text.length > 0 || toolActivity.hasEntries)
         ) {
+          splitOnNextMessageStart = false;
           writer.finalize(writer.text);
           const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
           toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
@@ -458,7 +463,7 @@ export async function action(
             text: '',
             blocks: [],
           });
-          log.debug('message split on message_start', { previousId: currentMessageId, nextId });
+          log.debug('message split after user interaction', { previousId: currentMessageId, nextId });
           currentMessageId = nextId;
           writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
           toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
