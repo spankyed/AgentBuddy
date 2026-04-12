@@ -203,7 +203,6 @@ function doRevert(messageId: string) {
   actor.send({ type: 'REVERT_THREAD', messageId, threadId: currentThread.value.id })
 }
 
-let pinned = false
 const prevThreadId = ref(currentThread.value?.id)
 
 watch(messages, async (newMsgs, oldMsgs) => {
@@ -213,25 +212,26 @@ watch(messages, async (newMsgs, oldMsgs) => {
 
   const isThreadLoad = threadChanged || !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad) {
-    pinned = true
     scrollToBottom('instant')
-    // Re-scroll after browser paint to catch async content (Tiptap editors, images)
-    requestAnimationFrame(() => scrollToBottom('instant'))
-    // Async content (Tiptap editors, images) finishes rendering within
-    // ~200-500ms. After that, pinned has no purpose — clear it so the
-    // ResizeObserver stops auto-scrolling on layout changes like
-    // expanding a tool-activity block.
-    setTimeout(() => { pinned = false }, 500)
+    // Double rAF to catch async content (Tiptap editors, images)
+    // that renders after the initial layout pass.
+    requestAnimationFrame(() => {
+      scrollToBottom('instant')
+      requestAnimationFrame(() => scrollToBottom('instant'))
+    })
   } else {
-    pinned = false
     if (isNearBottom.value) scrollToBottom('smooth')
   }
 })
 
+// Auto-scroll during streaming only. The ResizeObserver catches async
+// Tiptap height changes as text deltas render. Outside of streaming,
+// height changes (e.g. expanding a tool-activity block) should NOT
+// trigger a scroll — the user is reading, not watching live output.
 watch(messagesContent, (el, _, onCleanup) => {
   if (!el) return
   const observer = new ResizeObserver(() => {
-    if (pinned || isStreaming.value) {
+    if (isStreaming.value) {
       scrollToBottom('instant')
     }
   })
