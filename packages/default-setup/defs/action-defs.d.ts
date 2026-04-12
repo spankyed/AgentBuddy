@@ -1021,6 +1021,54 @@ interface MessageReferences {
     files?: FileReference[];
     context?: ContextReference[];
 }
+/**
+ * Shapes a block can emit back to the backend when the user interacts
+ * with it. Non-discriminated on purpose — text and choice blocks emit
+ * raw primitives on submit (TextInput.vue:207, ChoiceInput.vue:225),
+ * while approval and cancel blocks emit tagged objects
+ * (InteractionContainer.vue:156-167). Wrapping the primitives into
+ * `{ type: 'text', value: string }` etc. would be a wire-shape break,
+ * so we encode the reality instead: a union of every observed shape
+ * with no synthetic discriminator.
+ *
+ * Consumers MUST narrow before using the value. The canonical parse
+ * helpers are the authoritative places to do that:
+ *
+ *   - `parseApprovalDecision` at
+ *       packages/default-setup/src/actions/claude-code/_helpers/approval-response.ts
+ *     — narrows to `{ allow, reason? }` for approval blocks
+ *
+ *   - `parseStepResponse` at
+ *       packages/default-setup/src/actions/onboarding/_helpers/parse-step-response.ts
+ *     — narrows per onboarding step with a `cancelled` flag
+ *
+ * When adding a new block type, extend this union first, then add a
+ * matching parser in `_helpers/` and a unit test that pins the new
+ * shape (see claude-code-approval-response.spec.ts and
+ * onboarding-step-response.spec.ts for the pattern).
+ *
+ * Legacy data: messages persisted before this type was introduced may
+ * carry the stale `{ value: 'yes' }` shape, but no frontend has ever
+ * emitted it — the `?? response` fallback in the old handler was dead
+ * code. Still, `blockResponse?: unknown` at the storage boundary is
+ * more defensive than assuming the union is exhaustive; however the
+ * EVENT-level and FIELD-level types use the union because every
+ * non-legacy emit matches one of its arms.
+ */
+type BlockResponse = 
+/** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
+{
+    approved: boolean;
+    reason?: string;
+}
+/** Cancel path: InteractionContainer `handleCancel`. */
+ | {
+    cancelled: true;
+}
+/** Text input (single or multiline) and single-select choice emit a raw string. */
+ | string
+/** Multi-select choice emits a raw string array (of choice ids). */
+ | string[];
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
@@ -1028,7 +1076,14 @@ interface MessageEntity extends BaseEntity {
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
-    blockResponse?: any;
+    /**
+     * Response data for block-based interactions. See the `BlockResponse`
+     * union above for the full set of observed shapes. Always narrow
+     * before use via a parse helper — the raw field is stored as the
+     * exact value the frontend emitted, which may be a primitive
+     * (string / string[]) or a tagged object.
+     */
+    blockResponse?: BlockResponse;
     forkable?: boolean;
     references?: MessageReferences;
     isCommand?: boolean;
@@ -4555,7 +4610,7 @@ declare const events: {
         text?: string | undefined;
         blocks?: BlockConfig[] | undefined;
         responseTimestamp?: number | undefined;
-        blockResponse?: any;
+        blockResponse?: BlockResponse | undefined;
         pluginId: "threads";
     } | {
         type: "MESSAGE_ADDED";

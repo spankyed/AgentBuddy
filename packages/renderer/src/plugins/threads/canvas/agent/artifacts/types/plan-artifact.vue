@@ -9,25 +9,18 @@
             {{ artifact.title || 'Plan' }}
           </h3>
         </div>
-        <!-- Approve/Reject buttons while status is draft; otherwise show final pill -->
-        <div v-if="status === 'draft'" class="flex gap-2">
-          <button
-            type="button"
-            @click="handleReject"
-            class="px-3 py-1 text-xs font-medium text-red-400 transition-colors border rounded bg-red-500/10 border-red-500/20 hover:bg-red-500/15"
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            @click="handleApprove"
-            class="px-3 py-1 text-xs font-medium text-green-400 transition-colors border rounded bg-green-500/10 border-green-500/20 hover:bg-green-500/15"
-          >
-            Approve
-          </button>
-        </div>
+        <!--
+          Status pill — backend round-trips this via the chat-thread
+          approval block (see createPlanDraft / resolvePlanDraft in
+          packages/default-setup/src/actions/claude-code/_helpers/plan-artifact.ts).
+          The artifact card used to also carry local Approve/Reject
+          buttons that mutated state without hitting the backend;
+          those were dead UI in the ExitPlanMode flow (the real
+          approval goes through the chat approval block, not these
+          buttons) and only caused confusion, so they were removed.
+          The pill now passively reflects whatever the backend says.
+        -->
         <span
-          v-else
           class="text-xs px-2 py-0.5 rounded"
           :class="statusPillClass"
         >
@@ -52,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { ClipboardList } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
@@ -69,16 +62,13 @@ const props = defineProps<{
   artifact: ArtifactItem & { content: PlanContent }
 }>()
 
-// Local mirror of the status so Approve/Reject clicks feel instant.
-// The backend doesn't yet round-trip these mutations; that's the job of
-// Phase D-full. For the stub, local state is enough to demonstrate UX.
-const status = ref<PlanStatus>(props.artifact.content?.status ?? 'draft')
-
-// Keep status in sync with props in case the backend ever pushes an update.
-watch(
-  () => props.artifact.content?.status,
-  (next) => { if (next) status.value = next },
-)
+// Read status directly from the artifact content. Previously this was
+// mirrored into a local ref so Approve/Reject clicks could feel instant,
+// but those local buttons were removed — the real approval flow now
+// round-trips through the chat approval block and the backend pushes
+// status updates via services.artifact.updateAndNotify, which hydrates
+// the prop directly. No local state needed.
+const status = computed<PlanStatus>(() => props.artifact.content?.status ?? 'draft')
 
 const notes = computed(() => props.artifact.content?.notes ?? '')
 
@@ -88,6 +78,7 @@ const statusLabel = computed(() => {
     case 'rejected': return 'Rejected'
     case 'in-progress': return 'In progress'
     case 'completed': return 'Completed'
+    case 'draft': return 'Draft'
     default: return status.value
   }
 })
@@ -105,12 +96,4 @@ const statusPillClass = computed(() => {
       return 'bg-neutral-500/10 text-neutral-400'
   }
 })
-
-function handleApprove() {
-  status.value = 'approved'
-}
-
-function handleReject() {
-  status.value = 'rejected'
-}
 </script>

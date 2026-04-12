@@ -32,7 +32,7 @@
  * with `sawHandlerInvoked === false`.
  */
 
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -133,6 +133,79 @@ describe.skipIf(!shouldRun)('claude-code permission flow — real CLI subprocess
       const inputPath = input?.file_path ?? input?.path
       expect(typeof inputPath).toBe('string')
       expect(inputPath as string).toContain('target.txt')
+    },
+  )
+
+  it(
+    'allow-and-execute: approves the tool and the CLI actually mutates the target file on disk',
+    async () => {
+      // This test exists because the existing "deny" test never exercised
+      // the allow path — which was how the { updatedInput } missing-field
+      // Zod bug slipped past every unit test and integration test for
+      // an entire session. The unit-level regression guard in
+      // `claude-code-permission-shape.spec.ts` now pins the shape
+      // contract locally, but this test closes the gap end-to-end by
+      // actually letting the real CLI process an approved Edit and
+      // verifying the target file changed on disk.
+      //
+      // If this test fails with `sawHandlerInvoked === true` but the
+      // file assertion fails, the wrapper is shaping the allow payload
+      // wrong (the symptom the user hit in this session — everything
+      // looked fine until the file never actually got written).
+      const cwd = await mkdtemp(join(tmpdir(), 'claude-perm-allow-test-'))
+      const targetPath = join(cwd, 'target.txt')
+      const originalContent = 'original-content-do-not-match-this-anywhere-else\n'
+      await writeFile(targetPath, originalContent)
+
+      let sawHandlerInvoked = false
+      let seenToolName: string | null = null
+
+      const onPermissionRequest: PermissionHandler = async (req) => {
+        sawHandlerInvoked = true
+        seenToolName = req.tool_name
+        // Echo req.input back as updatedInput — the CLI's
+        // PermissionPromptToolResultSchema requires this field for
+        // allow. Echoing the original input verbatim means the tool
+        // runs exactly as Claude proposed it.
+        return {
+          behavior: 'allow',
+          updatedInput: req.input,
+        }
+      }
+
+      const handle = await query({
+        prompt:
+          `Please EDIT the file target.txt in the current working directory ` +
+          `and change the EXACT string "${originalContent.trim()}" ` +
+          `to "replaced-by-integration-test". Use the Edit tool. ` +
+          `Do not read the file first; just call Edit directly.`,
+        cwd,
+        permissionMode: 'default',
+        // Edit is not in allowedTools so it must go through
+        // can_use_tool. Read is allowed so Claude can verify the
+        // result without triggering another prompt loop.
+        allowedTools: ['Read', 'Glob', 'Grep'],
+        maxTurns: 5,
+        onPermissionRequest,
+      })
+
+      for await (const _ev of handle.events) {
+        /* drain */
+      }
+      await handle.result.catch(() => {})
+
+      // ─── Assertions ─────────────────────────────────────────────────
+      expect(sawHandlerInvoked).toBe(true)
+      expect(seenToolName).toMatch(/^(Edit|Write|NotebookEdit)$/)
+
+      // **The critical assertion**: the file on disk must have actually
+      // changed. If the CLI rejected our control_response with a
+      // ZodError, it would have treated the permission as a deny and
+      // the file would still contain the original content — exactly
+      // the regression this test guards against.
+      const finalContent = await readFile(targetPath, 'utf-8')
+      expect(finalContent).not.toBe(originalContent)
+      expect(finalContent).toContain('replaced-by-integration-test')
     },
   )
 })

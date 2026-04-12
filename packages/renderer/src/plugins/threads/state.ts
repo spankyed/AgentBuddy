@@ -7,7 +7,7 @@ import type {
   ThreadConnectedData, ThreadEntity, ThreadExtended, OutgoingThreadsEvents,
   ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS,
   MessageEntity, ArtifactEntity, AgentThreadData, Tab, ArtifactItem, ArtifactType,
-  AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem,
+  AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { Trash2 } from 'lucide-vue-next';
@@ -124,8 +124,8 @@ type UIEvent =
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
-  | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: any }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
+  | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: BlockResponse }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
