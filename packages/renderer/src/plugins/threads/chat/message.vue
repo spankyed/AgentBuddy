@@ -65,15 +65,26 @@
             :file="file" class="flex-shrink-0" />
         </div>
 
+        <!-- Tool-activity blocks render ABOVE text so the work log
+             appears before the model's commentary, not after it. -->
+        <InteractionContainer
+          v-if="toolActivityBlocks.length > 0"
+          class="mb-2"
+          :blocks="toolActivityBlocks"
+          :message-id="message.id"
+          :is-disabled="!!message.responseTimestamp"
+          :response="message.blockResponse"
+        />
+
         <!-- Message content -->
         <div class="leading-relaxed text-[15px]">
           <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" :is-command="isCommand" />
         </div>
 
-        <!-- Block-based interactions -->
+        <!-- Other block types (approval, choice, etc.) render BELOW text -->
         <InteractionContainer
-          v-if="message.blocks && message.blocks.length > 0"
-          :blocks="message.blocks"
+          v-if="otherBlocks.length > 0"
+          :blocks="otherBlocks"
           :message-id="message.id"
           :is-disabled="!!message.responseTimestamp"
           :response="message.blockResponse"
@@ -121,6 +132,15 @@ defineEmits<ChatMessageEmits>()
 
 const isUser = computed(() => props.message.sender === 'user')
 const isCommand = computed(() => props.message.isCommand ?? false)
+
+// Split blocks by type so tool-activity renders above text while
+// other block types (approval, choice, etc.) render below text.
+const toolActivityBlocks = computed(() =>
+  (props.message.blocks ?? []).filter((b: any) => b.type === 'tool-activity')
+)
+const otherBlocks = computed(() =>
+  (props.message.blocks ?? []).filter((b: any) => b.type !== 'tool-activity')
+)
 
 const copyMessageText = async () => {
   try {
