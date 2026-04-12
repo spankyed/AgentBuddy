@@ -117,7 +117,12 @@ export async function action(
   // artifact (set via the segmented control on the right panel card).
   // Falls back to 'default' for brand-new threads.
   const activePermissionMode = readSessionPermissionMode(services, threadId);
-  log.debug('active permission mode', { permissionMode: activePermissionMode });
+  // When the user selects plan phase in the UI, ensure the CLI enters
+  // plan mode so ExitPlanMode is exposed. The phase selector and the
+  // permission-mode segmented control are independent UI widgets — this
+  // bridges them so the user doesn't have to click both.
+  const effectivePermissionMode = phase === 'plan' ? 'plan' : activePermissionMode;
+  log.debug('active permission mode', { permissionMode: effectivePermissionMode });
 
   // Phase-aware system-prompt nudging (plan/edit/review).
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
@@ -318,7 +323,7 @@ export async function action(
     log.debug('invoking claudeCode.query', {
       model,
       resumeSessionId: resumeSessionId ?? null,
-      permissionMode: activePermissionMode,
+      permissionMode: effectivePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       hasSystemPrompt: !!composedSystemPrompt,
       askForPermissions,
@@ -328,7 +333,7 @@ export async function action(
       resume: resumeSessionId,
       model,
       includePartialMessages: true,
-      permissionMode: activePermissionMode,
+      permissionMode: effectivePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       disallowedTools,
       systemPrompt: composedSystemPrompt,
