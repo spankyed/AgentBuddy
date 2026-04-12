@@ -20,6 +20,7 @@ import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
 import { createPlanDraft, resolvePlanDraft } from './_helpers/plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './_helpers/plan-approval';
+import { parseAskUserQuestionInput } from './_helpers/ask-user-question';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 
@@ -171,6 +172,67 @@ export async function action(
             file_path: (req.input as { file_path?: unknown }).file_path,
           });
           return { behavior: 'allow' as const, updatedInput: req.input };
+        }
+
+        // ─── AskUserQuestion — interactive choice blocks ────────────
+        // The model calls AskUserQuestion to ask the user structured
+        // questions with selectable options. Render each question as
+        // an interactive `choice` block (existing ChoiceInput.vue
+        // component), collect the user's selections, and inject them
+        // into `updatedInput.answers` so the tool result carries the
+        // answers back to the model.
+        if (req.tool_name === 'AskUserQuestion') {
+          const { questions } = parseAskUserQuestionInput(req.input);
+
+          if (questions.length === 0) {
+            // Malformed — auto-approve with empty answers so the model
+            // gets a tool_result and can recover gracefully.
+            log.debug('AskUserQuestion with no parseable questions, auto-approving', {
+              tool_use_id: req.tool_use_id,
+            });
+            return { behavior: 'allow' as const, updatedInput: req.input };
+          }
+
+          writer.flush();
+          updateSessionArtifact(services, threadId, { status: 'awaiting-permission' });
+
+          const answers: Record<string, string> = {};
+
+          for (const q of questions) {
+            const choices = q.options.map(opt => ({
+              id: opt.label,
+              label: opt.label,
+              description: opt.description || undefined,
+            }));
+
+            const choiceMsg = services.chat.sendChoiceBlock({
+              threadId,
+              text: q.question,
+              prompt: q.header || 'Select an option',
+              choices,
+              multiSelect: q.multiSelect,
+              allowCustom: true,
+              displayText: q.header || 'Answer',
+              forkable: false,
+            });
+
+            const response = await awaitMessageResponse(services, choiceMsg.messageId);
+            const answer = typeof response === 'string'
+              ? response
+              : Array.isArray(response) ? response.join(', ') : String(response ?? '');
+            answers[q.question] = answer;
+          }
+
+          log.debug('AskUserQuestion answers collected', {
+            questionCount: questions.length,
+            durationMs: Date.now() - handlerStartedAt,
+          });
+          updateSessionArtifact(services, threadId, { status: 'streaming' });
+
+          return {
+            behavior: 'allow' as const,
+            updatedInput: { ...req.input, answers },
+          };
         }
 
         // Preserve any streamed text written so far before the approval block.
