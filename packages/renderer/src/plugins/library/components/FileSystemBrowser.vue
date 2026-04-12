@@ -173,37 +173,16 @@
           >
             <RefreshCw class="w-4 h-4" />
           </Button>
-          <ContextMenuRoot>
-            <ContextMenuTrigger as-child>
-              <Button
-                @click="createFolder"
-                variant="transparent"
-                size="sm"
-                class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
-              >
-                <FolderPlus class="w-4 h-4" />
-                <span class="hidden @lg:inline">New Folder</span>
-              </Button>
-            </ContextMenuTrigger>
-            <ContextMenuPortal>
-              <ContextMenuContent class="z-50 min-w-[160px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md">
-                <ContextMenuItem
-                  @select="createFolder"
-                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
-                >
-                  <FolderPlus class="w-4 h-4" />
-                  New Folder
-                </ContextMenuItem>
-                <ContextMenuItem
-                  @select="createSymlinkFolder"
-                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
-                >
-                  <Link class="w-4 h-4" />
-                  New Symlink
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenuPortal>
-          </ContextMenuRoot>
+          <Button
+            @click="createFolder"
+            @contextmenu.prevent="createSymlinkFolder"
+            variant="transparent"
+            size="sm"
+            class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
+          >
+            <FolderPlus class="w-4 h-4" />
+            <span class="hidden @lg:inline">New Folder</span>
+          </Button>
           <Button @click="createDocument" variant="primary" size="sm" data-onboarding-id="library-create-button">
             <FileText class="w-4 h-4" />
             <span class="hidden @lg:inline">{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>

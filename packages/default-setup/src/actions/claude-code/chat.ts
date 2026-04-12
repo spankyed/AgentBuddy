@@ -93,16 +93,24 @@ export async function action(
   const resumeSessionId = prior?.sessionId;
   log.debug('resume state resolved', { resumeSessionId: resumeSessionId ?? null });
 
-  // Create the empty assistant message we'll stream into.
-  const { messageId } = services.chat.sendBlockMessage({
+  // Create the empty assistant message we'll stream into. Writers are
+  // reassigned on each `message_start` boundary so each Anthropic model
+  // call gets its own message bubble (see the split handler below).
+  let currentMessageId = services.chat.sendBlockMessage({
     threadId,
     text: '',
     blocks: [],
-  });
-  log.debug('placeholder message created', { messageId });
+  }).messageId;
+  log.debug('placeholder message created', { messageId: currentMessageId });
 
-  const writer = createStreamWriter(services, messageId, { intervalMs: 80 });
-  const toolActivity = createToolActivityWriter(services, messageId, { intervalMs: 250 });
+  let writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
+  let toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
+
+  // Track file-mutation paths across all messages for the diff artifact.
+  // After message splitting, `toolActivity.entries` only sees the LAST
+  // message's entries, so we accumulate mutated paths as tools are appended.
+  const mutatedPathsSet = new Set<string>();
+  const mutatedPaths: string[] = [];
 
   // Upsert the thread's claude-session artifact so the right-panel card
   // appears immediately and transitions to 'streaming'. sessionId/model/cwd
@@ -363,24 +371,35 @@ export async function action(
       }
 
       if (line.type === 'stream_event') {
-        // Inter-message paragraph break. A single Claude Code turn often
-        // chains multiple Anthropic model calls (text → tool → more text →
-        // tool → final text); each call begins with a fresh `message_start`
-        // event. Without a separator, the next message's deltas concatenate
-        // directly onto the previous message's trailing byte (commonly a
-        // `:` before a tool call), so users see "…implementation:Let me
-        // check…" as one run-on line. Insert `\n\n` at every `message_start`
-        // after the first so markdown-it produces separate <p> elements and
-        // the chat viewer's `.tiptap-viewer-chat p { margin: 0.75em 0 }`
-        // rule breathes them apart. Skip sub-agent streams via the
-        // `parent_tool_use_id` guard so boundaries from nested Task calls
-        // don't inject spurious breaks into the main bubble.
+        // ─── Message boundary: split on model-call transitions ─────
+        // Each Anthropic model call begins with `message_start`. When
+        // the current message already has content (text or tool entries),
+        // seal it and create a new message so the next model call's
+        // output gets its own bubble. This prevents:
+        //   - post-tool text rendering above the tool-activity block
+        //     (message.vue renders text above blocks by design)
+        //   - post-ExitPlanMode implementation output merging into the
+        //     planning message
+        // Skip sub-agent boundaries via `parent_tool_use_id` so nested
+        // Task calls don't inject spurious splits.
         if (
           line.event?.type === 'message_start' &&
           !line.parent_tool_use_id &&
-          writer.text.length > 0
+          (writer.text.length > 0 || toolActivity.hasEntries)
         ) {
-          writer.push('\n\n');
+          writer.finalize(writer.text);
+          const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
+          toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
+
+          const { messageId: nextId } = services.chat.sendBlockMessage({
+            threadId,
+            text: '',
+            blocks: [],
+          });
+          log.debug('message split on message_start', { previousId: currentMessageId, nextId });
+          currentMessageId = nextId;
+          writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
+          toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
         }
 
         // Anthropic text deltas. Shape: { event: { type: 'content_block_delta', delta: { type: 'text_delta', text } } }
@@ -420,6 +439,16 @@ export async function action(
               status: 'running',
               details: { input: block.input },
             });
+            // Track file-mutation paths across message boundaries for the
+            // diff artifact. After splitting, `toolActivity.entries` only
+            // sees the current message's entries.
+            if (FILE_MUTATION_TOOLS.has(block.name) && block.input) {
+              const p = (block.input as any).file_path || (block.input as any).path;
+              if (typeof p === 'string' && !mutatedPathsSet.has(p)) {
+                mutatedPathsSet.add(p);
+                mutatedPaths.push(p);
+              }
+            }
             // Live-update the session artifact's tool counter and lastTool
             // hint. The read-modify-write inside updateSessionArtifact
             // handles the counter increment correctly.
@@ -543,7 +572,8 @@ export async function action(
     // from the tool-activity block. Failures are non-fatal — the turn
     // already succeeded.
     try {
-      const mutatedPaths = extractMutatedPaths(toolActivity.entries);
+      // `mutatedPaths` is accumulated across all message boundaries (see
+      // the tool_use handler above) so the diff covers the whole turn.
       if (mutatedPaths.length > 0) {
         log.debug('collecting diff for mutated files', { paths: mutatedPaths });
         const unified = await services.cli.git.getDiff(mutatedPaths);
@@ -579,7 +609,7 @@ export async function action(
     return {
       success: true,
       sessionId: result.sessionId,
-      messageId,
+      messageId: currentMessageId,
       text: writer.text,
       costUsd: result.totalCostUsd,
       durationMs: result.durationMs,
@@ -593,7 +623,7 @@ export async function action(
     // Intentionally NOT clearing thread.context on error — the session may
     // still be valid on disk; let the user retry or call the reset action
     // explicitly.
-    return { success: false, error: message, messageId };
+    return { success: false, error: message, messageId: currentMessageId };
   }
 }
 
