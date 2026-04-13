@@ -119,10 +119,13 @@ export async function action(
   setRunning(services, threadId, true);
 
   // Create the empty assistant message we'll stream into.
+  // Non-forkable while streaming — partial responses are confusing fork points.
+  // Flipped back to forkable on finalize (stream-consumer.ts).
   const currentMessageId = services.chat.sendBlockMessage({
     threadId,
     text: '',
     blocks: [],
+    forkable: false,
   }).messageId;
   log.debug('placeholder message created', { messageId: currentMessageId });
 

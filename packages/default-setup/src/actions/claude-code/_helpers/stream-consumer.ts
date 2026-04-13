@@ -113,6 +113,8 @@ export async function consumeStream(
         ) {
           splitOnNextMessageStart = false;
           writer.finalize(writer.text);
+          // Completed message becomes forkable.
+          services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
           const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
           toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
 
@@ -120,6 +122,7 @@ export async function consumeStream(
             threadId,
             text: '',
             blocks: [],
+            forkable: false, // Non-forkable while streaming.
           });
           log.debug('message split after user interaction', { previousId: currentMessageId, nextId: splitMsg.messageId });
           currentMessageId = splitMsg.messageId as EntityId;
@@ -389,6 +392,8 @@ export async function consumeStream(
       ? `${writer.text}\n\n⚠️ ${resultError}`.trim()
       : (writer.text || result.text);
     writer.finalize(finalText);
+    // Completed message becomes forkable.
+    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     log.debug('stream consumer completed');
 
     // Close stdin so the CLI process exits cleanly (prevents child leak).
@@ -422,6 +427,7 @@ export async function consumeStream(
     log.error('stream consumer failed', { message, stack: err?.stack });
     toolActivity.finalise('error');
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
+    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
 
     // Kill the CLI process on error (it may be in a bad state).
     try { handle.kill(); } catch { /* already gone */ }
