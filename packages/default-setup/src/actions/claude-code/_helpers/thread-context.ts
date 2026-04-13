@@ -87,11 +87,7 @@ export function persistClaudeState(
 
 /** Mark whether a chat action is currently running on this thread. */
 export function setRunning(services: Services, threadId: string, running: boolean): void {
-  persistClaudeState(services, threadId, {
-    isRunning: running,
-    // Clear stale state when marking not-running.
-    ...(!running && { pendingControlRequest: undefined }),
-  });
+  persistClaudeState(services, threadId, { isRunning: running });
 }
 
 /** Queue a message for processing after the current turn ends. Last write wins (burst debounce). */
