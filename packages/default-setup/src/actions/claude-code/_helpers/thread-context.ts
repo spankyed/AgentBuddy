@@ -43,6 +43,20 @@ export interface ClaudeCodeThreadState {
    * is routed.
    */
   pendingControlRequest?: PendingControlRequest;
+  /**
+   * One-shot flag set by CC: Handle Fork. When present, the next chat action
+   * invocation passes `forkSession: true` to the CLI so it creates a new
+   * session JSONL file instead of appending to the source session. Cleared
+   * after the query starts.
+   */
+  forkFrom?: { sessionId: string; cliUuid?: string };
+  /**
+   * One-shot flag set by CC: Handle Revert. When present, the next chat
+   * action passes `--resume-session-at <cliUuid> --fork-session` to the CLI
+   * so it creates a new session truncated to the revert point. Cleared after
+   * the query starts.
+   */
+  revertTo?: { cliUuid: string };
 }
 
 export const CLAUDE_SESSION_TAG = 'claude-session';

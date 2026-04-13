@@ -136,6 +136,12 @@ export async function consumeStream(
       }
 
       if (line.type === 'assistant') {
+        // Track the CLI's message UUID so revert can use --resume-session-at.
+        if (line.uuid) {
+          services.chat.updateMessageState(currentMessageId as any, {
+            context: { cliUuid: line.uuid },
+          } as any);
+        }
         const blocks = line.message?.content || [];
         for (const block of blocks) {
           if (block?.type === 'tool_use') {

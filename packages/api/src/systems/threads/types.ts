@@ -189,6 +189,8 @@ export interface MessageEntity extends BaseEntity {
   command?: string;
   /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
   status?: 'queued' | null;
+  /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
+  context?: Record<string, unknown>;
 }
 
 /**

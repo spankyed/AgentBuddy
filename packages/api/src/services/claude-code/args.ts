@@ -90,6 +90,7 @@ export function argsFromOptions(opts: QueryOptions): string[] {
     else args.push('--resume', opts.resume)
   }
   if (opts.forkSession) args.push('--fork-session')
+  if (opts.resumeSessionAt) args.push('--resume-session-at', opts.resumeSessionAt)
   if (opts.sessionId) args.push('--session-id', opts.sessionId)
   if (opts.noSessionPersistence) args.push('--no-session-persistence')
 

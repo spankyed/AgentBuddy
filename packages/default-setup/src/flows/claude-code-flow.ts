@@ -114,5 +114,34 @@ export default {
       ]],
       "Turn completed",
     ),
+    // ─── Thread lifecycle ────────────────────────────────────────────
+    // Clean up Claude Code state when threads are reverted or forked.
+    on(
+      "thread.revert",
+      [[
+        action("CC: Handle Revert", {
+          label: "revert",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            messageId: "$.event.data.payload.messageId",
+          },
+        }),
+      ]],
+      "Thread reverted",
+    ),
+    on(
+      "thread.fork",
+      [[
+        action("CC: Handle Fork", {
+          label: "fork",
+          map: {
+            sourceThreadId: "$.event.data.payload.sourceThreadId",
+            sourceMessageId: "$.event.data.payload.sourceMessageId",
+            newThreadId: "$.event.data.payload.newThreadId",
+          },
+        }),
+      ]],
+      "Thread forked",
+    ),
   ],
 } satisfies FlowDSL;

@@ -342,6 +342,8 @@ export interface QueryOptions {
   continue?: boolean
   resume?: string | true
   forkSession?: boolean
+  /** Load only messages up to this CLI message UUID (SDK/print mode). */
+  resumeSessionAt?: string
   noSessionPersistence?: boolean
 
   // Streaming knobs

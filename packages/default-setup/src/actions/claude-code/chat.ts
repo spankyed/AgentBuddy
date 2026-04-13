@@ -84,7 +84,13 @@ export async function action(
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
   const resumeSessionId = prior?.sessionId;
-  log.debug('resume state resolved', { resumeSessionId: resumeSessionId ?? null });
+  const forkFrom = prior?.forkFrom;
+  const revertTo = prior?.revertTo;
+  log.debug('resume state resolved', {
+    resumeSessionId: resumeSessionId ?? null,
+    fork: !!forkFrom,
+    revert: revertTo?.cliUuid ?? null,
+  });
 
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
@@ -139,6 +145,16 @@ export async function action(
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
   const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
 
+  // Clear one-shot flags before the query — their purpose is consumed the
+  // moment we read them. If the query throws, we don't want the next turn
+  // to re-fork or re-revert.
+  if (forkFrom || revertTo) {
+    persistClaudeState(services, threadId, {
+      ...(forkFrom && { forkFrom: undefined }),
+      ...(revertTo && { revertTo: undefined }),
+    });
+  }
+
   // ─── Fire the query ─────────────────────────────────────────────────
   try {
     log.debug('invoking claudeCode.query', {
@@ -147,6 +163,7 @@ export async function action(
       permissionMode: effectivePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       hasSystemPrompt: !!composedSystemPrompt,
+      fork: !!forkFrom,
     });
     const handle = await services.cli.claudeCode.query({
       prompt: text,
@@ -158,6 +175,11 @@ export async function action(
       disallowedTools,
       systemPrompt: composedSystemPrompt,
       surfaceControlRequests: true,
+      // Fork/revert: create a new CLI session JSONL file, truncated to the
+      // fork/revert point via --resume-session-at.
+      ...((forkFrom || revertTo) && { forkSession: true }),
+      ...(revertTo && { resumeSessionAt: revertTo.cliUuid }),
+      ...(forkFrom?.cliUuid && { resumeSessionAt: forkFrom.cliUuid }),
     } as any);
 
     // Store the handle so "CC: Route Response" and the stream consumer
