@@ -344,6 +344,8 @@ export interface QueryOptions {
   forkSession?: boolean
   /** Load only messages up to this CLI message UUID (SDK/print mode). */
   resumeSessionAt?: string
+  /** Restore files to state at this user message UUID and exit. Requires resume. */
+  rewindFiles?: string
   noSessionPersistence?: boolean
 
   // Streaming knobs

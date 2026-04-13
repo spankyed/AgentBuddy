@@ -38,6 +38,8 @@ export interface ConsumerContext {
   /** Original user message text — passed to cc.stream.completed for diff title. */
   text: string;
   phase?: string;
+  /** The app's user message entity ID — used to store the CLI's user message UUID. */
+  userMessageId?: string;
 }
 
 export interface ConsumerWriters {
@@ -70,6 +72,10 @@ export async function consumeStream(
   // Track file-mutation paths across all messages for the diff artifact.
   const mutatedPathsSet = new Set<string>();
   const mutatedPaths: string[] = [];
+
+  // Track whether we've captured the CLI's user message UUID for this turn.
+  // The first `user` event echoes the prompt with the UUID the CLI assigned.
+  let userUuidTracked = false;
 
   try {
     // ─── Drain the event stream ──────────────────────────────────────────
@@ -189,6 +195,14 @@ export async function consumeStream(
       }
 
       if (line.type === 'user') {
+        // Track the CLI's user message UUID (first user event per turn).
+        // Needed for --rewind-files on revert-with-file-restore.
+        if (!userUuidTracked && line.uuid && ctx.userMessageId) {
+          services.chat.updateMessageState(ctx.userMessageId as any, {
+            context: { cliUuid: line.uuid },
+          } as any);
+          userUuidTracked = true;
+        }
         const content = (line.message as { content?: unknown })?.content;
         if (!Array.isArray(content)) continue;
 

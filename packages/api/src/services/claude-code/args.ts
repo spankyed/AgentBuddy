@@ -91,6 +91,7 @@ export function argsFromOptions(opts: QueryOptions): string[] {
   }
   if (opts.forkSession) args.push('--fork-session')
   if (opts.resumeSessionAt) args.push('--resume-session-at', opts.resumeSessionAt)
+  if (opts.rewindFiles) args.push('--rewind-files', opts.rewindFiles)
   if (opts.sessionId) args.push('--session-id', opts.sessionId)
   if (opts.noSessionPersistence) args.push('--no-session-persistence')
 

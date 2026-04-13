@@ -124,6 +124,7 @@ export default {
           map: {
             threadId: "$.event.data.payload.threadId",
             messageId: "$.event.data.payload.messageId",
+            restoreFiles: "$.event.data.payload.restoreFiles",
           },
         }),
       ]],

@@ -20,8 +20,9 @@
           <button
             v-if="isUser"
             @click="$emit('revert', message.id)"
+            @contextmenu.prevent="$emit('revert-with-files', message.id)"
             class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Revert to this message"
+            title="Revert (right-click to also restore files)"
           >
             <Undo2 :size="16" />
           </button>
@@ -129,6 +130,7 @@ interface ChatMessageProps {
 
 interface ChatMessageEmits {
   (e: 'revert', messageId: string): void
+  (e: 'revert-with-files', messageId: string): void
   (e: 'fork', messageId: string): void
   (e: 'open-lightbox', imageSrc: string): void
 }

@@ -7,6 +7,10 @@
  * the CLI UUID of the last assistant message before the revert point.
  * The next chat action uses this to pass `--resume-session-at` +
  * `--fork-session` so the CLI creates a truncated forked session.
+ *
+ * When `restoreFiles` is true (right-click revert), also spawns a one-shot
+ * `claude --resume <sessionId> --rewind-files <userCliUuid>` to restore
+ * files to their state at the reverted message.
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
@@ -20,6 +24,7 @@ export const meta: ActionMeta = {
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },
     messageId: { type: 'string', description: 'Message ID being reverted to', required: true },
+    restoreFiles: { type: 'boolean', description: 'Also restore files to pre-edit state', required: false },
   },
 };
 
@@ -27,7 +32,11 @@ export async function action(
   params: Record<string, any>,
   services: Services,
 ) {
-  const { threadId, messageId } = params as { threadId: string; messageId: string };
+  const { threadId, messageId, restoreFiles } = params as {
+    threadId: string;
+    messageId: string;
+    restoreFiles?: boolean;
+  };
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
@@ -55,11 +64,39 @@ export async function action(
       sender?: string;
       context?: Record<string, unknown>;
     }>;
-    // Find the last assistant message with a CLI UUID.
     const lastAssistant = [...messages].reverse().find(
       m => m.sender === 'assistant' && m.context?.cliUuid,
     );
     cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
+  }
+
+  // If restoreFiles requested, look up the user message's CLI UUID from the
+  // reverted message. The message was soft-deleted by the threads system, so
+  // read it directly by ID (not from threadData which filters deleted).
+  let filesRestored = false;
+  if (restoreFiles && state?.sessionId) {
+    const revertedMsg = services.repository.chatQueries.messageById(messageId as EntityId) as {
+      context?: Record<string, unknown>;
+    } | null;
+    const userCliUuid = revertedMsg?.context?.cliUuid as string | undefined;
+
+    if (userCliUuid) {
+      log.debug('restoring files via --rewind-files', { threadId, userCliUuid });
+      try {
+        // Spawn a one-shot CLI call to restore files.
+        const rewindHandle = await services.cli.claudeCode.query({
+          resume: state.sessionId,
+          rewindFiles: userCliUuid,
+        } as any);
+        await rewindHandle.result.catch(() => {}); // CLI exits after rewind
+        filesRestored = true;
+        log.debug('files restored successfully');
+      } catch (rewindErr: any) {
+        log.warn('file restore failed', { message: rewindErr?.message });
+      }
+    } else {
+      log.warn('no CLI UUID on reverted user message — cannot restore files', { messageId });
+    }
   }
 
   // Clear turn-level state and set revert flag.
@@ -77,7 +114,12 @@ export async function action(
   // Flip the session artifact to idle.
   updateSessionArtifact(services, threadId as EntityId, { status: 'idle' });
 
-  log.debug('revert handled', { threadId, messageId, cliUuid: cliUuid ?? 'none (fresh session)' });
+  log.debug('revert handled', {
+    threadId,
+    messageId,
+    cliUuid: cliUuid ?? 'none (fresh session)',
+    filesRestored,
+  });
 
-  return { success: true, hadActiveHandle: !!handle, cliUuid };
+  return { success: true, hadActiveHandle: !!handle, cliUuid, filesRestored };
 }

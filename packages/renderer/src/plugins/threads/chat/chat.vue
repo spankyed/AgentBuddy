@@ -16,6 +16,7 @@
               @open-lightbox="openLightbox"
               @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
               @revert="(messageId: string) => handleRevert(messageId)"
+              @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
             />
           </div>
         </div>
@@ -172,7 +173,10 @@ function expandChatIfCollapsed() {
   }
 }
 
-function handleRevert(messageId: string) {
+let pendingRestoreFiles = false
+
+function handleRevert(messageId: string, restoreFiles = false) {
+  pendingRestoreFiles = restoreFiles
   if (settings.value?.skipRevertConfirm) {
     doRevert(messageId)
   } else {
@@ -197,6 +201,7 @@ function confirmRevert() {
   }
   pendingRevertMessageId.value = null
   dontAskAgain.value = false
+  pendingRestoreFiles = false
 }
 
 const prefillText = ref('')
@@ -206,7 +211,13 @@ function doRevert(messageId: string) {
   // Grab the message text before the revert deletes it.
   const msg = messages.value.find(m => m.id === messageId)
   const revertedText = msg?.text || ''
-  actor.send({ type: 'REVERT_THREAD', messageId, threadId: currentThread.value.id })
+  actor.send({
+    type: 'REVERT_THREAD',
+    messageId,
+    threadId: currentThread.value.id,
+    ...(pendingRestoreFiles && { restoreFiles: true }),
+  })
+  pendingRestoreFiles = false
   // Prefill the chat input so the user can re-send or edit.
   prefillText.value = revertedText
 }
