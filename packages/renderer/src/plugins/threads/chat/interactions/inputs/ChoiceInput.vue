@@ -77,7 +77,7 @@
             ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
             : 'bg-neutral-700 border-neutral-600 text-neutral-200'
         ]"
-        @keyup.enter="!disabled && submitResponse"
+        @keyup.enter="!disabled && submitResponse()"
       />
     </div>
 

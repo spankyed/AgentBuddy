@@ -73,9 +73,13 @@ export async function action(
   if (pending.toolName === 'AskUserQuestion' && allow) {
     // Merge the user's answer into the original input so the CLI sees it.
     const answer = typeof response === 'string' ? response
-      : Array.isArray(response) ? response
-      : response?.value ?? response?.approved;
-    updatedInput = { ...updatedInput, answer };
+      : Array.isArray(response) ? response.join(', ')
+      : String(response?.value ?? response ?? '');
+    // The CLI expects `answers: { [questionText]: selectedAnswer }` — a Record
+    // keyed by question text. Extract the question text from the original input.
+    const questions = Array.isArray(updatedInput.questions) ? updatedInput.questions : [];
+    const questionText = (questions[0] as any)?.question ?? '';
+    updatedInput = { ...updatedInput, answers: { [questionText]: answer } };
   }
 
   handle.respond(pending.requestId, allow
