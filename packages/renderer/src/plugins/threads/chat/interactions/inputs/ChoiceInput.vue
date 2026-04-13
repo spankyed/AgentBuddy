@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { Check } from 'lucide-vue-next'
 import ActionButtons from '../blocks/ActionButtons.vue'
 
@@ -112,7 +112,6 @@ interface Props {
   disabled?: boolean
   response?: any
   displayText?: string
-  debounceMs?: number
 }
 
 interface Emits {
@@ -125,7 +124,6 @@ const props = withDefaults(defineProps<Props>(), {
   multiSelect: false,
   allowCustom: false,
   disabled: false,
-  debounceMs: 500
 })
 
 const emit = defineEmits<Emits>()
@@ -140,8 +138,6 @@ const choiceText = computed(() => {
   if (Array.isArray(props.response)) return props.response.join(', ')
   return String(props.response)
 })
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Initialize from modelValue
 const selectedChoiceIds = ref<string[]>(
@@ -179,33 +175,6 @@ const toggleChoice = (choiceId: string) => {
 
 const canSubmit = computed(() => {
   return selectedChoiceIds.value.length > 0 || (props.allowCustom && customInput.value.trim().length > 0)
-})
-
-// Watch custom input for debounced auto-submit
-watch(customInput, (newValue) => {
-  // Only auto-submit for custom input if allowCustom is enabled
-  if (props.allowCustom && !props.disabled) {
-    // Clear existing timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-    }
-
-    // Set new timer to auto-submit after debounce
-    if (newValue.trim().length > 0) {
-      debounceTimer = setTimeout(() => {
-        if (canSubmit.value) {
-          submitResponse()
-        }
-      }, props.debounceMs)
-    }
-  }
-})
-
-// Cleanup timer on unmount
-onUnmounted(() => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
 })
 
 const submitResponse = () => {
