@@ -50,7 +50,7 @@ export interface SessionArtifactContent {
    * Permission policy for the next turn. Optional for backwards compat
    * with session artifacts persisted before this field was introduced —
    * read through `readSessionPermissionMode` which coalesces to
-   * `'default'`. See ClaudeSessionArtifactContent in threads/types.ts.
+   * `'acceptEdits'`. See ClaudeSessionArtifactContent in threads/types.ts.
    */
   permissionMode?: PermissionMode;
 }
@@ -79,7 +79,15 @@ function makeInitialContent(partial: Partial<SessionArtifactContent>): SessionAr
 /**
  * Read the permission mode stored on the session artifact. Returns the
  * user's current choice from the right-panel segmented control, or
- * `'default'` if the artifact has no stored value yet.
+ * `'acceptEdits'` if the artifact has no stored value yet.
+ *
+ * The default is `acceptEdits` (not `default`) because it matches the
+ * Claude Code TUI's own default behaviour: file mutations (Write, Edit,
+ * Bash) auto-approve, only unusual operations prompt. This eliminates
+ * the prompt-fatigue users experience with `default` mode (which asks
+ * for every non-allowlisted tool) and avoids the "allow for session"
+ * gap where per-turn subprocess spawning loses in-memory permission
+ * decisions between turns.
  *
  * Called by `chat.ts` at action entry to determine what `permissionMode`
  * to pass to the CLI for this turn. This is the single source of truth —
@@ -97,7 +105,7 @@ export function readSessionPermissionMode(
   }>;
   const session = artifacts.find(a => a.type === 'claude-session');
   const content = session?.content as Partial<SessionArtifactContent> | undefined;
-  return content?.permissionMode ?? 'default';
+  return content?.permissionMode ?? 'acceptEdits';
 }
 
 /**
