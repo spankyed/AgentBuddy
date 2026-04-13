@@ -180,6 +180,17 @@ export async function action(
           return { behavior: 'allow' as const, updatedInput: req.input };
         }
 
+        // Freeze the tool-activity block so it stops showing "Working…"
+        // while the user reviews the approval/question/plan block. Without
+        // this, the block stays in 'streaming' state with an active spinner
+        // and the auto-scroll-to-bottom behavior on expand yanks the user
+        // away from the approval block they're trying to interact with.
+        // Safe to call multiple times — finalise is idempotent (re-assigns
+        // same state, entries already flipped from 'running' to 'ok',
+        // writeNow pushes the same block). The split logic on the next
+        // message_start calls finalise again and creates a fresh writer.
+        toolActivity.finalise('done');
+
         // ─── AskUserQuestion — interactive choice blocks ────────────
         // The model calls AskUserQuestion to ask the user structured
         // questions with selectable options. Render each question as
