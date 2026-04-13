@@ -22,7 +22,7 @@ import { createPlanDraft, resolvePlanDraft } from './_helpers/plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './_helpers/plan-approval';
 import { parseAskUserQuestionInput } from './_helpers/ask-user-question';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
-import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setRunning, setPendingInteraction, enqueueMessage, dequeueMessage } from './_helpers/thread-context';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -41,6 +41,7 @@ export const meta: ActionMeta = {
     disallowedTools: { type: 'array', description: 'Tools always denied', required: false },
     systemPrompt: { type: 'string', description: 'Extra system prompt to append', required: false },
     askForPermissions: { type: 'boolean', description: 'Prompt user on tool use. Default true.', required: false },
+    messageId: { type: 'string', description: 'User message entity ID (for queued-state UI)', required: false },
   },
 };
 
@@ -68,6 +69,7 @@ export async function action(
     disallowedTools,
     systemPrompt,
     askForPermissions = true,
+    messageId: userMessageId,
   } = params as {
     threadId: EntityId;
     text: string;
@@ -78,6 +80,7 @@ export async function action(
     disallowedTools?: string[];
     systemPrompt?: string;
     askForPermissions?: boolean;
+    messageId?: string;
   };
 
   const log = services.logger;
@@ -93,6 +96,40 @@ export async function action(
   const prior = getClaudeState(services, threadId);
   const resumeSessionId = prior?.sessionId;
   log.debug('resume state resolved', { resumeSessionId: resumeSessionId ?? null });
+
+  // ─── Concurrency guard: queue if another turn is already running ─────
+  // A second invocation can arrive while the first is blocked on a
+  // permission handler (AskUserQuestion, ExitPlanMode, generic approval).
+  // Without this guard, the second invocation would start a concurrent CLI
+  // process and (before the early-persist fix) lose the session entirely.
+  // Now: queue the new message, cancel the pending interaction so the
+  // first turn ends quickly, and let the drain at F5 re-invoke the action.
+  if (prior?.isRunning) {
+    log.debug('action already running — queuing message', { threadId });
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId });
+
+    // Mark the user's message as "queued" so the frontend shows an amber
+    // pulsing indicator on the bubble while it waits.
+    if (userMessageId) {
+      services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
+    }
+
+    // Cancel the running turn's pending interaction (if any) so it
+    // doesn't block for up to 10 minutes. `services.brain.notify` fires
+    // ad-hoc listeners directly — exactly what `awaitMessageResponse`
+    // registers via `services.brain.listen`.
+    if (prior.pendingInteractionId) {
+      (services.brain as any).notify('interactive.message.response', {
+        messageId: prior.pendingInteractionId,
+        response: { cancelled: true, reason: 'superseded' },
+      });
+    }
+
+    return { success: true, queued: true };
+  }
+
+  // Mark this thread as having an active turn.
+  setRunning(services, threadId, true);
 
   // Create the empty assistant message we'll stream into. Writers are
   // reassigned when a user interaction (approval, question) triggers a
@@ -233,7 +270,13 @@ export async function action(
               forkable: false,
             });
 
+            setPendingInteraction(services, threadId, choiceMsg.messageId);
             const response = await awaitMessageResponse(services, choiceMsg.messageId);
+            setPendingInteraction(services, threadId, undefined);
+            if (response?.cancelled) {
+              updateSessionArtifact(services, threadId, { status: 'streaming' });
+              return { behavior: 'deny' as const, message: 'Superseded by new message' };
+            }
             const answer = typeof response === 'string'
               ? response
               : Array.isArray(response) ? response.join(', ') : String(response ?? '');
@@ -295,7 +338,14 @@ export async function action(
           });
 
           try {
+            setPendingInteraction(services, threadId, approval.messageId);
             const response = await awaitMessageResponse(services, approval.messageId);
+            setPendingInteraction(services, threadId, undefined);
+            if (response?.cancelled) {
+              resolvePlanDraft(services, threadId, 'rejected');
+              updateSessionArtifact(services, threadId, { status: 'streaming' });
+              return { behavior: 'deny' as const, message: 'Superseded by new message' };
+            }
             const { allow, reason } = parseApprovalDecision(response);
             log.debug('plan approval response received', {
               decision: allow ? 'allow' : 'deny',
@@ -353,7 +403,13 @@ export async function action(
         log.debug('approval block sent', { messageId: approval.messageId, tool: req.tool_name });
 
         try {
+          setPendingInteraction(services, threadId, approval.messageId);
           const response = await awaitMessageResponse(services, approval.messageId);
+          setPendingInteraction(services, threadId, undefined);
+          if (response?.cancelled) {
+            updateSessionArtifact(services, threadId, { status: 'streaming' });
+            return { behavior: 'deny' as const, message: 'Superseded by new message' };
+          }
           // Approval block responses arrive as `{ approved: boolean, reason?: string }`
           // — emitted by InteractionContainer.vue's handleApprove/handleDeny and
           // forwarded through the threads system unchanged. `MessageEntity.blockResponse`
@@ -699,6 +755,27 @@ export async function action(
     writer.finalize(writer.text || result.text);
     log.debug('chat action completed');
 
+    // ─── Drain queued message (concurrency guard: F5) ─────────────────
+    // If a new message was queued while this turn was running, process it
+    // now via recursive self-call. Session ID is already persisted, so
+    // the recursive call resumes the correct conversation.
+    setRunning(services, threadId, false);
+    const queued = dequeueMessage(services, threadId);
+    if (queued) {
+      log.debug('draining queued message', { threadId, textLen: queued.text?.length });
+      // Clear the "queued" status indicator on the user's message before
+      // processing it, so the amber dot disappears as the turn starts.
+      if (queued.messageId) {
+        services.chat.updateMessageState(queued.messageId as any, { status: null } as any);
+      }
+      return action(
+        { threadId, text: queued.text, mode: queued.mode, phase: queued.phase, messageId: queued.messageId },
+        services,
+        _z,
+        _flowId,
+      );
+    }
+
     return {
       success: true,
       sessionId: result.sessionId,
@@ -713,6 +790,23 @@ export async function action(
     toolActivity.finalise('error');
     updateSessionArtifact(services, threadId, { status: 'idle' });
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
+
+    // ─── Drain queued message on error (concurrency guard: F5) ────────
+    setRunning(services, threadId, false);
+    const queuedOnError = dequeueMessage(services, threadId);
+    if (queuedOnError) {
+      log.debug('draining queued message after error', { threadId });
+      if (queuedOnError.messageId) {
+        services.chat.updateMessageState(queuedOnError.messageId as any, { status: null } as any);
+      }
+      return action(
+        { threadId, text: queuedOnError.text, mode: queuedOnError.mode, phase: queuedOnError.phase, messageId: queuedOnError.messageId },
+        services,
+        _z,
+        _flowId,
+      );
+    }
+
     // Intentionally NOT clearing thread.context on error — the session may
     // still be valid on disk; let the user retry or call the reset action
     // explicitly.

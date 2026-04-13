@@ -793,7 +793,8 @@ const threadsState = setup({
                 ...('text' in typedEvent && typedEvent.text !== undefined && { text: typedEvent.text }),
                 ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
                 ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
-                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse })
+                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
+                ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status })
               }
               : msg
           )

@@ -187,6 +187,8 @@ export interface MessageEntity extends BaseEntity {
   references?: MessageReferences;
   isCommand?: boolean;
   command?: string;
+  /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
+  status?: 'queued' | null;
 }
 
 /**

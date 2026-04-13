@@ -100,6 +100,15 @@
           <span class="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-pulse" style="animation-delay: 400ms"></span>
         </div>
       </div>
+
+      <!-- Queued indicator — shown on user messages waiting behind an active turn -->
+      <div
+        v-if="isUser && (message as any).status === 'queued'"
+        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-400"
+      >
+        <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+        <span>Queued</span>
+      </div>
     </div>
   </div>
 </template>
