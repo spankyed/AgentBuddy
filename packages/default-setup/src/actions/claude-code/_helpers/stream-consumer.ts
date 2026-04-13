@@ -217,6 +217,13 @@ export async function consumeStream(
         const req = (line as any).request ?? {};
         const requestId = (line as any).request_id ?? '';
 
+        // Reject malformed requests missing a tool name.
+        if (!req.tool_name) {
+          log.warn('control_request missing tool_name, denying', { requestId });
+          handle.respond(requestId, { behavior: 'deny', message: 'Invalid request: missing tool_name' });
+          continue;
+        }
+
         // Auto-approve plan-file writes during plan phase.
         if (phase === 'plan' && req.subtype === 'can_use_tool' && isPlanFileWrite(req.tool_name, req.input)) {
           log.debug('auto-approved plan-file write', { tool: req.tool_name });
