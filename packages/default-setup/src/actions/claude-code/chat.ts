@@ -271,7 +271,9 @@ export async function action(
             });
 
             setPendingInteraction(services, threadId, choiceMsg.messageId);
+            setRunning(services, threadId, false);  // turn is paused, not running
             const response = await awaitMessageResponse(services, choiceMsg.messageId);
+            setRunning(services, threadId, true);   // resume running state
             setPendingInteraction(services, threadId, undefined);
             if (response?.cancelled) {
               updateSessionArtifact(services, threadId, { status: 'streaming' });
@@ -339,7 +341,9 @@ export async function action(
 
           try {
             setPendingInteraction(services, threadId, approval.messageId);
+            setRunning(services, threadId, false);  // turn is paused, not running
             const response = await awaitMessageResponse(services, approval.messageId);
+            setRunning(services, threadId, true);   // resume running state
             setPendingInteraction(services, threadId, undefined);
             if (response?.cancelled) {
               resolvePlanDraft(services, threadId, 'rejected');
@@ -404,7 +408,9 @@ export async function action(
 
         try {
           setPendingInteraction(services, threadId, approval.messageId);
+          setRunning(services, threadId, false);  // turn is paused, not running
           const response = await awaitMessageResponse(services, approval.messageId);
+          setRunning(services, threadId, true);   // resume running state
           setPendingInteraction(services, threadId, undefined);
           if (response?.cancelled) {
             updateSessionArtifact(services, threadId, { status: 'streaming' });
