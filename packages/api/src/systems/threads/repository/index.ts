@@ -638,7 +638,10 @@ export const chatCommands = {
       throw new RepositoryError(`Message ${messageId} not found in thread ${threadId}`, RepositoryErrorCode.NOT_FOUND);
     }
 
-    const toDelete = nonDeleted.slice(targetIndex + 1);
+    // Delete the target message AND everything after it — the user is
+    // "undoing" their message. The message text is prefilled into the chat
+    // input so they can re-send or edit it.
+    const toDelete = nonDeleted.slice(targetIndex);
     const now = Date.now();
     const deletedIds: string[] = [];
 

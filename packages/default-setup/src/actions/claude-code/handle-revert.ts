@@ -42,31 +42,24 @@ export async function action(
     (services.cli as any).claudeCode.clearHandle(threadId);
   }
 
-  // Find the CLI UUID of the last assistant message before the revert point.
-  // The revert target is a user message; we need the assistant message
-  // immediately preceding it so --resume-session-at truncates correctly.
+  // Find the CLI UUID of the last remaining assistant message.
+  // The threads system already soft-deleted the target message and everything
+  // after it (softDeleteMessagesAfter now includes the target). By the time
+  // this action runs, threadData.messages only has messages before the revert
+  // point. The last assistant message with a cliUuid is our truncation target.
   let cliUuid: string | undefined;
-  if (messageId && state?.sessionId) {
+  if (state?.sessionId) {
     const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
     const messages = (threadData?.messages ?? []) as Array<{
       id?: string;
       sender?: string;
       context?: Record<string, unknown>;
-      deleted?: boolean;
     }>;
-    // threadData.messages are already filtered to non-deleted.
-    const nonDeleted = messages.filter(m => m.id && !m.deleted);
-    const targetIndex = nonDeleted.findIndex(m => m.id === messageId);
-    if (targetIndex > 0) {
-      // Walk backwards from the target to find the last assistant message.
-      for (let i = targetIndex - 1; i >= 0; i--) {
-        const msg = nonDeleted[i];
-        if (msg.sender === 'assistant' && msg.context?.cliUuid) {
-          cliUuid = msg.context.cliUuid as string;
-          break;
-        }
-      }
-    }
+    // Find the last assistant message with a CLI UUID.
+    const lastAssistant = [...messages].reverse().find(
+      m => m.sender === 'assistant' && m.context?.cliUuid,
+    );
+    cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
   }
 
   // Clear turn-level state and set revert flag.

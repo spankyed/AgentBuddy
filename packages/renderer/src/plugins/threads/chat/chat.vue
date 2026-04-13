@@ -27,6 +27,7 @@
           :current-thread="currentThread"
           :current-mode="currentMode"
           :current-phase="currentPhase"
+          :prefill-text="prefillText"
           :modes="modes"
           :quick-prompts="quickPrompts"
           :quick-prompt-cursor="quickPromptCursor"
@@ -198,9 +199,16 @@ function confirmRevert() {
   dontAskAgain.value = false
 }
 
+const prefillText = ref('')
+
 function doRevert(messageId: string) {
   if (!currentThread.value?.id) return
+  // Grab the message text before the revert deletes it.
+  const msg = messages.value.find(m => m.id === messageId)
+  const revertedText = msg?.text || ''
   actor.send({ type: 'REVERT_THREAD', messageId, threadId: currentThread.value.id })
+  // Prefill the chat input so the user can re-send or edit.
+  prefillText.value = revertedText
 }
 
 const prevThreadId = ref(currentThread.value?.id)
