@@ -321,6 +321,14 @@ export async function consumeStream(
         }
         continue;
       }
+
+      // The `result` event is the CLI's terminal signal — no more meaningful
+      // events follow. Break out so finalization runs. Without this, the loop
+      // hangs forever because stdin is kept open for surfaceControlRequests
+      // (the CLI waits for the next user turn instead of exiting).
+      if (line.type === 'result') {
+        break;
+      }
     }
 
     // ─── Stream drained — finalize ─────────────────────────────────────
@@ -365,6 +373,9 @@ export async function consumeStream(
     writer.finalize(finalText);
     log.debug('stream consumer completed');
 
+    // Close stdin so the CLI process exits cleanly (prevents child leak).
+    try { await handle.close(); } catch { /* already closed or child gone */ }
+
     // Critical cleanup: clear handle, mark not running, drain queue.
     // These must be atomic — no async gap for new messages to interleave.
     (services.cli as any).claudeCode.clearHandle(threadId);
@@ -393,6 +404,9 @@ export async function consumeStream(
     log.error('stream consumer failed', { message, stack: err?.stack });
     toolActivity.finalise('error');
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
+
+    // Kill the CLI process on error (it may be in a bad state).
+    try { handle.kill(); } catch { /* already gone */ }
 
     // Critical cleanup.
     (services.cli as any).claudeCode.clearHandle(threadId);
