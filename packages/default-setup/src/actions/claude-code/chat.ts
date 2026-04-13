@@ -12,17 +12,17 @@
  */
 
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
-import { awaitMessageResponse } from './_helpers/await-message-response';
-import { parseApprovalDecision } from './_helpers/approval-response';
+// awaitMessageResponse DELETED — control_requests are surfaced in the stream
+// and routed via the flow's "CC: Route Response" action.
 import { isPlanFileWrite } from './_helpers/auto-approve';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
-import { createPlanDraft, resolvePlanDraft } from './_helpers/plan-artifact';
+import { createPlanDraft } from './_helpers/plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './_helpers/plan-approval';
 import { parseAskUserQuestionInput } from './_helpers/ask-user-question';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
-import { getClaudeState, persistClaudeState, setRunning, setPendingInteraction, enqueueMessage, dequeueMessage } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, dequeueMessage } from './_helpers/thread-context';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -40,7 +40,6 @@ export const meta: ActionMeta = {
     allowedTools: { type: 'array', description: 'Tools allowed without prompting', required: false },
     disallowedTools: { type: 'array', description: 'Tools always denied', required: false },
     systemPrompt: { type: 'string', description: 'Extra system prompt to append', required: false },
-    askForPermissions: { type: 'boolean', description: 'Prompt user on tool use. Default true.', required: false },
     messageId: { type: 'string', description: 'User message entity ID (for queued-state UI)', required: false },
   },
 };
@@ -68,7 +67,6 @@ export async function action(
     allowedTools,
     disallowedTools,
     systemPrompt,
-    askForPermissions = true,
     messageId: userMessageId,
   } = params as {
     threadId: EntityId;
@@ -79,7 +77,6 @@ export async function action(
     allowedTools?: string[];
     disallowedTools?: string[];
     systemPrompt?: string;
-    askForPermissions?: boolean;
     messageId?: string;
   };
 
@@ -97,35 +94,29 @@ export async function action(
   const resumeSessionId = prior?.sessionId;
   log.debug('resume state resolved', { resumeSessionId: resumeSessionId ?? null });
 
-  // ─── Concurrency guard: queue if another turn is already running ─────
-  // A second invocation can arrive while the first is blocked on a
-  // permission handler (AskUserQuestion, ExitPlanMode, generic approval).
-  // Without this guard, the second invocation would start a concurrent CLI
-  // process and (before the early-persist fix) lose the session entirely.
-  // Now: queue the new message, cancel the pending interaction so the
-  // first turn ends quickly, and let the drain at F5 re-invoke the action.
+  // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
+    // CLI is actively streaming — queue the new message for the drain.
     log.debug('action already running — queuing message', { threadId });
     enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId });
-
-    // Mark the user's message as "queued" so the frontend shows an amber
-    // pulsing indicator on the bubble while it waits.
     if (userMessageId) {
       services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
     }
-
-    // Cancel the running turn's pending interaction (if any) so it
-    // doesn't block for up to 10 minutes. `services.brain.notify` fires
-    // ad-hoc listeners directly — exactly what `awaitMessageResponse`
-    // registers via `services.brain.listen`.
-    if (prior.pendingInteractionId) {
-      (services.brain as any).notify('interactive.message.response', {
-        messageId: prior.pendingInteractionId,
-        response: { cancelled: true, reason: 'superseded' },
-      });
-    }
-
     return { success: true, queued: true };
+  }
+
+  // If the turn is paused on a permission prompt (isRunning=false but
+  // pendingControlRequest exists), kill the old CLI process so the old
+  // action exits cleanly, then proceed with this message as a new turn.
+  if (prior?.pendingControlRequest) {
+    log.debug('killing paused turn to start new one', { threadId });
+    const oldHandle = (services.cli as any).claudeCode.getHandle(threadId);
+    if (oldHandle) {
+      oldHandle.kill();
+      (services.cli as any).claudeCode.clearHandle(threadId);
+    }
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    // Fall through — proceed as a new turn with resume: sessionId
   }
 
   // Mark this thread as having an active turn.
@@ -180,297 +171,19 @@ export async function action(
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
   const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
 
-  // ─── Permission handler (control_request → approval block → response) ────
-  const onPermissionRequest = askForPermissions
-    ? async (req: { tool_name: string; input: Record<string, unknown>; tool_use_id: string }) => {
-        const handlerStartedAt = Date.now();
-        log.debug('permission handler invoked', {
-          tool_name: req.tool_name,
-          tool_use_id: req.tool_use_id,
-        });
-
-        // ─── Auto-approve plan-file writes in plan phase ─────────────
-        // During plan phase, Claude naturally writes planning markdown
-        // into `.claude/plans/`. Prompting the user for each one is pure
-        // friction — they already committed to the plan-phase workflow
-        // and saving plan docs IS the workflow. Short-circuit these
-        // before the approval-block ceremony so the session card never
-        // flickers to "awaiting-permission" for a file the user would
-        // always approve anyway.
-        //
-        // Intentionally scoped tight:
-        //   - `phase === 'plan'` only — work/review phases still prompt
-        //   - `Write` tool only — Edit to an existing plan file still
-        //     prompts (explicit modifications to existing plans should
-        //     surface to the user)
-        //   - `.claude/plans/**/*.md` only — other paths and non-md
-        //     files in that folder still prompt
-        //
-        // The path match is structural (see `isPlanFileWrite` for the
-        // regex anchor details) so crafted paths like
-        // `.claude/plans-evil/foo.md` can't bypass the check.
-        if (phase === 'plan' && isPlanFileWrite(req.tool_name, req.input)) {
-          log.debug('auto-approved plan-file write', {
-            tool_name: req.tool_name,
-            file_path: (req.input as { file_path?: unknown }).file_path,
-          });
-          return { behavior: 'allow' as const, updatedInput: req.input };
-        }
-
-        // Freeze the tool-activity block so it stops showing "Working…"
-        // while the user reviews the approval/question/plan block. Without
-        // this, the block stays in 'streaming' state with an active spinner
-        // and the auto-scroll-to-bottom behavior on expand yanks the user
-        // away from the approval block they're trying to interact with.
-        // Safe to call multiple times — finalise is idempotent (re-assigns
-        // same state, entries already flipped from 'running' to 'ok',
-        // writeNow pushes the same block). The split logic on the next
-        // message_start calls finalise again and creates a fresh writer.
-        toolActivity.finalise('done');
-
-        // ─── AskUserQuestion — interactive choice blocks ────────────
-        // The model calls AskUserQuestion to ask the user structured
-        // questions with selectable options. Render each question as
-        // an interactive `choice` block (existing ChoiceInput.vue
-        // component), collect the user's selections, and inject them
-        // into `updatedInput.answers` so the tool result carries the
-        // answers back to the model.
-        if (req.tool_name === 'AskUserQuestion') {
-          const { questions } = parseAskUserQuestionInput(req.input);
-
-          if (questions.length === 0) {
-            // Malformed — auto-approve with empty answers so the model
-            // gets a tool_result and can recover gracefully.
-            log.debug('AskUserQuestion with no parseable questions, auto-approving', {
-              tool_use_id: req.tool_use_id,
-            });
-            return { behavior: 'allow' as const, updatedInput: req.input };
-          }
-
-          writer.flush();
-          updateSessionArtifact(services, threadId, { status: 'awaiting-permission' });
-
-          const answers: Record<string, string> = {};
-
-          for (const q of questions) {
-            const choices = q.options.map(opt => ({
-              id: opt.label,
-              label: opt.label,
-              description: opt.description || undefined,
-            }));
-
-            const choiceMsg = services.chat.sendChoiceBlock({
-              threadId,
-              text: q.question,
-              prompt: q.header || 'Select an option',
-              choices,
-              multiSelect: q.multiSelect,
-              allowCustom: true,
-              displayText: q.header || 'Answer',
-              forkable: false,
-            });
-
-            setPendingInteraction(services, threadId, choiceMsg.messageId);
-            setRunning(services, threadId, false);  // turn is paused, not running
-            const response = await awaitMessageResponse(services, choiceMsg.messageId);
-            setRunning(services, threadId, true);   // resume running state
-            setPendingInteraction(services, threadId, undefined);
-            if (response?.cancelled) {
-              updateSessionArtifact(services, threadId, { status: 'streaming' });
-              return { behavior: 'deny' as const, message: 'Superseded by new message' };
-            }
-            const answer = typeof response === 'string'
-              ? response
-              : Array.isArray(response) ? response.join(', ') : String(response ?? '');
-            answers[q.question] = answer;
-          }
-
-          log.debug('AskUserQuestion answers collected', {
-            questionCount: questions.length,
-            durationMs: Date.now() - handlerStartedAt,
-          });
-          updateSessionArtifact(services, threadId, { status: 'streaming' });
-          splitOnNextMessageStart = true;
-
-          return {
-            behavior: 'allow' as const,
-            updatedInput: { ...req.input, answers },
-          };
-        }
-
-        // Preserve any streamed text written so far before the approval block.
-        writer.flush();
-        // Flip the session card into "awaiting-permission" so the status dot
-        // turns yellow while we wait for the user. Reset below after the
-        // response (allow or deny).
-        updateSessionArtifact(services, threadId, { status: 'awaiting-permission' });
-
-        // ─── ExitPlanMode — dedicated plan-approval flow ──────────────
-        // Claude calls this tool to signal "ready to exit plan mode and
-        // start implementing". The SDK-normalised input carries the
-        // plan as markdown (see leaked CLI source at
-        //   packages/claude-code/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:97-108
-        // ) plus an optional list of `allowedPrompts` describing what
-        // follow-up Bash permissions Claude expects. Render the plan
-        // as a proper plan artifact in the right-panel canvas AND
-        // send a plan-specific approval block in chat, so the user
-        // reviews the actual plan rather than a JSON dump of
-        // `{ plan, planFilePath, allowedPrompts }`.
-        if (req.tool_name === 'ExitPlanMode') {
-          const parsed = parseExitPlanModeInput(req.input);
-          const planArtifactId = createPlanDraft(services, threadId, parsed.plan);
-          log.debug('plan artifact created (draft)', {
-            planArtifactId,
-            planLen: parsed.plan.length,
-            allowedPromptCount: parsed.allowedPrompts.length,
-          });
-
-          const approval = services.chat.sendApprovalBlock({
-            threadId,
-            text: 'Claude Code is ready to implement — review the plan and approve.',
-            prompt: 'Approve this plan and start implementing?',
-            context: buildPlanApprovalContext(parsed),
-            requireReason: false,
-            allowReason: true,
-            forkable: false,
-          });
-          log.debug('plan approval block sent', {
-            messageId: approval.messageId,
-            planArtifactId,
-          });
-
-          try {
-            setPendingInteraction(services, threadId, approval.messageId);
-            setRunning(services, threadId, false);  // turn is paused, not running
-            const response = await awaitMessageResponse(services, approval.messageId);
-            setRunning(services, threadId, true);   // resume running state
-            setPendingInteraction(services, threadId, undefined);
-            if (response?.cancelled) {
-              resolvePlanDraft(services, threadId, 'rejected');
-              updateSessionArtifact(services, threadId, { status: 'streaming' });
-              return { behavior: 'deny' as const, message: 'Superseded by new message' };
-            }
-            const { allow, reason } = parseApprovalDecision(response);
-            log.debug('plan approval response received', {
-              decision: allow ? 'allow' : 'deny',
-              durationMs: Date.now() - handlerStartedAt,
-            });
-            resolvePlanDraft(services, threadId, allow ? 'approved' : 'rejected');
-            updateSessionArtifact(services, threadId, { status: 'streaming' });
-            splitOnNextMessageStart = true;
-            // `updatedInput` is required by the CLI's Zod validator at
-            // PermissionPromptToolResultSchema.ts:44-63 — missing it
-            // produces a `ZodError: invalid_union` that the CLI surfaces
-            // as "Tool permission request failed: …" on the tool row.
-            // We echo `req.input` verbatim (we don't modify plan inputs).
-            return allow
-              ? { behavior: 'allow' as const, updatedInput: req.input }
-              : { behavior: 'deny' as const, message: reason || 'Plan rejected by user' };
-          } catch (err: any) {
-            const errorMessage = err?.message || 'Plan approval failed';
-            log.error('plan approval handler failed', {
-              error: errorMessage,
-              durationMs: Date.now() - handlerStartedAt,
-            });
-            resolvePlanDraft(services, threadId, 'rejected');
-            updateSessionArtifact(services, threadId, { status: 'streaming' });
-            if (errorMessage.includes('timed out')) {
-              services.chat.sendBlockMessage({
-                threadId,
-                text: '',
-                blocks: [
-                  {
-                    type: 'note',
-                    props: {
-                      content: 'Plan approval timed out — Claude was denied. Send another message to retry.',
-                      variant: 'error',
-                      label: 'Plan approval timeout',
-                    },
-                  },
-                ],
-              });
-            }
-            return { behavior: 'deny' as const, message: errorMessage };
-          }
-        }
-
-        const contextSummary = `Tool: ${req.tool_name}\nInput:\n${JSON.stringify(req.input, null, 2)}`;
-        const approval = services.chat.sendApprovalBlock({
-          threadId,
-          text: `Claude Code wants to run ${req.tool_name}`,
-          prompt: `Allow \`${req.tool_name}\`?`,
-          context: contextSummary,
-          requireReason: false,
-          allowReason: true,
-          forkable: false,
-        });
-        log.debug('approval block sent', { messageId: approval.messageId, tool: req.tool_name });
-
-        try {
-          setPendingInteraction(services, threadId, approval.messageId);
-          setRunning(services, threadId, false);  // turn is paused, not running
-          const response = await awaitMessageResponse(services, approval.messageId);
-          setRunning(services, threadId, true);   // resume running state
-          setPendingInteraction(services, threadId, undefined);
-          if (response?.cancelled) {
-            updateSessionArtifact(services, threadId, { status: 'streaming' });
-            return { behavior: 'deny' as const, message: 'Superseded by new message' };
-          }
-          // Approval block responses arrive as `{ approved: boolean, reason?: string }`
-          // — emitted by InteractionContainer.vue's handleApprove/handleDeny and
-          // forwarded through the threads system unchanged. `MessageEntity.blockResponse`
-          // is typed as `any`, so a TypeScript mismatch at the call site would not
-          // be caught at compile time. `parseApprovalDecision` is the single source
-          // of truth for the shape contract and is covered by a dedicated unit test.
-          const { allow, reason } = parseApprovalDecision(response);
-          log.debug('permission response received', {
-            decision: allow ? 'allow' : 'deny',
-            durationMs: Date.now() - handlerStartedAt,
-          });
-          updateSessionArtifact(services, threadId, { status: 'streaming' });
-          splitOnNextMessageStart = true;
-          // `updatedInput` is required by the CLI's Zod validator at
-          // PermissionPromptToolResultSchema.ts:44-63 — missing it
-          // produces a `ZodError: invalid_union` that the CLI surfaces
-          // as "Tool permission request failed: …" on the tool row.
-          // We echo `req.input` verbatim (we don't modify the tool input).
-          return allow
-            ? { behavior: 'allow' as const, updatedInput: req.input }
-            : { behavior: 'deny' as const, message: reason || 'User denied' };
-        } catch (err: any) {
-          const errorMessage = err?.message || 'Approval failed';
-          log.error('permission handler failed', {
-            error: errorMessage,
-            durationMs: Date.now() - handlerStartedAt,
-          });
-          updateSessionArtifact(services, threadId, { status: 'streaming' });
-          // When the 10-minute default timeout fires, inject a visible note
-          // block into the thread so the user sees WHY Claude was denied
-          // instead of getting silent prose fallback. This only fires on
-          // actual timeouts — an allow/deny click returns cleanly via the
-          // try branch above.
-          if (errorMessage.includes('timed out')) {
-            services.chat.sendBlockMessage({
-              threadId,
-              text: '',
-              blocks: [
-                {
-                  type: 'note',
-                  props: {
-                    content: `Approval request for \`${req.tool_name}\` timed out — Claude was denied. Send another message to retry.`,
-                    variant: 'error',
-                    label: 'Permission timeout',
-                  },
-                },
-              ],
-            });
-          }
-          return { behavior: 'deny' as const, message: errorMessage };
-        }
-      }
-    : undefined;
-
-  // ─── Fire the query ───────────────────────────────────────────────────────
+  // ─── Fire the query (surfaced control_requests) ─────────────────────────
+  // Control_requests appear in the event stream (surfaceControlRequests: true)
+  // instead of being routed through an onPermissionRequest callback. The
+  // flow's `interactive.message.response` listener + "CC: Route Response"
+  // action handles routing the user's approval/choice back to the CLI via
+  // handle.respond(). No ad-hoc brain listeners. No awaitMessageResponse.
+  // No timeouts. The for-await loop blocks naturally while waiting.
+  //
+  // OLD onPermissionRequest callback was ~300 lines handling auto-approve,
+  // AskUserQuestion, ExitPlanMode, and generic approval — all with inline
+  // awaitMessageResponse calls. Replaced by ~50 lines of inline control_request
+  // handling in the stream loop below, with response routing in the flow.
+  // ─── Fire the query (surfaced control_requests) ─────────────────────────
   try {
     log.debug('invoking claudeCode.query', {
       model,
@@ -478,7 +191,6 @@ export async function action(
       permissionMode: effectivePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       hasSystemPrompt: !!composedSystemPrompt,
-      askForPermissions,
     });
     const handle = await services.cli.claudeCode.query({
       prompt: text,
@@ -489,8 +201,17 @@ export async function action(
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       disallowedTools,
       systemPrompt: composedSystemPrompt,
-      onPermissionRequest,
-    });
+      surfaceControlRequests: true,
+      // NO onPermissionRequest — control_requests appear in the event stream.
+      // The flow's `interactive.message.response` listener + "CC: Route Response"
+      // action handles routing the user's response back to the CLI via
+      // handle.respond(). No ad-hoc brain listeners. No timeouts.
+    } as any);
+
+    // Store the handle so "CC: Route Response" (another action in the flow)
+    // can write control_responses back to the CLI's stdin.
+    (services.cli as any).claudeCode.storeHandle(threadId, handle);
+
     log.debug('query handle received, draining events');
 
     // Drain the event stream. We accumulate assistant text and annotate
@@ -673,6 +394,126 @@ export async function action(
         continue;
       }
 
+      // ─── Control requests (surfaced by pump) ────────────────────────
+      // The CLI is asking for permission. Send an interactive block to the
+      // user, store the request details, mark the turn as paused, and
+      // continue the loop. The next for-await iteration blocks naturally
+      // because the CLI produces no more stdout events until it receives
+      // the control_response (written by "CC: Route Response" via the
+      // stored handle). No callbacks, no listeners, no timeouts.
+      if (line.type === 'control_request') {
+        const req = (line as any).request ?? {};
+        const requestId = (line as any).request_id ?? '';
+
+        // Auto-approve plan-file writes during plan phase.
+        if (phase === 'plan' && req.subtype === 'can_use_tool' && isPlanFileWrite(req.tool_name, req.input)) {
+          log.debug('auto-approved plan-file write', { tool: req.tool_name });
+          handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
+          continue;
+        }
+
+        // Freeze the tool-activity block so it stops showing "Working…".
+        writer.flush();
+        toolActivity.finalise('done');
+
+        // Send the appropriate interactive block.
+        let approvalMessageId: string;
+
+        if (req.tool_name === 'ExitPlanMode') {
+          // Plan approval — create the plan artifact + send a plan-specific block.
+          const parsed = parseExitPlanModeInput(req.input ?? {});
+          createPlanDraft(services, threadId, parsed.plan);
+          const approval = services.chat.sendApprovalBlock({
+            threadId,
+            text: 'Claude Code is ready to implement — review the plan and approve.',
+            prompt: 'Approve this plan and start implementing?',
+            context: buildPlanApprovalContext(parsed),
+            requireReason: false,
+            allowReason: true,
+            forkable: false,
+          });
+          approvalMessageId = approval.messageId;
+        } else if (req.tool_name === 'AskUserQuestion') {
+          // Clarifying question — send a choice block for the first question.
+          const { questions } = parseAskUserQuestionInput(req.input ?? {});
+          const q = questions[0];
+          if (q) {
+            const choices = q.options.map((opt: any) => ({
+              id: opt.label,
+              label: opt.label,
+              description: opt.description || undefined,
+            }));
+            const choiceMsg = services.chat.sendChoiceBlock({
+              threadId,
+              text: q.question,
+              prompt: q.header || 'Select an option',
+              choices,
+              multiSelect: q.multiSelect,
+              allowCustom: true,
+              displayText: q.header || 'Answer',
+              forkable: false,
+            });
+            approvalMessageId = choiceMsg.messageId;
+          } else {
+            // No parseable questions — auto-approve.
+            handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
+            continue;
+          }
+        } else {
+          // Generic tool approval (Write, Edit, Bash, etc.)
+          const contextSummary = `Tool: ${req.tool_name}\nInput:\n${JSON.stringify(req.input, null, 2)}`;
+          const approval = services.chat.sendApprovalBlock({
+            threadId,
+            text: `Claude Code wants to run ${req.tool_name}`,
+            prompt: `Allow \`${req.tool_name}\`?`,
+            context: contextSummary,
+            requireReason: false,
+            allowReason: true,
+            forkable: false,
+          });
+          approvalMessageId = approval.messageId;
+        }
+
+        log.debug('interactive block sent for control_request', {
+          requestId,
+          toolName: req.tool_name,
+          approvalMessageId,
+        });
+
+        // Store the request details so "CC: Route Response" can match the
+        // user's response back to the CLI's request_id.
+        persistClaudeState(services, threadId, {
+          pendingControlRequest: {
+            requestId,
+            approvalMessageId,
+            toolName: req.tool_name ?? 'unknown',
+            originalInput: req.input ?? {},
+          },
+        });
+
+        // Mark the turn as paused — the CLI is idle, waiting for our
+        // control_response. New messages should NOT be queued (isRunning=false),
+        // they should start a new turn (the concurrency guard above checks
+        // pendingControlRequest and kills the old CLI if present).
+        setRunning(services, threadId, false);
+        updateSessionArtifact(services, threadId, { status: 'awaiting-permission' });
+        splitOnNextMessageStart = true;
+
+        // The for-await loop continues to the next iteration, which blocks
+        // naturally — the CLI produces no more events until it gets the
+        // control_response from "CC: Route Response".
+        continue;
+      }
+
+      // ─── Control cancellation (surfaced by pump) ───────────────────
+      // The CLI withdrew a pending control_request (e.g. internal timeout).
+      // Clear the stale pending state so we don't try to respond later.
+      if (line.type === 'control_cancel_request') {
+        log.debug('control_cancel_request received, clearing pending state');
+        persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+        continue;
+      }
+
       if (line.type === 'tool_use_summary') {
         // CLI reports a summary string covering one or more prior tool_uses.
         // Apply it as supplementary outputSummary text ONLY — status
@@ -762,6 +603,9 @@ export async function action(
     log.debug('chat action completed');
 
     // ─── Drain queued message (concurrency guard: F5) ─────────────────
+    // Clear the stored handle — the CLI process is done.
+    (services.cli as any).claudeCode.clearHandle(threadId);
+
     // If a new message was queued while this turn was running, process it
     // now via recursive self-call. Session ID is already persisted, so
     // the recursive call resumes the correct conversation.
@@ -796,6 +640,9 @@ export async function action(
     toolActivity.finalise('error');
     updateSessionArtifact(services, threadId, { status: 'idle' });
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
+
+    // Clear the stored handle — the CLI process is done (or dead).
+    (services.cli as any).claudeCode.clearHandle(threadId);
 
     // ─── Drain queued message on error (concurrency guard: F5) ────────
     setRunning(services, threadId, false);

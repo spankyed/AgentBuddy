@@ -4,6 +4,7 @@ import { repository } from '@/repository'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/systems/code/types'
 import { claudeCode } from '@/services/claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions } from '@/services/claude-code'
+import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -40,6 +41,12 @@ export interface CliServiceType {
     authStatus(): Promise<AuthStatus>
     listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
     getWorkingDir(): string
+    /** Store a live query handle so other actions can write control_responses. */
+    storeHandle(key: string, handle: QueryHandle): void
+    /** Retrieve a stored query handle by key (typically threadId). */
+    getHandle(key: string): QueryHandle | undefined
+    /** Clear a stored handle (call on query end to avoid leaking references). */
+    clearHandle(key: string): void
   }
 }
 
@@ -124,6 +131,9 @@ function createCliService(): CliServiceType {
       getWorkingDir() {
         return resolveCwd()
       },
+      storeHandle,
+      getHandle,
+      clearHandle,
     },
   }
 }

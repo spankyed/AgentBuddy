@@ -358,7 +358,19 @@ export interface QueryOptions {
    */
   keepStdinOpen?: boolean
 
-  // Callbacks
+  /**
+   * Surface `control_request` events in the `handle.events` stream instead of
+   * routing them through the `onPermissionRequest` / `onControlRequest` callbacks.
+   * The consumer handles them inline in its event loop and sends responses via
+   * `handle.respond(requestId, response)`. Default `false` for backwards compat.
+   *
+   * When `true`, the callbacks are ignored — the pump pushes control_request
+   * lines into the event queue like any other event type, and the consumer is
+   * responsible for sending the control_response.
+   */
+  surfaceControlRequests?: boolean
+
+  // Callbacks (ignored when surfaceControlRequests is true)
   onPermissionRequest?: PermissionHandler
   onControlRequest?: ControlRequestHandler
 }

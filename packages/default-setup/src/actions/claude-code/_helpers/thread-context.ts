@@ -18,15 +18,31 @@ export interface QueuedMessage {
   messageId?: string;
 }
 
+export interface PendingControlRequest {
+  /** The CLI's request_id for the control_response. */
+  requestId: string;
+  /** The messageId of the approval/choice block sent to the user. */
+  approvalMessageId: string;
+  /** The tool name from the control_request. */
+  toolName: string;
+  /** The original input from the control_request, echoed back on allow responses. */
+  originalInput?: Record<string, unknown>;
+}
+
 export interface ClaudeCodeThreadState {
   sessionId?: string;
   lastTurnAt?: number;
   /** True while a chat action invocation is actively running on this thread. */
   isRunning?: boolean;
-  /** messageId of the current approval/choice block awaiting user response. */
-  pendingInteractionId?: string;
   /** Message waiting to be processed after the current turn ends. */
   queuedMessage?: QueuedMessage;
+  /**
+   * Set when the CLI emits a `control_request` and we've sent an approval
+   * block to the user. "CC: Route Response" reads this to match the user's
+   * response back to the right CLI request_id. Cleared after the response
+   * is routed.
+   */
+  pendingControlRequest?: PendingControlRequest;
 }
 
 export const CLAUDE_SESSION_TAG = 'claude-session';
@@ -73,14 +89,9 @@ export function persistClaudeState(
 export function setRunning(services: Services, threadId: string, running: boolean): void {
   persistClaudeState(services, threadId, {
     isRunning: running,
-    // Clear stale interaction/queue state when marking not-running.
-    ...(!running && { pendingInteractionId: undefined }),
+    // Clear stale state when marking not-running.
+    ...(!running && { pendingControlRequest: undefined }),
   });
-}
-
-/** Store the messageId of the block we're waiting on, so a concurrent invocation can cancel it. */
-export function setPendingInteraction(services: Services, threadId: string, messageId: string | undefined): void {
-  persistClaudeState(services, threadId, { pendingInteractionId: messageId });
 }
 
 /** Queue a message for processing after the current turn ends. Last write wins (burst debounce). */

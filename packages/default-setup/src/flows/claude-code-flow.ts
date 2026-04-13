@@ -42,5 +42,24 @@ export default {
       ]],
       "Work mode → Claude Code",
     ),
+    // Route interactive block responses (approval, choice) back to the CLI.
+    // When the user clicks Allow/Deny or selects a choice, the threads system
+    // emits `interactive.message.response` to the brain. This listener picks
+    // it up and routes the response to the stored CLI handle via
+    // `handle.respond()`. No ad-hoc brain listeners in actions.
+    on(
+      "interactive.message.response",
+      [[
+        action("CC: Route Response", {
+          label: "route-response",
+          map: {
+            messageId: "$.event.data.payload.messageId",
+            threadId: "$.event.data.payload.threadId",
+            response: "$.event.data.payload.response",
+          },
+        }),
+      ]],
+      "Permission response",
+    ),
   ],
 } satisfies FlowDSL;

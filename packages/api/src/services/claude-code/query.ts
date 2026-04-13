@@ -58,6 +58,12 @@ export interface QueryHandle {
   readonly result: Promise<QueryResult>
   /** Send another user turn. No-op after close(). */
   send(text: string | UserInputMessage): void
+  /**
+   * Send a control_response back to the CLI for a surfaced control_request.
+   * Only meaningful when `surfaceControlRequests: true` — in callback mode
+   * the router handles responses internally.
+   */
+  respond(requestId: string, response: { behavior: 'allow' | 'deny'; message?: string; updatedInput?: unknown }): void
   /** Ask the CLI to cancel the current turn (interrupt control request). */
   interrupt(): void
   /** Close stdin and wait for the child to exit. */
@@ -103,7 +109,8 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
   // generator completes (child exited). Pump no longer rejects on its own —
   // the `stream.done()` handler below is the single source of truth for
   // "what happened at child exit".
-  const pumpPromise = pump(stream, router, eventQueue, sessionId, resultPromise)
+  const surfaceControlRequests = opts.surfaceControlRequests ?? false
+  const pumpPromise = pump(stream, router, eventQueue, sessionId, resultPromise, surfaceControlRequests)
     .catch(err => {
       sessionId.reject(err)
       resultPromise.reject(err)
@@ -168,7 +175,7 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
   // own the close lifecycle via `handle.close()`.
   if (opts.prompt !== undefined) {
     writeUserTurn(stream, opts.prompt)
-    if (!opts.keepStdinOpen) {
+    if (!opts.keepStdinOpen && !surfaceControlRequests) {
       const autoClose = () => {
         try { stream.endInput() } catch { /* already closed or child gone */ }
       }
@@ -211,6 +218,13 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
 
     send(text: string | UserInputMessage): void {
       writeUserTurn(stream, text)
+    },
+
+    respond(requestId: string, response: { behavior: 'allow' | 'deny'; message?: string; updatedInput?: unknown }): void {
+      stream.write({
+        type: 'control_response',
+        response: { subtype: 'success', request_id: requestId, response },
+      })
     },
 
     interrupt(): void {
@@ -264,6 +278,7 @@ async function pump(
   eventQueue: AsyncQueue<StreamLine>,
   sessionId: Deferred<string>,
   resultPromise: Deferred<QueryResult>,
+  surfaceControlRequests: boolean,
 ): Promise<void> {
   for await (const decoded of stream.lines) {
     if (!decoded.ok) {
@@ -281,24 +296,31 @@ async function pump(
 
     switch (line.type) {
       case 'control_request': {
-        // Handled entirely inside the router; never surfaced to the caller.
-        // Log the receipt so we have ground truth next time the permission
-        // flow stalls — if we don't see this line in the backend console
-        // during a work-mode turn that needs approval, the CLI isn't
-        // emitting `can_use_tool` (wrong argv / wrong mode); if we DO see
-        // it but `permission handler invoked` from chat.ts never fires,
-        // the router dispatch is broken.
         const req = (line as unknown as { request?: { subtype?: string }; request_id?: string })
         logger.debug('control_request received', {
           subtype: req.request?.subtype,
           request_id: req.request_id,
+          surfaced: surfaceControlRequests,
         })
+        if (surfaceControlRequests && req.request?.subtype !== 'initialize') {
+          // Push to the event queue so the consumer handles it inline via
+          // handle.respond(). The pump does NOT await a callback — the CLI
+          // blocks on its own until it receives the control_response, so the
+          // consumer's for-await naturally pauses on the next iteration.
+          // `initialize` is always handled internally — it's a handshake,
+          // not a user-facing permission prompt.
+          break // fall through to eventQueue.push below
+        }
+        // Legacy callback path (one-shot / non-flow callers).
         const response = await router.handle(line)
         stream.write(response)
         continue
       }
 
       case 'control_cancel_request':
+        if (surfaceControlRequests) break // surface to consumer
+        continue
+
       case 'control_response':
       case 'keep_alive':
         // Swallowed — not interesting to the public event iterator.
