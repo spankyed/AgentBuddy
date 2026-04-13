@@ -61,5 +61,58 @@ export default {
       ]],
       "Permission response",
     ),
+    // ─── Stream lifecycle ────────────────────────────────────────────
+    // The stream consumer emits cc.stream.* brain events at lifecycle
+    // boundaries. These listeners do real work: session artifact updates,
+    // diff artifact creation, and queued message drain.
+    on(
+      "cc.stream.started",
+      [[
+        action("CC: Stream Started", {
+          label: "streaming",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            sessionId: "$.event.data.payload.sessionId",
+            model: "$.event.data.payload.model",
+            cwd: "$.event.data.payload.cwd",
+          },
+        }),
+      ]],
+      "Stream started",
+    ),
+    on(
+      "cc.stream.paused",
+      [[
+        action("CC: Stream Paused", {
+          label: "awaiting-permission",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            toolName: "$.event.data.payload.toolName",
+          },
+        }),
+      ]],
+      "Permission requested",
+    ),
+    on(
+      "cc.stream.completed",
+      [[
+        action("CC: Turn Completed", {
+          label: "turn-done",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            sessionId: "$.event.data.payload.sessionId",
+            costUsd: "$.event.data.payload.costUsd",
+            durationMs: "$.event.data.payload.durationMs",
+            toolCallCount: "$.event.data.payload.toolCallCount",
+            mutatedFileCount: "$.event.data.payload.mutatedFileCount",
+            mutatedPaths: "$.event.data.payload.mutatedPaths",
+            hadErrors: "$.event.data.payload.hadErrors",
+            error: "$.event.data.payload.error",
+            userText: "$.event.data.payload.userText",
+          },
+        }),
+      ]],
+      "Turn completed",
+    ),
   ],
 } satisfies FlowDSL;
