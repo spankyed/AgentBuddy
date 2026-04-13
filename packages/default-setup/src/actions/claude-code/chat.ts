@@ -449,6 +449,21 @@ export async function action(
           model: line.model || '',
           cwd: line.cwd || '',
         });
+        // Persist session ID to thread context IMMEDIATELY so any subsequent
+        // invocation on the same thread (e.g. user sends a new message while
+        // a permission handler is blocking) can resume the correct session.
+        // Without this, persistClaudeState only ran after the entire stream
+        // drained (line ~628), which was too late if a second message arrived
+        // during a long-running approval/question flow. The late persist at
+        // line ~628 is now redundant but kept for belt-and-suspenders safety
+        // (idempotent — writes the same session ID again with a fresh
+        // lastTurnAt reflecting end-of-turn time).
+        if (line.session_id) {
+          persistClaudeState(services, threadId, {
+            sessionId: line.session_id,
+            lastTurnAt: Date.now(),
+          });
+        }
         continue;
       }
 
