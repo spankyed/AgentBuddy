@@ -12,10 +12,9 @@
  * single message. See ROADMAP.md (next to this folder) for the full
  * rationale.
  *
- * This helper wraps `services.artifact.findOrCreateByType` +
- * `services.artifact.updateAndNotify` and caches the artifact id per
- * thread in a module-level Map so repeated calls within the same process
- * lifetime skip the LMDB lookup.
+ * All lookups go directly through the in-memory EARS repository — no
+ * module-level cache. EARS is LMDB-backed and kept in memory, so the
+ * repository query is essentially a Map access already.
  */
 
 import type { Services, EntityId } from '../../../types';
@@ -55,9 +54,6 @@ export interface SessionArtifactContent {
   permissionMode?: PermissionMode;
 }
 
-/** Thread → session artifact id. Survives across calls within one process. */
-const sessionArtifactCache = new Map<string, EntityId>();
-
 /** Build a default SessionArtifactContent for a brand-new turn. */
 function makeInitialContent(partial: Partial<SessionArtifactContent>): SessionArtifactContent {
   const now = Date.now();
@@ -74,6 +70,19 @@ function makeInitialContent(partial: Partial<SessionArtifactContent>): SessionAr
     permissionMode: 'default',
     ...partial,
   };
+}
+
+/** Find the existing claude-session artifact for a thread, or undefined. */
+function findSessionArtifact(
+  services: Services,
+  threadId: EntityId,
+): { id: EntityId; content: unknown } | undefined {
+  const artifacts = services.repository.chatQueries.threadArtifacts(threadId) as Array<{
+    id: EntityId;
+    type: string;
+    content: unknown;
+  }>;
+  return artifacts.find(a => a.type === 'claude-session');
 }
 
 /**
@@ -98,12 +107,7 @@ export function readSessionPermissionMode(
   services: Services,
   threadId: EntityId,
 ): PermissionMode {
-  const artifacts = services.repository.chatQueries.threadArtifacts(threadId) as Array<{
-    id: EntityId;
-    type: string;
-    content: unknown;
-  }>;
-  const session = artifacts.find(a => a.type === 'claude-session');
+  const session = findSessionArtifact(services, threadId);
   const content = session?.content as Partial<SessionArtifactContent> | undefined;
   return content?.permissionMode ?? 'acceptEdits';
 }
@@ -113,18 +117,12 @@ export function readSessionPermissionMode(
  * exists (across turns), returns its id without creating a new one. If it
  * doesn't exist yet, creates one with `initial` content merged into the
  * default shape and returns the new id.
- *
- * The returned id is cached so subsequent calls skip the LMDB lookup.
  */
 export function ensureSessionArtifact(
   services: Services,
   threadId: EntityId,
   initial: Partial<SessionArtifactContent> = {},
 ): EntityId {
-  // Cache hit: the id we created earlier this process.
-  const cached = sessionArtifactCache.get(threadId);
-  if (cached) return cached;
-
   const { artifactId } = services.artifact.findOrCreateByType(
     threadId,
     'claude-session',
@@ -133,33 +131,28 @@ export function ensureSessionArtifact(
       content: makeInitialContent(initial),
     },
   );
-  sessionArtifactCache.set(threadId, artifactId);
   return artifactId;
 }
 
 /**
  * Merge a patch into the session artifact's content field and notify the
- * frontend. Missing fields are preserved (partial updates). If the artifact
- * doesn't yet exist for this thread, this is a no-op — the caller should
- * call `ensureSessionArtifact` first.
+ * frontend. Missing fields are preserved (partial updates). If no
+ * claude-session artifact exists for this thread yet, this is a no-op.
  *
- * The patch can also include a raw function that receives the current
- * content and returns the next content (useful for counters that need to
- * read-modify-write without a race).
+ * The patch can be a plain object or a function that receives the current
+ * content and returns the delta (useful for counters that need to
+ * read-modify-write).
  */
 export function updateSessionArtifact(
   services: Services,
   threadId: EntityId,
   patch: Partial<SessionArtifactContent> | ((prev: SessionArtifactContent) => Partial<SessionArtifactContent>),
 ): void {
-  const artifactId = sessionArtifactCache.get(threadId);
-  if (!artifactId) return;
+  const session = findSessionArtifact(services, threadId);
+  if (!session) return;
 
-  // Read the latest content from the repository so counters compound
-  // correctly across updates. The EARS query layer is synchronous.
-  const current = (services.repository.chatQueries.threadArtifacts(threadId) as any[])
-    .find(a => a.id === artifactId);
-  const prevContent: SessionArtifactContent = (current?.content as SessionArtifactContent) ?? makeInitialContent({});
+  const prevContent: SessionArtifactContent =
+    (session.content as SessionArtifactContent) ?? makeInitialContent({});
 
   const delta = typeof patch === 'function' ? patch(prevContent) : patch;
   const nextContent: SessionArtifactContent = {
@@ -168,7 +161,7 @@ export function updateSessionArtifact(
     lastTurnAt: delta.lastTurnAt ?? prevContent.lastTurnAt,
   };
 
-  services.artifact.updateAndNotify(artifactId, {
+  services.artifact.updateAndNotify(session.id, {
     content: nextContent,
     threadId,
   });
