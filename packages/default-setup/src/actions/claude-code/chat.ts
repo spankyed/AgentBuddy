@@ -118,6 +118,15 @@ export async function action(
   // Mark this thread as having an active turn.
   setRunning(services, threadId, true);
 
+  // Disable fork on user messages in Claude Code threads. Forking from a
+  // user message creates a mismatch: the app shows the message but the CLI
+  // session truncates to the preceding assistant message, so the LLM has
+  // no knowledge of what the user said. Only assistant messages (which
+  // carry cliUuid) are safe fork points.
+  if (userMessageId) {
+    services.chat.updateMessageState(userMessageId as any, { forkable: false } as any);
+  }
+
   // Create the empty assistant message we'll stream into.
   // Non-forkable while streaming — partial responses are confusing fork points.
   // Flipped back to forkable on finalize (stream-consumer.ts).
