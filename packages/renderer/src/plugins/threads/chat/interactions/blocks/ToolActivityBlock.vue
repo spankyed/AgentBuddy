@@ -3,27 +3,26 @@
     <!-- Header row: chevron + icon + label + badge/spinner -->
     <button
       type="button"
-      class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/40 transition-colors"
+      class="w-full flex items-baseline gap-2 px-3 py-2 text-left hover:bg-neutral-700/40 transition-colors"
       @click="isOpen = !isOpen"
     >
       <ChevronRight
-        class="w-4 h-4 text-neutral-400 flex-shrink-0 transition-transform"
+        class="w-4 h-4 text-neutral-400 flex-shrink-0 self-center transition-transform"
         :class="{ 'rotate-90': isOpen }"
       />
-      <Wrench class="w-4 h-4 text-neutral-400 flex-shrink-0" />
+      <Wrench class="w-4 h-4 text-neutral-400 flex-shrink-0 self-center" />
       <span class="text-sm text-neutral-200 truncate shrink">{{ label }}</span>
-      <template v-if="previewEntry">
-        <span class="text-neutral-600 flex-shrink-0 mx-1">·</span>
-        <span class="text-[11px] text-neutral-500 flex-shrink-0">{{ previewEntry.tool }}</span>
-        <span class="text-[11px] text-neutral-600 truncate font-mono flex-1 min-w-0">{{ previewEntry.summary }}</span>
-      </template>
-      <span v-else class="flex-1" />
-      <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0" aria-hidden>
+      <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0 self-center" aria-hidden>
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 0ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 150ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 300ms" />
       </span>
-      <span v-else-if="badge" class="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{{ badge }}</span>
+      <template v-if="previewEntry">
+        <span class="text-[11px] text-neutral-500 flex-shrink-0 ml-2">{{ previewEntry.tool }}</span>
+        <span class="text-[11px] text-neutral-600 truncate font-mono flex-1 min-w-0">{{ previewEntry.summary }}</span>
+      </template>
+      <span v-else class="flex-1" />
+      <span v-if="badge" class="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{{ badge }}</span>
     </button>
 
     <!-- Artifact ref link — shown below the header when set (Phase C diff) -->

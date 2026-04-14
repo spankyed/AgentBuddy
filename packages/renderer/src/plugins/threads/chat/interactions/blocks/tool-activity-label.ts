@@ -93,7 +93,7 @@ export function computeLabel(
   state: 'streaming' | 'done' | 'error',
   phase?: string,
 ): string {
-  const streamingLabel = phase === 'plan' ? 'Planning…' : 'Working…'
+  const streamingLabel = phase === 'plan' ? 'Planning' : 'Working'
   if (entries.length === 0) {
     return state === 'streaming' ? streamingLabel : 'No activity'
   }
@@ -126,12 +126,12 @@ export function computeLabel(
     const bash = running[0]
     const secs = bash.durationMs ? Math.round(bash.durationMs / 1000) : 0
     const dur = secs >= 5 ? ` (${secs}s)` : ''
-    return `Running bash${dur}…`
+    return `Running bash${dur}`
   }
 
   if (groups.length === 1) {
     const { tool, count } = groups[0]
-    return `${presentVerb(tool)} ${count} ${noun(tool, count)}…`
+    return `${presentVerb(tool)} ${count} ${noun(tool, count)}`
   }
 
   return streamingLabel
