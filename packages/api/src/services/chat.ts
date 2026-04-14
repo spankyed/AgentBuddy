@@ -630,7 +630,14 @@ function resolveFolder(ref: { refId: string; label: string }): string {
  * Pure function — no side effects.
  */
 export function generateAsideText(message: MessageEntity, response: BlockResponse): string {
-  const context = message.text ? ` — ${truncate(message.text, 50)}` : '';
+  // Derive a short context label from blocks (preferred) or message text (fallback).
+  // tool-input blocks give us a clean tool name; prompt blocks are shorter than message.text.
+  const toolInputBlock = message.blocks?.find(b => b.type === 'tool-input');
+  const promptBlock = message.blocks?.find(b => b.type === 'prompt');
+  const contextText = toolInputBlock?.props?.toolName
+    ?? (promptBlock?.props?.content ? truncate(String(promptBlock.props.content), 50) : null)
+    ?? (message.text ? truncate(message.text, 50) : null);
+  const context = contextText ? ` — ${contextText}` : '';
 
   // Cancelled
   if (response && typeof response === 'object' && 'cancelled' in response && response.cancelled) {

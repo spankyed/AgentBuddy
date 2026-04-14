@@ -6,14 +6,16 @@
     ]"
   >
     <div class="relative group max-w-full min-w-0">
-      <!-- Aside: collapsed interactive message -->
-      <div v-if="message.autoHide && message.asideText"
-           class="text-xs text-neutral-500 italic py-1 px-2">
-        {{ message.asideText }}
+      <!-- Aside: collapsed interactive message (click to expand) -->
+      <div v-if="message.autoHide && message.asideText && !expanded"
+           class="text-xs italic py-1 px-2 cursor-pointer hover:bg-neutral-800/50 rounded transition-colors"
+           @click="expanded = true">
+        <span class="text-neutral-400">{{ asideOutcome }}</span>
+        <span v-if="asideContext" class="text-neutral-600 ml-2">{{ asideContext }}</span>
       </div>
 
       <!-- Normal message rendering -->
-      <template v-else>
+      <template v-else-if="!message.autoHide || !message.asideText || expanded">
       <!-- Floating hover UI -->
       <div
         class="absolute transition-opacity duration-200 opacity-0 pointer-events-none -bottom-3 -right-4 z-10 group-hover:opacity-100 group-hover:pointer-events-auto"
@@ -42,6 +44,15 @@
             title="Fork conversation"
           >
             <GitFork :size="16" />
+          </button>
+
+          <button
+            v-if="message.autoHide && expanded"
+            @click="expanded = false"
+            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+            title="Collapse"
+          >
+            <ChevronsUpDown :size="16" />
           </button>
 
           <button
@@ -140,9 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { MessageEntity } from '@app/api'
-import { Undo2, GitFork, Copy, FileCode2 } from 'lucide-vue-next'
+import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
@@ -168,6 +179,7 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
 
 const emit = defineEmits<ChatMessageEmits>()
 
+const expanded = ref(false)
 const revertMenu = useContextMenu()
 
 const revertMenuItems = [
@@ -185,6 +197,18 @@ function openRevertMenu(e: MouseEvent) {
 
 const isUser = computed(() => props.message.sender === 'user')
 const isCommand = computed(() => props.message.isCommand ?? false)
+
+// Split aside text into primary outcome and secondary context at the " — " separator
+const asideOutcome = computed(() => {
+  const text = props.message.asideText ?? ''
+  const idx = text.indexOf(' — ')
+  return idx === -1 ? text : text.slice(0, idx)
+})
+const asideContext = computed(() => {
+  const text = props.message.asideText ?? ''
+  const idx = text.indexOf(' — ')
+  return idx === -1 ? '' : text.slice(idx + 3)
+})
 
 // Split blocks by type so tool-activity renders above text while
 // other block types (approval, choice, etc.) render below text.
