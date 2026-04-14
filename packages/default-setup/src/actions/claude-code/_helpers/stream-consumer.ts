@@ -76,6 +76,10 @@ export async function consumeStream(
   // The first `user` event echoes the prompt with the UUID the CLI assigned.
   let userUuidTracked = false;
 
+  // Extracted from the `result` line directly — survives even if handle.result
+  // rejects (error subtypes like error_during_execution).
+  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number } | undefined;
+
   try {
     // ─── Drain the event stream ──────────────────────────────────────────
     let eventCount = 0;
@@ -360,11 +364,15 @@ export async function consumeStream(
         continue;
       }
 
-      // The `result` event is the CLI's terminal signal — no more meaningful
-      // events follow. Break out so finalization runs. Without this, the loop
-      // hangs forever because stdin is kept open for surfaceControlRequests
-      // (the CLI waits for the next user turn instead of exiting).
+      // The `result` event is the CLI's terminal signal. Extract cost/duration
+      // directly — handle.result may reject for error subtypes, losing this data.
       if (line.type === 'result') {
+        resultFromLine = {
+          sessionId: (line as any).session_id ?? '',
+          text: (line as any).result ?? '',
+          totalCostUsd: (line as any).total_cost_usd ?? 0,
+          durationMs: (line as any).duration_ms ?? 0,
+        };
         break;
       }
     }
@@ -374,7 +382,8 @@ export async function consumeStream(
 
     // handle.result rejects for non-success subtypes (error_during_execution,
     // error_max_turns, etc.) and when the CLI exits without a result line.
-    // Catch gracefully so finalization still runs.
+    // Use resultFromLine (extracted directly from the result event) as fallback
+    // so cost/duration survive even when the promise rejects.
     let result: { sessionId: string; text: string; totalCostUsd: number; durationMs: number };
     let resultError: string | undefined;
     try {
@@ -387,8 +396,9 @@ export async function consumeStream(
         resultError = resultErr?.message || 'CLI result unavailable';
         log.warn('CLI result error (non-fatal)', { message: resultError });
       }
+      // Fall back to data extracted from the result line (preserves cost/duration).
       const errSessionId = resultErr?.sessionId ?? resultErr?.session_id ?? '';
-      result = { sessionId: errSessionId, text: '', totalCostUsd: 0, durationMs: 0 };
+      result = resultFromLine ?? { sessionId: errSessionId, text: '', totalCostUsd: 0, durationMs: 0 };
     }
     log.debug('final result received', {
       sessionId: result.sessionId,
