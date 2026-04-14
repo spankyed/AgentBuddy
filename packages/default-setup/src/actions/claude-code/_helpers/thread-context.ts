@@ -46,6 +46,23 @@ export interface ClaudeCodeThreadState {
    */
   pendingControlRequest?: PendingControlRequest;
   /**
+   * Set when the chat action detects no CWD is configured and sends a
+   * directory-picker block. Stores the original message params so the
+   * query can be retried after the user picks a directory.
+   */
+  pendingDirectorySelect?: {
+    pickerMessageId: string;
+    text: string;
+    mode?: string;
+    phase?: string;
+    model?: string;
+    allowedTools?: string[];
+    disallowedTools?: string[];
+    systemPrompt?: string;
+    messageId?: string;
+    references?: any;
+  };
+  /**
    * One-shot flag set by CC: Handle Fork. When present, the next chat action
    * invocation passes `forkSession: true` to the CLI so it creates a new
    * session JSONL file instead of appending to the source session. Cleared

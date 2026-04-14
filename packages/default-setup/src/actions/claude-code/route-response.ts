@@ -36,6 +36,18 @@ export async function action(
   }
 
   const state = getClaudeState(services, threadId);
+
+  // Directory-picker response: no CLI handle needed, just re-invoke chat.
+  if (state?.pendingDirectorySelect?.pickerMessageId === messageId) {
+    return {
+      success: true,
+      directorySelect: true,
+      threadId,
+      response,
+      pendingDirectorySelect: state.pendingDirectorySelect,
+    };
+  }
+
   const pending = state?.pendingControlRequest;
 
   if (!pending || pending.approvalMessageId !== messageId) {

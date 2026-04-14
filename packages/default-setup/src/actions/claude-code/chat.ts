@@ -175,6 +175,38 @@ export async function action(
     });
   }
 
+  // ─── CWD check — prompt for directory if none configured ────────────
+  const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
+  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened;
+  if (!hasCwd) {
+    writer.finalize('');
+    toolActivity.finalise('done');
+    const picker = services.chat.sendFilePickerBlock({
+      threadId,
+      text: 'Which project directory should I work in?',
+      prompt: 'Select a project directory',
+      fileType: 'directory',
+      forkable: false,
+    });
+    persistClaudeState(services, threadId, {
+      pendingDirectorySelect: {
+        pickerMessageId: picker.messageId as string,
+        text,
+        mode: params.mode,
+        phase,
+        model,
+        allowedTools,
+        disallowedTools,
+        systemPrompt,
+        messageId: userMessageId,
+        references,
+      },
+    });
+    setRunning(services, threadId, false);
+    updateSessionArtifact(services, threadId, { status: 'idle' });
+    return { success: true, awaitingDirectory: true };
+  }
+
   // ─── Fire the query ─────────────────────────────────────────────────
   try {
     // Resolve references inside try/catch so a failure doesn't permanently

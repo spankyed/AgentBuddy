@@ -59,6 +59,19 @@ export default {
         }),
         branch([
           {
+            if: "$.lastStep.result.directorySelect == true",
+            steps: [
+              action("CC: Handle Directory Select", {
+                label: "directory-select",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  response: "$.steps[label=route-response].result.response",
+                  pendingDirectorySelect: "$.steps[label=route-response].result.pendingDirectorySelect",
+                },
+              }),
+            ],
+          },
+          {
             if: "$.lastStep.result.toolName == 'AskUserQuestion'",
             steps: [
               action("CC: Answer Question", {
