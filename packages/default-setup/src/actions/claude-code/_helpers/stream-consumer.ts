@@ -299,6 +299,7 @@ export async function consumeStream(
               } },
             ],
             forkable: false,
+            autoHide: true,
           });
           approvalMessageId = approval.messageId;
         } else if (req.tool_name === 'AskUserQuestion') {
@@ -316,6 +317,7 @@ export async function consumeStream(
                 allowCustom: true,
               })),
               forkable: false,
+              autoHide: true,
             });
             approvalMessageId = questionMsg.messageId;
           } else {
@@ -332,6 +334,7 @@ export async function consumeStream(
               { type: 'approval', props: { requireReason: false, allowReason: true, autoAcceptOption: FILE_MUTATION_TOOLS.has(req.tool_name) } },
             ],
             forkable: false,
+            autoHide: true,
           });
           approvalMessageId = approval.messageId;
         }
