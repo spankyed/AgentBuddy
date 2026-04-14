@@ -1,5 +1,5 @@
 /**
- * CC: Deny Turn — kills the CLI process and stops the turn when the user
+ * CC: Deny Tool — kills the CLI process and stops the turn when the user
  * denies a tool approval or cancels an interaction.
  */
 
@@ -8,7 +8,7 @@ import { killTurn } from './_helpers/thread-context';
 import { updateSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
-  label: 'CC: Deny Turn',
+  label: 'CC: Deny Tool',
   description: 'Kills the CLI process and stops the turn on denial.',
   category: 'claude-code',
   input: {

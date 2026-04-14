@@ -1,5 +1,5 @@
 /**
- * CC: Resume Turn — sends a tool approval to the CLI and resumes streaming.
+ * CC: Approve Tool — sends a tool approval to the CLI and resumes streaming.
  * Handles generic tool approvals (Write, Edit, Bash) and ExitPlanMode.
  */
 
@@ -9,7 +9,7 @@ import { updateSessionArtifact } from './_helpers/session-artifact';
 import { resolvePlanDraft } from './_helpers/plan-artifact';
 
 export const meta: ActionMeta = {
-  label: 'CC: Resume Turn',
+  label: 'CC: Approve Tool',
   description: 'Sends tool approval to the CLI and resumes streaming.',
   category: 'claude-code',
   input: {

@@ -86,8 +86,8 @@ export default {
           {
             if: "$.lastStep.result.denied == true",
             steps: [
-              action("CC: Deny Turn", {
-                label: "deny-turn",
+              action("CC: Deny Tool", {
+                label: "deny-tool",
                 map: {
                   threadId: "$.steps[label=route-response].result.threadId",
                 },
@@ -110,8 +110,8 @@ export default {
           },
         ], [
           // else: tool approval (Write, Edit, Bash, ExitPlanMode, etc.)
-          action("CC: Resume Turn", {
-            label: "resume-turn",
+          action("CC: Approve Tool", {
+            label: "approve-tool",
             map: {
               threadId: "$.steps[label=route-response].result.threadId",
               requestId: "$.steps[label=route-response].result.requestId",

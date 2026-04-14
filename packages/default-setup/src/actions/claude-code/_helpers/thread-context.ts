@@ -147,7 +147,7 @@ export function dequeueMessage(services: Services, threadId: string): QueuedMess
 
 /**
  * Kill the CLI handle, invalidate any pending interactive block, resolve
- * plan drafts, and clear all mid-turn flags. Shared by pause-turn, deny-turn,
+ * plan drafts, and clear all mid-turn flags. Shared by pause-turn, deny-tool,
  * and the stale-turn cleanup in chat.ts.
  */
 export function killTurn(services: Services, threadId: string): void {

@@ -3,8 +3,8 @@
  * response and returns metadata for the downstream switch to branch on.
  *
  * No side effects — no handle.respond(), no handle.kill(), no state
- * mutations. The switch branches to CC: Deny Turn, CC: Answer Question,
- * or CC: Resume Turn based on this action's result.
+ * mutations. The switch branches to CC: Deny Tool, CC: Answer Question,
+ * or CC: Approve Tool based on this action's result.
  */
 
 import type { ActionMeta, Services } from '../../types';
@@ -64,7 +64,7 @@ export async function action(
   // When denied, clear toolName for tools that have their own non-deny
   // branch (like AskUserQuestion) so the flow routes to CC: Deny Turn
   // instead of the tool-specific handler. Tools like ExitPlanMode need
-  // toolName preserved so deny-turn can handle them specially.
+  // toolName preserved so deny-tool can handle them specially.
   const toolName = (denied && pending.toolName === 'AskUserQuestion')
     ? undefined
     : pending.toolName;
