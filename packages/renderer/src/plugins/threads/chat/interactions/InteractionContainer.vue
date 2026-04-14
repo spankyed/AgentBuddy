@@ -38,7 +38,16 @@
         :disabled="isDisabled"
         :response="response"
         :display-text="(block.props as any).displayText"
+        @submit="handleSubmit"
+        @cancel="handleCancel"
+      />
+
+      <!-- Question Input (single or multi-question wizard) -->
+      <QuestionInput
+        v-else-if="block.type === 'question'"
         :questions="(block.props as any).questions"
+        :disabled="isDisabled"
+        :response="response"
         @submit="handleSubmit"
         @cancel="handleCancel"
       />
@@ -121,6 +130,7 @@ import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
 import ToolActivityBlock from './blocks/ToolActivityBlock.vue'
 import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
+import QuestionInput from './inputs/QuestionInput.vue'
 import TextInput from './inputs/TextInput.vue'
 import ApprovalButtons from './inputs/ApprovalButtons.vue'
 import ButtonGroupInput from './inputs/ButtonGroupInput.vue'

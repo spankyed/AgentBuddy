@@ -109,10 +109,8 @@ export function sendChoiceBlock(options: {
   allowCustom?: boolean;
   displayText?: string;
   forkable?: boolean;
-  /** Multi-question wizard data — frontend renders step wizard if present. */
-  questions?: Array<{ question: string; header: string; options: Array<{ id: string; label: string; description?: string }>; multiSelect: boolean }>;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable, questions } = options;
+  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -121,7 +119,41 @@ export function sendChoiceBlock(options: {
     },
     {
       type: 'choice',
-      props: { choices, multiSelect, allowCustom, displayText, ...(questions && { questions }) }
+      props: { choices, multiSelect, allowCustom, displayText }
+    }
+  ];
+
+  return sendBlockMessage({ threadId, text, blocks, forkable });
+}
+
+/**
+ * Create a question interaction — single question or multi-question wizard.
+ * Single question = array with one item. Multi = step wizard in the frontend.
+ * Response shape: string (single) or Record<string, string> (multi).
+ */
+export function sendQuestionBlock(options: {
+  threadId: EARS.EntityId;
+  text: string;
+  prompt: string;
+  questions: Array<{
+    question: string;
+    header?: string;
+    options: Array<{ id: string; label: string; description?: string }>;
+    multiSelect?: boolean;
+    allowCustom?: boolean;
+  }>;
+  forkable?: boolean;
+}): { messageId: EARS.EntityId } {
+  const { threadId, text, prompt, questions, forkable } = options;
+
+  const blocks: BlockConfig[] = [
+    {
+      type: 'prompt',
+      props: { content: prompt }
+    },
+    {
+      type: 'question',
+      props: { questions }
     }
   ];
 

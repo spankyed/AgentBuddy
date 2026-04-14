@@ -58,31 +58,25 @@ export async function action(
     return { success: false, reason: 'no active CLI handle for thread' };
   }
 
-  // Determine allow/deny from the block response shape.
-  // Approval blocks: { approved: boolean }. Choice blocks: string, string[],
-  // or Record<string, string> (multi-question wizard).
-  const isAnswerRecord = typeof response === 'object' && response !== null
-    && !Array.isArray(response) && !('approved' in response) && !('cancelled' in response);
-  const allow = response?.approved === true
-    || response?.value === 'yes'
-    || response?.value === true
-    || typeof response === 'string'
-    || Array.isArray(response)
-    || isAnswerRecord;
+  // Only approval blocks can deny ({ approved: false } or { cancelled: true }).
+  // Everything else (choice string, string[], wizard Record, text input) is an allow.
+  const denied = response?.approved === false || response?.cancelled === true;
+  const allow = !denied;
 
   // For AskUserQuestion, merge answers into updatedInput.
   // For tool approvals, echo the original request input verbatim.
   let updatedInput: Record<string, unknown> = pending.originalInput ?? {};
   if (pending.toolName === 'AskUserQuestion' && allow) {
+    const isMultiAnswer = typeof response === 'object' && response !== null && !Array.isArray(response);
     let answers: Record<string, string>;
-    if (isAnswerRecord) {
+    if (isMultiAnswer) {
       // Multi-question wizard: response is already { questionText: answer }
       answers = response;
     } else {
       // Single question: wrap in a Record keyed by the question text
       const answer = typeof response === 'string' ? response
         : Array.isArray(response) ? response.join(', ')
-        : String(response?.value ?? response ?? '');
+        : String(response ?? '');
       const questionText = (Array.isArray(updatedInput.questions)
         ? (updatedInput.questions[0] as any)?.question : '') ?? '';
       answers = { [questionText]: answer };

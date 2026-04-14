@@ -276,34 +276,21 @@ export async function consumeStream(
           approvalMessageId = approval.messageId;
         } else if (req.tool_name === 'AskUserQuestion') {
           const { questions } = parseAskUserQuestionInput(req.input ?? {});
-          const q = questions[0];
-          if (q) {
-            const choices = q.options.map((opt: any) => ({
-              id: opt.label,
-              label: opt.label,
-              description: opt.description || undefined,
-            }));
-            const choiceMsg = services.chat.sendChoiceBlock({
+          if (questions.length > 0) {
+            const questionMsg = (services.chat as any).sendQuestionBlock({
               threadId,
-              text: q.question,
-              prompt: q.header || 'Select an option',
-              choices,
-              multiSelect: q.multiSelect,
-              allowCustom: true,
-              displayText: q.header || 'Answer',
+              text: questions[0].question,
+              prompt: questions[0].header || 'Select an option',
+              questions: questions.map(q => ({
+                question: q.question,
+                header: q.header,
+                options: q.options.map(o => ({ id: o.label, label: o.label, description: o.description || undefined })),
+                multiSelect: q.multiSelect,
+                allowCustom: true,
+              })),
               forkable: false,
-              // Multi-question wizard: pass all questions so the frontend
-              // renders a step wizard. Single question omits this prop.
-              ...(questions.length > 1 && {
-                questions: questions.map(qq => ({
-                  question: qq.question,
-                  header: qq.header,
-                  options: qq.options.map(o => ({ id: o.label, label: o.label, description: o.description || undefined })),
-                  multiSelect: qq.multiSelect,
-                })),
-              }),
             });
-            approvalMessageId = choiceMsg.messageId;
+            approvalMessageId = questionMsg.messageId;
           } else {
             handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
             continue;
