@@ -844,7 +844,7 @@ const threadsState = setup({
     },
     pauseTurn: ({ event }) => {
       const { threadId } = typeOf('PAUSE_TURN', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'CANCEL', threadId });
+      trpc.bus.send.mutate({ systemId: id, type: 'PAUSE_TURN', threadId });
     },
   },
   guards: {

@@ -86,7 +86,7 @@ export const IncomingThreadsEvents = [
   }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
-  busEvent('CANCEL', { threadId: z.string() }),
+  busEvent('PAUSE_TURN', { threadId: z.string() }),
   busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
   busEvent('INTERACTIVE_MSG_RESPONSE', {
@@ -667,7 +667,7 @@ export const threadsSystem = setup({
       });
     },
     pauseTurn: ({ system, event }) => {
-      const { threadId } = typeOf('CANCEL', event);
+      const { threadId } = typeOf('PAUSE_TURN', event);
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
@@ -808,7 +808,7 @@ export const threadsSystem = setup({
           REVERT_THREAD: {
             actions: 'revertThread',
           },
-          CANCEL: {
+          PAUSE_TURN: {
             actions: 'pauseTurn',
           },
         },

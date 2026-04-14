@@ -6,6 +6,7 @@
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 import { updateSessionArtifact } from './_helpers/session-artifact';
+import { resolvePlanDraft } from './_helpers/plan-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Pause Turn',
@@ -34,6 +35,11 @@ export async function action(
   if (handle) {
     try { handle.kill(); } catch { /* already gone */ }
     (services.cli as any).claudeCode.clearHandle(threadId);
+  }
+
+  // If paused during a plan approval, reject the draft.
+  if (prior?.pendingControlRequest?.toolName === 'ExitPlanMode') {
+    resolvePlanDraft(services, threadId as EntityId, 'rejected');
   }
 
   persistClaudeState(services, threadId, {
