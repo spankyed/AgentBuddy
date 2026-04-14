@@ -24,7 +24,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('file-picker')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="handleSubmitFrom('file-picker')"
         @cancel="handleCancel"
       />
 
@@ -38,7 +38,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('choice')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="handleSubmitFrom('choice')"
         @cancel="handleCancel"
       />
 
@@ -48,7 +48,7 @@
         :questions="(block.props as any).questions"
         :disabled="isDisabled"
         :response="responseForBlock('question')"
-        @submit="handleSubmit"
+        @submit="handleSubmitFrom('question')"
         @cancel="handleCancel"
       />
 
@@ -63,7 +63,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('text')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="handleSubmitFrom('text')"
         @cancel="handleCancel"
       />
 
@@ -86,7 +86,7 @@
         :buttons="(block.props as any).buttons"
         :submit-disabled="(block.props as any).submitDisabled || isDisabled"
         :submit-variant="(block.props as any).submitVariant"
-        @submit="() => handleSubmit(undefined)"
+        @submit="handleSubmitFrom('actions')"
         @cancel="handleCancel"
       />
 
@@ -105,7 +105,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('button-group')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="handleSubmitFrom('button-group')"
       />
 
       <!-- Project Select Input -->
@@ -115,7 +115,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('project-select')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="handleSubmitFrom('project-select')"
       />
 
       <!-- Toggles Block -->
@@ -188,6 +188,9 @@ const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
 const respondedBlockType = computed(() => {
   const r = props.response
   if (!r) return null
+  // Explicit source tag (set by handleSubmitFrom when toggles wrap the response)
+  if (typeof r === 'object' && r._source) return r._source
+  // Fallback heuristic for legacy/untagged responses
   if (typeof r === 'string') return 'project-select'
   if (r.path) return 'file-picker'
   if (r.approved !== undefined || r.cancelled) return 'approval'
@@ -210,11 +213,11 @@ const handleBlockResponse = (response: any) => {
   })
 }
 
-// Event handlers — wraps toggle values into the response when a toggles block is present.
-const handleSubmit = (response: any) => {
+// Event handlers — wraps toggle values and source tag into the response.
+const handleSubmitFrom = (blockType: string) => (response: any) => {
   const toggles = togglesBlockRef.value?.values
   if (toggles && Object.keys(toggles).length > 0) {
-    handleBlockResponse({ path: response, toggles: { ...toggles } })
+    handleBlockResponse({ path: response, toggles: { ...toggles }, _source: blockType })
   } else {
     handleBlockResponse(response)
   }
