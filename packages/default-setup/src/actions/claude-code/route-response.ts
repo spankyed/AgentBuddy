@@ -1,25 +1,18 @@
 /**
- * CC: Route Response — writes a user's interactive block response back to the
- * CLI as a `control_response` via the stored query handle.
+ * CC: Route Response — thin router that classifies an interactive block
+ * response and returns metadata for the downstream switch to branch on.
  *
- * Triggered by the flow's `interactive.message.response` listener track. The
- * action matches the incoming messageId against the thread's
- * `pendingControlRequest`, retrieves the stored CLI handle, and calls
- * `handle.respond()` to unblock the CLI. No ad-hoc brain listeners, no
- * polling, no side effects — pure state read + handle write.
- *
- * See `packages/default-setup/src/actions/claude-code/ROADMAP.md` and the
- * plan doc for the full architecture rationale.
+ * No side effects — no handle.respond(), no handle.kill(), no state
+ * mutations. The switch branches to CC: Deny Turn, CC: Answer Question,
+ * or CC: Resume Turn based on this action's result.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState, persistClaudeState, setRunning } from './_helpers/thread-context';
-import { updateSessionArtifact } from './_helpers/session-artifact';
-import { resolvePlanDraft } from './_helpers/plan-artifact';
+import type { ActionMeta, Services } from '../../types';
+import { getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Route Response',
-  description: 'Routes interactive block responses (approval, choice) back to the Claude CLI as control_responses.',
+  description: 'Classifies an interactive block response for downstream routing.',
   category: 'claude-code',
   input: {
     messageId: { type: 'string', description: 'The interactive block message that was responded to', required: true },
@@ -46,64 +39,23 @@ export async function action(
   const pending = state?.pendingControlRequest;
 
   if (!pending || pending.approvalMessageId !== messageId) {
-    // No matching pending request — this response might be for a different
-    // block type (e.g. a non-Claude-Code interaction) or the turn already
-    // completed. Silently return so we don't break other block flows.
     return { success: false, reason: 'no matching pending control request' };
   }
 
-  // Retrieve the stored CLI handle for this thread.
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
   if (!handle) {
     return { success: false, reason: 'no active CLI handle for thread' };
   }
 
-  // Only approval blocks can deny ({ approved: false } or { cancelled: true }).
-  // Everything else (choice string, string[], wizard Record, text input) is an allow.
   const denied = response?.approved === false || response?.cancelled === true;
-  const allow = !denied;
 
-  // For AskUserQuestion, merge answers into updatedInput.
-  // For tool approvals, echo the original request input verbatim.
-  let updatedInput: Record<string, unknown> = pending.originalInput ?? {};
-  if (pending.toolName === 'AskUserQuestion' && allow) {
-    const isMultiAnswer = typeof response === 'object' && response !== null && !Array.isArray(response);
-    let answers: Record<string, string>;
-    if (isMultiAnswer) {
-      // Multi-question wizard: response is already { questionText: answer }
-      answers = response;
-    } else {
-      // Single question: wrap in a Record keyed by the question text
-      const answer = typeof response === 'string' ? response
-        : Array.isArray(response) ? response.join(', ')
-        : String(response ?? '');
-      const questionText = (Array.isArray(updatedInput.questions)
-        ? (updatedInput.questions[0] as any)?.question : '') ?? '';
-      answers = { [questionText]: answer };
-    }
-    updatedInput = { ...updatedInput, answers };
-  }
-
-  // Resolve plan drafts when ExitPlanMode is approved/rejected.
-  if (pending.toolName === 'ExitPlanMode') {
-    resolvePlanDraft(services, threadId as EntityId, allow ? 'approved' : 'rejected');
-  }
-
-  if (denied) {
-    // Kill the turn immediately — don't send a deny message to the CLI.
-    // The stream consumer's for-await loop will exit when the process dies.
-    handle.kill();
-    (services.cli as any).claudeCode.clearHandle(threadId);
-    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
-    setRunning(services, threadId, false);
-    updateSessionArtifact(services, threadId as any, { status: 'idle' });
-  } else {
-    // Send the approval to the CLI and resume streaming.
-    handle.respond(pending.requestId, { behavior: 'allow', updatedInput });
-    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
-    setRunning(services, threadId, true);
-    updateSessionArtifact(services, threadId as any, { status: 'streaming' });
-  }
-
-  return { success: true, allowed: allow };
+  return {
+    success: true,
+    denied,
+    toolName: pending.toolName,
+    requestId: pending.requestId,
+    originalInput: pending.originalInput,
+    response,
+    threadId,
+  };
 }

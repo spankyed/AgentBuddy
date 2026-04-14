@@ -1,0 +1,50 @@
+/**
+ * CC: Resume Turn — sends a tool approval to the CLI and resumes streaming.
+ * Handles generic tool approvals (Write, Edit, Bash) and ExitPlanMode.
+ */
+
+import type { ActionMeta, Services, EntityId } from '../../types';
+import { persistClaudeState, setRunning } from './_helpers/thread-context';
+import { updateSessionArtifact } from './_helpers/session-artifact';
+import { resolvePlanDraft } from './_helpers/plan-artifact';
+
+export const meta: ActionMeta = {
+  label: 'CC: Resume Turn',
+  description: 'Sends tool approval to the CLI and resumes streaming.',
+  category: 'claude-code',
+  input: {
+    threadId: { type: 'string', description: 'Thread ID', required: true },
+    requestId: { type: 'string', description: 'CLI control_request ID', required: true },
+    toolName: { type: 'string', description: 'Tool being approved', required: false },
+    originalInput: { type: 'object', description: 'Original tool input from the control_request', required: false },
+  },
+};
+
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+) {
+  const { threadId, requestId, toolName, originalInput } = params as {
+    threadId: string;
+    requestId: string;
+    toolName?: string;
+    originalInput?: Record<string, unknown>;
+  };
+
+  if (!threadId || !requestId) return { success: false, reason: 'missing threadId or requestId' };
+
+  const handle = (services.cli as any).claudeCode.getHandle(threadId);
+  if (!handle) return { success: false, reason: 'no active CLI handle' };
+
+  handle.respond(requestId, { behavior: 'allow', updatedInput: originalInput ?? {} });
+
+  if (toolName === 'ExitPlanMode') {
+    resolvePlanDraft(services, threadId as EntityId, 'approved');
+  }
+
+  persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+  setRunning(services, threadId, true);
+  updateSessionArtifact(services, threadId as EntityId, { status: 'streaming' });
+
+  return { success: true };
+}

@@ -42,11 +42,9 @@ export default {
       ]],
       "Work mode → Claude Code",
     ),
-    // Route interactive block responses (approval, choice) back to the CLI.
-    // When the user clicks Allow/Deny or selects a choice, the threads system
-    // emits `interactive.message.response` to the brain. This listener picks
-    // it up and routes the response to the stored CLI handle via
-    // `handle.respond()`. No ad-hoc brain listeners in actions.
+    // Route interactive block responses (approval, choice, question) back
+    // to the CLI. The router classifies the response, then the switch
+    // branches to the appropriate handler.
     on(
       "interactive.message.response",
       [[
@@ -58,6 +56,45 @@ export default {
             response: "$.event.data.payload.response",
           },
         }),
+        branch([
+          {
+            if: "$.lastStep.result.toolName == 'AskUserQuestion'",
+            steps: [
+              action("CC: Answer Question", {
+                label: "answer-question",
+                map: {
+                  threadId: "$.lastStep.result.threadId",
+                  requestId: "$.lastStep.result.requestId",
+                  originalInput: "$.lastStep.result.originalInput",
+                  response: "$.lastStep.result.response",
+                },
+              }),
+            ],
+          },
+          {
+            if: "$.lastStep.result.denied == true",
+            steps: [
+              action("CC: Deny Turn", {
+                label: "deny-turn",
+                map: {
+                  threadId: "$.lastStep.result.threadId",
+                  toolName: "$.lastStep.result.toolName",
+                },
+              }),
+            ],
+          },
+        ], [
+          // else: tool approval (Write, Edit, Bash, ExitPlanMode, etc.)
+          action("CC: Resume Turn", {
+            label: "resume-turn",
+            map: {
+              threadId: "$.lastStep.result.threadId",
+              requestId: "$.lastStep.result.requestId",
+              toolName: "$.lastStep.result.toolName",
+              originalInput: "$.lastStep.result.originalInput",
+            },
+          }),
+        ]),
       ]],
       "Permission response",
     ),
