@@ -630,9 +630,11 @@ function resolveFolder(ref: { refId: string; label: string }): string {
  * Pure function — no side effects.
  */
 export function generateAsideText(message: MessageEntity, response: BlockResponse): string {
+  const context = message.text ? ` — ${truncate(message.text, 50)}` : '';
+
   // Cancelled
   if (response && typeof response === 'object' && 'cancelled' in response && response.cancelled) {
-    return 'Cancelled';
+    return `Cancelled${context}`;
   }
 
   // Determine the primary interactive block type
@@ -641,52 +643,53 @@ export function generateAsideText(message: MessageEntity, response: BlockRespons
   );
 
   if (!primaryBlock) {
-    return truncate(message.text, 60);
+    return truncate(message.text, 80);
   }
 
   switch (primaryBlock.type) {
     case 'approval': {
       if (typeof response === 'object' && response !== null && 'approved' in response) {
         const reason = 'reason' in response && response.reason
-          ? `: ${truncate(String(response.reason), 40)}`
+          ? `: ${truncate(String(response.reason), 30)}`
           : '';
-        return response.approved ? `✓ Approved${reason}` : `✗ Denied${reason}`;
+        const outcome = response.approved ? `✓ Approved${reason}` : `✗ Denied${reason}`;
+        return `${outcome}${context}`;
       }
-      return truncate(message.text, 60);
+      return truncate(message.text, 80);
     }
 
     case 'choice': {
       if (typeof response === 'string') {
-        return `Selected: ${truncate(response, 50)}`;
+        return `Selected: ${truncate(response, 40)}${context}`;
       }
       if (Array.isArray(response)) {
-        return `Selected: ${truncate(response.join(', '), 50)}`;
+        return `Selected: ${truncate(response.join(', '), 40)}${context}`;
       }
-      return truncate(message.text, 60);
+      return truncate(message.text, 80);
     }
 
     case 'text': {
       if (typeof response === 'string') {
-        return `Replied: ${truncate(response, 50)}`;
+        return `Replied: ${truncate(response, 40)}${context}`;
       }
-      return truncate(message.text, 60);
+      return truncate(message.text, 80);
     }
 
     case 'question':
-      return 'Answered';
+      return `Answered${context}`;
 
     case 'file-picker': {
       if (typeof response === 'string') {
-        return `Selected: ${truncate(response, 50)}`;
+        return `Selected: ${truncate(response, 40)}${context}`;
       }
       if (Array.isArray(response)) {
-        return `Selected ${response.length} file${response.length === 1 ? '' : 's'}`;
+        return `Selected ${response.length} file${response.length === 1 ? '' : 's'}${context}`;
       }
-      return truncate(message.text, 60);
+      return truncate(message.text, 80);
     }
 
     default:
-      return truncate(message.text, 60);
+      return truncate(message.text, 80);
   }
 }
 
