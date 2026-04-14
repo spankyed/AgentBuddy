@@ -31,7 +31,7 @@
       </div>
 
       <!-- Markdown notes body — scrollable for long plans -->
-      <div class="px-4 py-3 max-h-[60vh] overflow-y-auto">
+      <div class="px-4 py-3 max-h-[40vh] overflow-y-auto">
         <TiptapEditor
           v-if="notes"
           mode="viewer"
