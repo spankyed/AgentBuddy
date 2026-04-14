@@ -80,6 +80,22 @@ export async function consumeStream(
   // rejects (error subtypes like error_during_execution).
   let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number } | undefined;
 
+  /** Finalize the current message and create a new "Thinking…" placeholder. */
+  function splitMessage() {
+    writer.finalize(writer.text);
+    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+    const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
+    toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
+
+    const msg = services.chat.sendBlockMessage({ threadId, text: 'Thinking…', blocks: [], forkable: false });
+    log.debug('message split', { previousId: currentMessageId, nextId: msg.messageId });
+    return {
+      currentMessageId: msg.messageId as EntityId,
+      writer: createStreamWriter(services, msg.messageId as EntityId, { intervalMs: 80 }),
+      toolActivity: createToolActivityWriter(services, msg.messageId as EntityId, { intervalMs: 250 }),
+    };
+  }
+
   try {
     // ─── Drain the event stream ──────────────────────────────────────────
     let eventCount = 0;
@@ -90,27 +106,10 @@ export async function consumeStream(
         log.debug('stream event', { n: eventCount, type: line?.type });
       }
 
-      // ─── Message split after approval/question answer ──────────
-      // Split immediately on the first event after resuming — don't wait
-      // for message_start. This gives instant "Thinking…" feedback instead
-      // of stalling while the CLI executes the approved tool.
+      // Split into a new message after approval/question answer.
       if (splitOnNextMessageStart && (writer.text.length > 0 || toolActivity.hasEntries)) {
         splitOnNextMessageStart = false;
-        writer.finalize(writer.text);
-        services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
-        const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
-        toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
-
-        const splitMsg = services.chat.sendBlockMessage({
-          threadId,
-          text: 'Thinking…',
-          blocks: [],
-          forkable: false,
-        });
-        log.debug('message split after user interaction', { previousId: currentMessageId, nextId: splitMsg.messageId });
-        currentMessageId = splitMsg.messageId as EntityId;
-        writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
-        toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
+        ({ currentMessageId, writer, toolActivity } = splitMessage());
       }
 
       // First `system/init` event carries sessionId/model/cwd.
