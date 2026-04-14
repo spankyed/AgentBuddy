@@ -538,9 +538,15 @@ const threadsState = setup({
         ...(references && { references }),
       });
     },
-    clearThread: assign(() => ({
-      currentThread: { ...defaultChatThread, messages: [] }
-    })),
+    clearThread: assign(({ context }) => {
+      const modeConfig = context.modes.find(m => m.id === context.mode);
+      const defaultPhase = modeConfig?.phases?.length ? modeConfig.phases[0].id : context.phase;
+      return {
+        currentThread: { ...defaultChatThread, messages: [] },
+        phase: defaultPhase,
+        phaseByMode: { ...context.phaseByMode, [context.mode]: defaultPhase },
+      };
+    }),
     handleTokenStream: assign(({ context, event }) => {
       const token = typeOf('TOKEN_STREAM', event).token;
       const { currentThread, pendingActionId } = context;

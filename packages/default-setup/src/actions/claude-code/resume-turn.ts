@@ -42,6 +42,7 @@ export async function action(
 
   if (toolName === 'ExitPlanMode') {
     resolvePlanDraft(services, threadId as EntityId, 'approved');
+    services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'edit' });
   }
 
   // If the user checked "auto-accept file edits", switch for current + future turns.

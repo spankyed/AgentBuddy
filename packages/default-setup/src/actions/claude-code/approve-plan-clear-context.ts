@@ -80,8 +80,9 @@ export async function action(
     permissionMode: 'acceptEdits',
   });
 
-  // 7. Switch frontend to new thread
+  // 7. Switch frontend to new thread and set edit phase
   services.chat.openThreadChatAndRefreshRecent(newThreadId);
+  services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'edit' });
 
   // 8. Fire chat action on new thread (fresh CLI session, no resume)
   await services.action.getAndExecute('Claude Code Chat', {

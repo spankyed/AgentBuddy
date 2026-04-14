@@ -160,6 +160,7 @@ export type OutgoingThreadsEvents =
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'SET_MODE'; mode: string }
+  | { type: 'SET_PHASE'; phase: string }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
 
 export interface ThreadsContext {}
