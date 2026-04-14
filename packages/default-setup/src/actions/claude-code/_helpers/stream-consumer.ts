@@ -449,6 +449,20 @@ export async function consumeStream(
 
   } catch (err: any) {
     const message = err?.message || 'Claude Code request failed';
+
+    // If pause-turn already ran (isRunning=false), the kill was intentional.
+    // Finalize writers cleanly and skip cleanup — pause-turn handled it.
+    const state = getClaudeState(services, threadId);
+    if (!state?.isRunning) {
+      log.debug('stream consumer exiting — turn was paused');
+      const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
+      toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
+      writer.finalize(writer.text);
+      services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+      return;
+    }
+
+    // Real error — not a user-initiated pause.
     log.error('stream consumer failed', { message, stack: err?.stack });
     toolActivity.finalise('error');
     writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());

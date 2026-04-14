@@ -29,6 +29,7 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :prefill-text="prefillText"
+          :is-streaming="statusColor === 'bg-yellow-500'"
           :modes="modes"
           :quick-prompts="quickPrompts"
           :quick-prompt-cursor="quickPromptCursor"
@@ -122,6 +123,7 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
+const statusColor = useSelector(actor, (state) => state.context.statusColor)
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)

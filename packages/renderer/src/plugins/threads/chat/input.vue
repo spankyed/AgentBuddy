@@ -135,8 +135,9 @@
 
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
-            <!-- Pause button -->
+            <!-- Pause button (only while streaming) -->
             <Button
+              v-if="isStreaming"
               title="Pause agent work"
               type="button"
               variant="secondary"
@@ -202,6 +203,8 @@ const props = defineProps<{
   disabled?: boolean
   /** Text to prefill the input with (e.g., on revert). Consumed once on change. */
   prefillText?: string
+  /** Whether a Claude Code turn is actively streaming. Controls Pause button visibility. */
+  isStreaming?: boolean
 }>()
 
 // Define emits including new button actions

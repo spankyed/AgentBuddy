@@ -4,7 +4,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 import { updateSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
@@ -24,9 +24,15 @@ export async function action(
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
+  // No-op if nothing is running.
+  const prior = getClaudeState(services, threadId);
+  if (!prior?.isRunning && !prior?.pendingControlRequest) {
+    return { success: true, noop: true };
+  }
+
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
   if (handle) {
-    handle.kill();
+    try { handle.kill(); } catch { /* already gone */ }
     (services.cli as any).claudeCode.clearHandle(threadId);
   }
 
