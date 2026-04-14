@@ -6,8 +6,10 @@
  * framing byte-safe even when JSON payloads contain them.
  *
  * Design notes:
- * - `decodeNdjson` is a pure async generator over a Readable — no buffering
- *   across call sites, no hidden state outside the generator frame.
+ * - `decodeNdjson` is a pure async generator over a Readable — no hidden
+ *   state outside the generator frame. A buffer limit guards against
+ *   runaway input; exceeding it yields an `{ok:false}` entry and ends
+ *   the generator.
  * - Parse errors on a single line are *emitted*, not thrown, so a malformed
  *   line never tears down the whole stream. Callers decide whether to log,
  *   surface, or abort.
@@ -27,7 +29,7 @@ export type DecodedLine =
  * Handles partial lines across chunks by carrying a buffer. Never throws —
  * malformed lines yield `{ok:false}` entries.
  */
-const MAX_BUFFER_BYTES = 10 * 1024 * 1024 // 10 MB
+const MAX_BUFFER_LENGTH = 10 * 1024 * 1024 // ~10 M code units
 
 export async function* decodeNdjson(stream: Readable): AsyncGenerator<DecodedLine> {
   let buffer = ''
@@ -35,8 +37,9 @@ export async function* decodeNdjson(stream: Readable): AsyncGenerator<DecodedLin
 
   for await (const chunk of stream as AsyncIterable<string>) {
     buffer += chunk
-    if (buffer.length > MAX_BUFFER_BYTES) {
-      throw new Error(`NDJSON buffer exceeded ${MAX_BUFFER_BYTES} bytes — possible framing error`)
+    if (buffer.length > MAX_BUFFER_LENGTH) {
+      yield { ok: false as const, raw: buffer, error: new Error(`NDJSON buffer exceeded ${MAX_BUFFER_LENGTH} chars — possible framing error`) }
+      return
     }
     let nl = buffer.indexOf('\n')
     while (nl !== -1) {
