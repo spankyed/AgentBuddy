@@ -28,11 +28,12 @@ describe('buildChildEnv', () => {
     expect(env.PATH).toBe(process.env.PATH)
   })
 
-  it('returns the caller override untouched (does not scrub explicit env)', () => {
+  it('merges caller overrides into the default env', () => {
     const override = { ANTHROPIC_API_KEY: 'sk-ant-explicit', PATH: '/fake' }
     const env = buildChildEnv(override)
-    expect(env).toBe(override) // identity — no copy, no mutation
-    expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-explicit')
+    // Overrides are merged but ANTHROPIC_API_KEY is still stripped.
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined()
+    expect(env.PATH).toBe('/fake')
   })
 
   it('does not mutate the live process.env', () => {
@@ -54,13 +55,10 @@ describe('buildChildEnv', () => {
     expect(env.ENABLE_TOOL_SEARCH).toBe('0')
   })
 
-  it('does not force ENABLE_TOOL_SEARCH when the caller passes an explicit override', () => {
-    // The override path is for callers (integration tests, explicit
-    // harnesses) that want to fully own the child env. We must NOT
-    // silently add defaults to their object.
+  it('sets ENABLE_TOOL_SEARCH=0 even when caller passes an override', () => {
     const override = { FOO: 'bar' }
     const env = buildChildEnv(override)
-    expect(env).toBe(override) // identity — still no copy, no mutation
-    expect(env.ENABLE_TOOL_SEARCH).toBeUndefined()
+    expect(env.FOO).toBe('bar')
+    expect(env.ENABLE_TOOL_SEARCH).toBe('0')
   })
 })
