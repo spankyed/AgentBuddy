@@ -210,6 +210,7 @@ export async function action(
       disallowedTools,
       systemPrompt: composedSystemPrompt,
       surfaceControlRequests: true,
+      env: { CLAUDE_CODE_COORDINATOR_MODE: '1' },
       ...(resolved.addDirs.length > 0 && { addDir: resolved.addDirs }),
       // Fork/revert: create a new CLI session JSONL file, truncated to the
       // fork/revert point via --resume-session-at.

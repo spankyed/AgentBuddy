@@ -111,8 +111,7 @@ export interface StreamHandle {
  * pure function.
  */
 export function buildChildEnv(override?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  if (override) return override
-  const env: NodeJS.ProcessEnv = { ...process.env }
+  const env: NodeJS.ProcessEnv = { ...process.env, ...override }
   delete env.ANTHROPIC_API_KEY
 
   // Disable the CLI's tool-search / deferred-tool feature. Claude Code's
