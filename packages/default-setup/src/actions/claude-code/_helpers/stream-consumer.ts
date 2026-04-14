@@ -106,8 +106,12 @@ export async function consumeStream(
         log.debug('stream event', { n: eventCount, type: line?.type });
       }
 
-      // Split into a new message after approval/question answer.
-      if (splitOnNextMessageStart && (writer.text.length > 0 || toolActivity.hasEntries)) {
+      // Split into a new message after approval/question answer — but only
+      // when the CLI actually starts a new assistant message turn, not on
+      // intermediate events (tool results, text deltas) that may arrive
+      // between the approval and the stream resuming.
+      const isMessageStart = line.type === 'assistant' || (line.type === 'stream_event' && (line as any).event?.type === 'message_start');
+      if (splitOnNextMessageStart && isMessageStart && (writer.text.length > 0 || toolActivity.hasEntries)) {
         splitOnNextMessageStart = false;
         ({ currentMessageId, writer, toolActivity } = splitMessage());
       }
