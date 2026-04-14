@@ -378,34 +378,15 @@ export async function consumeStream(
     }
 
     // ─── Stream drained — finalize ─────────────────────────────────────
-    log.debug('stream drained, awaiting final result', { eventCount });
-
-    // handle.result rejects for non-success subtypes (error_during_execution,
-    // error_max_turns, etc.) and when the CLI exits without a result line.
-    // Use resultFromLine (extracted directly from the result event) as fallback
-    // so cost/duration survive even when the promise rejects.
-    let result: { sessionId: string; text: string; totalCostUsd: number; durationMs: number };
-    let resultError: string | undefined;
-    try {
-      result = await handle.result;
-    } catch (resultErr: any) {
-      // SIGTERM (exit code 143) is an intentional kill from deny-turn or
-      // handle-revert — not an error worth surfacing to the user.
-      const isIntentionalKill = resultErr?.signal === 'SIGTERM' || resultErr?.exitCode === 143;
-      if (!isIntentionalKill) {
-        resultError = resultErr?.message || 'CLI result unavailable';
-        log.warn('CLI result error (non-fatal)', { message: resultError });
-      }
-      // Fall back to data extracted from the result line (preserves cost/duration).
-      const errSessionId = resultErr?.sessionId ?? resultErr?.session_id ?? '';
-      result = resultFromLine ?? { sessionId: errSessionId, text: '', totalCostUsd: 0, durationMs: 0 };
-    }
-    log.debug('final result received', {
+    // Use the result data extracted directly from the result line in the loop.
+    // No need to await handle.result — it may reject for error subtypes
+    // (error_during_execution, etc.) or SIGTERM kills, losing cost/duration.
+    const result = resultFromLine ?? { sessionId: '', text: '', totalCostUsd: 0, durationMs: 0 };
+    log.debug('stream drained', {
+      eventCount,
       sessionId: result.sessionId,
-      textLen: result.text?.length ?? 0,
       costUsd: result.totalCostUsd,
       durationMs: result.durationMs,
-      resultError: resultError ?? null,
     });
 
     // Critical state: persist sessionId for resume.
@@ -417,13 +398,9 @@ export async function consumeStream(
     }
 
     // Finalize writers (needs closure references).
-    const hadToolErrors = resultError || toolActivity.entries.some(e => e.status === 'error');
+    const hadToolErrors = toolActivity.entries.some(e => e.status === 'error');
     toolActivity.finalise(hadToolErrors ? 'error' : 'done');
-
-    const finalText = resultError
-      ? `${writer.text}\n\n⚠️ ${resultError}`.trim()
-      : (writer.text || result.text);
-    writer.finalize(finalText);
+    writer.finalize(writer.text || result.text);
     // Completed message becomes forkable.
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     log.debug('stream consumer completed');
@@ -449,7 +426,7 @@ export async function consumeStream(
         toolCallCount: toolActivity.entries.length,
         mutatedFileCount: mutatedPaths.length,
         mutatedPaths,
-        hadErrors: !!resultError || !!hadToolErrors,
+        hadErrors: !!hadToolErrors,
         userText: text,
       },
     });
