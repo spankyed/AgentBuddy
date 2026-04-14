@@ -24,7 +24,6 @@
         :disabled="isDisabled"
         :response="response"
         :display-text="(block.props as any).displayText"
-        :toggles="(block.props as any).toggles"
         @submit="handleSubmit"
         @cancel="handleCancel"
       />
@@ -109,6 +108,25 @@
         @submit="handleSubmit"
       />
 
+      <!-- Project Select Input -->
+      <ProjectSelectInput
+        v-else-if="block.type === 'project-select'"
+        :projects="(block.props as any).projects"
+        :disabled="isDisabled"
+        :response="response"
+        :display-text="(block.props as any).displayText"
+        @submit="handleSubmit"
+      />
+
+      <!-- Toggles Block -->
+      <TogglesBlock
+        v-else-if="block.type === 'toggles'"
+        ref="togglesBlockRef"
+        :toggles="(block.props as any).toggles"
+        :disabled="isDisabled"
+        :response="response"
+      />
+
       <!-- Tool Activity Block — collapsible group of Claude Code tool calls -->
       <ToolActivityBlock
         v-else-if="block.type === 'tool-activity'"
@@ -135,6 +153,9 @@ import QuestionInput from './inputs/QuestionInput.vue'
 import TextInput from './inputs/TextInput.vue'
 import ApprovalButtons from './inputs/ApprovalButtons.vue'
 import ButtonGroupInput from './inputs/ButtonGroupInput.vue'
+import ProjectSelectInput from './inputs/ProjectSelectInput.vue'
+import TogglesBlock from './blocks/TogglesBlock.vue'
+import { ref } from 'vue'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
 
@@ -151,6 +172,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const threadsActor = applicationState.system.get(threadsId)
 
+const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
+
 // Internal interaction handlers
 const handleBlockResponse = (response: any) => {
   threadsActor.send({
@@ -160,9 +183,14 @@ const handleBlockResponse = (response: any) => {
   })
 }
 
-// Event handlers
+// Event handlers — wraps toggle values into the response when a toggles block is present.
 const handleSubmit = (response: any) => {
-  handleBlockResponse(response)
+  const toggles = togglesBlockRef.value?.values
+  if (toggles && Object.keys(toggles).length > 0) {
+    handleBlockResponse({ path: response, toggles: { ...toggles } })
+  } else {
+    handleBlockResponse(response)
+  }
 }
 
 const handleApprove = (reason?: string) => {

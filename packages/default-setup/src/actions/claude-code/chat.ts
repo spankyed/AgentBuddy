@@ -181,21 +181,26 @@ export async function action(
   if (!hasCwd) {
     writer.finalize('');
     toolActivity.finalise('done');
+    const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+    const blocks: any[] = [
+      { type: 'prompt', props: { content: 'Select a project directory' } },
+    ];
+    if (projects.length > 0) {
+      blocks.push({
+        type: 'project-select',
+        props: { projects },
+      });
+    }
+    blocks.push(
+      { type: 'file-picker', props: { fileType: 'directory' } },
+      { type: 'toggles', props: { toggles: [
+        { id: 'worktree', label: 'Worktree', description: 'Isolated file mutations', default: false },
+      ] } },
+    );
     const picker = services.chat.sendBlockMessage({
       threadId,
       text: 'Which project directory should I work in?',
-      blocks: [
-        { type: 'prompt', props: { content: 'Select a project directory' } },
-        {
-          type: 'file-picker',
-          props: {
-            fileType: 'directory',
-            toggles: [
-              { id: 'worktree', label: 'Worktree', description: 'Isolated file mutations', default: false },
-            ],
-          },
-        },
-      ],
+      blocks,
       forkable: false,
     });
     persistClaudeState(services, threadId, {

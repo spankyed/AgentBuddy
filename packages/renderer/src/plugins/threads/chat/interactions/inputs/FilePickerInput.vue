@@ -14,16 +14,6 @@
         <component :is="getFileIcon(path)" class="w-4 h-4 text-neutral-400 flex-shrink-0" />
         <span class="text-sm text-neutral-300 truncate">{{ path }}</span>
       </div>
-      <!-- Show toggle states in response display -->
-      <div v-if="responseToggles" class="flex items-center gap-3 pt-1">
-        <span
-          v-for="(value, id) in responseToggles"
-          :key="String(id)"
-          class="text-xs text-neutral-500"
-        >
-          {{ toggleLabel(String(id)) }}: <span :class="value ? 'text-green-500' : 'text-neutral-400'">{{ value ? 'On' : 'Off' }}</span>
-        </span>
-      </div>
     </div>
 
     <!-- Input Controls (when not disabled/not responded) -->
@@ -70,35 +60,6 @@
           {{ isLoading ? 'Processing...' : browseButtonText }}
         </button>
       </div>
-
-      <!-- Toggles (optional, rendered below browse button) -->
-      <div v-if="toggles?.length" class="space-y-1.5 pt-1">
-        <div
-          v-for="toggle in toggles"
-          :key="toggle.id"
-          class="flex items-center gap-2.5"
-        >
-          <button
-            type="button"
-            @click="toggleValues[toggle.id] = !toggleValues[toggle.id]"
-            :class="[
-              'relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0',
-              toggleValues[toggle.id]
-                ? 'bg-blue-600'
-                : 'bg-neutral-600',
-            ]"
-          >
-            <span
-              :class="[
-                'absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform',
-                toggleValues[toggle.id] ? 'left-[16px]' : 'left-[2px]',
-              ]"
-            />
-          </button>
-          <span class="text-sm text-neutral-300">{{ toggle.label }}</span>
-          <span v-if="toggle.description" class="text-xs text-neutral-500">{{ toggle.description }}</span>
-        </div>
-      </div>
     </template>
   </div>
 </template>
@@ -107,13 +68,6 @@
 import { ref, computed, watch } from 'vue'
 import { FolderOpen, File, Folder, X, Check, Loader2 } from 'lucide-vue-next'
 
-interface ToggleConfig {
-  id: string
-  label: string
-  description?: string
-  default?: boolean
-}
-
 interface Props {
   fileType?: 'file' | 'directory' | 'both'
   allowMultiple?: boolean
@@ -121,7 +75,6 @@ interface Props {
   disabled?: boolean
   response?: any
   displayText?: string
-  toggles?: ToggleConfig[]
 }
 
 interface Emits {
@@ -141,14 +94,6 @@ const emit = defineEmits<Emits>()
 // Internal loading state
 const isLoading = ref(false)
 
-// Toggle state
-const toggleValues = ref<Record<string, boolean>>({})
-watch(() => props.toggles, (t) => {
-  if (t) t.forEach(tog => { toggleValues.value[tog.id] ??= tog.default ?? false })
-}, { immediate: true })
-
-const toggleLabel = (id: string) => props.toggles?.find(t => t.id === id)?.label ?? id
-
 // Response display handling — supports both string and { path, toggles } shapes
 const fileList = computed(() => {
   const r = props.response
@@ -157,11 +102,6 @@ const fileList = computed(() => {
   if (Array.isArray(r)) return r
   if (r.path) return Array.isArray(r.path) ? r.path : [r.path]
   return []
-})
-
-const responseToggles = computed(() => {
-  const r = props.response
-  return r && typeof r === 'object' && !Array.isArray(r) && r.toggles ? r.toggles : null
 })
 
 // Initialize from modelValue
@@ -218,11 +158,7 @@ const openFileDialog = async () => {
 
     // Auto-submit after file selection
     if (selectedPaths.value.length > 0) {
-      if (props.toggles?.length) {
-        emit('submit', { path: currentValue.value, toggles: { ...toggleValues.value } } as any)
-      } else {
-        emit('submit', currentValue.value)
-      }
+      emit('submit', currentValue.value);
     }
   } catch (error) {
     console.error('Error opening file dialog:', error);
