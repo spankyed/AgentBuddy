@@ -90,16 +90,37 @@ export async function consumeStream(
         log.debug('stream event', { n: eventCount, type: line?.type });
       }
 
+      // ─── Message split after approval/question answer ──────────
+      // Split immediately on the first event after resuming — don't wait
+      // for message_start. This gives instant "Thinking…" feedback instead
+      // of stalling while the CLI executes the approved tool.
+      if (splitOnNextMessageStart && (writer.text.length > 0 || toolActivity.hasEntries)) {
+        splitOnNextMessageStart = false;
+        writer.finalize(writer.text);
+        services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+        const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
+        toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
+
+        const splitMsg = services.chat.sendBlockMessage({
+          threadId,
+          text: 'Thinking…',
+          blocks: [],
+          forkable: false,
+        });
+        log.debug('message split after user interaction', { previousId: currentMessageId, nextId: splitMsg.messageId });
+        currentMessageId = splitMsg.messageId as EntityId;
+        writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
+        toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
+      }
+
       // First `system/init` event carries sessionId/model/cwd.
       if (line.type === 'system' && line.subtype === 'init') {
-        // Critical state: persist sessionId for resume logic.
         if (line.session_id) {
           persistClaudeState(services, threadId, {
             sessionId: line.session_id,
             lastTurnAt: Date.now(),
           });
         }
-        // Emit to flow → CC: Stream Started action updates the session artifact.
         services.emitter.sendToBrainSystem({
           eventType: 'cc.stream.started',
           payload: {
@@ -113,32 +134,6 @@ export async function consumeStream(
       }
 
       if (line.type === 'stream_event') {
-        // ─── Message boundary: split after user interactions ──────
-        if (
-          line.event?.type === 'message_start' &&
-          !line.parent_tool_use_id &&
-          splitOnNextMessageStart &&
-          (writer.text.length > 0 || toolActivity.hasEntries)
-        ) {
-          splitOnNextMessageStart = false;
-          writer.finalize(writer.text);
-          // Completed message becomes forkable.
-          services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
-          const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
-          toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
-
-          const splitMsg = services.chat.sendBlockMessage({
-            threadId,
-            text: 'Thinking…',
-            blocks: [],
-            forkable: false, // Non-forkable while streaming.
-          });
-          log.debug('message split after user interaction', { previousId: currentMessageId, nextId: splitMsg.messageId });
-          currentMessageId = splitMsg.messageId as EntityId;
-          writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
-          toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
-        }
-
         // Anthropic text deltas.
         const delta = line.event?.delta;
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
