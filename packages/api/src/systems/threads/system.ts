@@ -86,7 +86,7 @@ export const IncomingThreadsEvents = [
   }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
-  busEvent('CANCEL'),
+  busEvent('CANCEL', { threadId: z.string() }),
   busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
   busEvent('INTERACTIVE_MSG_RESPONSE', {
@@ -666,6 +666,15 @@ export const threadsSystem = setup({
         payload: { threadId, messageId, restoreFiles, userCliUuid },
       });
     },
+    pauseTurn: ({ system, event }) => {
+      const { threadId } = typeOf('CANCEL', event);
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'user.thread.pause',
+        payload: { threadId },
+      });
+    },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
@@ -798,6 +807,9 @@ export const threadsSystem = setup({
           },
           REVERT_THREAD: {
             actions: 'revertThread',
+          },
+          CANCEL: {
+            actions: 'pauseTurn',
           },
         },
       },

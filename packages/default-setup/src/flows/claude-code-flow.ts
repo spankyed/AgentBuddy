@@ -178,6 +178,19 @@ export default {
       ]],
       "Turn completed",
     ),
+    // ─── User-initiated pause ─────────────────────────────────────────
+    on(
+      "user.thread.pause",
+      [[
+        action("CC: Pause Turn", {
+          label: "pause-turn",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+          },
+        }),
+      ]],
+      "Turn paused by user",
+    ),
     // ─── Thread lifecycle ────────────────────────────────────────────
     // Clean up Claude Code state when threads are reverted or forked.
     on(

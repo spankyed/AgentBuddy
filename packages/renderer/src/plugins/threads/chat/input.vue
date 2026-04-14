@@ -138,9 +138,9 @@
             <!-- Pause button -->
             <Button
               title="Pause agent work"
-              type="submit"
-              :disabled="(!messageContent && !hasAttachments) || disabled"
+              type="button"
               variant="secondary"
+              @click.stop="emit('pause')"
             >
               <span class="hidden @md:inline">Pause</span>
               <PauseIcon :size="22" />

@@ -137,6 +137,7 @@ type UIEvent =
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
+  | { type: 'PAUSE_TURN'; threadId: string }
   | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
   | { type: 'UPDATE_CLAUDE_WORKTREE'; threadId: string; useWorktree: boolean }
   | { type: 'TOKEN_STREAM'; token: string }
@@ -841,6 +842,10 @@ const threadsState = setup({
       const { messageId, threadId } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'REVERT_THREAD', messageId, threadId });
     },
+    pauseTurn: ({ event }) => {
+      const { threadId } = typeOf('PAUSE_TURN', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'CANCEL', threadId });
+    },
   },
   guards: {
     targetIs,
@@ -1022,6 +1027,7 @@ const threadsState = setup({
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
+    PAUSE_TURN: { actions: 'pauseTurn' },
     UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
     UPDATE_CLAUDE_WORKTREE: { actions: 'updateClaudeWorktree' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
