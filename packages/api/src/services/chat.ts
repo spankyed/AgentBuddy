@@ -1,7 +1,10 @@
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
-import type { BlockConfig, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData } from '@/systems/threads/types';
+import type { BlockConfig, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/systems/threads/types';
 import { sendToPlugin } from './event-emitter';
+import * as media from './media';
+import { libraryService } from './library';
+import * as symlink from '@/systems/library/repository/symlink';
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -498,4 +501,115 @@ export function sendRecentThreadsRefresh() {
     type: 'REFRESH_RECENT_THREADS',
     data: repository.chatQueries.refreshThreadsData()
   });
+}
+
+// ─── Reference resolution ─────────────────────────────────────────────────
+
+/**
+ * Resolve all message reference types (images, files, notes, threads,
+ * library docs/folders) into prompt-ready content for the Claude Code CLI.
+ *
+ * Returns:
+ * - `textPrefix`  — formatted text for non-image references, prepended to the user message
+ * - `imageBlocks` — Anthropic image content blocks (base64-encoded), with text labels
+ * - `addDirs`     — directories for `--add-dir` (attached file auto-reads)
+ */
+export async function resolveReferences(
+  references: MessageReferences | undefined,
+): Promise<{ textPrefix: string; imageBlocks: any[]; addDirs: string[] }> {
+  if (!references) return { textPrefix: '', imageBlocks: [], addDirs: [] };
+
+  const parts: string[] = [];
+  const imageBlocks: any[] = [];
+  const addDirs: string[] = [];
+
+  // ─── Files ──────────────────────────────────────────────────────────
+  if (references.files?.length) {
+    for (const file of references.files) {
+      parts.push(`[Attached file: ${file.path}]`);
+      const lastSlash = file.path.lastIndexOf('/');
+      if (lastSlash > 0) {
+        const dir = file.path.slice(0, lastSlash);
+        if (!addDirs.includes(dir)) addDirs.push(dir);
+      }
+    }
+  }
+
+  // ─── Context references (notes, threads, documents, folders) ───────
+  if (references.context?.length) {
+    for (const ref of references.context) {
+      const resolved = await resolveContextRef(ref);
+      if (resolved) parts.push(resolved);
+    }
+  }
+
+  // ─── Images → labeled base64 content blocks ─────────────────────────
+  if (references.images?.length) {
+    for (const img of references.images) {
+      const match = img.url.match(/^media:\/\/([^/]+)\/(.+)$/);
+      if (!match) continue;
+      const mediaRef = { entityId: match[1], filename: match[2], alt: img.name || '', originalUrl: img.url };
+      const result = media.readMediaBuffer(mediaRef);
+      if (!result) continue;
+      const label = img.name || match[2];
+      imageBlocks.push({ type: 'text', text: `[Image: ${label}]` });
+      imageBlocks.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: result.mimeType,
+          data: result.data.toString('base64'),
+        },
+      });
+    }
+  }
+
+  return { textPrefix: parts.join('\n\n'), imageBlocks, addDirs };
+}
+
+// ─── Per-type context reference resolution ────────────────────────────────
+
+async function resolveContextRef(
+  ref: MessageReferences extends { context?: (infer R)[] } ? NonNullable<R> : never,
+): Promise<string | undefined> {
+  switch (ref.refType) {
+    case 'note':
+      return resolveNote(ref);
+    case 'thread':
+      return resolveThread(ref);
+    case 'document':
+      return resolveDocument(ref);
+    case 'folder':
+      return resolveFolder(ref);
+    default:
+      return undefined;
+  }
+}
+
+function resolveNote(ref: { refId: string; label: string }): string {
+  const note = repository.noteQueries.byIdDTO(ref.refId as EARS.EntityId);
+  if (!note) return `[Note: ${ref.label} (not found)]`;
+  return `--- Note: ${note.title} ---\n${note.content}\n---`;
+}
+
+function resolveThread(ref: { refId: string; label: string }): string {
+  const thread = repository.threadQueries.byId(ref.refId as EARS.EntityId);
+  if (!thread) return `[Thread: ${ref.label} (not found)]`;
+  const sessionId = thread.context?.claudeCode?.sessionId;
+  return `[Thread: ${thread.topic}${sessionId ? ` (session: ${sessionId})` : ''}]`;
+}
+
+async function resolveDocument(ref: { refId: string; label: string }): Promise<string> {
+  const resolved = symlink.resolveSymlinkPath(ref.refId);
+  if (resolved) return `[Library doc: ${ref.label} → ${resolved.absolutePath}]`;
+
+  const text = await libraryService.getText(ref.refId as EARS.EntityId);
+  if (!text) return `[Library doc: ${ref.label} (not found)]`;
+  return `--- Doc: ${ref.label} ---\n${text}\n---`;
+}
+
+function resolveFolder(ref: { refId: string; label: string }): string {
+  const resolved = symlink.resolveSymlinkPath(ref.refId);
+  if (resolved) return `[Library folder: ${ref.label} → ${resolved.absolutePath}]`;
+  return `[Library folder: ${ref.label} (id: ${ref.refId})]`;
 }

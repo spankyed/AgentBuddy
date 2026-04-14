@@ -483,6 +483,7 @@ async function drainQueuedMessage(services: Services, threadId: EntityId, log: a
       mode: queued.mode,
       phase: queued.phase,
       messageId: queued.messageId,
+      references: queued.references,
     });
   } catch (drainErr: any) {
     log.error('queued message drain failed', { message: drainErr?.message });

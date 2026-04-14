@@ -16,6 +16,8 @@ export interface QueuedMessage {
   phase?: string;
   /** User message entity ID — for clearing the 'queued' status indicator on drain. */
   messageId?: string;
+  /** Attached references (images, files, context) — preserved so they survive queuing. */
+  references?: any;
 }
 
 export interface PendingControlRequest {

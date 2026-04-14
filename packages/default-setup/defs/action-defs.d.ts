@@ -885,7 +885,7 @@ type ControlRequestHandler = (request: {
  * field here, add the mapping there and a unit test covering it.
  */
 interface QueryOptions {
-    prompt?: string;
+    prompt?: string | UserInputMessage;
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     signal?: AbortSignal;
@@ -923,6 +923,10 @@ interface QueryOptions {
     continue?: boolean;
     resume?: string | true;
     forkSession?: boolean;
+    /** Load only messages up to this CLI message UUID (SDK/print mode). */
+    resumeSessionAt?: string;
+    /** Restore files to state at this user message UUID and exit. Requires resume. */
+    rewindFiles?: string;
     noSessionPersistence?: boolean;
     includePartialMessages?: boolean;
     includeHookEvents?: boolean;
@@ -972,7 +976,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity';
+type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -1101,6 +1105,8 @@ interface MessageEntity extends BaseEntity {
     command?: string;
     /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
     status?: 'queued' | null;
+    /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
+    context?: Record<string, unknown>;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -2077,16 +2083,22 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         messageId: zod.ZodString;
         threadId: zod.ZodString;
+        restoreFiles: zod.ZodOptional<zod.ZodBoolean>;
+        userCliUuid: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "REVERT_THREAD";
         systemId: "threads";
         threadId: string;
         messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
     }, {
         type: "REVERT_THREAD";
         systemId: "threads";
         threadId: string;
         messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"USER_COMMAND">;
         systemId: zod.ZodLiteral<"threads">;
@@ -6756,6 +6768,30 @@ declare function sendChoiceBlock(options: {
     messageId: EARS.EntityId;
 };
 /**
+ * Create a question interaction — single question or multi-question wizard.
+ * Single question = array with one item. Multi = step wizard in the frontend.
+ * Response shape: string (single) or Record<string, string> (multi).
+ */
+declare function sendQuestionBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    questions: Array<{
+        question: string;
+        header?: string;
+        options: Array<{
+            id: string;
+            label: string;
+            description?: string;
+        }>;
+        multiSelect?: boolean;
+        allowCustom?: boolean;
+    }>;
+    forkable?: boolean;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
  * Create an approval interaction using blocks
  */
 declare function sendApprovalBlock(options: {
@@ -6894,7 +6930,7 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>): void;
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -6943,17 +6979,33 @@ declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
  * - Thread visits (updates lastVisitedTimestamp)
  */
 declare function sendRecentThreadsRefresh(): void;
+/**
+ * Resolve all message reference types (images, files, notes, threads,
+ * library docs/folders) into prompt-ready content for the Claude Code CLI.
+ *
+ * Returns:
+ * - `textPrefix`  — formatted text for non-image references, prepended to the user message
+ * - `imageBlocks` — Anthropic image content blocks (base64-encoded), with text labels
+ * - `addDirs`     — directories for `--add-dir` (attached file auto-reads)
+ */
+declare function resolveReferences(references: MessageReferences | undefined): Promise<{
+    textPrefix: string;
+    imageBlocks: any[];
+    addDirs: string[];
+}>;
 
 declare const chat_createBlockMessage: typeof createBlockMessage;
 declare const chat_createThreadAndNotify: typeof createThreadAndNotify;
 declare const chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
 declare const chat_openThreadTabAndRefresh: typeof openThreadTabAndRefresh;
+declare const chat_resolveReferences: typeof resolveReferences;
 declare const chat_sendApprovalBlock: typeof sendApprovalBlock;
 declare const chat_sendBlockMessage: typeof sendBlockMessage;
 declare const chat_sendButtonGroupBlock: typeof sendButtonGroupBlock;
 declare const chat_sendChoiceBlock: typeof sendChoiceBlock;
 declare const chat_sendFilePickerBlock: typeof sendFilePickerBlock;
 declare const chat_sendLinkBlock: typeof sendLinkBlock;
+declare const chat_sendQuestionBlock: typeof sendQuestionBlock;
 declare const chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
 declare const chat_sendTextInputBlock: typeof sendTextInputBlock;
 declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
@@ -6964,12 +7016,14 @@ declare namespace chat {
     chat_createThreadAndNotify as createThreadAndNotify,
     chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent,
     chat_openThreadTabAndRefresh as openThreadTabAndRefresh,
+    chat_resolveReferences as resolveReferences,
     chat_sendApprovalBlock as sendApprovalBlock,
     chat_sendBlockMessage as sendBlockMessage,
     chat_sendButtonGroupBlock as sendButtonGroupBlock,
     chat_sendChoiceBlock as sendChoiceBlock,
     chat_sendFilePickerBlock as sendFilePickerBlock,
     chat_sendLinkBlock as sendLinkBlock,
+    chat_sendQuestionBlock as sendQuestionBlock,
     chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh,
     chat_sendTextInputBlock as sendTextInputBlock,
     chat_updateMessageBlockResponse as updateMessageBlockResponse,

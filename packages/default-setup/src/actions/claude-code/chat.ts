@@ -73,7 +73,7 @@ export async function action(
     disallowedTools?: string[];
     systemPrompt?: string;
     messageId?: string;
-    references?: { images?: Array<{ url: string; name: string }> };
+    references?: any;
   };
 
   const log = services.logger;
@@ -97,7 +97,7 @@ export async function action(
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
     log.debug('action already running — queuing message', { threadId });
-    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId });
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
     if (userMessageId) {
       services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
     }
@@ -174,35 +174,21 @@ export async function action(
     });
   }
 
-  // ─── Resolve images to base64 content blocks ────────────────────────
-  // If the user pasted images, convert media:// URLs to Anthropic image
-  // content blocks so the CLI sends them to the LLM.
-  let prompt: any = text;
-  if (references?.images?.length) {
-    const content: any[] = [{ type: 'text', text }];
-    for (const img of references.images) {
-      const match = img.url.match(/^media:\/\/([^/]+)\/(.+)$/);
-      if (!match) continue;
-      const ref = { entityId: match[1], filename: match[2], alt: img.name || '', originalUrl: img.url };
-      const media = (services.media as any).readMediaBuffer(ref);
-      if (!media) continue;
-      content.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: media.mimeType,
-          data: media.data.toString('base64'),
-        },
-      });
-    }
-    if (content.length > 1) {
-      // Only use content array if we actually resolved images
-      prompt = { type: 'user', message: { role: 'user', content }, parent_tool_use_id: null };
-    }
-  }
-
   // ─── Fire the query ─────────────────────────────────────────────────
   try {
+    // Resolve references inside try/catch so a failure doesn't permanently
+    // lock the thread in isRunning=true.
+    const resolved = await services.chat.resolveReferences(references);
+    const fullText = resolved.textPrefix ? `${resolved.textPrefix}\n\n${text}` : text;
+    let prompt: any = fullText;
+    if (resolved.imageBlocks.length > 0) {
+      prompt = {
+        type: 'user',
+        message: { role: 'user', content: [{ type: 'text', text: fullText }, ...resolved.imageBlocks] },
+        parent_tool_use_id: null,
+      };
+    }
+
     log.debug('invoking claudeCode.query', {
       model,
       resumeSessionId: resumeSessionId ?? null,
@@ -210,7 +196,9 @@ export async function action(
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       hasSystemPrompt: !!composedSystemPrompt,
       fork: !!forkFrom,
-      imageCount: references?.images?.length ?? 0,
+      imageCount: resolved.imageBlocks.filter((b: any) => b.type === 'image').length,
+      fileCount: references?.files?.length ?? 0,
+      contextCount: references?.context?.length ?? 0,
     });
     const handle = await services.cli.claudeCode.query({
       prompt,
@@ -222,6 +210,7 @@ export async function action(
       disallowedTools,
       systemPrompt: composedSystemPrompt,
       surfaceControlRequests: true,
+      ...(resolved.addDirs.length > 0 && { addDir: resolved.addDirs }),
       // Fork/revert: create a new CLI session JSONL file, truncated to the
       // fork/revert point via --resume-session-at.
       ...((forkFrom || revertTo) && { forkSession: true }),

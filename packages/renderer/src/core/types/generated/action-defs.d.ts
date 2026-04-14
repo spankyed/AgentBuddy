@@ -887,7 +887,7 @@ type ControlRequestHandler = (request: {
  * field here, add the mapping there and a unit test covering it.
  */
 interface QueryOptions {
-    prompt?: string;
+    prompt?: string | UserInputMessage;
     cwd?: string;
     env?: NodeJS.ProcessEnv;
     signal?: AbortSignal;
@@ -925,6 +925,10 @@ interface QueryOptions {
     continue?: boolean;
     resume?: string | true;
     forkSession?: boolean;
+    /** Load only messages up to this CLI message UUID (SDK/print mode). */
+    resumeSessionAt?: string;
+    /** Restore files to state at this user message UUID and exit. Requires resume. */
+    rewindFiles?: string;
     noSessionPersistence?: boolean;
     includePartialMessages?: boolean;
     includeHookEvents?: boolean;
@@ -974,7 +978,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity';
+type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -1103,6 +1107,8 @@ interface MessageEntity extends BaseEntity {
     command?: string;
     /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
     status?: 'queued' | null;
+    /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
+    context?: Record<string, unknown>;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -2079,16 +2085,22 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         messageId: zod.ZodString;
         threadId: zod.ZodString;
+        restoreFiles: zod.ZodOptional<zod.ZodBoolean>;
+        userCliUuid: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "REVERT_THREAD";
         systemId: "threads";
         threadId: string;
         messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
     }, {
         type: "REVERT_THREAD";
         systemId: "threads";
         threadId: string;
         messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"USER_COMMAND">;
         systemId: zod.ZodLiteral<"threads">;
@@ -4426,6 +4438,51 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "INSPECT_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_KILLED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_STARTED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_PAUSED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_RESUMED";
+        pluginId: "brain";
+    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         pluginId: "settings";
@@ -4491,51 +4548,6 @@ declare const events: {
         type: "SECRETS.EVENT.ERROR";
         message: string;
         pluginId: "settings";
-    } | {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "INSPECT_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_KILLED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_STARTED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_PAUSED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_RESUMED";
-        pluginId: "brain";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -6748,6 +6760,30 @@ declare function sendChoiceBlock(options: {
     messageId: EARS.EntityId;
 };
 /**
+ * Create a question interaction — single question or multi-question wizard.
+ * Single question = array with one item. Multi = step wizard in the frontend.
+ * Response shape: string (single) or Record<string, string> (multi).
+ */
+declare function sendQuestionBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    questions: Array<{
+        question: string;
+        header?: string;
+        options: Array<{
+            id: string;
+            label: string;
+            description?: string;
+        }>;
+        multiSelect?: boolean;
+        allowCustom?: boolean;
+    }>;
+    forkable?: boolean;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
  * Create an approval interaction using blocks
  */
 declare function sendApprovalBlock(options: {
@@ -6886,7 +6922,7 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>): void;
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -6935,6 +6971,20 @@ declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
  * - Thread visits (updates lastVisitedTimestamp)
  */
 declare function sendRecentThreadsRefresh(): void;
+/**
+ * Resolve all message reference types (images, files, notes, threads,
+ * library docs/folders) into prompt-ready content for the Claude Code CLI.
+ *
+ * Returns:
+ * - `textPrefix`  — formatted text for non-image references, prepended to the user message
+ * - `imageBlocks` — Anthropic image content blocks (base64-encoded), with text labels
+ * - `addDirs`     — directories for `--add-dir` (attached file auto-reads)
+ */
+declare function resolveReferences(references: MessageReferences | undefined): Promise<{
+    textPrefix: string;
+    imageBlocks: any[];
+    addDirs: string[];
+}>;
 
 const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
@@ -6942,12 +6992,14 @@ const chat = /*#__PURE__*/Object.freeze({
   createThreadAndNotify: createThreadAndNotify,
   openThreadChatAndRefreshRecent: openThreadChatAndRefreshRecent,
   openThreadTabAndRefresh: openThreadTabAndRefresh,
+  resolveReferences: resolveReferences,
   sendApprovalBlock: sendApprovalBlock,
   sendBlockMessage: sendBlockMessage,
   sendButtonGroupBlock: sendButtonGroupBlock,
   sendChoiceBlock: sendChoiceBlock,
   sendFilePickerBlock: sendFilePickerBlock,
   sendLinkBlock: sendLinkBlock,
+  sendQuestionBlock: sendQuestionBlock,
   sendRecentThreadsRefresh: sendRecentThreadsRefresh,
   sendTextInputBlock: sendTextInputBlock,
   updateMessageBlockResponse: updateMessageBlockResponse,
