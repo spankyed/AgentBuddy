@@ -4,7 +4,7 @@ import type { EARS } from "@/types";
 import type { PermissionMode } from "@/services/claude-code/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles';
+export type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
 
 export interface BlockConfig {
   type: BlockType;

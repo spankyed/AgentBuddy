@@ -127,6 +127,13 @@
         :response="response"
       />
 
+      <!-- Tool Input Block — structured display for tool approval context -->
+      <ToolInputBlock
+        v-else-if="block.type === 'tool-input'"
+        :tool-name="(block.props as any).toolName"
+        :input="(block.props as any).input"
+      />
+
       <!-- Tool Activity Block — collapsible group of Claude Code tool calls -->
       <ToolActivityBlock
         v-else-if="block.type === 'tool-activity'"
@@ -147,6 +154,7 @@ import NoteBlock from './blocks/NoteBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
 import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
 import ToolActivityBlock from './blocks/ToolActivityBlock.vue'
+import ToolInputBlock from './blocks/ToolInputBlock.vue'
 import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
 import QuestionInput from './inputs/QuestionInput.vue'

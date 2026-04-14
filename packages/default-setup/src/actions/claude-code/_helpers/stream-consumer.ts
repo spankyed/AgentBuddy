@@ -291,14 +291,14 @@ export async function consumeStream(
             continue;
           }
         } else {
-          const contextSummary = `Tool: ${req.tool_name}\nInput:\n${JSON.stringify(req.input, null, 2)}`;
-          const approval = services.chat.sendApprovalBlock({
+          const approval = services.chat.sendBlockMessage({
             threadId,
             text: `Claude Code wants to run ${req.tool_name}`,
-            prompt: `Allow \`${req.tool_name}\`?`,
-            context: contextSummary,
-            requireReason: false,
-            allowReason: true,
+            blocks: [
+              { type: 'prompt', props: { content: `Allow \`${req.tool_name}\`?` } },
+              { type: 'tool-input' as any, props: { toolName: req.tool_name, input: req.input } },
+              { type: 'approval', props: { requireReason: false, allowReason: true } },
+            ],
             forkable: false,
           });
           approvalMessageId = approval.messageId;
