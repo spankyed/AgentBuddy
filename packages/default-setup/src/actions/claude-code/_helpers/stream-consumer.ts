@@ -369,8 +369,13 @@ export async function consumeStream(
     try {
       result = await handle.result;
     } catch (resultErr: any) {
-      resultError = resultErr?.message || 'CLI result unavailable';
-      log.warn('CLI result error (non-fatal)', { message: resultError });
+      // SIGTERM (exit code 143) is an intentional kill from deny-turn or
+      // handle-revert — not an error worth surfacing to the user.
+      const isIntentionalKill = resultErr?.signal === 'SIGTERM' || resultErr?.exitCode === 143;
+      if (!isIntentionalKill) {
+        resultError = resultErr?.message || 'CLI result unavailable';
+        log.warn('CLI result error (non-fatal)', { message: resultError });
+      }
       const errSessionId = resultErr?.sessionId ?? resultErr?.session_id ?? '';
       result = { sessionId: errSessionId, text: '', totalCostUsd: 0, durationMs: 0 };
     }

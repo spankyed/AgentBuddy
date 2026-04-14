@@ -63,10 +63,10 @@ export default {
               action("CC: Answer Question", {
                 label: "answer-question",
                 map: {
-                  threadId: "$.lastStep.result.threadId",
-                  requestId: "$.lastStep.result.requestId",
-                  originalInput: "$.lastStep.result.originalInput",
-                  response: "$.lastStep.result.response",
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  requestId: "$.steps[label=route-response].result.requestId",
+                  originalInput: "$.steps[label=route-response].result.originalInput",
+                  response: "$.steps[label=route-response].result.response",
                 },
               }),
             ],
@@ -77,8 +77,8 @@ export default {
               action("CC: Deny Turn", {
                 label: "deny-turn",
                 map: {
-                  threadId: "$.lastStep.result.threadId",
-                  toolName: "$.lastStep.result.toolName",
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  toolName: "$.steps[label=route-response].result.toolName",
                 },
               }),
             ],
@@ -88,10 +88,10 @@ export default {
           action("CC: Resume Turn", {
             label: "resume-turn",
             map: {
-              threadId: "$.lastStep.result.threadId",
-              requestId: "$.lastStep.result.requestId",
-              toolName: "$.lastStep.result.toolName",
-              originalInput: "$.lastStep.result.originalInput",
+              threadId: "$.steps[label=route-response].result.threadId",
+              requestId: "$.steps[label=route-response].result.requestId",
+              toolName: "$.steps[label=route-response].result.toolName",
+              originalInput: "$.steps[label=route-response].result.originalInput",
             },
           }),
         ]),
