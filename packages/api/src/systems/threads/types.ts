@@ -191,6 +191,10 @@ export interface MessageEntity extends BaseEntity {
   status?: 'queued' | null;
   /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
   context?: Record<string, unknown>;
+  /** When true, collapse to a compact aside after the user responds. */
+  autoHide?: boolean;
+  /** Backend-computed summary text shown when collapsed (e.g. "✓ Approved"). */
+  asideText?: string;
 }
 
 /**

@@ -6,6 +6,14 @@
     ]"
   >
     <div class="relative group max-w-full min-w-0">
+      <!-- Aside: collapsed interactive message -->
+      <div v-if="message.autoHide && message.asideText"
+           class="text-xs text-neutral-500 italic py-1 px-2">
+        {{ message.asideText }}
+      </div>
+
+      <!-- Normal message rendering -->
+      <template v-else>
       <!-- Floating hover UI -->
       <div
         class="absolute transition-opacity duration-200 opacity-0 pointer-events-none -bottom-3 -right-4 z-10 group-hover:opacity-100 group-hover:pointer-events-auto"
@@ -101,6 +109,7 @@
           <span class="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-pulse" style="animation-delay: 400ms"></span>
         </div>
       </div>
+      </template>
 
       <!-- Queued indicator — shown on user messages waiting behind an active turn -->
       <div

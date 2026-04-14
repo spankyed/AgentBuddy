@@ -15,6 +15,7 @@ import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
 import { brain } from '../brain/system';
 import services from '@/services';
+import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { FieldContent } from '@/systems/library/types';
 
@@ -683,6 +684,14 @@ export const threadsSystem = setup({
         response
       });
 
+      // Compute aside text for autoHide messages
+      let asideText: string | undefined;
+      const message = repository.chatQueries.messageById(messageId as EARS.EntityId);
+      if (message?.autoHide) {
+        asideText = generateAsideText(message, response);
+        tx(messageId as EARS.EntityId).put('asideText', asideText);
+      }
+
       getActor(system, brain).send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'interactive.message.response',
@@ -694,7 +703,8 @@ export const threadsSystem = setup({
         messageId,
         responseTimestamp: result.responseTimestamp,
         blockResponse: response,
-        ...(result.blocks && { blocks: result.blocks })
+        ...(result.blocks && { blocks: result.blocks }),
+        ...(asideText && { asideText })
       }));
     },
     updateClaudePermissionMode: ({ event }) => {

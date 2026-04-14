@@ -1109,6 +1109,10 @@ interface MessageEntity extends BaseEntity {
     status?: 'queued' | null;
     /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
     context?: Record<string, unknown>;
+    /** When true, collapse to a compact aside after the user responds. */
+    autoHide?: boolean;
+    /** Backend-computed summary text shown when collapsed (e.g. "✓ Approved"). */
+    asideText?: string;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -2009,14 +2013,17 @@ declare const events: {
         threadId: string;
         pinned?: boolean | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CANCEL">;
+        type: zod.ZodLiteral<"PAUSE_TURN">;
         systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CANCEL";
+        type: "PAUSE_TURN";
         systemId: "threads";
+        threadId: string;
     }, {
-        type: "CANCEL";
+        type: "PAUSE_TURN";
         systemId: "threads";
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
         systemId: zod.ZodLiteral<"threads">;
@@ -6734,6 +6741,7 @@ interface BlockMessageOptions {
     text: string;
     blocks: BlockConfig[];
     forkable?: boolean;
+    autoHide?: boolean;
 }
 /**
  * Create a message with custom blocks (pure function)
@@ -6762,6 +6770,7 @@ declare function sendFilePickerBlock(options: {
     allowMultiple?: boolean;
     displayText?: string;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -6781,6 +6790,7 @@ declare function sendChoiceBlock(options: {
     allowCustom?: boolean;
     displayText?: string;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -6805,6 +6815,7 @@ declare function sendQuestionBlock(options: {
         allowCustom?: boolean;
     }>;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -6819,6 +6830,7 @@ declare function sendApprovalBlock(options: {
     requireReason?: boolean;
     allowReason?: boolean;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -6835,6 +6847,7 @@ declare function sendTextInputBlock(options: {
     displayText?: string;
     suggestions?: string[];
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -6922,6 +6935,7 @@ declare function sendButtonGroupBlock(options: {
     keepInteractive?: boolean;
     displayText?: string;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -7290,6 +7304,7 @@ declare const services: {
                 references?: MessageReferences;
                 isCommand?: boolean;
                 command?: string;
+                autoHide?: boolean;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

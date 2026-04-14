@@ -125,7 +125,7 @@ type UIEvent =
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: BlockResponse }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: BlockResponse; asideText?: string }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
@@ -796,7 +796,8 @@ const threadsState = setup({
                 ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
                 ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
                 ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
-                ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status })
+                ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
+                ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText })
               }
               : msg
           )

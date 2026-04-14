@@ -1,6 +1,6 @@
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
-import type { BlockConfig, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/systems/threads/types';
+import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/systems/threads/types';
 import { sendToPlugin } from './event-emitter';
 import * as media from './media';
 import { libraryService } from './library';
@@ -18,6 +18,7 @@ interface BlockMessageOptions {
   text: string;
   blocks: BlockConfig[];
   forkable?: boolean;
+  autoHide?: boolean;
 }
 
 /**
@@ -29,7 +30,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
   threadId: EARS.EntityId;
   message: MessageEntity;
 } {
-  const { threadId, text, blocks, forkable } = options;
+  const { threadId, text, blocks, forkable, autoHide } = options;
 
   const result = repository.chatCommands.addMessage({
     threadId,
@@ -37,6 +38,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
     sender: 'assistant',
     blocks,
     forkable,
+    autoHide,
   });
 
   // Construct message entity for return
@@ -50,6 +52,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
     createdAt: result.timestamp,
     updatedAt: result.timestamp,
     ...(forkable === false && { forkable }),
+    ...(autoHide && { autoHide }),
   };
 
   return { messageId: result.id, threadId, message };
@@ -83,8 +86,9 @@ export function sendFilePickerBlock(options: {
   allowMultiple?: boolean;
   displayText?: string;
   forkable?: boolean;
+  autoHide?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, fileType = 'both', allowMultiple = false, displayText, forkable } = options;
+  const { threadId, text, prompt, fileType = 'both', allowMultiple = false, displayText, forkable, autoHide } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -97,7 +101,7 @@ export function sendFilePickerBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks, forkable });
+  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide });
 }
 
 /**
@@ -112,8 +116,9 @@ export function sendChoiceBlock(options: {
   allowCustom?: boolean;
   displayText?: string;
   forkable?: boolean;
+  autoHide?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable } = options;
+  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable, autoHide } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -126,7 +131,7 @@ export function sendChoiceBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks, forkable });
+  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide });
 }
 
 /**
@@ -146,8 +151,9 @@ export function sendQuestionBlock(options: {
     allowCustom?: boolean;
   }>;
   forkable?: boolean;
+  autoHide?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, questions, forkable } = options;
+  const { threadId, text, prompt, questions, forkable, autoHide } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -160,7 +166,7 @@ export function sendQuestionBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks, forkable });
+  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide });
 }
 
 /**
@@ -174,8 +180,9 @@ export function sendApprovalBlock(options: {
   requireReason?: boolean;
   allowReason?: boolean;
   forkable?: boolean;
+  autoHide?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, context, requireReason = false, allowReason = true, forkable } = options;
+  const { threadId, text, prompt, context, requireReason = false, allowReason = true, forkable, autoHide } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -196,7 +203,7 @@ export function sendApprovalBlock(options: {
     props: { requireReason, allowReason }
   });
 
-  return sendBlockMessage({ threadId, text, blocks, forkable });
+  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide });
 }
 
 /**
@@ -212,8 +219,9 @@ export function sendTextInputBlock(options: {
   displayText?: string;
   suggestions?: string[];
   forkable?: boolean;
+  autoHide?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions, forkable } = options;
+  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions, forkable, autoHide } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -226,7 +234,7 @@ export function sendTextInputBlock(options: {
     }
   ];
 
-  return sendBlockMessage({ threadId, text, blocks, forkable });
+  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide });
 }
 
 /**
@@ -330,8 +338,9 @@ export function sendButtonGroupBlock(options: {
   keepInteractive?: boolean;
   displayText?: string;
   forkable?: boolean;
+  autoHide?: boolean;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, buttons, keepInteractive = false, displayText, forkable } = options;
+  const { threadId, text, prompt, buttons, keepInteractive = false, displayText, forkable, autoHide } = options;
 
   const blocks: BlockConfig[] = [];
 
@@ -347,7 +356,7 @@ export function sendButtonGroupBlock(options: {
     props: { buttons, keepInteractive, displayText }
   });
 
-  return sendBlockMessage({ threadId, text, blocks, forkable });
+  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide });
 }
 
 /**
@@ -612,4 +621,76 @@ function resolveFolder(ref: { refId: string; label: string }): string {
   const resolved = symlink.resolveSymlinkPath(ref.refId);
   if (resolved) return `[Library folder: ${ref.label} → ${resolved.absolutePath}]`;
   return `[Library folder: ${ref.label} (id: ${ref.refId})]`;
+}
+
+// ─── Aside text generation ────────────────────────────────────────────────
+
+/**
+ * Generate a compact aside summary for a collapsed interactive message.
+ * Pure function — no side effects.
+ */
+export function generateAsideText(message: MessageEntity, response: BlockResponse): string {
+  // Cancelled
+  if (response && typeof response === 'object' && 'cancelled' in response && response.cancelled) {
+    return 'Cancelled';
+  }
+
+  // Determine the primary interactive block type
+  const primaryBlock = message.blocks?.find(b =>
+    ['approval', 'choice', 'text', 'question', 'file-picker', 'button-group'].includes(b.type)
+  );
+
+  if (!primaryBlock) {
+    return truncate(message.text, 60);
+  }
+
+  switch (primaryBlock.type) {
+    case 'approval': {
+      if (typeof response === 'object' && response !== null && 'approved' in response) {
+        const reason = 'reason' in response && response.reason
+          ? `: ${truncate(String(response.reason), 40)}`
+          : '';
+        return response.approved ? `✓ Approved${reason}` : `✗ Denied${reason}`;
+      }
+      return truncate(message.text, 60);
+    }
+
+    case 'choice': {
+      if (typeof response === 'string') {
+        return `Selected: ${truncate(response, 50)}`;
+      }
+      if (Array.isArray(response)) {
+        return `Selected: ${truncate(response.join(', '), 50)}`;
+      }
+      return truncate(message.text, 60);
+    }
+
+    case 'text': {
+      if (typeof response === 'string') {
+        return `Replied: ${truncate(response, 50)}`;
+      }
+      return truncate(message.text, 60);
+    }
+
+    case 'question':
+      return 'Answered';
+
+    case 'file-picker': {
+      if (typeof response === 'string') {
+        return `Selected: ${truncate(response, 50)}`;
+      }
+      if (Array.isArray(response)) {
+        return `Selected ${response.length} file${response.length === 1 ? '' : 's'}`;
+      }
+      return truncate(message.text, 60);
+    }
+
+    default:
+      return truncate(message.text, 60);
+  }
+}
+
+function truncate(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen - 1) + '…';
 }

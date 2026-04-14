@@ -441,7 +441,7 @@ export const chatQueries = {
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
     const message = qx(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
-      'responseTimestamp', 'createdAt', 'updatedAt'
+      'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asideText'
     ] as const);
 
     if (!message) return null;
@@ -460,6 +460,7 @@ export const chatCommands = {
     references?: MessageReferences;
     isCommand?: boolean;
     command?: string;
+    autoHide?: boolean;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -467,7 +468,7 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
@@ -495,6 +496,7 @@ export const chatCommands = {
     if (references) messageTx.put('references', references);
     if (isCommand) messageTx.put('isCommand', isCommand);
     if (command) messageTx.put('command', command);
+    if (autoHide) messageTx.put('autoHide', autoHide);
 
     const messageId = messageTx.link(EARS.RelKind.CONTAINS, threadId).id();
 
