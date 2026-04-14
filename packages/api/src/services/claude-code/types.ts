@@ -347,6 +347,8 @@ export interface QueryOptions {
   /** Restore files to state at this user message UUID and exit. Requires resume. */
   rewindFiles?: string
   noSessionPersistence?: boolean
+  /** Run in a git worktree for isolated file mutations. Optional name. */
+  worktree?: string | true
 
   // Streaming knobs
   includePartialMessages?: boolean

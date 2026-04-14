@@ -121,6 +121,10 @@ export const IncomingThreadsEvents = [
     threadId: z.string(),
     mode: z.string(),
   }),
+  busEvent('UPDATE_CLAUDE_WORKTREE', {
+    threadId: z.string(),
+    useWorktree: z.boolean(),
+  }),
 ] as const
 
 export type ThreadsInternalEvents =
@@ -704,7 +708,20 @@ export const threadsSystem = setup({
         content: nextContent,
         threadId: threadId as EARS.EntityId,
       });
-    }
+    },
+    updateClaudeWorktree: ({ event }) => {
+      const { threadId, useWorktree } = typeOf('UPDATE_CLAUDE_WORKTREE', event);
+      const existing = repository.chatCommands.findArtifactByType(
+        threadId as EARS.EntityId,
+        'claude-session',
+      );
+      if (!existing?.id) return;
+      const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
+      services.artifact.updateAndNotify(existing.id, {
+        content: { ...prevContent, useWorktree },
+        threadId: threadId as EARS.EntityId,
+      });
+    },
   },
 }).createMachine(
   {
@@ -772,6 +789,9 @@ export const threadsSystem = setup({
           },
           UPDATE_CLAUDE_PERMISSION_MODE: {
             actions: 'updateClaudePermissionMode',
+          },
+          UPDATE_CLAUDE_WORKTREE: {
+            actions: 'updateClaudeWorktree',
           },
           FORK_THREAD: {
             actions: 'forkThread',

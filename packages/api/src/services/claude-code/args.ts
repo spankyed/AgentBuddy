@@ -94,6 +94,10 @@ export function argsFromOptions(opts: QueryOptions): string[] {
   if (opts.rewindFiles) args.push('--rewind-files', opts.rewindFiles)
   if (opts.sessionId) args.push('--session-id', opts.sessionId)
   if (opts.noSessionPersistence) args.push('--no-session-persistence')
+  if (opts.worktree !== undefined) {
+    if (opts.worktree === true) args.push('--worktree')
+    else args.push('--worktree', opts.worktree)
+  }
 
   // ─── Streaming knobs ──────────────────────────────────────────────────────
   if (opts.includePartialMessages) args.push('--include-partial-messages')

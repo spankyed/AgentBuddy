@@ -17,7 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode, readWorktreeMode } from './_helpers/session-artifact';
 import { getClaudeState, persistClaudeState, setRunning, enqueueMessage } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
@@ -155,10 +155,11 @@ export async function action(
   });
   updateSessionArtifact(services, threadId, { status: 'streaming' });
 
-  // Read the user's current permission-mode choice.
+  // Read the user's current permission-mode and worktree choices.
   const activePermissionMode = readSessionPermissionMode(services, threadId);
   const effectivePermissionMode = phase === 'plan' ? 'plan' : activePermissionMode;
-  log.debug('active permission mode', { permissionMode: effectivePermissionMode });
+  const useWorktree = readWorktreeMode(services, threadId);
+  log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
 
   // Phase-aware system-prompt nudging (plan/edit/review).
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
@@ -211,6 +212,7 @@ export async function action(
       systemPrompt: composedSystemPrompt,
       surfaceControlRequests: true,
       env: { CLAUDE_CODE_COORDINATOR_MODE: '1' },
+      ...(useWorktree && { worktree: true }),
       ...(resolved.addDirs.length > 0 && { addDir: resolved.addDirs }),
       // Fork/revert: create a new CLI session JSONL file, truncated to the
       // fork/revert point via --resume-session-at.

@@ -52,6 +52,8 @@ export interface SessionArtifactContent {
    * `'acceptEdits'`. See ClaudeSessionArtifactContent in threads/types.ts.
    */
   permissionMode?: PermissionMode;
+  /** Whether to run in a git worktree for isolated file mutations. */
+  useWorktree?: boolean;
 }
 
 /** Build a default SessionArtifactContent for a brand-new turn. */
@@ -110,6 +112,16 @@ export function readSessionPermissionMode(
   const session = findSessionArtifact(services, threadId);
   const content = session?.content as Partial<SessionArtifactContent> | undefined;
   return content?.permissionMode ?? 'acceptEdits';
+}
+
+/** Read whether worktree mode is enabled for this thread's session. */
+export function readWorktreeMode(
+  services: Services,
+  threadId: EntityId,
+): boolean {
+  const session = findSessionArtifact(services, threadId);
+  const content = session?.content as Partial<SessionArtifactContent> | undefined;
+  return content?.useWorktree ?? false;
 }
 
 /**

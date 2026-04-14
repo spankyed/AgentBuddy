@@ -86,6 +86,31 @@
             </button>
           </div>
         </div>
+
+        <!-- Worktree toggle -->
+        <div class="pt-2 mt-2 border-t border-neutral-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] uppercase tracking-wide text-neutral-500">Worktree</span>
+            <span class="text-[10px] text-neutral-600">{{ useWorktree ? 'Isolated file mutations' : 'Direct edits' }}</span>
+          </div>
+          <div class="flex rounded-md border border-neutral-700 overflow-hidden">
+            <button
+              v-for="opt in [{ value: false, label: 'Off' }, { value: true, label: 'On' }]"
+              :key="String(opt.value)"
+              type="button"
+              @click="selectWorktree(opt.value)"
+              :title="opt.value ? 'Run in a git worktree (isolated)' : 'Edit files directly'"
+              :class="[
+                'flex-1 px-2 py-1 text-xs font-medium transition-colors border-r border-neutral-700 last:border-r-0',
+                useWorktree === opt.value
+                  ? 'bg-neutral-700 text-neutral-100'
+                  : 'bg-neutral-900/40 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+              ]"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -238,5 +263,18 @@ function selectPermissionMode(mode: PermissionMode) {
     threadId,
     mode,
   })
+}
+
+const useWorktree = computed(() => content.value?.useWorktree ?? false)
+
+function selectWorktree(value: boolean) {
+  if (value === useWorktree.value) return
+  const threadId = currentThreadId.value
+  if (!threadId) return
+  threadsActor.send({
+    type: 'UPDATE_CLAUDE_WORKTREE',
+    threadId,
+    useWorktree: value,
+  } as any)
 }
 </script>

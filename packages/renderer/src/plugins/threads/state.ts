@@ -138,6 +138,7 @@ type UIEvent =
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
   | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
+  | { type: 'UPDATE_CLAUDE_WORKTREE'; threadId: string; useWorktree: boolean }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -819,15 +820,21 @@ const threadsState = setup({
       trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
     },
     updateClaudePermissionMode: ({ event }) => {
-      // User clicked a button in the session artifact's Permission row.
-      // Forward the mutation to the threads system, which updates the
-      // artifact's content.permissionMode and emits ARTIFACT_UPDATED back.
       const typedEvent = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event) as any;
       trpc.bus.send.mutate({
         systemId: id,
         type: 'UPDATE_CLAUDE_PERMISSION_MODE',
         threadId: typedEvent.threadId,
         mode: typedEvent.mode,
+      });
+    },
+    updateClaudeWorktree: ({ event }) => {
+      const typedEvent = typeOf('UPDATE_CLAUDE_WORKTREE', event) as any;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_CLAUDE_WORKTREE',
+        threadId: typedEvent.threadId,
+        useWorktree: typedEvent.useWorktree,
       });
     },
     revertThread: ({ event }) => {
@@ -1016,6 +1023,7 @@ const threadsState = setup({
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
     UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
+    UPDATE_CLAUDE_WORKTREE: { actions: 'updateClaudeWorktree' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: [
