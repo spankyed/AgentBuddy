@@ -11,8 +11,10 @@
       />
     </div>
 
-    <!-- Content Viewer (includes artifact list) -->
+    <!-- Content Viewer (includes artifact list) — min-h-0 constrains flex
+         child so inner overflow-auto scrolls instead of the outer canvas. -->
     <ContentViewer
+      class="flex-1 min-h-0"
       :artifacts="currentTab?.artifacts || []"
       :selectedArtifactId="currentTab?.selectedArtifactId"
       @select-artifact="selectArtifact"
