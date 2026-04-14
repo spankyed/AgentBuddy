@@ -38,8 +38,29 @@ export const meta: ActionMeta = {
   },
 };
 
-/** Read-only tools that auto-pass — users shouldn't have to approve a Read. */
-const DEFAULT_ALLOWED_TOOLS = ['Read', 'Glob', 'Grep'];
+/**
+ * Tools auto-approved without prompting — matches the CLI's `isReadOnly()` set.
+ * With `--permission-prompt-tool stdio`, the CLI delegates ALL permission
+ * decisions to our wrapper. Without this list, every read-only tool would
+ * trigger an approval block.
+ *
+ * Excludes AskUserQuestion/ExitPlanMode (handled via control_request flow)
+ * and Brief/SyntheticOutput (internal coordinator signals).
+ */
+const DEFAULT_ALLOWED_TOOLS = [
+  'Read', 'Glob', 'Grep',
+  'WebSearch', 'WebFetch',
+  'Agent',
+  'ToolSearch',
+  'TaskList', 'TaskGet', 'TaskOutput',
+  'CronList',
+  'LSP',
+  'ListMcpResources', 'ReadMcpResource',
+  // 'EnterPlanMode', // TODO: need control_request to sync plan mode state with app UI
+  'SyntheticOutput',
+  // NOT AskUserQuestion or ExitPlanMode — we need control_requests for those
+  // to show question blocks and plan approval blocks.
+];
 
 const PHASE_HINTS: Record<string, string> = {
   plan: 'You are in the PLAN phase. Focus on strategy, task breakdown, and clarifying questions. Avoid making file changes unless explicitly asked.',
