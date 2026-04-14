@@ -822,7 +822,13 @@ type UnknownLine = z.infer<typeof UnknownLineSchema>;
  * `type` discriminator so a `switch(line.type)` narrows exhaustively
  * without casts. Used internally by `pump()` in `query.ts`.
  */
-type KnownStreamLine = UserStreamLine | AssistantStreamLine | StreamEventLine | ToolProgressLine | SystemLine | RateLimitLine | ToolUseSummaryLine | ResultLine | ControlRequestLine | ControlResponseLine | ControlCancelLine | KeepAliveLine;
+/** Emitted by the pump when a JSON line fails to parse. */
+interface ParseErrorLine {
+    type: '__parse_error';
+    raw: string;
+    error: string;
+}
+type KnownStreamLine = UserStreamLine | AssistantStreamLine | StreamEventLine | ToolProgressLine | SystemLine | RateLimitLine | ToolUseSummaryLine | ResultLine | ControlRequestLine | ControlResponseLine | ControlCancelLine | KeepAliveLine | ParseErrorLine;
 /**
  * Public stream-line type. Callers iterate these out of `query().events`.
  * Includes `UnknownLine` as a catch-all so the CLI can add new top-level
@@ -1106,7 +1112,7 @@ interface MessageEntity extends BaseEntity {
     isCommand?: boolean;
     command?: string;
     /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
-    status?: 'queued' | null;
+    status?: 'queued' | 'cancelled' | null;
     /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
     context?: Record<string, unknown>;
     /** When true, collapse to a compact aside after the user responds. */
@@ -4677,6 +4683,10 @@ declare const events: {
         mode: string;
         pluginId: "threads";
     } | {
+        type: "SET_PHASE";
+        phase: string;
+        pluginId: "threads";
+    } | {
         type: "COMMANDS_UPDATED";
         commands: CommandItem[];
         pluginId: "threads";
@@ -7024,9 +7034,15 @@ declare function resolveReferences(references: MessageReferences | undefined): P
     imageBlocks: any[];
     addDirs: string[];
 }>;
+/**
+ * Generate a compact aside summary for a collapsed interactive message.
+ * Pure function — no side effects.
+ */
+declare function generateAsideText(message: MessageEntity, response: BlockResponse): string;
 
 declare const chat_createBlockMessage: typeof createBlockMessage;
 declare const chat_createThreadAndNotify: typeof createThreadAndNotify;
+declare const chat_generateAsideText: typeof generateAsideText;
 declare const chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
 declare const chat_openThreadTabAndRefresh: typeof openThreadTabAndRefresh;
 declare const chat_resolveReferences: typeof resolveReferences;
@@ -7045,6 +7061,7 @@ declare namespace chat {
   export {
     chat_createBlockMessage as createBlockMessage,
     chat_createThreadAndNotify as createThreadAndNotify,
+    chat_generateAsideText as generateAsideText,
     chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent,
     chat_openThreadTabAndRefresh as openThreadTabAndRefresh,
     chat_resolveReferences as resolveReferences,

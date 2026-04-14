@@ -37,7 +37,7 @@
           @send-command="(command: string, text: string, references?: MessageReferences) => actor.send({ type: 'SEND_COMMAND', command, text, references })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
-          @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id })"
+          @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
           @open-lightbox="openLightbox"
           @update-quick-prompts="updateQuickPrompts"
           @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"

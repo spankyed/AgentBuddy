@@ -88,7 +88,7 @@
         :buttons="(block.props as any).buttons"
         :submit-disabled="(block.props as any).submitDisabled || isDisabled"
         :submit-variant="(block.props as any).submitVariant"
-        @submit="submitActions"
+        @submit="() => submitActions(undefined)"
         @cancel="handleCancel"
       />
 
