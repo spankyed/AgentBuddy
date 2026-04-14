@@ -38,6 +38,7 @@
         :disabled="isDisabled"
         :response="response"
         :display-text="(block.props as any).displayText"
+        :questions="(block.props as any).questions"
         @submit="handleSubmit"
         @cancel="handleCancel"
       />

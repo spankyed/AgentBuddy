@@ -292,6 +292,16 @@ export async function consumeStream(
               allowCustom: true,
               displayText: q.header || 'Answer',
               forkable: false,
+              // Multi-question wizard: pass all questions so the frontend
+              // renders a step wizard. Single question omits this prop.
+              ...(questions.length > 1 && {
+                questions: questions.map(qq => ({
+                  question: qq.question,
+                  header: qq.header,
+                  options: qq.options.map(o => ({ id: o.label, label: o.label, description: o.description || undefined })),
+                  multiSelect: qq.multiSelect,
+                })),
+              }),
             });
             approvalMessageId = choiceMsg.messageId;
           } else {

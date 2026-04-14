@@ -109,8 +109,10 @@ export function sendChoiceBlock(options: {
   allowCustom?: boolean;
   displayText?: string;
   forkable?: boolean;
+  /** Multi-question wizard data — frontend renders step wizard if present. */
+  questions?: Array<{ question: string; header: string; options: Array<{ id: string; label: string; description?: string }>; multiSelect: boolean }>;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable } = options;
+  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable, questions } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -119,7 +121,7 @@ export function sendChoiceBlock(options: {
     },
     {
       type: 'choice',
-      props: { choices, multiSelect, allowCustom, displayText }
+      props: { choices, multiSelect, allowCustom, displayText, ...(questions && { questions }) }
     }
   ];
 

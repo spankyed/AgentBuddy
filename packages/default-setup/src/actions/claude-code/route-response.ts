@@ -59,27 +59,35 @@ export async function action(
   }
 
   // Determine allow/deny from the block response shape.
-  // Approval blocks emit { approved: boolean, reason?: string }.
-  // Choice blocks (AskUserQuestion) emit a string or string[] (the selected option).
+  // Approval blocks: { approved: boolean }. Choice blocks: string, string[],
+  // or Record<string, string> (multi-question wizard).
+  const isAnswerRecord = typeof response === 'object' && response !== null
+    && !Array.isArray(response) && !('approved' in response) && !('cancelled' in response);
   const allow = response?.approved === true
     || response?.value === 'yes'
     || response?.value === true
     || typeof response === 'string'
-    || Array.isArray(response);
+    || Array.isArray(response)
+    || isAnswerRecord;
 
-  // For AskUserQuestion, the updatedInput carries the user's answer(s).
+  // For AskUserQuestion, merge answers into updatedInput.
   // For tool approvals, echo the original request input verbatim.
   let updatedInput: Record<string, unknown> = pending.originalInput ?? {};
   if (pending.toolName === 'AskUserQuestion' && allow) {
-    // Merge the user's answer into the original input so the CLI sees it.
-    const answer = typeof response === 'string' ? response
-      : Array.isArray(response) ? response.join(', ')
-      : String(response?.value ?? response ?? '');
-    // The CLI expects `answers: { [questionText]: selectedAnswer }` — a Record
-    // keyed by question text. Extract the question text from the original input.
-    const questions = Array.isArray(updatedInput.questions) ? updatedInput.questions : [];
-    const questionText = (questions[0] as any)?.question ?? '';
-    updatedInput = { ...updatedInput, answers: { [questionText]: answer } };
+    let answers: Record<string, string>;
+    if (isAnswerRecord) {
+      // Multi-question wizard: response is already { questionText: answer }
+      answers = response;
+    } else {
+      // Single question: wrap in a Record keyed by the question text
+      const answer = typeof response === 'string' ? response
+        : Array.isArray(response) ? response.join(', ')
+        : String(response?.value ?? response ?? '');
+      const questionText = (Array.isArray(updatedInput.questions)
+        ? (updatedInput.questions[0] as any)?.question : '') ?? '';
+      answers = { [questionText]: answer };
+    }
+    updatedInput = { ...updatedInput, answers };
   }
 
   handle.respond(pending.requestId, allow
