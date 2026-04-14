@@ -169,6 +169,7 @@ export async function action(
       text: 'Which project directory should I work in?',
       blocks,
       forkable: false,
+      autoHide: true,
     });
     persistClaudeState(services, threadId, {
       pendingDirectorySelect: {

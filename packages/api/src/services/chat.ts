@@ -646,7 +646,7 @@ export function generateAsideText(message: MessageEntity, response: BlockRespons
 
   // Determine the primary interactive block type
   const primaryBlock = message.blocks?.find(b =>
-    ['approval', 'choice', 'text', 'question', 'file-picker', 'button-group'].includes(b.type)
+    ['approval', 'choice', 'text', 'question', 'file-picker', 'project-select', 'button-group'].includes(b.type)
   );
 
   if (!primaryBlock) {
@@ -685,9 +685,15 @@ export function generateAsideText(message: MessageEntity, response: BlockRespons
     case 'question':
       return `Answered${context}`;
 
+    case 'project-select':
     case 'file-picker': {
-      if (typeof response === 'string') {
-        return `Selected: ${truncate(response, 40)}${context}`;
+      const filePath = typeof response === 'string'
+        ? response
+        : typeof response === 'object' && response !== null && 'path' in response
+          ? (typeof (response as any).path === 'string' ? (response as any).path : (response as any).path?.[0])
+          : Array.isArray(response) ? response[0] : null;
+      if (filePath) {
+        return `Selected: ${truncate(String(filePath), 50)}${context}`;
       }
       if (Array.isArray(response)) {
         return `Selected ${response.length} file${response.length === 1 ? '' : 's'}${context}`;
