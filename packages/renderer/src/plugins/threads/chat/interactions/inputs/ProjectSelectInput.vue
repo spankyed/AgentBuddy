@@ -12,7 +12,7 @@
           class="w-2.5 h-2.5 rounded-full flex-shrink-0"
           :style="{ backgroundColor: selectedProject.color }"
         />
-        <span class="text-sm text-neutral-300">{{ selectedProject?.name || response }}</span>
+        <span class="text-sm text-neutral-300">{{ selectedProject?.name || selectedDir }}</span>
         <span class="text-xs text-neutral-500 truncate">{{ selectedProject?.directories?.[0] || '' }}</span>
       </div>
     </div>
@@ -76,10 +76,14 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+const selectedDir = computed(() => {
+  if (!props.response) return ''
+  return typeof props.response === 'string' ? props.response : props.response?.path ?? ''
+})
+
 const selectedProject = computed(() => {
-  if (!props.response) return null
-  const dir = typeof props.response === 'string' ? props.response : props.response?.path
-  return props.projects.find(p => p.directories?.[0] === dir) ?? null
+  if (!selectedDir.value) return null
+  return props.projects.find(p => p.directories?.[0] === selectedDir.value) ?? null
 })
 
 const selectProject = (project: Project) => {
