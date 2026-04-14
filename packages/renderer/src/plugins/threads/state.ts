@@ -794,6 +794,21 @@ const threadsState = setup({
         response,
       });
     },
+    // HACK: statusColor drives the pause button visibility, but it's only
+    // set to yellow by SEND_MESSAGE / SEND_COMMAND (user-initiated). When
+    // the user approves a tool via the approval block, the CLI resumes
+    // streaming but nothing re-sets statusColor — so the pause button
+    // disappears. This action re-sets it on approval responses so the
+    // button reappears while the stream is active. Ideally statusColor
+    // would be derived from the session artifact's `status` field, but
+    // that would require a larger refactor of the streaming state model.
+    resumeStreamingStatusIfApproved: assign(({ event }) => {
+      const { response } = typeOf('RESPOND_TO_BLOCK_INTERACTION', event);
+      if (response && typeof response === 'object' && !Array.isArray(response) && (response as any).approved === true) {
+        return { statusColor: 'bg-yellow-500' as StatusColor };
+      }
+      return {};
+    }),
     updateMessageState: assign(({ context, event }) => {
       const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event) as any;
       const { messageId } = typedEvent;
@@ -1021,7 +1036,12 @@ const threadsState = setup({
     UPDATE_TODO_TASK: { actions: 'updateTodoTask' },
     APPROVE_TODO_LIST: { actions: 'approveTodoList' },
     REJECT_TODO_LIST: { actions: 'rejectTodoList' },
-    RESPOND_TO_BLOCK_INTERACTION: { actions: 'respondToBlockInteraction' },
+    RESPOND_TO_BLOCK_INTERACTION: {
+      actions: [
+        'respondToBlockInteraction',
+        'resumeStreamingStatusIfApproved',
+      ],
+    },
     UPDATE_MESSAGE_STATE: { actions: 'updateMessageState' },
     MESSAGE_ADDED: { actions: 'addMessageToThread' },
     SEND_MESSAGE: {
