@@ -69,9 +69,12 @@ export async function action(
     ? undefined
     : pending.toolName;
 
+  const clearContext = response?.clearContext === true;
+
   return {
     success: true,
     denied,
+    clearContext,
     toolName,
     requestId: pending.requestId,
     originalInput: pending.originalInput,

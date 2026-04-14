@@ -24,7 +24,7 @@ import { isPlanFileWrite } from './auto-approve';
 import { createStreamWriter } from './stream-writer';
 import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
-import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
+import { parseExitPlanModeInput } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
 
@@ -278,13 +278,19 @@ export async function consumeStream(
             branch: planBranch,
             prNumber: planPR,
           });
-          const approval = services.chat.sendApprovalBlock({
+          const approval = services.chat.sendBlockMessage({
             threadId,
             text: 'Claude Code is ready to implement — review the plan and approve.',
-            prompt: 'Approve this plan and start implementing?',
-            context: buildPlanApprovalContext(parsed),
-            requireReason: false,
-            allowReason: true,
+            blocks: [
+              { type: 'prompt', props: { content: 'Approve this plan and start implementing?' } },
+              { type: 'approval', props: {
+                options: [
+                  { label: 'Yes, clear context and auto-accept edits', variant: 'primary', flags: { clearContext: true, autoAccept: true } },
+                  { label: 'Yes, auto-accept edits', variant: 'secondary', flags: { autoAccept: true } },
+                  { label: 'Deny', variant: 'neutral', flags: { approved: false } },
+                ],
+              } },
+            ],
             forkable: false,
           });
           approvalMessageId = approval.messageId;

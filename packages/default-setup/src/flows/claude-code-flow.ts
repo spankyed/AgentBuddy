@@ -72,6 +72,18 @@ export default {
             ],
           },
           {
+            if: "$.lastStep.result.clearContext == true",
+            steps: [
+              action("CC: Approve Plan Clear Context", {
+                label: "clear-context",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  response: "$.steps[label=route-response].result.response",
+                },
+              }),
+            ],
+          },
+          {
             if: "$.lastStep.result.denied == true",
             steps: [
               action("CC: Deny Turn", {
