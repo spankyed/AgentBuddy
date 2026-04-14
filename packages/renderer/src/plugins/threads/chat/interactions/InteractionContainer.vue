@@ -24,6 +24,7 @@
         :disabled="isDisabled"
         :response="response"
         :display-text="(block.props as any).displayText"
+        :toggles="(block.props as any).toggles"
         @submit="handleSubmit"
         @cancel="handleCancel"
       />

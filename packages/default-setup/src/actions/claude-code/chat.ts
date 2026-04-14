@@ -181,11 +181,21 @@ export async function action(
   if (!hasCwd) {
     writer.finalize('');
     toolActivity.finalise('done');
-    const picker = services.chat.sendFilePickerBlock({
+    const picker = services.chat.sendBlockMessage({
       threadId,
       text: 'Which project directory should I work in?',
-      prompt: 'Select a project directory',
-      fileType: 'directory',
+      blocks: [
+        { type: 'prompt', props: { content: 'Select a project directory' } },
+        {
+          type: 'file-picker',
+          props: {
+            fileType: 'directory',
+            toggles: [
+              { id: 'worktree', label: 'Worktree', description: 'Isolated file mutations', default: false },
+            ],
+          },
+        },
+      ],
       forkable: false,
     });
     persistClaudeState(services, threadId, {

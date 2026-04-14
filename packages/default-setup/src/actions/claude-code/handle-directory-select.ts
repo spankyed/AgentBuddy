@@ -6,6 +6,7 @@
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { persistClaudeState } from './_helpers/thread-context';
+import { updateSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Directory Select',
@@ -39,7 +40,19 @@ export async function action(
     };
   };
 
-  const selectedDir = typeof response === 'string' ? response : response?.[0];
+  // Parse response — supports string (legacy) or { path, toggles } (with toggles)
+  let selectedDir: string | undefined;
+  let useWorktree = false;
+
+  if (typeof response === 'string') {
+    selectedDir = response;
+  } else if (response?.path) {
+    selectedDir = typeof response.path === 'string' ? response.path : response.path?.[0];
+    useWorktree = response.toggles?.worktree ?? false;
+  } else if (Array.isArray(response)) {
+    selectedDir = response[0];
+  }
+
   if (!selectedDir) {
     return { success: false, error: 'No directory selected' };
   }
@@ -47,13 +60,18 @@ export async function action(
   // Save the selected directory as the default base directory.
   services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], selectedDir);
 
+  // Persist worktree preference on the session artifact so chat.ts reads it.
+  if (useWorktree) {
+    updateSessionArtifact(services, threadId as EntityId, { useWorktree: true });
+  }
+
   // Clear pending state.
   persistClaudeState(services, threadId, { pendingDirectorySelect: undefined });
 
-  // Mark the picker message as responded.
+  // Mark the picker message as responded (store full response for toggle display).
   services.chat.updateMessageState(pendingDirectorySelect.pickerMessageId as EntityId, {
     responseTimestamp: Date.now(),
-    blockResponse: selectedDir,
+    blockResponse: response,
   } as any);
 
   // Re-invoke the chat action with the original params.
