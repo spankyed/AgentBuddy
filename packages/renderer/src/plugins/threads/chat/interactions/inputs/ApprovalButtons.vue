@@ -39,6 +39,16 @@
       ></textarea>
     </div>
 
+    <!-- Auto-accept checkbox (for file mutation tools) -->
+    <label v-if="autoAcceptOption" class="flex items-center gap-2 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        v-model="autoAcceptChecked"
+        class="w-3.5 h-3.5 rounded border-neutral-500 bg-neutral-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
+      />
+      <span class="text-xs text-neutral-400">Auto-accept file edits for rest of session</span>
+    </label>
+
     <!-- Approval Action Buttons -->
     <div class="flex items-center gap-2">
       <button
@@ -87,11 +97,12 @@ interface Props {
   modelValue?: string  // For reason text
   disabled?: boolean
   response?: any
+  autoAcceptOption?: boolean
 }
 
 interface Emits {
   (e: 'update:modelValue', value: string): void
-  (e: 'approve', reason?: string): void
+  (e: 'approve', reason?: string, autoAccept?: boolean): void
   (e: 'deny', reason?: string): void
 }
 
@@ -109,6 +120,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const reason = ref(props.modelValue)
+const autoAcceptChecked = ref(false)
 
 // Response display handling
 const approvalClasses = computed(() => {
@@ -141,7 +153,7 @@ const handleApprove = () => {
 
   const trimmedReason = reason.value.trim()
   emit('update:modelValue', trimmedReason)
-  emit('approve', trimmedReason || undefined)
+  emit('approve', trimmedReason || undefined, autoAcceptChecked.value || undefined)
 }
 
 const handleDeny = () => {

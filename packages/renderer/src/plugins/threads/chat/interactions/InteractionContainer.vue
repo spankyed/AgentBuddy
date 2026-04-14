@@ -74,6 +74,7 @@
         :allow-reason="(block.props as any).allowReason"
         :reason-placeholder="(block.props as any).reasonPlaceholder"
         :model-value="(block.props as any).modelValue"
+        :auto-accept-option="(block.props as any).autoAcceptOption"
         :disabled="isDisabled"
         :response="responseForBlock('approval')"
         @approve="handleApprove"
@@ -223,8 +224,8 @@ const handleSubmitFrom = (blockType: string) => (response: any) => {
   }
 }
 
-const handleApprove = (reason?: string) => {
-  handleBlockResponse({ approved: true, reason })
+const handleApprove = (reason?: string, autoAccept?: boolean) => {
+  handleBlockResponse({ approved: true, reason, ...(autoAccept && { autoAccept: true }) })
 }
 
 const handleDeny = (reason?: string) => {

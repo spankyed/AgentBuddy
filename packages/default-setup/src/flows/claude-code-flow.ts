@@ -106,6 +106,7 @@ export default {
               requestId: "$.steps[label=route-response].result.requestId",
               toolName: "$.steps[label=route-response].result.toolName",
               originalInput: "$.steps[label=route-response].result.originalInput",
+              response: "$.steps[label=route-response].result.response",
             },
           }),
         ]),

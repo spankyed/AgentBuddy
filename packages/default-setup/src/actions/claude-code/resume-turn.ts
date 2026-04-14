@@ -17,6 +17,7 @@ export const meta: ActionMeta = {
     requestId: { type: 'string', description: 'CLI control_request ID', required: true },
     toolName: { type: 'string', description: 'Tool being approved', required: false },
     originalInput: { type: 'object', description: 'Original tool input from the control_request', required: false },
+    response: { type: 'object', description: 'User response from the approval block', required: false },
   },
 };
 
@@ -24,11 +25,12 @@ export async function action(
   params: Record<string, any>,
   services: Services,
 ) {
-  const { threadId, requestId, toolName, originalInput } = params as {
+  const { threadId, requestId, toolName, originalInput, response } = params as {
     threadId: string;
     requestId: string;
     toolName?: string;
     originalInput?: Record<string, unknown>;
+    response?: { autoAccept?: boolean };
   };
 
   if (!threadId || !requestId) return { success: false, reason: 'missing threadId or requestId' };
@@ -42,7 +44,13 @@ export async function action(
     resolvePlanDraft(services, threadId as EntityId, 'approved');
   }
 
-  persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+  // If the user checked "auto-accept file edits", switch for current + future turns.
+  if (response?.autoAccept) {
+    updateSessionArtifact(services, threadId as EntityId, { permissionMode: 'acceptEdits' });
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined, autoAcceptEdits: true });
+  } else {
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+  }
   setRunning(services, threadId, true);
   updateSessionArtifact(services, threadId as EntityId, { status: 'streaming' });
 

@@ -26,7 +26,7 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { persistClaudeState, setRunning, dequeueMessage } from './thread-context';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -247,6 +247,16 @@ export async function consumeStream(
           continue;
         }
 
+        // Auto-approve file edits when user opted in mid-turn via the checkbox.
+        if (req.subtype === 'can_use_tool' && FILE_MUTATION_TOOLS.has(req.tool_name)) {
+          const ccState = getClaudeState(services, threadId);
+          if (ccState?.autoAcceptEdits) {
+            log.debug('auto-approved file edit (mid-turn opt-in)', { tool: req.tool_name });
+            handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
+            continue;
+          }
+        }
+
         // Freeze the tool-activity block so it stops showing "Working…".
         writer.flush();
         toolActivity.finalise('done');
@@ -306,7 +316,7 @@ export async function consumeStream(
             blocks: [
               { type: 'prompt', props: { content: `Allow \`${req.tool_name}\`?` } },
               { type: 'tool-input' as any, props: { toolName: req.tool_name, input: req.input } },
-              { type: 'approval', props: { requireReason: false, allowReason: true } },
+              { type: 'approval', props: { requireReason: false, allowReason: true, autoAcceptOption: FILE_MUTATION_TOOLS.has(req.tool_name) } },
             ],
             forkable: false,
           });
@@ -403,9 +413,11 @@ export async function consumeStream(
     try { await handle.close(); } catch { /* already closed or child gone */ }
 
     // Critical cleanup: clear handle, mark not running, drain queue.
+    // Critical cleanup: clear handle, mark not running, reset mid-turn flags, drain queue.
     // These must be atomic — no async gap for new messages to interleave.
     (services.cli as any).claudeCode.clearHandle(threadId);
     setRunning(services, threadId, false);
+    persistClaudeState(services, threadId, { autoAcceptEdits: undefined });
     await drainQueuedMessage(services, threadId, log);
 
     // Emit to flow → CC: Turn Completed action handles:
@@ -438,6 +450,7 @@ export async function consumeStream(
     // Critical cleanup.
     (services.cli as any).claudeCode.clearHandle(threadId);
     setRunning(services, threadId, false);
+    persistClaudeState(services, threadId, { autoAcceptEdits: undefined });
     await drainQueuedMessage(services, threadId, log);
 
     // Emit to flow → CC: Turn Completed action handles:

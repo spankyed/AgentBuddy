@@ -63,6 +63,12 @@ export interface ClaudeCodeThreadState {
     references?: any;
   };
   /**
+   * Set mid-turn when the user checks "Auto-accept file edits" on an
+   * approval block. The stream-consumer reads this to auto-approve
+   * remaining file mutation control_requests in the current turn.
+   */
+  autoAcceptEdits?: boolean;
+  /**
    * One-shot flag set by CC: Handle Fork. When present, the next chat action
    * invocation passes `forkSession: true` to the CLI so it creates a new
    * session JSONL file instead of appending to the source session. Cleared
