@@ -1,7 +1,7 @@
 <template>
   <div class="file-picker-input space-y-3">
     <!-- Response Display (when disabled/responded) -->
-    <div v-if="disabled && response" class="space-y-2">
+    <div v-if="disabled && response && typeof response !== 'string'" class="space-y-2">
       <div class="flex items-center gap-2 text-sm text-neutral-400 mb-2">
         <Check class="w-4 h-4 text-green-500" />
         <span>{{ displayText || 'Selected files:' }}</span>
