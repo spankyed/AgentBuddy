@@ -185,12 +185,10 @@ export async function action(
     const blocks: any[] = [
       { type: 'prompt', props: { content: 'Select a project directory' } },
     ];
-    if (projects.length > 0) {
-      blocks.push({
-        type: 'project-select',
-        props: { projects },
-      });
-    }
+    blocks.push({
+      type: 'project-select',
+      props: { projects },
+    });
     blocks.push(
       { type: 'file-picker', props: { fileType: 'directory' } },
       { type: 'toggles', props: { toggles: [

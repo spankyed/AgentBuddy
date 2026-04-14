@@ -18,6 +18,9 @@
     </div>
 
     <!-- Input Controls (when not disabled/not responded) -->
+    <div v-else-if="projects.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
+      No projects configured
+    </div>
     <div v-else class="space-y-1.5">
       <button
         v-for="project in projects"
