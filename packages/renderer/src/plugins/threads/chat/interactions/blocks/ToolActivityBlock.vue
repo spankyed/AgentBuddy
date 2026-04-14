@@ -11,7 +11,13 @@
         :class="{ 'rotate-90': isOpen }"
       />
       <Wrench class="w-4 h-4 text-neutral-400 flex-shrink-0" />
-      <span class="text-sm text-neutral-200 truncate flex-1">{{ label }}</span>
+      <span class="text-sm text-neutral-200 truncate shrink">{{ label }}</span>
+      <template v-if="previewEntry">
+        <span class="text-neutral-600 flex-shrink-0 mx-1">·</span>
+        <span class="text-[11px] text-neutral-500 flex-shrink-0">{{ previewEntry.tool }}</span>
+        <span class="text-[11px] text-neutral-600 truncate font-mono flex-1 min-w-0">{{ previewEntry.summary }}</span>
+      </template>
+      <span v-else class="flex-1" />
       <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0" aria-hidden>
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 0ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 150ms" />
@@ -153,6 +159,17 @@ function onListScroll(e: Event) {
 const label = computed(() => props.label || computeLabel(props.entries, props.state))
 
 const badge = computed(() => computeBadge(props.entries, props.state))
+
+// While streaming: last running entry. When done: last entry overall.
+const previewEntry = computed(() => {
+  if (!props.entries.length) return null
+  if (props.state === 'streaming') {
+    for (let i = props.entries.length - 1; i >= 0; i--) {
+      if (props.entries[i].status === 'running') return props.entries[i]
+    }
+  }
+  return props.entries[props.entries.length - 1]
+})
 
 const entries = computed(() => props.entries)
 const state = computed(() => props.state)
