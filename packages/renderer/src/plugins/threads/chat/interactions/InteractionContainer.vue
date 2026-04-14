@@ -15,6 +15,13 @@
         :label="(block.props as any).label"
       />
 
+      <!-- Markdown Block -->
+      <MarkdownBlock
+        v-else-if="block.type === 'markdown'"
+        :content="(block.props as any).content"
+        :label="(block.props as any).label"
+      />
+
       <!-- File Picker Input -->
       <FilePickerInput
         v-else-if="block.type === 'file-picker'"
@@ -154,6 +161,7 @@
 import type { BlockConfig } from '@app/api'
 import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
+import MarkdownBlock from './blocks/MarkdownBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
 import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
 import ToolActivityBlock from './blocks/ToolActivityBlock.vue'
