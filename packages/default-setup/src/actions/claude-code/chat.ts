@@ -112,6 +112,11 @@ export async function action(
       oldHandle.kill();
       (services.cli as any).claudeCode.clearHandle(threadId);
     }
+    // Invalidate the stale interactive block so it's greyed out in the UI.
+    services.chat.updateMessageState(prior.pendingControlRequest.approvalMessageId as any, {
+      responseTimestamp: Date.now(),
+      blockResponse: { cancelled: true },
+    } as any);
     persistClaudeState(services, threadId, { pendingControlRequest: undefined });
   }
 
