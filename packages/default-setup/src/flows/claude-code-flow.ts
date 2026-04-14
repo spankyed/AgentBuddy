@@ -90,7 +90,6 @@ export default {
                 label: "deny-turn",
                 map: {
                   threadId: "$.steps[label=route-response].result.threadId",
-                  toolName: "$.steps[label=route-response].result.toolName",
                 },
               }),
             ],

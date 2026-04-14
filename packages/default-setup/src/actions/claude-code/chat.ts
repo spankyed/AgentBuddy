@@ -18,7 +18,7 @@ import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { ensureSessionArtifact, updateSessionArtifact, readSessionPermissionMode, readWorktreeMode } from './_helpers/session-artifact';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -130,17 +130,7 @@ export async function action(
   // consumer exits cleanly, then proceed with this message as a new turn.
   if (prior?.pendingControlRequest) {
     log.debug('killing paused turn to start new one', { threadId });
-    const oldHandle = (services.cli as any).claudeCode.getHandle(threadId);
-    if (oldHandle) {
-      oldHandle.kill();
-      (services.cli as any).claudeCode.clearHandle(threadId);
-    }
-    // Invalidate the stale interactive block so it's greyed out in the UI.
-    services.chat.updateMessageState(prior.pendingControlRequest.approvalMessageId as any, {
-      responseTimestamp: Date.now(),
-      blockResponse: { cancelled: true },
-    } as any);
-    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    killTurn(services, threadId);
   }
 
   // Mark this thread as having an active turn.

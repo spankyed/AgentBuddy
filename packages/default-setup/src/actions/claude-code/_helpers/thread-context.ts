@@ -8,7 +8,8 @@
  * chat action can resume the right conversation on subsequent turns.
  */
 
-import type { Services } from '../../../types';
+import type { Services, EntityId } from '../../../types';
+import { resolvePlanDraft } from './plan-artifact';
 
 export interface QueuedMessage {
   text: string;
@@ -142,6 +143,43 @@ export function dequeueMessage(services: Services, threadId: string): QueuedMess
     persistClaudeState(services, threadId, { queuedMessage: undefined });
   }
   return msg;
+}
+
+/**
+ * Kill the CLI handle, invalidate any pending interactive block, resolve
+ * plan drafts, and clear all mid-turn flags. Shared by pause-turn, deny-turn,
+ * and the stale-turn cleanup in chat.ts.
+ */
+export function killTurn(services: Services, threadId: string): void {
+  const prior = getClaudeState(services, threadId);
+
+  // Kill CLI process.
+  const handle = (services.cli as any).claudeCode.getHandle(threadId);
+  if (handle) {
+    try { handle.kill(); } catch { /* already gone */ }
+    (services.cli as any).claudeCode.clearHandle(threadId);
+  }
+
+  // Reject plan draft if killed during ExitPlanMode approval.
+  if (prior?.pendingControlRequest?.toolName === 'ExitPlanMode') {
+    resolvePlanDraft(services, threadId as EntityId, 'rejected');
+  }
+
+  // Invalidate the stale interactive block so it's greyed out in the UI.
+  if (prior?.pendingControlRequest) {
+    services.chat.updateMessageState(prior.pendingControlRequest.approvalMessageId as any, {
+      responseTimestamp: Date.now(),
+      blockResponse: { cancelled: true },
+    } as any);
+  }
+
+  // Clear all mid-turn flags.
+  persistClaudeState(services, threadId, {
+    pendingControlRequest: undefined,
+    pendingDirectorySelect: undefined,
+    autoAcceptEdits: undefined,
+    isRunning: false,
+  });
 }
 
 /**

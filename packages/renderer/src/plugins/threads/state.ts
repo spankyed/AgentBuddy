@@ -1028,7 +1028,12 @@ const threadsState = setup({
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
-    PAUSE_TURN: { actions: 'pauseTurn' },
+    PAUSE_TURN: {
+      actions: [
+        'pauseTurn',
+        'setStatusColor', // Reset to idle (bg-zinc-500)
+      ],
+    },
     UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
     UPDATE_CLAUDE_WORKTREE: { actions: 'updateClaudeWorktree' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
