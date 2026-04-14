@@ -22,7 +22,7 @@
         :allow-multiple="(block.props as any).allowMultiple"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('file-picker')"
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
         @cancel="handleCancel"
@@ -36,7 +36,7 @@
         :allow-custom="(block.props as any).allowCustom"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('choice')"
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
         @cancel="handleCancel"
@@ -47,7 +47,7 @@
         v-else-if="block.type === 'question'"
         :questions="(block.props as any).questions"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('question')"
         @submit="handleSubmit"
         @cancel="handleCancel"
       />
@@ -61,7 +61,7 @@
         :suggestions="(block.props as any).suggestions"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('text')"
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
         @cancel="handleCancel"
@@ -75,7 +75,7 @@
         :reason-placeholder="(block.props as any).reasonPlaceholder"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('approval')"
         @approve="handleApprove"
         @deny="handleDeny"
       />
@@ -103,7 +103,7 @@
         :buttons="(block.props as any).buttons"
         :keep-interactive="(block.props as any).keepInteractive"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('button-group')"
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
       />
@@ -113,7 +113,7 @@
         v-else-if="block.type === 'project-select'"
         :projects="(block.props as any).projects"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('project-select')"
         :display-text="(block.props as any).displayText"
         @submit="handleSubmit"
       />
@@ -124,7 +124,7 @@
         ref="togglesBlockRef"
         :toggles="(block.props as any).toggles"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('toggles')"
       />
 
       <!-- Tool Input Block — structured display for tool approval context -->
@@ -163,7 +163,7 @@ import ApprovalButtons from './inputs/ApprovalButtons.vue'
 import ButtonGroupInput from './inputs/ButtonGroupInput.vue'
 import ProjectSelectInput from './inputs/ProjectSelectInput.vue'
 import TogglesBlock from './blocks/TogglesBlock.vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
 
@@ -181,6 +181,25 @@ const props = withDefaults(defineProps<Props>(), {
 const threadsActor = applicationState.system.get(threadsId)
 
 const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
+
+// ─── Per-block response routing ───────────────────────────────────────
+// Infer which block type submitted the response from its shape, so only
+// that block renders the "responded" state — others just disable/hide.
+const respondedBlockType = computed(() => {
+  const r = props.response
+  if (!r) return null
+  if (typeof r === 'string') return 'project-select'
+  if (r.path) return 'file-picker'
+  if (r.approved !== undefined || r.cancelled) return 'approval'
+  if (Array.isArray(r)) return 'choice'
+  return null // unknown — pass response to all (backward compat)
+})
+
+const responseForBlock = (blockType: string) => {
+  if (!props.isDisabled || !props.response) return props.response
+  if (!respondedBlockType.value) return props.response
+  return blockType === respondedBlockType.value ? props.response : null
+}
 
 // Internal interaction handlers
 const handleBlockResponse = (response: any) => {
