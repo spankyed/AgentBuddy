@@ -24,6 +24,7 @@ import {
 import type { Readable, Writable } from 'stream'
 
 import { resolveForService } from '@/core/helpers/resolve-cli'
+import { createLogger } from '@/core/helpers/debug/logger'
 
 import { decodeNdjson, encodeNdjsonLine, type DecodedLine } from './ndjson'
 import {
@@ -32,6 +33,8 @@ import {
   ClaudeExitError,
   ClaudeTimeoutError,
 } from './errors'
+
+const logger = createLogger('claude-code-runner')
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -79,8 +82,8 @@ export interface StreamHandle {
   readonly child: ChildProcess
   /** Parsed NDJSON lines from stdout. Completes when the child exits. */
   readonly lines: AsyncIterable<DecodedLine>
-  /** Write one JSON value as a framed NDJSON line to stdin. */
-  write(value: unknown): void
+  /** Write one JSON value as a framed NDJSON line to stdin. Returns false if stdin is closed. */
+  write(value: unknown): boolean
   /** Close stdin (signals end-of-input to the CLI). */
   endInput(): void
   /** Wait for the child to exit. Resolves with the exit code. */
@@ -159,22 +162,11 @@ export async function execOnce(
   const timeoutMs = opts.timeoutMs ?? 30_000
 
   return new Promise<ExecOnceResult>((resolve, reject) => {
-    let child: ChildProcess
-    try {
-      child = spawn(cliPath, args as string[], {
-        cwd: opts.cwd,
-        env: buildChildEnv(opts.env),
-        stdio: ['pipe', 'pipe', 'pipe'],
-      })
-    } catch (err) {
-      reject(wrapSpawnError(err, cliPath))
-      return
-    }
-
     const chunksOut: Buffer[] = []
     const chunksErr: Buffer[] = []
     let settled = false
 
+    // Timer must be created before spawn so the timeout also covers spawn itself.
     const settle = (fn: () => void) => {
       if (settled) return
       settled = true
@@ -184,9 +176,22 @@ export async function execOnce(
     }
 
     const timer = setTimeout(() => {
-      child.kill('SIGKILL')
+      child?.kill('SIGKILL')
       settle(() => reject(new ClaudeTimeoutError(timeoutMs, args)))
     }, timeoutMs)
+
+    let child: ChildProcess
+    try {
+      child = spawn(cliPath, args as string[], {
+        cwd: opts.cwd,
+        env: buildChildEnv(opts.env),
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+    } catch (err) {
+      clearTimeout(timer)
+      reject(wrapSpawnError(err, cliPath))
+      return
+    }
 
     const onAbort = () => {
       child.kill('SIGTERM')
@@ -280,9 +285,13 @@ export async function spawnStream(
   return {
     child,
     lines: decodeNdjson(child.stdout),
-    write(value: unknown): void {
-      if (!child.stdin.writable) return
+    write(value: unknown): boolean {
+      if (!child.stdin.writable) {
+        logger.warn('write to stdin failed — not writable', { pid: child.pid })
+        return false
+      }
       child.stdin.write(encodeNdjsonLine(value))
+      return true
     },
     endInput(): void {
       if (child.stdin.writable) child.stdin.end()

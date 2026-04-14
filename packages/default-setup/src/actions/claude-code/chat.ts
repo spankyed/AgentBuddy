@@ -288,8 +288,11 @@ export async function action(
       writer, toolActivity, messageId: currentMessageId as EntityId,
     }).catch((err) => {
       // Safety net — consumeStream has its own try/catch, but guard
-      // against truly unexpected escapes.
+      // against truly unexpected escapes. Mirror its cleanup path.
       log.error('consumeStream escaped error boundary', { err: err?.message });
+      (services.cli as any).claudeCode.clearHandle(threadId);
+      setRunning(services, threadId, false);
+      updateSessionArtifact(services, threadId, { status: 'idle' });
     });
 
     return { success: true, streaming: true };

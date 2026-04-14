@@ -90,6 +90,10 @@ async function dispatch(
 ): Promise<unknown> {
   if (subtype === 'can_use_tool') {
     const req = request as unknown as CanUseToolRequest
+    if (!req.tool_name || !req.tool_use_id) {
+      logger.warn('malformed can_use_tool request — missing tool_name or tool_use_id', { request })
+      return { behavior: 'deny', message: 'Malformed request: missing tool_name or tool_use_id' }
+    }
     logger.debug('dispatching can_use_tool', {
       tool_name: req.tool_name,
       tool_use_id: req.tool_use_id,

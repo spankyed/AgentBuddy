@@ -65,6 +65,8 @@ export async function action(
     });
 
     // Drain events to completion so the child exits cleanly.
+    // No timeout — the CLI process will eventually exit or be killed externally.
+    // One-shot callers needing a timeout should set AbortSignal on query opts.
     for await (const _ev of handle.events) { /* no-op */ }
 
     const result = await handle.result;

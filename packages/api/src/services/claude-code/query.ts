@@ -288,7 +288,7 @@ async function pump(
         type: '__parse_error',
         raw: decoded.raw,
         error: decoded.error.message,
-      } as unknown as StreamLine)
+      } as StreamLine)
       continue
     }
 
@@ -488,7 +488,7 @@ class AsyncQueue<T> implements AsyncIterable<T> {
   }
 
   fail(err: unknown): void {
-    this.failure = err
+    if (!this.failure) this.failure = err
     this.close()
   }
 

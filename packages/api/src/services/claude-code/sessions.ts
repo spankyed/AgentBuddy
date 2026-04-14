@@ -144,6 +144,7 @@ export async function get(
   id: string,
   opts: { cwd?: string } = {},
 ): Promise<SessionInfo | null> {
+  assertSafeId(id)
   const cwd = opts.cwd ?? process.cwd()
   const file = path.join(projectBucket(cwd), `${id}.jsonl`)
   const stat = await fs.promises.stat(file).catch(() => null)
@@ -156,6 +157,7 @@ export async function view(
   id: string,
   opts: SessionViewOptions = {},
 ): Promise<SessionTranscriptEntry[]> {
+  assertSafeId(id)
   const cwd = opts.cwd ?? process.cwd()
   const file = path.join(projectBucket(cwd), `${id}.jsonl`)
   const raw = await fs.promises.readFile(file, 'utf8')
@@ -180,6 +182,7 @@ export async function remove(
   id: string,
   opts: { cwd?: string } = {},
 ): Promise<void> {
+  assertSafeId(id)
   const cwd = opts.cwd ?? process.cwd()
   const bucket = projectBucket(cwd)
   const file = path.join(bucket, `${id}.jsonl`)
@@ -195,6 +198,13 @@ export async function remove(
 // on-disk format is reverse-engineered, so upstream changes will break them
 // silently. They live under `_experimental_` prefixes so call sites see the
 // risk in their import lines, and they log a one-time warning on first use.
+
+/** Reject IDs that could escape the project bucket via path traversal. */
+function assertSafeId(id: string): void {
+  if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+    throw new Error(`Invalid session ID: ${JSON.stringify(id)}`)
+  }
+}
 
 const _experimentalWarned = new Set<string>()
 function warnExperimental(name: string): void {
@@ -215,6 +225,7 @@ export async function _experimental_rename(
   title: string,
   opts: { cwd?: string } = {},
 ): Promise<void> {
+  assertSafeId(id)
   warnExperimental('_experimental_rename')
   await appendMetadata(id, { type: 'metadata', title, updatedAt: new Date().toISOString() }, opts)
 }
@@ -225,6 +236,7 @@ export async function _experimental_tag(
   tag: string | null,
   opts: { cwd?: string } = {},
 ): Promise<void> {
+  assertSafeId(id)
   warnExperimental('_experimental_tag')
   await appendMetadata(id, { type: 'metadata', tag, updatedAt: new Date().toISOString() }, opts)
 }
@@ -237,6 +249,7 @@ export async function _experimental_fork(
   id: string,
   opts: { upToMessageId?: string; title?: string; cwd?: string } = {},
 ): Promise<{ sessionId: string; file: string }> {
+  assertSafeId(id)
   warnExperimental('_experimental_fork')
   const cwd = opts.cwd ?? process.cwd()
   const bucket = projectBucket(cwd)

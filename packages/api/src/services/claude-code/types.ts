@@ -191,6 +191,13 @@ export type UnknownLine = z.infer<typeof UnknownLineSchema>
  * `type` discriminator so a `switch(line.type)` narrows exhaustively
  * without casts. Used internally by `pump()` in `query.ts`.
  */
+/** Emitted by the pump when a JSON line fails to parse. */
+export interface ParseErrorLine {
+  type: '__parse_error'
+  raw: string
+  error: string
+}
+
 export type KnownStreamLine =
   | UserStreamLine
   | AssistantStreamLine
@@ -204,6 +211,7 @@ export type KnownStreamLine =
   | ControlResponseLine
   | ControlCancelLine
   | KeepAliveLine
+  | ParseErrorLine
 
 /**
  * Public stream-line type. Callers iterate these out of `query().events`.

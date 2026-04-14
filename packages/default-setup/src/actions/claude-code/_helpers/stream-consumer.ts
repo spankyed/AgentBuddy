@@ -10,7 +10,7 @@
  * Side effects are split between this consumer (ordering-critical state) and
  * flow actions (async-safe UI/artifact updates):
  * - Consumer: persistClaudeState, setRunning, writer/toolActivity, clearHandle,
- *   drainQueuedMessage (ordering-critical — must run atomically after setRunning)
+ *   dequeueMessage → replayQueuedMessage (dequeue before setRunning to avoid race)
  * - Flow actions: updateSessionArtifact, diff artifact
  *   (triggered via cc.stream.* brain events → on() listeners in the flow)
  *
@@ -112,7 +112,7 @@ export async function consumeStream(
       // intermediate events (tool results, text deltas) that may arrive
       // between the approval and the stream resuming.
       const isMessageStart = line.type === 'assistant' || (line.type === 'stream_event' && (line as any).event?.type === 'message_start');
-      if (splitOnNextMessageStart && isMessageStart && (writer.text.length > 0 || toolActivity.hasEntries)) {
+      if (splitOnNextMessageStart && isMessageStart) {
         splitOnNextMessageStart = false;
         ({ currentMessageId, writer, toolActivity } = splitMessage());
       }
@@ -304,6 +304,8 @@ export async function consumeStream(
           approvalMessageId = approval.messageId;
         } else if (req.tool_name === 'AskUserQuestion') {
           const { questions } = parseAskUserQuestionInput(req.input ?? {});
+          // Guard: if the CLI sends an AskUserQuestion with no parseable questions,
+          // auto-approve rather than rendering an empty block.
           if (questions.length > 0) {
             const questionMsg = (services.chat as any).sendQuestionBlock({
               threadId,
@@ -426,15 +428,17 @@ export async function consumeStream(
     log.debug('stream consumer completed');
 
     // Close stdin so the CLI process exits cleanly (prevents child leak).
-    try { await handle.close(); } catch { /* already closed or child gone */ }
+    try { await handle.close(); } catch (closeErr: any) {
+      log.debug('handle.close failed', { message: closeErr?.message });
+    }
 
-    // Critical cleanup: clear handle, mark not running, drain queue.
     // Critical cleanup: clear handle, mark not running, reset mid-turn flags, drain queue.
-    // These must be atomic — no async gap for new messages to interleave.
+    // Dequeue before setRunning(false) to close the race window where a new
+    // message could interleave between the two calls.
     (services.cli as any).claudeCode.clearHandle(threadId);
-    setRunning(services, threadId, false);
-    persistClaudeState(services, threadId, { autoAcceptEdits: undefined });
-    await drainQueuedMessage(services, threadId, log);
+    const queued = dequeueMessage(services, threadId);
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:
     //   updateSessionArtifact, diff artifact
@@ -477,11 +481,11 @@ export async function consumeStream(
     // Kill the CLI process on error (it may be in a bad state).
     try { handle.kill(); } catch { /* already gone */ }
 
-    // Critical cleanup.
+    // Critical cleanup — dequeue before setRunning(false) to avoid race.
     (services.cli as any).claudeCode.clearHandle(threadId);
-    setRunning(services, threadId, false);
-    persistClaudeState(services, threadId, { autoAcceptEdits: undefined });
-    await drainQueuedMessage(services, threadId, log);
+    const queued = dequeueMessage(services, threadId);
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:
     //   updateSessionArtifact({ status: 'idle' })
@@ -495,17 +499,17 @@ export async function consumeStream(
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * If a message was queued while the stream was running, drain it by
- * re-invoking the chat action via `services.action.getAndExecute`.
+ * Replay a previously-dequeued message by re-invoking the chat action.
  *
- * This MUST run synchronously after `setRunning(false)` — moving it to an
- * async flow action creates a race window where a new message starts a fresh
- * turn before the queued message is drained, leaving it stuck as "Queued".
+ * The caller dequeues the message *before* calling `setRunning(false)` so
+ * there is no race window where a new incoming message could interleave.
  */
-async function drainQueuedMessage(services: Services, threadId: EntityId, log: any): Promise<void> {
-  const queued = dequeueMessage(services, threadId);
-  if (!queued) return;
-
+async function replayQueuedMessage(
+  services: Services,
+  threadId: EntityId,
+  queued: { text: string; mode?: string; phase?: string; messageId?: string; references?: any },
+  log: any,
+): Promise<void> {
   log.debug('draining queued message', { threadId, textLen: queued.text?.length });
   if (queued.messageId) {
     services.chat.updateMessageState(queued.messageId as any, { status: null } as any);

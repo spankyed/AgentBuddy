@@ -40,7 +40,7 @@ export function parseUnifiedDiff(blob: string): ParsedDiff {
   // Split on `diff --git` headers while keeping them attached to the
   // section that follows. `splitIndex` + slice loop avoids capture-group
   // split quirks.
-  const headerRe = /^diff --git a\/(.*?) b\/(.*?)$/gm;
+  const headerRe = /^diff --git a\/(.+) b\/(.+)$/gm;
   const headers: Array<{ pathA: string; pathB: string; start: number }> = [];
   let m: RegExpExecArray | null;
   while ((m = headerRe.exec(blob)) !== null) {

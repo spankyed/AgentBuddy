@@ -27,12 +27,17 @@ export type DecodedLine =
  * Handles partial lines across chunks by carrying a buffer. Never throws —
  * malformed lines yield `{ok:false}` entries.
  */
+const MAX_BUFFER_BYTES = 10 * 1024 * 1024 // 10 MB
+
 export async function* decodeNdjson(stream: Readable): AsyncGenerator<DecodedLine> {
   let buffer = ''
   stream.setEncoding('utf8')
 
   for await (const chunk of stream as AsyncIterable<string>) {
     buffer += chunk
+    if (buffer.length > MAX_BUFFER_BYTES) {
+      throw new Error(`NDJSON buffer exceeded ${MAX_BUFFER_BYTES} bytes — possible framing error`)
+    }
     let nl = buffer.indexOf('\n')
     while (nl !== -1) {
       const line = buffer.slice(0, nl).replace(/\r$/, '')

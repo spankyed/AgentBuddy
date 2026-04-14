@@ -12,10 +12,17 @@
  */
 
 import type { QueryHandle } from './query'
+import { createLogger } from '@/core/helpers/debug/logger'
 
+const logger = createLogger('claude-code-handle-store')
 const activeHandles = new Map<string, QueryHandle>()
 
 export function storeHandle(key: string, handle: QueryHandle): void {
+  const existing = activeHandles.get(key)
+  if (existing) {
+    try { existing.kill() } catch { /* already gone */ }
+    logger.warn('overwriting active handle — killed previous', { key })
+  }
   activeHandles.set(key, handle)
 }
 
