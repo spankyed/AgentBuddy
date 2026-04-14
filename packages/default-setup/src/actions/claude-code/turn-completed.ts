@@ -62,10 +62,12 @@ export async function action(
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
   // ─── Update session artifact ──────────────────────────────────────
+  const { toolCallCount } = params as { toolCallCount?: number };
   updateSessionArtifact(services, threadId as EntityId, (prev) => ({
     status: 'idle',
     turns: (prev.turns ?? 0) + 1,
     totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
+    toolCallCount: toolCallCount ?? prev.toolCallCount ?? 0,
     lastTurnAt: Date.now(),
   }));
 

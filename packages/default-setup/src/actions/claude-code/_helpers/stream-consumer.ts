@@ -26,7 +26,6 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { updateSessionArtifact } from './session-artifact';
 import { persistClaudeState, setRunning, dequeueMessage } from './thread-context';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
@@ -172,14 +171,10 @@ export async function consumeStream(
                 mutatedPaths.push(p);
               }
             }
-            // toolCallCount/lastTool must stay inline (high frequency, not a
-            // lifecycle boundary — a flow action would create hundreds of TNodes).
-            // Works because the consumer is inlined into chat.ts's bundle, which
-            // already populated the sessionArtifactCache via ensureSessionArtifact.
-            updateSessionArtifact(services, threadId, (prev) => ({
-              toolCallCount: (prev.toolCallCount ?? 0) + 1,
-              lastTool: { name: block.name, summary, at: Date.now() },
-            }));
+            // toolCallCount is set once at turn-end by CC: Turn Completed
+            // (via toolActivity.entries.length in the cc.stream.completed payload).
+            // No per-tool artifact update needed — the tool activity block provides
+            // live feedback during streaming.
           }
         }
         continue;
