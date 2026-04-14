@@ -101,8 +101,8 @@ export const defaultSettings: SettingsData = {
               { id: 'review', name: 'Review', description: 'Code review and refinement' }
             ]
           },
-          { id: 'chat', name: 'Chat', description: 'General conversation mode' },
-          { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
+          { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents' },
+          // { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
         ],
         hotkeys: {
           textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
