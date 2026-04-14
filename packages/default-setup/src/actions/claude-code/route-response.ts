@@ -61,10 +61,18 @@ export async function action(
 
   const denied = response?.approved === false || response?.cancelled === true;
 
+  // When denied, clear toolName for tools that have their own non-deny
+  // branch (like AskUserQuestion) so the flow routes to CC: Deny Turn
+  // instead of the tool-specific handler. Tools like ExitPlanMode need
+  // toolName preserved so deny-turn can handle them specially.
+  const toolName = (denied && pending.toolName === 'AskUserQuestion')
+    ? undefined
+    : pending.toolName;
+
   return {
     success: true,
     denied,
-    toolName: pending.toolName,
+    toolName,
     requestId: pending.requestId,
     originalInput: pending.originalInput,
     response,

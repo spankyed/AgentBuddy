@@ -72,6 +72,18 @@ export default {
             ],
           },
           {
+            if: "$.lastStep.result.denied == true",
+            steps: [
+              action("CC: Deny Turn", {
+                label: "deny-turn",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  toolName: "$.steps[label=route-response].result.toolName",
+                },
+              }),
+            ],
+          },
+          {
             if: "$.lastStep.result.toolName == 'AskUserQuestion'",
             steps: [
               action("CC: Answer Question", {
@@ -81,18 +93,6 @@ export default {
                   requestId: "$.steps[label=route-response].result.requestId",
                   originalInput: "$.steps[label=route-response].result.originalInput",
                   response: "$.steps[label=route-response].result.response",
-                },
-              }),
-            ],
-          },
-          {
-            if: "$.lastStep.result.denied == true",
-            steps: [
-              action("CC: Deny Turn", {
-                label: "deny-turn",
-                map: {
-                  threadId: "$.steps[label=route-response].result.threadId",
-                  toolName: "$.steps[label=route-response].result.toolName",
                 },
               }),
             ],
