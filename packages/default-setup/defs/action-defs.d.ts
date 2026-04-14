@@ -1119,6 +1119,8 @@ interface MessageEntity extends BaseEntity {
     autoHide?: boolean;
     /** Backend-computed summary text shown when collapsed (e.g. "✓ Approved"). */
     asideText?: string;
+    /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
+    asideContext?: string;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -6752,6 +6754,7 @@ interface BlockMessageOptions {
     blocks: BlockConfig[];
     forkable?: boolean;
     autoHide?: boolean;
+    asideContext?: string;
 }
 /**
  * Create a message with custom blocks (pure function)

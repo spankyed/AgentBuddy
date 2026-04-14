@@ -170,6 +170,7 @@ export async function action(
       blocks,
       forkable: false,
       autoHide: true,
+      asideContext: 'Project',
     });
     persistClaudeState(services, threadId, {
       pendingDirectorySelect: {

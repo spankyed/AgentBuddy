@@ -195,6 +195,8 @@ export interface MessageEntity extends BaseEntity {
   autoHide?: boolean;
   /** Backend-computed summary text shown when collapsed (e.g. "✓ Approved"). */
   asideText?: string;
+  /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
+  asideContext?: string;
 }
 
 /**

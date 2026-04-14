@@ -19,6 +19,7 @@ interface BlockMessageOptions {
   blocks: BlockConfig[];
   forkable?: boolean;
   autoHide?: boolean;
+  asideContext?: string;
 }
 
 /**
@@ -30,7 +31,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
   threadId: EARS.EntityId;
   message: MessageEntity;
 } {
-  const { threadId, text, blocks, forkable, autoHide } = options;
+  const { threadId, text, blocks, forkable, autoHide, asideContext } = options;
 
   const result = repository.chatCommands.addMessage({
     threadId,
@@ -39,6 +40,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
     blocks,
     forkable,
     autoHide,
+    asideContext,
   });
 
   // Construct message entity for return
@@ -53,6 +55,7 @@ export function createBlockMessage(options: BlockMessageOptions): {
     updatedAt: result.timestamp,
     ...(forkable === false && { forkable }),
     ...(autoHide && { autoHide }),
+    ...(asideContext && { asideContext }),
   };
 
   return { messageId: result.id, threadId, message };
@@ -634,7 +637,8 @@ export function generateAsideText(message: MessageEntity, response: BlockRespons
   // tool-input blocks give us a clean tool name; prompt blocks are shorter than message.text.
   const toolInputBlock = message.blocks?.find(b => b.type === 'tool-input');
   const promptBlock = message.blocks?.find(b => b.type === 'prompt');
-  const contextText = toolInputBlock?.props?.toolName
+  const contextText = message.asideContext
+    ?? toolInputBlock?.props?.toolName
     ?? (promptBlock?.props?.content ? truncate(String(promptBlock.props.content), 50) : null)
     ?? (message.text ? truncate(message.text, 50) : null);
   const context = contextText ? ` — ${contextText}` : '';
