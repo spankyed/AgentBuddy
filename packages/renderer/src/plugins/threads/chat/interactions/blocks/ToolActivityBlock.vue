@@ -17,11 +17,11 @@
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 150ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 300ms" />
       </span>
+      <span class="flex-1 min-w-8" />
       <template v-if="previewEntry">
-        <span class="text-[11px] text-neutral-500 flex-shrink-0 ml-2">{{ previewEntry.tool }}</span>
-        <span class="text-[11px] text-neutral-600 truncate font-mono flex-1 min-w-0">{{ previewEntry.summary }}</span>
+        <span class="text-[11px] text-neutral-500 flex-shrink-0">{{ previewEntry.tool }}</span>
+        <span class="text-[11px] text-neutral-600 truncate font-mono text-right min-w-0">{{ previewEntry.summary }}</span>
       </template>
-      <span v-else class="flex-1" />
       <span v-if="badge" class="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{{ badge }}</span>
     </button>
 
