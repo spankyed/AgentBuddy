@@ -5,6 +5,15 @@
       <div class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800">
         <Wrench :size="14" class="text-neutral-400" />
         <h3 class="text-sm font-medium text-neutral-200 flex-1">Claude Code session</h3>
+        <button
+          v-if="content.sessionId"
+          @click="copyResumeCommand"
+          class="text-neutral-500 hover:text-neutral-300 transition-colors p-1"
+          :title="resumeCopied ? 'Copied!' : 'Copy resume command'"
+        >
+          <Check v-if="resumeCopied" :size="12" class="text-green-500" />
+          <Terminal v-else :size="12" />
+        </button>
         <span class="flex items-center gap-1.5">
           <span
             class="w-2 h-2 rounded-full"
@@ -119,7 +128,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { Wrench, Copy, Check } from 'lucide-vue-next'
+import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
@@ -198,9 +207,16 @@ async function copySessionId() {
     await navigator.clipboard.writeText(content.value.sessionId)
     copied.value = true
     setTimeout(() => { copied.value = false }, 1500)
-  } catch {
-    // clipboard denied — silently no-op
-  }
+  } catch { /* clipboard denied */ }
+}
+
+const resumeCopied = ref(false)
+async function copyResumeCommand() {
+  try {
+    await navigator.clipboard.writeText(`claude --resume ${content.value.sessionId}`)
+    resumeCopied.value = true
+    setTimeout(() => { resumeCopied.value = false }, 1500)
+  } catch { /* clipboard denied */ }
 }
 
 // ─── Permission mode segmented control ─────────────────────────────────
