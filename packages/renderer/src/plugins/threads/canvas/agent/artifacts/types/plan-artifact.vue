@@ -8,6 +8,8 @@
           <h3 class="text-sm font-medium text-neutral-200">
             {{ artifact.title || 'Plan' }}
           </h3>
+          <span v-if="branch" class="text-xs text-neutral-500 font-mono">{{ branch }}</span>
+          <span v-if="prNumber" class="text-xs text-neutral-500">#{{ prNumber }}</span>
         </div>
         <!--
           Status pill — backend round-trips this via the chat-thread
@@ -28,8 +30,8 @@
         </span>
       </div>
 
-      <!-- Markdown notes body -->
-      <div class="px-4 py-3">
+      <!-- Markdown notes body — scrollable for long plans -->
+      <div class="px-4 py-3 max-h-[60vh] overflow-y-auto">
         <TiptapEditor
           v-if="notes"
           mode="viewer"
@@ -71,6 +73,8 @@ const props = defineProps<{
 const status = computed<PlanStatus>(() => props.artifact.content?.status ?? 'draft')
 
 const notes = computed(() => props.artifact.content?.notes ?? '')
+const branch = computed(() => props.artifact.content?.branch ?? '')
+const prNumber = computed(() => props.artifact.content?.prNumber ?? '')
 
 const statusLabel = computed(() => {
   switch (status.value) {

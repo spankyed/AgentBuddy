@@ -41,6 +41,10 @@ export interface PlanArtifactContent {
     description?: string;
     status: string;
   }>;
+  /** Git branch the plan was created on. */
+  branch?: string;
+  /** PR number associated with this plan. */
+  prNumber?: string;
 }
 
 /**
@@ -56,11 +60,14 @@ export function createPlanDraft(
   threadId: EntityId,
   planMarkdown: string,
   title = 'Implementation Plan',
+  opts?: { branch?: string; prNumber?: string },
 ): EntityId {
   const content: PlanArtifactContent = {
     notes: planMarkdown,
     status: 'draft',
     steps: [],
+    ...(opts?.branch && { branch: opts.branch }),
+    ...(opts?.prNumber && { prNumber: opts.prNumber }),
   };
   const { artifactId } = services.artifact.createAndNotify({
     artifactType: 'plan',

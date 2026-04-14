@@ -258,7 +258,18 @@ export async function consumeStream(
 
         if (req.tool_name === 'ExitPlanMode') {
           const parsed = parseExitPlanModeInput(req.input ?? {});
-          createPlanDraft(services, threadId, parsed.plan);
+          // Grab git branch + PR for the plan header (best-effort, non-blocking).
+          let planBranch: string | undefined;
+          let planPR: string | undefined;
+          try {
+            planBranch = await services.cli.git.getCurrentBranch();
+            const pr = await services.cli.gh.getPRForBranch(planBranch);
+            if (pr?.number) planPR = String(pr.number);
+          } catch { /* non-critical */ }
+          createPlanDraft(services, threadId, parsed.plan, 'Implementation Plan', {
+            branch: planBranch,
+            prNumber: planPR,
+          });
           const approval = services.chat.sendApprovalBlock({
             threadId,
             text: 'Claude Code is ready to implement — review the plan and approve.',
