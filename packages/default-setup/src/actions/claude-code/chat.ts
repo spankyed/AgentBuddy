@@ -134,53 +134,11 @@ export async function action(
     services.chat.updateMessageState(userMessageId as any, { forkable: false } as any);
   }
 
-  // Create the empty assistant message we'll stream into.
-  // Non-forkable while streaming — partial responses are confusing fork points.
-  // Flipped back to forkable on finalize (stream-consumer.ts).
-  const currentMessageId = services.chat.sendBlockMessage({
-    threadId,
-    text: '',
-    blocks: [],
-    forkable: false,
-  }).messageId;
-  log.debug('placeholder message created', { messageId: currentMessageId });
-
-  const writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
-  const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
-
-  // Upsert the thread's claude-session artifact.
-  ensureSessionArtifact(services, threadId, {
-    status: 'streaming',
-    startedAt: Date.now(),
-  });
-  updateSessionArtifact(services, threadId, { status: 'streaming' });
-
-  // Read the user's current permission-mode and worktree choices.
-  const activePermissionMode = readSessionPermissionMode(services, threadId);
-  const effectivePermissionMode = phase === 'plan' ? 'plan' : activePermissionMode;
-  const useWorktree = readWorktreeMode(services, threadId);
-  log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
-
-  // Phase-aware system-prompt nudging (plan/edit/review).
-  const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
-  const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
-
-  // Clear one-shot flags before the query — their purpose is consumed the
-  // moment we read them. If the query throws, we don't want the next turn
-  // to re-fork or re-revert.
-  if (forkFrom || revertTo) {
-    persistClaudeState(services, threadId, {
-      ...(forkFrom && { forkFrom: undefined }),
-      ...(revertTo && { revertTo: undefined }),
-    });
-  }
-
   // ─── CWD check — prompt for directory if none configured ────────────
+  // Runs before the placeholder message so the empty bubble never appears.
   const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened;
   if (!hasCwd) {
-    writer.finalize('');
-    toolActivity.finalise('done');
     const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
     const blocks: any[] = [
       { type: 'prompt', props: { content: 'Select a project directory' } },
@@ -216,8 +174,48 @@ export async function action(
       },
     });
     setRunning(services, threadId, false);
-    updateSessionArtifact(services, threadId, { status: 'idle' });
     return { success: true, awaitingDirectory: true };
+  }
+
+  // Create the placeholder assistant message we'll stream into.
+  // Shows "Thinking…" until the first text delta arrives and the stream
+  // writer overwrites it. Non-forkable while streaming.
+  const currentMessageId = services.chat.sendBlockMessage({
+    threadId,
+    text: 'Thinking…',
+    blocks: [],
+    forkable: false,
+  }).messageId;
+  log.debug('placeholder message created', { messageId: currentMessageId });
+
+  const writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
+  const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
+
+  // Upsert the thread's claude-session artifact.
+  ensureSessionArtifact(services, threadId, {
+    status: 'streaming',
+    startedAt: Date.now(),
+  });
+  updateSessionArtifact(services, threadId, { status: 'streaming' });
+
+  // Read the user's current permission-mode and worktree choices.
+  const activePermissionMode = readSessionPermissionMode(services, threadId);
+  const effectivePermissionMode = phase === 'plan' ? 'plan' : activePermissionMode;
+  const useWorktree = readWorktreeMode(services, threadId);
+  log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
+
+  // Phase-aware system-prompt nudging (plan/edit/review).
+  const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
+  const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
+
+  // Clear one-shot flags before the query — their purpose is consumed the
+  // moment we read them. If the query throws, we don't want the next turn
+  // to re-fork or re-revert.
+  if (forkFrom || revertTo) {
+    persistClaudeState(services, threadId, {
+      ...(forkFrom && { forkFrom: undefined }),
+      ...(revertTo && { revertTo: undefined }),
+    });
   }
 
   // ─── Fire the query ─────────────────────────────────────────────────

@@ -125,7 +125,7 @@ export async function consumeStream(
 
           const splitMsg = services.chat.sendBlockMessage({
             threadId,
-            text: '',
+            text: 'Thinking…',
             blocks: [],
             forkable: false, // Non-forkable while streaming.
           });
