@@ -110,6 +110,7 @@ interface Props {
   state: 'streaming' | 'done' | 'error'
   defaultOpen?: boolean
   artifactRef?: ArtifactRef
+  phase?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -156,7 +157,7 @@ function onListScroll(e: Event) {
 // Re-compute the label from entries/state on every update so we stay
 // honest even if the backend writer lags. The backend-provided `label`
 // from props is the source of truth; we only override if it's missing.
-const label = computed(() => props.label || computeLabel(props.entries, props.state))
+const label = computed(() => props.label || computeLabel(props.entries, props.state, props.phase))
 
 const badge = computed(() => computeBadge(props.entries, props.state))
 

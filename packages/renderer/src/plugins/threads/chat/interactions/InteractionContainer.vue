@@ -144,6 +144,7 @@
         :state="(block.props as any).state"
         :default-open="(block.props as any).defaultOpen"
         :artifact-ref="(block.props as any).artifactRef"
+        :phase="(block.props as any).phase"
       />
     </template>
   </div>

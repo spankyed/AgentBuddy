@@ -93,7 +93,7 @@ export async function consumeStream(
     return {
       currentMessageId: msg.messageId as EntityId,
       writer: createStreamWriter(services, msg.messageId as EntityId, { intervalMs: 80 }),
-      toolActivity: createToolActivityWriter(services, msg.messageId as EntityId, { intervalMs: 250 }),
+      toolActivity: createToolActivityWriter(services, msg.messageId as EntityId, { intervalMs: 250, phase }),
     };
   }
 

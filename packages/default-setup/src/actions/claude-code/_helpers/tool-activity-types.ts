@@ -34,4 +34,6 @@ export interface ToolActivityBlockProps {
    * "→ View changes" link beneath the collapsed header when set.
    */
   artifactRef?: { artifactId: string; label: string };
+  /** Current phase — drives the streaming label ("Planning…" vs "Working…"). */
+  phase?: string;
 }

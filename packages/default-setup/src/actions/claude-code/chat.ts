@@ -200,7 +200,7 @@ export async function action(
   log.debug('placeholder message created', { messageId: currentMessageId });
 
   const writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
-  const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250 });
+  const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250, phase });
 
   // Upsert the thread's claude-session artifact.
   ensureSessionArtifact(services, threadId, {

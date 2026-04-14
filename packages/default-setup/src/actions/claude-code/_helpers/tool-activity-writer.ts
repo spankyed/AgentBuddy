@@ -40,6 +40,8 @@ import type { ToolActivityEntry, ToolActivityBlockProps } from './tool-activity-
 export interface ToolActivityWriterOptions {
   /** Minimum ms between `updateMessageState` calls. Default 250ms. */
   intervalMs?: number;
+  /** Current phase — drives the streaming label ("Planning…" vs "Working…"). */
+  phase?: string;
 }
 
 export interface ToolActivityWriter {
@@ -86,9 +88,10 @@ export function createToolActivityWriter(
   const buildBlockProps = (): ToolActivityBlockProps => ({
     // Fresh array copy so frontend reactivity sees a new reference on every write.
     entries: entries.map(e => ({ ...e })),
-    label: computeLabel(entries, state),
+    label: computeLabel(entries, state, opts.phase),
     state,
     defaultOpen: false,
+    ...(opts.phase && { phase: opts.phase }),
     ...(artifactRef && { artifactRef }),
   });
 

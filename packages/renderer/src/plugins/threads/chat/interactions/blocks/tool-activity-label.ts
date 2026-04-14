@@ -91,9 +91,11 @@ function formatDuration(ms: number): string {
 export function computeLabel(
   entries: ToolActivityEntry[],
   state: 'streaming' | 'done' | 'error',
+  phase?: string,
 ): string {
+  const streamingLabel = phase === 'plan' ? 'Planning…' : 'Working…'
   if (entries.length === 0) {
-    return state === 'streaming' ? 'Working…' : 'No activity'
+    return state === 'streaming' ? streamingLabel : 'No activity'
   }
 
   const running = entries.filter(e => e.status === 'running')
@@ -132,7 +134,7 @@ export function computeLabel(
     return `${presentVerb(tool)} ${count} ${noun(tool, count)}…`
   }
 
-  return 'Working…'
+  return streamingLabel
 }
 
 export function computeBadge(
