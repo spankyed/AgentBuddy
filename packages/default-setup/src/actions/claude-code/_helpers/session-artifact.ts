@@ -45,6 +45,7 @@ export interface SessionArtifactContent {
   status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended';
   toolCallCount: number;
   lastTool?: { name: string; summary: string; at: number };
+  recentTools?: Array<{ name: string; summary: string; at: number }>;
   /**
    * Permission policy for the next turn. Optional for backwards compat
    * with session artifacts persisted before this field was introduced —

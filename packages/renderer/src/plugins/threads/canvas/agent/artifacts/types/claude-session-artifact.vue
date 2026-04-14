@@ -61,15 +61,19 @@
           <span class="text-neutral-200 tabular-nums">${{ (content.totalCostUsd ?? 0).toFixed(3) }}</span>
         </div>
 
-        <!-- Last tool (only when present) -->
-        <div v-if="content.lastTool" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500">
-          <span class="text-[10px] uppercase tracking-wide">Last</span>
-          <div class="text-neutral-300 truncate mt-0.5">
-            <span class="font-mono">{{ content.lastTool.name }}</span>
-            <span v-if="content.lastTool.summary" class="text-neutral-500"> · {{ content.lastTool.summary }}</span>
-            <span class="text-neutral-600"> · {{ relativeTime(content.lastTool.at) }}</span>
+        <!-- Recent tools (last 3, collapsible) -->
+        <details v-if="recentTools.length" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500">
+          <summary class="text-[10px] uppercase tracking-wide cursor-pointer select-none hover:text-neutral-400">Recent</summary>
+          <div
+            v-for="(tool, i) in recentTools"
+            :key="i"
+            class="text-neutral-300 truncate mt-0.5"
+          >
+            <span class="font-mono text-xs">{{ tool.name }}</span>
+            <span v-if="tool.summary" class="text-neutral-500 text-xs"> · {{ tool.summary }}</span>
+            <span class="text-neutral-600 text-[10px]"> · {{ relativeTime(tool.at) }}</span>
           </div>
-        </div>
+        </details>
 
         <!-- Permission mode — segmented control. Takes effect on next turn. -->
         <div class="pt-2 mt-2 border-t border-neutral-800">
@@ -160,6 +164,11 @@ const props = defineProps<{
 }>()
 
 const content = computed(() => props.artifact.content)
+
+// Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
+const recentTools = computed(() =>
+  content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
+)
 
 const statusDotClass = computed(() => {
   switch (content.value.status) {

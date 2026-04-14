@@ -27,6 +27,7 @@ import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
+import { updateSessionArtifact } from './session-artifact';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -173,10 +174,12 @@ export async function consumeStream(
                 mutatedPaths.push(p);
               }
             }
-            // toolCallCount is set once at turn-end by CC: Turn Completed
-            // (via toolActivity.entries.length in the cc.stream.completed payload).
-            // No per-tool artifact update needed — the tool activity block provides
-            // live feedback during streaming.
+            // Update the session artifact's recent-tools list (last 3).
+            updateSessionArtifact(services, threadId, (prev) => {
+              const recent = (prev.recentTools ?? []).slice(-2);
+              recent.push({ name: block.name, summary, at: Date.now() });
+              return { recentTools: recent };
+            });
           }
         }
         continue;

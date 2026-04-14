@@ -400,6 +400,8 @@ export interface ClaudeSessionArtifactContent {
   toolCallCount: number;
   /** The most recent tool the agent used (for the sidebar summary line). */
   lastTool?: { name: string; summary: string; at: number };
+  /** Last 3 tools executed (rolling window, most recent last). */
+  recentTools?: Array<{ name: string; summary: string; at: number }>;
   /**
    * Permission policy for the next turn. Mutated by the user via the
    * session artifact's segmented control in the right panel and read by
