@@ -32,6 +32,19 @@ import { updateSessionArtifact } from './session-artifact';
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
 
+/**
+ * Sum per-model costUSD from the CLI's modelUsage map.
+ * Falls back to 0 when the field is absent or malformed.
+ */
+function sumModelUsageCost(modelUsage: Record<string, any> | undefined): number {
+  if (!modelUsage || typeof modelUsage !== 'object') return 0;
+  let total = 0;
+  for (const entry of Object.values(modelUsage)) {
+    if (entry && typeof entry.costUSD === 'number') total += entry.costUSD;
+  }
+  return total;
+}
+
 export interface ConsumerContext {
   services: Services;
   threadId: EntityId;
@@ -389,10 +402,15 @@ export async function consumeStream(
       // The `result` event is the CLI's terminal signal. Extract cost/duration
       // directly — handle.result may reject for error subtypes, losing this data.
       if (line.type === 'result') {
+        log.debug('result line received', {
+          total_cost_usd: (line as any).total_cost_usd,
+          modelUsage: (line as any).modelUsage ? Object.keys((line as any).modelUsage) : undefined,
+          duration_ms: (line as any).duration_ms,
+        });
         resultFromLine = {
           sessionId: (line as any).session_id ?? '',
           text: (line as any).result ?? '',
-          totalCostUsd: (line as any).total_cost_usd ?? 0,
+          totalCostUsd: (line as any).total_cost_usd || sumModelUsageCost((line as any).modelUsage),
           durationMs: (line as any).duration_ms ?? 0,
         };
         break;

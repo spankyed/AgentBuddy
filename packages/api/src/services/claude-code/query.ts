@@ -415,13 +415,26 @@ function handleResult(raw: ResultLine, resultPromise: Deferred<QueryResult>): vo
   )
 }
 
+/**
+ * Sum per-model costUSD from the CLI's modelUsage map.
+ * Falls back to 0 when the field is absent or malformed.
+ */
+function sumModelUsageCost(modelUsage: Record<string, any> | undefined): number {
+  if (!modelUsage || typeof modelUsage !== 'object') return 0
+  let total = 0
+  for (const entry of Object.values(modelUsage)) {
+    if (entry && typeof entry.costUSD === 'number') total += entry.costUSD
+  }
+  return total
+}
+
 function normaliseResult(raw: ResultLine): QueryResult {
   return {
     sessionId: raw.session_id ?? '',
     text: raw.result ?? '',
     durationMs: raw.duration_ms ?? 0,
     numTurns: raw.num_turns ?? 0,
-    totalCostUsd: raw.total_cost_usd ?? 0,
+    totalCostUsd: raw.total_cost_usd || sumModelUsageCost(raw.modelUsage as Record<string, any> | undefined),
     usage: raw.usage as Record<string, unknown> | undefined,
     structuredOutput: raw.structured_output,
     permissionDenials: (raw.permission_denials ?? []) as Array<Record<string, unknown>>,
