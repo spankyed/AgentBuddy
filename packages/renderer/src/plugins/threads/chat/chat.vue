@@ -225,7 +225,10 @@ function doRevert(messageId: string) {
   })
   pendingRestoreFiles = false
   // Prefill the chat input so the user can re-send or edit.
+  // Clear after a tick so the watcher fires, then the value resets —
+  // this ensures identical consecutive reverts still retrigger the watcher.
   prefillText.value = revertedText
+  nextTick(() => { prefillText.value = '' })
 }
 
 const prevThreadId = ref(currentThread.value?.id)
