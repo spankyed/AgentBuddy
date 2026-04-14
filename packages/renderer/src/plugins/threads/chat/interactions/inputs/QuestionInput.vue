@@ -85,19 +85,31 @@
         <button
           v-if="isWizard && currentStep > 0"
           @click="prevStep"
-          class="px-3 py-1.5 text-sm rounded-md bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
+          :disabled="disabled"
+          :class="[
+            'px-3 py-1.5 text-sm rounded-md transition-colors',
+            disabled
+              ? 'bg-neutral-700/50 text-neutral-500 cursor-not-allowed opacity-50'
+              : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-300'
+          ]"
         >Back</button>
         <div class="flex-1" />
         <button
           @click="$emit('cancel')"
-          class="px-3 py-1.5 text-sm rounded-md bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
+          :disabled="disabled"
+          :class="[
+            'px-3 py-1.5 text-sm rounded-md transition-colors',
+            disabled
+              ? 'bg-neutral-700/50 text-neutral-500 cursor-not-allowed opacity-50'
+              : 'bg-neutral-700 hover:bg-neutral-600 text-neutral-300'
+          ]"
         >Cancel</button>
         <button
-          :disabled="!canSubmit"
+          :disabled="!canSubmit || disabled"
           @click="handleNext"
           :class="[
             'px-3 py-1.5 text-sm rounded-md transition-colors',
-            canSubmit
+            canSubmit && !disabled
               ? 'bg-primary-600 hover:bg-primary-500 text-white'
               : 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
           ]"
