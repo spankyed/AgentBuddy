@@ -290,8 +290,8 @@ export type ControlRequestHandler = (
  * field here, add the mapping there and a unit test covering it.
  */
 export interface QueryOptions {
-  // Turn content
-  prompt?: string
+  // Turn content — string for text-only, UserInputMessage for text + images
+  prompt?: string | UserInputMessage
 
   // Runtime
   cwd?: string

@@ -34,6 +34,7 @@ export default {
                   mode: "$.event.data.payload.mode",
                   phase: "$.event.data.payload.phase",
                   messageId: "$.event.data.payload.messageId",
+                  references: "$.event.data.payload.references",
                 },
               }),
             ],
