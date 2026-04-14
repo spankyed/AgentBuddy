@@ -1,12 +1,12 @@
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { safeEvents } from '@/core/types/safe-events';
-import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
+import { setup, assign, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type {
-  ThreadConnectedData, ThreadEntity, ThreadExtended, OutgoingThreadsEvents,
+  ThreadEntity, OutgoingThreadsEvents,
   ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS,
-  MessageEntity, ArtifactEntity, AgentThreadData, Tab, ArtifactItem, ArtifactType,
+  MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
@@ -339,7 +339,7 @@ const threadsState = setup({
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),
-    updateThreadStatus: ({ event, context }) => {
+    updateThreadStatus: ({ event }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
       trpc.bus.send.mutate({
         systemId: id,
@@ -587,16 +587,31 @@ const threadsState = setup({
         });
       }
 
+      // Detect if the thread has an active streaming session so the pause
+      // button shows immediately (programmatic chat invocations skip SEND_MESSAGE).
+      const sessionArtifact = ((thread as any).artifacts ?? []).find(
+        (a: any) => a.artifactType === 'claude-session',
+      );
+      const isStreaming = (sessionArtifact?.content as any)?.status === 'streaming';
+
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
         const newPhase = modeConfig?.phases?.length
           ? (thread.forcedMode in context.phaseByMode ? context.phaseByMode[thread.forcedMode] : modeConfig.phases[0].id)
           : undefined;
 
-        return { currentThread: thread, mode: thread.forcedMode, phase: newPhase };
+        return {
+          currentThread: thread,
+          mode: thread.forcedMode,
+          phase: newPhase,
+          ...(isStreaming && { statusColor: 'bg-yellow-500' as StatusColor }),
+        };
       }
 
-      return { currentThread: thread };
+      return {
+        currentThread: thread,
+        ...(isStreaming && { statusColor: 'bg-yellow-500' as StatusColor }),
+      };
     }),
     setRefreshThreadsData: assign(({ event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
