@@ -24,7 +24,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('file-picker')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmitFrom('file-picker')"
+        @submit="submitFilePicker"
         @cancel="handleCancel"
       />
 
@@ -38,7 +38,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('choice')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmitFrom('choice')"
+        @submit="submitChoice"
         @cancel="handleCancel"
       />
 
@@ -48,7 +48,7 @@
         :questions="(block.props as any).questions"
         :disabled="isDisabled"
         :response="responseForBlock('question')"
-        @submit="handleSubmitFrom('question')"
+        @submit="submitQuestion"
         @cancel="handleCancel"
       />
 
@@ -63,7 +63,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('text')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmitFrom('text')"
+        @submit="submitText"
         @cancel="handleCancel"
       />
 
@@ -75,6 +75,7 @@
         :reason-placeholder="(block.props as any).reasonPlaceholder"
         :model-value="(block.props as any).modelValue"
         :auto-accept-option="(block.props as any).autoAcceptOption"
+        :options="(block.props as any).options"
         :disabled="isDisabled"
         :response="responseForBlock('approval')"
         @approve="handleApprove"
@@ -87,7 +88,7 @@
         :buttons="(block.props as any).buttons"
         :submit-disabled="(block.props as any).submitDisabled || isDisabled"
         :submit-variant="(block.props as any).submitVariant"
-        @submit="handleSubmitFrom('actions')"
+        @submit="submitActions"
         @cancel="handleCancel"
       />
 
@@ -106,7 +107,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('button-group')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmitFrom('button-group')"
+        @submit="submitButtonGroup"
       />
 
       <!-- Project Select Input -->
@@ -116,7 +117,7 @@
         :disabled="isDisabled"
         :response="responseForBlock('project-select')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmitFrom('project-select')"
+        @submit="submitProjectSelect"
       />
 
       <!-- Toggles Block -->
@@ -224,8 +225,19 @@ const handleSubmitFrom = (blockType: string) => (response: any) => {
   }
 }
 
-const handleApprove = (reason?: string, autoAccept?: boolean) => {
-  handleBlockResponse({ approved: true, reason, ...(autoAccept && { autoAccept: true }) })
+// Pre-create stable handler refs so Vue event binding works across renders.
+// Inline handleSubmitFrom('...') in templates creates a new closure on every
+// render, breaking Vue 3's event delegation.
+const submitFilePicker = handleSubmitFrom('file-picker')
+const submitChoice = handleSubmitFrom('choice')
+const submitQuestion = handleSubmitFrom('question')
+const submitText = handleSubmitFrom('text')
+const submitActions = handleSubmitFrom('actions')
+const submitButtonGroup = handleSubmitFrom('button-group')
+const submitProjectSelect = handleSubmitFrom('project-select')
+
+const handleApprove = (reason?: string, flags?: Record<string, any>) => {
+  handleBlockResponse({ approved: true, reason, ...flags })
 }
 
 const handleDeny = (reason?: string) => {
