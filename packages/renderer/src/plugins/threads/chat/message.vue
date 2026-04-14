@@ -62,7 +62,7 @@
             ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
             : ' text-neutral-100 border border-neutral-800',
           isUser && isCommand && 'command-bubble',
-          'hover:shadow-md'
+          (message as any).status === 'cancelled' ? 'opacity-50' : 'hover:shadow-md',
         ]"
       >
         <!-- Attachments: files then images, horizontal scroll -->
@@ -118,6 +118,14 @@
       >
         <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
         <span>Queued</span>
+      </div>
+      <!-- Cancelled indicator — queued message was dropped when turn was killed -->
+      <div
+        v-else-if="isUser && (message as any).status === 'cancelled'"
+        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-500"
+      >
+        <span class="inline-block w-1.5 h-1.5 bg-neutral-500 rounded-full" />
+        <span>Cancelled — resend</span>
       </div>
     </div>
 

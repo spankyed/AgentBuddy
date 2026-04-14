@@ -173,6 +173,12 @@ export function killTurn(services: Services, threadId: string): void {
     } as any);
   }
 
+  // Invalidate queued message so the user knows to resend.
+  const queued = dequeueMessage(services, threadId);
+  if (queued?.messageId) {
+    services.chat.updateMessageState(queued.messageId as any, { status: 'cancelled' } as any);
+  }
+
   // Clear all mid-turn flags.
   persistClaudeState(services, threadId, {
     pendingControlRequest: undefined,
