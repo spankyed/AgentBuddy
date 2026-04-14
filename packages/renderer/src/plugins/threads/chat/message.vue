@@ -20,9 +20,9 @@
           <button
             v-if="isUser"
             @click="$emit('revert', message.id)"
-            @contextmenu.prevent="$emit('revert-with-files', message.id)"
+            @contextmenu.prevent="openRevertMenu"
             class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Revert (right-click to also restore files)"
+            title="Revert (right-click for options)"
           >
             <Undo2 :size="16" />
           </button>
@@ -111,17 +111,27 @@
         <span>Queued</span>
       </div>
     </div>
+
+    <!-- Revert context menu (right-click on revert button) -->
+    <ContextMenuPopup
+      :show="revertMenu.showMenu.value"
+      :pos="revertMenu.menuPos.value"
+      :items="revertMenuItems"
+      @close="revertMenu.showMenu.value = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MessageEntity } from '@app/api'
-import { Undo2, GitFork, Copy } from 'lucide-vue-next'
+import { Undo2, GitFork, Copy, FileCode2 } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import { useContextMenu } from '@/core/composables/useContextMenu'
 
 interface ChatMessageProps {
   message: MessageEntity
@@ -139,7 +149,22 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
   isTyping: false
 })
 
-defineEmits<ChatMessageEmits>()
+const emit = defineEmits<ChatMessageEmits>()
+
+const revertMenu = useContextMenu()
+
+const revertMenuItems = [
+  {
+    label: 'Revert & restore files',
+    icon: FileCode2,
+    class: 'text-neutral-200',
+    action: () => emit('revert-with-files', props.message.id),
+  },
+]
+
+function openRevertMenu(e: MouseEvent) {
+  revertMenu.open(e, revertMenuItems.length)
+}
 
 const isUser = computed(() => props.message.sender === 'user')
 const isCommand = computed(() => props.message.isCommand ?? false)
