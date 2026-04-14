@@ -308,7 +308,7 @@ function getThreadsWithCurrent(limit: number = 4): {
   }
 
   const mostRecentThread = threads[0];
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command"] as const;
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asideText"] as const;
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -382,7 +382,7 @@ export const chatQueries = {
       messages: (qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText"] as const,
           EARS.Entity.Message,
         ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],
@@ -605,7 +605,7 @@ export const chatCommands = {
     const sourceData = chatQueries.threadData(sourceThreadId);
     const sourceMessages = sourceData.messages || [];
 
-    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command'] as const;
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText'] as const;
 
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};
