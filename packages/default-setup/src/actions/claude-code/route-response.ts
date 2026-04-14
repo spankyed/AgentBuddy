@@ -84,20 +84,26 @@ export async function action(
     updatedInput = { ...updatedInput, answers };
   }
 
-  handle.respond(pending.requestId, allow
-    ? { behavior: 'allow', updatedInput }
-    : { behavior: 'deny', message: response?.reason || 'User denied' }
-  );
-
   // Resolve plan drafts when ExitPlanMode is approved/rejected.
   if (pending.toolName === 'ExitPlanMode') {
     resolvePlanDraft(services, threadId as EntityId, allow ? 'approved' : 'rejected');
   }
 
-  // Clear the pending state and resume the running flag.
-  persistClaudeState(services, threadId, { pendingControlRequest: undefined });
-  setRunning(services, threadId, true);
-  updateSessionArtifact(services, threadId as any, { status: 'streaming' });
+  if (denied) {
+    // Kill the turn immediately — don't send a deny message to the CLI.
+    // The stream consumer's for-await loop will exit when the process dies.
+    handle.kill();
+    (services.cli as any).claudeCode.clearHandle(threadId);
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    setRunning(services, threadId, false);
+    updateSessionArtifact(services, threadId as any, { status: 'idle' });
+  } else {
+    // Send the approval to the CLI and resume streaming.
+    handle.respond(pending.requestId, { behavior: 'allow', updatedInput });
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    setRunning(services, threadId, true);
+    updateSessionArtifact(services, threadId as any, { status: 'streaming' });
+  }
 
   return { success: true, allowed: allow };
 }
