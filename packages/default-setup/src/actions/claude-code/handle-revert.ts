@@ -32,10 +32,11 @@ export async function action(
   params: Record<string, any>,
   services: Services,
 ) {
-  const { threadId, messageId, restoreFiles } = params as {
+  const { threadId, messageId, restoreFiles, userCliUuid: userCliUuidParam } = params as {
     threadId: string;
     messageId: string;
     restoreFiles?: boolean;
+    userCliUuid?: string;
   };
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
@@ -70,27 +71,27 @@ export async function action(
     cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
   }
 
-  // If restoreFiles requested, look up the user message's CLI UUID from the
-  // reverted message. The message was soft-deleted by the threads system, so
-  // read it directly by ID (not from threadData which filters deleted).
+  // If restoreFiles requested, use the user message's CLI UUID (passed from
+  // the frontend which reads it before the message is soft-deleted).
   let filesRestored = false;
   if (restoreFiles && state?.sessionId) {
-    const revertedMsg = services.repository.chatQueries.messageById(messageId as EntityId) as {
-      context?: Record<string, unknown>;
-    } | null;
-    const userCliUuid = revertedMsg?.context?.cliUuid as string | undefined;
+    const userCliUuid = userCliUuidParam;
 
     if (userCliUuid) {
       log.debug('restoring files via --rewind-files', { threadId, userCliUuid });
       try {
-        // Spawn a one-shot CLI call to restore files.
-        const rewindHandle = await services.cli.claudeCode.query({
-          resume: state.sessionId,
-          rewindFiles: userCliUuid,
-        } as any);
-        await rewindHandle.result.catch(() => {}); // CLI exits after rewind
-        filesRestored = true;
-        log.debug('files restored successfully');
+        // Use execOnce for the one-shot rewind — query() is too heavy
+        // (full pump/event-queue plumbing for a CLI that exits immediately).
+        const result = await (services.cli as any).claudeCode.exec([
+          '--resume', state.sessionId,
+          '--rewind-files', userCliUuid,
+        ]);
+        filesRestored = result.exitCode === 0;
+        if (!filesRestored) {
+          log.warn('file restore exited with non-zero', { exitCode: result.exitCode, stderr: result.stderr });
+        } else {
+          log.debug('files restored successfully');
+        }
       } catch (rewindErr: any) {
         log.warn('file restore failed', { message: rewindErr?.message });
       }

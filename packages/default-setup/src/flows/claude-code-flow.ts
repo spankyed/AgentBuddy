@@ -125,6 +125,7 @@ export default {
             threadId: "$.event.data.payload.threadId",
             messageId: "$.event.data.payload.messageId",
             restoreFiles: "$.event.data.payload.restoreFiles",
+            userCliUuid: "$.event.data.payload.userCliUuid",
           },
         }),
       ]],

@@ -103,6 +103,7 @@ export const IncomingThreadsEvents = [
     messageId: z.string(),
     threadId: z.string(),
     restoreFiles: z.boolean().optional(),
+    userCliUuid: z.string().optional(),
   }),
   busEvent('USER_COMMAND', {
     command: z.string(),
@@ -645,7 +646,7 @@ export const threadsSystem = setup({
       });
     },
     revertThread: ({ system, event }) => {
-      const { messageId, threadId, restoreFiles } = typeOf('REVERT_THREAD', event);
+      const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
 
       repository.chatCommands.softDeleteMessagesAfter({
         threadId: threadId as EARS.EntityId,
@@ -658,7 +659,7 @@ export const threadsSystem = setup({
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
-        payload: { threadId, messageId, restoreFiles },
+        payload: { threadId, messageId, restoreFiles, userCliUuid },
       });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {

@@ -382,7 +382,7 @@ export const chatQueries = {
       messages: (qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context"] as const,
           EARS.Entity.Message,
         ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],

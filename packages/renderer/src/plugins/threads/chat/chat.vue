@@ -215,7 +215,10 @@ function doRevert(messageId: string) {
     type: 'REVERT_THREAD',
     messageId,
     threadId: currentThread.value.id,
-    ...(pendingRestoreFiles && { restoreFiles: true }),
+    ...(pendingRestoreFiles && {
+      restoreFiles: true,
+      userCliUuid: (msg as any)?.context?.cliUuid || undefined,
+    }),
   })
   pendingRestoreFiles = false
   // Prefill the chat input so the user can re-send or edit.
