@@ -287,7 +287,7 @@ export const commitSystem = setup({
       if (!requireGitRepository(context)) return
 
       try {
-        await context.gitRepository.revertFile(ev.path)
+        await context.gitRepository.revertFiles([ev.path])
         const wrapped = emit(pluginId, {
           type: 'commit.FILE_REVERTED',
           data: { path: ev.path }
