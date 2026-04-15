@@ -1,3 +1,13 @@
+<script lang="ts">
+// Suppress Monaco's internal diff range validation error (non-fatal, Monaco recovers)
+window.addEventListener('error', (event) => {
+  if (event.error?.message?.includes('cannot be after endLineNumberExclusive')) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+  }
+})
+</script>
+
 <template>
   <div class="w-full h-full unified-monaco-editor">
     <!-- Diff Editor Mode -->
@@ -109,6 +119,7 @@ const currentValue = ref(props.modelValue)
 const models = new Map<string, editor.ITextModel>()
 const viewStates = new Map<string, editor.ICodeEditorViewState | null>()
 let pendingScrollLine: number | null = null
+let diffUpdateDisposable: { dispose: () => void } | null = null
 
 // Computed properties
 const resolvedLanguage = computed(() => {
@@ -320,14 +331,23 @@ const handleDiffMount = (diffEditor: editor.IStandaloneDiffEditor) => {
   })
 
   // Auto-scroll to first change when diff is computed
-  const disposable = diffEditor.onDidUpdateDiff(() => {
-    const changes = diffEditor.getLineChanges()
-    if (changes && changes.length > 0) {
-      const firstChange = changes[0]
-      const line = firstChange.modifiedStartLineNumber
-      modifiedEditor.revealLineInCenter(line)
+  diffUpdateDisposable?.dispose()
+  diffUpdateDisposable = diffEditor.onDidUpdateDiff(() => {
+    try {
+      const changes = diffEditor.getLineChanges()
+      if (changes && changes.length > 0) {
+        const firstChange = changes[0]
+        const line = firstChange.modifiedStartLineNumber
+        const modifiedModel = modifiedEditor.getModel()
+        if (modifiedModel && !modifiedModel.isDisposed() && line <= modifiedModel.getLineCount()) {
+          modifiedEditor.revealLineInCenter(line)
+        }
+      }
+    } catch {
+      // Diff result may reference stale line numbers if model changed mid-computation
     }
-    disposable.dispose()
+    diffUpdateDisposable?.dispose()
+    diffUpdateDisposable = null
   })
 }
 
@@ -347,6 +367,8 @@ watch(
 // Watch for mode changes to clean up stale references
 watch(() => props.mode, (newMode, oldMode) => {
   if (oldMode === 'diff') {
+    diffUpdateDisposable?.dispose()
+    diffUpdateDisposable = null
     // Capture scroll position from diff's modified editor before destroying
     if (diffEditorInstance.value) {
       try {
@@ -386,6 +408,8 @@ watch(() => props.dslParams, (newParams) => {
 
 // Cleanup
 onBeforeUnmount(() => {
+  diffUpdateDisposable?.dispose()
+  diffUpdateDisposable = null
   // Detach models from editors so library cleanup doesn't clash with our disposal
   try { editorInstance.value?.setModel(null) } catch {}
   try { diffEditorInstance.value?.setModel(null) } catch {}
