@@ -462,6 +462,9 @@ export const chatCommands = {
     command?: string;
     autoHide?: boolean;
     asideContext?: string;
+    blockResponse?: any;
+    responseTimestamp?: number;
+    asideText?: string;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -469,7 +472,7 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
@@ -499,6 +502,9 @@ export const chatCommands = {
     if (command) messageTx.put('command', command);
     if (autoHide) messageTx.put('autoHide', autoHide);
     if (asideContext) messageTx.put('asideContext', asideContext);
+    if (blockResponse) messageTx.put('blockResponse', blockResponse);
+    if (responseTimestamp) messageTx.put('responseTimestamp', responseTimestamp);
+    if (asideText) messageTx.put('asideText', asideText);
 
     const messageId = messageTx.link(EARS.RelKind.CONTAINS, threadId).id();
 
@@ -607,7 +613,7 @@ export const chatCommands = {
     const sourceData = chatQueries.threadData(sourceThreadId);
     const sourceMessages = sourceData.messages || [];
 
-    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText', 'asideContext'] as const;
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp'] as const;
 
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};
