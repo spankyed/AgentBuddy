@@ -17,7 +17,7 @@ export const meta: ActionMeta = {
   input: {
     messageId: { type: 'string', description: 'The interactive block message that was responded to', required: true },
     threadId: { type: 'string', description: 'Thread ID (from event payload)', required: true },
-    response: { type: 'object', description: 'The user response (shape depends on block type)', required: true },
+    response: { type: 'any', description: 'The user response (shape depends on block type)', required: true },
   },
 };
 
