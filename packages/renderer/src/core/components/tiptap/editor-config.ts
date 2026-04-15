@@ -5,6 +5,7 @@ export interface EditorConfig {
   fullExtensions: boolean       // Tables, TaskList, Details, SubDocLinks, Blockquote, ResizableImage
   richFormatting: boolean       // Headings, strike, horizontalRule, trailingNode (false = disabled)
   markdownHtml: boolean         // Markdown HTML support
+  markdownBreaks: boolean       // Single \n → <br> (for chat viewer where Claude uses single newlines)
   commandSuggestion: boolean    // /command input rule
   commandViewerDeco: boolean    // command decoration in viewer (runtime-gated by isCommand prop)
   listShiftEnter: boolean       // Shift+Enter → new bullet
@@ -27,6 +28,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     fullExtensions: true,
     richFormatting: true,
     markdownHtml: true,
+    markdownBreaks: false,
     commandSuggestion: false,
     commandViewerDeco: false,
     listShiftEnter: false,
@@ -45,6 +47,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     fullExtensions: false,
     richFormatting: false,
     markdownHtml: false,
+    markdownBreaks: false,
     commandSuggestion: true,
     commandViewerDeco: false,
     listShiftEnter: true,
@@ -63,6 +66,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     fullExtensions: true,
     richFormatting: true,
     markdownHtml: true,
+    markdownBreaks: false,
     commandSuggestion: false,
     commandViewerDeco: false,
     listShiftEnter: false,
@@ -81,6 +85,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     fullExtensions: false,
     richFormatting: true, // headings / strike / hr — Claude responses use them
     markdownHtml: false,
+    markdownBreaks: true, // Claude Code text uses single \n for paragraph breaks
     commandSuggestion: false,
     commandViewerDeco: true,
     listShiftEnter: false,

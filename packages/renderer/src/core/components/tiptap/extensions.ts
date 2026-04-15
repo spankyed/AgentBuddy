@@ -88,6 +88,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
     BlockquotePipe,
     Markdown.configure({
       html: cfg.markdownHtml,
+      breaks: cfg.markdownBreaks,
       transformCopiedText: true,
       transformPastedText: true,
     }),

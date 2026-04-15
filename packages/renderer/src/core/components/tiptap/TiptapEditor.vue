@@ -176,10 +176,14 @@ const editor = useEditor({
   ...(cfg.subDocumentTracking && { onTransaction: subDocOnTransaction }),
 })
 
-// Sync modelValue changes from parent into the editor
+// Sync modelValue changes from parent into the editor.
+// In viewer mode the editor is read-only — skip the getMarkdown() round-trip
+// comparison which can silently skip legitimate updates when the serializer
+// normalizes whitespace differently from the source markdown.
 watch(() => props.modelValue, (newVal) => {
   if (!editor.value) return
   if (emittedValues.delete(newVal)) return
+  if (!cfg.editable) { resetContent(newVal); return }
   if (newVal !== getMarkdown()) resetContent(newVal)
 })
 
