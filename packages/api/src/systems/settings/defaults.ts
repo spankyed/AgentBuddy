@@ -98,7 +98,7 @@ export const defaultSettings: SettingsData = {
             phases: [
               { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown' },
               { id: 'edit', name: 'Edit', description: 'Implementation and development' },
-              { id: 'review', name: 'Review', description: 'Code review and refinement' }
+              // { id: 'review', name: 'Review', description: 'Code review and refinement' }
             ]
           },
           { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents' },

@@ -68,5 +68,15 @@ export const migration: Migration = {
     if (chatStatesChanged) {
       settingsCommands.updateSettings('plugin', 'threads', ['chatStates'], chatStates);
     }
+
+    // 4. Remove review phase from work mode
+    const workMode = modes.find(m => m.id === 'work');
+    if (workMode?.phases) {
+      const reviewIdx = workMode.phases.findIndex((p: any) => p.id === 'review');
+      if (reviewIdx !== -1) {
+        workMode.phases.splice(reviewIdx, 1);
+        settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+      }
+    }
   },
 };
