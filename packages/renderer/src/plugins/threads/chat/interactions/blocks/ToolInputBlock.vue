@@ -56,12 +56,12 @@
 import { computed } from 'vue'
 import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
 
-interface Props {
+const props = withDefaults(defineProps<{
   toolName: string
-  input: Record<string, any>
-}
-
-const props = defineProps<Props>()
+  input?: Record<string, any>
+}>(), {
+  input: () => ({}),
+})
 
 const filePath = computed(() =>
   props.input?.file_path || props.input?.path || null
