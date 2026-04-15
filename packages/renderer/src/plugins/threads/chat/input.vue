@@ -166,8 +166,9 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, Hash, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
+import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
-import { useAttachments } from './composables/useAttachments'
+import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -286,9 +287,30 @@ const commandHighlight = computed(() => {
 
 const {
   pendingImages, pendingFiles, hasAttachments,
-  handlePaste, removeImage, openFilePicker, removeFile,
+  handlePaste, addImageFromUrl, removeImage, openFilePicker, removeFile,
   collectAttachments, clearAll,
 } = useAttachments()
+
+// Handle image-URL paste (e.g. from notes) inside ProseMirror's pipeline
+const imagePastePlugin = new Plugin({
+  props: {
+    handlePaste(_view, event) {
+      if (!event.clipboardData) return false
+      // Skip raw image blobs — handled by the outer @paste handler
+      for (const item of event.clipboardData.items) {
+        if (item.type.startsWith('image/')) return false
+      }
+      const srcs = extractImageSrcsFromClipboard(event.clipboardData)
+      if (!srcs.length) return false
+      for (const src of srcs) addImageFromUrl(src)
+      return true
+    },
+  },
+})
+
+watch(tiptapRef, (ref) => {
+  if (ref?.editor) ref.editor.registerPlugin(imagePastePlugin)
+}, { immediate: true })
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md

@@ -17,6 +17,31 @@ export interface PendingFile {
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+const EXT_TO_MIME: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  gif: 'image/gif', webp: 'image/webp',
+}
+
+/** Extract image URLs from clipboard — tries HTML `<img>` tags, then markdown `![](url)`. */
+export function extractImageSrcsFromClipboard(clipboardData: DataTransfer): string[] {
+  const html = clipboardData.getData('text/html')
+  if (html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      const srcs = Array.from(doc.querySelectorAll('img[src]'), img => img.getAttribute('src')!).filter(Boolean)
+      if (srcs.length) return srcs
+    } catch { /* fall through */ }
+  }
+  const text = clipboardData.getData('text/plain')
+  if (text) {
+    const srcs: string[] = []
+    let m
+    const re = /!\[[^\]]*\]\(([^)]+)\)/g
+    while ((m = re.exec(text)) !== null) srcs.push(m[1])
+    if (srcs.length) return srcs
+  }
+  return []
+}
 
 function getFileTypeLabel(fileName: string): string {
   const ext = fileName.split('.').pop()?.toLowerCase()
@@ -47,29 +72,40 @@ export function useAttachments() {
     return `${base} ${counter}${ext}`
   }
 
+  const addPendingImage = (blob: Blob, fileName?: string) => {
+    const batchNames = new Set(pendingImages.value.map(img => img.name))
+    const ext = blob.type.split('/')[1] || 'png'
+    const name = getUniqueName(fileName || `image.${ext}`, batchNames)
+    const reader = new FileReader()
+    reader.onload = () => {
+      pendingImages.value = [...pendingImages.value, { dataUrl: reader.result as string, name }]
+    }
+    reader.readAsDataURL(blob)
+  }
+
+  const addImageFromUrl = async (src: string) => {
+    try {
+      const response = await fetch(src)
+      if (!response.ok) return
+      const blob = await response.blob()
+      if (blob.size === 0 || blob.size > MAX_IMAGE_SIZE) return
+      const mime = blob.type || EXT_TO_MIME[new URL(src).pathname.split('.').pop()?.toLowerCase() ?? '']
+      if (!mime) return
+      addPendingImage(blob.type ? blob : new Blob([blob], { type: mime }))
+    } catch (err) {
+      console.error('Failed to fetch pasted image:', err)
+    }
+  }
+
   const handlePaste = (event: ClipboardEvent) => {
     const items = event.clipboardData?.items
     if (!items) return
-
-    const batchNames = new Set(pendingImages.value.map(img => img.name))
-
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         event.preventDefault()
         const file = item.getAsFile()
         if (!file || !ALLOWED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_SIZE) continue
-
-        const name = getUniqueName(file.name || 'image.png', batchNames)
-        batchNames.add(name)
-
-        const reader = new FileReader()
-        reader.onload = () => {
-          pendingImages.value = [...pendingImages.value, {
-            dataUrl: reader.result as string,
-            name,
-          }]
-        }
-        reader.readAsDataURL(file)
+        addPendingImage(file, file.name || undefined)
       }
     }
   }
@@ -92,11 +128,7 @@ export function useAttachments() {
       if (isImg) {
         try {
           const ext = name.split('.').pop()?.toLowerCase() || 'png'
-          const mimeMap: Record<string, string> = {
-            png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-            gif: 'image/gif', webp: 'image/webp',
-          }
-          const mime = mimeMap[ext] || 'image/png'
+          const mime = EXT_TO_MIME[ext] || 'image/png'
           const base64 = await window.electronAPI?.fileUtils.readFileBase64(p)
           if (base64) previewUrl = `data:${mime};base64,${base64}`
         } catch { /* preview unavailable */ }
@@ -141,6 +173,7 @@ export function useAttachments() {
     pendingFiles,
     hasAttachments,
     handlePaste,
+    addImageFromUrl,
     removeImage,
     openFilePicker,
     removeFile,
