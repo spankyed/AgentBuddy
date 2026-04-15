@@ -484,52 +484,12 @@ export class GitRepository {
     if (filePath) {
       const status = await this.getStatus()
       const fileStatus = status.find(f => f.path === filePath && f.staged === staged)
-      
+
       if (fileStatus?.status === 'untracked') {
-        const fullPath = path.join(this.workingDirectory, filePath)
-        
-        // Check if it's a directory
-        if (await this.isDirectory(filePath)) {
-          // Return a synthetic diff for directories
-          let diff = `diff --git a/${filePath} b/${filePath}\n`
-          diff += `new directory\n`
-          diff += `Unable to show diff for directory\n`
-          return diff
-        }
-        
-        // Check if file is binary
-        if (await this.isBinaryFile(fullPath)) {
-          // Return a synthetic diff for binary files
-          const relativePath = path.relative(this.workingDirectory, fullPath)
-          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
-          diff += `new file mode 100644\n`
-          diff += `index 0000000..0000000\n`
-          diff += `Binary files /dev/null and b/${relativePath} differ\n`
-          return diff
-        }
-        
-        // Read the file content and format it as a diff
-        try {
-          const content = await fs.readFile(fullPath, 'utf8')
-          const lines = content.split(/\r?\n/) // Handle CRLF
-          
-          // Format as a git diff for a new file
-          const relativePath = path.relative(this.workingDirectory, fullPath)
-          let diff = `diff --git a/${relativePath} b/${relativePath}\n`
-          diff += `new file mode 100644\n`
-          diff += `index 0000000..0000000\n`
-          diff += `--- /dev/null\n`
-          diff += `+++ b/${relativePath}\n`
-          diff += `@@ -0,0 +1,${lines.length} @@\n`
-          diff += lines.map(line => `+${line}`).join('\n')
-          
-          return diff
-        } catch (error) {
-          throw new Error(`Failed to read untracked file: ${error}`)
-        }
+        return this.buildSyntheticDiff(filePath)
       }
     }
-    
+
     const args = ['diff', '--binary', '-M']
     if (staged) {
       args.push('--cached')
@@ -537,13 +497,95 @@ export class GitRepository {
     if (filePath) {
       args.push('--', filePath)
     }
-    
+
     const result = await this.executeGitCommand(args)
     if (!result.success) {
       throw new Error(result.error || 'Failed to get diff')
     }
-    
+
     return result.output || ''
+  }
+
+  /**
+   * Efficient multi-path diff: issues a single `git diff -- path1 path2 …`
+   * for tracked files and builds synthetic diffs for untracked ones, avoiding
+   * one git subprocess per file.
+   */
+  async getDiffMulti(paths: string[]): Promise<string> {
+    const unique = [...new Set(paths)]
+    const status = await this.getStatus()
+    const untrackedSet = new Set(
+      status.filter(f => f.status === 'untracked').map(f => f.path),
+    )
+
+    const tracked: string[] = []
+    const untracked: string[] = []
+    for (const p of unique) {
+      if (untrackedSet.has(p)) untracked.push(p)
+      else tracked.push(p)
+    }
+
+    const chunks: string[] = []
+
+    // Single git command for all tracked files
+    if (tracked.length > 0) {
+      const args = ['diff', '--binary', '-M', '--', ...tracked]
+      const result = await this.executeGitCommand(args)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to get diff')
+      }
+      if (result.output) chunks.push(result.output)
+    }
+
+    // Synthetic diffs for untracked files (no git subprocess needed)
+    for (const p of untracked) {
+      chunks.push(await this.buildSyntheticDiff(p))
+    }
+
+    return chunks.filter(Boolean).join('\n')
+  }
+
+  /** Build a synthetic diff for an untracked file (new file / directory / binary). */
+  private async buildSyntheticDiff(filePath: string): Promise<string> {
+    const fullPath = path.join(this.workingDirectory, filePath)
+
+    // Directory
+    if (await this.isDirectory(filePath)) {
+      return (
+        `diff --git a/${filePath} b/${filePath}\n` +
+        `new directory\n` +
+        `Unable to show diff for directory\n`
+      )
+    }
+
+    // Binary
+    if (await this.isBinaryFile(fullPath)) {
+      const relativePath = path.relative(this.workingDirectory, fullPath)
+      return (
+        `diff --git a/${relativePath} b/${relativePath}\n` +
+        `new file mode 100644\n` +
+        `index 0000000..0000000\n` +
+        `Binary files /dev/null and b/${relativePath} differ\n`
+      )
+    }
+
+    // Text file
+    try {
+      const content = await fs.readFile(fullPath, 'utf8')
+      const lines = content.split(/\r?\n/)
+      const relativePath = path.relative(this.workingDirectory, fullPath)
+      return (
+        `diff --git a/${relativePath} b/${relativePath}\n` +
+        `new file mode 100644\n` +
+        `index 0000000..0000000\n` +
+        `--- /dev/null\n` +
+        `+++ b/${relativePath}\n` +
+        `@@ -0,0 +1,${lines.length} @@\n` +
+        lines.map(line => `+${line}`).join('\n')
+      )
+    } catch (error) {
+      throw new Error(`Failed to read untracked file: ${error}`)
+    }
   }
 
   async getFileContent(filePath: string, version: 'HEAD' | 'working' | 'index' = 'working'): Promise<string> {

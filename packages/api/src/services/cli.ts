@@ -91,11 +91,7 @@ function createCliService(): CliServiceType {
         if (!paths || paths.length === 0) {
           return repo.getDiff()
         }
-        // GitRepository.getDiff takes one file path at a time; concatenate
-        // the per-file diffs so the caller gets a single unified-diff blob
-        // they can split on `^diff --git a/…`.
-        const chunks = await Promise.all(paths.map(p => repo.getDiff(p)))
-        return chunks.filter(Boolean).join('\n')
+        return repo.getDiffMulti(paths)
       },
     },
     gh: {
