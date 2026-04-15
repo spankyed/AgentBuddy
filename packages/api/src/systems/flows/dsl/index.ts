@@ -8,6 +8,7 @@
 export { compile, type CompiledRows } from './compiler';
 export { validate } from './validator';
 export { exportFlowsDSL } from './export-dsl';
+export { isFlowConfig } from './types';
 export type {
   FlowDSL,
   Track,

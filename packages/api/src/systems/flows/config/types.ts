@@ -10,6 +10,8 @@ export interface FlowEntity extends BaseEntity {
   description?: string;
   flowType: 'workflow' | 'integration';
   createdAt: number;
+  /** SHA256 hash of the DSL source at last seed. Absent on user-created flows. */
+  sourceHash?: string;
 }
 
 /*─────────────────────────────────────────────────────────────────

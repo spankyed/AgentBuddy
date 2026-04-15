@@ -588,7 +588,9 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
       ctx
     );
 
-    entities.push(flowEntity);
+    // Attach sourceHash from compiled FlowConfig if present
+    const sourceHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
+    entities.push(sourceHash ? { ...flowEntity, sourceHash } : flowEntity);
     entities.push(...nodeEntities);
     relations.push(...flowRelations);
     roles.push(...flowRoles);
