@@ -11,6 +11,7 @@ import {createApiServer} from './modules/api-server/ApiServer.js';
 import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
 import {createSpeechRecognition} from './modules/speech-recognition/index.js';
+import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -28,6 +29,7 @@ export async function initApp(initConfig: AppInitConfig) {
     // .init(createWindowManagerModule({initConfig, openDevTools: import.meta.env.DEV}))
     .init(createWindowManagerModule({initConfig, openDevTools: false, apiServer, splashScreen}))
     .init(terminateAppOnLastWindowClose())
+    .init(createMacOSAppMenu())
     // Disable auto-updater until GitHub releases are configured
     // .init(autoUpdater())
 
