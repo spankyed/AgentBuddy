@@ -487,7 +487,7 @@ export async function consumeStream(
       log.debug('stream consumer exiting — turn was paused');
       const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
-      writer.finalize(writer.text);
+      writer.finalize(writer.text || undefined);
       services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
       return;
     }
