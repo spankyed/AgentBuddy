@@ -65,7 +65,7 @@ const DEFAULT_ALLOWED_TOOLS = [
 const PHASE_HINTS: Record<string, string> = {
   plan: 'You are in the PLAN phase. Focus on strategy, task breakdown, and clarifying questions. Avoid making file changes unless explicitly asked.',
   edit: 'You are in the EDIT phase. Implement the agreed-upon plan. Prefer small, focused edits.',
-  review: 'You are in the REVIEW phase. Critically audit the recent changes. Point out bugs, regressions, and unhandled edge cases.',
+  // review: 'You are in the REVIEW phase. Critically audit the recent changes. Point out bugs, regressions, and unhandled edge cases.',
 };
 
 export async function action(
