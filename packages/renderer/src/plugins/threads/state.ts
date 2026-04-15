@@ -833,7 +833,8 @@ const threadsState = setup({
                 ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
                 ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
                 ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
-                ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText })
+                ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText }),
+                ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable })
               }
               : msg
           )
