@@ -389,16 +389,8 @@ const tags = ref<ThreadTagOption[]>(
   props.settings?.tags ? [...props.settings.tags] : []
 )
 
-const defaultChatStates: ChatStateConfig[] = [
-  { id: 'idle',    label: 'Idle',    color: '#6B7280', colorful: false },
-  { id: 'working', label: 'Working', color: '#FACC15', colorful: true },
-  { id: 'paused',  label: 'Paused',  color: '#F59E0B', colorful: false },
-  { id: 'error',   label: 'Error',   color: '#EF4444', colorful: false },
-  { id: 'success', label: 'Success', color: '#10B981', colorful: false },
-]
-
 const chatStateConfigs = ref<ChatStateConfig[]>(
-  props.settings?.chatStates ? props.settings.chatStates.map(s => ({ ...s })) : defaultChatStates.map(s => ({ ...s }))
+  props.settings?.chatStates ? props.settings.chatStates.map(s => ({ ...s })) : []
 )
 
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
