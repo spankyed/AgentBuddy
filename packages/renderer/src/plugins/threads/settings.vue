@@ -14,20 +14,20 @@
           <!-- Color Picker -->
           <div class="relative">
             <button
-              @click="toggleColorPicker(index)"
+              @click="togglePicker(`status:${index}`)"
               class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
               :style="{ backgroundColor: status.color }"
               title="Change color"
             />
             <!-- Simple color picker dropdown -->
             <div
-              v-if="activeColorPicker === index"
+              v-if="activePicker === `status:${index}`"
               class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
             >
               <button
                 v-for="color in colorOptions"
                 :key="color"
-                @click="updateStatusColor(index, color)"
+                @click="statuses[index].color = color; closePicker(); saveStatuses()"
                 class="w-7 h-7 rounded hover:scale-110 transition-transform"
                 :style="{ backgroundColor: color }"
               />
@@ -79,20 +79,20 @@
           <!-- Color Picker -->
           <div class="relative">
             <button
-              @click="toggleTagColorPicker(index)"
+              @click="togglePicker(`tag:${index}`)"
               class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
               :style="{ backgroundColor: tag.color || '#6B7280' }"
               title="Change color"
             />
             <!-- Simple color picker dropdown -->
             <div
-              v-if="activeTagColorPicker === index"
+              v-if="activePicker === `tag:${index}`"
               class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
             >
               <button
                 v-for="color in colorOptions"
                 :key="color"
-                @click="updateTagColor(index, color)"
+                @click="tags[index].color = color; closePicker(); saveTags()"
                 class="w-7 h-7 rounded hover:scale-110 transition-transform"
                 :style="{ backgroundColor: color }"
               />
@@ -144,19 +144,19 @@
           <!-- Color Picker -->
           <div class="relative">
             <button
-              @click="activeChatStateColorPicker = activeChatStateColorPicker === index ? null : index"
+              @click="togglePicker(`chatState:${index}`)"
               class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
               :style="{ backgroundColor: cs.color }"
               title="Change color"
             />
             <div
-              v-if="activeChatStateColorPicker === index"
+              v-if="activePicker === `chatState:${index}`"
               class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
             >
               <button
                 v-for="color in colorOptions"
                 :key="color"
-                @click="cs.color = color; activeChatStateColorPicker = null; saveChatStates()"
+                @click="cs.color = color; closePicker(); saveChatStates()"
                 class="w-7 h-7 rounded hover:scale-110 transition-transform"
                 :style="{ backgroundColor: color }"
               />
@@ -396,10 +396,10 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
 
-// Color picker state
-const activeColorPicker = ref<number | null>(null)
-const activeTagColorPicker = ref<number | null>(null)
-const activeChatStateColorPicker = ref<number | null>(null)
+// Color picker state — single ref keyed by "section:index"
+const activePicker = ref<string | null>(null)
+const togglePicker = (key: string) => { activePicker.value = activePicker.value === key ? null : key }
+const closePicker = () => { activePicker.value = null }
 
 // Available colors for status
 const colorOptions = [
@@ -420,36 +420,10 @@ const colorOptions = [
   '#78716C', // Stone
 ]
 
-// Color picker management
-const toggleColorPicker = (index: number) => {
-  activeColorPicker.value = activeColorPicker.value === index ? null : index
-}
-
-const updateStatusColor = (index: number, color: string) => {
-  statuses.value[index].color = color
-  activeColorPicker.value = null
-  saveStatuses()
-}
-
-// Tag color picker management
-const toggleTagColorPicker = (index: number) => {
-  activeTagColorPicker.value = activeTagColorPicker.value === index ? null : index
-}
-
-const updateTagColor = (index: number, color: string) => {
-  tags.value[index].color = color
-  activeTagColorPicker.value = null
-  saveTags()
-}
-
 // Close color picker when clicking outside
 if (typeof window !== 'undefined') {
   window.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement
-    if (!target.closest('.relative')) {
-      activeColorPicker.value = null
-      activeTagColorPicker.value = null
-    }
+    if (!(e.target as HTMLElement).closest('.relative')) closePicker()
   })
 }
 
