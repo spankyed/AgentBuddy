@@ -161,6 +161,8 @@ export type OutgoingThreadsEvents =
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'SET_MODE'; mode: string }
   | { type: 'SET_PHASE'; phase: string }
+  | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
+  | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
 
 export interface ThreadsContext {}

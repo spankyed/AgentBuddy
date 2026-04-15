@@ -130,6 +130,65 @@
       </div>
     </CollapsibleSection>
 
+    <!-- Chat State Indicators Section -->
+    <CollapsibleSection label="Chat State Indicators" :default-open="false" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Customize the colors and labels for chat activity states
+      </p>
+      <div class="space-y-3">
+        <div
+          v-for="(cs, index) in chatStateConfigs"
+          :key="cs.id"
+          class="group flex items-center gap-3"
+        >
+          <!-- Color Picker -->
+          <div class="relative">
+            <button
+              @click="activeChatStateColorPicker = activeChatStateColorPicker === index ? null : index"
+              class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
+              :style="{ backgroundColor: cs.color }"
+              title="Change color"
+            />
+            <div
+              v-if="activeChatStateColorPicker === index"
+              class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
+            >
+              <button
+                v-for="color in colorOptions"
+                :key="color"
+                @click="cs.color = color; activeChatStateColorPicker = null; saveChatStates()"
+                class="w-7 h-7 rounded hover:scale-110 transition-transform"
+                :style="{ backgroundColor: color }"
+              />
+            </div>
+          </div>
+
+          <!-- Label -->
+          <input
+            v-model="cs.label"
+            type="text"
+            class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+            @input="debouncedSaveChatStates"
+          />
+
+          <!-- Colorful toggle (radio-style: only one active) -->
+          <button
+            @click="setChatStateColorful(index)"
+            class="px-3 py-2 rounded-lg border transition-all text-xs"
+            :class="cs.colorful
+              ? 'border-purple-500/50 bg-purple-500/10 text-purple-300'
+              : 'border-neutral-700/50 bg-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600'"
+            title="Animated indicator"
+          >
+            ✦
+          </button>
+
+          <!-- State ID badge (read-only) -->
+          <span class="text-xs text-neutral-600 w-16 text-right font-mono">{{ cs.id }}</span>
+        </div>
+      </div>
+    </CollapsibleSection>
+
     <!-- Display Options Section -->
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Display Options" :default-open="true">
@@ -304,7 +363,7 @@ import { useDebounce } from '@/core/composables/useDebounce'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
-import type { ThreadsSettings, ThreadStatusOption, ThreadTagOption } from '@app/api'
+import type { ThreadsSettings, ThreadStatusOption, ThreadTagOption, ChatStateConfig } from '@app/api'
 
 interface Props {
   settings?: ThreadsSettings
@@ -330,12 +389,23 @@ const tags = ref<ThreadTagOption[]>(
   props.settings?.tags ? [...props.settings.tags] : []
 )
 
+const defaultChatStates: ChatStateConfig[] = [
+  { id: 'idle',    label: 'Idle',    color: '#6B7280', colorful: false },
+  { id: 'working', label: 'Working', color: '#FACC15', colorful: true },
+  { id: 'paused',  label: 'Paused',  color: '#F59E0B', colorful: false },
+]
+
+const chatStateConfigs = ref<ChatStateConfig[]>(
+  props.settings?.chatStates ? props.settings.chatStates.map(s => ({ ...s })) : defaultChatStates.map(s => ({ ...s }))
+)
+
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
 
 // Color picker state
 const activeColorPicker = ref<number | null>(null)
 const activeTagColorPicker = ref<number | null>(null)
+const activeChatStateColorPicker = ref<number | null>(null)
 
 // Available colors for status
 const colorOptions = [
@@ -404,6 +474,18 @@ const saveTags = () => {
   })
 }
 
+const saveChatStates = () => {
+  emit('update-setting', {
+    path: ['chatStates'],
+    value: chatStateConfigs.value
+  })
+}
+
+const setChatStateColorful = (index: number) => {
+  chatStateConfigs.value.forEach((cs, i) => { cs.colorful = i === index })
+  saveChatStates()
+}
+
 const saveDisplayOptions = () => {
   emit('update-setting', {
     path: ['showOnlyRootThreads'],
@@ -425,6 +507,10 @@ const { debounced: debouncedSave } = useDebounce(() => {
 
 const { debounced: debouncedSaveTags } = useDebounce(() => {
   saveTags()
+}, 500)
+
+const { debounced: debouncedSaveChatStates } = useDebounce(() => {
+  saveChatStates()
 }, 500)
 
 // Status management

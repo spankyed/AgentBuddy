@@ -508,7 +508,7 @@ export async function consumeStream(
     if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:
-    //   updateSessionArtifact({ status: 'idle' })
+    //   updateChatState(services, threadId, 'idle')
     services.emitter.sendToBrainSystem({
       eventType: 'cc.stream.completed',
       payload: { threadId, hadErrors: true, error: message },

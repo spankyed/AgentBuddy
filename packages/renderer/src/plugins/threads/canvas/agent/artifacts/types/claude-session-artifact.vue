@@ -17,10 +17,11 @@
         <span class="flex items-center gap-1.5">
           <span
             class="w-2 h-2 rounded-full"
-            :class="statusDotClass"
-            :title="content.status"
+            :class="stateConfig?.colorful ? 'animate-pulse' : ''"
+            :style="{ backgroundColor: stateConfig?.color ?? '#6B7280' }"
+            :title="content.chatState"
           />
-          <span class="text-xs text-neutral-400 capitalize">{{ statusLabel }}</span>
+          <span class="text-xs text-neutral-400 capitalize">{{ stateConfig?.label ?? content.chatState }}</span>
         </span>
       </div>
 
@@ -153,7 +154,7 @@ interface SessionContent {
   lastTurnAt: number
   turns: number
   totalCostUsd: number
-  status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended'
+  chatState: 'idle' | 'working' | 'paused'
   toolCallCount: number
   lastTool?: { name: string; summary: string; at: number }
   permissionMode?: PermissionMode
@@ -164,28 +165,26 @@ const props = defineProps<{
 }>()
 
 const content = computed(() => props.artifact.content)
+const threadsActor = applicationState.system.get(threadsId)
+const currentThreadId = useSelector(
+  threadsActor,
+  (state: any) => state.context.currentThread?.id as string | undefined,
+)
 
 // Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
 const recentTools = computed(() =>
   content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
 )
 
-const statusDotClass = computed(() => {
-  switch (content.value.status) {
-    case 'streaming': return 'bg-green-500 animate-pulse'
-    case 'awaiting-permission': return 'bg-yellow-500 animate-pulse'
-    case 'idle': return 'bg-neutral-500'
-    case 'ended': return 'bg-neutral-700'
-    default: return 'bg-neutral-500'
-  }
-})
-
-const statusLabel = computed(() => {
-  switch (content.value.status) {
-    case 'awaiting-permission': return 'Awaiting approval'
-    default: return content.value.status
-  }
-})
+const settings = useSelector(threadsActor, (state: any) => state.context.settings);
+const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides);
+const stateConfig = computed(() => {
+  const configs = settings.value?.chatStates;
+  const threadId = currentThreadId.value ?? '';
+  const override = overrides.value?.[threadId];
+  const activeId = (override && override.expiresAt > Date.now()) ? override.id : content.value.chatState;
+  return configs?.find((c: any) => c.id === activeId);
+});
 
 const truncatedSessionId = computed(() => {
   const id = content.value.sessionId
@@ -264,16 +263,6 @@ const permissionMode = computed<PermissionMode>(
 
 const permissionDescription = computed(
   () => permissionOptions.find(o => o.value === permissionMode.value)?.description ?? '',
-)
-
-// Read the current thread id from the threads actor's context so we can
-// scope the permission-mode update correctly. Artifacts don't carry a
-// threadId on their own — the session artifact is scoped to whichever
-// thread is currently open, and that's what the threads state tracks.
-const threadsActor = applicationState.system.get(threadsId)
-const currentThreadId = useSelector(
-  threadsActor,
-  (state: any) => state.context.currentThread?.id as string | undefined,
 )
 
 function selectPermissionMode(mode: PermissionMode) {

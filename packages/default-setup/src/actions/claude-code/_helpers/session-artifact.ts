@@ -34,6 +34,9 @@ export type PermissionMode =
   | 'dontAsk'
   | 'auto';
 
+/** Unified chat state used on the artifact, in backend events, and on the frontend. */
+export type ChatState = 'idle' | 'working' | 'paused';
+
 export interface SessionArtifactContent {
   sessionId: string;
   model: string;
@@ -42,7 +45,7 @@ export interface SessionArtifactContent {
   lastTurnAt: number;
   turns: number;
   totalCostUsd: number;
-  status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended';
+  chatState: ChatState;
   toolCallCount: number;
   lastTool?: { name: string; summary: string; at: number };
   recentTools?: Array<{ name: string; summary: string; at: number }>;
@@ -68,12 +71,13 @@ function makeInitialContent(partial: Partial<SessionArtifactContent>): SessionAr
     lastTurnAt: now,
     turns: 0,
     totalCostUsd: 0,
-    status: 'streaming',
+    chatState: 'working',
     toolCallCount: 0,
     permissionMode: 'default',
     ...partial,
-  };
+  } as SessionArtifactContent;
 }
+
 
 /** Find the existing claude-session artifact for a thread, or undefined. */
 function findSessionArtifact(
@@ -160,9 +164,9 @@ export function updateSessionArtifact(
   services: Services,
   threadId: EntityId,
   patch: Partial<SessionArtifactContent> | ((prev: SessionArtifactContent) => Partial<SessionArtifactContent>),
-): void {
+): boolean {
   const session = findSessionArtifact(services, threadId);
-  if (!session) return;
+  if (!session) return false;
 
   const prevContent: SessionArtifactContent =
     (session.content as SessionArtifactContent) ?? makeInitialContent({});
@@ -177,5 +181,26 @@ export function updateSessionArtifact(
   services.artifact.updateAndNotify(session.id, {
     content: nextContent,
     threadId,
+  });
+  return true;
+}
+
+/**
+ * Update the chat state on the session artifact AND push a real-time
+ * event to the frontend threads plugin. This is the single call site
+ * for chat state transitions — use this instead of manually setting
+ * `chatState` on the artifact.
+ */
+export function updateChatState(
+  services: Services,
+  threadId: EntityId,
+  chatState: ChatState,
+): void {
+  const updated = updateSessionArtifact(services, threadId, { chatState });
+  if (!updated) return;
+  services.emitter.sendToPlugin('threads', {
+    type: 'SET_CHAT_STATE',
+    threadId: threadId as string,
+    chatState,
   });
 }

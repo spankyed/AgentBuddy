@@ -11,7 +11,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState } from './_helpers/session-artifact';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 
 export const meta: ActionMeta = {
@@ -64,12 +64,25 @@ export async function action(
   // ─── Update session artifact ──────────────────────────────────────
   const { toolCallCount } = params as { toolCallCount?: number };
   updateSessionArtifact(services, threadId as EntityId, (prev) => ({
-    status: 'idle',
     turns: (prev.turns ?? 0) + 1,
     totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
     toolCallCount: toolCallCount ?? prev.toolCallCount ?? 0,
     lastTurnAt: Date.now(),
   }));
+  updateChatState(services, threadId as EntityId, 'idle');
+
+  if (!hadErrors) {
+    services.emitter.sendToPlugin('threads', {
+      type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'success', durationMs: 1000,
+    });
+  }
+  // Disabled: hadErrors includes non-critical tool failures (grep no results, bash exit code).
+  // Enable once we distinguish process-level errors from routine tool errors.
+  // if (hadErrors) {
+  //   services.emitter.sendToPlugin('threads', {
+  //     type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'error', durationMs: 3000,
+  //   });
+  // }
 
   // ─── Diff artifact ────────────────────────────────────────────────
   let artifactId: string | undefined;

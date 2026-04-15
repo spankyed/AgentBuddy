@@ -15,7 +15,7 @@
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { persistClaudeState, getClaudeState } from './_helpers/thread-context';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Revert',
@@ -113,7 +113,7 @@ export async function action(
   });
 
   // Flip the session artifact to idle.
-  updateSessionArtifact(services, threadId as EntityId, { status: 'idle' });
+  updateChatState(services, threadId as EntityId, 'idle');
 
   log.debug('revert handled', {
     threadId,

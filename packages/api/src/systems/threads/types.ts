@@ -400,8 +400,8 @@ export interface ClaudeSessionArtifactContent {
   turns: number;
   /** Running cost total in USD across all turns. */
   totalCostUsd: number;
-  /** High-level session status. Drives the status dot in the UI. */
-  status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended';
+  /** High-level chat state. Drives the status indicator and pause button. */
+  chatState: 'idle' | 'working' | 'paused';
   /** Total tool calls across all turns in this session. */
   toolCallCount: number;
   /** The most recent tool the agent used (for the sidebar summary line). */

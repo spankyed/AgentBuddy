@@ -986,7 +986,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
+type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -4691,6 +4691,17 @@ declare const events: {
         phase: string;
         pluginId: "threads";
     } | {
+        type: "SET_CHAT_STATE";
+        threadId: string;
+        chatState: string;
+        pluginId: "threads";
+    } | {
+        type: "FLASH_CHAT_STATE";
+        threadId: string;
+        stateId: string;
+        durationMs?: number | undefined;
+        pluginId: "threads";
+    } | {
         type: "COMMANDS_UPDATED";
         commands: CommandItem[];
         pluginId: "threads";
@@ -5889,9 +5900,16 @@ interface ThreadTagOption {
     name: string;
     color?: string;
 }
+interface ChatStateConfig {
+    id: string;
+    label: string;
+    color: string;
+    colorful: boolean;
+}
 interface ThreadsSettings {
     statuses: ThreadStatusOption[];
     tags: ThreadTagOption[];
+    chatStates: ChatStateConfig[];
     showOnlyRootThreads: boolean;
     clickToChat: boolean;
 }
@@ -7296,6 +7314,7 @@ declare const services: {
                 isCommand?: boolean;
                 command?: string;
                 autoHide?: boolean;
+                asideContext?: string;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
