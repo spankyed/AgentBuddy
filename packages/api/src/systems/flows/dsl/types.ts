@@ -25,6 +25,8 @@ export interface FlowConfig {
   tracks: Track[];
   /** Mark this flow as the root flow */
   root?: boolean;
+  /** SHA256 hash of the compiled source — populated by the compiler, not authored */
+  sourceHash?: string;
 }
 
 /** Type guard: distinguish FlowConfig from bare Track[] */

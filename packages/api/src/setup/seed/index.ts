@@ -12,7 +12,7 @@ import { EARS } from '@/core/types';
 import { findWhere, findAll } from '@/core/helpers/repository/query-helpers';
 import { actionCommands } from '@/systems/actions/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
-import { validate, compile } from '@/systems/flows/dsl';
+import { validate, compile, isFlowConfig } from '@/systems/flows/dsl';
 import { flowsCommands } from '@/systems/flows/repository';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import type { ActionEntity } from '@/systems/actions/types';
@@ -246,11 +246,26 @@ function seedFlows(
       continue;
     }
     const existing = existingByLabel.get(key);
+    const compiledHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
+
     if (existing) {
+      // User-created flow with same label — never overwrite
+      if (!existing.sourceHash) {
+        log(`  flow skipped (user-owned): ${key}`);
+        result.flows.skipped++;
+        continue;
+      }
+
+      if (compiledHash && existing.sourceHash === compiledHash) {
+        log(`  flow unchanged (hash match): ${key}`);
+        result.flows.skipped++;
+        continue;
+      }
+
       try {
         flowsCommands.deleteFlow(existing.id);
         replacedLabels.add(key);
-        log(`  flow replaced: ${key}`);
+        log(`  flow replaced${existing.sourceHash ? ' (hash mismatch)' : ' (no prior hash)'}: ${key}`);
       } catch (err) {
         // deleteFlow throws for the root flow — leave it alone and keep the
         // old skip behaviour so boot doesn't fail on root-flow DSL edits.
