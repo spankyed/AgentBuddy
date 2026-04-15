@@ -71,7 +71,7 @@ const {
   <!-- New Project -->
   <component :is="ItemComponent" @select="() => createProject(directoryPath)" :class="MENU_ITEM_CLASS">
     <FolderPlus class="w-4 h-4" />
-    New Project
+    Add to Projects
   </component>
 
   <!-- Show message when no projects -->

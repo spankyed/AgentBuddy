@@ -122,6 +122,15 @@
           Search Folder
         </ContextMenuItem>
 
+        <ContextMenuItem
+          v-if="file.type === 'directory'"
+          @select="createFolderIn(file.path)"
+          :class="MENU_ITEM_CLASS"
+        >
+          <FolderPlus class="w-4 h-4" />
+          New Folder
+        </ContextMenuItem>
+
         <!-- Project menu items - only for directories -->
         <ProjectMenuItems
           v-if="file.type === 'directory'"
@@ -180,6 +189,7 @@ import {
   Search,
   FileText,
   FolderOpen,
+  FolderPlus,
 } from 'lucide-vue-next'
 import {
   ContextMenuTrigger,
@@ -223,6 +233,7 @@ const checkAutoRename = inject<(path: string) => boolean>('explorer-check-auto-r
 const getRevealPath = inject<() => string | null>('explorer-reveal-path')!
 const clearReveal = inject<() => void>('explorer-clear-reveal')!
 const renameTrigger = inject<{ get: () => string | null, clear: () => void }>('explorer-rename-trigger')!
+const createFolderIn = inject<(path: string) => void>('explorer-create-folder-in')!
 const restoreFocus = inject<() => void>('explorer-restore-focus')!
 
 // Drag-drop injections

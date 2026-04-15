@@ -237,6 +237,27 @@ provide('explorer-drag-end', () => handleDragEnd())
 provide('explorer-get-drag-class', (path: string) => getItemDragClass(path))
 provide('explorer-get-drop-indicator', (path: string) => getDropIndicatorStyle(path))
 
+const createFolderIn = (targetDir: string) => {
+  const existingFiles = targetDir === baseDirectory.value
+    ? rootFiles.value
+    : (dirContents.value[targetDir] || [])
+  const existingNames = new Set(existingFiles.map(f => f.name))
+
+  let folderName = 'New Folder'
+  if (existingNames.has(folderName)) {
+    let counter = 2
+    while (existingNames.has(`New Folder (${counter})`)) counter++
+    folderName = `New Folder (${counter})`
+  }
+
+  const newPath = `${targetDir}/${folderName}`
+  pendingRenamePath.value = newPath
+  explorerActor?.send({ type: 'explorer.EXPAND_DIRECTORY', path: targetDir })
+  explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newPath })
+}
+
+provide('explorer-create-folder-in', createFolderIn)
+
 // Event handlers
 const confirmDelete = (file: FileInfo) => {
   fileToDelete.value = file
@@ -291,25 +312,7 @@ const handleCreateNewFolder = () => {
   }
 
   if (!targetDir) return
-
-  // Generate unique name by checking existing contents
-  const existingFiles = targetDir === baseDirectory.value
-    ? rootFiles.value
-    : (dirContents.value[targetDir] || [])
-  const existingNames = new Set(existingFiles.map(f => f.name))
-
-  let folderName = 'New Folder'
-  if (existingNames.has(folderName)) {
-    let counter = 2
-    while (existingNames.has(`New Folder (${counter})`)) {
-      counter++
-    }
-    folderName = `New Folder (${counter})`
-  }
-
-  const newPath = `${targetDir}/${folderName}`
-  pendingRenamePath.value = newPath
-  explorerActor?.send({ type: 'explorer.CREATE_DIRECTORY', path: newPath })
+  createFolderIn(targetDir)
 }
 
 const handleEmptySpaceClick = (e: MouseEvent) => {
