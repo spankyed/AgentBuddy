@@ -812,9 +812,6 @@ const threadsState = setup({
         response,
       });
     },
-    // No-op placeholder — the old resumeStreamingStatusIfApproved hack is
-    // eliminated: the backend now pushes SET_CHAT_STATE explicitly on
-    // tool approval, so the pause button reappears automatically.
     updateMessageState: assign(({ context, event }) => {
       const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event) as any;
       const { messageId } = typedEvent;
