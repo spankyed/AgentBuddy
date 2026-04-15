@@ -16,14 +16,6 @@ const migrations: Migration[] = [m010, m020];
 export function runMigrations(): void {
   let current = settingsQueries.getInternalSettings().version || '0.0.0';
 
-  // Legacy normalization: users who ran pre-release builds had phantom
-  // version strings from old defaults.ts (before migration system existed).
-  // These users have never run any migrations, so reset to force all to run.
-  // Safe because all migrations are idempotent.
-  if (current === '0.1.0') {
-    current = '0.0.0';
-  }
-
   for (const m of migrations) {
     if (m.target > current) {
       console.log(`[migration] Running ${m.target}: ${m.description}`);
