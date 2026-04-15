@@ -3,7 +3,7 @@ import * as path from 'path';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
 import { APP_VERSION } from '@/version';
 
-const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'src', 'settings.json');
+const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'dist', 'compiled-settings.json');
 
 const loadDefaults = (): SettingsData => {
   const raw = fs.readFileSync(SETTINGS_PATH, 'utf-8');

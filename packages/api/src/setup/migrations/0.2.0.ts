@@ -84,5 +84,16 @@ export const migration: Migration = {
     if (codeSettings && codeSettings.maxTerminals === undefined) {
       settingsCommands.updateSettings('plugin', 'code', ['maxTerminals'], 25);
     }
+
+    // 6. Rename general.misc → general.app and move hotkeys into app
+    const general = data.general;
+    const existingApp = (general as any)?.app ?? (general as any)?.misc ?? {};
+    const hotkeys = (general as any)?.hotkeys;
+
+    if (hotkeys && !existingApp.hotkeys) {
+      existingApp.hotkeys = hotkeys;
+    }
+
+    settingsCommands.updateSettings('general', 'app', [], existingApp);
   },
 };

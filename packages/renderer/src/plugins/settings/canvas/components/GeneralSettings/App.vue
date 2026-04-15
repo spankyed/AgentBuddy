@@ -2,10 +2,18 @@
   <div class="max-w-3xl">
     <!-- Header Section -->
     <div class="mb-8">
-      <h2 class="text-xl font-semibold text-white mb-2">Miscellaneous</h2>
+      <h2 class="text-xl font-semibold text-white mb-2">App</h2>
       <p class="text-sm text-neutral-500">
-        Import setup packs and other configuration options.
+        Import setup packs, configure hotkeys, and manage app data.
       </p>
+    </div>
+
+    <!-- Hotkeys Section -->
+    <div class="mb-8">
+      <Hotkeys
+        :settings="props.settings?.hotkeys"
+        @update-setting="onHotkeyUpdate"
+      />
     </div>
 
     <!-- Import Setup Pack -->
@@ -88,6 +96,26 @@ import { applicationState } from '@/main'
 import { PackageOpen } from 'lucide-vue-next'
 import type { SetupPackType } from '@app/api'
 import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
+import Hotkeys from './Hotkeys.vue'
+
+interface Props {
+  settings?: any
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  settings: null
+})
+
+const emit = defineEmits<{
+  'update-setting': [{ path: string[]; value: any }]
+}>()
+
+function onHotkeyUpdate(event: { path: string[]; value: any }) {
+  emit('update-setting', {
+    path: ['hotkeys', ...event.path],
+    value: event.value
+  })
+}
 
 const actor = applicationState.system.get('settings')
 

@@ -19,21 +19,22 @@ const settings: SettingsData = {
         'gh': '',
       },
     },
-    hotkeys: {
-      switchPluginUp: {
-        key: 'ArrowUp',
-        modifiers: ['cmd', 'option']
-      },
-      switchPluginDown: {
-        key: 'ArrowDown',
-        modifiers: ['cmd', 'option']
-      },
-      toggleInspectionPanel: {
-        key: 'b',
-        modifiers: ['cmd']
+    app: {
+      hotkeys: {
+        switchPluginUp: {
+          key: 'ArrowUp',
+          modifiers: ['cmd', 'option']
+        },
+        switchPluginDown: {
+          key: 'ArrowDown',
+          modifiers: ['cmd', 'option']
+        },
+        toggleInspectionPanel: {
+          key: 'b',
+          modifiers: ['cmd']
+        }
       }
     },
-    misc: {},
     projects: []
   },
   plugins: {

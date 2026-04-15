@@ -20,8 +20,7 @@ export interface SettingsData {
 export interface GeneralSettings {
   personal: PersonalInfo;
   secrets: Secrets;
-  hotkeys: ApplicationHotkeys;
-  misc: MiscSettings;
+  app: AppSettings;
   projects: Project[];
 }
 
@@ -71,8 +70,8 @@ export interface ApplicationHotkeys {
   custom?: CustomHotkey[];
 }
 
-export interface MiscSettings {
-  // Empty for now, to be extended later
+export interface AppSettings {
+  hotkeys: ApplicationHotkeys;
 }
 
 // Project definition

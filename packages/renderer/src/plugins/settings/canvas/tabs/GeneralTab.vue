@@ -45,11 +45,10 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { User, Key, Keyboard, Settings, CheckCircle, Briefcase } from 'lucide-vue-next'
+import { User, Key, Settings, CheckCircle, Briefcase } from 'lucide-vue-next'
 import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
 import Secrets from '../components/GeneralSettings/Secrets.vue'
-import Hotkeys from '../components/GeneralSettings/Hotkeys.vue'
-import Misc from '../components/GeneralSettings/Misc.vue'
+import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 
@@ -68,9 +67,8 @@ const currentSettings = computed(() => {
   const settingsMap = {
     personal: settings.value.general.personal,
     secrets: settings.value.general.secrets,
-    hotkeys: settings.value.general.hotkeys,
     projects: settings.value.general.projects,
-    misc: settings.value.general.misc
+    app: settings.value.general.app
   }
 
   return settingsMap[generalNavItem.value as keyof typeof settingsMap]
@@ -80,21 +78,19 @@ const currentSettings = computed(() => {
 const componentMap: Record<string, any> = {
   personal: PersonalInfo,
   secrets: Secrets,
-  hotkeys: Hotkeys,
   projects: Projects,
-  misc: Misc
+  app: App
 }
 
 const navItems = [
   { id: 'secrets', label: 'Providers', icon: Key },
   { id: 'projects', label: 'Projects', icon: Briefcase },
   { id: 'personal', label: 'Personal', icon: User },
-  { id: 'hotkeys', label: 'Hotkeys', icon: Keyboard },
-  { id: 'misc', label: 'Misc', icon: Settings },
+  { id: 'app', label: 'App', icon: Settings },
 ]
 
 const selectNavItem = (itemId: string) => {
-  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc' })
+  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'projects' | 'app' })
 }
 
 // Handle update events from child components
@@ -103,9 +99,8 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
   const labelMap = {
     personal: 'personal',
     secrets: 'secrets',
-    hotkeys: 'hotkeys',
     projects: 'projects',
-    misc: 'misc'
+    app: 'app'
   } as const
 
   const currentNavItem = generalNavItem.value as keyof typeof labelMap

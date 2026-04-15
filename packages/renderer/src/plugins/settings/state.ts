@@ -58,13 +58,13 @@ export interface SettingsContext {
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   setupPackImport: SetupPackImport;
   activeTab: 'general' | 'plugins' | 'help';
-  generalNavItem: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc';
+  generalNavItem: 'personal' | 'secrets' | 'projects' | 'app';
   selectedPluginId: string | null;
   isLoading: boolean;
 }
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
-  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'hotkeys' | 'projects' | 'misc' }
+  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'app' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'SETTINGS.RESET' }

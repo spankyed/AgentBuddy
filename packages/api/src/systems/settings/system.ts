@@ -94,7 +94,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
-  | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['hotkeys'] }
+  | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['app']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
   | { type: 'SETUP_PACK_IMPORTED'; result: SeedResult }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
@@ -134,7 +134,7 @@ export const settingsSystem = setup({
       // Send hotkeys to the application
       system.get(bus).send(emit('application', {
         type: 'APPLICATION_HOTKEYS' as const,
-        hotkeys: data.general.hotkeys
+        hotkeys: data.general.app.hotkeys
       }));
       
       // Send last active plugin to application for restoration
@@ -210,7 +210,7 @@ export const settingsSystem = setup({
       if (ev.entityType === 'general' && (ev.label === 'hotkeys' || ev.path[0] === 'hotkeys')) {
         system.get(bus).send(emit('application', {
           type: 'APPLICATION_HOTKEYS',
-          hotkeys: data.general.hotkeys
+          hotkeys: data.general.app.hotkeys
         }));
       }
       
