@@ -31,6 +31,7 @@
           :prefill-text="prefillText"
           :is-streaming="isWorking"
           :modes="modes"
+          :hotkeys="hotkeys"
           :quick-prompts="quickPrompts"
           :quick-prompt-cursor="quickPromptCursor"
           @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
@@ -121,6 +122,7 @@ const recentThreads = useSelector(actor, (state) => (state.context.recentThreads
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
+const hotkeys = useSelector(actor, (state) => state.context.hotkeys)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
 const chatStates = useSelector(actor, (state) => state.context.chatStates)

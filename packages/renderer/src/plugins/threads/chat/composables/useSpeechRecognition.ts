@@ -74,6 +74,17 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
     }
   }
 
+  async function start() {
+    if (!api || !isSupported.value || isListening.value || pending.value) return
+    try {
+      pending.value = true
+      await api.start(options.lang || 'en-US')
+    } catch (err) {
+      pending.value = false
+      handleError(err, 'Speech recognition error')
+    }
+  }
+
   async function stop() {
     if (!api || !isListening.value) return
     try {
@@ -90,5 +101,5 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
     removeListener?.()
   })
 
-  return { isSupported, isListening, toggle, stop }
+  return { isSupported, isListening, toggle, start, stop }
 }

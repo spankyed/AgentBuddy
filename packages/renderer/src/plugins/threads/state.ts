@@ -786,12 +786,8 @@ const threadsState = setup({
       trpc.bus.send.mutate({ systemId: id, type: 'REJECT_TODO_LIST', artifactId });
     },
     handleHotkey: createHotkeyProcessor({
-      textToSpeech: 'TEXT_TO_SPEECH',
       quickPrompts: 'TOGGLE_QUICK_PROMPTS',
     }),
-    textToSpeech: () => {
-      console.log('[Threads] Text-to-speech triggered (stub)');
-    },
     openQuickPromptsAtCursor: assign(() => ({
       quickPromptCursor: { x: mouseX, y: mouseY },
     })),
@@ -1019,7 +1015,6 @@ const threadsState = setup({
 
     // ---- Chat/agent events (always active regardless of view state) ----
     HOTKEY_PRESSED: { actions: ['handleHotkey'] },
-    TEXT_TO_SPEECH: { actions: 'textToSpeech' },
     OPEN_QUICK_PROMPTS: { actions: 'openQuickPromptsAtCursor' },
     CLOSE_QUICK_PROMPTS: { actions: 'closeQuickPrompts' },
     TOGGLE_QUICK_PROMPTS: [

@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, Hash, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
@@ -184,6 +184,7 @@ import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import StatusIndicator from './status-indicator.vue'
 import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from '@app/api'
 import { commandSuggestionPluginKey } from '@/core/components/tiptap/command-suggestion-plugin'
+import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@/core/utils/hotkeys'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
 
 interface ContextReference {
@@ -198,6 +199,7 @@ const props = defineProps<{
   currentMode: string
   currentPhase?: string
   modes: AgentMode[]
+  hotkeys?: HotkeysMap
   quickPrompts?: QuickPrompt[]
   quickPromptCursor?: { x: number; y: number } | null
   disabled?: boolean
@@ -347,14 +349,46 @@ function onHistoryNext() {
   }
 }
 
-const { isSupported: speechSupported, isListening, toggle: toggleSpeech } = useSpeechRecognition({
+const { isSupported: speechSupported, isListening, toggle: toggleSpeech, start: startSpeech, stop: stopSpeech } = useSpeechRecognition({
   onResult(transcript) {
     const editor = tiptapRef.value?.editor
     if (!editor) return
     const trimmed = transcript.trim()
     if (!trimmed) return
-    editor.commands.insertContent(trimmed + ' ')
+    editor.commands.insertContent(trimmed + '. ')
   },
+})
+
+// Push-to-talk: start on keydown, stop on keyup (uses configured hotkey)
+function toHotkeyEvent(e: KeyboardEvent): HotkeyEvent {
+  return {
+    type: 'HOTKEY_PRESSED',
+    key: e.key,
+    metaKey: e.metaKey,
+    ctrlKey: e.ctrlKey,
+    altKey: e.altKey,
+    shiftKey: e.shiftKey,
+    preventDefault: () => e.preventDefault(),
+  }
+}
+const handleVoiceKeydown = (e: KeyboardEvent) => {
+  const hotkey = props.hotkeys?.textToSpeech
+  if (!hotkey) return
+  if (matchesHotkey(toHotkeyEvent(e), hotkey)) {
+    e.preventDefault()
+    startSpeech()
+  }
+}
+const handleVoiceKeyup = (e: KeyboardEvent) => {
+  if (isListening.value) stopSpeech()
+}
+onMounted(() => {
+  window.addEventListener('keydown', handleVoiceKeydown)
+  window.addEventListener('keyup', handleVoiceKeyup)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleVoiceKeydown)
+  window.removeEventListener('keyup', handleVoiceKeyup)
 })
 
 const leftButtons = computed<ActionButton[]>(() => {

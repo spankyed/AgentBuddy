@@ -106,7 +106,7 @@ export const defaultSettings: SettingsData = {
           // { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
         ],
         hotkeys: {
-          textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
+          textToSpeech: { key: 'r', modifiers: ['cmd'], global: true },
           quickPrompts: { key: 'd', modifiers: ['cmd'], global: true }
         },
         quickPrompts: [
