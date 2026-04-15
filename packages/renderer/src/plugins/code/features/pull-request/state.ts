@@ -426,11 +426,10 @@ export const pullRequestState = setup({
       }
     },
 
-    checkoutBase: ({ context, self, system }) => {
+    checkoutBase: ({ context, self }) => {
       if (!context.selectedPR?.baseRefName) return
       updateParentState(self, { selectedPanel: 'commit' })
-      system.get('commit')?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: context.selectedPR.baseRefName })
-      system.get('commit')?.send({ type: 'commit.CHECKOUT_BRANCH' })
+      sendToBackend('commit.CHECKOUT_BRANCH', { branchName: context.selectedPR.baseRefName })
     },
 
     handleBranchDeleted: assign({
