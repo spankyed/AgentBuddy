@@ -104,7 +104,7 @@
                     v-model="editingText"
                     rows="1"
                     class="flex-1 min-w-0 px-0 py-0.5 text-sm bg-transparent border-none text-white focus:outline-none resize-none overflow-hidden"
-                    @input="autoResizeAndUpdate($event, prompt.id)"
+                    @input="autoResize($event)"
                     @blur="finishEdit(prompt.id)"
                     @keydown.enter.exact.prevent="finishEdit(prompt.id)"
                     @keydown.escape.prevent="cancelEdit"
@@ -331,11 +331,6 @@ function resizeTextarea(el: HTMLTextAreaElement) {
 
 function autoResize(event: Event) {
   resizeTextarea(event.target as HTMLTextAreaElement)
-}
-
-function autoResizeAndUpdate(event: Event, id: string) {
-  resizeTextarea(event.target as HTMLTextAreaElement)
-  commitEdit(id)
 }
 
 function addPrompt() {
