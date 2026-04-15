@@ -166,6 +166,10 @@ const props = defineProps<{
 
 const content = computed(() => props.artifact.content)
 const threadsActor = applicationState.system.get(threadsId)
+const currentThreadId = useSelector(
+  threadsActor,
+  (state: any) => state.context.currentThread?.id as string | undefined,
+)
 
 // Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
 const recentTools = computed(() =>
@@ -173,9 +177,13 @@ const recentTools = computed(() =>
 )
 
 const settings = useSelector(threadsActor, (state: any) => state.context.settings);
+const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides);
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates;
-  return configs?.find((c: any) => c.id === content.value.chatState);
+  const threadId = currentThreadId.value ?? '';
+  const override = overrides.value?.[threadId];
+  const activeId = (override && override.expiresAt > Date.now()) ? override.id : content.value.chatState;
+  return configs?.find((c: any) => c.id === activeId);
 });
 
 const truncatedSessionId = computed(() => {
@@ -255,15 +263,6 @@ const permissionMode = computed<PermissionMode>(
 
 const permissionDescription = computed(
   () => permissionOptions.find(o => o.value === permissionMode.value)?.description ?? '',
-)
-
-// Read the current thread id from the threads actor's context so we can
-// scope the permission-mode update correctly. Artifacts don't carry a
-// threadId on their own — the session artifact is scoped to whichever
-// thread is currently open, and that's what the threads state tracks.
-const currentThreadId = useSelector(
-  threadsActor,
-  (state: any) => state.context.currentThread?.id as string | undefined,
 )
 
 function selectPermissionMode(mode: PermissionMode) {

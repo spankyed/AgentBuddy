@@ -4694,6 +4694,12 @@ declare const events: {
         chatState: string;
         pluginId: "threads";
     } | {
+        type: "FLASH_CHAT_STATE";
+        threadId: string;
+        stateId: string;
+        durationMs?: number | undefined;
+        pluginId: "threads";
+    } | {
         type: "COMMANDS_UPDATED";
         commands: CommandItem[];
         pluginId: "threads";

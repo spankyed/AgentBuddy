@@ -36,13 +36,18 @@ import { id, type ThreadsState } from '@/plugins/threads/state';
 const actor: ThreadsState = applicationState.system.get(id);
 const settings = useSelector(actor, (state) => state.context.settings);
 const chatStates = useSelector(actor, (state) => state.context.chatStates);
+const overrides = useSelector(actor, (state) => state.context.chatStateOverrides);
 const currentThread = useSelector(actor, (state) => state.context.currentThread);
 
 const chatState = computed(() => chatStates.value[currentThread.value?.id ?? ''] || 'idle');
 
-const stateConfig = computed(() =>
-  settings.value?.chatStates?.find(c => c.id === chatState.value)
-);
+const stateConfig = computed(() => {
+  const configs = settings.value?.chatStates;
+  const threadId = currentThread.value?.id ?? '';
+  const override = overrides.value[threadId];
+  const activeId = (override && override.expiresAt > Date.now()) ? override.id : chatState.value;
+  return configs?.find(c => c.id === activeId);
+});
 
 const isAnimated = computed(() => stateConfig.value?.colorful ?? false);
 </script>

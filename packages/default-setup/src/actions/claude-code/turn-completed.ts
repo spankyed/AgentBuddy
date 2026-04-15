@@ -71,6 +71,14 @@ export async function action(
   }));
   updateChatState(services, threadId as EntityId, 'idle');
 
+  // Disabled: hadErrors includes non-critical tool failures (grep no results, bash exit code).
+  // Enable once we distinguish process-level errors from routine tool errors.
+  // if (hadErrors) {
+  //   services.emitter.sendToPlugin('threads', {
+  //     type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'error', durationMs: 3000,
+  //   });
+  // }
+
   // ─── Diff artifact ────────────────────────────────────────────────
   let artifactId: string | undefined;
   try {

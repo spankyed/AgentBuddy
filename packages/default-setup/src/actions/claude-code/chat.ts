@@ -295,6 +295,9 @@ export async function action(
       (services.cli as any).claudeCode.clearHandle(threadId);
       setRunning(services, threadId, false);
       updateChatState(services, threadId, 'idle');
+      services.emitter.sendToPlugin('threads', {
+        type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
+      });
     });
 
     return { success: true, streaming: true };
@@ -303,6 +306,9 @@ export async function action(
     log.error('chat action failed to start query', { message, stack: err?.stack });
     toolActivity.finalise('error');
     updateChatState(services, threadId, 'idle');
+    services.emitter.sendToPlugin('threads', {
+      type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
+    });
     writer.finalize(`⚠️ ${message}`);
     setRunning(services, threadId, false);
     return { success: false, error: message, messageId: currentMessageId };

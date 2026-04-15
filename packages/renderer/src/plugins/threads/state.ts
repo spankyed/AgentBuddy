@@ -114,6 +114,7 @@ type UIEvent =
   | { type: 'CLEAR_THREAD' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
+  | { type: 'CLEAR_CHAT_STATE_OVERRIDE'; threadId: string }
   | { type: 'SELECT_TAB'; tabId: string }
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
@@ -182,6 +183,7 @@ interface ThreadsContext {
   messageInput: string;
   pendingActionId?: string;
   chatStates: Record<string, ChatState>;
+  chatStateOverrides: Record<string, { id: string; expiresAt: number }>;
   tabs: Tab[];
   activeTabId: string;
   mode: string;
@@ -204,6 +206,10 @@ const threadsState = setup({
       const ANIMATION_DURATION = 1000;
       await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
       system.get(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
+    }),
+    clearExpiredOverride: fromPromise<void, { threadId: string; durationMs: number }>(async ({ input, system }) => {
+      await new Promise(resolve => setTimeout(resolve, input.durationMs));
+      system.get(id).send({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId });
     }),
   },
   actions: {
@@ -478,6 +484,11 @@ const threadsState = setup({
     setChatState: assign(({ context, event }) => {
       const { threadId, chatState } = typeOf('SET_CHAT_STATE', event);
       return { chatStates: { ...context.chatStates, [threadId]: chatState } as Record<string, ChatState> };
+    }),
+    flashChatState: assign(({ context, event }) => {
+      const { threadId, stateId, durationMs } = typeOf('FLASH_CHAT_STATE', event);
+      const expiresAt = Date.now() + (durationMs ?? 3000);
+      return { chatStateOverrides: { ...context.chatStateOverrides, [threadId]: { id: stateId, expiresAt } } };
     }),
     setMode: assign(({ context, event }) => {
       const newMode = typeOf('SET_MODE', event).mode;
@@ -898,6 +909,7 @@ const threadsState = setup({
     messageInput: "",
     pendingActionId: undefined,
     chatStates: {} as Record<string, ChatState>,
+    chatStateOverrides: {} as Record<string, { id: string; expiresAt: number }>,
     tabs: [],
     activeTabId: 'dashboard',
     mode: '',
@@ -1036,6 +1048,24 @@ const threadsState = setup({
     SEND_MESSAGE: { actions: 'sendMessage' },
     SEND_COMMAND: { actions: 'sendCommand' },
     SET_CHAT_STATE: { actions: 'setChatState' },
+    FLASH_CHAT_STATE: {
+      actions: [
+        'flashChatState',
+        spawnChild('clearExpiredOverride', {
+          input: ({ event }: any) => ({
+            threadId: event.threadId,
+            durationMs: event.durationMs ?? 3000,
+          }),
+        }),
+      ],
+    },
+    CLEAR_CHAT_STATE_OVERRIDE: {
+      actions: assign(({ context, event }) => {
+        const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
+        const { [threadId]: _, ...rest } = context.chatStateOverrides;
+        return { chatStateOverrides: rest };
+      }),
+    },
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },
     CLEAR_THREAD: { actions: 'clearThread' },
