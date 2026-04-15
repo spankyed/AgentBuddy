@@ -14,7 +14,7 @@ export const meta: ActionMeta = {
   category: 'claude-code',
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },
-    response: { type: 'object', description: 'File-picker response (directory path)', required: true },
+    response: { type: 'any', description: 'File-picker response (string | string[] | { path, toggles })', required: true },
     pendingDirectorySelect: { type: 'object', description: 'Stored original message params', required: true },
   },
 };
