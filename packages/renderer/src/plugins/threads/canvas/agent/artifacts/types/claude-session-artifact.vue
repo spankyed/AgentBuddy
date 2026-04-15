@@ -17,10 +17,11 @@
         <span class="flex items-center gap-1.5">
           <span
             class="w-2 h-2 rounded-full"
-            :class="statusDotClass"
+            :class="stateConfig?.colorful ? 'animate-pulse' : ''"
+            :style="{ backgroundColor: stateConfig?.color ?? '#6B7280' }"
             :title="content.chatState"
           />
-          <span class="text-xs text-neutral-400 capitalize">{{ statusLabel }}</span>
+          <span class="text-xs text-neutral-400 capitalize">{{ stateConfig?.label ?? content.chatState }}</span>
         </span>
       </div>
 
@@ -164,28 +165,18 @@ const props = defineProps<{
 }>()
 
 const content = computed(() => props.artifact.content)
+const threadsActor = applicationState.system.get(threadsId)
 
 // Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
 const recentTools = computed(() =>
   content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
 )
 
-const statusDotClass = computed(() => {
-  switch (content.value.chatState) {
-    case 'working': return 'bg-green-500 animate-pulse'
-    case 'paused': return 'bg-yellow-500 animate-pulse'
-    case 'idle': return 'bg-neutral-500'
-    default: return 'bg-neutral-500'
-  }
-})
-
-const statusLabel = computed(() => {
-  switch (content.value.chatState) {
-    case 'working': return 'Streaming'
-    case 'paused': return 'Awaiting approval'
-    default: return 'Idle'
-  }
-})
+const settings = useSelector(threadsActor, (state: any) => state.context.settings);
+const stateConfig = computed(() => {
+  const configs = settings.value?.chatStates;
+  return configs?.find((c: any) => c.id === content.value.chatState);
+});
 
 const truncatedSessionId = computed(() => {
   const id = content.value.sessionId
@@ -270,7 +261,6 @@ const permissionDescription = computed(
 // scope the permission-mode update correctly. Artifacts don't carry a
 // threadId on their own — the session artifact is scoped to whichever
 // thread is currently open, and that's what the threads state tracks.
-const threadsActor = applicationState.system.get(threadsId)
 const currentThreadId = useSelector(
   threadsActor,
   (state: any) => state.context.currentThread?.id as string | undefined,

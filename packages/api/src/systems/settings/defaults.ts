@@ -131,6 +131,11 @@ export const defaultSettings: SettingsData = {
         { name: 'Documentation', color: '#6366F1' },
         { name: 'claude-session', color: '#7C3AED' },
       ],
+      chatStates: [
+        { id: 'idle',    label: 'Idle',    color: '#6B7280', colorful: false },
+        { id: 'working', label: 'Working', color: '#FACC15', colorful: true },
+        { id: 'paused',  label: 'Paused',  color: '#F59E0B', colorful: false },
+      ],
       showOnlyRootThreads: false,
       clickToChat: false
     },

@@ -117,10 +117,19 @@ export interface ThreadTagOption {
   color?: string; // Optional hex color value
 }
 
+// Chat state indicator config
+export interface ChatStateConfig {
+  id: string;
+  label: string;
+  color: string;
+  colorful: boolean;
+}
+
 // Threads plugin settings
 export interface ThreadsSettings {
   statuses: ThreadStatusOption[];
   tags: ThreadTagOption[];
+  chatStates: ChatStateConfig[];
   showOnlyRootThreads: boolean;
   clickToChat: boolean;
 }
