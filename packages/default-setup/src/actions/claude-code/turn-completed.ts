@@ -66,7 +66,7 @@ export async function action(
   updateSessionArtifact(services, threadId as EntityId, (prev) => ({
     turns: (prev.turns ?? 0) + 1,
     totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
-    toolCallCount: toolCallCount ?? prev.toolCallCount ?? 0,
+    toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
     lastTurnAt: Date.now(),
   }));
   updateChatState(services, threadId as EntityId, 'idle');
