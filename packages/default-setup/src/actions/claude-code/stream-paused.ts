@@ -9,7 +9,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Stream Paused',
@@ -32,9 +32,7 @@ export async function action(
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  updateSessionArtifact(services, threadId as EntityId, {
-    status: 'awaiting-permission',
-  });
+  updateChatState(services, threadId as EntityId, 'paused');
 
   return { success: true, toolName };
 }

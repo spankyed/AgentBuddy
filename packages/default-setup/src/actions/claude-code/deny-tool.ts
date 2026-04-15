@@ -5,7 +5,7 @@
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { killTurn } from './_helpers/thread-context';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Deny Tool',
@@ -25,7 +25,7 @@ export async function action(
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
   killTurn(services, threadId);
-  updateSessionArtifact(services, threadId as EntityId, { status: 'idle' });
+  updateChatState(services, threadId as EntityId, 'idle');
 
   return { success: true };
 }

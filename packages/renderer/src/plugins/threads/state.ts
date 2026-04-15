@@ -63,7 +63,7 @@ const defaultChatThread: AgentThreadData = {
   artifacts: [],
 };
 
-type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
+type ChatState = 'idle' | 'working' | 'paused';
 
 // ---- Event types ----
 
@@ -113,8 +113,7 @@ type UIEvent =
   | { type: 'SEND_COMMAND'; command: string; text: string; references?: MessageReferences }
   | { type: 'CLEAR_THREAD' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
-  | { type: 'SET_STATUS_COLOR'; color: StatusColor }
-  | { type: 'RESET_STATUS_COLOR'; }
+  | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'SELECT_TAB'; tabId: string }
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
@@ -182,7 +181,7 @@ interface ThreadsContext {
   recentThreads: ThreadEntity[];
   messageInput: string;
   pendingActionId?: string;
-  statusColor: StatusColor;
+  chatStates: Record<string, ChatState>;
   tabs: Tab[];
   activeTabId: string;
   mode: string;
@@ -205,10 +204,6 @@ const threadsState = setup({
       const ANIMATION_DURATION = 1000;
       await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
       system.get(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
-    }),
-    resetStatusColorAfterDelay: fromPromise<void, void>(async ({ system }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      system.get(id).send({ type: 'RESET_STATUS_COLOR' });
     }),
   },
   actions: {
@@ -480,9 +475,9 @@ const threadsState = setup({
         threadId,
       });
     },
-    setStatusColor: assign((_, params?: { color: StatusColor }) => {
-      if (params?.color) return { statusColor: params.color };
-      return { statusColor: 'bg-zinc-500' as StatusColor };
+    setChatState: assign(({ context, event }) => {
+      const { threadId, chatState } = typeOf('SET_CHAT_STATE', event);
+      return { chatStates: { ...context.chatStates, [threadId]: chatState } as Record<string, ChatState> };
     }),
     setMode: assign(({ context, event }) => {
       const newMode = typeOf('SET_MODE', event).mode;
@@ -593,12 +588,13 @@ const threadsState = setup({
         });
       }
 
-      // Detect if the thread has an active streaming session so the pause
-      // button shows immediately (programmatic chat invocations skip SEND_MESSAGE).
+      // Initialize chatState from the session artifact so the indicator
+      // shows the correct state immediately on thread switch.
       const sessionArtifact = ((thread as any).artifacts ?? []).find(
         (a: any) => a.artifactType === 'claude-session',
       );
-      const isStreaming = (sessionArtifact?.content as any)?.status === 'streaming';
+      const content = sessionArtifact?.content as any;
+      const chatState: ChatState = content?.chatState ?? 'idle';
 
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
@@ -610,13 +606,13 @@ const threadsState = setup({
           currentThread: thread,
           mode: thread.forcedMode,
           phase: newPhase,
-          ...(isStreaming && { statusColor: 'bg-yellow-500' as StatusColor }),
+          chatStates: { ...context.chatStates, [thread.id as string]: chatState },
         };
       }
 
       return {
         currentThread: thread,
-        ...(isStreaming && { statusColor: 'bg-yellow-500' as StatusColor }),
+        chatStates: { ...context.chatStates, [thread.id as string]: chatState },
       };
     }),
     setRefreshThreadsData: assign(({ event }) => {
@@ -800,21 +796,9 @@ const threadsState = setup({
         response,
       });
     },
-    // HACK: statusColor drives the pause button visibility, but it's only
-    // set to yellow by SEND_MESSAGE / SEND_COMMAND (user-initiated). When
-    // the user approves a tool via the approval block, the CLI resumes
-    // streaming but nothing re-sets statusColor — so the pause button
-    // disappears. This action re-sets it on approval responses so the
-    // button reappears while the stream is active. Ideally statusColor
-    // would be derived from the session artifact's `status` field, but
-    // that would require a larger refactor of the streaming state model.
-    resumeStreamingStatusIfApproved: assign(({ event }) => {
-      const { response } = typeOf('RESPOND_TO_BLOCK_INTERACTION', event);
-      if (response && typeof response === 'object' && !Array.isArray(response) && (response as any).approved === true) {
-        return { statusColor: 'bg-yellow-500' as StatusColor };
-      }
-      return {};
-    }),
+    // No-op placeholder — the old resumeStreamingStatusIfApproved hack is
+    // eliminated: the backend now pushes SET_CHAT_STATE explicitly on
+    // tool approval, so the pause button reappears automatically.
     updateMessageState: assign(({ context, event }) => {
       const typedEvent = typeOf('UPDATE_MESSAGE_STATE', event) as any;
       const { messageId } = typedEvent;
@@ -913,7 +897,7 @@ const threadsState = setup({
     recentThreads: [],
     messageInput: "",
     pendingActionId: undefined,
-    statusColor: 'bg-zinc-500' as StatusColor,
+    chatStates: {} as Record<string, ChatState>,
     tabs: [],
     activeTabId: 'dashboard',
     mode: '',
@@ -1045,24 +1029,13 @@ const threadsState = setup({
     RESPOND_TO_BLOCK_INTERACTION: {
       actions: [
         'respondToBlockInteraction',
-        'resumeStreamingStatusIfApproved',
       ],
     },
     UPDATE_MESSAGE_STATE: { actions: 'updateMessageState' },
     MESSAGE_ADDED: { actions: 'addMessageToThread' },
-    SEND_MESSAGE: {
-      actions: [
-        'sendMessage',
-        { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
-      ],
-    },
-    SEND_COMMAND: {
-      actions: [
-        'sendCommand',
-        { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
-      ],
-    },
-    RESET_STATUS_COLOR: { actions: 'setStatusColor' },
+    SEND_MESSAGE: { actions: 'sendMessage' },
+    SEND_COMMAND: { actions: 'sendCommand' },
+    SET_CHAT_STATE: { actions: 'setChatState' },
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },
     CLEAR_THREAD: { actions: 'clearThread' },
@@ -1070,20 +1043,13 @@ const threadsState = setup({
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
     PAUSE_TURN: {
-      actions: [
-        'pauseTurn',
-        'setStatusColor', // Reset to idle (bg-zinc-500)
-      ],
+      actions: 'pauseTurn',
     },
     UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
     UPDATE_CLAUDE_WORKTREE: { actions: 'updateClaudeWorktree' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
-      actions: [
-        'finishStream',
-        { type: 'setStatusColor', params: { color: 'bg-green-500' } },
-        spawnChild('resetStatusColorAfterDelay'),
-      ]
+      actions: 'finishStream',
     },
     SELECT_TAB: { actions: 'selectTab' },
     OPEN_THREAD_TAB: { actions: 'openThreadTab' },

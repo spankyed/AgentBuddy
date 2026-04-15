@@ -986,7 +986,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
+type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -4691,6 +4691,11 @@ declare const events: {
         phase: string;
         pluginId: "threads";
     } | {
+        type: "SET_CHAT_STATE";
+        threadId: string;
+        chatState: string;
+        pluginId: "threads";
+    } | {
         type: "COMMANDS_UPDATED";
         commands: CommandItem[];
         pluginId: "threads";
@@ -7296,6 +7301,7 @@ declare const services: {
                 isCommand?: boolean;
                 command?: string;
                 autoHide?: boolean;
+                asideContext?: string;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

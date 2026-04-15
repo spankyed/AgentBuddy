@@ -5,7 +5,7 @@
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { persistClaudeState, setRunning } from './_helpers/thread-context';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState } from './_helpers/session-artifact';
 import { resolvePlanDraft } from './_helpers/plan-artifact';
 
 export const meta: ActionMeta = {
@@ -53,7 +53,7 @@ export async function action(
     persistClaudeState(services, threadId, { pendingControlRequest: undefined });
   }
   setRunning(services, threadId, true);
-  updateSessionArtifact(services, threadId as EntityId, { status: 'streaming' });
+  updateChatState(services, threadId as EntityId, 'working');
 
   return { success: true };
 }

@@ -9,13 +9,13 @@
     <!-- solid dot -->
     <span :class="[
       'block h-3 w-3 rounded-full transition-colors duration-300 ease-in-out',
-      isThinking ? $style['thinking-dot'] : statusColorClass
+      isAnimated ? $style['thinking-dot'] : dotClass
     ]" />
     <!-- glow -->
     <span
       :class="[
         'absolute inset-0 rounded-full scale-[2] transition-colors duration-300 ease-in-out',
-        isThinking ? $style['thinking-glow'] : ['blur-[1px] opacity-40', statusColorClass]
+        isAnimated ? $style['thinking-glow'] : ['blur-[1px] opacity-40', dotClass]
       ]"
     />
   </span>
@@ -23,38 +23,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
-import ChatMessage from './message.vue'
-import ChatInput from './input.vue'
+import { computed } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
 
 const actor: ThreadsState = applicationState.system.get(id);
-const messages = useSelector(actor, (state) => state.context.currentThread?.messages || []);
+const chatStates = useSelector(actor, (state) => state.context.chatStates);
+const currentThread = useSelector(actor, (state) => state.context.currentThread);
 
-// const statusColorClass = computed(() => {
-//   switch (status.value) {
-//     case 'running':   return 'bg-green-500'
-//     case 'planning':  return 'bg-blue-500'
-//     case 'idle':      return 'bg-zinc-400'
-//     case 'error':     return 'bg-red-500'
-//     default:          return 'bg-gray-500'
-//   }
-// })
-// const statusColorClass = computed(() => 'bg-green-500')
-// const statusColorClass = computed(() => 'bg-purple-700/80')
-// Use the statusColor from the state machine
-const statusColorClass = useSelector(actor, (state) => state.context.statusColor)
-
-const isThinking = computed(() => statusColorClass.value === 'bg-yellow-500')
+const chatState = computed(() => chatStates.value[currentThread.value?.id ?? ''] || 'idle');
+const isAnimated = computed(() => chatState.value === 'working');
+const dotClass = computed(() => {
+  switch (chatState.value) {
+    case 'working': return ''; // handled by thinking-dot animation
+    case 'paused':  return 'bg-yellow-500';
+    default:        return 'bg-zinc-500';
+  }
+});
 </script>
 
 <style lang="scss" module>
 .status-indicator {
   position: absolute;
-  top: -.4rem;                        // nudge so halo sits half outside the border
-  left: -.4rem;                        // nudge so halo sits half outside the border
+  top: -.4rem;
+  left: -.4rem;
 }
 
 .thinking-dot {

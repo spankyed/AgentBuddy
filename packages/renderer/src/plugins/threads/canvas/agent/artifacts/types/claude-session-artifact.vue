@@ -18,7 +18,7 @@
           <span
             class="w-2 h-2 rounded-full"
             :class="statusDotClass"
-            :title="content.status"
+            :title="content.chatState"
           />
           <span class="text-xs text-neutral-400 capitalize">{{ statusLabel }}</span>
         </span>
@@ -153,7 +153,7 @@ interface SessionContent {
   lastTurnAt: number
   turns: number
   totalCostUsd: number
-  status: 'idle' | 'streaming' | 'awaiting-permission' | 'ended'
+  chatState: 'idle' | 'working' | 'paused'
   toolCallCount: number
   lastTool?: { name: string; summary: string; at: number }
   permissionMode?: PermissionMode
@@ -171,19 +171,19 @@ const recentTools = computed(() =>
 )
 
 const statusDotClass = computed(() => {
-  switch (content.value.status) {
-    case 'streaming': return 'bg-green-500 animate-pulse'
-    case 'awaiting-permission': return 'bg-yellow-500 animate-pulse'
+  switch (content.value.chatState) {
+    case 'working': return 'bg-green-500 animate-pulse'
+    case 'paused': return 'bg-yellow-500 animate-pulse'
     case 'idle': return 'bg-neutral-500'
-    case 'ended': return 'bg-neutral-700'
     default: return 'bg-neutral-500'
   }
 })
 
 const statusLabel = computed(() => {
-  switch (content.value.status) {
-    case 'awaiting-permission': return 'Awaiting approval'
-    default: return content.value.status
+  switch (content.value.chatState) {
+    case 'working': return 'Streaming'
+    case 'paused': return 'Awaiting approval'
+    default: return 'Idle'
   }
 })
 

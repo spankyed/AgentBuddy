@@ -11,7 +11,7 @@
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { persistClaudeState } from './_helpers/thread-context';
 import { resolvePlanDraft, type PlanArtifactContent } from './_helpers/plan-artifact';
-import { ensureSessionArtifact } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Approve Plan Clear Context',
@@ -83,6 +83,7 @@ export async function action(
   // 7. Switch frontend to new thread and set edit phase
   services.chat.openThreadChatAndRefreshRecent(newThreadId);
   services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'edit' });
+  updateChatState(services, newThreadId as EntityId, 'working');
 
   // 8. Fire chat action on new thread (fresh CLI session, no resume)
   await services.action.getAndExecute('Claude Code Chat', {
