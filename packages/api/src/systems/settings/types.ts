@@ -20,7 +20,7 @@ export interface SettingsData {
 export interface GeneralSettings {
   personal: PersonalInfo;
   secrets: Secrets;
-  app: AppSettings;
+  application: AppSettings;
   projects: Project[];
 }
 

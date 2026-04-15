@@ -53,6 +53,8 @@ export interface SeedInclude {
   notes?: SeedIncludeSet;
 }
 
+export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
+
 function shouldSeedAll(inc: SeedIncludeSet | undefined): boolean {
   return inc === undefined || inc === true;
 }
@@ -98,6 +100,8 @@ function seedCollection<T>(opts: {
   update: (id: EARS.EntityId, item: T) => void;
   log: (...args: any[]) => void;
   include?: SeedIncludeSet;
+  mode?: ImportMode;
+  wipe?: () => void;
 }): SeedCounts {
   const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
   const raw = loadJSON<T[]>(opts.file);
@@ -110,13 +114,22 @@ function seedCollection<T>(opts: {
     opts.log(`  ${opts.label} section skipped by include filter`);
     return counts;
   }
+  if (opts.mode === 'wipe-and-replace' && opts.wipe) {
+    opts.wipe();
+    opts.log(`  ${opts.label} wiped`);
+  }
   for (const item of data) {
     const key = opts.getKey(item);
     const existing = opts.findExisting(item);
     if (existing) {
-      opts.update(existing.id, item);
-      opts.log(`  ${opts.label} updated: ${key}`);
-      counts.updated++;
+      if (opts.mode === 'keep-existing') {
+        opts.log(`  ${opts.label} skipped (existing): ${key}`);
+        counts.skipped++;
+      } else {
+        opts.update(existing.id, item);
+        opts.log(`  ${opts.label} updated: ${key}`);
+        counts.updated++;
+      }
     } else {
       opts.create(item);
       opts.log(`  ${opts.label} created: ${key}`);
@@ -326,11 +339,13 @@ function seedFlows(
 export function seedData(options: {
   compiledDir: string;
   include?: SeedInclude;
+  mode?: ImportMode;
   verbose?: boolean;
 }): SeedResult {
   const log = options.verbose ? console.log.bind(console) : () => {};
   const compiledDir = options.compiledDir;
   const include = options.include;
+  const mode = options.mode;
 
   const result: SeedResult = {
     actions: { created: 0, updated: 0, skipped: 0 },
@@ -356,6 +371,8 @@ export function seedData(options: {
     }),
     log,
     include: include?.actions,
+    mode,
+    wipe: () => { for (const e of findAll<ActionEntity>(EARS.Entity.Action)) actionCommands.delete(e.id); },
   });
 
   // --- Prompts ---
@@ -374,6 +391,8 @@ export function seedData(options: {
     }),
     log,
     include: include?.prompts,
+    mode,
+    wipe: () => { for (const e of promptQueries.all()) promptCommands.delete(e.id); },
   });
 
   // --- Flows ---

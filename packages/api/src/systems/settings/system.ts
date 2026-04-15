@@ -10,9 +10,13 @@ import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
 import { z } from 'zod';
 import { threads } from '@/systems/threads/system';
+import * as path from 'path';
 import { seedData, type SeedResult, type SeedInclude } from '@/setup/seed/index';
 import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '@/setup/seed/preview';
 import { testCli, isCliName, clearCliPathCache } from '@/core/helpers/resolve-cli';
+import { resetLmdbFiles } from '@/core/ears/attribute-storage';
+import { createDefaultSettings } from './repository';
+import { runMigrations } from '@/setup/migrations';
 
 const typeOf = safeEvents<ReceivableEvents>();
 
@@ -83,7 +87,10 @@ export const IncomingSettingsEvents = [
       library: z.array(z.string()).nullable(),
       notes: z.array(z.string()).nullable(),
     }).optional(),
+    mode: z.enum(['keep-existing', 'replace-on-collision', 'wipe-and-replace']).optional(),
+    restartBrain: z.boolean().optional(),
   }),
+  busEvent('RESET_APP', {}),
 ] as const
 
 export type SettingsInternalEvents = 
@@ -94,12 +101,13 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
-  | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['app']['hotkeys'] }
+  | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
   | { type: 'SETUP_PACK_IMPORTED'; result: SeedResult }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
   | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
   | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
+  | { type: 'APP_RESET_COMPLETE' }
   | SecretsOutputEvents // Forward secrets events to frontend
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
@@ -134,7 +142,7 @@ export const settingsSystem = setup({
       // Send hotkeys to the application
       system.get(bus).send(emit('application', {
         type: 'APPLICATION_HOTKEYS' as const,
-        hotkeys: data.general.app.hotkeys
+        hotkeys: data.general.application.hotkeys
       }));
       
       // Send last active plugin to application for restoration
@@ -210,7 +218,7 @@ export const settingsSystem = setup({
       if (ev.entityType === 'general' && (ev.label === 'hotkeys' || ev.path[0] === 'hotkeys')) {
         system.get(bus).send(emit('application', {
           type: 'APPLICATION_HOTKEYS',
-          hotkeys: data.general.app.hotkeys
+          hotkeys: data.general.application.hotkeys
         }));
       }
       
@@ -387,12 +395,28 @@ export const settingsSystem = setup({
       const ev = typeOf('IMPORT_SETUP_PACK', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
-        const result = seedData({ compiledDir: ev.directory, include, verbose: true });
+        const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORTED', result }));
+        if (ev.restartBrain) {
+          system.get('brain').send({ type: 'RESTART_BRAIN' });
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         system.get(bus).send(emit(settings, { type: 'SETUP_PACK_IMPORT_FAILED', error: message }));
       }
+    },
+
+    resetApp: ({ system }) => {
+      const DEFAULT_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
+      resetLmdbFiles().then(() => {
+        createDefaultSettings();
+        seedData({ compiledDir: DEFAULT_DIR, verbose: true });
+        runMigrations();
+        system.get('brain').send({ type: 'RESTART_BRAIN' });
+        system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
+      }).catch((err) => {
+        console.error('[settings] Reset app failed:', err);
+      });
     },
 
     completeOnboarding: ({ system }) => {
@@ -456,6 +480,9 @@ export const settingsSystem = setup({
         },
         IMPORT_SETUP_PACK: {
           actions: 'importSetupPack',
+        },
+        RESET_APP: {
+          actions: 'resetApp',
         },
         // Forward incoming SECRETS.CMD.* events to secrets actor
         'SECRETS.CMD.*': {

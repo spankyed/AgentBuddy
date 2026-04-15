@@ -19,7 +19,7 @@ const settings: SettingsData = {
         'gh': '',
       },
     },
-    app: {
+    application: {
       hotkeys: {
         switchPluginUp: {
           key: 'ArrowUp',

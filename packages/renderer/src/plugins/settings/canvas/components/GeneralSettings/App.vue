@@ -9,14 +9,14 @@
     </div>
 
     <!-- Hotkeys Section -->
-    <div class="mb-8">
+    <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6 mb-6">
       <Hotkeys
         :settings="props.settings?.hotkeys"
         @update-setting="onHotkeyUpdate"
       />
     </div>
 
-    <!-- Import Setup Pack -->
+    <!-- Data Management -->
     <div class="space-y-6">
       <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
         <div class="flex items-center gap-2 mb-4">
@@ -49,10 +49,14 @@
           :preview="preview!"
           :selection="selection"
           :expanded="expanded"
+          :import-mode="importMode"
+          :restart-brain="restartBrainFlag"
           :importing="status === 'importing'"
           @toggle-expand="onToggleExpand"
           @toggle-type-all="onToggleTypeAll"
           @toggle-item="onToggleItem"
+          @set-mode="onSetMode"
+          @toggle-restart-brain="onToggleRestartBrain"
           @confirm="onConfirm"
           @cancel="onCancel"
         />
@@ -86,14 +90,47 @@
         </div>
       </div>
     </div>
+
+    <!-- Reset App -->
+    <div class="mt-8 bg-red-900/10 border border-red-800/30 rounded-xl p-6">
+      <div class="flex items-center gap-2 mb-2">
+        <RotateCcw class="w-4 h-4 text-red-400" />
+        <h3 class="text-sm font-medium text-red-400 uppercase tracking-wider">Reset App</h3>
+      </div>
+      <p class="text-sm text-neutral-500 mb-4">
+        Erase all data and restore defaults. This cannot be undone.
+      </p>
+      <button
+        v-if="!confirmingReset"
+        @click="confirmingReset = true"
+        class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+      >
+        Reset App...
+      </button>
+      <div v-else class="flex items-center gap-3">
+        <span class="text-sm text-red-400">Are you sure?</span>
+        <button
+          @click="onResetApp"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+        >
+          Yes, erase everything
+        </button>
+        <button
+          @click="confirmingReset = false"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { PackageOpen } from 'lucide-vue-next'
+import { PackageOpen, RotateCcw } from 'lucide-vue-next'
 import type { SetupPackType } from '@app/api'
 import ImportSetupPackPicker from './ImportSetupPackPicker.vue'
 import Hotkeys from './Hotkeys.vue'
@@ -125,6 +162,8 @@ const status = computed(() => setupPackImport.value?.status ?? 'idle')
 const preview = computed(() => setupPackImport.value?.preview ?? null)
 const selection = computed(() => setupPackImport.value?.selection)
 const expanded = computed(() => setupPackImport.value?.expanded)
+const importMode = computed(() => setupPackImport.value?.importMode ?? 'replace-on-collision')
+const restartBrainFlag = computed(() => setupPackImport.value?.restartBrain ?? false)
 const importResult = computed(() => setupPackImport.value?.result)
 const importError = computed(() => setupPackImport.value?.error)
 
@@ -146,6 +185,14 @@ function onToggleItem(payload: { key: SetupPackType; item: string }) {
   actor.send({ type: 'SETUP_PACK.TOGGLE_ITEM', key: payload.key, item: payload.item })
 }
 
+function onSetMode(mode: string) {
+  actor.send({ type: 'SETUP_PACK.SET_MODE', mode } as any)
+}
+
+function onToggleRestartBrain() {
+  actor.send({ type: 'SETUP_PACK.TOGGLE_RESTART_BRAIN' })
+}
+
 function onConfirm() {
   actor.send({ type: 'SETUP_PACK.CONFIRM_IMPORT' })
 }
@@ -156,5 +203,12 @@ function onCancel() {
 
 function onReset() {
   actor.send({ type: 'SETUP_PACK.RESET_STATUS' })
+}
+
+// Reset App
+const confirmingReset = ref(false)
+
+function onResetApp() {
+  actor.send({ type: 'APP.RESET' })
 }
 </script>

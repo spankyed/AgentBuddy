@@ -68,7 +68,7 @@ const currentSettings = computed(() => {
     personal: settings.value.general.personal,
     secrets: settings.value.general.secrets,
     projects: settings.value.general.projects,
-    app: settings.value.general.app
+    application: settings.value.general.application
   }
 
   return settingsMap[generalNavItem.value as keyof typeof settingsMap]
@@ -79,18 +79,18 @@ const componentMap: Record<string, any> = {
   personal: PersonalInfo,
   secrets: Secrets,
   projects: Projects,
-  app: App
+  application: App
 }
 
 const navItems = [
   { id: 'secrets', label: 'Providers', icon: Key },
   { id: 'projects', label: 'Projects', icon: Briefcase },
   { id: 'personal', label: 'Personal', icon: User },
-  { id: 'app', label: 'App', icon: Settings },
+  { id: 'application', label: 'Application', icon: Settings },
 ]
 
 const selectNavItem = (itemId: string) => {
-  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'projects' | 'app' })
+  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'projects' | 'application' })
 }
 
 // Handle update events from child components
@@ -100,7 +100,7 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
     personal: 'personal',
     secrets: 'secrets',
     projects: 'projects',
-    app: 'app'
+    application: 'application'
   } as const
 
   const currentNavItem = generalNavItem.value as keyof typeof labelMap

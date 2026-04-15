@@ -99,6 +99,38 @@
       </div>
     </div>
 
+    <!-- Import mode -->
+    <div class="flex items-center gap-1 rounded-lg border border-neutral-800 p-0.5">
+      <button
+        v-for="opt in importModes"
+        :key="opt.value"
+        type="button"
+        :disabled="importing"
+        :class="[
+          'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+          importMode === opt.value
+            ? 'bg-neutral-700 text-neutral-200'
+            : 'text-neutral-500 hover:text-neutral-300',
+        ]"
+        @click="emit('set-mode', opt.value)"
+        :title="opt.description"
+      >
+        {{ opt.label }}
+      </button>
+    </div>
+
+    <!-- Restart brain checkbox -->
+    <label class="flex items-center gap-2 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        :checked="restartBrain"
+        :disabled="importing"
+        @change="emit('toggle-restart-brain')"
+        class="w-3.5 h-3.5 accent-blue-600"
+      />
+      <span class="text-xs text-neutral-400">Restart brain after import</span>
+    </label>
+
     <!-- Footer buttons -->
     <div class="flex items-center gap-2 pt-1">
       <button
@@ -139,10 +171,14 @@ import {
 } from 'lucide-vue-next'
 import type { SetupPackPreview, SetupPackType } from '@app/api'
 
+type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'
+
 const props = defineProps<{
   preview: SetupPackPreview
   selection: Record<SetupPackType, string[]>
   expanded: Record<SetupPackType, boolean>
+  importMode: ImportMode
+  restartBrain: boolean
   importing: boolean
 }>()
 
@@ -150,9 +186,17 @@ const emit = defineEmits<{
   (e: 'toggle-expand', key: SetupPackType): void
   (e: 'toggle-type-all', key: SetupPackType): void
   (e: 'toggle-item', payload: { key: SetupPackType; item: string }): void
+  (e: 'set-mode', mode: ImportMode): void
+  (e: 'toggle-restart-brain'): void
   (e: 'confirm'): void
   (e: 'cancel'): void
 }>()
+
+const importModes: { value: ImportMode; label: string; description: string }[] = [
+  { value: 'keep-existing', label: 'Keep existing', description: 'Skip items that already exist' },
+  { value: 'replace-on-collision', label: 'Replace', description: 'Overwrite existing items with imported versions' },
+  { value: 'wipe-and-replace', label: 'Wipe & replace', description: 'Delete all data of selected types, then import fresh' },
+]
 
 interface Row {
   key: SetupPackType

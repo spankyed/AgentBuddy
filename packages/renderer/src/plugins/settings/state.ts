@@ -19,6 +19,8 @@ export type SettingsState = ActorRefFrom<typeof settingsState>
 
 // Use backend types directly
 
+export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
+
 export interface SetupPackImport {
   status: 'idle' | 'previewing' | 'selecting' | 'importing' | 'success' | 'error';
   directory: string | null;
@@ -27,6 +29,8 @@ export interface SetupPackImport {
   selection: Record<SetupPackType, string[]>;
   /** Which type rows are currently expanded in the UI. */
   expanded: Record<SetupPackType, boolean>;
+  importMode: ImportMode;
+  restartBrain: boolean;
   result: any | null;
   error: string | null;
 }
@@ -47,6 +51,8 @@ function freshSetupPack(): SetupPackImport {
     preview: null,
     selection: { ...EMPTY_SELECTION },
     expanded: { ...COLLAPSED },
+    importMode: 'replace-on-collision',
+    restartBrain: false,
     result: null,
     error: null,
   };
@@ -58,13 +64,13 @@ export interface SettingsContext {
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   setupPackImport: SetupPackImport;
   activeTab: 'general' | 'plugins' | 'help';
-  generalNavItem: 'personal' | 'secrets' | 'projects' | 'app';
+  generalNavItem: 'personal' | 'secrets' | 'projects' | 'application';
   selectedPluginId: string | null;
   isLoading: boolean;
 }
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
-  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'app' }
+  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'SETTINGS.RESET' }
@@ -74,15 +80,19 @@ type UIEvent =
   | { type: 'SETUP_PACK.TOGGLE_EXPAND'; key: SetupPackType }
   | { type: 'SETUP_PACK.TOGGLE_TYPE_ALL'; key: SetupPackType }
   | { type: 'SETUP_PACK.TOGGLE_ITEM'; key: SetupPackType; item: string }
+  | { type: 'SETUP_PACK.SET_MODE'; mode: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace' }
+  | { type: 'SETUP_PACK.TOGGLE_RESTART_BRAIN' }
   | { type: 'SETUP_PACK.CONFIRM_IMPORT' }
   | { type: 'SETUP_PACK.CANCEL' }
   | { type: 'SETUP_PACK.RESET_STATUS' }
+  | { type: 'APP.RESET' }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'SETUP_PACK_IMPORTED'; result: any }
   | { type: 'SETUP_PACK_IMPORT_FAILED'; error: string }
   | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
   | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
+  | { type: 'APP_RESET_COMPLETE' }
   | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
   | { type: 'SECRETS.EVENT.CREATED'; id: string; provider: string; customName?: string }
   | { type: 'SECRETS.EVENT.UPDATED'; id: string }
@@ -318,7 +328,7 @@ const settingsState = setup({
     }),
 
     confirmSetupPackImport: assign(({ context }) => {
-      const { directory, preview, selection } = context.setupPackImport;
+      const { directory, preview, selection, importMode, restartBrain } = context.setupPackImport;
       if (!directory || !preview) return {};
 
       // null = import all items of this type, [] = skip, string[] = filter.
@@ -342,6 +352,8 @@ const settingsState = setup({
           library: toIncludeField('library'),
           notes: toIncludeField('notes'),
         },
+        mode: importMode,
+        restartBrain,
       } as any);
 
       return {
@@ -468,6 +480,22 @@ const settingsState = setup({
         'SETUP_PACK.TOGGLE_ITEM': {
           actions: 'toggleSetupPackItem',
         },
+        'SETUP_PACK.SET_MODE': {
+          actions: assign(({ context, event }) => ({
+            setupPackImport: {
+              ...context.setupPackImport,
+              importMode: (event as any).mode,
+            },
+          })),
+        },
+        'SETUP_PACK.TOGGLE_RESTART_BRAIN': {
+          actions: assign(({ context }) => ({
+            setupPackImport: {
+              ...context.setupPackImport,
+              restartBrain: !context.setupPackImport.restartBrain,
+            },
+          })),
+        },
         'SETUP_PACK.CONFIRM_IMPORT': {
           actions: 'confirmSetupPackImport',
         },
@@ -488,6 +516,16 @@ const settingsState = setup({
         },
         SETUP_PACK_IMPORT_FAILED: {
           actions: 'setSetupPackImportFailed',
+        },
+        'APP.RESET': {
+          actions: () => {
+            trpc.bus.send.mutate({ systemId: id, type: 'RESET_APP' } as any);
+          },
+        },
+        APP_RESET_COMPLETE: {
+          actions: () => {
+            window.location.reload();
+          },
         },
       },
     },
