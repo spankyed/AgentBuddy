@@ -164,9 +164,9 @@ export function updateSessionArtifact(
   services: Services,
   threadId: EntityId,
   patch: Partial<SessionArtifactContent> | ((prev: SessionArtifactContent) => Partial<SessionArtifactContent>),
-): void {
+): boolean {
   const session = findSessionArtifact(services, threadId);
-  if (!session) return;
+  if (!session) return false;
 
   const prevContent: SessionArtifactContent =
     (session.content as SessionArtifactContent) ?? makeInitialContent({});
@@ -182,20 +182,22 @@ export function updateSessionArtifact(
     content: nextContent,
     threadId,
   });
+  return true;
 }
 
 /**
  * Update the chat state on the session artifact AND push a real-time
  * event to the frontend threads plugin. This is the single call site
  * for chat state transitions — use this instead of manually setting
- * `status` or `chatState` on the artifact.
+ * `chatState` on the artifact.
  */
 export function updateChatState(
   services: Services,
   threadId: EntityId,
   chatState: ChatState,
 ): void {
-  updateSessionArtifact(services, threadId, { chatState });
+  const updated = updateSessionArtifact(services, threadId, { chatState });
+  if (!updated) return;
   services.emitter.sendToPlugin('threads', {
     type: 'SET_CHAT_STATE',
     threadId: threadId as string,

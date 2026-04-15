@@ -640,6 +640,10 @@ const threadsState = setup({
       const extracted = extractChatSettings(typedEvent.data.settings || { modes: [], hotkeys: {} });
 
       const currentThread = typedEvent.data.currentThread;
+      const startupSessionArtifact = ((currentThread as any)?.artifacts ?? []).find(
+        (a: any) => a.artifactType === 'claude-session',
+      );
+      const startupChatState: ChatState = (startupSessionArtifact?.content as any)?.chatState ?? 'idle';
       const forcedMode = currentThread?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {
@@ -664,7 +668,8 @@ const threadsState = setup({
         ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
-        ...modeUpdate
+        ...modeUpdate,
+        ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       };
     }),
     handleChatSettingsUpdate: assign(({ event }) => {
