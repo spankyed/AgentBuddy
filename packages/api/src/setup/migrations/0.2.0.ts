@@ -78,5 +78,11 @@ export const migration: Migration = {
         settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
       }
     }
+
+    // 5. Add maxTerminals default to code settings
+    const codeSettings = data.plugins?.code;
+    if (codeSettings && codeSettings.maxTerminals === undefined) {
+      settingsCommands.updateSettings('plugin', 'code', ['maxTerminals'], 25);
+    }
   },
 };

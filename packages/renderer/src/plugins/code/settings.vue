@@ -202,6 +202,38 @@
             class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
           />
         </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="max-terminals" class="text-sm font-medium text-neutral-200">
+              Maximum terminals
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Maximum number of terminals that can be open at once
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              v-if="maxTerminals > 0"
+              id="max-terminals"
+              v-model.number="maxTerminals"
+              type="number"
+              min="1"
+              max="100"
+              @change="saveMaxTerminalsSetting"
+              class="w-20 px-2 py-1 text-sm text-neutral-200 bg-neutral-800 border border-neutral-600 rounded focus:ring-blue-500 focus:ring-2 focus:outline-none"
+            />
+            <span v-else class="text-xs text-neutral-500">No limit</span>
+            <input
+              id="limit-terminals"
+              type="checkbox"
+              :checked="maxTerminals > 0"
+              @change="toggleTerminalLimit"
+              class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+              title="Toggle terminal limit"
+            />
+          </div>
+        </div>
       </div>
     </CollapsibleSection>
     </div>
@@ -318,6 +350,7 @@ const restoreTerminals = ref(props.settings?.restoreTerminals ?? true)
 const enableShellIntegration = ref(props.settings?.enableShellIntegration ?? true)
 const confirmTerminalClose = ref(props.settings?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = ref(props.settings?.closeTerminalOnTabClose ?? true)
+const maxTerminals = ref(props.settings?.maxTerminals ?? 25)
 const enablePreview = ref(props.settings?.enablePreview ?? true)
 const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
@@ -369,6 +402,23 @@ const saveCloseTerminalOnTabCloseSetting = () => {
   emit('update-setting', {
     path: ['closeTerminalOnTabClose'],
     value: closeTerminalOnTabClose.value
+  })
+}
+
+const saveMaxTerminalsSetting = () => {
+  const clamped = Math.max(1, Math.min(100, maxTerminals.value))
+  maxTerminals.value = clamped
+  emit('update-setting', {
+    path: ['maxTerminals'],
+    value: clamped
+  })
+}
+
+const toggleTerminalLimit = () => {
+  maxTerminals.value = maxTerminals.value > 0 ? 0 : 25
+  emit('update-setting', {
+    path: ['maxTerminals'],
+    value: maxTerminals.value
   })
 }
 

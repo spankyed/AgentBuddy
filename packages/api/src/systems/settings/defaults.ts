@@ -77,6 +77,7 @@ export const defaultSettings: SettingsData = {
       enableShellIntegration: false,
       confirmTerminalClose: true,
       closeTerminalOnTabClose: true,
+      maxTerminals: 25,
       mdEditorDefault: true,
       enablePreview: true,
       autoFetchRemote: false,

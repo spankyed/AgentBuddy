@@ -15,7 +15,6 @@ interface Terminal {
 
 class TerminalService {
   private terminals: Map<string, Terminal> = new Map()
-  private readonly MAX_TERMINALS = 10
   private readonly ALLOWED_SHELLS = [
     '/bin/bash',
     '/bin/sh',
@@ -39,9 +38,11 @@ class TerminalService {
   ]
 
   create(options: TerminalCreate): TerminalInfo {
-    // Check terminal limit
-    if (this.terminals.size >= this.MAX_TERMINALS) {
-      throw new Error(`Maximum number of terminals (${this.MAX_TERMINALS}) reached`)
+    // Check terminal limit (0 = no limit)
+    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const maxTerminals = codeSettings?.maxTerminals ?? 0
+    if (maxTerminals > 0 && this.terminals.size >= maxTerminals) {
+      throw new Error(`Maximum number of terminals (${maxTerminals}) reached`)
     }
 
     // Generate a proper terminal ID using EARS entity creation

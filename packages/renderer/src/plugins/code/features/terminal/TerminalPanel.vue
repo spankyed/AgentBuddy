@@ -89,15 +89,12 @@
       </div>
     </div>
 
-    <!-- Terminal Error -->
-    <div v-if="terminalError" class="p-4 m-2 border rounded bg-red-500/10 border-red-500/50">
-      <div class="text-sm text-red-400">{{ terminalError }}</div>
-    </div>
+    <ToastNotification ref="toast" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -105,6 +102,7 @@ import type { TerminalInfo } from './state'
 import { Terminal, X, Edit, Plus } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
+import ToastNotification from '@/core/components/design/ToastNotification.vue'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -184,6 +182,13 @@ const cancelRename = () => {
   renamingTerminalId.value = null
   renameValue.value = ''
 }
+
+// Toast for terminal errors
+const toast = ref<InstanceType<typeof ToastNotification>>()
+
+watch(terminalError, (error) => {
+  if (error) toast.value?.error(error)
+})
 
 </script>
 

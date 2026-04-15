@@ -4670,6 +4670,11 @@ declare const events: {
         blocks?: BlockConfig[] | undefined;
         responseTimestamp?: number | undefined;
         blockResponse?: BlockResponse | undefined;
+        forkable?: boolean | undefined;
+        status?: "queued" | "cancelled" | null | undefined;
+        context?: Record<string, unknown> | undefined;
+        asideText?: string | undefined;
+        asideContext?: string | undefined;
         pluginId: "threads";
     } | {
         type: "MESSAGE_ADDED";
@@ -5593,6 +5598,8 @@ interface FlowEntity extends BaseEntity {
     description?: string;
     flowType: 'workflow' | 'integration';
     createdAt: number;
+    /** SHA256 hash of the DSL source at last seed. Absent on user-created flows. */
+    sourceHash?: string;
 }
 interface NodeBase extends BaseEntity {
     entityType: EARS.Entity.Node;
@@ -6091,6 +6098,7 @@ interface CodeSettings {
     enableShellIntegration?: boolean;
     confirmTerminalClose?: boolean;
     closeTerminalOnTabClose?: boolean;
+    maxTerminals?: number;
     mdEditorDefault?: boolean;
     enablePreview?: boolean;
     autoFetchRemote?: boolean;
@@ -7315,6 +7323,9 @@ declare const services: {
                 command?: string;
                 autoHide?: boolean;
                 asideContext?: string;
+                blockResponse?: any;
+                responseTimestamp?: number;
+                asideText?: string;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
@@ -7344,7 +7355,7 @@ declare const services: {
             };
             readonly updateMessageState: (params: {
                 messageId: EARS.EntityId;
-                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp">>;
+                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context">>;
             }) => {
                 messageId: EARS.EntityId;
                 updatedAt: number;

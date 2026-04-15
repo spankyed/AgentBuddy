@@ -230,6 +230,7 @@ export interface CodeSettings {
   enableShellIntegration?: boolean;
   confirmTerminalClose?: boolean;
   closeTerminalOnTabClose?: boolean;
+  maxTerminals?: number;
   mdEditorDefault?: boolean;
   enablePreview?: boolean;
   autoFetchRemote?: boolean;

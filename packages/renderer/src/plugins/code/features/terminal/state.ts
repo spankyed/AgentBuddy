@@ -47,7 +47,6 @@ export type Event =
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
-  | { type: 'terminal.CLEAR_ERROR' }
   | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcasted event
 
 export const terminalState = setup({
@@ -393,15 +392,7 @@ export const terminalState = setup({
       actions: 'handleTerminalOutput'
     },
     'terminal.ERROR': {
-      actions: ['assignTerminalError', ({ self }) => {
-        // Clear error after 5 seconds
-        setTimeout(() => {
-          self.send({ type: 'terminal.CLEAR_ERROR' })
-        }, 4000)
-      }]
-    },
-    'terminal.CLEAR_ERROR': {
-      actions: 'clearTerminalError'
+      actions: 'assignTerminalError'
     },
     'terminal.TERMINAL_TAB_OPENED': {
       actions: 'handleTerminalTabOpened'
