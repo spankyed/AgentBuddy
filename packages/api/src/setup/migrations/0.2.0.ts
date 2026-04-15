@@ -45,5 +45,28 @@ export const migration: Migration = {
     if (changed) {
       settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
     }
+
+    // 3. Ensure chatStates config has all required entries
+    const chatStates: Array<{ id: string; [k: string]: any }> =
+      data.plugins?.threads?.chatStates ?? [];
+
+    const requiredEntries = [
+      { id: 'idle',    label: 'Idle',    color: '#6B7280', colorful: false },
+      { id: 'working', label: 'Working', color: '#FACC15', colorful: true },
+      { id: 'paused',  label: 'Paused',  color: '#F59E0B', colorful: false },
+      { id: 'error',   label: 'Error',   color: '#EF4444', colorful: false },
+      { id: 'success', label: 'Success', color: '#10B981', colorful: false },
+    ];
+
+    let chatStatesChanged = false;
+    for (const entry of requiredEntries) {
+      if (!chatStates.some(s => s.id === entry.id)) {
+        chatStates.push(entry);
+        chatStatesChanged = true;
+      }
+    }
+    if (chatStatesChanged) {
+      settingsCommands.updateSettings('plugin', 'threads', ['chatStates'], chatStates);
+    }
   },
 };
