@@ -375,6 +375,13 @@
       "excludedSources": []
     }
   },
+  "internal": {
+    "hasOnboarded": false,
+    "tourComplete": false,
+    "lastInteractionTimestamp": null,
+    "version": "",
+    "seedHash": null
+  },
   "assistant": {
     "name": "",
     "birthdate": null

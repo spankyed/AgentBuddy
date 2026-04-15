@@ -3,11 +3,13 @@ import * as path from 'path';
 import type { SETTINGS_SCOPE, SettingsData } from './types';
 import { APP_VERSION } from '@/version';
 
-const COMPILED_SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'src', 'settings.json');
+const SETTINGS_PATH = path.resolve(process.cwd(), '..', 'default-setup', 'src', 'settings.json');
 
-const loadCompiledDefaults = (): Omit<SettingsData, 'internal'> => {
-  const raw = fs.readFileSync(COMPILED_SETTINGS_PATH, 'utf-8');
-  return JSON.parse(raw);
+const loadDefaults = (): SettingsData => {
+  const raw = fs.readFileSync(SETTINGS_PATH, 'utf-8');
+  const settings = JSON.parse(raw) as SettingsData;
+  settings.internal.version = APP_VERSION;
+  return settings;
 };
 
 export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) =>
@@ -17,13 +19,4 @@ export const getDefaultsByLabel = (type: SETTINGS_SCOPE, label: string) =>
   plugin: defaultSettings.plugins[label as keyof typeof defaultSettings.plugins] ?? {},
 }[type]);
 
-export const defaultSettings: SettingsData = {
-  ...loadCompiledDefaults(),
-  internal: {
-    hasOnboarded: false,
-    tourComplete: false,
-    lastInteractionTimestamp: null,
-    version: APP_VERSION,
-    seedHash: null,
-  },
-};
+export const defaultSettings: SettingsData = loadDefaults();
