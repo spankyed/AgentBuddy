@@ -2,7 +2,6 @@ import { compileAllSourceFiles, type CompileConfig } from './compile-utils';
 import { compileFlows } from './compile-flows';
 import { compileLibrary } from './compile-library';
 import { compileNotes } from './compile-notes';
-
 const configs: Record<string, CompileConfig> = {
   actions: {
     sourceDir: 'src/actions',

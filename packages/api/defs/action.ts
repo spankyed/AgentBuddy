@@ -22,6 +22,7 @@ export { ActionService } from '@/services/action';
 export { PromptService } from '@/services/prompt';
 export { LibraryService } from '@/services/library';
 export type { ActionEntity } from '@/systems/actions/types';
+export type { SettingsData } from '@/systems/settings/types';
 
 // Export runtime placeholders for Monaco Editor intellisense
 // These will be available when the module is imported

@@ -9,7 +9,7 @@
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
         :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight }]"
         data-onboarding-id="agent-chat-input"
-        @paste="handlePaste">
+        @paste.capture="handlePaste">
         <StatusIndicator/>
 
         <!-- Attachment strip: files then images, horizontal scroll -->

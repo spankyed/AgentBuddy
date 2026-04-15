@@ -22,6 +22,7 @@ default-setup/
 
   src/
     types.ts                    # Re-exports types from defs/ for action/prompt/flow authoring
+    settings.json               # Default settings (general, plugins, assistant) — read directly by API, no compilation
     actions/                    # Action source files
     prompts/                    # Prompt template source files
     flows/                      # Flow DSL files
@@ -37,6 +38,7 @@ default-setup/
 - `src/prompts/` — prompt template source files
 - `src/flows/` — flow DSL files (dynamically imported, not bundled)
 - `src/library/` — markdown docs compiled to JSON
+- `src/settings.json` — default settings (general, plugins, assistant); read directly by API, no compilation needed
 - `src/_examples/` — reference examples (excluded from compilation and typecheck)
 - `src/types.ts` — shared type definitions (`ActionMeta`, `PromptMeta`, `Services`, `Z`, etc.)
 - `build/` — compiler infrastructure (compile scripts, validator, utils)
