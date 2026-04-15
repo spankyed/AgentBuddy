@@ -228,8 +228,9 @@
           v-model="commitMessage"
           @input="updateCommitMessage"
           :placeholder="`Message (currently on ${gitBranch || 'unknown'})`"
-          class="w-full px-3 py-2 text-sm border rounded resize-none bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 commit-message"
-          rows="3"
+          class="w-full px-3 py-2 text-sm border rounded resize-none overflow-y-auto bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600 commit-message"
+          style="max-height: 200px"
+          rows="4"
         />
         <button
           v-if="shouldShowActionButton"
@@ -665,6 +666,8 @@ const generateMessage = () => {
 
 const updateCommitMessage = (event: Event) => {
   const target = event.target as HTMLTextAreaElement
+  target.style.height = 'auto'
+  target.style.height = `${Math.min(target.scrollHeight, 200)}px`
   commitActor?.send({ type: 'commit.UPDATE_MESSAGE', message: target.value })
 }
 
