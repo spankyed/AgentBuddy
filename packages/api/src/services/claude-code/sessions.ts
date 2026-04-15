@@ -1,0 +1,301 @@
+/**
+ * Session management.
+ *
+ * The CLI does not expose a `claude session` subcommand — session data lives
+ * on disk as JSONL files under `$CLAUDE_CONFIG_DIR` (default `~/.claude`),
+ * organised per-project. This module reads those files directly for list /
+ * view / get, and uses file operations for rm.
+ *
+ * The `_experimental_*` functions (rename, tag, fork) reverse-engineer the
+ * CLI's JSONL metadata format and may silently do the wrong thing if the CLI
+ * changes its on-disk layout. They stay experimental until we either add
+ * golden-file tests against a real CLI or migrate to a supported path.
+ *
+ * Important: session JSONL files can be large (multi-MB). `view()` parses
+ * them fully, so callers should paginate (`limit`/`offset`) on long sessions.
+ */
+
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
+import { randomUUID } from 'crypto'
+
+import { createLogger } from '@/core/helpers/debug/logger'
+
+const logger = createLogger('claude-code-sessions')
+
+// ─── Directory discovery ─────────────────────────────────────────────────────
+
+/** Root of the CLI's config, honouring $CLAUDE_CONFIG_DIR. */
+export function configDir(): string {
+  return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude')
+}
+
+/**
+ * Project bucket path inside the CLI's config dir.
+ *
+ * The CLI stores each project's sessions under
+ * `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>/<session-id>.jsonl`.
+ */
+export function projectBucket(cwd: string): string {
+  return path.join(configDir(), 'projects', encodeProjectPath(cwd))
+}
+
+/**
+ * Mirror of the CLI's `sanitizePath` — see the leaked source at
+ * `src/utils/sessionStoragePortable.ts:311`. Replaces every non-alphanumeric
+ * byte with `-`; if the result exceeds `MAX_SANITIZED_LENGTH`, truncate and
+ * append a hash suffix so long paths remain distinguishable.
+ *
+ * Exported for tests.
+ */
+export const MAX_SANITIZED_LENGTH = 200
+
+export function encodeProjectPath(cwd: string): string {
+  const sanitized = cwd.replace(/[^a-zA-Z0-9]/g, '-')
+  if (sanitized.length <= MAX_SANITIZED_LENGTH) return sanitized
+  return `${sanitized.slice(0, MAX_SANITIZED_LENGTH)}-${djb2(cwd).toString(36)}`
+}
+
+/**
+ * djb2 string hash (Dan Bernstein). Matches the CLI's non-Bun fallback
+ * (`simpleHash`) so long-cwd encodings align between the two processes.
+ */
+function djb2(s: string): number {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  }
+  return h >>> 0
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface SessionInfo {
+  id: string
+  file: string
+  cwd?: string
+  title?: string
+  tags?: string[]
+  modifiedAt: Date
+  size: number
+  firstMessageAt?: Date
+  lastMessageAt?: Date
+}
+
+export interface SessionTranscriptEntry {
+  type?: string
+  [key: string]: unknown
+}
+
+export interface SessionListOptions {
+  /** Working directory whose sessions to list. Defaults to `process.cwd()`. */
+  cwd?: string
+  limit?: number
+  offset?: number
+}
+
+export interface SessionViewOptions {
+  cwd?: string
+  limit?: number
+  offset?: number
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+
+/** List sessions saved for the given working directory. */
+export async function list(opts: SessionListOptions = {}): Promise<SessionInfo[]> {
+  const cwd = opts.cwd ?? process.cwd()
+  const bucket = projectBucket(cwd)
+
+  let files: string[]
+  try {
+    files = await fs.promises.readdir(bucket)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
+    throw err
+  }
+
+  const jsonl = files.filter(f => f.endsWith('.jsonl'))
+  const infos: SessionInfo[] = []
+
+  for (const name of jsonl) {
+    const file = path.join(bucket, name)
+    const stat = await fs.promises.stat(file).catch(() => null)
+    if (!stat) continue
+    const id = name.replace(/\.jsonl$/, '')
+    infos.push({
+      id,
+      file,
+      cwd,
+      modifiedAt: stat.mtime,
+      size: stat.size,
+    })
+  }
+
+  infos.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
+  const offset = opts.offset ?? 0
+  const limit = opts.limit ?? infos.length
+  return infos.slice(offset, offset + limit)
+}
+
+/** Load basic metadata about a single session. */
+export async function get(
+  id: string,
+  opts: { cwd?: string } = {},
+): Promise<SessionInfo | null> {
+  assertSafeId(id)
+  const cwd = opts.cwd ?? process.cwd()
+  const file = path.join(projectBucket(cwd), `${id}.jsonl`)
+  const stat = await fs.promises.stat(file).catch(() => null)
+  if (!stat) return null
+  return { id, file, cwd, modifiedAt: stat.mtime, size: stat.size }
+}
+
+/** Parse a session's JSONL into an in-memory array of entries. */
+export async function view(
+  id: string,
+  opts: SessionViewOptions = {},
+): Promise<SessionTranscriptEntry[]> {
+  assertSafeId(id)
+  const cwd = opts.cwd ?? process.cwd()
+  const file = path.join(projectBucket(cwd), `${id}.jsonl`)
+  const raw = await fs.promises.readFile(file, 'utf8')
+  const lines = raw.split('\n').filter(l => l.length > 0)
+  const offset = opts.offset ?? 0
+  const limit = opts.limit ?? lines.length
+  const slice = lines.slice(offset, offset + limit)
+
+  const entries: SessionTranscriptEntry[] = []
+  for (const line of slice) {
+    try {
+      entries.push(JSON.parse(line))
+    } catch {
+      entries.push({ type: '__parse_error', raw: line })
+    }
+  }
+  return entries
+}
+
+/** Delete a session's JSONL + any associated subdir. Idempotent. */
+export async function remove(
+  id: string,
+  opts: { cwd?: string } = {},
+): Promise<void> {
+  assertSafeId(id)
+  const cwd = opts.cwd ?? process.cwd()
+  const bucket = projectBucket(cwd)
+  const file = path.join(bucket, `${id}.jsonl`)
+  const subdir = path.join(bucket, id)
+
+  await fs.promises.rm(file, { force: true })
+  await fs.promises.rm(subdir, { recursive: true, force: true })
+}
+
+// ─── Experimental write operations ───────────────────────────────────────────
+//
+// These three write synthetic metadata lines into session JSONL files. The
+// on-disk format is reverse-engineered, so upstream changes will break them
+// silently. They live under `_experimental_` prefixes so call sites see the
+// risk in their import lines, and they log a one-time warning on first use.
+
+/** Reject IDs that could escape the project bucket via path traversal. */
+function assertSafeId(id: string): void {
+  if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+    throw new Error(`Invalid session ID: ${JSON.stringify(id)}`)
+  }
+}
+
+const _experimentalWarned = new Set<string>()
+function warnExperimental(name: string): void {
+  if (_experimentalWarned.has(name)) return
+  _experimentalWarned.add(name)
+  logger.warn(
+    `claudeCode.sessions.${name}() is experimental — the JSONL metadata format is reverse-engineered and may break with CLI upgrades. Prefer the CLI's own UI for now.`,
+  )
+}
+
+/**
+ * Rename a session by appending a metadata entry. @experimental
+ *
+ * @see warnExperimental — logs once per process on first call.
+ */
+export async function _experimental_rename(
+  id: string,
+  title: string,
+  opts: { cwd?: string } = {},
+): Promise<void> {
+  assertSafeId(id)
+  warnExperimental('_experimental_rename')
+  await appendMetadata(id, { type: 'metadata', title, updatedAt: new Date().toISOString() }, opts)
+}
+
+/** Add/remove a session tag by appending a metadata entry. @experimental */
+export async function _experimental_tag(
+  id: string,
+  tag: string | null,
+  opts: { cwd?: string } = {},
+): Promise<void> {
+  assertSafeId(id)
+  warnExperimental('_experimental_tag')
+  await appendMetadata(id, { type: 'metadata', tag, updatedAt: new Date().toISOString() }, opts)
+}
+
+/**
+ * Fork a session at a specific message UUID. Copies the JSONL (optionally
+ * truncated) and returns the new session id. @experimental
+ */
+export async function _experimental_fork(
+  id: string,
+  opts: { upToMessageId?: string; title?: string; cwd?: string } = {},
+): Promise<{ sessionId: string; file: string }> {
+  assertSafeId(id)
+  warnExperimental('_experimental_fork')
+  const cwd = opts.cwd ?? process.cwd()
+  const bucket = projectBucket(cwd)
+  const source = path.join(bucket, `${id}.jsonl`)
+  const newId = randomUUID()
+  const target = path.join(bucket, `${newId}.jsonl`)
+
+  const raw = await fs.promises.readFile(source, 'utf8')
+  const lines = raw.split('\n').filter(l => l.length > 0)
+
+  let keptLines = lines
+  if (opts.upToMessageId) {
+    const cutIdx = lines.findIndex(line => {
+      try { return (JSON.parse(line) as { uuid?: string }).uuid === opts.upToMessageId }
+      catch { return false }
+    })
+    if (cutIdx !== -1) keptLines = lines.slice(0, cutIdx + 1)
+  }
+
+  await fs.promises.writeFile(target, keptLines.join('\n') + '\n')
+  if (opts.title) {
+    await appendMetadata(newId, { type: 'metadata', title: opts.title, updatedAt: new Date().toISOString() }, { cwd })
+  }
+
+  return { sessionId: newId, file: target }
+}
+
+// ─── Deprecated aliases ──────────────────────────────────────────────────────
+// Kept for source compatibility with the original Phase 1 API. Forward to
+// the _experimental_ versions — same runtime behaviour, same warning.
+
+/** @deprecated Use `_experimental_rename` to acknowledge the risk. */
+export const rename = _experimental_rename
+/** @deprecated Use `_experimental_tag` to acknowledge the risk. */
+export const tag = _experimental_tag
+/** @deprecated Use `_experimental_fork` to acknowledge the risk. */
+export const fork = _experimental_fork
+
+// ─── Internals ───────────────────────────────────────────────────────────────
+
+async function appendMetadata(
+  id: string,
+  entry: Record<string, unknown>,
+  opts: { cwd?: string },
+): Promise<void> {
+  const cwd = opts.cwd ?? process.cwd()
+  const file = path.join(projectBucket(cwd), `${id}.jsonl`)
+  await fs.promises.appendFile(file, JSON.stringify(entry) + '\n')
+}

@@ -27,7 +27,7 @@
           ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
           : 'bg-neutral-700 border-neutral-600 text-neutral-200'
       ]"
-      @keyup.enter="!disabled && handleSubmit"
+      @keyup.enter="!disabled && handleSubmit()"
     />
 
     <!-- Suggestion buttons -->
@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Check } from 'lucide-vue-next'
 import ActionButtons from '../blocks/ActionButtons.vue'
 
@@ -94,7 +94,6 @@ interface Props {
   disabled?: boolean
   response?: any
   displayText?: string
-  debounceMs?: number
   suggestions?: string[]
 }
 
@@ -112,59 +111,43 @@ const props = withDefaults(defineProps<Props>(), {
   inputType: 'text',
   required: false,
   disabled: false,
-  debounceMs: 500
 })
 
 const emit = defineEmits<Emits>()
 
 const inputValue = ref(props.modelValue)
 const showError = ref(false)
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // Watch for external changes to modelValue
 watch(() => props.modelValue, (newValue) => {
   inputValue.value = newValue
 })
 
-// Emit updates to parent and handle auto-submit
+// Emit updates to parent
 watch(inputValue, (newValue) => {
   emit('update:modelValue', newValue)
   // Hide error when user starts typing again
   if (showError.value) {
     showError.value = false
   }
-
-  // Auto-submit for single-line inputs (not multiline)
-  if (!props.multiline && !props.disabled) {
-    // Clear existing timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer)
-    }
-
-    // Set new timer to auto-submit after debounce
-    debounceTimer = setTimeout(() => {
-      if (canSubmit.value) {
-        handleSubmit()
-      }
-    }, props.debounceMs)
-  }
 })
 
-// Response display text
+// Response display text. TextInput's `emit('submit', value)` always
+// passes a plain string (see handleSubmit / selectSuggestion below),
+// and InteractionContainer's handleCancel emits `{ cancelled: true }`
+// as the sole object-shaped sentinel. The old `.value ?? JSON.stringify`
+// fallback was dead code from a stale assumption — no block in this
+// folder has ever emitted a `{ value }` shape. Anything object-shaped
+// that isn't the cancellation sentinel is unexpected garbage; show a
+// JSON dump so it's debuggable rather than silently eaten.
 const responseText = computed(() => {
-  if (!props.response) return ''
-  if (typeof props.response === 'object') {
-    if (props.response.cancelled) return 'Skipped'
-    return props.response.value ?? JSON.stringify(props.response)
+  const r = props.response
+  if (r == null) return ''
+  if (typeof r === 'object') {
+    if ((r as { cancelled?: unknown }).cancelled === true) return 'Skipped'
+    return JSON.stringify(r)
   }
-  return String(props.response)
-})
-
-// Cleanup timer on unmount
-onUnmounted(() => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
+  return String(r)
 })
 
 const errorMessage = computed(() => {
@@ -209,10 +192,6 @@ const handleSubmit = () => {
 
 const selectSuggestion = (text: string) => {
   inputValue.value = text
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-  }
   emit('submit', text)
 }
 </script>

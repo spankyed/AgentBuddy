@@ -1,4 +1,4 @@
-import type { BlockConfig, MessageReferences, ArtifactType } from './types'
+import type { BlockConfig, BlockResponse, MessageReferences, ArtifactType } from './types'
 
 export interface ExportedMessage {
   text: string
@@ -6,7 +6,14 @@ export interface ExportedMessage {
   timestamp: number
   responseTimestamp?: number
   blocks?: BlockConfig[]
-  blockResponse?: any
+  /**
+   * Block response as stored on the message at export time. See
+   * `BlockResponse` in `./types` for the full union of observed shapes
+   * (raw strings, string arrays, `{approved,reason}`, `{cancelled:true}`).
+   * Exported threads may also carry legacy shapes from versions before
+   * this type existed; import round-trips them unchanged.
+   */
+  blockResponse?: BlockResponse
   forkable?: boolean
   isCommand?: boolean
   command?: string

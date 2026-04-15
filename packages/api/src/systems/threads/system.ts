@@ -8,13 +8,14 @@ import { z } from 'zod';
 import { repository } from '@/repository';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData, CommandItem } from '@/types';
-import { ThreadRelations, type ThreadExtendedData } from './types';
+import { ThreadRelations, type ThreadExtendedData, type BlockResponse } from './types';
 import type { MappedZodLiterals } from '@/core/helpers/type-helpers';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
 import { brain } from '../brain/system';
 import services from '@/services';
+import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { FieldContent } from '@/systems/library/types';
 
@@ -86,7 +87,7 @@ export const IncomingThreadsEvents = [
   }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
-  busEvent('CANCEL'),
+  busEvent('PAUSE_TURN', { threadId: z.string() }),
   busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
   busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
   busEvent('INTERACTIVE_MSG_RESPONSE', {
@@ -102,6 +103,8 @@ export const IncomingThreadsEvents = [
   busEvent('REVERT_THREAD', {
     messageId: z.string(),
     threadId: z.string(),
+    restoreFiles: z.boolean().optional(),
+    userCliUuid: z.string().optional(),
   }),
   busEvent('USER_COMMAND', {
     command: z.string(),
@@ -110,6 +113,18 @@ export const IncomingThreadsEvents = [
     phase: z.string().optional(),
     threadId: z.string().optional(),
     references: referencesSchema,
+  }),
+  // User toggled the permission mode on the claude-session artifact's
+  // segmented control. Mutates `content.permissionMode` on the session
+  // artifact in place; the next work-mode turn reads it via
+  // `readSessionPermissionMode` in chat.ts.
+  busEvent('UPDATE_CLAUDE_PERMISSION_MODE', {
+    threadId: z.string(),
+    mode: z.string(),
+  }),
+  busEvent('UPDATE_CLAUDE_WORKTREE', {
+    threadId: z.string(),
+    useWorktree: z.boolean(),
   }),
 ] as const
 
@@ -137,13 +152,17 @@ export type OutgoingThreadsEvents =
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
   | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
+  | { type: 'ARTIFACT_UPDATED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: any }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'SET_MODE'; mode: string }
+  | { type: 'SET_PHASE'; phase: string }
+  | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
+  | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
 
 export interface ThreadsContext {}
@@ -635,7 +654,7 @@ export const threadsSystem = setup({
       });
     },
     revertThread: ({ system, event }) => {
-      const { messageId, threadId } = typeOf('REVERT_THREAD', event);
+      const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
 
       repository.chatCommands.softDeleteMessagesAfter({
         threadId: threadId as EARS.EntityId,
@@ -648,7 +667,16 @@ export const threadsSystem = setup({
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
-        payload: { threadId, messageId },
+        payload: { threadId, messageId, restoreFiles, userCliUuid },
+      });
+    },
+    pauseTurn: ({ system, event }) => {
+      const { threadId } = typeOf('PAUSE_TURN', event);
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'user.thread.pause',
+        payload: { threadId },
       });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
@@ -658,6 +686,14 @@ export const threadsSystem = setup({
         messageId: messageId as EARS.EntityId,
         response
       });
+
+      // Compute aside text for autoHide messages
+      let asideText: string | undefined;
+      const message = repository.chatQueries.messageById(messageId as EARS.EntityId);
+      if (message?.autoHide) {
+        asideText = generateAsideText(message, response);
+        tx(messageId as EARS.EntityId).put('asideText', asideText);
+      }
 
       getActor(system, brain).send({
         type: 'TRIGGER_BRAIN_EVENT',
@@ -670,9 +706,44 @@ export const threadsSystem = setup({
         messageId,
         responseTimestamp: result.responseTimestamp,
         blockResponse: response,
-        ...(result.blocks && { blocks: result.blocks })
+        ...(result.blocks && { blocks: result.blocks }),
+        ...(asideText && { asideText })
       }));
-    }
+    },
+    updateClaudePermissionMode: ({ event }) => {
+      // User clicked Ask / Auto / Plan on the claude-session artifact's
+      // segmented control. Mutate `content.permissionMode` on the session
+      // artifact in place and notify the frontend. The next work-mode turn
+      // reads it via `readSessionPermissionMode` in chat.ts.
+      const { threadId, mode } = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event);
+      const existing = repository.chatCommands.findArtifactByType(
+        threadId as EARS.EntityId,
+        'claude-session',
+      );
+      if (!existing?.id) {
+        logger.warn('UPDATE_CLAUDE_PERMISSION_MODE: no claude-session artifact for thread', { threadId });
+        return;
+      }
+      const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
+      const nextContent = { ...prevContent, permissionMode: mode };
+      services.artifact.updateAndNotify(existing.id, {
+        content: nextContent,
+        threadId: threadId as EARS.EntityId,
+      });
+    },
+    updateClaudeWorktree: ({ event }) => {
+      const { threadId, useWorktree } = typeOf('UPDATE_CLAUDE_WORKTREE', event);
+      const existing = repository.chatCommands.findArtifactByType(
+        threadId as EARS.EntityId,
+        'claude-session',
+      );
+      if (!existing?.id) return;
+      const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
+      services.artifact.updateAndNotify(existing.id, {
+        content: { ...prevContent, useWorktree },
+        threadId: threadId as EARS.EntityId,
+      });
+    },
   },
 }).createMachine(
   {
@@ -738,11 +809,20 @@ export const threadsSystem = setup({
           USER_COMMAND: {
             actions: 'forwardUserCommand',
           },
+          UPDATE_CLAUDE_PERMISSION_MODE: {
+            actions: 'updateClaudePermissionMode',
+          },
+          UPDATE_CLAUDE_WORKTREE: {
+            actions: 'updateClaudeWorktree',
+          },
           FORK_THREAD: {
             actions: 'forkThread',
           },
           REVERT_THREAD: {
             actions: 'revertThread',
+          },
+          PAUSE_TURN: {
+            actions: 'pauseTurn',
           },
         },
       },

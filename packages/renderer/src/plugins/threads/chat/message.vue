@@ -6,6 +6,16 @@
     ]"
   >
     <div class="relative group max-w-full min-w-0">
+      <!-- Aside: collapsed interactive message (click to expand) -->
+      <div v-if="message.autoHide && message.asideText && !expanded"
+           class="text-xs italic py-1 px-2 cursor-pointer hover:bg-neutral-800/50 rounded transition-colors"
+           @click="expanded = true">
+        <span class="text-neutral-400">{{ asideOutcome }}</span>
+        <span v-if="asideContext" class="text-neutral-600 ml-2">{{ asideContext }}</span>
+      </div>
+
+      <!-- Normal message rendering -->
+      <template v-else-if="!message.autoHide || !message.asideText || expanded">
       <!-- Floating hover UI -->
       <div
         class="absolute transition-opacity duration-200 opacity-0 pointer-events-none -bottom-3 -right-4 z-10 group-hover:opacity-100 group-hover:pointer-events-auto"
@@ -20,8 +30,9 @@
           <button
             v-if="isUser"
             @click="$emit('revert', message.id)"
+            @contextmenu.prevent="openRevertMenu"
             class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Revert to this message"
+            title="Revert (right-click for options)"
           >
             <Undo2 :size="16" />
           </button>
@@ -33,6 +44,15 @@
             title="Fork conversation"
           >
             <GitFork :size="16" />
+          </button>
+
+          <button
+            v-if="message.autoHide && expanded"
+            @click="expanded = false"
+            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+            title="Collapse"
+          >
+            <ChevronsUpDown :size="16" />
           </button>
 
           <button
@@ -53,7 +73,7 @@
             ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
             : ' text-neutral-100 border border-neutral-800',
           isUser && isCommand && 'command-bubble',
-          'hover:shadow-md'
+          (message as any).status === 'cancelled' ? 'opacity-50' : 'hover:shadow-md',
         ]"
       >
         <!-- Attachments: files then images, horizontal scroll -->
@@ -65,15 +85,26 @@
             :file="file" class="flex-shrink-0" />
         </div>
 
+        <!-- Tool-activity blocks render ABOVE text so the work log
+             appears before the model's commentary, not after it. -->
+        <InteractionContainer
+          v-if="toolActivityBlocks.length > 0"
+          class="mb-2"
+          :blocks="toolActivityBlocks"
+          :message-id="message.id"
+          :is-disabled="!!message.responseTimestamp"
+          :response="message.blockResponse"
+        />
+
         <!-- Message content -->
         <div class="leading-relaxed text-[15px]">
           <TiptapEditor mode="viewer" variant="chat" :model-value="message.text" :is-command="isCommand" />
         </div>
 
-        <!-- Block-based interactions -->
+        <!-- Other block types (approval, choice, etc.) render BELOW text -->
         <InteractionContainer
-          v-if="message.blocks && message.blocks.length > 0"
-          :blocks="message.blocks"
+          v-if="otherBlocks.length > 0"
+          :blocks="otherBlocks"
           :message-id="message.id"
           :is-disabled="!!message.responseTimestamp"
           :response="message.blockResponse"
@@ -89,18 +120,46 @@
           <span class="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-pulse" style="animation-delay: 400ms"></span>
         </div>
       </div>
+      </template>
+
+      <!-- Queued indicator — shown on user messages waiting behind an active turn -->
+      <div
+        v-if="isUser && (message as any).status === 'queued'"
+        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-400"
+      >
+        <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+        <span>Queued</span>
+      </div>
+      <!-- Cancelled indicator — queued message was dropped when turn was killed -->
+      <div
+        v-else-if="isUser && (message as any).status === 'cancelled'"
+        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-500"
+      >
+        <span class="inline-block w-1.5 h-1.5 bg-neutral-500 rounded-full" />
+        <span>Cancelled — resend</span>
+      </div>
     </div>
+
+    <!-- Revert context menu (right-click on revert button) -->
+    <ContextMenuPopup
+      :show="revertMenu.showMenu.value"
+      :pos="revertMenu.menuPos.value"
+      :items="revertMenuItems"
+      @close="revertMenu.showMenu.value = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { MessageEntity } from '@app/api'
-import { Undo2, GitFork, Copy } from 'lucide-vue-next'
+import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import { useContextMenu } from '@/core/composables/useContextMenu'
 
 interface ChatMessageProps {
   message: MessageEntity
@@ -109,6 +168,7 @@ interface ChatMessageProps {
 
 interface ChatMessageEmits {
   (e: 'revert', messageId: string): void
+  (e: 'revert-with-files', messageId: string): void
   (e: 'fork', messageId: string): void
   (e: 'open-lightbox', imageSrc: string): void
 }
@@ -117,10 +177,47 @@ const props = withDefaults(defineProps<ChatMessageProps>(), {
   isTyping: false
 })
 
-defineEmits<ChatMessageEmits>()
+const emit = defineEmits<ChatMessageEmits>()
+
+const expanded = ref(false)
+const revertMenu = useContextMenu()
+
+const revertMenuItems = [
+  {
+    label: 'Revert & restore files',
+    icon: FileCode2,
+    class: 'text-neutral-200',
+    action: () => emit('revert-with-files', props.message.id),
+  },
+]
+
+function openRevertMenu(e: MouseEvent) {
+  revertMenu.open(e, revertMenuItems.length)
+}
 
 const isUser = computed(() => props.message.sender === 'user')
 const isCommand = computed(() => props.message.isCommand ?? false)
+
+// Split aside text into primary outcome and secondary context at the " — " separator
+const asideOutcome = computed(() => {
+  const text = props.message.asideText ?? ''
+  const idx = text.indexOf(' — ')
+  return idx === -1 ? text : text.slice(0, idx)
+})
+const asideContext = computed(() => {
+  const text = props.message.asideText ?? ''
+  const idx = text.indexOf(' — ')
+  return idx === -1 ? '' : text.slice(idx + 3)
+})
+
+// Split blocks by type so tool-activity renders above text while
+// other block types (approval, choice, etc.) render below text.
+const toolActivityBlocks = computed(() =>
+  (props.message.blocks ?? []).filter((b: any) => b.type === 'tool-activity')
+)
+const otherBlocks = computed(() =>
+  (props.message.blocks ?? []).filter((b: any) => b.type !== 'tool-activity')
+)
 
 const copyMessageText = async () => {
   try {

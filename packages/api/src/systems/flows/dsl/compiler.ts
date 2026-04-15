@@ -140,8 +140,14 @@ function parseExpressionToPredicate(expr: string): { key: string; operator: Bina
 
   const trimmed = expr.trim();
 
-  // Map DSL operators to BinaryOperator enum values
+  // Map DSL operators to BinaryOperator enum values.
+  // `===` / `!==` map to the same enum as `==` / `!=` — the runtime
+  // evaluator uses loose comparison regardless, and accepting both forms
+  // prevents silent breakage when authors write JS-idiomatic strict equality
+  // (see the stray `= 'work'` regression in claude-code-flow.ts).
   const operatorMap: Record<string, BinaryOperator> = {
+    '===': BinaryOperator.EQUALS,
+    '!==': BinaryOperator.NOT_EQUALS,
     '==': BinaryOperator.EQUALS,
     '!=': BinaryOperator.NOT_EQUALS,
     '>=': BinaryOperator.GREATER_THAN_OR_EQUALS,
@@ -156,8 +162,10 @@ function parseExpressionToPredicate(expr: string): { key: string; operator: Bina
     'is_null': BinaryOperator.IS_NULL,
   };
 
-  // Try to match operators (longer ones first to avoid partial matches)
-  const operatorPatterns = ['>=', '<=', '!=', '==', '>', '<', 'contains', 'starts_with', 'ends_with', 'matches', 'is_empty', 'is_null'];
+  // Try to match operators (longer ones first to avoid partial matches —
+  // `===` / `!==` must come before `==` / `!=` so the non-greedy key regex
+  // doesn't split inside a strict-equality token).
+  const operatorPatterns = ['===', '!==', '>=', '<=', '!=', '==', '>', '<', 'contains', 'starts_with', 'ends_with', 'matches', 'is_empty', 'is_null'];
 
   for (const op of operatorPatterns) {
     const regex = new RegExp(`^(.+?)\\s*${op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(.*)$`, 'i');

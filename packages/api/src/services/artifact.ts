@@ -17,6 +17,13 @@ export interface CreateArtifactOptions {
   threadId?: EARS.EntityId;
 }
 
+export interface UpdateArtifactOptions {
+  title?: string;
+  content?: unknown;
+  /** Thread to emit the ARTIFACT_UPDATED event for. If omitted, no event is sent. */
+  threadId?: EARS.EntityId;
+}
+
 /**
  * Create a new artifact and notify the frontend (with side effects)
  *
@@ -58,4 +65,60 @@ export function createAndNotify(options: CreateArtifactOptions): { artifactId: E
   }
 
   return result;
+}
+
+/**
+ * Patch an existing artifact's title and/or content in place, and notify
+ * the frontend so the panel re-renders with the new data.
+ *
+ * Used for artifacts that mutate across turns (e.g. the Claude Code session
+ * card, which tracks live status/cost/turn count). The `ARTIFACT_UPDATED`
+ * event mirrors `ARTIFACT_ADDED` but carries only the fields that changed.
+ */
+export function updateAndNotify(
+  artifactId: EARS.EntityId,
+  options: UpdateArtifactOptions,
+): void {
+  repository.chatCommands.updateArtifact(artifactId, {
+    title: options.title,
+    content: options.content,
+  });
+
+  if (options.threadId) {
+    sendToPlugin('threads', {
+      type: 'ARTIFACT_UPDATED',
+      tabId: options.threadId,
+      artifact: {
+        id: artifactId,
+        title: options.title,
+        content: options.content,
+        metadata: {
+          updatedAt: Date.now()
+        }
+      }
+    });
+  }
+}
+
+/**
+ * Find-or-create an artifact by (thread, artifactType). Guarantees at most
+ * one artifact of the given type per thread. Useful for singletons like the
+ * Claude Code session card that should only ever exist once per thread.
+ */
+export function findOrCreateByType(
+  threadId: EARS.EntityId,
+  artifactType: ArtifactType,
+  initial: { title: string; content: any },
+): { artifactId: EARS.EntityId; created: boolean } {
+  const existing = repository.chatCommands.findArtifactByType(threadId, artifactType);
+  if (existing?.id) {
+    return { artifactId: existing.id, created: false };
+  }
+  const { artifactId } = createAndNotify({
+    artifactType,
+    title: initial.title,
+    content: initial.content,
+    threadId,
+  });
+  return { artifactId, created: true };
 }

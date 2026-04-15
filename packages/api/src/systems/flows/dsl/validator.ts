@@ -392,9 +392,10 @@ function validateSwitchStep(
 
     if (!Array.isArray(cond.steps)) {
       errors.push({ path: `${condPath}.steps`, message: 'Condition must have a "steps" array' });
-    } else if (cond.steps.length === 0) {
-      errors.push({ path: `${condPath}.steps`, message: 'Steps array must not be empty' });
     } else {
+      // Empty steps arrays are meaningful: "match this condition, do nothing".
+      // The compiler emits no TRANSITIONS_TO edge for an empty branch, and at
+      // runtime the chain simply ends — exactly the intended no-op.
       for (let si = 0; si < cond.steps.length; si++) {
         errors.push(...validateStep(cond.steps[si], `${condPath}.steps[${si}]`, ctx, options));
       }
@@ -404,9 +405,9 @@ function validateSwitchStep(
   if (s.else !== undefined) {
     if (!Array.isArray(s.else)) {
       errors.push({ path: `${path}.else`, message: '"else" must be an array of steps' });
-    } else if (s.else.length === 0) {
-      errors.push({ path: `${path}.else`, message: 'Else steps array must not be empty' });
     } else {
+      // Empty else arrays are meaningful: "no conditions matched, do nothing".
+      // Same compiler + runtime treatment as empty condition steps above.
       for (let si = 0; si < s.else.length; si++) {
         errors.push(...validateStep(s.else[si], `${path}.else[${si}]`, ctx, options));
       }

@@ -94,11 +94,13 @@ const emit = defineEmits<Emits>()
 // Internal loading state
 const isLoading = ref(false)
 
-// Response display handling
+// Response display handling — supports both string and { path, toggles } shapes
 const fileList = computed(() => {
-  if (!props.response) return []
-  if (Array.isArray(props.response)) return props.response
-  if (typeof props.response === 'string') return [props.response]
+  const r = props.response
+  if (!r) return []
+  if (typeof r === 'string') return [r]
+  if (Array.isArray(r)) return r
+  if (r.path) return Array.isArray(r.path) ? r.path : [r.path]
   return []
 })
 

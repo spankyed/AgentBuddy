@@ -313,9 +313,13 @@ export function createFlowNodeSystem(
           }
 
           // Only check for next node if we have a blueprint stepId (flows with no blueprint have no next step)
-          // If the result includes a sourceHandle, use branch routing (e.g. switch nodes)
+          // If the result includes a sourceHandle, use branch routing (e.g. switch nodes).
+          // If the result carries `noMatch: true` (switch node with no matching condition
+          // and no else), end the chain here — nextNode is explicitly null so no downstream
+          // step is spawned. Other parallel chains in the flow are unaffected.
           const sourceHandle = typedEv.result?.sourceHandle;
-          const nextNode = typedEv.stepId
+          const noMatch = (typedEv.result as { noMatch?: boolean } | undefined)?.noMatch === true;
+          const nextNode = typedEv.stepId && !noMatch
             ? sourceHandle
               ? repository.brainQueries.nextNodeForBranch(typedEv.stepId, sourceHandle)
               : repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)

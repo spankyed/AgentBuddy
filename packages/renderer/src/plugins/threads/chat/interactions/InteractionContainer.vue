@@ -15,6 +15,13 @@
         :label="(block.props as any).label"
       />
 
+      <!-- Markdown Block -->
+      <MarkdownBlock
+        v-else-if="block.type === 'markdown'"
+        :content="(block.props as any).content"
+        :label="(block.props as any).label"
+      />
+
       <!-- File Picker Input -->
       <FilePickerInput
         v-else-if="block.type === 'file-picker'"
@@ -22,9 +29,9 @@
         :allow-multiple="(block.props as any).allowMultiple"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('file-picker')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="submitFilePicker"
         @cancel="handleCancel"
       />
 
@@ -36,9 +43,19 @@
         :allow-custom="(block.props as any).allowCustom"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('choice')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="submitChoice"
+        @cancel="handleCancel"
+      />
+
+      <!-- Question Input (single or multi-question wizard) -->
+      <QuestionInput
+        v-else-if="block.type === 'question'"
+        :questions="(block.props as any).questions"
+        :disabled="isDisabled"
+        :response="responseForBlock('question')"
+        @submit="submitQuestion"
         @cancel="handleCancel"
       />
 
@@ -51,9 +68,9 @@
         :suggestions="(block.props as any).suggestions"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('text')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="submitText"
         @cancel="handleCancel"
       />
 
@@ -64,8 +81,10 @@
         :allow-reason="(block.props as any).allowReason"
         :reason-placeholder="(block.props as any).reasonPlaceholder"
         :model-value="(block.props as any).modelValue"
+        :auto-accept-option="(block.props as any).autoAcceptOption"
+        :options="(block.props as any).options"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('approval')"
         @approve="handleApprove"
         @deny="handleDeny"
       />
@@ -76,7 +95,7 @@
         :buttons="(block.props as any).buttons"
         :submit-disabled="(block.props as any).submitDisabled || isDisabled"
         :submit-variant="(block.props as any).submitVariant"
-        @submit="() => handleSubmit(undefined)"
+        @submit="() => submitActions(undefined)"
         @cancel="handleCancel"
       />
 
@@ -93,9 +112,46 @@
         :buttons="(block.props as any).buttons"
         :keep-interactive="(block.props as any).keepInteractive"
         :disabled="isDisabled"
-        :response="response"
+        :response="responseForBlock('button-group')"
         :display-text="(block.props as any).displayText"
-        @submit="handleSubmit"
+        @submit="submitButtonGroup"
+      />
+
+      <!-- Project Select Input -->
+      <ProjectSelectInput
+        v-else-if="block.type === 'project-select'"
+        :projects="(block.props as any).projects"
+        :disabled="isDisabled"
+        :response="responseForBlock('project-select')"
+        :display-text="(block.props as any).displayText"
+        @submit="submitProjectSelect"
+      />
+
+      <!-- Toggles Block -->
+      <TogglesBlock
+        v-else-if="block.type === 'toggles'"
+        ref="togglesBlockRef"
+        :toggles="(block.props as any).toggles"
+        :disabled="isDisabled"
+        :response="responseForBlock('toggles')"
+      />
+
+      <!-- Tool Input Block — structured display for tool approval context -->
+      <ToolInputBlock
+        v-else-if="block.type === 'tool-input'"
+        :tool-name="(block.props as any).toolName"
+        :input="(block.props as any).input"
+      />
+
+      <!-- Tool Activity Block — collapsible group of Claude Code tool calls -->
+      <ToolActivityBlock
+        v-else-if="block.type === 'tool-activity'"
+        :entries="(block.props as any).entries"
+        :label="(block.props as any).label"
+        :state="(block.props as any).state"
+        :default-open="(block.props as any).defaultOpen"
+        :artifact-ref="(block.props as any).artifactRef"
+        :phase="(block.props as any).phase"
       />
     </template>
   </div>
@@ -105,13 +161,20 @@
 import type { BlockConfig } from '@app/api'
 import PromptBlock from './blocks/PromptBlock.vue'
 import NoteBlock from './blocks/NoteBlock.vue'
+import MarkdownBlock from './blocks/MarkdownBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
 import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
+import ToolActivityBlock from './blocks/ToolActivityBlock.vue'
+import ToolInputBlock from './blocks/ToolInputBlock.vue'
 import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
+import QuestionInput from './inputs/QuestionInput.vue'
 import TextInput from './inputs/TextInput.vue'
 import ApprovalButtons from './inputs/ApprovalButtons.vue'
 import ButtonGroupInput from './inputs/ButtonGroupInput.vue'
+import ProjectSelectInput from './inputs/ProjectSelectInput.vue'
+import TogglesBlock from './blocks/TogglesBlock.vue'
+import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
 
@@ -128,6 +191,30 @@ const props = withDefaults(defineProps<Props>(), {
 
 const threadsActor = applicationState.system.get(threadsId)
 
+const togglesBlockRef = ref<InstanceType<typeof TogglesBlock> | null>(null)
+
+// ─── Per-block response routing ───────────────────────────────────────
+// Infer which block type submitted the response from its shape, so only
+// that block renders the "responded" state — others just disable/hide.
+const respondedBlockType = computed(() => {
+  const r = props.response
+  if (!r) return null
+  // Explicit source tag (set by handleSubmitFrom when toggles wrap the response)
+  if (typeof r === 'object' && r._source) return r._source
+  // Fallback heuristic for legacy/untagged responses
+  if (typeof r === 'string') return 'project-select'
+  if (r.path) return 'file-picker'
+  if (r.approved !== undefined || r.cancelled) return 'approval'
+  if (Array.isArray(r)) return 'choice'
+  return null // unknown — pass response to all (backward compat)
+})
+
+const responseForBlock = (blockType: string) => {
+  if (!props.isDisabled || !props.response) return props.response
+  if (!respondedBlockType.value) return props.response
+  return blockType === respondedBlockType.value ? props.response : null
+}
+
 // Internal interaction handlers
 const handleBlockResponse = (response: any) => {
   threadsActor.send({
@@ -137,13 +224,29 @@ const handleBlockResponse = (response: any) => {
   })
 }
 
-// Event handlers
-const handleSubmit = (response: any) => {
-  handleBlockResponse(response)
+// Event handlers — wraps toggle values and source tag into the response.
+const handleSubmitFrom = (blockType: string) => (response: any) => {
+  const toggles = togglesBlockRef.value?.values
+  if (toggles && Object.keys(toggles).length > 0) {
+    handleBlockResponse({ path: response, toggles: { ...toggles }, _source: blockType })
+  } else {
+    handleBlockResponse(response)
+  }
 }
 
-const handleApprove = (reason?: string) => {
-  handleBlockResponse({ approved: true, reason })
+// Pre-create stable handler refs so Vue event binding works across renders.
+// Inline handleSubmitFrom('...') in templates creates a new closure on every
+// render, breaking Vue 3's event delegation.
+const submitFilePicker = handleSubmitFrom('file-picker')
+const submitChoice = handleSubmitFrom('choice')
+const submitQuestion = handleSubmitFrom('question')
+const submitText = handleSubmitFrom('text')
+const submitActions = handleSubmitFrom('actions')
+const submitButtonGroup = handleSubmitFrom('button-group')
+const submitProjectSelect = handleSubmitFrom('project-select')
+
+const handleApprove = (reason?: string, flags?: Record<string, any>) => {
+  handleBlockResponse({ approved: true, reason, ...flags })
 }
 
 const handleDeny = (reason?: string) => {

@@ -1,13 +1,16 @@
 import type { EntityId, Services } from '../../../types';
 import { DEFAULT_NAME, TECH_LEVELS, type OnboardingState } from '../onboarding-helpers';
+import type { ParsedStepResponse } from '../_helpers/parse-step-response';
 
 export function handleNameStep(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
-  responseValue: any,
+  parsed: Extract<ParsedStepResponse, { step: 'name' }>,
 ) {
-  const name = (typeof responseValue === 'string' && responseValue.trim()) || DEFAULT_NAME;
+  // Trim whitespace; fall back to DEFAULT_NAME on empty or cancelled.
+  const trimmed = parsed.name.trim();
+  const name = trimmed.length > 0 && !parsed.cancelled ? trimmed : DEFAULT_NAME;
   state.data.name = name;
 
   services.repository.settingsCommands.updateSettings('assistant', null, ['name'], name);

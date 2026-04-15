@@ -135,12 +135,13 @@
 
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
-            <!-- Pause button -->
+            <!-- Pause button (only while streaming) -->
             <Button
+              v-if="isStreaming"
               title="Pause agent work"
-              type="submit"
-              :disabled="(!messageContent && !hasAttachments) || disabled"
+              type="button"
               variant="secondary"
+              @click.stop="emit('pause')"
             >
               <span class="hidden @md:inline">Pause</span>
               <PauseIcon :size="22" />
@@ -200,6 +201,10 @@ const props = defineProps<{
   quickPrompts?: QuickPrompt[]
   quickPromptCursor?: { x: number; y: number } | null
   disabled?: boolean
+  /** Text to prefill the input with (e.g., on revert). Consumed once on change. */
+  prefillText?: string
+  /** Whether a Claude Code turn is actively streaming. Controls Pause button visibility. */
+  isStreaming?: boolean
 }>()
 
 // Define emits including new button actions
@@ -242,6 +247,13 @@ watch(() => props.quickPromptCursor, (cursor) => {
 
 watch(popoverOpen, (isOpen) => {
   if (!isOpen && props.quickPromptCursor) emit('close-quick-prompts')
+})
+
+// Prefill the input when the parent sets prefillText (e.g., on revert).
+watch(() => props.prefillText, (text) => {
+  if (text && tiptapRef.value?.editor) {
+    tiptapRef.value.editor.commands.setContent(text)
+  }
 })
 
 const HISTORY_STORAGE_KEY = 'chat-sent-history'

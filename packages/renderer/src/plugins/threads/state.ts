@@ -1,13 +1,13 @@
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { safeEvents } from '@/core/types/safe-events';
-import { setup, assign, log, fromPromise, spawnChild } from 'xstate';
+import { setup, assign, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type {
-  ThreadConnectedData, ThreadEntity, ThreadExtended, OutgoingThreadsEvents,
+  ThreadEntity, OutgoingThreadsEvents,
   ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings, EARS,
-  MessageEntity, ArtifactEntity, AgentThreadData, Tab, ArtifactItem, ArtifactType,
-  AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem,
+  MessageEntity, AgentThreadData, Tab,
+  AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
 import { Trash2 } from 'lucide-vue-next';
@@ -63,7 +63,7 @@ const defaultChatThread: AgentThreadData = {
   artifacts: [],
 };
 
-type StatusColor = 'bg-zinc-500' | 'bg-yellow-500' | 'bg-green-500';
+type ChatState = 'idle' | 'working' | 'paused';
 
 // ---- Event types ----
 
@@ -113,8 +113,8 @@ type UIEvent =
   | { type: 'SEND_COMMAND'; command: string; text: string; references?: MessageReferences }
   | { type: 'CLEAR_THREAD' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
-  | { type: 'SET_STATUS_COLOR'; color: StatusColor }
-  | { type: 'RESET_STATUS_COLOR'; }
+  | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
+  | { type: 'CLEAR_CHAT_STATE_OVERRIDE'; threadId: string }
   | { type: 'SELECT_TAB'; tabId: string }
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
@@ -124,8 +124,8 @@ type UIEvent =
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
-  | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: any }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: any }
+  | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: BlockResponse; asideText?: string }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
@@ -137,6 +137,9 @@ type UIEvent =
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
+  | { type: 'PAUSE_TURN'; threadId: string }
+  | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
+  | { type: 'UPDATE_CLAUDE_WORKTREE'; threadId: string; useWorktree: boolean }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -179,7 +182,8 @@ interface ThreadsContext {
   recentThreads: ThreadEntity[];
   messageInput: string;
   pendingActionId?: string;
-  statusColor: StatusColor;
+  chatStates: Record<string, ChatState>;
+  chatStateOverrides: Record<string, { id: string; expiresAt: number }>;
   tabs: Tab[];
   activeTabId: string;
   mode: string;
@@ -203,9 +207,9 @@ const threadsState = setup({
       await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
       system.get(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
     }),
-    resetStatusColorAfterDelay: fromPromise<void, void>(async ({ system }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      system.get(id).send({ type: 'RESET_STATUS_COLOR' });
+    clearExpiredOverride: fromPromise<void, { threadId: string; durationMs: number }>(async ({ input, system }) => {
+      await new Promise(resolve => setTimeout(resolve, input.durationMs));
+      system.get(id).send({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId });
     }),
   },
   actions: {
@@ -336,7 +340,7 @@ const threadsState = setup({
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),
-    updateThreadStatus: ({ event, context }) => {
+    updateThreadStatus: ({ event }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
       trpc.bus.send.mutate({
         systemId: id,
@@ -477,9 +481,14 @@ const threadsState = setup({
         threadId,
       });
     },
-    setStatusColor: assign((_, params?: { color: StatusColor }) => {
-      if (params?.color) return { statusColor: params.color };
-      return { statusColor: 'bg-zinc-500' as StatusColor };
+    setChatState: assign(({ context, event }) => {
+      const { threadId, chatState } = typeOf('SET_CHAT_STATE', event);
+      return { chatStates: { ...context.chatStates, [threadId]: chatState } as Record<string, ChatState> };
+    }),
+    flashChatState: assign(({ context, event }) => {
+      const { threadId, stateId, durationMs } = typeOf('FLASH_CHAT_STATE', event);
+      const expiresAt = Date.now() + (durationMs ?? 3000);
+      return { chatStateOverrides: { ...context.chatStateOverrides, [threadId]: { id: stateId, expiresAt } } };
     }),
     setMode: assign(({ context, event }) => {
       const newMode = typeOf('SET_MODE', event).mode;
@@ -535,9 +544,15 @@ const threadsState = setup({
         ...(references && { references }),
       });
     },
-    clearThread: assign(() => ({
-      currentThread: { ...defaultChatThread, messages: [] }
-    })),
+    clearThread: assign(({ context }) => {
+      const modeConfig = context.modes.find(m => m.id === context.mode);
+      const defaultPhase = modeConfig?.phases?.length ? modeConfig.phases[0].id : context.phase;
+      return {
+        currentThread: { ...defaultChatThread, messages: [] },
+        phase: defaultPhase,
+        phaseByMode: { ...context.phaseByMode, [context.mode]: defaultPhase },
+      };
+    }),
     handleTokenStream: assign(({ context, event }) => {
       const token = typeOf('TOKEN_STREAM', event).token;
       const { currentThread, pendingActionId } = context;
@@ -584,16 +599,32 @@ const threadsState = setup({
         });
       }
 
+      // Initialize chatState from the session artifact so the indicator
+      // shows the correct state immediately on thread switch.
+      const sessionArtifact = ((thread as any).artifacts ?? []).find(
+        (a: any) => a.artifactType === 'claude-session',
+      );
+      const content = sessionArtifact?.content as any;
+      const chatState: ChatState = content?.chatState ?? 'idle';
+
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
         const newPhase = modeConfig?.phases?.length
           ? (thread.forcedMode in context.phaseByMode ? context.phaseByMode[thread.forcedMode] : modeConfig.phases[0].id)
           : undefined;
 
-        return { currentThread: thread, mode: thread.forcedMode, phase: newPhase };
+        return {
+          currentThread: thread,
+          mode: thread.forcedMode,
+          phase: newPhase,
+          chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+        };
       }
 
-      return { currentThread: thread };
+      return {
+        currentThread: thread,
+        chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+      };
     }),
     setRefreshThreadsData: assign(({ event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
@@ -609,6 +640,10 @@ const threadsState = setup({
       const extracted = extractChatSettings(typedEvent.data.settings || { modes: [], hotkeys: {} });
 
       const currentThread = typedEvent.data.currentThread;
+      const startupSessionArtifact = ((currentThread as any)?.artifacts ?? []).find(
+        (a: any) => a.artifactType === 'claude-session',
+      );
+      const startupChatState: ChatState = (startupSessionArtifact?.content as any)?.chatState ?? 'idle';
       const forcedMode = currentThread?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {
@@ -633,7 +668,8 @@ const threadsState = setup({
         ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
-        ...modeUpdate
+        ...modeUpdate,
+        ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       };
     }),
     handleChatSettingsUpdate: assign(({ event }) => {
@@ -700,6 +736,29 @@ const threadsState = setup({
       const tabs = context.tabs.map(tab =>
         tab.id === tabId ? { ...tab, artifacts: [...tab.artifacts, artifact] } : tab
       );
+      return { tabs };
+    }),
+    updateArtifact: assign(({ context, event }) => {
+      // ARTIFACT_UPDATED carries a patch on .artifact — merge title/content
+      // into the matching artifact in the target tab. Missing fields are
+      // preserved so partial updates work.
+      const typedEvent = typeOf('ARTIFACT_UPDATED', event) as any;
+      const { tabId, artifact: patch } = typedEvent;
+      const tabs = context.tabs.map(tab => {
+        if (tab.id !== tabId) return tab;
+        return {
+          ...tab,
+          artifacts: tab.artifacts.map(a => {
+            if (a.id !== patch.id) return a;
+            return {
+              ...a,
+              ...(patch.title !== undefined && { title: patch.title }),
+              ...(patch.content !== undefined && { content: patch.content }),
+              metadata: { ...a.metadata, ...(patch.metadata || {}) },
+            };
+          }),
+        };
+      });
       return { tabs };
     }),
     updateTodoTask: assign(({ context, event }) => {
@@ -769,7 +828,10 @@ const threadsState = setup({
                 ...('text' in typedEvent && typedEvent.text !== undefined && { text: typedEvent.text }),
                 ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
                 ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
-                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse })
+                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
+                ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
+                ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText }),
+                ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable })
               }
               : msg
           )
@@ -793,9 +855,31 @@ const threadsState = setup({
       const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
     },
+    updateClaudePermissionMode: ({ event }) => {
+      const typedEvent = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event) as any;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_CLAUDE_PERMISSION_MODE',
+        threadId: typedEvent.threadId,
+        mode: typedEvent.mode,
+      });
+    },
+    updateClaudeWorktree: ({ event }) => {
+      const typedEvent = typeOf('UPDATE_CLAUDE_WORKTREE', event) as any;
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_CLAUDE_WORKTREE',
+        threadId: typedEvent.threadId,
+        useWorktree: typedEvent.useWorktree,
+      });
+    },
     revertThread: ({ event }) => {
       const { messageId, threadId } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'REVERT_THREAD', messageId, threadId });
+    },
+    pauseTurn: ({ event }) => {
+      const { threadId } = typeOf('PAUSE_TURN', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'PAUSE_TURN', threadId });
     },
   },
   guards: {
@@ -827,7 +911,8 @@ const threadsState = setup({
     recentThreads: [],
     messageInput: "",
     pendingActionId: undefined,
-    statusColor: 'bg-zinc-500' as StatusColor,
+    chatStates: {} as Record<string, ChatState>,
+    chatStateOverrides: {} as Record<string, { id: string; expiresAt: number }>,
     tabs: [],
     activeTabId: 'dashboard',
     mode: '',
@@ -956,41 +1041,55 @@ const threadsState = setup({
     UPDATE_TODO_TASK: { actions: 'updateTodoTask' },
     APPROVE_TODO_LIST: { actions: 'approveTodoList' },
     REJECT_TODO_LIST: { actions: 'rejectTodoList' },
-    RESPOND_TO_BLOCK_INTERACTION: { actions: 'respondToBlockInteraction' },
+    RESPOND_TO_BLOCK_INTERACTION: {
+      actions: [
+        'respondToBlockInteraction',
+      ],
+    },
     UPDATE_MESSAGE_STATE: { actions: 'updateMessageState' },
     MESSAGE_ADDED: { actions: 'addMessageToThread' },
-    SEND_MESSAGE: {
+    SEND_MESSAGE: { actions: 'sendMessage' },
+    SEND_COMMAND: { actions: 'sendCommand' },
+    SET_CHAT_STATE: { actions: 'setChatState' },
+    FLASH_CHAT_STATE: {
       actions: [
-        'sendMessage',
-        { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
+        'flashChatState',
+        spawnChild('clearExpiredOverride', {
+          input: ({ event }: any) => ({
+            threadId: event.threadId,
+            durationMs: event.durationMs ?? 3000,
+          }),
+        }),
       ],
     },
-    SEND_COMMAND: {
-      actions: [
-        'sendCommand',
-        { type: 'setStatusColor', params: { color: 'bg-yellow-500' } },
-      ],
+    CLEAR_CHAT_STATE_OVERRIDE: {
+      actions: assign(({ context, event }) => {
+        const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
+        const { [threadId]: _, ...rest } = context.chatStateOverrides;
+        return { chatStateOverrides: rest };
+      }),
     },
-    RESET_STATUS_COLOR: { actions: 'setStatusColor' },
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },
     CLEAR_THREAD: { actions: 'clearThread' },
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
+    PAUSE_TURN: {
+      actions: 'pauseTurn',
+    },
+    UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
+    UPDATE_CLAUDE_WORKTREE: { actions: 'updateClaudeWorktree' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
-      actions: [
-        'finishStream',
-        { type: 'setStatusColor', params: { color: 'bg-green-500' } },
-        spawnChild('resetStatusColorAfterDelay'),
-      ]
+      actions: 'finishStream',
     },
     SELECT_TAB: { actions: 'selectTab' },
     OPEN_THREAD_TAB: { actions: 'openThreadTab' },
     CLOSE_TAB: { actions: 'closeTab' },
     SELECT_ARTIFACT: { actions: 'selectArtifact' },
     ARTIFACT_ADDED: { actions: 'addArtifact' },
+    ARTIFACT_UPDATED: { actions: 'updateArtifact' },
     THREAD_TAB_REQUESTED: {
       actions: assign(({ context, event }) => {
         const { threadId, topic, artifacts, pinned } = typeOf('THREAD_TAB_REQUESTED', event);

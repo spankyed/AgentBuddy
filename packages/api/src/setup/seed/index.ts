@@ -231,24 +231,41 @@ function seedFlows(
   log: (...args: any[]) => void,
   include: SeedIncludeSet | undefined,
 ): void {
-  const existingLabels = new Set(findAll<FlowEntity>(EARS.Entity.Flow).map(f => f.label));
+  // Build label → existing flow map so we can rebuild (delete + reimport) any
+  // flow whose source has changed. Previously this function skipped existing
+  // flows entirely, which meant DSL edits never propagated without db:reset.
+  // The root flow is still skipped because `deleteFlow` refuses to drop it;
+  // root flow edits continue to need a manual reset.
+  const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
+  const existingByLabel = new Map(existingFlows.map(f => [f.label, f]));
 
   const filteredDSL: FlowDSL = {};
+  const replacedLabels = new Set<string>();
   for (const [key, entry] of Object.entries(flowsDSL)) {
     if (!shouldSeedAll(include) && !(include as ReadonlySet<string>).has(key)) {
       continue;
     }
-    if (existingLabels.has(key)) {
-      log(`  flow skipped: ${key}`);
-      result.flows.skipped++;
-    } else {
-      filteredDSL[key] = entry;
+    const existing = existingByLabel.get(key);
+    if (existing) {
+      try {
+        flowsCommands.deleteFlow(existing.id);
+        replacedLabels.add(key);
+        log(`  flow replaced: ${key}`);
+      } catch (err) {
+        // deleteFlow throws for the root flow — leave it alone and keep the
+        // old skip behaviour so boot doesn't fail on root-flow DSL edits.
+        console.warn(`[seed] Keeping existing flow "${key}" (cannot replace):`, (err as Error).message);
+        log(`  flow skipped: ${key}`);
+        result.flows.skipped++;
+        continue;
+      }
     }
+    filteredDSL[key] = entry;
   }
 
   const flowNames = Object.keys(filteredDSL);
   if (flowNames.length === 0) {
-    log('  no new flows to import');
+    log('  no flows to import');
     return;
   }
 
@@ -274,8 +291,15 @@ function seedFlows(
   if (validNames.length === 0) return;
 
   flowsCommands.importFromDSL(compile(validFlowDSL, { actions: actionMap, prompts: promptMap }));
-  result.flows.created += validNames.length;
-  validNames.forEach(name => log(`  flow created: ${name}`));
+  for (const name of validNames) {
+    if (replacedLabels.has(name)) {
+      result.flows.updated++;
+      log(`  flow updated: ${name}`);
+    } else {
+      result.flows.created++;
+      log(`  flow created: ${name}`);
+    }
+  }
 }
 
 /**

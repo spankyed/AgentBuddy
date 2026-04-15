@@ -20,40 +20,68 @@
 
     <!-- Input Controls (when not disabled/not responded) -->
     <template v-else>
-      <!-- Reason Input (if required or allowed) -->
-    <div v-if="requireReason || allowReason" class="space-y-2">
-      <label class="text-xs text-neutral-400">
-        Reason {{ requireReason ? '(required)' : '(optional)' }}:
-      </label>
-      <textarea
-        v-model="reason"
-        :placeholder="reasonPlaceholder"
-        :rows="reasonRows"
-        :disabled="disabled"
-        :class="[
-          'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent resize-y',
-          disabled
-            ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
-            : 'bg-neutral-700 border-neutral-600 text-neutral-200'
-        ]"
-      ></textarea>
-    </div>
+      <!-- Reason Input (opt-in) -->
+      <div v-if="requireReason || allowReason" class="space-y-2">
+        <label class="text-xs text-neutral-400">
+          Reason {{ requireReason ? '(required)' : '(optional)' }}:
+        </label>
+        <textarea
+          v-model="reason"
+          :placeholder="reasonPlaceholder"
+          :rows="reasonRows"
+          :disabled="disabled"
+          :class="[
+            'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent resize-y',
+            disabled
+              ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
+              : 'bg-neutral-700 border-neutral-600 text-neutral-200'
+          ]"
+        ></textarea>
+      </div>
 
-    <!-- Approval Action Buttons -->
-    <div class="flex items-center gap-2">
-      <button
-        @click="handleApprove"
-        :disabled="isDisabled"
-        :class="[
-          'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
-          isDisabled
-            ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
-            : 'bg-green-600 hover:bg-green-500 text-white'
-        ]"
-      >
-        <CheckCircle class="w-4 h-4" />
-        {{ approveLabel }}
-      </button>
+      <!-- Auto-accept checkbox (for file mutation tools) -->
+      <label v-if="autoAcceptOption" class="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          v-model="autoAcceptChecked"
+          class="w-3.5 h-3.5 rounded border-neutral-500 bg-neutral-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
+        />
+        <span class="text-xs text-neutral-400">Auto-accept file edits for rest of session</span>
+      </label>
+
+      <!-- Custom Options Mode -->
+      <div v-if="options?.length" class="flex flex-wrap items-center gap-2">
+        <button
+          v-for="(opt, i) in options"
+          :key="i"
+          @click="handleOption(opt)"
+          :disabled="isDisabled"
+          :class="[
+            'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
+            isDisabled
+              ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+              : variantClass(opt.variant),
+          ]"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+
+      <!-- Default Approve/Deny Buttons (when no custom options) -->
+      <div v-else class="flex items-center gap-2">
+        <button
+          @click="handleApprove"
+          :disabled="isDisabled"
+          :class="[
+            'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
+            isDisabled
+              ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-500 text-white'
+          ]"
+        >
+          <CheckCircle class="w-4 h-4" />
+          {{ approveLabel }}
+        </button>
 
         <button
           @click="handleDeny"
@@ -62,7 +90,7 @@
             'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
             isDisabled
               ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
-              : 'bg-red-600 hover:bg-red-500 text-white'
+              : 'bg-neutral-600 hover:bg-neutral-500 text-neutral-200'
           ]"
         >
           <XCircle class="w-4 h-4" />
@@ -77,6 +105,12 @@
 import { ref, computed } from 'vue'
 import { CheckCircle, XCircle } from 'lucide-vue-next'
 
+interface ApprovalOption {
+  label: string
+  variant: 'primary' | 'secondary' | 'danger' | 'neutral'
+  flags?: Record<string, any>
+}
+
 interface Props {
   requireReason?: boolean
   allowReason?: boolean
@@ -84,20 +118,22 @@ interface Props {
   reasonRows?: number
   approveLabel?: string
   denyLabel?: string
-  modelValue?: string  // For reason text
+  modelValue?: string
   disabled?: boolean
   response?: any
+  autoAcceptOption?: boolean
+  options?: ApprovalOption[]
 }
 
 interface Emits {
   (e: 'update:modelValue', value: string): void
-  (e: 'approve', reason?: string): void
+  (e: 'approve', reason?: string, flags?: Record<string, any>): void
   (e: 'deny', reason?: string): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   requireReason: false,
-  allowReason: true,
+  allowReason: false,
   reasonPlaceholder: 'Enter your reason...',
   reasonRows: 3,
   approveLabel: 'Approve',
@@ -109,6 +145,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const reason = ref(props.modelValue)
+const autoAcceptChecked = ref(false)
 
 // Response display handling
 const approvalClasses = computed(() => {
@@ -136,17 +173,38 @@ const isDisabled = computed(() => {
   return props.disabled || (props.requireReason && !reason.value.trim())
 })
 
+const variantClass = (variant: string) => {
+  switch (variant) {
+    case 'primary': return 'bg-green-600 hover:bg-green-500 text-white'
+    case 'secondary': return 'bg-blue-600 hover:bg-blue-500 text-white'
+    case 'danger': return 'bg-red-600 hover:bg-red-500 text-white'
+    case 'neutral': return 'bg-neutral-600 hover:bg-neutral-500 text-neutral-200'
+    default: return 'bg-neutral-600 hover:bg-neutral-500 text-neutral-200'
+  }
+}
+
+const handleOption = (opt: ApprovalOption) => {
+  if (isDisabled.value) return
+  const trimmedReason = reason.value.trim()
+  const flags = opt.flags ?? {}
+  if (flags.approved === false) {
+    emit('deny', trimmedReason || undefined)
+  } else {
+    emit('approve', trimmedReason || undefined, flags)
+  }
+}
+
 const handleApprove = () => {
   if (isDisabled.value) return
-
   const trimmedReason = reason.value.trim()
   emit('update:modelValue', trimmedReason)
-  emit('approve', trimmedReason || undefined)
+  const flags: Record<string, any> = {}
+  if (autoAcceptChecked.value) flags.autoAccept = true
+  emit('approve', trimmedReason || undefined, Object.keys(flags).length > 0 ? flags : undefined)
 }
 
 const handleDeny = () => {
   if (isDisabled.value) return
-
   const trimmedReason = reason.value.trim()
   emit('update:modelValue', trimmedReason)
   emit('deny', trimmedReason || undefined)

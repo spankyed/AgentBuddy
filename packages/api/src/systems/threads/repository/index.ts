@@ -188,6 +188,7 @@ export const threadCommands = {
     lastMessageTimestamp?: number;
     lastVisitedTimestamp?: number;
     forcedMode?: ThreadEntity['forcedMode'] | null;
+    context?: ThreadEntity['context'];  // Free-form per-feature state (ThreadContext)
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
@@ -307,7 +308,7 @@ function getThreadsWithCurrent(limit: number = 4): {
   }
 
   const mostRecentThread = threads[0];
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command"] as const;
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asideText", "asideContext", "status", "context"] as const;
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -381,7 +382,7 @@ export const chatQueries = {
       messages: (qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status"] as const,
           EARS.Entity.Message,
         ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
       artifacts: threadArtifacts as any as ArtifactEntity[],
@@ -440,7 +441,8 @@ export const chatQueries = {
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
     const message = qx(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
-      'responseTimestamp', 'createdAt', 'updatedAt'
+      'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asideText', 'asideContext',
+      'forkable', 'references', 'isCommand', 'command', 'status', 'context'
     ] as const);
 
     if (!message) return null;
@@ -459,6 +461,11 @@ export const chatCommands = {
     references?: MessageReferences;
     isCommand?: boolean;
     command?: string;
+    autoHide?: boolean;
+    asideContext?: string;
+    blockResponse?: any;
+    responseTimestamp?: number;
+    asideText?: string;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -466,7 +473,7 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
@@ -494,6 +501,11 @@ export const chatCommands = {
     if (references) messageTx.put('references', references);
     if (isCommand) messageTx.put('isCommand', isCommand);
     if (command) messageTx.put('command', command);
+    if (autoHide) messageTx.put('autoHide', autoHide);
+    if (asideContext) messageTx.put('asideContext', asideContext);
+    if (blockResponse) messageTx.put('blockResponse', blockResponse);
+    if (responseTimestamp) messageTx.put('responseTimestamp', responseTimestamp);
+    if (asideText) messageTx.put('asideText', asideText);
 
     const messageId = messageTx.link(EARS.RelKind.CONTAINS, threadId).id();
 
@@ -573,7 +585,7 @@ export const chatCommands = {
 
   updateMessageState: (params: {
     messageId: EARS.EntityId;
-    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context'>>;
   }): {
     messageId: EARS.EntityId;
     updatedAt: number;
@@ -602,7 +614,7 @@ export const chatCommands = {
     const sourceData = chatQueries.threadData(sourceThreadId);
     const sourceMessages = sourceData.messages || [];
 
-    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command'] as const;
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context'] as const;
 
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};
@@ -637,7 +649,10 @@ export const chatCommands = {
       throw new RepositoryError(`Message ${messageId} not found in thread ${threadId}`, RepositoryErrorCode.NOT_FOUND);
     }
 
-    const toDelete = nonDeleted.slice(targetIndex + 1);
+    // Delete the target message AND everything after it — the user is
+    // "undoing" their message. The message text is prefilled into the chat
+    // input so they can re-send or edit it.
+    const toDelete = nonDeleted.slice(targetIndex);
     const now = Date.now();
     const deletedIds: string[] = [];
 
@@ -673,5 +688,43 @@ export const chatCommands = {
     }
 
     return { artifactId };
+  },
+
+  /**
+   * Patch an existing artifact's title and/or content in place.
+   *
+   * Used by `services.artifact.updateAndNotify` for artifacts that need to
+   * mutate across turns (e.g. the Claude Code session card, which tracks
+   * live status / cost / turn count).
+   */
+  updateArtifact: (
+    artifactId: EARS.EntityId,
+    patch: { title?: string; content?: unknown },
+  ): void => {
+    const txn = tx(artifactId);
+    if (patch.title !== undefined) txn.put('title', patch.title);
+    if (patch.content !== undefined) txn.put('content', patch.content);
+    txn.put('updatedAt', Date.now()).id();
+  },
+
+  /**
+   * Find an artifact by (thread, artifactType). Used by upsert helpers to
+   * avoid creating duplicates on repeated turns. Returns the first match
+   * (there should only ever be one for singleton types like claude-session).
+   */
+  findArtifactByType: (
+    threadId: EARS.EntityId,
+    artifactType: ArtifactType,
+  ): ArtifactEntity | undefined => {
+    const candidates = qx(threadId)
+      .linksPick(
+        EARS.RelKind.HAS,
+        ['artifactType'] as const,
+        EARS.Entity.Artifact,
+      )
+      .filter(({ artifactType: t }) => t === artifactType);
+    const first = candidates[0];
+    if (!first?.id) return undefined;
+    return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
   },
 } as const;

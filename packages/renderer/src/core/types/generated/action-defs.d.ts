@@ -352,7 +352,641 @@ interface ActionsStartupData {
     categories?: Category[];
 }
 
-type BlockType = 'prompt' | 'note' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group';
+/**
+ * Type definitions + Zod schemas for the Claude Code stream-json wire protocol.
+ *
+ * The CLI is fast-moving and routinely adds fields; every object schema uses
+ * `.passthrough()` so unknown fields survive round-trips and we only validate
+ * the bits we actually read. Inferred TS types are exported next to each schema.
+ *
+ * Source of truth for field shapes: the stream-json writer at
+ * `src/cli/structuredIO.ts` and the SDK Zod schemas at
+ * `src/entrypoints/sdk/coreSchemas.ts` in the leaked Claude Code source.
+ */
+
+/**
+ * Permission modes accepted by `claude --permission-mode`. Names match the
+ * CLI's Commander validator exactly (see the leaked source at
+ * `src/types/permissions.ts` or the error message the CLI prints when you
+ * pass an unknown value).
+ *
+ * Interoperation note: only `default`, `plan`, and `acceptEdits` emit
+ * `can_use_tool` control_requests that our wrapper's `onPermissionRequest`
+ * hook can intercept. `bypassPermissions` and `dontAsk` short-circuit the
+ * permission resolver entirely; `auto` is feature-gated and uses an ML
+ * classifier instead of prompting.
+ */
+declare const PermissionModeSchema: z.ZodEnum<["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"]>;
+type PermissionMode = z.infer<typeof PermissionModeSchema>;
+declare const ThinkingSchema: z.ZodEnum<["enabled", "adaptive", "disabled"]>;
+type Thinking = z.infer<typeof ThinkingSchema>;
+declare const EffortSchema: z.ZodEnum<["low", "medium", "high", "max"]>;
+type Effort = z.infer<typeof EffortSchema>;
+declare const SettingScopeSchema: z.ZodEnum<["user", "project", "local"]>;
+type SettingScope = z.infer<typeof SettingScopeSchema>;
+/** `{type:'user', message:{role:'user', content:...}}` — replayed user turn. */
+declare const UserStreamLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"user">;
+    message: z.ZodObject<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isReplay: z.ZodOptional<z.ZodBoolean>;
+    isSynthetic: z.ZodOptional<z.ZodBoolean>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"user">;
+    message: z.ZodObject<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isReplay: z.ZodOptional<z.ZodBoolean>;
+    isSynthetic: z.ZodOptional<z.ZodBoolean>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"user">;
+    message: z.ZodObject<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        role: z.ZodLiteral<"user">;
+        content: z.ZodUnion<[z.ZodString, z.ZodArray<z.ZodAny, "many">]>;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isReplay: z.ZodOptional<z.ZodBoolean>;
+    isSynthetic: z.ZodOptional<z.ZodBoolean>;
+}, z.ZodTypeAny, "passthrough">>;
+type UserStreamLine = z.infer<typeof UserStreamLineSchema>;
+/** `{type:'assistant', message:{role:'assistant', content:[...blocks]}}` */
+declare const AssistantStreamLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"assistant">;
+    message: z.ZodObject<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    error: z.ZodOptional<z.ZodObject<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"assistant">;
+    message: z.ZodObject<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    error: z.ZodOptional<z.ZodObject<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"assistant">;
+    message: z.ZodObject<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        role: z.ZodLiteral<"assistant">;
+        content: z.ZodArray<z.ZodAny, "many">;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    error: z.ZodOptional<z.ZodObject<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+}, z.ZodTypeAny, "passthrough">>;
+type AssistantStreamLine = z.infer<typeof AssistantStreamLineSchema>;
+/** `{type:'stream_event', event:{...}}` — partial message chunks. */
+declare const StreamEventLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"stream_event">;
+    event: z.ZodObject<{
+        type: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"stream_event">;
+    event: z.ZodObject<{
+        type: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"stream_event">;
+    event: z.ZodObject<{
+        type: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, z.ZodTypeAny, "passthrough">>;
+type StreamEventLine = z.infer<typeof StreamEventLineSchema>;
+/** Tool-use progress heartbeat. */
+declare const ToolProgressLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"tool_progress">;
+    tool_use_id: z.ZodString;
+    tool_name: z.ZodString;
+    elapsed_time_seconds: z.ZodOptional<z.ZodNumber>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"tool_progress">;
+    tool_use_id: z.ZodString;
+    tool_name: z.ZodString;
+    elapsed_time_seconds: z.ZodOptional<z.ZodNumber>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"tool_progress">;
+    tool_use_id: z.ZodString;
+    tool_name: z.ZodString;
+    elapsed_time_seconds: z.ZodOptional<z.ZodNumber>;
+    parent_tool_use_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, z.ZodTypeAny, "passthrough">>;
+type ToolProgressLine = z.infer<typeof ToolProgressLineSchema>;
+/** System lines — many subtypes, all passthrough. */
+declare const SystemLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"system">;
+    subtype: z.ZodString;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"system">;
+    subtype: z.ZodString;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"system">;
+    subtype: z.ZodString;
+}, z.ZodTypeAny, "passthrough">>;
+type SystemLine = z.infer<typeof SystemLineSchema>;
+/** Rate limit warnings. */
+declare const RateLimitLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"rate_limit_event">;
+    rate_limit_info: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"rate_limit_event">;
+    rate_limit_info: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"rate_limit_event">;
+    rate_limit_info: z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">>;
+type RateLimitLine = z.infer<typeof RateLimitLineSchema>;
+/** Tool-use summary ("Read 2 files, wrote 1 file"). */
+declare const ToolUseSummaryLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"tool_use_summary">;
+    summary: z.ZodString;
+    preceding_tool_use_ids: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"tool_use_summary">;
+    summary: z.ZodString;
+    preceding_tool_use_ids: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"tool_use_summary">;
+    summary: z.ZodString;
+    preceding_tool_use_ids: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}, z.ZodTypeAny, "passthrough">>;
+type ToolUseSummaryLine = z.infer<typeof ToolUseSummaryLineSchema>;
+/** Final result line — marks turn completion. */
+declare const ResultLineSchema: z.ZodObject<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"result">;
+    subtype: z.ZodString;
+    is_error: z.ZodOptional<z.ZodBoolean>;
+    duration_ms: z.ZodOptional<z.ZodNumber>;
+    duration_api_ms: z.ZodOptional<z.ZodNumber>;
+    num_turns: z.ZodOptional<z.ZodNumber>;
+    result: z.ZodOptional<z.ZodString>;
+    stop_reason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    total_cost_usd: z.ZodOptional<z.ZodNumber>;
+    usage: z.ZodOptional<z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>>;
+    modelUsage: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    permission_denials: z.ZodOptional<z.ZodArray<z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>, "many">>;
+    structured_output: z.ZodOptional<z.ZodUnknown>;
+    errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"result">;
+    subtype: z.ZodString;
+    is_error: z.ZodOptional<z.ZodBoolean>;
+    duration_ms: z.ZodOptional<z.ZodNumber>;
+    duration_api_ms: z.ZodOptional<z.ZodNumber>;
+    num_turns: z.ZodOptional<z.ZodNumber>;
+    result: z.ZodOptional<z.ZodString>;
+    stop_reason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    total_cost_usd: z.ZodOptional<z.ZodNumber>;
+    usage: z.ZodOptional<z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>>;
+    modelUsage: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    permission_denials: z.ZodOptional<z.ZodArray<z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>, "many">>;
+    structured_output: z.ZodOptional<z.ZodUnknown>;
+    errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    uuid: z.ZodOptional<z.ZodString>;
+    session_id: z.ZodOptional<z.ZodString>;
+} & {
+    type: z.ZodLiteral<"result">;
+    subtype: z.ZodString;
+    is_error: z.ZodOptional<z.ZodBoolean>;
+    duration_ms: z.ZodOptional<z.ZodNumber>;
+    duration_api_ms: z.ZodOptional<z.ZodNumber>;
+    num_turns: z.ZodOptional<z.ZodNumber>;
+    result: z.ZodOptional<z.ZodString>;
+    stop_reason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    total_cost_usd: z.ZodOptional<z.ZodNumber>;
+    usage: z.ZodOptional<z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>>;
+    modelUsage: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    permission_denials: z.ZodOptional<z.ZodArray<z.ZodObject<{}, "passthrough", z.ZodTypeAny, z.objectOutputType<{}, z.ZodTypeAny, "passthrough">, z.objectInputType<{}, z.ZodTypeAny, "passthrough">>, "many">>;
+    structured_output: z.ZodOptional<z.ZodUnknown>;
+    errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}, z.ZodTypeAny, "passthrough">>;
+type ResultLine = z.infer<typeof ResultLineSchema>;
+/** Control request from CLI → wrapper. Dispatched to the control router. */
+declare const ControlRequestLineSchema: z.ZodObject<{
+    type: z.ZodLiteral<"control_request">;
+    request_id: z.ZodString;
+    request: z.ZodObject<{
+        subtype: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        subtype: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        subtype: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    type: z.ZodLiteral<"control_request">;
+    request_id: z.ZodString;
+    request: z.ZodObject<{
+        subtype: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        subtype: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        subtype: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    type: z.ZodLiteral<"control_request">;
+    request_id: z.ZodString;
+    request: z.ZodObject<{
+        subtype: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        subtype: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        subtype: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">>;
+type ControlRequestLine = z.infer<typeof ControlRequestLineSchema>;
+/** Control response — normally wrapper → CLI, but can echo on stdout too. */
+declare const ControlResponseLineSchema: z.ZodObject<{
+    type: z.ZodLiteral<"control_response">;
+    response: z.ZodObject<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    type: z.ZodLiteral<"control_response">;
+    response: z.ZodObject<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    type: z.ZodLiteral<"control_response">;
+    response: z.ZodObject<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        subtype: z.ZodEnum<["success", "error"]>;
+        request_id: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">>;
+type ControlResponseLine = z.infer<typeof ControlResponseLineSchema>;
+/** `control_cancel_request` — CLI withdraws a pending control request. */
+declare const ControlCancelLineSchema: z.ZodObject<{
+    type: z.ZodLiteral<"control_cancel_request">;
+    request_id: z.ZodString;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    type: z.ZodLiteral<"control_cancel_request">;
+    request_id: z.ZodString;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    type: z.ZodLiteral<"control_cancel_request">;
+    request_id: z.ZodString;
+}, z.ZodTypeAny, "passthrough">>;
+type ControlCancelLine = z.infer<typeof ControlCancelLineSchema>;
+/** `keep_alive` — NDJSON heartbeat, silently ignored by readers. */
+declare const KeepAliveLineSchema: z.ZodObject<{
+    type: z.ZodLiteral<"keep_alive">;
+}, "strip", z.ZodTypeAny, {
+    type: "keep_alive";
+}, {
+    type: "keep_alive";
+}>;
+type KeepAliveLine = z.infer<typeof KeepAliveLineSchema>;
+/** Fallthrough catch-all: the CLI adds new top-level types regularly. */
+declare const UnknownLineSchema: z.ZodObject<{
+    type: z.ZodString;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    type: z.ZodString;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    type: z.ZodString;
+}, z.ZodTypeAny, "passthrough">>;
+type UnknownLine = z.infer<typeof UnknownLineSchema>;
+/**
+ * Every line type we explicitly recognise. Each variant has a literal
+ * `type` discriminator so a `switch(line.type)` narrows exhaustively
+ * without casts. Used internally by `pump()` in `query.ts`.
+ */
+/** Emitted by the pump when a JSON line fails to parse. */
+interface ParseErrorLine {
+    type: '__parse_error';
+    raw: string;
+    error: string;
+}
+type KnownStreamLine = UserStreamLine | AssistantStreamLine | StreamEventLine | ToolProgressLine | SystemLine | RateLimitLine | ToolUseSummaryLine | ResultLine | ControlRequestLine | ControlResponseLine | ControlCancelLine | KeepAliveLine | ParseErrorLine;
+/**
+ * Public stream-line type. Callers iterate these out of `query().events`.
+ * Includes `UnknownLine` as a catch-all so the CLI can add new top-level
+ * types without breaking the wrapper.
+ */
+type StreamLine = KnownStreamLine | UnknownLine;
+/** `control_request` subtype=`can_use_tool` — the permission prompt. */
+interface CanUseToolRequest {
+    subtype: 'can_use_tool';
+    tool_name: string;
+    input: Record<string, unknown>;
+    tool_use_id: string;
+    agent_id?: string;
+    blocked_path?: string;
+    decision_reason?: string;
+    title?: string;
+    description?: string;
+}
+/**
+ * The response shape for `can_use_tool`, as required by the Claude Code
+ * CLI at:
+ *   packages/claude-code/src/utils/permissions/PermissionPromptToolResultSchema.ts
+ *
+ * - `allow` MUST include `updatedInput` (Record<string, unknown>). The CLI
+ *   treats an empty object as "run with the original tool input", so
+ *   callers that don't intend to modify the input should echo `req.input`
+ *   back verbatim — this is the safer default.
+ * - `deny` MUST include a `message` string. Callers that don't have a
+ *   specific reason should send a generic "User denied".
+ *
+ * Malformed responses (missing required fields) are rejected by the CLI
+ * with a `ZodError: invalid_union` that surfaces as "Tool permission
+ * request failed: …" on the user's tool-activity row. Both required
+ * fields are enforced statically here so that class of bug can't
+ * silently reoccur at the call site.
+ */
+type PermissionDecision = {
+    behavior: 'allow';
+    updatedInput: Record<string, unknown>;
+    updatedPermissions?: Array<Record<string, unknown>>;
+    toolUseID?: string;
+    decisionClassification?: 'user_temporary' | 'user_permanent' | 'user_reject';
+} | {
+    behavior: 'deny';
+    message: string;
+    interrupt?: boolean;
+    toolUseID?: string;
+    decisionClassification?: 'user_temporary' | 'user_permanent' | 'user_reject';
+};
+/** Caller hook: decide a tool permission request. */
+type PermissionHandler = (request: CanUseToolRequest) => PermissionDecision | Promise<PermissionDecision>;
+/** Caller hook: handle arbitrary control request subtypes we don't special-case. */
+type ControlRequestHandler = (request: {
+    subtype: string;
+} & Record<string, unknown>) => unknown | Promise<unknown>;
+/**
+ * Every option supported by `claude --print`. Grouped by concern.
+ *
+ * These translate 1:1 to CLI flags via `argsFromOptions()` — if you add a
+ * field here, add the mapping there and a unit test covering it.
+ */
+interface QueryOptions {
+    prompt?: string | UserInputMessage;
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+    signal?: AbortSignal;
+    cliPath?: string;
+    model?: string;
+    fallbackModel?: string;
+    effort?: Effort;
+    thinking?: Thinking;
+    maxThinkingTokens?: number;
+    maxTurns?: number;
+    maxBudgetUsd?: number;
+    betas?: string[];
+    agent?: string;
+    agents?: Record<string, {
+        description: string;
+        prompt: string;
+    }>;
+    permissionMode?: PermissionMode;
+    dangerouslySkipPermissions?: boolean;
+    allowedTools?: string[];
+    disallowedTools?: string[];
+    tools?: string[] | 'default';
+    systemPrompt?: string;
+    appendSystemPrompt?: string;
+    systemPromptFile?: string;
+    appendSystemPromptFile?: string;
+    mcpConfig?: string[];
+    strictMcpConfig?: boolean;
+    pluginDir?: string[];
+    addDir?: string[];
+    settings?: string;
+    settingSources?: SettingScope[];
+    jsonSchema?: unknown;
+    sessionId?: string;
+    continue?: boolean;
+    resume?: string | true;
+    forkSession?: boolean;
+    /** Load only messages up to this CLI message UUID (SDK/print mode). */
+    resumeSessionAt?: string;
+    /** Restore files to state at this user message UUID and exit. Requires resume. */
+    rewindFiles?: string;
+    noSessionPersistence?: boolean;
+    /** Run in a git worktree for isolated file mutations. Optional name. */
+    worktree?: string | true;
+    includePartialMessages?: boolean;
+    includeHookEvents?: boolean;
+    replayUserMessages?: boolean;
+    /**
+     * Keep stdin open after the initial `prompt` is written so the caller can
+     * drive follow-up turns via `handle.send()`. Default `false` — the CLI's
+     * stream-json mode blocks waiting for more stdin input after emitting the
+     * `result` line, so leaving stdin open deadlocks callers that just drain
+     * events in a `for await`. If you set this, you OWN `handle.close()`.
+     */
+    keepStdinOpen?: boolean;
+    /**
+     * Surface `control_request` events in the `handle.events` stream instead of
+     * routing them through the `onPermissionRequest` / `onControlRequest` callbacks.
+     * The consumer handles them inline in its event loop and sends responses via
+     * `handle.respond(requestId, response)`. Default `false` for backwards compat.
+     *
+     * When `true`, the callbacks are ignored — the pump pushes control_request
+     * lines into the event queue like any other event type, and the consumer is
+     * responsible for sending the control_response.
+     */
+    surfaceControlRequests?: boolean;
+    onPermissionRequest?: PermissionHandler;
+    onControlRequest?: ControlRequestHandler;
+}
+/** User message written to stdin during a stream-json conversation. */
+interface UserInputMessage {
+    type: 'user';
+    message: {
+        role: 'user';
+        content: string | Array<Record<string, unknown>>;
+    };
+    parent_tool_use_id?: string | null;
+    session_id?: string;
+}
+/** Normalised result returned from `query().result`. */
+interface QueryResult {
+    sessionId: string;
+    text: string;
+    durationMs: number;
+    numTurns: number;
+    totalCostUsd: number;
+    usage?: Record<string, unknown>;
+    structuredOutput?: unknown;
+    permissionDenials: Array<Record<string, unknown>>;
+    raw: ResultLine;
+}
+
+type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -412,6 +1046,54 @@ interface MessageReferences {
     files?: FileReference[];
     context?: ContextReference[];
 }
+/**
+ * Shapes a block can emit back to the backend when the user interacts
+ * with it. Non-discriminated on purpose — text and choice blocks emit
+ * raw primitives on submit (TextInput.vue:207, ChoiceInput.vue:225),
+ * while approval and cancel blocks emit tagged objects
+ * (InteractionContainer.vue:156-167). Wrapping the primitives into
+ * `{ type: 'text', value: string }` etc. would be a wire-shape break,
+ * so we encode the reality instead: a union of every observed shape
+ * with no synthetic discriminator.
+ *
+ * Consumers MUST narrow before using the value. The canonical parse
+ * helpers are the authoritative places to do that:
+ *
+ *   - `parseApprovalDecision` at
+ *       packages/default-setup/src/actions/claude-code/_helpers/approval-response.ts
+ *     — narrows to `{ allow, reason? }` for approval blocks
+ *
+ *   - `parseStepResponse` at
+ *       packages/default-setup/src/actions/onboarding/_helpers/parse-step-response.ts
+ *     — narrows per onboarding step with a `cancelled` flag
+ *
+ * When adding a new block type, extend this union first, then add a
+ * matching parser in `_helpers/` and a unit test that pins the new
+ * shape (see claude-code-approval-response.spec.ts and
+ * onboarding-step-response.spec.ts for the pattern).
+ *
+ * Legacy data: messages persisted before this type was introduced may
+ * carry the stale `{ value: 'yes' }` shape, but no frontend has ever
+ * emitted it — the `?? response` fallback in the old handler was dead
+ * code. Still, `blockResponse?: unknown` at the storage boundary is
+ * more defensive than assuming the union is exhaustive; however the
+ * EVENT-level and FIELD-level types use the union because every
+ * non-legacy emit matches one of its arms.
+ */
+type BlockResponse = 
+/** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
+{
+    approved: boolean;
+    reason?: string;
+}
+/** Cancel path: InteractionContainer `handleCancel`. */
+ | {
+    cancelled: true;
+}
+/** Text input (single or multiline) and single-select choice emit a raw string. */
+ | string
+/** Multi-select choice emits a raw string array (of choice ids). */
+ | string[];
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
@@ -419,11 +1101,42 @@ interface MessageEntity extends BaseEntity {
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
-    blockResponse?: any;
+    /**
+     * Response data for block-based interactions. See the `BlockResponse`
+     * union above for the full set of observed shapes. Always narrow
+     * before use via a parse helper — the raw field is stored as the
+     * exact value the frontend emitted, which may be a primitive
+     * (string / string[]) or a tagged object.
+     */
+    blockResponse?: BlockResponse;
     forkable?: boolean;
     references?: MessageReferences;
     isCommand?: boolean;
     command?: string;
+    /** Ephemeral UI state (e.g. 'queued' while waiting behind an active turn). */
+    status?: 'queued' | 'cancelled' | null;
+    /** Free-form per-message metadata. Feature-namespaced (e.g. `{ cliUuid: '...' }`). */
+    context?: Record<string, unknown>;
+    /** When true, collapse to a compact aside after the user responds. */
+    autoHide?: boolean;
+    /** Backend-computed summary text shown when collapsed (e.g. "✓ Approved"). */
+    asideText?: string;
+    /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
+    asideContext?: string;
+}
+/**
+ * Free-form per-thread scratchpad for features that need to persist small
+ * amounts of state alongside a thread. Keys are namespaced by feature name
+ * (e.g. `claudeCode`) so multiple features don't collide. Anything goes
+ * under a feature key — this is intentionally untyped at the container
+ * level so new contributors don't need to edit this file.
+ */
+interface ThreadContext {
+    claudeCode?: {
+        sessionId?: string;
+        lastTurnAt?: number;
+    };
+    [featureKey: string]: unknown;
 }
 interface ThreadEntity extends BaseEntity {
     entityType: EARS.Entity.Thread;
@@ -438,12 +1151,13 @@ interface ThreadEntity extends BaseEntity {
     tags?: string[];
     forcedMode?: 'birth';
     pinned?: boolean;
+    context?: ThreadContext;
 }
 interface ArtifactEntity extends BaseEntity {
     entityType: EARS.Entity.Artifact;
     title?: string;
     content: string | any;
-    artifactType: 'text' | 'code' | 'image' | 'json' | 'graph' | 'table' | 'slack';
+    artifactType: ArtifactType;
 }
 declare const ThreadRelations: readonly ["parent_of", "blocks", "blocked_by", "duplicates"];
 type ThreadLinkRelation = typeof ThreadRelations[number];
@@ -454,6 +1168,8 @@ type ThreadEditFields = Simplify<Pick<ThreadEntity, 'topic' | 'instructions'> & 
     status?: ThreadEntity['status'];
 } & {
     tags?: string[];
+} & {
+    context?: ThreadContext;
 } & ThreadLinkedFields>;
 type ThreadLinkedFields = {
     linkedThreads?: ThreadLinkItem[];
@@ -534,7 +1250,7 @@ interface Tab {
     selectedArtifactId?: string;
     pinned?: boolean;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'claude-session' | 'diff' | 'plan';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
@@ -713,144 +1429,6 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "OPEN_TNODE";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GO_BACK_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
-        systemId: zod.ZodLiteral<"brain">;
-        flowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }, {
-        tNodeId: string;
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"START_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"KILL_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESTART_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PAUSE_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESUME_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -965,17 +1543,200 @@ declare const events: {
         systemId: "settings";
         provider: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PREVIEW_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }, {
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
         systemId: zod.ZodLiteral<"settings">;
         directory: zod.ZodString;
+        include: zod.ZodOptional<zod.ZodObject<{
+            actions: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            prompts: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            flows: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            library: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            notes: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }, {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "IMPORT_SETUP_PACK";
         systemId: "settings";
         directory: string;
+        include?: {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
     }, {
         type: "IMPORT_SETUP_PACK";
         systemId: "settings";
         directory: string;
+        include?: {
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GO_BACK_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
+        systemId: zod.ZodLiteral<"brain">;
+        flowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"START_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"KILL_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTART_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PAUSE_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESUME_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1262,14 +2023,17 @@ declare const events: {
         threadId: string;
         pinned?: boolean | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CANCEL">;
+        type: zod.ZodLiteral<"PAUSE_TURN">;
         systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CANCEL";
+        type: "PAUSE_TURN";
         systemId: "threads";
+        threadId: string;
     }, {
-        type: "CANCEL";
+        type: "PAUSE_TURN";
         systemId: "threads";
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1338,16 +2102,22 @@ declare const events: {
         systemId: zod.ZodLiteral<"threads">;
         messageId: zod.ZodString;
         threadId: zod.ZodString;
+        restoreFiles: zod.ZodOptional<zod.ZodBoolean>;
+        userCliUuid: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "REVERT_THREAD";
         systemId: "threads";
         threadId: string;
         messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
     }, {
         type: "REVERT_THREAD";
         systemId: "threads";
         threadId: string;
         messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"USER_COMMAND">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1486,6 +2256,36 @@ declare const events: {
         threadId?: string | undefined;
         mode?: string | undefined;
         phase?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_CLAUDE_PERMISSION_MODE">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        mode: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_CLAUDE_PERMISSION_MODE";
+        systemId: "threads";
+        threadId: string;
+        mode: string;
+    }, {
+        type: "UPDATE_CLAUDE_PERMISSION_MODE";
+        systemId: "threads";
+        threadId: string;
+        mode: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_CLAUDE_WORKTREE">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        useWorktree: zod.ZodBoolean;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_CLAUDE_WORKTREE";
+        systemId: "threads";
+        threadId: string;
+        useWorktree: boolean;
+    }, {
+        type: "UPDATE_CLAUDE_WORKTREE";
+        systemId: "threads";
+        threadId: string;
+        useWorktree: boolean;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -2037,9 +2837,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -2047,9 +2847,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -3670,6 +4470,72 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        resolvedPath?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORTED";
+        result: SeedResult;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORT_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_PREVIEW";
+        preview: SetupPackPreview;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_PREVIEW_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -3714,64 +4580,6 @@ declare const events: {
     } | {
         type: "BRAIN_RESUMED";
         pluginId: "brain";
-    } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        resolvedPath?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_IMPORTED";
-        result: SeedResult;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_IMPORT_FAILED";
-        error: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -3836,6 +4644,11 @@ declare const events: {
         artifact: any;
         pluginId: "threads";
     } | {
+        type: "ARTIFACT_UPDATED";
+        tabId: string;
+        artifact: any;
+        pluginId: "threads";
+    } | {
         type: "THREAD_TAB_REQUESTED";
         threadId: string;
         topic: string;
@@ -3856,7 +4669,7 @@ declare const events: {
         text?: string | undefined;
         blocks?: BlockConfig[] | undefined;
         responseTimestamp?: number | undefined;
-        blockResponse?: any;
+        blockResponse?: BlockResponse | undefined;
         pluginId: "threads";
     } | {
         type: "MESSAGE_ADDED";
@@ -3872,6 +4685,21 @@ declare const events: {
     } | {
         type: "SET_MODE";
         mode: string;
+        pluginId: "threads";
+    } | {
+        type: "SET_PHASE";
+        phase: string;
+        pluginId: "threads";
+    } | {
+        type: "SET_CHAT_STATE";
+        threadId: string;
+        chatState: string;
+        pluginId: "threads";
+    } | {
+        type: "FLASH_CHAT_STATE";
+        threadId: string;
+        stateId: string;
+        durationMs?: number | undefined;
         pluginId: "threads";
     } | {
         type: "COMMANDS_UPDATED";
@@ -4928,6 +5756,28 @@ interface FlowExtendedData {
     edges: EdgeEntity[];
 }
 
+/**
+ * Setup Pack Preview — reads compiled artifacts from a directory and
+ * reports the top-level items available for selective import.
+ */
+type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes';
+type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
+interface SetupPackPreviewItem {
+    key: string;
+    description?: string;
+    kind?: SetupPackItemKind;
+    childCount?: number;
+}
+interface SetupPackPreview {
+    directory: string;
+    actions: SetupPackPreviewItem[];
+    prompts: SetupPackPreviewItem[];
+    flows: SetupPackPreviewItem[];
+    library: SetupPackPreviewItem[];
+    notes: SetupPackPreviewItem[];
+    missing: SetupPackType[];
+}
+
 interface SafeLinkOptions {
     /** Additional info to store with the relation */
     info?: unknown;
@@ -5050,9 +5900,16 @@ interface ThreadTagOption {
     name: string;
     color?: string;
 }
+interface ChatStateConfig {
+    id: string;
+    label: string;
+    color: string;
+    colorful: boolean;
+}
 interface ThreadsSettings {
     statuses: ThreadStatusOption[];
     tags: ThreadTagOption[];
+    chatStates: ChatStateConfig[];
     showOnlyRootThreads: boolean;
     clickToChat: boolean;
 }
@@ -5163,6 +6020,15 @@ interface GhPullRequest {
         messageHeadline: string;
         committedDate: string;
     }[];
+    mergeable?: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+    mergeStateStatus?: 'BEHIND' | 'BLOCKED' | 'CLEAN' | 'DIRTY' | 'DRAFT' | 'HAS_HOOKS' | 'UNKNOWN' | 'UNSTABLE';
+    reviewDecision?: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
+    statusCheckRollup?: Array<{
+        name?: string;
+        status?: string;
+        conclusion?: string;
+        state?: string;
+    }>;
 }
 interface GhPRComment {
     id: string;
@@ -5235,12 +6101,109 @@ type CodeConnectedData = {
     settings?: CodeSettings;
 };
 
+/**
+ * High-level streaming conversation API.
+ *
+ * `query()` spawns `claude -p` in stream-json mode, drives the control loop,
+ * and exposes two things to the caller:
+ *
+ *   - an async iterable of parsed stream events (everything except the
+ *     control-request traffic, which is handled internally)
+ *   - a `result` promise that resolves with the final normalised result
+ *
+ * Two modes, picked by whether an initial `prompt` is provided:
+ *
+ *  1. **Single-turn (default)**: pass `{ prompt }`. The wrapper writes the
+ *     turn, immediately EOFs stdin, and the CLI runs once + exits. Drain
+ *     `handle.events` in a `for await` and then `await handle.result`.
+ *     No cleanup needed — the child unwinds itself.
+ *
+ *  2. **Multi-turn (opt-in)**: pass `{ keepStdinOpen: true, prompt }` OR
+ *     pass no prompt. The wrapper leaves stdin open; the caller drives
+ *     follow-up turns via `handle.send(text)` and MUST call `handle.close()`
+ *     when done. Forgetting to close hangs the child until process exit.
+ *
+ * The implementation uses a fan-out: the raw NDJSON stream from the child is
+ * consumed once by an internal pump that (a) routes control requests to the
+ * control router and (b) pushes everything else into an async queue the
+ * public iterable reads from. This is the only way to share a single Readable
+ * between "internal logic" and "caller" without races.
+ */
+
+interface QueryHandle {
+    /** Resolves with the session id as soon as the CLI emits `system/init`. */
+    readonly sessionId: Promise<string>;
+    /** Every non-control stream line, in order, until the child exits. */
+    readonly events: AsyncIterable<StreamLine>;
+    /** Final normalised result. Rejects on error result or non-zero exit. */
+    readonly result: Promise<QueryResult>;
+    /** Send another user turn. No-op after close(). */
+    send(text: string | UserInputMessage): void;
+    /**
+     * Send a control_response back to the CLI for a surfaced control_request.
+     * Only meaningful when `surfaceControlRequests: true` — in callback mode
+     * the router handles responses internally.
+     */
+    respond(requestId: string, response: {
+        behavior: 'allow' | 'deny';
+        message?: string;
+        updatedInput?: unknown;
+    }): void;
+    /** Ask the CLI to cancel the current turn (interrupt control request). */
+    interrupt(): void;
+    /** Close stdin and wait for the child to exit. */
+    close(): Promise<void>;
+    /** Force-terminate the child process. */
+    kill(): void;
+}
+
+interface SessionInfo {
+    id: string;
+    file: string;
+    cwd?: string;
+    title?: string;
+    tags?: string[];
+    modifiedAt: Date;
+    size: number;
+    firstMessageAt?: Date;
+    lastMessageAt?: Date;
+}
+interface SessionListOptions {
+    /** Working directory whose sessions to list. Defaults to `process.cwd()`. */
+    cwd?: string;
+    limit?: number;
+    offset?: number;
+}
+
+/**
+ * `claude auth` — login, logout, status.
+ *
+ * `login` is interactive by nature (opens a browser for Claude.ai, prompts
+ * for SSO, etc.); we expose it anyway for completeness but callers should
+ * usually delegate to the CLI UI rather than call this programmatically.
+ */
+
+/** Shape of `claude auth status --json` — passthrough, CLI may add fields. */
+interface AuthStatus {
+    authenticated?: boolean;
+    source?: 'user' | 'project' | 'org' | 'temporary' | 'oauth';
+    account?: Record<string, unknown>;
+    [key: string]: unknown;
+}
+
 interface CliServiceType {
     git: {
         commit(message: string): Promise<void>;
         getStatus(): Promise<GitStatusFile[]>;
         getCurrentBranch(): Promise<string>;
         getWorkingDir(): string;
+        /**
+         * Return the unified diff for the working copy vs HEAD. Pass a list of
+         * paths to restrict to specific files; omit to get all changes. Used by
+         * the Claude Code chat action to assemble a `diff` artifact after file-
+         * mutating tool calls (Write/Edit/NotebookEdit).
+         */
+        getDiff(paths?: string[]): Promise<string>;
     };
     gh: {
         getPRForBranch(branch?: string): Promise<GhPullRequest | null>;
@@ -5254,6 +6217,26 @@ interface CliServiceType {
             owner: string;
             name: string;
         }): Promise<GhReviewThread[]>;
+    };
+    /**
+     * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
+     * plugins, skills, …) is available via `import { claudeCode } from
+     * '@/services/claude-code'`.
+     */
+    claudeCode: {
+        query(opts: Omit<QueryOptions, 'cwd'> & {
+            cwd?: string;
+        }): Promise<QueryHandle>;
+        version(): Promise<string>;
+        authStatus(): Promise<AuthStatus>;
+        listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>;
+        getWorkingDir(): string;
+        /** Store a live query handle so other actions can write control_responses. */
+        storeHandle(key: string, handle: QueryHandle): void;
+        /** Retrieve a stored query handle by key (typically threadId). */
+        getHandle(key: string): QueryHandle | undefined;
+        /** Clear a stored handle (call on query end to avoid leaking references). */
+        clearHandle(key: string): void;
     };
 }
 
@@ -5780,6 +6763,8 @@ interface BlockMessageOptions {
     text: string;
     blocks: BlockConfig[];
     forkable?: boolean;
+    autoHide?: boolean;
+    asideContext?: string;
 }
 /**
  * Create a message with custom blocks (pure function)
@@ -5808,6 +6793,7 @@ declare function sendFilePickerBlock(options: {
     allowMultiple?: boolean;
     displayText?: string;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -5827,6 +6813,32 @@ declare function sendChoiceBlock(options: {
     allowCustom?: boolean;
     displayText?: string;
     forkable?: boolean;
+    autoHide?: boolean;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
+ * Create a question interaction — single question or multi-question wizard.
+ * Single question = array with one item. Multi = step wizard in the frontend.
+ * Response shape: string (single) or Record<string, string> (multi).
+ */
+declare function sendQuestionBlock(options: {
+    threadId: EARS.EntityId;
+    text: string;
+    prompt: string;
+    questions: Array<{
+        question: string;
+        header?: string;
+        options: Array<{
+            id: string;
+            label: string;
+            description?: string;
+        }>;
+        multiSelect?: boolean;
+        allowCustom?: boolean;
+    }>;
+    forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -5841,6 +6853,7 @@ declare function sendApprovalBlock(options: {
     requireReason?: boolean;
     allowReason?: boolean;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -5857,6 +6870,7 @@ declare function sendTextInputBlock(options: {
     displayText?: string;
     suggestions?: string[];
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -5944,6 +6958,7 @@ declare function sendButtonGroupBlock(options: {
     keepInteractive?: boolean;
     displayText?: string;
     forkable?: boolean;
+    autoHide?: boolean;
 }): {
     messageId: EARS.EntityId;
 };
@@ -5969,7 +6984,7 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>): void;
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -6018,19 +7033,41 @@ declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
  * - Thread visits (updates lastVisitedTimestamp)
  */
 declare function sendRecentThreadsRefresh(): void;
+/**
+ * Resolve all message reference types (images, files, notes, threads,
+ * library docs/folders) into prompt-ready content for the Claude Code CLI.
+ *
+ * Returns:
+ * - `textPrefix`  — formatted text for non-image references, prepended to the user message
+ * - `imageBlocks` — Anthropic image content blocks (base64-encoded), with text labels
+ * - `addDirs`     — directories for `--add-dir` (attached file auto-reads)
+ */
+declare function resolveReferences(references: MessageReferences | undefined): Promise<{
+    textPrefix: string;
+    imageBlocks: any[];
+    addDirs: string[];
+}>;
+/**
+ * Generate a compact aside summary for a collapsed interactive message.
+ * Pure function — no side effects.
+ */
+declare function generateAsideText(message: MessageEntity, response: BlockResponse): string;
 
 const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
   createBlockMessage: createBlockMessage,
   createThreadAndNotify: createThreadAndNotify,
+  generateAsideText: generateAsideText,
   openThreadChatAndRefreshRecent: openThreadChatAndRefreshRecent,
   openThreadTabAndRefresh: openThreadTabAndRefresh,
+  resolveReferences: resolveReferences,
   sendApprovalBlock: sendApprovalBlock,
   sendBlockMessage: sendBlockMessage,
   sendButtonGroupBlock: sendButtonGroupBlock,
   sendChoiceBlock: sendChoiceBlock,
   sendFilePickerBlock: sendFilePickerBlock,
   sendLinkBlock: sendLinkBlock,
+  sendQuestionBlock: sendQuestionBlock,
   sendRecentThreadsRefresh: sendRecentThreadsRefresh,
   sendTextInputBlock: sendTextInputBlock,
   updateMessageBlockResponse: updateMessageBlockResponse,
@@ -6048,6 +7085,12 @@ interface CreateArtifactOptions {
     artifactType: ArtifactType;
     title: string;
     content: any;
+    threadId?: EARS.EntityId;
+}
+interface UpdateArtifactOptions {
+    title?: string;
+    content?: unknown;
+    /** Thread to emit the ARTIFACT_UPDATED event for. If omitted, no event is sent. */
     threadId?: EARS.EntityId;
 }
 /**
@@ -6073,11 +7116,35 @@ interface CreateArtifactOptions {
 declare function createAndNotify(options: CreateArtifactOptions): {
     artifactId: EARS.EntityId;
 };
+/**
+ * Patch an existing artifact's title and/or content in place, and notify
+ * the frontend so the panel re-renders with the new data.
+ *
+ * Used for artifacts that mutate across turns (e.g. the Claude Code session
+ * card, which tracks live status/cost/turn count). The `ARTIFACT_UPDATED`
+ * event mirrors `ARTIFACT_ADDED` but carries only the fields that changed.
+ */
+declare function updateAndNotify(artifactId: EARS.EntityId, options: UpdateArtifactOptions): void;
+/**
+ * Find-or-create an artifact by (thread, artifactType). Guarantees at most
+ * one artifact of the given type per thread. Useful for singletons like the
+ * Claude Code session card that should only ever exist once per thread.
+ */
+declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: ArtifactType, initial: {
+    title: string;
+    content: any;
+}): {
+    artifactId: EARS.EntityId;
+    created: boolean;
+};
 
 const artifact = /*#__PURE__*/Object.freeze({
   __proto__: null,
   CreateArtifactOptions: CreateArtifactOptions,
-  createAndNotify: createAndNotify
+  UpdateArtifactOptions: UpdateArtifactOptions,
+  createAndNotify: createAndNotify,
+  findOrCreateByType: findOrCreateByType,
+  updateAndNotify: updateAndNotify
 });
 
 interface BrainEventPayload {
@@ -6246,6 +7313,8 @@ declare const services: {
                 references?: MessageReferences;
                 isCommand?: boolean;
                 command?: string;
+                autoHide?: boolean;
+                asideContext?: string;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
@@ -6301,6 +7370,11 @@ declare const services: {
             }) => {
                 artifactId: EARS.EntityId;
             };
+            readonly updateArtifact: (artifactId: EARS.EntityId, patch: {
+                title?: string;
+                content?: unknown;
+            }) => void;
+            readonly findArtifactByType: (threadId: EARS.EntityId, artifactType: ArtifactType) => ArtifactEntity | undefined;
         };
         readonly brainQueries: {
             readonly rootFlowTNode: () => EARS.EntityId | undefined;
@@ -6518,6 +7592,7 @@ declare const services: {
                 lastMessageTimestamp?: number;
                 lastVisitedTimestamp?: number;
                 forcedMode?: ThreadEntity["forcedMode"] | null;
+                context?: ThreadEntity["context"];
             }) => void;
             readonly markAsVisited: (id: EARS.EntityId) => void;
             readonly linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId) => void;

@@ -79,7 +79,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
   'viewer:chat': {
     editable: false,
     fullExtensions: false,
-    richFormatting: false,
+    richFormatting: true, // headings / strike / hr — Claude responses use them
     markdownHtml: false,
     commandSuggestion: false,
     commandViewerDeco: true,

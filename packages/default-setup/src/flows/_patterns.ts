@@ -1,8 +1,43 @@
 import type { Track, DSLStepNode, DSLSwitchCondition } from '../types';
 
-/** Standard flow.entry track with optional steps (single exit) */
-export function entryTrack(steps: DSLStepNode[]): Track {
-  return { event: 'flow.entry', label: 'Flow Entry', exits: [steps] };
+/**
+ * Build the flow.entry track. Each argument is a parallel branch: an array
+ * of steps that runs as a sequential chain. Multiple branches fire
+ * concurrently from the entry listener.
+ *
+ * What you pass is what you get — no auto-injected nodes. Include
+ * `[keepAlive()]` as one of the branches when the flow should stay alive
+ * for listener tracks.
+ */
+export function entry(...branches: DSLStepNode[][]): Track {
+  if (branches.length === 0) {
+    throw new Error(
+      'entry() requires at least one branch. ' +
+      'Use `entry([keepAlive()])` for a flow with no entry steps.',
+    );
+  }
+  return { event: 'flow.entry', label: 'Flow Entry', exits: branches };
+}
+
+/**
+ * Build a listener track for a specific event. `exits` is the parallel-exit
+ * 2D array (each inner array is a sequential chain). Label defaults to the
+ * event name.
+ */
+export function on(event: string, exits: DSLStepNode[][], label?: string): Track {
+  return { event, label: label ?? event, exits };
+}
+
+/**
+ * A node that never completes — a wedge that keeps its parent flow alive
+ * while listener tracks wait for events. Usually placed alone in its own
+ * entry branch (`entry([keepAlive()])`), but can appear anywhere a step can.
+ *
+ * If you need more than one keep_alive in the same track, pass custom
+ * labels so the validator's label-dedupe pass still sees them as distinct.
+ */
+export function keepAlive(label: string = 'Keep Alive'): DSLStepNode {
+  return { type: 'keep_alive', label };
 }
 
 /** Switch node with conditions and optional else */
@@ -15,26 +50,6 @@ export function branch(
     conditions,
     ...(elseSteps && { else: elseSteps }),
   };
-}
-
-/** Entry + keep_alive + event listener pattern. Accepts single or parallel entry exits. */
-export function entryWithListeners(
-  entryExits: DSLStepNode[] | DSLStepNode[][],
-  listeners: { event: string; label?: string; exits: DSLStepNode[][] }[],
-): Track[] {
-  const exits = (Array.isArray(entryExits[0]) ? entryExits : [entryExits]) as DSLStepNode[][];
-  return [
-    {
-      event: 'flow.entry',
-      label: 'Flow Entry',
-      exits: exits.map(seq => [...seq, { type: 'keep_alive' as const }]),
-    },
-    ...listeners.map(({ event, label, exits }) => ({
-      event,
-      label: label ?? event,
-      exits,
-    })),
-  ];
 }
 
 /** Action step shorthand */

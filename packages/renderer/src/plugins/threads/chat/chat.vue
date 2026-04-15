@@ -16,6 +16,7 @@
               @open-lightbox="openLightbox"
               @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
               @revert="(messageId: string) => handleRevert(messageId)"
+              @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
             />
           </div>
         </div>
@@ -27,6 +28,8 @@
           :current-thread="currentThread"
           :current-mode="currentMode"
           :current-phase="currentPhase"
+          :prefill-text="prefillText"
+          :is-streaming="isWorking"
           :modes="modes"
           :quick-prompts="quickPrompts"
           :quick-prompt-cursor="quickPromptCursor"
@@ -34,6 +37,7 @@
           @send-command="(command: string, text: string, references?: MessageReferences) => actor.send({ type: 'SEND_COMMAND', command, text, references })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
+          @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
           @open-lightbox="openLightbox"
           @update-quick-prompts="updateQuickPrompts"
           @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
@@ -71,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 
 const quotes = [
   '"If a chatbot speaks in a forest and no one reads the output, does it still hallucinate?"',
@@ -119,9 +123,17 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
+const chatStates = useSelector(actor, (state) => state.context.chatStates)
+const isWorking = computed(() => chatStates.value[currentThread.value?.id ?? ''] === 'working')
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
+const isStreaming = computed(() => {
+  const msgs = messages.value
+  if (!msgs.length) return false
+  const last = msgs[msgs.length - 1]
+  return last.sender !== 'user' && !last.responseTimestamp
+})
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
 const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
@@ -165,7 +177,10 @@ function expandChatIfCollapsed() {
   }
 }
 
-function handleRevert(messageId: string) {
+let pendingRestoreFiles = false
+
+function handleRevert(messageId: string, restoreFiles = false) {
+  pendingRestoreFiles = restoreFiles
   if (settings.value?.skipRevertConfirm) {
     doRevert(messageId)
   } else {
@@ -190,14 +205,33 @@ function confirmRevert() {
   }
   pendingRevertMessageId.value = null
   dontAskAgain.value = false
+  pendingRestoreFiles = false
 }
+
+const prefillText = ref('')
 
 function doRevert(messageId: string) {
   if (!currentThread.value?.id) return
-  actor.send({ type: 'REVERT_THREAD', messageId, threadId: currentThread.value.id })
+  // Grab the message text before the revert deletes it.
+  const msg = messages.value.find(m => m.id === messageId)
+  const revertedText = msg?.text || ''
+  actor.send({
+    type: 'REVERT_THREAD',
+    messageId,
+    threadId: currentThread.value.id,
+    ...(pendingRestoreFiles && {
+      restoreFiles: true,
+      userCliUuid: (msg as any)?.context?.cliUuid || undefined,
+    }),
+  })
+  pendingRestoreFiles = false
+  // Prefill the chat input so the user can re-send or edit.
+  // Clear after a tick so the watcher fires, then the value resets —
+  // this ensures identical consecutive reverts still retrigger the watcher.
+  prefillText.value = revertedText
+  nextTick(() => { prefillText.value = '' })
 }
 
-let pinned = false
 const prevThreadId = ref(currentThread.value?.id)
 
 watch(messages, async (newMsgs, oldMsgs) => {
@@ -207,20 +241,26 @@ watch(messages, async (newMsgs, oldMsgs) => {
 
   const isThreadLoad = threadChanged || !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad) {
-    pinned = true
     scrollToBottom('instant')
-    // Re-scroll after browser paint to catch async content (Tiptap editors, images)
-    requestAnimationFrame(() => scrollToBottom('instant'))
+    // Double rAF to catch async content (Tiptap editors, images)
+    // that renders after the initial layout pass.
+    requestAnimationFrame(() => {
+      scrollToBottom('instant')
+      requestAnimationFrame(() => scrollToBottom('instant'))
+    })
   } else {
-    pinned = false
     if (isNearBottom.value) scrollToBottom('smooth')
   }
 })
 
+// Auto-scroll during streaming only. The ResizeObserver catches async
+// Tiptap height changes as text deltas render. Outside of streaming,
+// height changes (e.g. expanding a tool-activity block) should NOT
+// trigger a scroll — the user is reading, not watching live output.
 watch(messagesContent, (el, _, onCleanup) => {
   if (!el) return
   const observer = new ResizeObserver(() => {
-    if (pinned || isNearBottom.value) {
+    if (isStreaming.value) {
       scrollToBottom('instant')
     }
   })

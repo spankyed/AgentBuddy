@@ -8,6 +8,7 @@ search-indices
 untracked
 .serena
 .DS_Store
+.claude
 
 # Build artifacts
 native/speech/macos/SpeechHelper

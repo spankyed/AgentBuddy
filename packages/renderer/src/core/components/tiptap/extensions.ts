@@ -41,8 +41,10 @@ interface CreateExtensionsOptions {
 }
 
 function createFullExtensions(mode: TiptapMode): AnyExtension[] {
+  // Note: BlockquotePipe is NOT in this list anymore — it's pushed
+  // unconditionally in createExtensions below so the chat viewer can render
+  // `> …` blockquotes (from Claude responses and tool-use annotations).
   return [
-    BlockquotePipe,
     SubDocumentLink,
     Table.configure({ resizable: mode !== 'viewer' }),
     TableRow,
@@ -78,6 +80,12 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       },
       ...(!cfg.richFormatting && { heading: false, strike: false, trailingNode: false }),
     }),
+    // Blockquote is loaded unconditionally (custom input rule is `|<space>`,
+    // not `>`, so it doesn't collide with `>`-typed chat input). This ensures
+    // the chat viewer has a `blockquote` schema node to parse markdown like
+    // `> text` into — without it, tiptap-markdown falls back to inserting the
+    // raw `<blockquote><p>…</p></blockquote>` HTML as literal text.
+    BlockquotePipe,
     Markdown.configure({
       html: cfg.markdownHtml,
       transformCopiedText: true,

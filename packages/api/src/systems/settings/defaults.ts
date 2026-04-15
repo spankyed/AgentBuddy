@@ -91,7 +91,6 @@ export const defaultSettings: SettingsData = {
       chat: {
         modes: [
           { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
-          { id: 'chat', name: 'Chat', description: 'General conversation mode' },
           {
             id: 'work',
             name: 'Work',
@@ -99,10 +98,11 @@ export const defaultSettings: SettingsData = {
             phases: [
               { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown' },
               { id: 'edit', name: 'Edit', description: 'Implementation and development' },
-              { id: 'review', name: 'Review', description: 'Code review and refinement' }
+              // { id: 'review', name: 'Review', description: 'Code review and refinement' }
             ]
           },
-          { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
+          { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents' },
+          // { id: 'note', name: 'Note', description: 'Note-taking and documentation mode' }
         ],
         hotkeys: {
           textToSpeech: { key: ' ', modifiers: ['ctrl'], global: true },
@@ -129,6 +129,14 @@ export const defaultSettings: SettingsData = {
         { name: 'Feature', color: '#10B981' },
         { name: 'Enhancement', color: '#3B82F6' },
         { name: 'Documentation', color: '#6366F1' },
+        { name: 'claude-session', color: '#7C3AED' },
+      ],
+      chatStates: [
+        { id: 'idle',    label: 'Idle',    color: '#6B7280', colorful: false },
+        { id: 'working', label: 'Working', color: '#FACC15', colorful: true },
+        { id: 'paused',  label: 'Paused',  color: '#F59E0B', colorful: false },
+        { id: 'error',   label: 'Error',   color: '#EF4444', colorful: false },
+        { id: 'success', label: 'Success', color: '#10B981', colorful: false },
       ],
       showOnlyRootThreads: false,
       clickToChat: false

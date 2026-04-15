@@ -1,13 +1,15 @@
 import type { EntityId, Services } from '../../../types';
 import { finishOnboarding, type OnboardingState } from '../onboarding-helpers';
+import type { ParsedStepResponse } from '../_helpers/parse-step-response';
 
 export function handleProjectsStep(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
-  responseValue: any,
+  parsed: Extract<ParsedStepResponse, { step: 'projects' }>,
 ) {
-  const raw = typeof responseValue === 'string' ? responseValue : '';
+  // Cancelled or empty → skip projects entirely and finish.
+  const raw = parsed.cancelled ? '' : parsed.rawText;
   const projects = raw
     .split('\n')
     .map((p: string) => p.trim())

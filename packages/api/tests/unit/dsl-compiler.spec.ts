@@ -270,6 +270,47 @@ describe('compile', () => {
       expect(switchNode.conditions).toHaveLength(1);
     });
 
+    it('empty condition steps -> no TRANSITIONS_TO edge for that branch', () => {
+      // Empty `steps: []` is a valid no-op branch. The compiler should
+      // still record the condition, but emit no outgoing edge for it —
+      // at runtime `nextNodeForBranch('branch-0')` returns undefined and
+      // the chain ends cleanly.
+      const dsl = makeSwitchDSL([
+        { if: '$.x == 1', steps: [] },
+        { if: '$.x == 2', steps: [{ type: 'action', action: 'real' }] },
+      ]);
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+
+      // Both conditions are recorded on the switch entity.
+      expect(switchNode.conditions).toHaveLength(2);
+
+      // Only the non-empty branch has an outgoing TRANSITIONS_TO edge.
+      const branchEdges = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id,
+      );
+      expect(branchEdges).toHaveLength(1);
+      expect((branchEdges[0] as any).info?.sourceHandle).toBe('branch-1');
+    });
+
+    it('empty else -> no TRANSITIONS_TO edge for the else branch', () => {
+      // `else: []` means "no condition matched, do nothing". The compiler
+      // should not emit an else edge at all.
+      const dsl = makeSwitchDSL(
+        [{ if: '$.x == 1', steps: [{ type: 'action', action: 'a' }] }],
+        [],
+      );
+      const result = compile(dsl);
+      const switchNode = findEntity(result.entity, (e: any) => e.nodeType === 'switch');
+
+      // The only outgoing edge is branch-0. No branch-1 / no else edge.
+      const branchEdges = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === switchNode.id,
+      );
+      expect(branchEdges).toHaveLength(1);
+      expect((branchEdges[0] as any).info?.sourceHandle).toBe('branch-0');
+    });
+
     it('edge to condition branch has sourceHandle: "branch-0"', () => {
       const dsl = makeSwitchDSL([
         { if: '$.x == 1', steps: [{ type: 'action', action: 'branchA' }] },
@@ -430,6 +471,27 @@ describe('compile', () => {
     it('quoted strings: "\'hello\'" -> "hello"', () => {
       const pred = parsedPredicate("$.name == 'hello'");
       expect(pred.value).toBe('hello');
+    });
+
+    it('"$.key === \'value\'" -> EQUALS, value: "value" (strict equality)', () => {
+      const pred = parsedPredicate("$.key === 'value'");
+      expect(pred.key).toBe('$.key');
+      expect(pred.operator).toBe(BinaryOperator.EQUALS);
+      expect(pred.value).toBe('value');
+    });
+
+    it('"$.key !== \'value\'" -> NOT_EQUALS, value: "value"', () => {
+      const pred = parsedPredicate("$.key !== 'value'");
+      expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
+      expect(pred.value).toBe('value');
+    });
+
+    it('=== parsed before == (longest match first, regression for stray `= \'…\'`)', () => {
+      // Regression guard: the old parser split at the first `==` inside `===`,
+      // leaving `= 'work'` as the value and silently breaking work-mode routing.
+      const pred = parsedPredicate("$.event.data.payload.mode === 'work'");
+      expect(pred.value).toBe('work');
+      expect(pred.value).not.toContain('=');
     });
 
     it('path references: "$.a == $.b" -> value kept as "$.b"', () => {

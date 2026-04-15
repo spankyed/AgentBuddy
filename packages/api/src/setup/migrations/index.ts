@@ -9,8 +9,9 @@ export interface Migration {
 
 // Register migrations in version order
 import { migration as m010 } from './0.1.0';
+import { migration as m020 } from './0.2.0';
 
-const migrations: Migration[] = [m010];
+const migrations: Migration[] = [m010, m020];
 
 export function runMigrations(): void {
   let current = settingsQueries.getInternalSettings().version || '0.0.0';
@@ -19,7 +20,7 @@ export function runMigrations(): void {
   // version strings from old defaults.ts (before migration system existed).
   // These users have never run any migrations, so reset to force all to run.
   // Safe because all migrations are idempotent.
-  if (current === '0.1.0' || current === '0.2.0') {
+  if (current === '0.1.0') {
     current = '0.0.0';
   }
 
