@@ -23,6 +23,7 @@ import type { ContentSection, Document, Collection } from '@/systems/library/typ
 import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
 import { getMediaPath } from '@/core/helpers/paths';
 import { importNotesFromData } from '@/systems/notes/import-notes';
+import { noteCommands } from '@/systems/notes/repository';
 import type { ExportedNotes } from '@/systems/notes/export-types';
 
 interface SeedCounts {
@@ -37,6 +38,7 @@ export interface SeedResult {
   flows: SeedCounts;
   library: SeedCounts;
   notes: SeedCounts;
+  settings: SeedCounts;
 }
 
 /**
@@ -51,6 +53,7 @@ export interface SeedInclude {
   flows?: SeedIncludeSet;
   library?: SeedIncludeSet;
   notes?: SeedIncludeSet;
+  settings?: SeedIncludeSet;
 }
 
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
@@ -200,10 +203,16 @@ function seedLibraryTree(
   counts: SeedCounts,
   log: (...a: any[]) => void,
   mediaDir: string,
+  mode?: ImportMode,
 ): void {
   for (const item of items) {
     if (item.type === 'document') {
       const existing = findWhere<Document>(EARS.Entity.Document, 'name', item.name)[0];
+      if (existing && mode === 'keep-existing') {
+        counts.skipped++;
+        log(`  library doc skipped (existing): ${item.name}`);
+        continue;
+      }
       if (existing) {
         const { content } = restoreDocMedia(item.content, existing.id, mediaDir, log);
         libraryCommands.updateDocument(existing.id, item.name, content, item.tags ?? []);
@@ -220,6 +229,11 @@ function seedLibraryTree(
       }
     } else if (item.type === 'collection') {
       const existing = findWhere<Collection>(EARS.Entity.Collection, 'name', item.name)[0];
+      if (existing && mode === 'keep-existing') {
+        counts.skipped++;
+        log(`  library collection skipped (existing): ${item.name}`);
+        continue;
+      }
       let colId: EARS.EntityId;
       if (existing) {
         colId = existing.id;
@@ -232,7 +246,7 @@ function seedLibraryTree(
         counts.created++;
         log(`  library collection created: ${item.name}`);
       }
-      seedLibraryTree(item.children, colId, counts, log, mediaDir);
+      seedLibraryTree(item.children, colId, counts, log, mediaDir, mode);
     }
     // Skip symlinks in seed context
   }
@@ -243,7 +257,17 @@ function seedFlows(
   result: SeedResult,
   log: (...args: any[]) => void,
   include: SeedIncludeSet | undefined,
+  mode?: ImportMode,
 ): void {
+  // Wipe all flows (except root — deleteFlow throws for it) before re-importing
+  if (mode === 'wipe-and-replace') {
+    const allFlows = findAll<FlowEntity>(EARS.Entity.Flow);
+    for (const flow of allFlows) {
+      try { flowsCommands.deleteFlow(flow.id); } catch {} // root flow throws, skip
+    }
+    log('  flows wiped');
+  }
+
   // Build label → existing flow map so we can rebuild (delete + reimport) any
   // flow whose source has changed. Previously this function skipped existing
   // flows entirely, which meant DSL edits never propagated without db:reset.
@@ -262,6 +286,13 @@ function seedFlows(
     const compiledHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
 
     if (existing) {
+      // In keep-existing mode, skip all existing flows
+      if (mode === 'keep-existing') {
+        log(`  flow skipped (existing): ${key}`);
+        result.flows.skipped++;
+        continue;
+      }
+
       // User-created flow with same label — never overwrite
       if (!existing.sourceHash) {
         log(`  flow skipped (user-owned): ${key}`);
@@ -353,6 +384,7 @@ export function seedData(options: {
     flows: { created: 0, updated: 0, skipped: 0 },
     library: { created: 0, updated: 0, skipped: 0 },
     notes: { created: 0, updated: 0, skipped: 0 },
+    settings: { created: 0, updated: 0, skipped: 0 },
   };
 
   // --- Actions ---
@@ -401,7 +433,7 @@ export function seedData(options: {
   if (runFlows) {
     const flowsDSL = loadJSON<FlowDSL>(path.join(compiledDir, 'compiled-flows.json'));
     if (flowsDSL) {
-      seedFlows(flowsDSL, result, log, include?.flows);
+      seedFlows(flowsDSL, result, log, include?.flows, mode);
     } else {
       log('  compiled-flows.json not found, skipping flows');
     }
@@ -420,8 +452,15 @@ export function seedData(options: {
       const items = shouldSeedAll(include?.library)
         ? (allItems ?? [])
         : (allItems ?? []).filter(i => (include!.library as ReadonlySet<string>).has(i.name));
+      if (mode === 'wipe-and-replace') {
+        const docs = findAll<Document>(EARS.Entity.Document);
+        const cols = findAll<Collection>(EARS.Entity.Collection);
+        for (const d of docs) libraryCommands.deleteDocument(d.id);
+        for (const c of cols) libraryCommands.deleteCollection(c.id);
+        log('  library wiped');
+      }
       const mediaDir = path.join(compiledDir, 'media');
-      seedLibraryTree(items, undefined, result.library, log, mediaDir);
+      seedLibraryTree(items, undefined, result.library, log, mediaDir, mode);
     } else {
       log('  compiled-library.json not found, skipping library');
     }
@@ -443,6 +482,11 @@ export function seedData(options: {
               (include!.notes as ReadonlySet<string>).has(n.title),
             ),
           };
+      if (mode === 'wipe-and-replace') {
+        const allNotes = findAll<any>(EARS.Entity.Note);
+        for (const n of allNotes) noteCommands.delete(n.id);
+        log('  notes wiped');
+      }
       const importResult = importNotesFromData(filteredNotes);
       result.notes.created = importResult.created;
       result.notes.updated = importResult.updated;
@@ -455,6 +499,26 @@ export function seedData(options: {
     }
   } else {
     log('  notes section skipped by include filter');
+  }
+
+  // --- Settings ---
+  const runSettings = shouldSeedAll(include?.settings);
+  if (runSettings) {
+    const settingsFile = path.join(compiledDir, 'compiled-settings.json');
+    if (fs.existsSync(settingsFile)) {
+      if (mode === 'keep-existing') {
+        log('  settings skipped (existing)');
+        result.settings.skipped = 1;
+      } else {
+        settingsCommands.resetSettings();
+        log('  settings reset to defaults');
+        result.settings.updated = 1;
+      }
+    } else {
+      log('  compiled-settings.json not found, skipping settings');
+    }
+  } else {
+    log('  settings section skipped by include filter');
   }
 
   return result;
@@ -482,7 +546,9 @@ export function runBootSeed(options?: { verbose?: boolean }): SeedResult | null 
     return null;
   }
 
-  const result = seedData({ compiledDir, verbose: options?.verbose });
+  // Skip settings during boot seed — createDefaultSettings() handles boot-time
+  // defaults via deep-merge. Settings are only seeded during interactive imports.
+  const result = seedData({ compiledDir, include: { settings: new Set() }, verbose: options?.verbose });
   settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   return result;
 }

@@ -38,10 +38,10 @@ export interface SetupPackImport {
 // Read-only templates. Consumers must use `freshSetupPack()` (or spread)
 // so the module-level defaults stay pristine.
 const EMPTY_SELECTION: Record<SetupPackType, string[]> = {
-  actions: [], prompts: [], flows: [], library: [], notes: [],
+  actions: [], prompts: [], flows: [], library: [], notes: [], settings: [],
 };
 const COLLAPSED: Record<SetupPackType, boolean> = {
-  actions: false, prompts: false, flows: false, library: false, notes: false,
+  actions: false, prompts: false, flows: false, library: false, notes: false, settings: false,
 };
 
 function freshSetupPack(): SetupPackImport {
@@ -93,6 +93,7 @@ export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
   | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
+  | { type: 'APP_RESET_FAILED'; error: string }
   | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
   | { type: 'SECRETS.EVENT.CREATED'; id: string; provider: string; customName?: string }
   | { type: 'SECRETS.EVENT.UPDATED'; id: string }
@@ -252,6 +253,7 @@ const settingsState = setup({
         flows: ev.preview.flows.map(i => i.key),
         library: ev.preview.library.map(i => i.key),
         notes: ev.preview.notes.map(i => i.key),
+        settings: ev.preview.settings.map(i => i.key),
       };
       return {
         setupPackImport: {
@@ -351,6 +353,7 @@ const settingsState = setup({
           flows: toIncludeField('flows'),
           library: toIncludeField('library'),
           notes: toIncludeField('notes'),
+          settings: toIncludeField('settings'),
         },
         mode: importMode,
         restartBrain,
@@ -525,6 +528,11 @@ const settingsState = setup({
         APP_RESET_COMPLETE: {
           actions: () => {
             window.location.reload();
+          },
+        },
+        APP_RESET_FAILED: {
+          actions: ({ event }: { event: any }) => {
+            window.alert(`Reset failed: ${event.error}`);
           },
         },
       },

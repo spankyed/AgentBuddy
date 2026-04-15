@@ -166,6 +166,7 @@ import {
   GitBranch,
   Library,
   StickyNote,
+  Settings,
   ChevronRight,
   ChevronDown,
 } from 'lucide-vue-next'
@@ -222,6 +223,7 @@ const TYPE_META: { key: SetupPackType; label: string; icon: any; hint?: string }
   },
   { key: 'library', label: 'Library', icon: Library },
   { key: 'notes', label: 'Notes', icon: StickyNote },
+  { key: 'settings', label: 'Settings', icon: Settings },
 ]
 
 const rows = computed<Row[]>(() =>

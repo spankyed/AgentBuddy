@@ -9,7 +9,7 @@ import type { FlowDSL } from '@/systems/flows/dsl';
 import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
 import type { ExportedNotes } from '@/systems/notes/export-types';
 
-export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes';
+export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
 
 export type SetupPackItemKind = 'collection' | 'document' | 'tasklist' | 'task';
 
@@ -27,6 +27,7 @@ export interface SetupPackPreview {
   flows: SetupPackPreviewItem[];
   library: SetupPackPreviewItem[];
   notes: SetupPackPreviewItem[];
+  settings: SetupPackPreviewItem[];
   missing: SetupPackType[];
 }
 
@@ -46,6 +47,7 @@ export function previewSetupPack(directory: string): SetupPackPreview {
     flows: [],
     library: [],
     notes: [],
+    settings: [],
     missing: [],
   };
 
@@ -126,6 +128,14 @@ export function previewSetupPack(directory: string): SetupPackPreview {
       kind: note.type,
       childCount: note.children?.length ?? 0,
     }));
+  }
+
+  // --- Settings ---
+  const settingsPath = path.join(directory, 'compiled-settings.json');
+  if (fs.existsSync(settingsPath)) {
+    preview.settings = [{ key: 'default-settings', description: 'Application defaults' }];
+  } else {
+    preview.missing.push('settings');
   }
 
   return preview;

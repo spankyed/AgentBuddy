@@ -34,6 +34,7 @@ function toSeedInclude(
     flows: string[] | null;
     library: string[] | null;
     notes: string[] | null;
+    settings: string[] | null;
   },
 ): SeedInclude {
   const conv = (v: string[] | null) => (v === null ? true : new Set(v));
@@ -43,6 +44,7 @@ function toSeedInclude(
     flows: conv(include.flows),
     library: conv(include.library),
     notes: conv(include.notes),
+    settings: conv(include.settings),
   };
 }
 
@@ -86,6 +88,7 @@ export const IncomingSettingsEvents = [
       flows: z.array(z.string()).nullable(),
       library: z.array(z.string()).nullable(),
       notes: z.array(z.string()).nullable(),
+      settings: z.array(z.string()).nullable(),
     }).optional(),
     mode: z.enum(['keep-existing', 'replace-on-collision', 'wipe-and-replace']).optional(),
     restartBrain: z.boolean().optional(),
@@ -108,6 +111,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETUP_PACK_PREVIEW'; preview: SetupPackPreview }
   | { type: 'SETUP_PACK_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
+  | { type: 'APP_RESET_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
 export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
@@ -415,7 +419,9 @@ export const settingsSystem = setup({
         system.get('brain').send({ type: 'RESTART_BRAIN' });
         system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
       }).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
         console.error('[settings] Reset app failed:', err);
+        system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
       });
     },
 
