@@ -187,10 +187,10 @@ class TerminalPool {
   detach(terminalId: string): void {
     const entry = this.entries.get(terminalId)
     if (!entry) return
-    // Capture the current viewport scroll position before wrapper.remove(),
-    // because Chromium resets scrollTop to 0 on document-remove and we want
-    // to restore it on the next attach if the user wasn't pinned to bottom.
-    const viewport = this._getViewport(entry)
+    // Capture scrollTop before wrapper.remove() — Chromium zeroes it on
+    // document-remove. Used by syncViewport() on the next attach when the
+    // user isn't pinned to bottom.
+    const viewport = this.getViewport(entry)
     if (viewport) entry.savedScrollTop = viewport.scrollTop
     entry.wrapper.remove()
     entry.attachedContainer = null
@@ -204,34 +204,35 @@ class TerminalPool {
   }
 
   /**
-   * Force the native scrollbar to match the desired viewport position.
-   * Callers must have already appended the wrapper and run fitAddon.fit().
-   * Uses double requestAnimationFrame so layout (including the WebGL canvas
-   * resize from fit()) has settled before we read scrollHeight.
+   * Force the native scrollbar to match the desired viewport position after
+   * attach/fit. Uses term.write('', cb) as the wait primitive so the callback
+   * fires only after every queued xterm write has been fully parsed — this
+   * handles large seeds that may still be parsing when we'd otherwise race.
+   * Reading scrollHeight synchronously forces layout, so the viewport spacer
+   * is up to date when we write scrollTop.
    *
-   * This bypasses xterm's Terminal.scrollToBottom(), which early-returns when
-   * ydisp === ybase (always true on tab-switch remount) and therefore never
-   * pushes a DOM scrollTop update after wrapper.remove() reset it to 0.
+   * We write scrollTop directly (rather than calling term.scrollToBottom())
+   * because xterm's scrollToBottom is a no-op when ydisp === ybase — always
+   * true on tab-switch remount, when wrapper.remove() has just zeroed the
+   * DOM scrollTop but the xterm buffer pointers are unchanged.
    */
   syncViewport(terminalId: string): void {
     const entry = this.entries.get(terminalId)
     if (!entry) return
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const current = this.entries.get(terminalId)
-        if (!current || !current.attachedContainer) return
-        const viewport = this._getViewport(current)
-        if (!viewport) return
-        if (current.pinnedToBottom) {
-          viewport.scrollTop = viewport.scrollHeight
-        } else if (current.savedScrollTop != null) {
-          viewport.scrollTop = current.savedScrollTop
-        }
-      })
+    entry.term.write('', () => {
+      const current = this.entries.get(terminalId)
+      if (!current || !current.attachedContainer) return
+      const viewport = this.getViewport(current)
+      if (!viewport) return
+      if (current.pinnedToBottom) {
+        viewport.scrollTop = viewport.scrollHeight
+      } else if (current.savedScrollTop != null) {
+        viewport.scrollTop = current.savedScrollTop
+      }
     })
   }
 
-  private _getViewport(entry: PoolEntry): HTMLElement | null {
+  private getViewport(entry: PoolEntry): HTMLElement | null {
     return entry.term.element?.querySelector('.xterm-viewport') as HTMLElement | null
   }
 

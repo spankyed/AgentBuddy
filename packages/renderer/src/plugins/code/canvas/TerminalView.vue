@@ -87,30 +87,15 @@ const viewDisposables: IDisposable[] = []
 // Pin state is owned by the pool (survives tab-switch remounts); this ref is
 // just a reactive mirror so the FOB can show/hide. Always write both.
 const isPinnedToBottom = ref(true)
-let isSyncingProgrammatically = false
 const showScrollFob = computed(() => !isPinnedToBottom.value)
 const hasSelection = ref(false)
 
 /* --------------------------------------------------------------------------
  * Helpers ------------------------------------------------------------------ */
-const fit = () => {
-  if (!fitAddon) return
-  fitAddon.fit()
-}
-
 const scrollToBottom = () => {
-  if (!term) return
   isPinnedToBottom.value = true
   terminalPool.setPinned(props.terminalInfo.id, true)
-  isSyncingProgrammatically = true
   terminalPool.syncViewport(props.terminalInfo.id)
-  // Release the scroll-listener guard after both rAFs inside syncViewport
-  // have had a chance to fire. Three rAFs is one more than syncViewport uses.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { isSyncingProgrammatically = false })
-    })
-  })
 }
 
 const sendResize = () => {
@@ -167,25 +152,19 @@ onMounted(() => {
   // Mirror pool-owned pin state into a local reactive ref for FOB visibility.
   isPinnedToBottom.value = entry.pinnedToBottom
 
-  fit()
+  fitAddon.fit()
   sendResize()
   // Force the native scrollbar to match either the pinned-bottom position
   // or the pre-detach scrollTop. Needed on every mount because Chromium
   // resets .xterm-viewport.scrollTop to 0 when the wrapper was document-
-  // removed during the previous unmount.
-  isSyncingProgrammatically = true
+  // removed during the previous unmount. syncViewport waits for any pending
+  // xterm writes to parse before it reads scrollHeight.
   terminalPool.syncViewport(props.terminalInfo.id)
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { isSyncingProgrammatically = false })
-    })
-  })
 
   // Track user scroll to support "pin to bottom"
   const viewport = term.element?.querySelector('.xterm-viewport') as HTMLElement | null
   if (viewport) {
     const onScroll = () => {
-      if (isSyncingProgrammatically) return
       const pinned = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 10
       isPinnedToBottom.value = pinned
       terminalPool.setPinned(props.terminalInfo.id, pinned)
@@ -199,9 +178,11 @@ onMounted(() => {
     hasSelection.value = !!term?.getSelection()
   }))
 
-  // Auto-scroll on live writes while pinned
+  // Auto-scroll on live writes while pinned. During live writes xterm's
+  // own scroll-follow works (ydisp advances with ybase), so the cheap
+  // in-tree scrollToBottom suffices — no pool round-trip needed.
   viewDisposables.push(term.onWriteParsed(() => {
-    if (isPinnedToBottom.value) scrollToBottom()
+    if (isPinnedToBottom.value) term?.scrollToBottom()
   }))
 
   // Forward xterm resize (driven by fit()) to the backend pty
@@ -211,17 +192,9 @@ onMounted(() => {
 
   // Keep the terminal sized with its container
   resizeObserver = new ResizeObserver(() => {
-    fit()
+    fitAddon?.fit()
     sendResize()
-    if (isPinnedToBottom.value) {
-      isSyncingProgrammatically = true
-      terminalPool.syncViewport(props.terminalInfo.id)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => { isSyncingProgrammatically = false })
-        })
-      })
-    }
+    if (isPinnedToBottom.value) terminalPool.syncViewport(props.terminalInfo.id)
   })
   resizeObserver.observe(container.value)
 

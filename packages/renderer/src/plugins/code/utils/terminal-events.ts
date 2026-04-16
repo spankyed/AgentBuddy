@@ -1,5 +1,3 @@
-import { reactive } from 'vue'
-
 type TerminalOutputHandler = (terminalId: string, data: string) => void
 
 class TerminalEventBus {
