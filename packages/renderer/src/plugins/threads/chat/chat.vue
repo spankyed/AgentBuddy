@@ -29,7 +29,7 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :prefill-text="prefillText"
-          :is-working="isWorking"
+          :is-busy="isBusy"
           :modes="modes"
           :hotkeys="hotkeys"
           :quick-prompts="quickPrompts"
@@ -127,9 +127,12 @@ const modes = useSelector(actor, (state) => state.context.modes)
 const hotkeys = useSelector(actor, (state) => state.context.hotkeys)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
-// Pause button shows when the current thread's state matches the one the user
-// marked as "busy" (the animated indicator) in chat state settings.
-const isWorking = useSelector(actor, ({ context }) => {
+// True if the current thread's *raw* chat state matches the one the user
+// marked as "busy" in settings. Intentionally ignores chatStateOverrides
+// (the short-lived flash used to surface terminal states like success/error):
+// pausing a transient visual flash is semantically wrong — we only want
+// Pause/Esc to act when the agent is actually in the busy state.
+const isBusy = useSelector(actor, ({ context }) => {
   const busyId = context.settings?.chatStates?.find(c => c.busy)?.id
   const threadId = context.currentThread?.id
   return !!busyId && !!threadId && context.chatStates[threadId] === busyId

@@ -39,7 +39,7 @@
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
             :in-history-mode="historyIndex !== -1"
-            :pause-available="isWorking"
+            :pause-available="isBusy"
             @history-prev="onHistoryPrev"
             @history-next="onHistoryNext"
             @clear-input="onClearInput"
@@ -138,9 +138,9 @@
 
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
-            <!-- Pause button (only while working) -->
+            <!-- Pause button (only while busy) -->
             <Button
-              v-if="isWorking"
+              v-if="isBusy"
               title="Pause agent work"
               type="button"
               variant="secondary"
@@ -209,8 +209,8 @@ const props = defineProps<{
   disabled?: boolean
   /** Text to prefill the input with (e.g., on revert). Consumed once on change. */
   prefillText?: string
-  /** Whether a Claude Code turn is actively working. Controls Pause button visibility. */
-  isWorking?: boolean
+  /** Whether the current thread is in the user-marked "busy" chat state. Controls Pause button visibility. */
+  isBusy?: boolean
 }>()
 
 // Define emits including new button actions
