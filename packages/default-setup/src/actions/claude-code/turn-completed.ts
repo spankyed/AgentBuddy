@@ -12,6 +12,7 @@
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { updateSessionArtifact, updateChatState } from './_helpers/session-artifact';
+import { getClaudeState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 
 export const meta: ActionMeta = {
@@ -69,12 +70,25 @@ export async function action(
     toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
     lastTurnAt: Date.now(),
   }));
-  updateChatState(services, threadId as EntityId, 'idle');
 
-  if (!hadErrors) {
-    services.emitter.sendToPlugin('threads', {
-      type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'success', durationMs: 1000,
-    });
+  // A queued-message replay re-enters chat.ts BEFORE this action fires
+  // (stream-consumer awaits `replayQueuedMessage` before emitting
+  // cc.stream.completed). That replay already set isRunning=true and
+  // chatState='working' synchronously, so an unconditional 'idle' write
+  // here would overwrite 'working' and leave the chat panel looking
+  // stuck in idle for the entire replayed turn — until a permission
+  // prompt or its own turn-completed fires. When a follow-up turn is
+  // in flight, skip the idle transition AND the success flash;
+  // the replayed turn's own turn-completed will handle both.
+  const running = getClaudeState(services, threadId)?.isRunning === true;
+
+  if (!running) {
+    updateChatState(services, threadId as EntityId, 'idle');
+    if (!hadErrors) {
+      services.emitter.sendToPlugin('threads', {
+        type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'success', durationMs: 1000,
+      });
+    }
   }
   // Disabled: hadErrors includes non-critical tool failures (grep no results, bash exit code).
   // Enable once we distinguish process-level errors from routine tool errors.
