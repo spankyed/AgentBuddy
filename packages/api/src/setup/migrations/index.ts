@@ -13,11 +13,22 @@ import { migration as m020 } from './0.2.0';
 
 const migrations: Migration[] = [m010, m020];
 
+/** Compare dot-separated numeric versions. Returns <0, 0, >0. */
+function compareVersions(a: string, b: string): number {
+  const [ax, bx] = [a, b].map(v => v.split('.').map(Number));
+  for (let i = 0; i < Math.max(ax.length, bx.length); i++) {
+    const diff = (ax[i] ?? 0) - (bx[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 export function runMigrations(): void {
-  let current = settingsQueries.getInternalSettings().version || '0.0.0';
+  const current = settingsQueries.getInternalSettings().version || '0.0.0';
 
   for (const m of migrations) {
-    if (m.target > current) {
+    // Run only if target is ahead of stored version AND not ahead of current app version
+    if (compareVersions(m.target, current) > 0 && compareVersions(m.target, APP_VERSION) <= 0) {
       console.log(`[migration] Running ${m.target}: ${m.description}`);
       m.up();
     }

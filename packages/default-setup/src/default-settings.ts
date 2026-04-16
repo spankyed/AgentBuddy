@@ -181,6 +181,7 @@ const settings: SettingsData = {
     hasOnboarded: false,
     tourComplete: false,
     lastInteractionTimestamp: null,
+    // version is overridden with APP_VERSION at load time in packages/api/src/systems/settings/defaults.ts
     version: '',
     seedHash: null,
   },
