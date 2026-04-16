@@ -44,6 +44,7 @@
           @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
           @revert="(messageId: string) => handleRevert(messageId)"
           @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
+          @summarize-from-here="(messageId: string) => handleSummarize(messageId)"
         />
       </div>
     </div>
@@ -224,9 +225,13 @@ function handleViewDetails(threadId: string) {
 }
 
 let pendingRestoreFiles = false
+// Summarize reuses revert's confirmation dialog + prefill path, just with
+// a different backend event. This flag distinguishes the two at confirm-time.
+let pendingIsSummarize = false
 
 function handleRevert(messageId: string, restoreFiles = false) {
   pendingRestoreFiles = restoreFiles
+  pendingIsSummarize = false
   if (settings.value?.skipRevertConfirm) {
     doRevert(messageId)
   } else {
@@ -235,9 +240,21 @@ function handleRevert(messageId: string, restoreFiles = false) {
   }
 }
 
+function handleSummarize(messageId: string) {
+  pendingRestoreFiles = false
+  pendingIsSummarize = true
+  if (settings.value?.skipRevertConfirm) {
+    doSummarize(messageId)
+  } else {
+    pendingRevertMessageId.value = messageId
+    showRevertDialog.value = true
+  }
+}
+
 function confirmRevert() {
   if (pendingRevertMessageId.value) {
-    doRevert(pendingRevertMessageId.value)
+    if (pendingIsSummarize) doSummarize(pendingRevertMessageId.value)
+    else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
     trpc.bus.send.mutate({
@@ -252,6 +269,7 @@ function confirmRevert() {
   pendingRevertMessageId.value = null
   dontAskAgain.value = false
   pendingRestoreFiles = false
+  pendingIsSummarize = false
 }
 
 const prefillText = ref('')
@@ -274,6 +292,22 @@ function doRevert(messageId: string) {
   // Prefill the chat input so the user can re-send or edit.
   // Clear after a tick so the watcher fires, then the value resets —
   // this ensures identical consecutive reverts still retrigger the watcher.
+  prefillText.value = revertedText
+  nextTick(() => { prefillText.value = '' })
+}
+
+function doSummarize(messageId: string) {
+  if (!currentThread.value?.id) return
+  // Grab X's text before the soft-delete removes it — prefill mirrors
+  // Claude Code's `direction: 'from'` behavior (user resubmits against
+  // the freshly compacted session).
+  const msg = messages.value.find(m => m.id === messageId)
+  const revertedText = msg?.text || ''
+  actor.send({
+    type: 'SUMMARIZE_THREAD',
+    messageId,
+    threadId: currentThread.value.id,
+  })
   prefillText.value = revertedText
   nextTick(() => { prefillText.value = '' })
 }

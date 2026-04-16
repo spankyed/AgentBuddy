@@ -53,6 +53,7 @@
             :messages="currentThread?.messages ?? []"
             @revert="(id) => { revertMenuOpen = false; emit('revert', id) }"
             @revert-with-files="(id) => { revertMenuOpen = false; emit('revert-with-files', id) }"
+            @summarize-from-here="(id) => { revertMenuOpen = false; emit('summarize-from-here', id) }"
             @close="revertMenuOpen = false"
           />
         </div>
@@ -239,6 +240,7 @@ const emit = defineEmits<{
   (e: 'close-quick-prompts'): void
   (e: 'revert', messageId: string): void
   (e: 'revert-with-files', messageId: string): void
+  (e: 'summarize-from-here', messageId: string): void
 }>()
 
 

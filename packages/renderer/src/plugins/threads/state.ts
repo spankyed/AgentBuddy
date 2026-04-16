@@ -137,6 +137,7 @@ type UIEvent =
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
+  | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
   | { type: 'PAUSE_TURN'; threadId: string }
   | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
   | { type: 'UPDATE_CLAUDE_WORKTREE'; threadId: string; useWorktree: boolean }
@@ -879,6 +880,10 @@ const threadsState = setup({
       const { messageId, threadId } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'REVERT_THREAD', messageId, threadId });
     },
+    summarizeThread: ({ event }) => {
+      const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'SUMMARIZE_THREAD', messageId, threadId });
+    },
     pauseTurn: ({ event }) => {
       const { threadId } = typeOf('PAUSE_TURN', event);
       trpc.bus.send.mutate({ systemId: id, type: 'PAUSE_TURN', threadId });
@@ -1076,6 +1081,7 @@ const threadsState = setup({
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },
+    SUMMARIZE_THREAD: { actions: 'summarizeThread' },
     PAUSE_TURN: {
       actions: 'pauseTurn',
     },

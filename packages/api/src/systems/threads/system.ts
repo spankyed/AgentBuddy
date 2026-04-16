@@ -106,6 +106,10 @@ export const IncomingThreadsEvents = [
     restoreFiles: z.boolean().optional(),
     userCliUuid: z.string().optional(),
   }),
+  busEvent('SUMMARIZE_THREAD', {
+    messageId: z.string(),
+    threadId: z.string(),
+  }),
   busEvent('USER_COMMAND', {
     command: z.string(),
     text: z.string(),
@@ -670,6 +674,26 @@ export const threadsSystem = setup({
         payload: { threadId, messageId, restoreFiles, userCliUuid },
       });
     },
+    summarizeThread: ({ system, event }) => {
+      const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
+
+      // Matches Claude Code's native `direction: 'from'` — the pivot and
+      // everything after it disappear from the visible transcript, then a
+      // synthetic `/compact` turn runs against the truncated session.
+      repository.chatCommands.softDeleteMessagesAfter({
+        threadId: threadId as EARS.EntityId,
+        messageId: messageId as EARS.EntityId,
+      });
+
+      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
+
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'thread.summarize',
+        payload: { threadId, messageId },
+      });
+    },
     pauseTurn: ({ system, event }) => {
       const { threadId } = typeOf('PAUSE_TURN', event);
       const brainActor = getActor(system, brain);
@@ -820,6 +844,9 @@ export const threadsSystem = setup({
           },
           REVERT_THREAD: {
             actions: 'revertThread',
+          },
+          SUMMARIZE_THREAD: {
+            actions: 'summarizeThread',
           },
           PAUSE_TURN: {
             actions: 'pauseTurn',

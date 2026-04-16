@@ -50,7 +50,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
-import { Undo2, FileCode2, ChevronRight } from 'lucide-vue-next'
+import { Undo2, FileCode2, Sparkles, ChevronRight } from 'lucide-vue-next'
 import type { MessageEntity } from '@app/api'
 
 // The threads state machine types `currentThread.messages` as
@@ -67,6 +67,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'revert', messageId: string): void
   (e: 'revert-with-files', messageId: string): void
+  (e: 'summarize-from-here', messageId: string): void
   (e: 'close'): void
 }>()
 
@@ -103,10 +104,11 @@ const visibleMessages = computed<MessageRow[]>(() => {
     }))
 })
 
-type ActionId = 'revert' | 'revert-with-files'
+type ActionId = 'revert' | 'revert-with-files' | 'summarize-from-here'
 const actions: { id: ActionId; label: string; icon: typeof Undo2 }[] = [
   { id: 'revert', label: 'Revert', icon: Undo2 },
   { id: 'revert-with-files', label: 'Revert and rewind code', icon: FileCode2 },
+  { id: 'summarize-from-here', label: 'Summarize from here', icon: Sparkles },
 ]
 
 const level = ref<'messages' | 'actions'>('messages')
@@ -209,7 +211,8 @@ function runAction(id: ActionId) {
   const msg = selectedMessage.value
   if (!msg) return
   if (id === 'revert') emit('revert', msg.id)
-  else emit('revert-with-files', msg.id)
+  else if (id === 'revert-with-files') emit('revert-with-files', msg.id)
+  else emit('summarize-from-here', msg.id)
   emit('close')
 }
 

@@ -208,6 +208,19 @@ export default {
       "Thread reverted",
     ),
     on(
+      "thread.summarize",
+      [[
+        action("CC: Handle Summarize", {
+          label: "summarize",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            messageId: "$.event.data.payload.messageId",
+          },
+        }),
+      ]],
+      "Thread summarized",
+    ),
+    on(
       "thread.fork",
       [[
         action("CC: Handle Fork", {
