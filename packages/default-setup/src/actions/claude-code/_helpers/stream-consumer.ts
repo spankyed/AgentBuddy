@@ -487,7 +487,15 @@ export async function consumeStream(
       log.debug('stream consumer exiting — turn was paused');
       const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
-      writer.finalize(writer.text || undefined);
+      if (writer.text) {
+        writer.finalize(writer.text);
+      } else {
+        // Nothing streamed — don't let the writer overwrite the "Thinking…"
+        // placeholder with its empty buffer. Mark the message complete directly.
+        services.chat.updateMessageState(currentMessageId as any, {
+          responseTimestamp: Date.now(),
+        } as any);
+      }
       services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
       return;
     }
