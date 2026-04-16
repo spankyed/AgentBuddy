@@ -9,14 +9,14 @@
       @drop="handleRootDrop"
     >
       <div
-        class="flex items-center gap-1.5 text-sm font-medium transition-colors rounded px-1 -ml-1"
+        class="flex items-center gap-1.5 flex-1 min-w-0 text-sm font-medium transition-colors rounded px-1 -ml-1"
         :class="!selectedTaskId ? 'text-neutral-100' : 'text-neutral-400 hover:text-neutral-200'"
       >
         <span v-if="currentNoteIcon" class="text-sm leading-none shrink-0">{{ currentNoteIcon }}</span>
         <ListChecks v-else :size="16" class="text-neutral-500 shrink-0" />
         <span class="truncate">{{ currentNoteTitle || 'Untitled' }}</span>
       </div>
-      <div class="flex items-center gap-0.5">
+      <div class="flex items-center gap-0.5 shrink-0">
         <DropdownMenuRoot v-model:open="dropdownOpen">
           <DropdownMenuTrigger as-child>
             <button
