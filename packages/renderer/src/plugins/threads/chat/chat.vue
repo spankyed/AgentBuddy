@@ -64,9 +64,9 @@
 
     <ConfirmationDialog
       v-model="showRevertDialog"
-      title="Revert conversation"
-      description="This will remove all messages after this point. This action cannot be undone."
-      confirm-text="Revert"
+      :title="revertDialogCopy.title"
+      :description="revertDialogCopy.description"
+      :confirm-text="revertDialogCopy.confirm"
       variant="warning"
       @confirm="confirmRevert"
     >
@@ -227,11 +227,22 @@ function handleViewDetails(threadId: string) {
 let pendingRestoreFiles = false
 // Summarize reuses revert's confirmation dialog + prefill path, just with
 // a different backend event. This flag distinguishes the two at confirm-time.
-let pendingIsSummarize = false
+// Kept reactive so the dialog's title/description/button update live.
+const pendingIsSummarize = ref(false)
+
+const revertDialogCopy = computed(() => pendingIsSummarize.value ? {
+  title: 'Summarize conversation',
+  description: 'This will remove all messages after this point and replace them with a /compact summary. This action cannot be undone.',
+  confirm: 'Summarize',
+} : {
+  title: 'Revert conversation',
+  description: 'This will remove all messages after this point. This action cannot be undone.',
+  confirm: 'Revert',
+})
 
 function handleRevert(messageId: string, restoreFiles = false) {
   pendingRestoreFiles = restoreFiles
-  pendingIsSummarize = false
+  pendingIsSummarize.value = false
   if (settings.value?.skipRevertConfirm) {
     doRevert(messageId)
   } else {
@@ -242,7 +253,7 @@ function handleRevert(messageId: string, restoreFiles = false) {
 
 function handleSummarize(messageId: string) {
   pendingRestoreFiles = false
-  pendingIsSummarize = true
+  pendingIsSummarize.value = true
   if (settings.value?.skipRevertConfirm) {
     doSummarize(messageId)
   } else {
@@ -253,7 +264,7 @@ function handleSummarize(messageId: string) {
 
 function confirmRevert() {
   if (pendingRevertMessageId.value) {
-    if (pendingIsSummarize) doSummarize(pendingRevertMessageId.value)
+    if (pendingIsSummarize.value) doSummarize(pendingRevertMessageId.value)
     else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
@@ -269,7 +280,7 @@ function confirmRevert() {
   pendingRevertMessageId.value = null
   dontAskAgain.value = false
   pendingRestoreFiles = false
-  pendingIsSummarize = false
+  pendingIsSummarize.value = false
 }
 
 const prefillText = ref('')

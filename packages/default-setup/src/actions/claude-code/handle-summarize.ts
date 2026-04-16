@@ -1,25 +1,30 @@
 /**
  * CC: Handle Summarize — "Summarize from here" in the revert menu.
  *
- * Matches Claude Code's native `/compact` slash-command with default
- * `direction: 'from'` semantics: pivot message X and everything after it
- * are already soft-deleted by the threads system before this action runs,
+ * Mirrors Claude Code's native `/compact` slash-command with default
+ * `direction: 'from'` semantics: pivot X and everything after it are
+ * already soft-deleted by the threads system before this action runs,
  * and X's text has been prefilled back into the chat input by the
  * frontend. This action then:
  *
  *   1. Kills any active CLI process.
- *   2. Finds the last surviving assistant `cliUuid` as the truncation anchor.
- *   3. Stores it under `thread.context.claudeCode.revertTo.cliUuid` so the
- *      next turn passes `--fork-session --resume-session-at <cliUuid>`.
- *   4. Dispatches a synthetic USER_MSG carrying `/compact` as the next
- *      turn's text. That re-enters the existing `user.message` →
- *      `Claude Code Chat` flow, so the CLI runs `/compact` against the
- *      truncated forked session and streams back a summary as a normal
- *      assistant message. No CLI changes required.
+ *   2. Validates there's a session + a prior assistant `cliUuid` to
+ *      anchor the truncation at. Bails (with a user-visible aside) if
+ *      either is missing — the destructive soft-delete has already
+ *      happened at that point, so silently returning would leave the
+ *      user confused.
+ *   3. Stores `thread.context.claudeCode.revertTo.cliUuid` so the next
+ *      turn passes `--fork-session --resume-session-at <cliUuid>`.
+ *   4. Creates a synthetic `/compact` user message — collapsed as an
+ *      italic "Summarize from here" aside, non-forkable, so it doesn't
+ *      look like the user typed `/compact` at the prompt.
+ *   5. Directly invokes `Claude Code Chat` with the `/compact` prompt.
+ *      The chat action reads `revertTo`, applies fork+truncate, and
+ *      streams back the summary as a normal assistant message.
  *
- * Bail-out: if there's no live session (`state.sessionId` missing) or no
- * prior assistant with a `cliUuid`, there's nothing to compact — log and
- * return without firing the USER_MSG.
+ * `mode: 'work'` is not involved in the direct invocation — we skip the
+ * `user.message` → flow-routing round-trip entirely. This is a
+ * Claude-Code-specific feature and goes straight to its action.
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
@@ -50,7 +55,9 @@ export async function action(
   const log = services.logger;
   const state = getClaudeState(services, threadId);
 
-  // Kill the active CLI process if one is running.
+  // Kill the active CLI process if one is running. Must happen before we
+  // persist cleanup state so the eventual stream-completed handlers don't
+  // race us and re-set `isRunning: true`.
   const handle = services.cli.claudeCode.getHandle(threadId);
   if (handle) {
     log.debug('killing active CLI handle on summarize', { threadId });
@@ -58,15 +65,32 @@ export async function action(
     services.cli.claudeCode.clearHandle(threadId);
   }
 
-  // Need an existing session to have anything to summarize.
+  // Always clear turn-level state, whether we proceed or bail. Leaving
+  // `isRunning: true` here would desync the busy indicator for the next
+  // turn.
+  const baseCleanup = {
+    isRunning: false,
+    pendingControlRequest: undefined,
+    queuedMessage: undefined,
+  } as const;
+
+  // Bail #1: no live session to compact.
   if (!state?.sessionId) {
-    log.info('summarize skipped — no active Claude session', { threadId, messageId });
+    persistClaudeState(services, threadId, baseCleanup);
     updateChatState(services, threadId as EntityId, 'idle');
+    services.chat.sendBlockMessage({
+      threadId: threadId as EntityId,
+      text: '⚠️ Nothing to summarize — no active Claude session yet.',
+      blocks: [],
+      forkable: false,
+    });
+    log.info('summarize skipped — no active Claude session', { threadId, messageId });
     return { success: false, reason: 'no active session' };
   }
 
-  // Find the CLI UUID of the last remaining assistant message (post
-  // soft-delete). Mirrors handle-revert's truncation-anchor logic.
+  // Find the truncation anchor — the last surviving assistant message's
+  // `cliUuid`. The threads system already soft-deleted X and later, so
+  // this scans only the pre-pivot messages.
   const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
   const messages = (threadData?.messages ?? []) as Array<{
     id?: string;
@@ -78,37 +102,52 @@ export async function action(
   );
   const cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
 
+  // Bail #2: no prior assistant turn to anchor at. `/compact` needs a
+  // non-empty transcript to summarize.
   if (!cliUuid) {
-    log.info('summarize skipped — no prior assistant cliUuid to anchor at', { threadId, messageId });
+    persistClaudeState(services, threadId, baseCleanup);
     updateChatState(services, threadId as EntityId, 'idle');
+    services.chat.sendBlockMessage({
+      threadId: threadId as EntityId,
+      text: '⚠️ Nothing to summarize — no prior assistant turn before this point.',
+      blocks: [],
+      forkable: false,
+    });
+    log.info('summarize skipped — no prior assistant cliUuid to anchor at', { threadId, messageId });
     return { success: false, reason: 'no prior assistant turn' };
   }
 
-  // Clear turn-level state and set the one-shot revert flag. The next
-  // turn's chat action consumes `revertTo` and passes
-  // `--fork-session --resume-session-at <cliUuid>` to the CLI.
+  // Arm the one-shot revert flag. The next chat action consumes this and
+  // passes `--fork-session --resume-session-at <cliUuid>` to the CLI.
   persistClaudeState(services, threadId, {
-    isRunning: false,
-    pendingControlRequest: undefined,
-    queuedMessage: undefined,
+    ...baseCleanup,
     revertTo: { cliUuid },
   });
 
-  updateChatState(services, threadId as EntityId, 'idle');
-
-  // Synthesize a `/compact` user message. Re-entering USER_MSG (rather
-  // than calling the chat action directly) keeps all the normal plumbing:
-  // the message record is created, MESSAGE_ADDED is emitted to the FE,
-  // the brain fires `user.message`, and `claude-code-flow` routes it to
-  // `Claude Code Chat`, which reads revertTo and runs `/compact` against
-  // the truncated forked session.
-  services.emitter.sendToSystem('threads', {
-    type: 'USER_MSG',
+  // Create the synthetic user message. `autoHide: true` + `asideText`
+  // renders it as a muted italic chip instead of a full "/compact" bubble;
+  // `forkable: false` suppresses the hover Revert/Fork buttons.
+  const synth = services.repository.chatCommands.addMessage({
+    threadId: threadId as EntityId,
     text: '/compact',
-    mode: 'work',
-    threadId: threadId as string,
-  } as any);
+    sender: 'user',
+    forkable: false,
+    autoHide: true,
+    asideText: 'Summarize from here',
+  });
 
-  log.debug('summarize handed off to /compact turn', { threadId, messageId, cliUuid });
-  return { success: true, cliUuid };
+  // Make sure the FE sees the new message + refreshed thread state.
+  services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
+
+  // Hand off to the existing chat action. It reads `revertTo`, applies
+  // fork+truncate, and runs `/compact` against the truncated session.
+  // Fire-and-forget: the chat action streams its own response.
+  await services.action.getAndExecute('Claude Code Chat', {
+    threadId,
+    text: '/compact',
+    messageId: synth.id,
+  });
+
+  log.debug('summarize dispatched /compact turn', { threadId, messageId, cliUuid });
+  return { success: true, cliUuid, syntheticMessageId: synth.id };
 }

@@ -29,8 +29,12 @@
           v-for="(action, index) in actions"
           :key="action.id"
           class="revert-history-item"
-          :class="{ 'is-selected': index === selectedIndex }"
-          @mousedown.prevent="runAction(action.id)"
+          :class="{
+            'is-selected': index === selectedIndex,
+            'is-disabled': isActionDisabled(action.id),
+          }"
+          :title="isActionDisabled(action.id) ? 'No prior assistant turn to summarize' : ''"
+          @mousedown.prevent="isActionDisabled(action.id) ? null : runAction(action.id)"
           @mouseenter="selectedIndex = index"
         >
           <component :is="action.icon" :size="14" class="revert-history-icon" />
@@ -78,6 +82,10 @@ type MessageRow = {
   id: string
   text: string
   createdAt?: number | string
+  /** True when at least one assistant message with a `cliUuid` exists
+   * strictly BEFORE this message. `/compact` needs a prior CLI anchor
+   * to fork/truncate against — without it there's nothing to summarize. */
+  canSummarize: boolean
 }
 
 // User-visible messages: user-sent, not cancelled, capped to the most
@@ -87,13 +95,16 @@ type MessageRow = {
 // Drop anything missing an id (shouldn't happen in practice, but the
 // state-machine type models `messages` as `Partial<MessageEntity>[]`).
 const visibleMessages = computed<MessageRow[]>(() => {
-  return props.messages
-    .filter(
-      (m): m is PartialMessage & { id: string } =>
-        !!m.id && m.sender === 'user' && (m as any).status !== 'cancelled',
-    )
-    .slice(-MAX_MESSAGES)
-    .map((m) => ({
+  const all = props.messages
+  const rows: MessageRow[] = []
+  let seenAssistantWithCliUuid = false
+  for (let i = 0; i < all.length; i++) {
+    const m = all[i]
+    if (m.sender === 'assistant' && (m as any).context?.cliUuid) {
+      seenAssistantWithCliUuid = true
+    }
+    if (!m.id || m.sender !== 'user' || (m as any).status === 'cancelled') continue
+    rows.push({
       id: m.id,
       text: m.text ?? '',
       // Fall back to `timestamp`: the batch picker that loads historic
@@ -101,7 +112,10 @@ const visibleMessages = computed<MessageRow[]>(() => {
       // so the very first row of a thread only has `timestamp`. Both
       // fields hold the message's creation epoch ms, so either renders.
       createdAt: (m as any).createdAt ?? (m as any).timestamp,
-    }))
+      canSummarize: seenAssistantWithCliUuid,
+    })
+  }
+  return rows.slice(-MAX_MESSAGES)
 })
 
 type ActionId = 'revert' | 'revert-with-files' | 'summarize-from-here'
@@ -207,9 +221,17 @@ function goBackToMessages() {
   selectedMessageId.value = null
 }
 
+// Summarize needs a prior assistant turn to anchor the compact at.
+// Revert/revert-with-files work regardless.
+function isActionDisabled(id: ActionId): boolean {
+  if (id !== 'summarize-from-here') return false
+  return selectedMessage.value?.canSummarize === false
+}
+
 function runAction(id: ActionId) {
   const msg = selectedMessage.value
   if (!msg) return
+  if (isActionDisabled(id)) return
   if (id === 'revert') emit('revert', msg.id)
   else if (id === 'revert-with-files') emit('revert-with-files', msg.id)
   else emit('summarize-from-here', msg.id)
@@ -257,10 +279,12 @@ function handleKeyDown(event: KeyboardEvent) {
       event.preventDefault(); event.stopPropagation()
       selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
       return
-    case 'Enter':
+    case 'Enter': {
       event.preventDefault(); event.stopPropagation()
-      runAction(actions[selectedIndex.value].id)
+      const action = actions[selectedIndex.value]
+      if (action) runAction(action.id)  // runAction itself skips disabled
       return
+    }
     case 'ArrowLeft':
     case 'Backspace':
       event.preventDefault(); event.stopPropagation()
@@ -345,6 +369,24 @@ onBeforeUnmount(() => {
   color: rgb(245 245 245);
   /* Subtle flush-left accent — a monochrome focus indicator. */
   box-shadow: inset 2px 0 0 rgb(120 120 140);
+}
+
+.revert-history-item.is-disabled {
+  color: rgb(110 110 115);
+  cursor: not-allowed;
+}
+
+.revert-history-item.is-disabled .revert-history-icon {
+  color: rgb(90 90 95);
+}
+
+.revert-history-item.is-disabled:hover {
+  background: transparent;
+}
+
+.revert-history-item.is-disabled.is-selected {
+  background: rgb(35 35 40);
+  box-shadow: none;
 }
 
 .revert-history-time {

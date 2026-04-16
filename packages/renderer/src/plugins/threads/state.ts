@@ -136,7 +136,7 @@ type UIEvent =
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
-  | { type: 'REVERT_THREAD'; messageId: string; threadId: string }
+  | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
   | { type: 'PAUSE_TURN'; threadId: string }
   | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
@@ -877,8 +877,15 @@ const threadsState = setup({
       });
     },
     revertThread: ({ event }) => {
-      const { messageId, threadId } = typeOf('REVERT_THREAD', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'REVERT_THREAD', messageId, threadId });
+      const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REVERT_THREAD',
+        messageId,
+        threadId,
+        ...(restoreFiles !== undefined && { restoreFiles }),
+        ...(userCliUuid !== undefined && { userCliUuid }),
+      });
     },
     summarizeThread: ({ event }) => {
       const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
