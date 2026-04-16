@@ -142,6 +142,7 @@ const arrangeableOptions = {
   hoverClass: 'opacity-90 cursor-grabbing shadow-2xl',
   pickedItemClass: 'opacity-70',
   handle: true,
+  // liftDelay: 150,
 }
 
 /* -------------------------------------------------------------------------- */
@@ -229,24 +230,20 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
         >
           <template #default="{ item: card }">
             <article
-              class="group p-3 transition-all duration-200 border rounded-lg cursor-pointer bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
-              @click="onCardClick(card)"
+              data-handle
+              class="group p-3 transition-all duration-200 border rounded-lg cursor-grab bg-neutral-800/50 hover:bg-neutral-800/80 border-neutral-800/50 hover:border-neutral-700/50"
             >
-              <div class="flex items-center justify-between gap-2 mb-1" :title="card.topic || 'Untitled Thread'">
-                <!-- Drag handle -->
-                <span
-                  data-handle
-                  class="flex-shrink-0 cursor-grab text-sm leading-snug text-neutral-600 px-1 -mx-1 py-2 -my-2"
-                  title="Drag to move"
-                  @click.stop
-                >
-                  &#x283F;
-                </span>
-                <p class="flex-1 text-sm font-medium leading-snug text-neutral-100 truncate">
-                  {{ card.topic || 'Untitled Thread' }}
+              <div class="flex items-center justify-between gap-2 mb-1 pointer-events-none" :title="card.topic || 'Untitled Thread'">
+                <p class="flex-1 min-w-0 text-sm font-medium leading-snug text-neutral-100 truncate">
+                  <span
+                    class="pointer-events-auto cursor-pointer hover:underline underline-offset-2 decoration-neutral-400"
+                    @click.stop="onCardClick(card)"
+                  >
+                    {{ card.topic || 'Untitled Thread' }}
+                  </span>
                 </p>
                 <SquarePen
-                  class="flex-shrink-0 w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:text-blue-400 rounded"
+                  class="flex-shrink-0 w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:text-blue-400 rounded pointer-events-auto cursor-pointer"
                   title="Edit details"
                   @click.stop="actor.send({ type: 'SELECT_THREAD', id: card.id })"
                 />
@@ -256,7 +253,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
                 <span class="text-xs text-neutral-600">•</span>
                 <span class="text-xs text-neutral-500">{{ card.time }}</span>
               </div> -->
-              <div v-if="card.tags && card.tags.length > 0" class="flex flex-wrap gap-1 mt-2">
+              <div v-if="card.tags && card.tags.length > 0" class="flex flex-wrap gap-1 mt-2 pointer-events-none">
                 <span
                   v-for="tag in card.tags"
                   :key="tag"
