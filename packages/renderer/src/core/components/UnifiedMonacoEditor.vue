@@ -279,8 +279,6 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   
   // Add editor actions if requested
   if (props.actions && props.actions.length > 0) {
-    console.log('props.executeKeybinding: ', props.executeKeybinding);
-
     const actions = createEditorActions(monaco, props.actions, {
       onExecute: () => emit('execute')
     }, {
@@ -377,9 +375,18 @@ watch(
   }
 )
 
-// Watch for mode changes to clean up stale references
+// Watch for mode changes to clean up stale references.
+// The template renders VueMonacoDiffEditor in the v-if and VueMonacoEditor
+// in the v-else, so the underlying editor is only torn down when we cross
+// the diff boundary. simple↔multi-file stays on the same VueMonacoEditor
+// instance — tearing down listeners there would silently break event emits
+// because handleMount wouldn't fire again.
 watch(() => props.mode, (newMode, oldMode) => {
-  if (oldMode === 'diff') {
+  const oldIsDiff = oldMode === 'diff'
+  const newIsDiff = newMode === 'diff'
+  const editorTornDown = oldIsDiff !== newIsDiff
+
+  if (oldIsDiff) {
     diffUpdateDisposable?.dispose()
     diffUpdateDisposable = null
     // Capture scroll position from diff's modified editor before destroying
@@ -397,17 +404,23 @@ watch(() => props.mode, (newMode, oldMode) => {
     try { diffEditorInstance.value?.setModel(null) } catch {}
     diffEditorInstance.value = undefined
   }
-  if (oldMode === 'multi-file') {
+
+  // The standard editor only tears down when we switch INTO diff mode.
+  // multi-file → simple keeps the same VueMonacoEditor instance, so we
+  // must not drop the model cache there.
+  if (oldMode === 'multi-file' && newIsDiff) {
     // VueMonacoEditor is being destroyed — library disposes our models
     models.clear()
     viewStates.clear()
   }
-  // The underlying editor is being torn down — drop every listener we
-  // attached to it. The library disposes the editor itself, but Monaco's
-  // listener tracker can trip before that runs, so we dispose explicitly
-  // here on every mode switch.
-  disposeEditorDisposables()
-  editorInstance.value = undefined
+
+  if (editorTornDown) {
+    // Drop every listener we attached to the outgoing editor. The library
+    // disposes the editor itself, but Monaco's listener tracker can trip
+    // before that runs, so we dispose explicitly here.
+    disposeEditorDisposables()
+    editorInstance.value = undefined
+  }
 })
 
 // Watch for dslParams changes

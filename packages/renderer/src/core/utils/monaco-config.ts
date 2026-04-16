@@ -219,6 +219,8 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
 let monacoInitialized = false
 const registeredDslLibs = new Set<string>()
 const initializedLanguages = new Set<string>()
+// Keyed by language alone (not dslType) — the no-op formatter body below is
+// identical across DSL types, so one registration per language suffices.
 const registeredFormatters = new Set<string>()
 
 // ============================================================================

@@ -15,8 +15,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import type { editor } from 'monaco-editor'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import type { editor, IDisposable } from 'monaco-editor'
 import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
 import { getLanguageFromPath } from '@/core/utils/monaco-config'
 import type { CodeContent } from '@app/api'
@@ -34,6 +34,7 @@ const emit = defineEmits<{
 
 const containerRef = ref<HTMLDivElement>()
 const containerHeight = ref(MIN_HEIGHT)
+let sizeChangeDisposable: IDisposable | null = null
 
 const resolvedLanguage = computed(() => {
   if (props.fileName) return getLanguageFromPath(props.fileName)
@@ -46,7 +47,12 @@ const handleMount = (editorInstance: editor.IStandaloneCodeEditor) => {
     containerHeight.value = Math.max(MIN_HEIGHT, contentHeight)
   }
 
-  editorInstance.onDidContentSizeChange(updateHeight)
+  sizeChangeDisposable = editorInstance.onDidContentSizeChange(updateHeight)
   updateHeight()
 }
+
+onBeforeUnmount(() => {
+  sizeChangeDisposable?.dispose()
+  sizeChangeDisposable = null
+})
 </script>
