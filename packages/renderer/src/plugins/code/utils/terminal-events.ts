@@ -38,13 +38,13 @@ class TerminalEventBus {
   
   private saveToLocalStorage(terminalId: string, output: string) {
     if (!this.USE_LOCAL_STORAGE || typeof window === 'undefined') return
-    
+
     // Clear existing timer for this terminal
     const existingTimer = this.saveTimers.get(terminalId)
     if (existingTimer) {
       clearTimeout(existingTimer)
     }
-    
+
     // Set new debounced save
     const timer = setTimeout(() => {
       try {
@@ -53,20 +53,20 @@ class TerminalEventBus {
       } catch (e) {
         // Handle quota exceeded or other errors
         console.warn('Failed to save terminal output to localStorage:', e)
-        
-        // If quota exceeded, try to clear old entries
+
+        // If quota exceeded, try to clear orphaned entries first
         if (e instanceof Error && e.name === 'QuotaExceededError') {
-          this.clearOldEntries()
+          this.reclaimQuota(terminalId)
           // Retry once after clearing
           try {
             localStorage.setItem(this.STORAGE_KEY_PREFIX + terminalId, output)
           } catch (retryError) {
-            console.error('Failed to save even after clearing old entries:', retryError)
+            console.error('Failed to save even after reclaiming quota:', retryError)
           }
         }
       }
     }, this.SAVE_DEBOUNCE_MS)
-    
+
     this.saveTimers.set(terminalId, timer)
   }
   
@@ -110,11 +110,16 @@ class TerminalEventBus {
       currentOutput = data
     }
     
-    // Apply size limit with circular buffer behavior
+    // Apply size limit with circular buffer behavior. Trim on a newline
+    // boundary so we never split an ANSI escape sequence mid-bytes, which
+    // would silently corrupt replay colors/cursor/etc. on the next app
+    // start. Falls back to the raw cut only in the degenerate case where
+    // no newline appears in the keep window (e.g. a single very long line).
     if (currentOutput.length > this.MAX_OUTPUT_LENGTH) {
-      // Keep the last 90% to avoid constant trimming
       const keepLength = Math.floor(this.MAX_OUTPUT_LENGTH * 0.9)
-      currentOutput = currentOutput.slice(-keepLength)
+      const cut = currentOutput.length - keepLength
+      const nl = currentOutput.indexOf('\n', cut)
+      currentOutput = nl >= 0 ? currentOutput.slice(nl + 1) : currentOutput.slice(cut)
     }
     
     this.outputs.set(terminalId, currentOutput)
@@ -157,26 +162,34 @@ class TerminalEventBus {
     this.outputs.clear()
   }
   
-  private clearOldEntries() {
+  /**
+   * Reclaim localStorage quota without destroying active terminal scrollback.
+   * Drops only entries whose terminal id isn't known to this session — those
+   * are stale from prior runs (terminal was killed or app was closed without
+   * cleanup). The currently-writing terminal (`activeId`) and every entry in
+   * `this.outputs` are preserved. We do not fall back to deleting live
+   * entries; if this isn't enough to recover quota, the save simply fails
+   * and is logged by the caller — better than silently losing scrollback.
+   */
+  private reclaimQuota(activeId: string) {
     try {
-      const entries: Array<{ key: string; time: number }> = []
-      
-      // Collect all terminal output entries with timestamps
+      const prefix = this.STORAGE_KEY_PREFIX
+      const liveIds = new Set<string>(this.outputs.keys())
+      liveIds.add(activeId)
+
+      const orphanKeys: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
-        if (key && key.startsWith(this.STORAGE_KEY_PREFIX)) {
-          // Try to parse a timestamp from the stored data or use 0
-          entries.push({ key, time: 0 })
-        }
+        if (!key || !key.startsWith(prefix)) continue
+        const id = key.substring(prefix.length)
+        if (!liveIds.has(id)) orphanKeys.push(key)
       }
-      
-      // Remove oldest half of entries
-      const entriesToRemove = Math.floor(entries.length / 2)
-      for (let i = 0; i < entriesToRemove; i++) {
-        localStorage.removeItem(entries[i].key)
+
+      for (const key of orphanKeys) {
+        localStorage.removeItem(key)
       }
     } catch (e) {
-      console.error('Failed to clear old localStorage entries:', e)
+      console.error('Failed to reclaim localStorage quota:', e)
     }
   }
 }
