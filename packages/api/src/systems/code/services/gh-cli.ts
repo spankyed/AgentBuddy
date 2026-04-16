@@ -173,7 +173,16 @@ export async function createPR(
   const match = url.match(/\/pull\/(\d+)/)
   if (!match) throw new Error('Failed to parse PR number from gh output')
   const prNumber = parseInt(match[1], 10)
-  const details = await getPRDetails(cwd, prNumber)
+  // GitHub computes mergeability asynchronously after PR creation — the first few
+  // reads typically return UNKNOWN. Retry with backoff (2s, then 4s) so we give
+  // GitHub progressively more time to settle, up to ~6s total.
+  let details = await getPRDetails(cwd, prNumber)
+  for (let i = 1; i <= 2; i++) {
+    if (details.mergeable && details.mergeable !== 'UNKNOWN'
+        && details.mergeStateStatus && details.mergeStateStatus !== 'UNKNOWN') break
+    await new Promise(r => setTimeout(r, 2_000 * i))
+    details = await getPRDetails(cwd, prNumber)
+  }
   return details
 }
 
