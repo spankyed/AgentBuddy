@@ -9,10 +9,15 @@
  * Reuses `CC: Handle Revert` via `services.action.getAndExecute` for the
  * common setup (CLI kill, cliUuid lookup, persistClaudeState,
  * updateChatState) so the two paths stay in sync.
+ *
+ * If the frontend didn't supply `userCliUuid` (pre-existing threads where
+ * the stream-consumer never wrote `msg.context.cliUuid`), we lazily
+ * backfill from Claude's own session JSONL transcript before bailing.
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
+import { backfillUserCliUuids } from './_helpers/jsonl-backfill';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Rewind',
@@ -25,15 +30,40 @@ export const meta: ActionMeta = {
   },
 };
 
+/**
+ * Classify a `--rewind-files` failure message into a user-facing aside
+ * and flag whether it represents an infrastructural health issue (our
+ * env-var fix not being honored by the installed Claude CLI).
+ */
+function classifyRewindFailure(raw: string | undefined): { text: string; isHealthIssue: boolean } {
+  const detail = (raw ?? '').toLowerCase();
+  if (/file rewinding is not enabled/.test(detail)) {
+    return {
+      text: '⚠️ Claude CLI reports file rewinding is disabled. The `CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING` env var may not be recognized by your installed Claude version.',
+      isHealthIssue: true,
+    };
+  }
+  if (/no file history|file history not found|no snapshot/.test(detail)) {
+    return {
+      text: '⚠️ This thread predates file-history support — start a fresh thread and file rewind will work on future turns.',
+      isHealthIssue: false,
+    };
+  }
+  return {
+    text: `⚠️ Could not restore files — ${raw ?? 'rewind call failed'}.`,
+    isHealthIssue: false,
+  };
+}
+
 export async function action(
   params: Record<string, any>,
   services: Services,
 ) {
-  const { threadId, messageId, userCliUuid } = params as {
+  const { threadId, messageId } = params as {
     threadId: string;
     messageId: string;
-    userCliUuid?: string;
   };
+  let { userCliUuid } = params as { userCliUuid?: string };
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
@@ -53,6 +83,23 @@ export async function action(
   if (!sessionId) {
     log.info('rewind skipped — no active Claude session', { threadId, messageId });
     return { success: false, reason: 'no active session', filesRestored: false };
+  }
+
+  // Lazy backfill: if the frontend didn't pass userCliUuid (pre-existing
+  // thread, or stream-consumer didn't capture it), pull missing uuids
+  // from the session JSONL and re-read the pivot message.
+  if (!userCliUuid) {
+    const backfilled = await backfillUserCliUuids(services, threadId as EntityId);
+    if (backfilled > 0) {
+      const msg = services.repository.chatQueries.messageById(messageId as EntityId) as
+        | { context?: Record<string, unknown> }
+        | null;
+      const recovered = msg?.context?.cliUuid;
+      if (typeof recovered === 'string' && recovered.length > 0) {
+        userCliUuid = recovered;
+        log.debug('rewind: recovered userCliUuid via JSONL backfill', { threadId, messageId });
+      }
+    }
   }
 
   if (!userCliUuid) {
@@ -89,13 +136,22 @@ export async function action(
   }
 
   if (!filesRestored) {
-    // Surface the failure so the user isn't left thinking files were
-    // restored when they weren't. Inline message, not auto-hidden —
-    // this is an action they explicitly requested and the outcome
-    // diverged from expectation.
+    // Classify the failure so the aside gives actionable information
+    // rather than raw CLI stderr.
+    const { text, isHealthIssue } = classifyRewindFailure(failureDetail);
+    if (isHealthIssue) {
+      // Loud signal for maintainers: our env-var fix should prevent the
+      // "not enabled" error. Seeing it means Claude renamed the flag or
+      // the installed version predates SDK file checkpointing — worth
+      // surfacing in server logs at error level.
+      log.error(
+        'Claude CLI does not recognize CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING — possible rename in installed Claude version',
+        { threadId, stderr: failureDetail },
+      );
+    }
     services.chat.sendBlockMessage({
       threadId: threadId as EntityId,
-      text: `⚠️ Could not restore files — ${failureDetail ?? 'rewind call failed'}.`,
+      text,
       blocks: [],
       forkable: false,
     });

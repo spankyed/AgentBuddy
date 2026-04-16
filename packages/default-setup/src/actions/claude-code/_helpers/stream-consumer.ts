@@ -233,7 +233,14 @@ export async function consumeStream(
         if (!userUuidTracked) {
           if (!ctx.userMessageId) {
             log.warn('user event without userMessageId — cliUuid tracking skipped', { threadId });
-            userUuidTracked = true; // don't spam on every echo
+            // Set the flag to suppress log spam on every subsequent user
+            // echo — NOT because we're abandoning recovery. ctx is
+            // closed-over and invariant for this consumer invocation, so
+            // if userMessageId is undefined here it will remain undefined
+            // for the rest of the stream; no future event could have
+            // recovered it. `backfillUserCliUuids` (jsonl-backfill.ts)
+            // handles retroactive recovery at rewind time.
+            userUuidTracked = true;
           } else if (line.uuid) {
             services.chat.updateMessageState(ctx.userMessageId as any, {
               context: { cliUuid: line.uuid },

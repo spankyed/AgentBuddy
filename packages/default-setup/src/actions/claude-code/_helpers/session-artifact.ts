@@ -130,6 +130,23 @@ export function readWorktreeMode(
 }
 
 /**
+ * Read the cwd that was active when the session artifact was first created.
+ * Populated from the CLI's `system` stream event on turn 1. Used by
+ * `--rewind-files` and JSONL backfill to locate the session's transcript on
+ * disk via `services.cli.claudeCode.sessions.view(sessionId, { cwd })`.
+ * Returns undefined if no artifact exists yet or cwd isn't populated — the
+ * caller should fall back to `process.cwd()`.
+ */
+export function readSessionCwd(
+  services: Services,
+  threadId: EntityId,
+): string | undefined {
+  const session = findSessionArtifact(services, threadId);
+  const content = session?.content as Partial<SessionArtifactContent> | undefined;
+  return content?.cwd || undefined;
+}
+
+/**
  * Ensure a claude-session artifact exists for the thread. If one already
  * exists (across turns), returns its id without creating a new one. If it
  * doesn't exist yet, creates one with `initial` content merged into the

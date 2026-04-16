@@ -3,7 +3,7 @@ import * as ghCli from '@/systems/code/services/gh-cli'
 import { repository } from '@/repository'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/systems/code/types'
 import { claudeCode } from '@/services/claude-code'
-import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions } from '@/services/claude-code'
+import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from '@/services/claude-code'
 import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
 
@@ -41,6 +41,13 @@ export interface CliServiceType {
     version(): Promise<string>
     authStatus(): Promise<AuthStatus>
     listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
+    /**
+     * Parse a session's JSONL transcript into an in-memory array of entries.
+     * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
+     * on pre-existing user messages from Claude's own session file.
+     * `cwd` defaults to the configured project directory.
+     */
+    viewSession(id: string, opts?: Omit<SessionViewOptions, 'cwd'> & { cwd?: string }): Promise<SessionTranscriptEntry[]>
     getWorkingDir(): string
     /** Store a live query handle so other actions can write control_responses. */
     storeHandle(key: string, handle: QueryHandle): void
@@ -130,6 +137,10 @@ function createCliService(): CliServiceType {
       listSessions(opts) {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.sessions.list({ ...opts, cwd })
+      },
+      viewSession(id, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return claudeCode.sessions.view(id, { ...opts, cwd })
       },
       getWorkingDir() {
         return resolveCwd()
