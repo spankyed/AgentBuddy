@@ -208,7 +208,7 @@ export default {
       "Thread reverted",
     ),
     on(
-      "thread.summarize",
+      "thread.revert.summarize",
       [[
         action("CC: Handle Summarize", {
           label: "summarize",

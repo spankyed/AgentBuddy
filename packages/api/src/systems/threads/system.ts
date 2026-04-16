@@ -690,7 +690,7 @@ export const threadsSystem = setup({
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'thread.summarize',
+        eventType: 'thread.revert.summarize',
         payload: { threadId, messageId },
       });
     },
