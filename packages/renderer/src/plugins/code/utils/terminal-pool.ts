@@ -52,6 +52,13 @@ export interface PoolEntry {
   disposables: IDisposable[]
   attachedContainer: HTMLElement | null
   isShowingLoadingContent: boolean
+  // Scroll state lives here (not in TerminalView.vue) so it survives the
+  // unmount/remount that happens on every tab switch. `wrapper.remove()` in
+  // detach() also resets .xterm-viewport.scrollTop in Chromium, so on every
+  // attach we re-drive the DOM scroll position ourselves rather than relying
+  // on xterm's scrollToBottom() — which is a no-op when ydisp === ybase.
+  pinnedToBottom: boolean
+  savedScrollTop: number | null
 }
 
 const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
@@ -116,7 +123,9 @@ class TerminalPool {
       wrapper,
       disposables: [],
       attachedContainer: null,
-      isShowingLoadingContent: false
+      isShowingLoadingContent: false,
+      pinnedToBottom: true,
+      savedScrollTop: null
     }
 
     // Shift+Enter inserts a newline instead of executing. Wired once here
@@ -178,8 +187,52 @@ class TerminalPool {
   detach(terminalId: string): void {
     const entry = this.entries.get(terminalId)
     if (!entry) return
+    // Capture the current viewport scroll position before wrapper.remove(),
+    // because Chromium resets scrollTop to 0 on document-remove and we want
+    // to restore it on the next attach if the user wasn't pinned to bottom.
+    const viewport = this._getViewport(entry)
+    if (viewport) entry.savedScrollTop = viewport.scrollTop
     entry.wrapper.remove()
     entry.attachedContainer = null
+  }
+
+  /** Update pin-to-bottom state. View layer calls this from its scroll listener. */
+  setPinned(terminalId: string, pinned: boolean): void {
+    const entry = this.entries.get(terminalId)
+    if (!entry) return
+    entry.pinnedToBottom = pinned
+  }
+
+  /**
+   * Force the native scrollbar to match the desired viewport position.
+   * Callers must have already appended the wrapper and run fitAddon.fit().
+   * Uses double requestAnimationFrame so layout (including the WebGL canvas
+   * resize from fit()) has settled before we read scrollHeight.
+   *
+   * This bypasses xterm's Terminal.scrollToBottom(), which early-returns when
+   * ydisp === ybase (always true on tab-switch remount) and therefore never
+   * pushes a DOM scrollTop update after wrapper.remove() reset it to 0.
+   */
+  syncViewport(terminalId: string): void {
+    const entry = this.entries.get(terminalId)
+    if (!entry) return
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const current = this.entries.get(terminalId)
+        if (!current || !current.attachedContainer) return
+        const viewport = this._getViewport(current)
+        if (!viewport) return
+        if (current.pinnedToBottom) {
+          viewport.scrollTop = viewport.scrollHeight
+        } else if (current.savedScrollTop != null) {
+          viewport.scrollTop = current.savedScrollTop
+        }
+      })
+    })
+  }
+
+  private _getViewport(entry: PoolEntry): HTMLElement | null {
+    return entry.term.element?.querySelector('.xterm-viewport') as HTMLElement | null
   }
 
   /** Dispose xterm + all wire-level disposables. Call on terminal.CLOSED. */
