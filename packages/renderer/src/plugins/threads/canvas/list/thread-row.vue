@@ -28,9 +28,10 @@
               v-for="(tag, index) in (thread.tags || []).slice(0, 3)"
               :key="index"
               :style="getTagStyles(tag)"
-              class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md truncate max-w-[6rem]"
+              :title="tag"
+              class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md max-w-[6rem]"
             >
-              {{ tag }}
+              <span class="truncate">{{ tag }}</span>
             </span>
             <span v-if="thread.tags && thread.tags.length > 3" class="px-2 py-0.5 text-xs text-neutral-400">
               +{{ thread.tags.length - 3 }} more
