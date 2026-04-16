@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-3xl h-full flex flex-col min-h-0">
+  <div class="max-w-3xl h-full flex flex-col min-h-20">
     <div class="rounded-md bg-neutral-850 border border-neutral-800 animate-fade-in flex flex-col min-h-0 flex-1">
       <!-- Header -->
       <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
