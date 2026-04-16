@@ -133,7 +133,8 @@ const settings: SettingsData = {
       ],
       showOnlyRootThreads: false,
       clickToChat: false,
-      recentThreadsLimit: 7
+      recentThreadsLimit: 7,
+      recordingLimitMinutes: 3
     },
     prompts: {
       categories: [

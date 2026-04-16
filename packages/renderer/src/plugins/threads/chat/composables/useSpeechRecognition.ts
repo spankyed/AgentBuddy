@@ -4,6 +4,12 @@ interface SpeechRecognitionOptions {
   lang?: string
   onResult?: (transcript: string) => void
   onError?: (error: string) => void
+  /**
+   * Maximum duration of a single listening session in milliseconds.
+   * Accepts a number or a getter so callers can source the value reactively.
+   * When the timer elapses, the session is stopped via api.stop().
+   */
+  maxDurationMs?: number | (() => number | undefined)
 }
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
@@ -11,12 +17,34 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
   const isListening = ref(false)
   const pending = ref(false)
   let removeListener: (() => void) | null = null
+  let durationTimeoutId: ReturnType<typeof setTimeout> | null = null
 
   const api = window.electronAPI?.speechRecognition
 
   function handleError(err: unknown, fallback: string) {
     isListening.value = false
     options.onError?.(err instanceof Error ? err.message : fallback)
+  }
+
+  function clearDurationTimer() {
+    if (durationTimeoutId !== null) {
+      clearTimeout(durationTimeoutId)
+      durationTimeoutId = null
+    }
+  }
+
+  function scheduleDurationTimer() {
+    clearDurationTimer()
+    const raw = typeof options.maxDurationMs === 'function'
+      ? options.maxDurationMs()
+      : options.maxDurationMs
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) return
+    durationTimeoutId = setTimeout(() => {
+      durationTimeoutId = null
+      if (api && isListening.value) {
+        api.stop().catch(() => {})
+      }
+    }, raw)
   }
 
   onMounted(async () => {
@@ -34,15 +62,18 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
             case 'started':
               isListening.value = true
               pending.value = false
+              scheduleDurationTimer()
               break
             case 'stopped':
               isListening.value = false
               pending.value = false
+              clearDurationTimer()
               break
             case 'error':
               options.onError?.(event.message || event.code || 'Unknown error')
               isListening.value = false
               pending.value = false
+              clearDurationTimer()
               break
             case 'ready':
             case 'partial':
@@ -95,6 +126,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
   }
 
   onUnmounted(() => {
+    clearDurationTimer()
     if (api && (isListening.value || pending.value)) {
       api.stop().catch(() => {})
     }

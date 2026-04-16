@@ -223,6 +223,8 @@ const props = defineProps<{
   prefillText?: string
   /** Whether the current thread is in the user-marked "busy" chat state. Controls Pause button visibility. */
   isBusy?: boolean
+  /** Max duration (in minutes) for a single voice-input session. */
+  recordingLimitMinutes?: number
 }>()
 
 // Define emits including new button actions
@@ -415,6 +417,10 @@ const { isSupported: speechSupported, isListening, toggle: toggleSpeech, start: 
     const trimmed = transcript.trim()
     if (!trimmed) return
     editor.commands.insertContent(trimmed + '. ')
+  },
+  maxDurationMs: () => {
+    const mins = props.recordingLimitMinutes
+    return typeof mins === 'number' && mins > 0 ? mins * 60_000 : undefined
   },
 })
 

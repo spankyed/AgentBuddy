@@ -164,7 +164,7 @@
               class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
               @change="onDefaultModeChange"
             >
-              <option value="">(Use current)</option>
+              <option value="">(None)</option>
               <option
                 v-for="mode in selectableDefaultModes"
                 :key="mode.id"
@@ -480,6 +480,26 @@
               </p>
             </div>
           </div>
+          <div class="flex items-start gap-3">
+            <input
+              id="recording-limit"
+              v-model.number="recordingLimitMinutes"
+              type="number"
+              min="0.5"
+              max="30"
+              step="0.5"
+              class="mt-1 w-16 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none"
+              @input="debouncedSaveRecordingLimit"
+            />
+            <div class="flex-1">
+              <label for="recording-limit" class="block text-sm font-medium text-neutral-200 cursor-pointer">
+                Voice input limit (minutes)
+              </label>
+              <p class="mt-1 text-xs text-neutral-500">
+                Maximum duration for a single voice input session. Recording auto-stops when the limit is reached.
+              </p>
+            </div>
+          </div>
         </div>
       </CollapsibleSection>
     </div>
@@ -658,6 +678,7 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
 const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
+const recordingLimitMinutes = ref<number>(props.settings?.recordingLimitMinutes ?? 3)
 
 // ---- Chat (agent) settings ----
 const chatSettings = props.settings?.chat
@@ -734,6 +755,18 @@ const saveRecentThreadsLimit = () => {
   })
 }
 
+const saveRecordingLimit = () => {
+  const raw = Number(recordingLimitMinutes.value)
+  const clamped = Math.min(30, Math.max(0.5, Number.isFinite(raw) && raw > 0 ? raw : 3))
+  if (clamped !== recordingLimitMinutes.value) {
+    recordingLimitMinutes.value = clamped
+  }
+  emit('update-setting', {
+    path: ['recordingLimitMinutes'],
+    value: clamped
+  })
+}
+
 // ---- Chat (agent) save helpers ----
 const saveSkipRevertConfirm = () => {
   emit('update-setting', { path: ['chat', 'skipRevertConfirm'], value: skipRevertConfirm.value })
@@ -792,6 +825,10 @@ const { debounced: debouncedSaveQuickPrompts } = useDebounce(() => {
 
 const { debounced: debouncedSaveRecentThreadsLimit } = useDebounce(() => {
   saveRecentThreadsLimit()
+}, 500)
+
+const { debounced: debouncedSaveRecordingLimit } = useDebounce(() => {
+  saveRecordingLimit()
 }, 500)
 
 // Mode management

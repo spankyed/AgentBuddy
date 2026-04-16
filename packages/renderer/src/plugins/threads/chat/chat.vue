@@ -34,6 +34,7 @@
           :hotkeys="hotkeys"
           :quick-prompts="quickPrompts"
           :quick-prompt-cursor="quickPromptCursor"
+          :recording-limit-minutes="recordingLimitMinutes"
           @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
           @send-command="(command: string, text: string, references?: MessageReferences) => actor.send({ type: 'SEND_COMMAND', command, text, references })"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
@@ -130,6 +131,7 @@ const modes = useSelector(actor, (state) => state.context.modes)
 const hotkeys = useSelector(actor, (state) => state.context.hotkeys)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
+const recordingLimitMinutes = useSelector(actor, (state) => state.context.settings?.recordingLimitMinutes ?? 3)
 // True if the current thread's *raw* chat state matches the one the user
 // marked as "busy" in settings. Intentionally ignores chatStateOverrides
 // (the short-lived flash used to surface terminal states like success/error):

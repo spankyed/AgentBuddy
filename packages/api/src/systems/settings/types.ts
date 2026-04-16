@@ -133,6 +133,7 @@ export interface ThreadsSettings {
   showOnlyRootThreads: boolean;
   clickToChat: boolean;
   recentThreadsLimit: number;
+  recordingLimitMinutes: number;
   chat?: AgentSettings;
 }
 
