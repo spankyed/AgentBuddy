@@ -181,3 +181,11 @@ export interface AssistantSettings {
   name: string;
   birthdate: string | null;
 }
+
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  order?: number;
+}

@@ -68,7 +68,7 @@ function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIn
   return items.filter(item => set.has(getKey(item)));
 }
 
-const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
+export const DEFAULT_COMPILED_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
 
 const SEED_FILES = [
   'compiled-actions.json', 'compiled-prompts.json',
@@ -84,7 +84,7 @@ function computeSeedHash(compiledDir: string): string {
   return hash.digest('hex').slice(0, 16);
 }
 
-function loadJSON<T>(filePath: string): T | null {
+export function loadJSON<T>(filePath: string): T | null {
   if (!fs.existsSync(filePath)) return null;
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T;

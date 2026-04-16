@@ -8,6 +8,7 @@ import * as path from 'path';
 import type { FlowDSL } from '@/systems/flows/dsl';
 import type { ExportedLibrary, ExportedItem } from '@/systems/library/export-types';
 import type { ExportedNotes } from '@/systems/notes/export-types';
+import { loadJSON } from './index';
 
 export type SetupPackType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
 
@@ -33,11 +34,6 @@ export interface SetupPackPreview {
 
 interface CompiledActionLike { label: string; description?: string }
 interface CompiledPromptLike { label: string; description?: string }
-
-function loadJSON<T>(filePath: string): T | null {
-  if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T;
-}
 
 export function previewSetupPack(directory: string): SetupPackPreview {
   const preview: SetupPackPreview = {

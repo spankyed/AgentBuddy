@@ -3,7 +3,8 @@ import type { MergeReceivable } from '@/core/helpers/event-helpers';
 import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
 import { emit, safeEvents } from '@/core/helpers/actor-helpers';
-import { SettingsData } from './types';
+import { SettingsData, type FAQItem } from './types';
+import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
@@ -101,7 +102,7 @@ export type SettingsInternalEvents =
   | SecretsOutputEvents // Events from child secrets actor
 
 export type OutgoingSettingsEvents =
-  | { type: 'SETTINGS_LOADED'; data: SettingsData }
+  | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
@@ -136,11 +137,13 @@ export const settingsSystem = setup({
   actions: {
     sendSettingsStartupData: ({ system }) => {
       const data = settingsQueries.getSettings();
+      const faqs = loadFaqs();
 
       // Send settings to the settings plugin
-      system.get(bus).send(emit(settings, { 
+      system.get(bus).send(emit(settings, {
         type: 'SETTINGS_LOADED',
-        data
+        data,
+        faqs
       }));
       
       // Send hotkeys to the application
@@ -164,9 +167,11 @@ export const settingsSystem = setup({
     
     getSettings: ({ system, event }) => {
       const data = settingsQueries.getSettings();
+      const faqs = loadFaqs();
       system.get(bus).send(emit(settings, {
         type: 'SETTINGS_LOADED',
-        data
+        data,
+        faqs
       }));
     },
     

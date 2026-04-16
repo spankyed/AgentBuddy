@@ -6,7 +6,7 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@/core/actors/route-trailer'
-import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType } from '@app/api'
+import type { EARS, OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, ApplicationHotkeys, PluginSettings, SetupPackPreview, SetupPackType, FAQItem } from '@app/api'
 import { trpc } from '@/core/trpc'
 import plugins from '@/plugins'
 import { applicationState } from '@/main'
@@ -60,6 +60,7 @@ function freshSetupPack(): SetupPackImport {
 
 export interface SettingsContext {
   settings: SettingsData | null;
+  faqs: FAQItem[];
   secretsData: any[];
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   setupPackImport: SetupPackImport;
@@ -118,7 +119,7 @@ const settingsState = setup({
 
     setSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_LOADED', event);
-      
+
       // Send plugin visibility to application state on initial load
       if (ev.data?.plugins?._meta?.visibility) {
         applicationState.send({
@@ -126,9 +127,10 @@ const settingsState = setup({
           pluginVisibility: ev.data.plugins._meta.visibility
         });
       }
-      
+
       return {
         settings: ev.data,
+        faqs: ev.faqs ?? [],
         isLoading: false,
       }
     }),
@@ -412,6 +414,7 @@ const settingsState = setup({
     
     return {
       settings: null,
+      faqs: [],
       secretsData: [],
       cliTestResults: {},
       setupPackImport: freshSetupPack(),

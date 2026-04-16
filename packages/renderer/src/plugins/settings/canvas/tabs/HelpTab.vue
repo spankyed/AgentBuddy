@@ -46,6 +46,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
+import { useSelector } from '@xstate/vue'
+import { applicationState } from '@/main'
+import type { FAQItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 const MEMORIAL_URL = 'https://www.postandcourier.com/northaugusta/archive/news/profile-kathie-ulrich/article_d1f14448-0fc8-54df-a1b0-3c404c99cfcc.html'
@@ -54,47 +57,8 @@ function openMemorialLink() {
   window.electronAPI?.shell?.openExternal(MEMORIAL_URL)
 }
 
-interface FAQItem {
-  id: string
-  question: string
-  answer: string
-  category?: string
-  order?: number
-}
-
-// For now, hardcode the FAQ items until FAQ entities are properly set up
-const faqItems = ref<FAQItem[]>([
-  {
-    id: 'faq_1',
-    question: "Where can I view saved messages?",
-    answer: "In the database plugin click 3 dots then select option 'view trace history'",
-    category: 'database',
-    order: 1
-  },
-  {
-    id: 'faq_2',
-    question: "How do I enable TTS?",
-    answer: "Go to mac settings and allow accessibility permission",
-    category: 'settings',
-    order: 2
-  },
-  {
-    id: 'faq_gh_token',
-    question: "Why does the PR panel say my GitHub token is missing permissions?",
-    answer: `The GitHub CLI (gh) can have multiple authenticated accounts, but only one is active at a time. The active token may lack the permissions needed for PR operations.
-
-**Common scenarios:**
-- **GITHUB_TOKEN env var with a fine-grained PAT** — needs explicit "Pull requests: Read and write" permission in GitHub > Settings > Developer settings > Fine-grained tokens.
-- **GITHUB_TOKEN env var with a classic PAT** — needs the \`repo\` scope in GitHub > Settings > Developer settings > Tokens (classic).
-- **Keyring OAuth token** — run \`gh auth refresh -s repo\` to add missing scopes.
-
-**To diagnose:** run \`gh auth status\` in your terminal to see which token is active and its type. Token prefixes indicate the type: \`github_pat_\` = fine-grained PAT, \`ghp_\` = classic PAT, \`gho_\` = OAuth.
-
-**To switch accounts:** run \`gh auth switch\` to change the active account. To stop using an env var token: unset the \`GITHUB_TOKEN\` environment variable.`,
-    category: 'github',
-    order: 3
-  }
-])
+const settingsActor = applicationState.system.get('settings')
+const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])
 

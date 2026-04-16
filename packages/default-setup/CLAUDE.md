@@ -13,10 +13,11 @@ default-setup/
     default-setup-defs.d.ts     # EARS, FlowDSL, library/thread/notes types
 
   build/                        # Compiler infrastructure
-    compile.ts                  # Entry point — dispatches to action/prompt/flow/library compilers
+    compile.ts                  # Entry point — dispatches to action/prompt/flow/library/notes/settings/faq compilers
     compile-utils.ts            # esbuild bundling, TS AST extraction, validation
     compile-flows.ts            # Flow compiler — dynamic import + validation
     compile-library.ts          # Library markdown compiler
+    compile-faq.ts              # FAQ markdown compiler
     flow-dsl-validator.ts       # Flow DSL validation logic
     library-utils.ts            # toTitleCase, countDocs helpers
 
@@ -27,6 +28,7 @@ default-setup/
     prompts/                    # Prompt template source files
     flows/                      # Flow DSL files
     library/                    # Markdown docs + media
+    faqs/                       # FAQ markdown files (frontmatter + # heading + body)
     _examples/                  # Reference examples (excluded from compilation)
   dist/                         # Generated JSON output (gitignored)
 ```
@@ -38,6 +40,7 @@ default-setup/
 - `src/prompts/` — prompt template source files
 - `src/flows/` — flow DSL files (dynamically imported, not bundled)
 - `src/library/` — markdown docs compiled to JSON
+- `src/faqs/` — FAQ markdown files; compiled to `dist/compiled-faq.json`, served to settings Help tab at startup
 - `src/default-settings.ts` — default settings source, typed against `SettingsData`; compiled to `dist/compiled-settings.json` via `compile:settings`
 - `src/_examples/` — reference examples (excluded from compilation and typecheck)
 - `src/types.ts` — shared type definitions (`ActionMeta`, `PromptMeta`, `Services`, `Z`, etc.)
