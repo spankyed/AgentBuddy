@@ -111,6 +111,37 @@
               class="border rounded-md bg-neutral-800/50 border-neutral-700"
             >
               <div class="flex items-center gap-2 p-2">
+                <!-- Color Picker -->
+                <div class="relative">
+                  <button
+                    type="button"
+                    @click="togglePicker(`phase:${phase.id}`)"
+                    class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
+                    :style="{ backgroundColor: phase.color || 'transparent' }"
+                    title="Change color"
+                  />
+                  <div
+                    v-if="activePicker === `phase:${phase.id}`"
+                    class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
+                  >
+                    <button
+                      type="button"
+                      @click="clearPhaseColor(phase)"
+                      class="w-7 h-7 rounded border border-neutral-600 hover:scale-110 transition-transform flex items-center justify-center"
+                      title="No color"
+                    >
+                      <X :size="14" class="text-neutral-400" />
+                    </button>
+                    <button
+                      v-for="color in colorOptions"
+                      :key="color"
+                      type="button"
+                      @click="setPhaseColor(phase, color)"
+                      class="w-7 h-7 rounded hover:scale-110 transition-transform"
+                      :style="{ backgroundColor: color }"
+                    />
+                  </div>
+                </div>
                 <input
                   v-model="phase.name"
                   type="text"
@@ -798,6 +829,18 @@ const addPhase = () => {
 const removePhase = (index: number) => {
   if (!selectedMode.value?.phases) return
   selectedMode.value.phases.splice(index, 1)
+  saveModes()
+}
+
+const setPhaseColor = (phase: AgentPhase, color: string) => {
+  phase.color = color
+  closePicker()
+  saveModes()
+}
+
+const clearPhaseColor = (phase: AgentPhase) => {
+  delete phase.color
+  closePicker()
   saveModes()
 }
 

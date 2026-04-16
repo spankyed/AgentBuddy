@@ -64,6 +64,7 @@
             :disabled="disabled"
             class="flex items-center gap-1.5 px-3 py-1.5 text-sm transition-all text-neutral-300"
             :class="phaseButtonClasses"
+            :style="phaseButtonStyle"
           >
             <span class="font-medium">{{ currentPhaseName }}</span>
             <ChevronDown
@@ -87,7 +88,14 @@
               class="relative flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               :class="{ 'bg-neutral-800/50': currentPhase === phase.id }"
             >
-              <span>{{ phase.name }}</span>
+              <span class="flex items-center gap-2">
+                <span
+                  v-if="phase.color"
+                  class="w-2 h-2 rounded-full shrink-0"
+                  :style="{ backgroundColor: phase.color }"
+                />
+                {{ phase.name }}
+              </span>
               <Check
                 v-if="currentPhase === phase.id"
                 :size="16"
@@ -158,6 +166,18 @@ const currentModeName = computed(() => {
 const currentPhaseName = computed(() => {
   const phase = currentModePhases.value.find(p => p.id === props.currentPhase)
   return phase?.name || 'Select phase'
+})
+
+const currentPhaseColor = computed(() => {
+  const phase = currentModePhases.value.find(p => p.id === props.currentPhase)
+  return phase?.color
+})
+
+// 20%-alpha tint (adds '33' to a 6-char hex) so the button reads as a soft fill
+// that still lets the neutral text stay legible.
+const phaseButtonStyle = computed(() => {
+  const c = currentPhaseColor.value
+  return c ? { backgroundColor: `${c}33` } : null
 })
 
 const forcedModeName = computed(() => {

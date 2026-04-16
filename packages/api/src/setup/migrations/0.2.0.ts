@@ -69,12 +69,27 @@ export const migration: Migration = {
       settingsCommands.updateSettings('plugin', 'threads', ['chatStates'], chatStates);
     }
 
-    // 4. Remove review phase from work mode
+    // 4. Remove review phase from work mode, backfill default colors on plan/edit phases
     const workMode = modes.find(m => m.id === 'work');
     if (workMode?.phases) {
+      let workPhasesChanged = false;
       const reviewIdx = workMode.phases.findIndex((p: any) => p.id === 'review');
       if (reviewIdx !== -1) {
         workMode.phases.splice(reviewIdx, 1);
+        workPhasesChanged = true;
+      }
+
+      // Backfill default phase colors (added in 0.2.0). Only sets when color is absent
+      // so existing user customization is preserved.
+      const defaultColors: Record<string, string> = { plan: '#3B82F6', edit: '#6B7280' };
+      for (const phase of workMode.phases as Array<{ id: string; color?: string }>) {
+        if (!phase.color && defaultColors[phase.id]) {
+          phase.color = defaultColors[phase.id];
+          workPhasesChanged = true;
+        }
+      }
+
+      if (workPhasesChanged) {
         settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
       }
     }

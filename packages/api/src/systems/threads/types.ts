@@ -315,6 +315,7 @@ export interface AgentPhase {
   id: string;
   name: string;
   description: string;
+  color?: string; // optional hex (e.g. '#3B82F6') — tints the chat phase selector
 }
 
 export interface AgentMode {

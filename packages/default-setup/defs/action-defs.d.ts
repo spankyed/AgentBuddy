@@ -1207,6 +1207,7 @@ interface AgentPhase {
     id: string;
     name: string;
     description: string;
+    color?: string;
 }
 interface AgentMode {
     id: string;
