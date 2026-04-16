@@ -56,8 +56,8 @@
       </nav>
     </div>
 
-    <!-- MAIN SCROLL AREA -->
-    <div class="flex-1 w-full overflow-y-auto">
+    <!-- MAIN SCROLL AREA (hidden when headerOnly — chat-maximized mode) -->
+    <div v-if="!headerOnly" class="flex-1 w-full overflow-y-auto">
       <slot />
     </div>
   </div>
@@ -86,9 +86,11 @@ interface Props {
   breadcrumbs?: { label: string; target?: string; info?: any }[]
   menuItems?: ContextMenuItemType[]
   headerClass?: string
+  headerOnly?: boolean
 }
 withDefaults(defineProps<Props>(), {
   menuItems: () => [],
+  headerOnly: false,
 })
 defineEmits<{
   (e: 'canvas-toggle'): void

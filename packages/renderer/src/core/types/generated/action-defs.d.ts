@@ -4026,6 +4026,18 @@ declare const events: {
         systemId: "code";
         commentId: number;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.GET_COMMENTS">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.GET_COMMENTS";
+        systemId: "code";
+    }, {
+        number: number;
+        type: "pr.GET_COMMENTS";
+        systemId: "code";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"pr.GET_REVIEW_THREADS">;
         systemId: zod.ZodLiteral<"code">;
         number: zod.ZodNumber;
@@ -5339,11 +5351,15 @@ declare const events: {
         data: {
             files: GitStatusFile[];
             baseBranch: string;
+            headBranch?: string;
         };
         pluginId: "code";
     } | {
         type: "pr.FILE_DIFF_RECEIVED";
-        data: GitDiff;
+        data: GitDiff & {
+            baseBranch: string;
+            headBranch?: string;
+        };
         pluginId: "code";
     } | {
         type: "pr.ERROR";
@@ -5366,6 +5382,7 @@ declare const events: {
         data: {
             pr: GhPullRequest;
             comments: GhPRComment[];
+            requestId: number;
         };
         pluginId: "code";
     } | {
@@ -5451,6 +5468,13 @@ declare const events: {
         type: "pr.COMMENT_DELETED";
         data: {
             commentId: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.COMMENTS_RECEIVED";
+        data: {
+            number: number;
+            comments: GhPRComment[];
         };
         pluginId: "code";
     } | {
@@ -5950,6 +5974,7 @@ interface ThreadsSettings {
     chatStates: ChatStateConfig[];
     showOnlyRootThreads: boolean;
     clickToChat: boolean;
+    recentThreadsLimit: number;
     chat?: AgentSettings;
 }
 interface NotesSettings {

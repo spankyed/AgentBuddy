@@ -11,13 +11,16 @@
     <!-- Main Area -->
     <div class="flex flex-grow overflow-hidden" :style="{ paddingRight: canShowPanel && panelSizes.inspectionWidth === 0 ? '2px' : '0' }">
         <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
-            <!-- Canvas Area -->
+            <!-- Canvas Area — always rendered; collapses to just its header when chat is maximized -->
             <CanvasArea
             data-onboarding-id="canvas-area"
+            :header-only="chatMaximized"
             @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
             @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
             @menu-action="handleMenuAction"
-            :style="{ height: `${panelSizes.canvasHeight}%` }"
+            :style="chatMaximized
+                ? { flex: '0 0 auto', height: 'auto' }
+                : { height: `${panelSizes.canvasHeight}%` }"
             :breadcrumbs="breadcrumbs"
             :menu-items="allMenuItems"
             :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
@@ -26,17 +29,40 @@
             <Router v-else :views="activePlugin.canvas" :target="targetView" />
             </CanvasArea>
 
-            <!-- Vertical Resizer -->
+            <!-- Vertical Resizer (hidden while chat is maximized) -->
             <PanelResizer
+                v-if="!chatMaximized"
                 orientation="vertical"
                 :collapsed="panelSizes.canvasHeight >= 93"
                 @resize="handleCanvasResize"
                 @double-click="handleCanvasDoubleClick"
+                @right-double-click="handleChatMaximize"
             />
 
-            <!-- Chat Area -->
-            <ChatArea data-onboarding-id="chat-area" :style="{ height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }">
-            <component :is="defaultPlugin.chat" />
+            <!-- Chat Area — fills remaining space below the canvas header when maximized -->
+            <ChatArea
+                data-onboarding-id="chat-area"
+                class="relative"
+                :style="chatMaximized
+                    ? { flex: '1 1 auto', height: 'auto' }
+                    : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
+            >
+                <!-- Floating restore handle: hover-revealed bar at the top of the
+                     maximized chat. Matches the original vertical PanelResizer's 7px
+                     hover zone, but extended *downward* into the chat (the original
+                     straddles the border with 4px above + 3px at border; here "above"
+                     would be outside the chat/window, so we put the full 7px inside). -->
+                <div
+                    v-if="chatMaximized"
+                    class="group absolute top-0 left-0 right-0 h-2 z-20 cursor-row-resize"
+                    title="Click to restore chat size"
+                    @click="handleChatRestore"
+                    @contextmenu.prevent="handleChatRestore"
+                >
+                    <div class="absolute top-0 left-0 right-0 h-[7px] bg-transparent group-hover:bg-blue-500/50 transition-colors" />
+                </div>
+
+                <component :is="defaultPlugin.chat" />
             </ChatArea>
         </div>
 
@@ -87,6 +113,7 @@ const breadcrumbs = useSelector(applicationState, (state) => state.context.bread
 const contextMenuItems = useSelector(applicationState, (state) => state.context.contextMenuItems)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
 const panelSizes = useSelector(applicationState, (state) => state.context.panelSizes)
+const chatMaximized = useSelector(applicationState, (state) => state.context.panelSizes.chatMaximized ?? false)
 
 const brainActor = applicationState.system.get('brain')
 const inspectMode = useSelector(brainActor, (state: any) =>
@@ -174,6 +201,9 @@ const handleCanvasDoubleClick = () => {
   const isCollapsed = panelSizes.value.canvasHeight >= 93;
   send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 95 });
 }
+
+const handleChatMaximize = () => send({ type: 'MAXIMIZE_CHAT' })
+const handleChatRestore = () => send({ type: 'RESTORE_CHAT' })
 
 const handleInspectionDoubleClick = () => {
   // Toggle inspection panel between collapsed and default

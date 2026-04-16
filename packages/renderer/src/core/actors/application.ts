@@ -38,6 +38,7 @@ export interface ApplicationContext {
     canvasHeight: number; // percentage of main area height
     inspectionWidth: number; // pixels
     previousInspectionWidth?: number; // for restoring after collapse
+    chatMaximized?: boolean; // when true, chat fills the main area and canvas + resizer are hidden
   };
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
@@ -56,6 +57,8 @@ export type ApplicationEvent =
   | { type: 'TRAIL_CLICK'; target: string; info?: any }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'TOGGLE_INSPECTION_PANEL' }
+  | { type: 'MAXIMIZE_CHAT' }
+  | { type: 'RESTORE_CHAT' }
   | HotkeyEvent
   | { type: 'SWITCH_PLUGIN_UP' }
   | { type: 'SWITCH_PLUGIN_DOWN' }
@@ -532,6 +535,16 @@ export const createApplicationState = () => setup({
         panelSizes: newSizes
       };
     }),
+    maximizeChat: assign(({ context }) => {
+      const newSizes = { ...context.panelSizes, chatMaximized: true };
+      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+      return { panelSizes: newSizes };
+    }),
+    restoreChat: assign(({ context }) => {
+      const newSizes = { ...context.panelSizes, chatMaximized: false };
+      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+      return { panelSizes: newSizes };
+    }),
     toggleInspectionPanel: assign(({ context }) => {
       const isCollapsed = context.panelSizes.inspectionWidth === 0;
       const newSizes = {
@@ -664,6 +677,7 @@ export const createApplicationState = () => setup({
     const defaultSizes = {
       canvasHeight: 50, // 50% of main area
       inspectionWidth: 448, // 28rem = 448px (16px base),
+      chatMaximized: false,
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
 
@@ -849,6 +863,12 @@ export const createApplicationState = () => setup({
     },
     TOGGLE_INSPECTION_PANEL: {
       actions: 'toggleInspectionPanel'
+    },
+    MAXIMIZE_CHAT: {
+      actions: 'maximizeChat'
+    },
+    RESTORE_CHAT: {
+      actions: 'restoreChat'
     },
     SWITCH_PLUGIN_UP: {
       actions: 'switchPluginByDirection'

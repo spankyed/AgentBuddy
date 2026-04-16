@@ -7,6 +7,7 @@
     ]"
     @mousedown="startDrag"
     @dblclick="handleDoubleClick"
+    @contextmenu="onContextMenu"
   >
     <div class="panel-resizer__handle" />
   </div>
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'resize', delta: number): void
   (e: 'double-click'): void
+  (e: 'right-double-click'): void
 }>()
 
 const isDragging = ref(false)
@@ -74,6 +76,23 @@ const stopDrag = () => {
 
 const handleDoubleClick = () => {
   emit('double-click')
+}
+
+// Browsers don't fire a native `dblclick` for the right button, so we detect
+// a right-click double-press manually by tracking the timestamp of the last
+// `contextmenu` event. Default context menu is always suppressed on the
+// resizer — the user has no reason to browser-right-click it.
+const DOUBLE_CLICK_MS = 500
+let lastRightClickAt = 0
+const onContextMenu = (e: MouseEvent) => {
+  e.preventDefault()
+  const now = performance.now()
+  if (now - lastRightClickAt <= DOUBLE_CLICK_MS) {
+    lastRightClickAt = 0
+    emit('right-double-click')
+  } else {
+    lastRightClickAt = now
+  }
 }
 
 onUnmounted(() => {

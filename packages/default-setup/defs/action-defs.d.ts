@@ -4024,6 +4024,18 @@ declare const events: {
         systemId: "code";
         commentId: number;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"pr.GET_COMMENTS">;
+        systemId: zod.ZodLiteral<"code">;
+        number: zod.ZodNumber;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        number: number;
+        type: "pr.GET_COMMENTS";
+        systemId: "code";
+    }, {
+        number: number;
+        type: "pr.GET_COMMENTS";
+        systemId: "code";
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"pr.GET_REVIEW_THREADS">;
         systemId: zod.ZodLiteral<"code">;
         number: zod.ZodNumber;
@@ -4490,6 +4502,51 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "INSPECT_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_KILLED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_STARTED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_PAUSED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_RESUMED";
+        pluginId: "brain";
+    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         faqs: FAQItem[];
@@ -4563,51 +4620,6 @@ declare const events: {
         type: "SECRETS.EVENT.ERROR";
         message: string;
         pluginId: "settings";
-    } | {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "INSPECT_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_KILLED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_STARTED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_PAUSED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_RESUMED";
-        pluginId: "brain";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -5337,11 +5349,15 @@ declare const events: {
         data: {
             files: GitStatusFile[];
             baseBranch: string;
+            headBranch?: string;
         };
         pluginId: "code";
     } | {
         type: "pr.FILE_DIFF_RECEIVED";
-        data: GitDiff;
+        data: GitDiff & {
+            baseBranch: string;
+            headBranch?: string;
+        };
         pluginId: "code";
     } | {
         type: "pr.ERROR";
@@ -5364,6 +5380,7 @@ declare const events: {
         data: {
             pr: GhPullRequest;
             comments: GhPRComment[];
+            requestId: number;
         };
         pluginId: "code";
     } | {
@@ -5449,6 +5466,13 @@ declare const events: {
         type: "pr.COMMENT_DELETED";
         data: {
             commentId: number;
+        };
+        pluginId: "code";
+    } | {
+        type: "pr.COMMENTS_RECEIVED";
+        data: {
+            number: number;
+            comments: GhPRComment[];
         };
         pluginId: "code";
     } | {
@@ -5948,6 +5972,7 @@ interface ThreadsSettings {
     chatStates: ChatStateConfig[];
     showOnlyRootThreads: boolean;
     clickToChat: boolean;
+    recentThreadsLimit: number;
     chat?: AgentSettings;
 }
 interface NotesSettings {
