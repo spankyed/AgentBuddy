@@ -17,7 +17,7 @@
         <span class="flex items-center gap-1.5">
           <span
             class="w-2 h-2 rounded-full"
-            :class="stateConfig?.colorful ? 'animate-pulse' : ''"
+            :class="stateConfig?.busy ? 'animate-pulse' : ''"
             :style="{ backgroundColor: stateConfig?.color ?? '#6B7280' }"
             :title="content.chatState"
           />

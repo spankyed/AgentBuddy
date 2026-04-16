@@ -29,7 +29,7 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :prefill-text="prefillText"
-          :is-streaming="isWorking"
+          :is-working="isWorking"
           :modes="modes"
           :hotkeys="hotkeys"
           :quick-prompts="quickPrompts"
@@ -127,8 +127,13 @@ const modes = useSelector(actor, (state) => state.context.modes)
 const hotkeys = useSelector(actor, (state) => state.context.hotkeys)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
-const chatStates = useSelector(actor, (state) => state.context.chatStates)
-const isWorking = computed(() => chatStates.value[currentThread.value?.id ?? ''] === 'working')
+// Pause button shows when the current thread's state matches the one the user
+// marked as "busy" (the animated indicator) in chat state settings.
+const isWorking = useSelector(actor, ({ context }) => {
+  const busyId = context.settings?.chatStates?.find(c => c.busy)?.id
+  const threadId = context.currentThread?.id
+  return !!busyId && !!threadId && context.chatStates[threadId] === busyId
+})
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)

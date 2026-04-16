@@ -123,11 +123,11 @@ const settings: SettingsData = {
         { name: 'claude-session', color: '#7C3AED' },
       ],
       chatStates: [
-        { id: 'idle',    label: 'Idle',    color: '#6B7280', colorful: false },
-        { id: 'working', label: 'Working', color: '#FACC15', colorful: true },
-        { id: 'paused',  label: 'Paused',  color: '#F59E0B', colorful: false },
-        { id: 'error',   label: 'Error',   color: '#EF4444', colorful: false },
-        { id: 'success', label: 'Success', color: '#10B981', colorful: false },
+        { id: 'idle',    label: 'Idle',    color: '#6B7280', busy: false },
+        { id: 'working', label: 'Working', color: '#FACC15', busy: true },
+        { id: 'paused',  label: 'Paused',  color: '#F59E0B', busy: false },
+        { id: 'error',   label: 'Error',   color: '#EF4444', busy: false },
+        { id: 'success', label: 'Success', color: '#10B981', busy: false },
       ],
       showOnlyRootThreads: false,
       clickToChat: false

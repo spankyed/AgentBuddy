@@ -357,6 +357,7 @@
       <p class="text-sm text-neutral-500 mb-4">
         Customize the colors and labels for chat activity states
       </p>
+      <TooltipProvider :delay-duration="400">
       <div class="space-y-3">
         <div
           v-for="(cs, index) in chatStateConfigs"
@@ -393,22 +394,35 @@
             @input="debouncedSaveChatStates"
           />
 
-          <!-- Colorful toggle (radio-style: only one active) -->
-          <button
-            @click="setChatStateColorful(index)"
-            class="px-3 py-2 rounded-lg border transition-all text-xs"
-            :class="cs.colorful
-              ? 'border-purple-500/50 bg-purple-500/10 text-purple-300'
-              : 'border-neutral-700/50 bg-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600'"
-            title="Animated indicator"
-          >
-            ✦
-          </button>
+          <!-- Busy toggle (radio-style: only one active) -->
+          <TooltipRoot>
+            <TooltipTrigger as-child>
+              <button
+                @click="setChatStateBusy(index)"
+                class="px-3 py-2 rounded-lg border transition-all text-xs"
+                :class="cs.busy
+                  ? 'border-purple-500/50 bg-purple-500/10 text-purple-300'
+                  : 'border-neutral-700/50 bg-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600'"
+              >
+                ✦
+              </button>
+            </TooltipTrigger>
+            <TooltipPortal>
+              <TooltipContent
+                side="top"
+                :side-offset="6"
+                class="max-w-xs px-3 py-2 text-xs text-neutral-200 bg-neutral-800 border border-neutral-600 rounded-lg shadow-xl z-[100]"
+              >
+                Marks this as the active "busy" state. While a chat is in this state it shows the animated indicator and the Pause button appears (press Esc to pause).
+              </TooltipContent>
+            </TooltipPortal>
+          </TooltipRoot>
 
           <!-- State ID badge (read-only) -->
           <span class="text-xs text-neutral-600 w-16 text-right font-mono">{{ cs.id }}</span>
         </div>
       </div>
+      </TooltipProvider>
     </CollapsibleSection>
 
     <!-- Display Options Section -->
@@ -582,6 +596,7 @@ import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -693,8 +708,8 @@ const saveChatStates = () => {
   })
 }
 
-const setChatStateColorful = (index: number) => {
-  chatStateConfigs.value.forEach((cs, i) => { cs.colorful = i === index })
+const setChatStateBusy = (index: number) => {
+  chatStateConfigs.value.forEach((cs, i) => { cs.busy = i === index })
   saveChatStates()
 }
 

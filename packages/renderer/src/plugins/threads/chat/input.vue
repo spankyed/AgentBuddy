@@ -38,7 +38,7 @@
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
             :in-history-mode="historyIndex !== -1"
-            :pause-available="isStreaming"
+            :pause-available="isWorking"
             @history-prev="onHistoryPrev"
             @history-next="onHistoryNext"
             @clear-input="onClearInput"
@@ -137,9 +137,9 @@
 
           <!-- Right side buttons -->
           <div class="flex items-center gap-2">
-            <!-- Pause button (only while streaming) -->
+            <!-- Pause button (only while working) -->
             <Button
-              v-if="isStreaming"
+              v-if="isWorking"
               title="Pause agent work"
               type="button"
               variant="secondary"
@@ -208,8 +208,8 @@ const props = defineProps<{
   disabled?: boolean
   /** Text to prefill the input with (e.g., on revert). Consumed once on change. */
   prefillText?: string
-  /** Whether a Claude Code turn is actively streaming. Controls Pause button visibility. */
-  isStreaming?: boolean
+  /** Whether a Claude Code turn is actively working. Controls Pause button visibility. */
+  isWorking?: boolean
 }>()
 
 // Define emits including new button actions
