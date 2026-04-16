@@ -1,6 +1,6 @@
 <template>
-  <div class="max-w-3xl">
-    <div class="rounded-md bg-neutral-850 border border-neutral-800 animate-fade-in">
+  <div class="max-w-3xl h-full flex flex-col min-h-0">
+    <div class="rounded-md bg-neutral-850 border border-neutral-800 animate-fade-in flex flex-col min-h-0 flex-1">
       <!-- Header -->
       <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
         <div class="flex items-center gap-2">
@@ -31,7 +31,7 @@
       </div>
 
       <!-- Markdown notes body — scrollable for long plans -->
-      <div class="px-4 py-3 max-h-[40vh] overflow-y-auto">
+      <div class="px-4 py-3 flex-1 min-h-0 overflow-y-auto">
         <TiptapEditor
           v-if="notes"
           mode="viewer"
