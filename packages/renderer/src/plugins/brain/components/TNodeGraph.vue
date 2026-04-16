@@ -24,7 +24,7 @@
         <BaseNode
           v-bind="nodeProps"
           :editable="false"
-          :show-status-indicator="true"
+          :show-status-indicator="nodeProps.data.tNodeType !== 'event'"
           :selectable="nodeProps.data.tNodeType === 'flow' || nodeProps.data.tNodeType === 'step' || nodeProps.data.tNodeType === 'event'"
         />
       </template>

@@ -42,9 +42,14 @@ type TNodeFlowMachineContext = {
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
   eventNodes: ListenerNode[];
-  activeChildrenCount: number;
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
+  // Per-event-track live child counter, keyed by eventTNodeId.
+  // Decrements as children in the track complete; when a track reaches 0
+  // the event TNode itself is marked completed. The flow completes once
+  // every track's count is 0 (single source of truth for "anything still
+  // running in this flow").
+  eventTrackChildCounts: Record<EARS.EntityId, number>;
   // Final result when a step completes with final flag
   finalResult?: any;
   // Entry data for nested flows (resolved from field mappings)
@@ -208,9 +213,6 @@ export function createFlowNodeSystem(
 
           if (matchingEventNodes.length === 0) return;
 
-          // Process ALL matching event nodes
-          let spawnedCount = 0;
-
           for (const eventNode of matchingEventNodes) {
             const allSteps = repository.brainQueries.eventAllSteps(eventNode.id!);
 
@@ -277,32 +279,25 @@ export function createFlowNodeSystem(
                 eventTNodeId: eventTNode.id,
                 flowTNodeId: flowTNodeId
               });
-
-              spawnedCount++;
             }
 
-            // Store the execution context for this event track
+            // Store the execution context and initial live-child count for this event track
             enqueue.assign({
               eventTrackContexts: ({ context }) => ({
                 ...context.eventTrackContexts,
                 [eventTNode.id]: eventTrackContext,
               }),
-            });
-          }
-
-          // Update activeChildrenCount for all spawned children at once
-          if (spawnedCount > 0) {
-            enqueue.assign({
-              activeChildrenCount: ({ context }) => context.activeChildrenCount + spawnedCount,
+              eventTrackChildCounts: ({ context }) => ({
+                ...context.eventTrackChildCounts,
+                [eventTNode.id]: allSteps.length,
+              }),
             });
           }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
           brainInspect(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
-          const decremented = Math.max(0, context.activeChildrenCount - 1);
 
-          // Log when we receive a completion with final flag
           if (typedEv.final) {
             brainInspect(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
           }
@@ -312,11 +307,10 @@ export function createFlowNodeSystem(
             return;
           }
 
-          // Only check for next node if we have a blueprint stepId (flows with no blueprint have no next step)
-          // If the result includes a sourceHandle, use branch routing (e.g. switch nodes).
-          // If the result carries `noMatch: true` (switch node with no matching condition
-          // and no else), end the chain here — nextNode is explicitly null so no downstream
-          // step is spawned. Other parallel chains in the flow are unaffected.
+          // Resolve the next node in this track (if any):
+          // - sourceHandle → specific branch (switch nodes)
+          // - noMatch → terminate this branch here
+          // - otherwise → straight-line next step
           const sourceHandle = typedEv.result?.sourceHandle;
           const noMatch = (typedEv.result as { noMatch?: boolean } | undefined)?.noMatch === true;
           const nextNode = typedEv.stepId && !noMatch
@@ -325,7 +319,7 @@ export function createFlowNodeSystem(
               : repository.brainQueries.nextNodeInFlowTrack(typedEv.stepId)
             : null;
 
-          let trackExecutionContext = context.eventTrackContexts[typedEv.eventTNodeId];
+          const trackExecutionContext = context.eventTrackContexts[typedEv.eventTNodeId];
           if (!trackExecutionContext) {
             brainLogger.warn(`Child completed in flow - ${context.flowLabel}: But no execution context found for event TNode ID ${typedEv.eventTNodeId}`, { completion: event });
             return;
@@ -344,27 +338,44 @@ export function createFlowNodeSystem(
             lastStep,
           };
 
-          const updatedEventTrackContexts = {
-            ...context.eventTrackContexts,
-            [typedEv.eventTNodeId]: updatedContext,
+          // Per-track live-child bookkeeping (single source of truth):
+          //   -1 for the child that just finished, +1 if a nextNode takes its place.
+          // When a track reaches 0 the listener TNode is completed. When every track is
+          // at 0 the flow itself completes.
+          const prevTrackCount = context.eventTrackChildCounts[typedEv.eventTNodeId] ?? 0;
+          const newTrackCount = Math.max(0, prevTrackCount - 1) + (nextNode ? 1 : 0);
+          const eventTrackCompleted = newTrackCount === 0;
+
+          const nextTrackCounts = {
+            ...context.eventTrackChildCounts,
+            [typedEv.eventTNodeId]: newTrackCount,
           };
-
-          // Check if flow should complete (do this AFTER state update)
-          const shouldComplete = typedEv.final ||
-            (decremented === 0 && !nextNode);
-
-          // For flow results: if completing, use the result from the completing step
-          // If no result from this step, keep any existing finalResult
-          const flowResult = shouldComplete && typedEv.result !== undefined
-            ? typedEv.result
-            : context.finalResult;
+          const shouldComplete = typedEv.final || Object.values(nextTrackCounts).every(c => c === 0);
 
           enqueue.assign({
-            activeChildrenCount: nextNode ? decremented + 1 : decremented,
-            eventTrackContexts: updatedEventTrackContexts,
-            finalResult: flowResult,
+            eventTrackContexts: {
+              ...context.eventTrackContexts,
+              [typedEv.eventTNodeId]: updatedContext,
+            },
+            eventTrackChildCounts: nextTrackCounts,
+            finalResult: shouldComplete && typedEv.result !== undefined
+              ? typedEv.result
+              : context.finalResult,
           });
 
+          // Mark listener TNode completed once its track drains. This reuses the
+          // same TNODE_UPDATED pipeline that step/flow completions flow through.
+          if (eventTrackCompleted) {
+            repository.brainCommands.updateTNodeStatus(typedEv.eventTNodeId, 'completed');
+            system.get(brain).send({
+              type: 'TNODE_UPDATED',
+              data: {
+                tNodeId: typedEv.eventTNodeId,
+                status: 'completed',
+                eventTNodeId: typedEv.eventTNodeId,
+              },
+            });
+          }
 
           if (shouldComplete) {
             enqueue.raise({ type: 'FLOW_COMPLETE' });
@@ -486,8 +497,8 @@ export function createFlowNodeSystem(
         flowStepLabel: flowTNode?.label,  // Store the flow step node label for references
         eventTNodeId: eventTNodeId,
         eventNodes: eventNodes,
-        activeChildrenCount: 0,
         eventTrackContexts: {},
+        eventTrackChildCounts: {},
         finalResult: undefined,
         entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
         isFinalStep: flowTNode?.final || false,
