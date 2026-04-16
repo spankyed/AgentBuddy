@@ -106,6 +106,14 @@ export interface Context {
 
   // PR selection tracking
   isManualPRSelection: boolean
+  /**
+   * PR number the user just requested via the dropdown, cleared once we accept a
+   * matching pr.PR_DETAILS_RECEIVED. Distinct from isManualPRSelection (which
+   * controls branch-PR-checked pinning behavior) — this one ensures late details
+   * responses for unrelated PRs can't sneak past the PR-number guard while a
+   * manual selection is pending or has completed.
+   */
+  pendingManualPRNumber: number | null
 
   // Optimistic update rollback
   _commentSnapshot: GhPRComment[] | null
@@ -341,8 +349,11 @@ export const pullRequestState = setup({
     }),
 
     // Accept incoming PR details. Two stale-response guards:
-    //   1. Different PR number than currently selected (background refresh for a PR
-    //      the user already moved on from). Skipped when isManualPRSelection is true.
+    //   1. PR number doesn't match what we're expecting (background refresh for a PR
+    //      the user already moved on from, OR a late response for an unrelated PR
+    //      arriving after a manual selection). Expected = the PR the user explicitly
+    //      requested via the dropdown (pendingManualPRNumber), or the currently-
+    //      selected PR when no manual selection is pending.
     //   2. Older requestId than we've already accepted for this PR number — happens
     //      when a long-running fetchPRDetailsSettled retry's final emit arrives after
     //      a newer concurrent fetch (e.g. a manual refresh fired mid-retry).
@@ -351,12 +362,16 @@ export const pullRequestState = setup({
       const prNumber = ev.data.pr.number
       const lastAccepted = context.latestPrDetailsRequestId[prNumber] ?? 0
       if (ev.data.requestId < lastAccepted) return
-      if (!context.isManualPRSelection && context.selectedPR && context.selectedPR.number !== prNumber) return
+      const expected = context.pendingManualPRNumber ?? context.selectedPR?.number
+      if (expected !== undefined && expected !== prNumber) return
       enqueue.assign({
         selectedPR: ev.data.pr,
         prComments: ev.data.comments,
         isLoadingDetails: false,
         latestPrDetailsRequestId: { ...context.latestPrDetailsRequestId, [prNumber]: ev.data.requestId },
+        // Manual selection landed — clear pending so a later background fetch for a
+        // different PR number can't sneak past the guard.
+        pendingManualPRNumber: context.pendingManualPRNumber === prNumber ? null : context.pendingManualPRNumber,
       })
     }),
 
@@ -409,6 +424,7 @@ export const pullRequestState = setup({
       // The newly-created PR is by definition the branch PR — never pin it. Leaving
       // a stale true value here would block background BRANCH_PR_CHECKED updates.
       isManualPRSelection: false,
+      pendingManualPRNumber: null,
     }),
 
     handlePRMerged: assign({
@@ -418,6 +434,7 @@ export const pullRequestState = setup({
       branchPR: null,
       isMerging: false,
       isManualPRSelection: false,
+      pendingManualPRNumber: null,
     }),
 
     handlePRClosed: assign({
@@ -427,6 +444,7 @@ export const pullRequestState = setup({
       branchPR: null,
       isClosing: false,
       isManualPRSelection: false,
+      pendingManualPRNumber: null,
     }),
 
     handlePRDraftToggled: assign({
@@ -508,6 +526,7 @@ export const pullRequestState = setup({
         createBody: '',
         createDraft: false,
         isManualPRSelection: false,
+        pendingManualPRNumber: null,
       })
       enqueue(() => {
         sendToBackend('pr.GET_PR_AUTOFILL', {})
@@ -602,6 +621,7 @@ export const pullRequestState = setup({
         viewMode: 'files' as const,
         prComments: [],
         isManualPRSelection: true,
+        pendingManualPRNumber: ev.number,
       })
       enqueue(() => {
         sendToBackend('pr.SELECT_PR', { number: ev.number })
@@ -617,7 +637,8 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
       const prNumber = ev.data.pr.number
       if (ev.data.requestId < (context.latestPrDetailsRequestId[prNumber] ?? 0)) return
-      if (!context.isManualPRSelection && context.selectedPR?.number !== prNumber) return
+      const expected = context.pendingManualPRNumber ?? context.selectedPR?.number
+      if (expected !== undefined && expected !== prNumber) return
       sendToBackend('pr.GET_BRANCH_DIFF', {
         baseBranch: ev.data.pr.baseRefName,
         headBranch: ev.data.pr.headRefName,
@@ -827,6 +848,7 @@ export const pullRequestState = setup({
     diffStale: false,
 
     isManualPRSelection: false,
+    pendingManualPRNumber: null,
 
     _commentSnapshot: null,
     _threadSnapshot: null,
@@ -854,7 +876,7 @@ export const pullRequestState = setup({
         'pr.BRANCH_DIFF_RECEIVED': { actions: 'handleBranchDiffReceived' },
         'pr.FILE_DIFF_RECEIVED': { actions: 'handleFileDiffReceived' },
         // Reset check state to show "Checking..." during git changes and directory switches
-        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, prCheckCompleted: false, isGhChecking: true, viewMode: 'files' as const, prError: null }), 'refreshPrStatus'] },
+        'pr.STATUS_CHANGED': { actions: [assign({ diffStale: true, isManualPRSelection: false, pendingManualPRNumber: null, prCheckCompleted: false, isGhChecking: true, viewMode: 'files' as const, prError: null }), 'refreshPrStatus'] },
         'CODE_STARTUP': {
           actions: [
             assign({
@@ -871,6 +893,11 @@ export const pullRequestState = setup({
               // Different directory means potentially a different repo; PR numbers
               // from the old repo shouldn't gate responses for the new one.
               latestPrDetailsRequestId: {},
+              // A mutation in flight from the old directory shouldn't keep submit
+              // buttons disabled here — if the old op never responds, the counter
+              // would otherwise stay positive forever.
+              inflightMutations: 0,
+              pendingManualPRNumber: null,
             }),
             'handleCodeStartup',
           ]
@@ -928,7 +955,7 @@ export const pullRequestState = setup({
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.BACK_TO_BRANCH': {
           actions: [
-            assign({ selectedPR: null, isManualPRSelection: false, prFiles: [], diffStale: true, prCheckCompleted: false, isGhChecking: true }),
+            assign({ selectedPR: null, isManualPRSelection: false, pendingManualPRNumber: null, prFiles: [], diffStale: true, prCheckCompleted: false, isGhChecking: true }),
             'refreshPrStatus',
           ]
         },

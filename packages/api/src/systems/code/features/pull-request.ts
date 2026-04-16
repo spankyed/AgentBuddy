@@ -2,11 +2,14 @@ import { setup, assign } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/helpers/event-helpers'
+import { createLogger } from '@/core/helpers/debug/logger'
 import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
 import { type ActiveTokenInfo } from '../services/gh-cli'
+
+const logger = createLogger('pr')
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -288,12 +291,34 @@ export const pullRequestSystem = setup({
 
     toggleDraft: ({ event, context }) => {
       const ev = event as { type: 'pr.TOGGLE_DRAFT'; number: number; isDraft: boolean }
+      // ev.isDraft is the CURRENT state, so true = draft → ready, false = ready → draft.
+      const goingReady = ev.isDraft
       withRepo(context,
-        repo => {
+        async repo => {
           const cwd = repo.getWorkingDir()
-          return ev.isDraft ? ghCli.markReady(cwd, ev.number) : ghCli.markDraft(cwd, ev.number)
+          if (goingReady) {
+            await ghCli.markReady(cwd, ev.number)
+            // Marking a draft ready is GitHub's trigger to start computing
+            // mergeability. Same async-settle race as create / update-base — refetch
+            // with retry so the Merge button lands on the real state instead of stuck
+            // on UNKNOWN. Tolerate refetch failures (toggle already succeeded).
+            try {
+              const details = await ghCli.fetchPRDetailsSettled(cwd, ev.number)
+              const { comments = [], ...pr } = details
+              pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
+              for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
+              return { pr, comments }
+            } catch {
+              return null
+            }
+          }
+          await ghCli.markDraft(cwd, ev.number)
+          return null
         },
-        () => emitToFrontend({ type: 'pr.PR_DRAFT_TOGGLED', data: { number: ev.number, isDraft: !ev.isDraft } })
+        result => {
+          emitToFrontend({ type: 'pr.PR_DRAFT_TOGGLED', data: { number: ev.number, isDraft: !ev.isDraft } })
+          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { ...result, requestId: ++prDetailsRequestId } })
+        }
       )
     },
 
@@ -349,11 +374,19 @@ export const pullRequestSystem = setup({
           // fetch fresh details with retry so the Merge button settles correctly.
           // Title / body edits don't affect mergeability, so skip the extra round-trip.
           if (!ev.base) return null
-          const details = await ghCli.fetchPRDetailsSettled(cwd, ev.number)
-          const { comments = [], ...pr } = details
-          pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
-          for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
-          return { pr, comments }
+          // Tolerate refetch failures — the gh pr edit above already succeeded, so we
+          // must still emit PR_UPDATED. PR_DETAILS_RECEIVED only fires when we actually
+          // have fresh data; otherwise the UI keeps the old mergeability until the next
+          // refresh, which is strictly better than a misleading error banner.
+          try {
+            const details = await ghCli.fetchPRDetailsSettled(cwd, ev.number)
+            const { comments = [], ...pr } = details
+            pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
+            for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
+            return { pr, comments }
+          } catch {
+            return null
+          }
         },
         result => {
           emitToFrontend({ type: 'pr.PR_UPDATED', data: { number: ev.number, title: ev.title, body: ev.body, base: ev.base } })
@@ -397,7 +430,11 @@ export const pullRequestSystem = setup({
           for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
           return comments
         },
-        comments => emitToFrontend({ type: 'pr.COMMENTS_RECEIVED', data: { number: ev.number, comments } })
+        comments => emitToFrontend({ type: 'pr.COMMENTS_RECEIVED', data: { number: ev.number, comments } }),
+        // Swallow errors — this is the post-mutation refresh. The mutation itself
+        // already succeeded; a transient refetch failure shouldn't surface as a red
+        // error banner for the user. Next mutation or manual refresh re-populates.
+        err => logger.warn('GET_COMMENTS refetch failed', { prNumber: ev.number, error: err?.message }),
       )
     },
 
