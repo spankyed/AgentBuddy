@@ -85,20 +85,20 @@ export async function action(
     return { success: false, reason: 'no active session', filesRestored: false };
   }
 
-  // Lazy backfill: if the frontend didn't pass userCliUuid (pre-existing
-  // thread, or stream-consumer didn't capture it), pull missing uuids
-  // from the session JSONL and re-read the pivot message.
+  // Lazy recovery if the frontend didn't pass userCliUuid. Backfill is
+  // cheap (writes 0 when everything already has cliUuid), then ALWAYS
+  // re-read the pivot from the DB — the FE can be stale even when the DB
+  // is correct (e.g. an FE state-handler that doesn't mirror `context`
+  // updates), so we can't gate the re-read on "backfill did something".
   if (!userCliUuid) {
-    const backfilled = await backfillUserCliUuids(services, threadId as EntityId);
-    if (backfilled > 0) {
-      const msg = services.repository.chatQueries.messageById(messageId as EntityId) as
-        | { context?: Record<string, unknown> }
-        | null;
-      const recovered = msg?.context?.cliUuid;
-      if (typeof recovered === 'string' && recovered.length > 0) {
-        userCliUuid = recovered;
-        log.debug('rewind: recovered userCliUuid via JSONL backfill', { threadId, messageId });
-      }
+    await backfillUserCliUuids(services, threadId as EntityId);
+    const msg = services.repository.chatQueries.messageById(messageId as EntityId) as
+      | { context?: Record<string, unknown> }
+      | null;
+    const recovered = msg?.context?.cliUuid;
+    if (typeof recovered === 'string' && recovered.length > 0) {
+      userCliUuid = recovered;
+      log.debug('rewind: recovered userCliUuid from DB', { threadId, messageId });
     }
   }
 

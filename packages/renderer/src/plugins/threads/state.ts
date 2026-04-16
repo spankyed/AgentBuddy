@@ -147,7 +147,7 @@ type UIEvent =
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp: number; blockResponse?: BlockResponse; asideText?: string }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown> }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
@@ -859,7 +859,16 @@ const threadsState = setup({
                 ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
                 ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
                 ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText }),
-                ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable })
+                ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable }),
+                // Shallow-merge context so partial backend updates (e.g.
+                // the stream-consumer writing only `cliUuid`) don't wipe
+                // existing keys. Without this branch, `msg.context.cliUuid`
+                // only ever shows up after a full thread reload — which is
+                // why `chat.vue:doRevert` was reading `undefined` and the
+                // revert+rewind path was bailing with "no CLI UUID".
+                ...('context' in typedEvent && typedEvent.context !== undefined && {
+                  context: { ...((msg as any).context ?? {}), ...typedEvent.context },
+                }),
               }
               : msg
           )

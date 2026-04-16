@@ -126,7 +126,15 @@ function createCliService(): CliServiceType {
     claudeCode: {
       query(opts) {
         const cwd = opts.cwd ?? resolveCwd()
-        return claudeCode.query({ ...opts, cwd })
+        // Default replayUserMessages=true so the CLI emits post-persistence
+        // user replay events (SDKUserMessageReplay) carrying the canonical
+        // `uuid`. Without this flag, only the input-echo user event is
+        // emitted — which has no uuid — and stream-consumer's live
+        // `context.cliUuid` write for user messages never fires. Gated
+        // in Claude at src/main.tsx:1944-1950 (cliArgs.replayUserMessages
+        // || UDS_INBOX feature). Callers can still override by passing
+        // `replayUserMessages: false` explicitly (spread order honors it).
+        return claudeCode.query({ replayUserMessages: true, ...opts, cwd })
       },
       version() {
         return claudeCode.system.version()
