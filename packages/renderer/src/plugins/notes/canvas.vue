@@ -266,7 +266,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, provide, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '@app/api'
 import { id, type NotesState } from './state'
@@ -277,6 +277,7 @@ import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, Chevron
 import EmojiPicker from '@/core/components/design/EmojiPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus'
+import { useNoteScroll } from './composables/useNoteScroll'
 import { useSubDocumentInsert } from './composables/useSubDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
@@ -293,44 +294,10 @@ const editingNote = computed(() => selectedTask.value ?? currentNote.value!)
 
 const localTitle = ref(editingNote.value?.title ?? '')
 
-const scrollContainerRef = ref<HTMLElement | null>(null)
-const noteScrollPositions = useSelector(actor, (s) => s.context.noteScrollPositions)
+const scrollContainerRef = useNoteScroll(actor, () => editingNote.value?.id)
 
-function scheduleRestore(noteId: string) {
-  const attempt = (retriesLeft: number) => {
-    const el = scrollContainerRef.value
-    if (!el) return
-    const target = noteScrollPositions.value[noteId] ?? 0
-    const maxScroll = el.scrollHeight - el.clientHeight
-    if (target > maxScroll && retriesLeft > 0) {
-      requestAnimationFrame(() => attempt(retriesLeft - 1))
-      return
-    }
-    el.scrollTop = target
-  }
-  // Two rAFs after nextTick: first lets Vue mount the new editor, second runs
-  // after useNoteFocus's nextTick-scheduled focus('start') settles.
-  nextTick(() => requestAnimationFrame(() => requestAnimationFrame(() => attempt(30))))
-}
-
-watch(() => editingNote.value?.id, (newId, oldId) => {
+watch(() => editingNote.value?.id, () => {
   localTitle.value = editingNote.value?.title ?? ''
-  if (oldId && scrollContainerRef.value) {
-    actor.send({ type: 'NOTE.SAVE_SCROLL', noteId: oldId, scrollTop: scrollContainerRef.value.scrollTop })
-  }
-  if (newId && newId !== oldId) scheduleRestore(newId)
-}, { flush: 'pre' })
-
-onMounted(() => {
-  const noteId = editingNote.value?.id
-  if (noteId) scheduleRestore(noteId)
-})
-
-onBeforeUnmount(() => {
-  const noteId = editingNote.value?.id
-  if (noteId && scrollContainerRef.value) {
-    actor.send({ type: 'NOTE.SAVE_SCROLL', noteId, scrollTop: scrollContainerRef.value.scrollTop })
-  }
 })
 const taskExpandedNodeIds = useSelector(actor, (s) => s.context.taskExpandedNodeIds)
 const taskChildren = computed(() =>
