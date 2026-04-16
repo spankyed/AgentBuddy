@@ -79,7 +79,7 @@
           <DropdownMenuContent
             align="end"
             :side-offset="8"
-            class="min-w-[140px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl py-1 z-50"
+            class="min-w-[140px] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-50"
           >
             <DropdownMenuItem
               v-for="phase in currentModePhases"
@@ -87,13 +87,14 @@
               @select="handlePhaseSelect(phase.id)"
               class="relative flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               :class="{ 'bg-neutral-800/50': currentPhase === phase.id }"
+              :style="{ backgroundColor: phase.color ? `${phase.color}33` : undefined }"
             >
               <span class="flex items-center gap-2">
-                <span
+                <!-- <span
                   v-if="phase.color"
                   class="w-2 h-2 rounded-full shrink-0"
                   :style="{ backgroundColor: phase.color }"
-                />
+                /> -->
                 {{ phase.name }}
               </span>
               <Check
