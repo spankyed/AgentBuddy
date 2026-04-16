@@ -111,37 +111,11 @@
               class="border rounded-md bg-neutral-800/50 border-neutral-700"
             >
               <div class="flex items-center gap-2 p-2">
-                <!-- Color Picker -->
-                <div class="relative">
-                  <button
-                    type="button"
-                    @click="togglePicker(`phase:${phase.id}`)"
-                    class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
-                    :style="{ backgroundColor: phase.color || 'transparent' }"
-                    title="Change color"
-                  />
-                  <div
-                    v-if="activePicker === `phase:${phase.id}`"
-                    class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
-                  >
-                    <button
-                      type="button"
-                      @click="clearPhaseColor(phase)"
-                      class="w-7 h-7 rounded border border-neutral-600 hover:scale-110 transition-transform flex items-center justify-center"
-                      title="No color"
-                    >
-                      <X :size="14" class="text-neutral-400" />
-                    </button>
-                    <button
-                      v-for="color in colorOptions"
-                      :key="color"
-                      type="button"
-                      @click="setPhaseColor(phase, color)"
-                      class="w-7 h-7 rounded hover:scale-110 transition-transform"
-                      :style="{ backgroundColor: color }"
-                    />
-                  </div>
-                </div>
+                <ColorPicker
+                  v-model="phase.color"
+                  allow-clear
+                  @change="saveModes"
+                />
                 <input
                   v-model="phase.name"
                   type="text"
@@ -264,28 +238,10 @@
           :key="`status-${index}`"
           class="group flex items-center gap-3"
         >
-          <!-- Color Picker -->
-          <div class="relative">
-            <button
-              @click="togglePicker(`status:${index}`)"
-              class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
-              :style="{ backgroundColor: status.color }"
-              title="Change color"
-            />
-            <!-- Simple color picker dropdown -->
-            <div
-              v-if="activePicker === `status:${index}`"
-              class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
-            >
-              <button
-                v-for="color in colorOptions"
-                :key="color"
-                @click="statuses[index].color = color; closePicker(); saveStatuses()"
-                class="w-7 h-7 rounded hover:scale-110 transition-transform"
-                :style="{ backgroundColor: color }"
-              />
-            </div>
-          </div>
+          <ColorPicker
+            v-model="status.color"
+            @change="saveStatuses"
+          />
 
           <!-- Status Label -->
           <input
@@ -329,28 +285,10 @@
           :key="`tag-${index}`"
           class="group flex items-center gap-3"
         >
-          <!-- Color Picker -->
-          <div class="relative">
-            <button
-              @click="togglePicker(`tag:${index}`)"
-              class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
-              :style="{ backgroundColor: tag.color || '#6B7280' }"
-              title="Change color"
-            />
-            <!-- Simple color picker dropdown -->
-            <div
-              v-if="activePicker === `tag:${index}`"
-              class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
-            >
-              <button
-                v-for="color in colorOptions"
-                :key="color"
-                @click="tags[index].color = color; closePicker(); saveTags()"
-                class="w-7 h-7 rounded hover:scale-110 transition-transform"
-                :style="{ backgroundColor: color }"
-              />
-            </div>
-          </div>
+          <ColorPicker
+            v-model="tag.color"
+            @change="saveTags"
+          />
 
           <!-- Tag Name -->
           <input
@@ -395,27 +333,10 @@
           :key="cs.id"
           class="group flex items-center gap-3"
         >
-          <!-- Color Picker -->
-          <div class="relative">
-            <button
-              @click="togglePicker(`chatState:${index}`)"
-              class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
-              :style="{ backgroundColor: cs.color }"
-              title="Change color"
-            />
-            <div
-              v-if="activePicker === `chatState:${index}`"
-              class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
-            >
-              <button
-                v-for="color in colorOptions"
-                :key="color"
-                @click="cs.color = color; closePicker(); saveChatStates()"
-                class="w-7 h-7 rounded hover:scale-110 transition-transform"
-                :style="{ backgroundColor: color }"
-              />
-            </div>
-          </div>
+          <ColorPicker
+            v-model="cs.color"
+            @change="saveChatStates"
+          />
 
           <!-- Label -->
           <input
@@ -627,6 +548,7 @@ import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
+import ColorPicker, { DEFAULT_COLORS } from '@/core/components/design/ColorPicker.vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { applicationState } from '@/main'
@@ -685,37 +607,6 @@ const hotkeys = reactive<AgentSettings['hotkeys']>({
   textToSpeech: chatSettings?.hotkeys?.textToSpeech || null,
   switchMode: chatSettings?.hotkeys?.switchMode || null,
 })
-
-// Color picker state — single ref keyed by "section:index"
-const activePicker = ref<string | null>(null)
-const togglePicker = (key: string) => { activePicker.value = activePicker.value === key ? null : key }
-const closePicker = () => { activePicker.value = null }
-
-// Available colors for status
-const colorOptions = [
-  '#6B7280', // Gray
-  '#EF4444', // Red
-  '#F59E0B', // Amber
-  '#10B981', // Emerald
-  '#3B82F6', // Blue
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#A855F7', // Purple
-  '#EC4899', // Pink
-  '#14B8A6', // Teal
-  '#84CC16', // Lime
-  '#F97316', // Orange
-  '#06B6D4', // Cyan
-  '#0EA5E9', // Sky
-  '#78716C', // Stone
-]
-
-// Close color picker when clicking outside
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', (e) => {
-    if (!(e.target as HTMLElement).closest('.relative')) closePicker()
-  })
-}
 
 // Save functions
 const saveStatuses = () => {
@@ -832,18 +723,6 @@ const removePhase = (index: number) => {
   saveModes()
 }
 
-const setPhaseColor = (phase: AgentPhase, color: string) => {
-  phase.color = color
-  closePicker()
-  saveModes()
-}
-
-const clearPhaseColor = (phase: AgentPhase) => {
-  delete phase.color
-  closePicker()
-  saveModes()
-}
-
 // Quick-prompt management
 const addQuickPrompt = () => {
   quickPrompts.value.push({ id: `qp_${Date.now()}`, text: '' })
@@ -875,7 +754,7 @@ const vAutoResize: Directive<HTMLTextAreaElement> = {
 const addStatus = () => {
   const newStatus: ThreadStatusOption = {
     label: `New Status ${Date.now()}`,
-    color: colorOptions[statuses.value.length % colorOptions.length]
+    color: DEFAULT_COLORS[statuses.value.length % DEFAULT_COLORS.length]
   }
   statuses.value.push(newStatus)
   saveStatuses()
@@ -892,7 +771,7 @@ const removeStatus = (index: number) => {
 const addTag = () => {
   const newTag: ThreadTagOption = {
     name: `New Tag ${Date.now()}`,
-    color: colorOptions[tags.value.length % colorOptions.length]
+    color: DEFAULT_COLORS[tags.value.length % DEFAULT_COLORS.length]
   }
   tags.value.push(newTag)
   saveTags()

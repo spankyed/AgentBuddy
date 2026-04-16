@@ -11,28 +11,10 @@
           :key="`tag-${index}`"
           class="group flex items-center gap-3"
         >
-          <!-- Color Picker -->
-          <div class="relative">
-            <button
-              @click="toggleColorPicker(index)"
-              class="w-8 h-8 rounded-md border border-neutral-700 hover:border-neutral-600 transition-colors"
-              :style="{ backgroundColor: tag.color || '#6B7280' }"
-              title="Change color"
-            />
-            <!-- Simple color picker dropdown -->
-            <div
-              v-if="activeColorPicker === index"
-              class="absolute z-10 top-10 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1"
-            >
-              <button
-                v-for="color in colorOptions"
-                :key="color"
-                @click="updateTagColor(index, color)"
-                class="w-7 h-7 rounded hover:scale-110 transition-transform"
-                :style="{ backgroundColor: color }"
-              />
-            </div>
-          </div>
+          <ColorPicker
+            v-model="tag.color"
+            @change="saveTags"
+          />
 
           <!-- Tag Name -->
           <input
@@ -214,6 +196,7 @@
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import ColorPicker, { DEFAULT_COLORS } from '@/core/components/design/ColorPicker.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -248,49 +231,6 @@ const tags = ref<LibraryTagOption[]>(
   props.settings?.tags ? [...props.settings.tags] : []
 )
 
-// Color picker state
-const activeColorPicker = ref<number | null>(null)
-
-// Available colors
-const colorOptions = [
-  '#6B7280', // Gray
-  '#EF4444', // Red
-  '#F59E0B', // Amber
-  '#10B981', // Emerald
-  '#3B82F6', // Blue
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#A855F7', // Purple
-  '#EC4899', // Pink
-  '#14B8A6', // Teal
-  '#84CC16', // Lime
-  '#F97316', // Orange
-  '#06B6D4', // Cyan
-  '#0EA5E9', // Sky
-  '#78716C', // Stone
-]
-
-// Color picker management
-const toggleColorPicker = (index: number) => {
-  activeColorPicker.value = activeColorPicker.value === index ? null : index
-}
-
-const updateTagColor = (index: number, color: string) => {
-  tags.value[index].color = color
-  activeColorPicker.value = null
-  saveTags()
-}
-
-// Close color picker when clicking outside
-if (typeof window !== 'undefined') {
-  window.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement
-    if (!target.closest('.relative')) {
-      activeColorPicker.value = null
-    }
-  })
-}
-
 // Save function
 const saveTags = () => {
   emit('update-setting', {
@@ -308,7 +248,7 @@ const { debounced: debouncedSave } = useDebounce(() => {
 const addTag = () => {
   const newTag: LibraryTagOption = {
     name: `New Tag ${Date.now()}`,
-    color: colorOptions[tags.value.length % colorOptions.length]
+    color: DEFAULT_COLORS[tags.value.length % DEFAULT_COLORS.length]
   }
   tags.value.push(newTag)
   saveTags()

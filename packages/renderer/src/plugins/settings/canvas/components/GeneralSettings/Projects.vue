@@ -13,28 +13,12 @@
       >
         <!-- Project Header -->
         <div class="flex items-center gap-2 px-3 py-2 border-b border-neutral-700/30">
-          <!-- Project Color Badge with Picker -->
-          <div class="relative color-picker-container">
-            <button
-              @click.stop="toggleProjectColorPicker(pIndex)"
-              class="w-5 h-5 rounded border border-neutral-700 hover:border-neutral-600 transition-colors flex-shrink-0"
-              :style="{ backgroundColor: project.color }"
-              title="Change project color"
-            />
-            <!-- Color picker dropdown -->
-            <div
-              v-if="activeProjectColorPicker === pIndex"
-              class="absolute z-20 top-7 left-0 bg-neutral-800 border border-neutral-700 rounded-lg p-2 grid grid-cols-5 gap-1 shadow-xl"
-            >
-              <button
-                v-for="color in colorOptions"
-                :key="color"
-                @click.stop="updateProjectColor(pIndex, color)"
-                class="w-7 h-7 rounded hover:scale-110 transition-transform"
-                :style="{ backgroundColor: color }"
-              />
-            </div>
-          </div>
+          <ColorPicker
+            v-model="project.color"
+            trigger-class="w-5 h-5 flex-shrink-0"
+            title="Change project color"
+            @change="save"
+          />
 
           <!-- Project Name -->
           <input
@@ -115,8 +99,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
+import ColorPicker, { DEFAULT_COLORS } from '@/core/components/design/ColorPicker.vue'
 
 interface Project {
   name: string
@@ -154,24 +139,6 @@ const migrateData = (settings: any): Project[] => {
 
 const projects = ref<Project[]>(migrateData(props.settings))
 
-// Color picker state
-const activeProjectColorPicker = ref<number | null>(null)
-
-const colorOptions = [
-  '#3B82F6', // blue
-  '#10B981', // green
-  '#F59E0B', // orange
-  '#EF4444', // red
-  '#A855F7', // purple
-  '#6B7280', // gray
-  '#14B8A6', // teal
-  '#EC4899', // pink
-  '#F97316', // orange-alt
-  '#8B5CF6', // violet
-  '#06B6D4', // cyan
-  '#84CC16', // lime
-]
-
 // Debounce helper
 let saveTimeout: number | undefined
 const debouncedSave = () => {
@@ -207,7 +174,7 @@ const addProject = async () => {
     }
 
     const name = directoryPath.split('/').filter(Boolean).pop() || 'Unnamed'
-    const color = colorOptions[projects.value.length % colorOptions.length]
+    const color = DEFAULT_COLORS[projects.value.length % DEFAULT_COLORS.length]
 
     projects.value.unshift({
       name,
@@ -228,17 +195,6 @@ const confirmRemoveProject = (pIndex: number) => {
   }
 
   projects.value.splice(pIndex, 1)
-  save()
-}
-
-// Project color picker management
-const toggleProjectColorPicker = (pIndex: number) => {
-  activeProjectColorPicker.value = activeProjectColorPicker.value === pIndex ? null : pIndex
-}
-
-const updateProjectColor = (pIndex: number, color: string) => {
-  projects.value[pIndex].color = color
-  activeProjectColorPicker.value = null
   save()
 }
 
@@ -295,19 +251,4 @@ const save = () => {
   })
 }
 
-// Close color pickers when clicking outside
-const handleClickOutside = (e: MouseEvent) => {
-  const target = e.target as HTMLElement
-  if (!target.closest('.color-picker-container')) {
-    activeProjectColorPicker.value = null
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('click', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('click', handleClickOutside)
-})
 </script>
