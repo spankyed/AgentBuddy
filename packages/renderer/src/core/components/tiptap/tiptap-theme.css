@@ -71,6 +71,51 @@
   color: rgb(180 185 190);
 }
 
+/* Code block copy button (wrapper rendered via node view) */
+.tiptap-wrapper .ProseMirror .code-block-wrapper {
+  position: relative;
+  margin: 0.5em 0;
+}
+
+.tiptap-wrapper .ProseMirror .code-block-wrapper > pre {
+  margin: 0;
+}
+
+.tiptap-wrapper .ProseMirror .code-block-copy-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  background: rgb(45 45 45);
+  border: 1px solid rgb(70 70 70);
+  border-radius: 0.25rem;
+  color: rgb(180 185 190);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  z-index: 2;
+}
+
+.tiptap-wrapper .ProseMirror .code-block-wrapper:hover .code-block-copy-btn,
+.tiptap-wrapper .ProseMirror .code-block-copy-btn:focus-visible,
+.tiptap-wrapper .ProseMirror .code-block-copy-btn.is-copied {
+  opacity: 1;
+}
+
+.tiptap-wrapper .ProseMirror .code-block-copy-btn:hover {
+  background: rgb(60 60 60);
+  color: rgb(235 235 235);
+}
+
+.tiptap-wrapper .ProseMirror .code-block-copy-btn.is-copied {
+  color: rgb(134 239 172);
+}
+
 /* Blockquote */
 .tiptap-wrapper .ProseMirror blockquote {
   border-left: 3px solid rgb(64 64 64); /* border-neutral-700 */

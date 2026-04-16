@@ -9,9 +9,9 @@ import TableHeader from '@tiptap/extension-table-header'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Placeholder from '@tiptap/extension-placeholder'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Markdown } from 'tiptap-markdown'
 import { common, createLowlight } from 'lowlight'
+import { CodeBlockCopy } from './extensions/code-block-copy'
 import Color from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import { ResizableImage } from './resizable-image'
@@ -93,7 +93,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       transformPastedText: true,
     }),
     MarkdownParseFixes,
-    CodeBlockLowlight.configure({ lowlight }),
+    CodeBlockCopy.configure({ lowlight }),
     Link.configure({
       openOnClick: false,
       autolink: true,
@@ -112,7 +112,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
   if (placeholder) extensions.push(Placeholder.configure({
     placeholder: ({ node }) => {
       if (node.type.name === 'heading') return `Heading ${node.attrs.level}`
-      if (node.type.name === 'codeBlock') return 'Write code...'
+      if (node.type.name === 'codeBlock') return ''
       if (node.type.name === 'detailsSummary') return 'Toggle summary'
       return placeholder
     },
