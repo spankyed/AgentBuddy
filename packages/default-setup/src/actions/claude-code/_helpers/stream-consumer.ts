@@ -74,6 +74,13 @@ export async function consumeStream(
   const { services, threadId, text, phase } = ctx;
   const log = services.logger;
 
+  // True when this consumer still owns the thread's handle slot. False after
+  // killTurn() cleared it, or after any caller stored a replacement handle.
+  // When false, we must not call clearHandle / persistClaudeState / emit
+  // cc.stream.completed — those belong to whoever owns the slot now.
+  const stillCurrent = () =>
+    (services.cli as any).claudeCode.getHandle(threadId) === handle;
+
   let currentMessageId: EntityId = initialWriters.messageId;
   let writer = initialWriters.writer;
   let toolActivity = initialWriters.toolActivity;
@@ -452,6 +459,15 @@ export async function consumeStream(
       log.debug('handle.close failed', { message: closeErr?.message });
     }
 
+    // Superseded by killTurn() + a new turn (e.g. user sent a new message
+    // while awaiting permission). Writer finalization above applied to our
+    // own message; do NOT touch thread-scoped state (clearHandle / isRunning)
+    // or emit cc.stream.completed — those belong to the new turn's consumer.
+    if (!stillCurrent()) {
+      log.debug('stream consumer superseded before completion — skipping thread cleanup & emit');
+      return;
+    }
+
     // Critical cleanup: clear handle, mark not running, reset mid-turn flags, drain queue.
     // Dequeue before setRunning(false) to close the race window where a new
     // message could interleave between the two calls.
@@ -509,6 +525,13 @@ export async function consumeStream(
 
     // Kill the CLI process on error (it may be in a bad state).
     try { handle.kill(); } catch { /* already gone */ }
+
+    // Superseded: the error likely came from killTurn()'s SIGTERM and the
+    // new turn already owns the thread slot. Skip shared cleanup & emit.
+    if (!stillCurrent()) {
+      log.debug('stream consumer superseded on error path — skipping thread cleanup & emit');
+      return;
+    }
 
     // Critical cleanup — dequeue before setRunning(false) to avoid race.
     (services.cli as any).claudeCode.clearHandle(threadId);
