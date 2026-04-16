@@ -50,7 +50,7 @@
         <button
           class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
           title="Jump to latest"
-          @click="handleFitView"
+          @click="panToLatestTrack"
         >
           <Maximize :size="16" />
         </button>
@@ -282,45 +282,33 @@ onNodeDoubleClick((event: NodeMouseEvent) => {
   // Step nodes and event nodes don't have double click behavior
 });
 
-const collectTrackNodeIds = (tnode: TrackEntity, ids: string[] = []): string[] => {
-  ids.push(tnode.id);
-  tnode.children.forEach((child) => collectTrackNodeIds(child, ids));
-  return ids;
-};
-
-// Pan the camera to the newest track (now at the top after the bottom-up flip),
-// preserving the current zoom level. Used by both the manual button and the
-// auto-fit-on-structural-change watcher.
-const panToLatestTrack = (duration = 400) => {
+// Pan to the latest track (now at the top after the bottom-up flip),
+// preserving the current zoom level.
+const panToLatestTrack = () => {
   const tracks = props.tnodeTree;
   if (!tracks?.length) return;
 
-  const latestTrack = tracks[tracks.length - 1];
-  const latestIds = collectTrackNodeIds(latestTrack);
-
+  const positions = new Map(nodes.value.map(n => [n.id, n.position]));
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const id of latestIds) {
-    const flowNode = getNode.value(id);
-    if (!flowNode) continue;
-    const w = flowNode.dimensions?.width || LAYOUT.NODE_WIDTH;
-    const h = flowNode.dimensions?.height || LAYOUT.NODE_HEIGHT;
-    minX = Math.min(minX, flowNode.position.x);
-    maxX = Math.max(maxX, flowNode.position.x + w);
-    minY = Math.min(minY, flowNode.position.y);
-    maxY = Math.max(maxY, flowNode.position.y + h);
-  }
+
+  const visit = (n: TrackEntity) => {
+    const p = positions.get(n.id);
+    if (p) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x + LAYOUT.NODE_WIDTH);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y + LAYOUT.NODE_HEIGHT);
+    }
+    n.children.forEach(visit);
+  };
+  visit(tracks[tracks.length - 1]);
 
   if (minX === Infinity) return;
 
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-  const { zoom } = getViewport();
-
-  setCenter(centerX, centerY, { duration, zoom });
-};
-
-const handleFitView = () => {
-  panToLatestTrack(400);
+  setCenter((minX + maxX) / 2, (minY + maxY) / 2, {
+    duration: 400,
+    zoom: getViewport().zoom,
+  });
 };
 
 // Animation helpers
@@ -367,7 +355,7 @@ watch(() => nodes.value, (newNodes) => {
   if (isStructuralChange) {
     cancelCurrentAnimation();
     nextTick(() => {
-      setTimeout(() => panToLatestTrack(400), 150);
+      setTimeout(panToLatestTrack, 150);
     });
   } else if (newNodeIds.length > 0 && props.animationsEnabled) {
     cancelCurrentAnimation();
