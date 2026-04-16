@@ -43,9 +43,9 @@
           @open-lightbox="openLightbox"
           @update-quick-prompts="updateQuickPrompts"
           @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
-          @revert="(messageId: string) => handleRevert(messageId)"
-          @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
-          @summarize-from-here="(messageId: string) => handleSummarize(messageId)"
+          @revert="(messageId: string) => handleRevert(messageId, false, true)"
+          @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
+          @summarize-from-here="(messageId: string) => handleSummarize(messageId, true)"
         />
       </div>
     </div>
@@ -242,10 +242,10 @@ const revertDialogCopy = computed(() => pendingIsSummarize.value ? {
   confirm: 'Revert',
 })
 
-function handleRevert(messageId: string, restoreFiles = false) {
+function handleRevert(messageId: string, restoreFiles = false, skipConfirm = false) {
   pendingRestoreFiles = restoreFiles
   pendingIsSummarize.value = false
-  if (settings.value?.skipRevertConfirm) {
+  if (skipConfirm || settings.value?.skipRevertConfirm) {
     doRevert(messageId)
   } else {
     pendingRevertMessageId.value = messageId
@@ -253,10 +253,10 @@ function handleRevert(messageId: string, restoreFiles = false) {
   }
 }
 
-function handleSummarize(messageId: string) {
+function handleSummarize(messageId: string, skipConfirm = false) {
   pendingRestoreFiles = false
   pendingIsSummarize.value = true
-  if (settings.value?.skipRevertConfirm) {
+  if (skipConfirm || settings.value?.skipRevertConfirm) {
     doSummarize(messageId)
   } else {
     pendingRevertMessageId.value = messageId
