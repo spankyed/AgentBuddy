@@ -42,6 +42,8 @@
           @open-lightbox="openLightbox"
           @update-quick-prompts="updateQuickPrompts"
           @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
+          @revert="(messageId: string) => handleRevert(messageId)"
+          @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
         />
       </div>
     </div>

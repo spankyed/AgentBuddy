@@ -74,6 +74,7 @@ const emit = defineEmits<{
   (e: 'history-next'): void
   (e: 'clearInput'): void
   (e: 'pause'): void
+  (e: 'open-revert-menu'): void
   (e: 'imageClick', src: string): void
 }>()
 
@@ -160,6 +161,7 @@ const handleKeyDown = createKeyboardHandler({
     historyNext: () => emit('history-next'),
     clearInput: () => emit('clearInput'),
     pause: () => emit('pause'),
+    openRevertMenu: () => emit('open-revert-menu'),
   },
 })
 

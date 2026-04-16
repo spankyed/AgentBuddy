@@ -45,6 +45,15 @@
             @history-next="onHistoryNext"
             @clear-input="onClearInput"
             @pause="emit('pause')"
+            @open-revert-menu="openRevertMenu"
+          />
+          <RevertHistoryPopup
+            :open="revertMenuOpen"
+            :anchor-el="inputCardRef"
+            :messages="currentThread?.messages ?? []"
+            @revert="(id) => { revertMenuOpen = false; emit('revert', id) }"
+            @revert-with-files="(id) => { revertMenuOpen = false; emit('revert-with-files', id) }"
+            @close="revertMenuOpen = false"
           />
         </div>
 
@@ -191,6 +200,7 @@ import type { AgentThreadData, AgentMode, MessageReferences, QuickPrompt } from 
 import { commandSuggestionPluginKey } from '@/core/components/tiptap/command-suggestion-plugin'
 import { matchesHotkey, type HotkeyEvent, type HotkeysMap } from '@/core/utils/hotkeys'
 import QuickPromptsPopup from './QuickPromptsPopup.vue'
+import RevertHistoryPopup from './RevertHistoryPopup.vue'
 
 interface ContextReference {
   refType: 'thread' | 'document' | 'note'
@@ -227,6 +237,8 @@ const emit = defineEmits<{
   (e: 'open-lightbox', imageSrc: string): void
   (e: 'update-quick-prompts', prompts: QuickPrompt[]): void
   (e: 'close-quick-prompts'): void
+  (e: 'revert', messageId: string): void
+  (e: 'revert-with-files', messageId: string): void
 }>()
 
 
@@ -242,6 +254,19 @@ const inputCardRef = ref<HTMLElement | null>(null)
 const messageContent = ref('')
 const popoverOpen = ref(false)
 const navigatingHistory = ref(false)
+const revertMenuOpen = ref(false)
+
+function openRevertMenu() {
+  // TiptapEditor only emits this when the editor is empty, so we don't
+  // need to re-check here. Don't open if there are no user messages to
+  // revert to — the popup itself hides in that case, but this avoids the
+  // teleport churn.
+  const hasUserMsgs = (props.currentThread?.messages ?? []).some(
+    (m) => m.sender === 'user' && (m as any).status !== 'cancelled',
+  )
+  if (!hasUserMsgs) return
+  revertMenuOpen.value = true
+}
 
 const virtualRef = computed(() => {
   if (!props.quickPromptCursor) return null
@@ -321,6 +346,11 @@ const onContentUpdate = (md: string) => {
   messageContent.value = md
   if (!navigatingHistory.value) {
     historyIndex.value = -1
+  }
+  // The revert-history popup is only meaningful against an empty input.
+  // The moment the user types, dismiss it so the keystroke feels uninterrupted.
+  if (revertMenuOpen.value && md.trim()) {
+    revertMenuOpen.value = false
   }
 }
 

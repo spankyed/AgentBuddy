@@ -37,6 +37,10 @@ interface KeyboardOptions {
     historyNext: () => void
     clearInput: () => void
     pause: () => void
+    /** Optional — only wired up by consumers (like chat input) that want
+     * double-ESC on an empty editor to open a revert-history menu
+     * instead of being a no-op clear. */
+    openRevertMenu?: () => void
   }
 }
 
@@ -69,7 +73,15 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
       const now = Date.now()
       if (now - lastEscTime < 300) {
         lastEscTime = 0
-        emit.clearInput()
+        // In the chat input, double-ESC on an already-empty editor opens
+        // the revert-history menu. Elsewhere (and when there's text to
+        // discard), the original clear-input behavior runs.
+        const isEmpty = !view.state.doc.textContent.trim()
+        if (isEmpty && emit.openRevertMenu) {
+          emit.openRevertMenu()
+        } else {
+          emit.clearInput()
+        }
         return true
       }
       lastEscTime = now
