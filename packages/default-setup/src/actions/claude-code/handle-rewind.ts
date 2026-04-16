@@ -18,6 +18,13 @@
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
 import { backfillUserCliUuids } from './_helpers/jsonl-backfill';
+import { readSessionCwd } from './_helpers/session-artifact';
+
+/** Claude prints this on a successful `--rewind-files` run. See
+ * `claude-code/src/cli/print.ts:766-768` — any other exit-0 path (notably
+ * the session-not-found early return) produces no stdout, so the marker's
+ * presence is the only reliable success signal. */
+const REWIND_SUCCESS_MARKER = 'Files rewound to state at message';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Rewind',
@@ -46,6 +53,12 @@ function classifyRewindFailure(raw: string | undefined): { text: string; isHealt
   if (/no file history|file history not found|no snapshot/.test(detail)) {
     return {
       text: '⚠️ This thread predates file-history support — start a fresh thread and file rewind will work on future turns.',
+      isHealthIssue: false,
+    };
+  }
+  if (/did not restore any files|session not found at the spawn cwd/.test(detail)) {
+    return {
+      text: '⚠️ Rewind ran but the Claude CLI couldn\'t find the session\'s file-history on disk. The session was likely recorded in a different cwd (e.g. a worktree) than we\'re invoking rewind from. Check the server logs.',
       isHealthIssue: false,
     };
   }
@@ -115,20 +128,44 @@ export async function action(
 
   // One-shot rewind. exec() keeps this light — query() would spin up
   // full pump/event-queue plumbing for a CLI that exits immediately.
-  log.debug('restoring files via --rewind-files', { threadId, userCliUuid });
+  //
+  // Pass the session's recorded cwd — Claude's `--resume` looks under
+  // `~/.claude/projects/<sanitize(cwd)>/<sessionId>.jsonl`, so spawning
+  // from the default repo cwd when the session was recorded in a worktree
+  // path causes `loadConversationForResume()` to return null and the CLI
+  // exits 0 with no output and no work done. `readSessionCwd` returns the
+  // cwd reported by the CLI's own `system/init` event on turn 1 —
+  // authoritative regardless of whether the thread uses a worktree.
+  const sessionCwd = readSessionCwd(services, threadId as EntityId);
+  log.debug('restoring files via --rewind-files', { threadId, userCliUuid, cwd: sessionCwd ?? '(default)' });
   let filesRestored = false;
   let failureDetail: string | undefined;
   try {
-    const result = await services.cli.claudeCode.exec([
-      '--resume', sessionId,
-      '--rewind-files', userCliUuid,
-    ]);
-    filesRestored = result.exitCode === 0;
-    if (!filesRestored) {
+    const result = await services.cli.claudeCode.exec(
+      ['--resume', sessionId, '--rewind-files', userCliUuid],
+      sessionCwd ? { cwd: sessionCwd } : undefined,
+    );
+
+    // Claude's ONLY exit-0-with-no-stdout path is the session-not-found
+    // early return in print.ts — everything else either writes the
+    // success marker to stdout or an error to stderr + exits non-zero.
+    // Treat "exit 0 but no marker" as silent no-op so we don't claim
+    // files were restored when nothing happened on disk.
+    if (result.exitCode === 0 && result.stdout.includes(REWIND_SUCCESS_MARKER)) {
+      filesRestored = true;
+      log.debug('files restored successfully', { stdout: result.stdout.trim() });
+    } else if (result.exitCode === 0) {
+      failureDetail = 'Claude CLI exited cleanly but did not restore any files — session not found at the spawn cwd, or no file-history snapshots were recorded for this turn.';
+      log.warn('rewind silent no-op', {
+        threadId,
+        sessionId,
+        cwd: sessionCwd ?? '(default resolveCwd)',
+        stdout: result.stdout,
+        stderr: result.stderr,
+      });
+    } else {
       failureDetail = (result.stderr || '').trim() || `exit ${result.exitCode}`;
       log.warn('file restore exited with non-zero', { exitCode: result.exitCode, stderr: result.stderr });
-    } else {
-      log.debug('files restored successfully');
     }
   } catch (rewindErr: any) {
     failureDetail = rewindErr?.message || 'unknown error';
