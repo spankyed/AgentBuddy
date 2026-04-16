@@ -4,14 +4,15 @@
       @submit.prevent="handleSubmit"
       @keydown.shift.tab.prevent="cyclePhase"
       @keydown.ctrl.tab.prevent="cycleMode"
-      class="@container pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
+      class="@container pb-4 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
       <div
+        ref="inputCardRef"
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
         :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight }]"
         data-onboarding-id="agent-chat-input"
         @paste.capture="handlePaste">
-        <StatusIndicator/>
+        <StatusIndicator :anchor="inputCardRef"/>
 
         <!-- Attachment strip: files then images, horizontal scroll -->
         <div v-if="pendingFiles.length || pendingImages.length"
@@ -237,6 +238,7 @@ interface ActionButton {
 }
 
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
+const inputCardRef = ref<HTMLElement | null>(null)
 const messageContent = ref('')
 const popoverOpen = ref(false)
 const navigatingHistory = ref(false)
