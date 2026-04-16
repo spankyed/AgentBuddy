@@ -29,26 +29,36 @@ interface KeyboardOptions {
   cfg: EditorConfig
   getEditor: () => Editor | undefined
   getInHistoryMode: () => boolean
+  getPauseAvailable: () => boolean
   emit: {
     submit: () => void
     focusTitle: () => void
     historyPrev: () => void
     historyNext: () => void
     clearInput: () => void
+    pause: () => void
   }
 }
 
-export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, emit }: KeyboardOptions) {
+export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPauseAvailable, emit }: KeyboardOptions) {
   let lastEscTime = 0
 
   return (view: EditorView, event: KeyboardEvent) => {
-    // Double-ESC → clear input (skip when a popup is active so ESC just closes it)
+    // ESC handling:
+    //   1. popup active → let popup close (return false)
+    //   2. pause available (streaming) → emit pause
+    //   3. otherwise → double-tap to clear input
     if (event.key === 'Escape') {
       const cmdState = commandSuggestionPluginKey.getState(view.state)
       const refState = referenceSuggestionPluginKey.getState(view.state)
       if (cmdState?.active || refState?.active) {
         lastEscTime = 0
         return false
+      }
+      if (getPauseAvailable()) {
+        lastEscTime = 0
+        emit.pause()
+        return true
       }
       const now = Date.now()
       if (now - lastEscTime < 300) {

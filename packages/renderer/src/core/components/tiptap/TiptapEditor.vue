@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<{
   showGutter?: boolean
   isCommand?: boolean
   inHistoryMode?: boolean
+  pauseAvailable?: boolean
 }>(), {
   variant: 'full',
   modelValue: '',
@@ -58,6 +59,7 @@ const props = withDefaults(defineProps<{
   showGutter: false,
   isCommand: false,
   inHistoryMode: false,
+  pauseAvailable: false,
 })
 
 const emit = defineEmits<{
@@ -70,6 +72,7 @@ const emit = defineEmits<{
   (e: 'history-prev'): void
   (e: 'history-next'): void
   (e: 'clearInput'): void
+  (e: 'pause'): void
   (e: 'imageClick', src: string): void
 }>()
 
@@ -139,12 +142,14 @@ const handleKeyDown = createKeyboardHandler({
   cfg,
   getEditor: () => editor.value,
   getInHistoryMode: () => props.inHistoryMode,
+  getPauseAvailable: () => props.pauseAvailable,
   emit: {
     submit: () => emit('submit'),
     focusTitle: () => emit('focusTitle'),
     historyPrev: () => emit('history-prev'),
     historyNext: () => emit('history-next'),
     clearInput: () => emit('clearInput'),
+    pause: () => emit('pause'),
   },
 })
 

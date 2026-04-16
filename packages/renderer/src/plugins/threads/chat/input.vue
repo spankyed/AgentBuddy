@@ -38,9 +38,11 @@
             @submit="handleSubmit"
             @update:model-value="onContentUpdate"
             :in-history-mode="historyIndex !== -1"
+            :pause-available="isStreaming"
             @history-prev="onHistoryPrev"
             @history-next="onHistoryNext"
             @clear-input="onClearInput"
+            @pause="emit('pause')"
           />
         </div>
 
