@@ -68,6 +68,8 @@ export interface SettingsContext {
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application';
   selectedPluginId: string | null;
   isLoading: boolean;
+  /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
+  resetting: boolean;
 }
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
@@ -422,6 +424,7 @@ const settingsState = setup({
       generalNavItem: 'application',
       selectedPluginId: defaultPluginId,
       isLoading: true,
+      resetting: false,
     }
   },
   states: {
@@ -524,9 +527,13 @@ const settingsState = setup({
           actions: 'setSetupPackImportFailed',
         },
         'APP.RESET': {
-          actions: () => {
-            trpc.bus.send.mutate({ systemId: id, type: 'RESET_APP' } as any);
-          },
+          guard: ({ context }) => !context.resetting,
+          actions: [
+            assign({ resetting: true }),
+            () => {
+              trpc.bus.send.mutate({ systemId: id, type: 'RESET_APP' } as any);
+            },
+          ],
         },
         APP_RESET_COMPLETE: {
           actions: () => {
@@ -534,9 +541,12 @@ const settingsState = setup({
           },
         },
         APP_RESET_FAILED: {
-          actions: ({ event }: { event: any }) => {
-            window.alert(`Reset failed: ${event.error}`);
-          },
+          actions: [
+            assign({ resetting: false }),
+            ({ event }: { event: any }) => {
+              window.alert(`Reset failed: ${event.error}`);
+            },
+          ],
         },
       },
     },

@@ -111,13 +111,15 @@
         <span class="text-sm text-red-400">Are you sure?</span>
         <button
           @click="onResetApp"
-          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+          :disabled="resetting"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Yes, erase everything
+          {{ resetting ? 'Resetting…' : 'Yes, erase everything' }}
         </button>
         <button
           @click="confirmingReset = false"
-          class="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors"
+          :disabled="resetting"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
@@ -157,6 +159,7 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
 const actor = applicationState.system.get('settings')
 
 const setupPackImport = useSelector(actor, (state: any) => state.context.setupPackImport)
+const resetting = useSelector(actor, (state: any) => state.context.resetting)
 
 const status = computed(() => setupPackImport.value?.status ?? 'idle')
 const preview = computed(() => setupPackImport.value?.preview ?? null)

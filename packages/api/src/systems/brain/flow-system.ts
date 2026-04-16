@@ -35,6 +35,16 @@ export function getAllFlowActorIds(): EARS.EntityId[] {
   return Array.from(flowActorRegistry.keys());
 }
 
+/**
+ * Clear the entire flow actor registry. Called defensively during brain
+ * restart/kill so no stale references survive an `enqueue.stopChild` whose
+ * exit action may have been interrupted (e.g. forcibly stopped actor with
+ * pending async work).
+ */
+export function clearFlowActorRegistry(): void {
+  flowActorRegistry.clear();
+}
+
 type TNodeFlowMachineContext = {
   flowId: EARS.EntityId;
   flowLabel: string;

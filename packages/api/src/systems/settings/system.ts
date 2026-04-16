@@ -1,4 +1,4 @@
-import { createMachine, setup, sendTo, enqueueActions } from 'xstate';
+import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import type { MergeReceivable } from '@/core/helpers/event-helpers';
 import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
 import { bus, SystemEvents } from '@/systems/backend';
@@ -124,7 +124,14 @@ export const settingsSystem = setup({
     events: {} as ReceivableEvents,
   },
   actors: {
-    secretsActor
+    secretsActor,
+    resetAppActor: fromPromise(async () => {
+      const DEFAULT_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
+      await resetLmdbFiles();
+      createDefaultSettings();
+      seedData({ compiledDir: DEFAULT_DIR, verbose: true });
+      runMigrations();
+    }),
   },
   guards: {
     isSecretsOperation: ({ event }) => {
@@ -415,19 +422,16 @@ export const settingsSystem = setup({
       }
     },
 
-    resetApp: ({ system }) => {
-      const DEFAULT_DIR = path.resolve(process.cwd(), '..', 'default-setup', 'dist');
-      resetLmdbFiles().then(() => {
-        createDefaultSettings();
-        seedData({ compiledDir: DEFAULT_DIR, verbose: true });
-        runMigrations();
-        system.get('brain').send({ type: 'RESTART_BRAIN' });
-        system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
-      }).catch((err) => {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error('[settings] Reset app failed:', err);
-        system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
-      });
+    onResetComplete: ({ system }) => {
+      system.get('brain').send({ type: 'RESTART_BRAIN' });
+      system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
+    },
+
+    onResetFailed: ({ system, event }) => {
+      const err = (event as unknown as ErrorActorEvent).error;
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[settings] Reset app failed:', err);
+      system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 
     completeOnboarding: ({ system }) => {
@@ -493,7 +497,7 @@ export const settingsSystem = setup({
           actions: 'importSetupPack',
         },
         RESET_APP: {
-          actions: 'resetApp',
+          target: 'resetting',
         },
         // Forward incoming SECRETS.CMD.* events to secrets actor
         'SECRETS.CMD.*': {
@@ -502,6 +506,22 @@ export const settingsSystem = setup({
         // Handle outgoing SECRETS.EVENT.* events from secrets actor
         'SECRETS.EVENT.*': {
           actions: 'handleSecretsEvent',
+        },
+      },
+    },
+    // Serialized single-in-flight reset. Any further RESET_APP events are
+    // ignored here; the frontend is about to full-reload on APP_RESET_COMPLETE.
+    resetting: {
+      tags: ['resetting'],
+      invoke: {
+        src: 'resetAppActor',
+        onDone: {
+          target: 'idle',
+          actions: 'onResetComplete',
+        },
+        onError: {
+          target: 'idle',
+          actions: 'onResetFailed',
         },
       },
     },

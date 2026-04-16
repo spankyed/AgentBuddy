@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds } from './flow-system';
+import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
 import { settings } from '../settings/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
@@ -185,6 +185,11 @@ export const brainSystem = setup({
         // Clear all ad-hoc brain event listeners
         removeAllAdHocListeners();
 
+        // Defensive: drop any lingering flow actor references. Exit actions
+        // on the stopped actor should unregister themselves, but if pending
+        // async work interrupted that path, stale entries would leak here.
+        clearFlowActorRegistry();
+
         // Clear the runningRootFlowId setting via settings system
         getActor(system, 'settings').send({
           type: 'UPDATE_SETTINGS',
@@ -221,6 +226,11 @@ export const brainSystem = setup({
 
       // Clear all ad-hoc brain event listeners
       removeAllAdHocListeners();
+
+      // Defensive: drop any lingering flow actor references. Exit actions
+      // on the stopped actor should unregister themselves, but if pending
+      // async work interrupted that path, stale entries would leak here.
+      clearFlowActorRegistry();
 
       // Send empty data to clear the UI temporarily
       system.get(bus).send(emit(brain, {
