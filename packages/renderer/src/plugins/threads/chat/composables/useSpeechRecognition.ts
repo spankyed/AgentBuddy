@@ -23,6 +23,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
 
   function handleError(err: unknown, fallback: string) {
     isListening.value = false
+    clearDurationTimer()
     options.onError?.(err instanceof Error ? err.message : fallback)
   }
 
