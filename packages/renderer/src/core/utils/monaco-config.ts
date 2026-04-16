@@ -219,6 +219,7 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
 let monacoInitialized = false
 const registeredDslLibs = new Set<string>()
 const initializedLanguages = new Set<string>()
+const registeredFormatters = new Set<string>()
 
 // ============================================================================
 // FILE TYPE DETECTION
@@ -633,10 +634,15 @@ export function setupFunctionBodyMode(
   // Register generic params fallback (will be overridden by updateDslParamsType)
   clearDslParamsType(monaco, language)
 
-  // Register no-op formatter to prevent virtual wrapper formatting
-  monaco.languages.registerDocumentFormattingEditProvider(language, {
-    provideDocumentFormattingEdits: () => null
-  })
+  // Register no-op formatter to prevent virtual wrapper formatting.
+  // Guarded so repeated mounts don't stack identical providers on the
+  // global language registry (each registration attaches listeners).
+  if (!registeredFormatters.has(language)) {
+    monaco.languages.registerDocumentFormattingEditProvider(language, {
+      provideDocumentFormattingEdits: () => null
+    })
+    registeredFormatters.add(language)
+  }
 }
 
 // ============================================================================

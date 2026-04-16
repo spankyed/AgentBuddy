@@ -40,7 +40,7 @@ window.addEventListener('error', (event) => {
 <script setup lang="ts">
 import { computed, ref, watch, shallowRef, onBeforeUnmount, onUnmounted } from 'vue'
 import { VueMonacoEditor, VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
-import type { editor } from 'monaco-editor'
+import type { editor, IDisposable } from 'monaco-editor'
 import {
   editorPresets,
   getLanguageFromPath,
@@ -120,6 +120,19 @@ const models = new Map<string, editor.ITextModel>()
 const viewStates = new Map<string, editor.ICodeEditorViewState | null>()
 let pendingScrollLine: number | null = null
 let diffUpdateDisposable: { dispose: () => void } | null = null
+// Per-editor-instance disposables. Captures every IDisposable returned by
+// monaco listener-attach calls (cursor/content/action/etc). Cleared on mode
+// change (which destroys the underlying editor) and on component unmount.
+// Without this, listeners pile up on Monaco's global emitters and trip the
+// internal listener-leak tracker after ~250 accumulated subscribers.
+let editorDisposables: IDisposable[] = []
+
+const disposeEditorDisposables = () => {
+  for (const d of editorDisposables) {
+    try { d.dispose() } catch { /* ignore */ }
+  }
+  editorDisposables = []
+}
 
 // Computed properties
 const resolvedLanguage = computed(() => {
@@ -196,13 +209,13 @@ const switchToFile = (filePath: string, content: string) => {
       enableSuggestions: isDslMode.value
     })
     
-    // Listen for changes
-    model.onDidChangeContent(() => {
+    // Listen for changes (track disposable so it's cleaned up with the editor)
+    editorDisposables.push(model.onDidChangeContent(() => {
       const value = model!.getValue()
       currentValue.value = value
       emit('update:modelValue', value)
       emit('change', value)
-    })
+    }))
   } else if (model.getValue() !== content) {
     model.setValue(content)
   }
@@ -273,7 +286,7 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
     }, {
       executeKeybinding: props.executeKeybinding
     })
-    actions.forEach(action => editor.addAction(action))
+    actions.forEach(action => editorDisposables.push(editor.addAction(action)))
   }
 
   // Set placeholder if provided
@@ -285,12 +298,12 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   }
 
   // Track cursor position changes
-  editor.onDidChangeCursorPosition((e) => {
+  editorDisposables.push(editor.onDidChangeCursorPosition((e) => {
     emit('cursorChange', {
       line: e.position.lineNumber,
       col: e.position.column,
     })
-  })
+  }))
 
   // Handle multi-file mode (must happen before updateDslParamsType so it doesn't overwrite params)
   if (props.mode === 'multi-file' && props.filePath && props.modelValue) {
@@ -321,14 +334,14 @@ const handleDiffMount = (diffEditor: editor.IStandaloneDiffEditor) => {
   })
 
   const modifiedEditor = diffEditor.getModifiedEditor()
-  modifiedEditor.onDidChangeModelContent(() => {
+  editorDisposables.push(modifiedEditor.onDidChangeModelContent(() => {
     if (!props.readOnly) {
       const value = modifiedEditor.getValue()
       currentValue.value = value
       emit('update:modelValue', value)
       emit('change', value)
     }
-  })
+  }))
 
   // Auto-scroll to first change when diff is computed
   diffUpdateDisposable?.dispose()
@@ -389,7 +402,11 @@ watch(() => props.mode, (newMode, oldMode) => {
     models.clear()
     viewStates.clear()
   }
-  // Editor instance will be stale after mode switch
+  // The underlying editor is being torn down — drop every listener we
+  // attached to it. The library disposes the editor itself, but Monaco's
+  // listener tracker can trip before that runs, so we dispose explicitly
+  // here on every mode switch.
+  disposeEditorDisposables()
   editorInstance.value = undefined
 })
 
@@ -410,6 +427,7 @@ watch(() => props.dslParams, (newParams) => {
 onBeforeUnmount(() => {
   diffUpdateDisposable?.dispose()
   diffUpdateDisposable = null
+  disposeEditorDisposables()
   // Detach models from editors so library cleanup doesn't clash with our disposal
   try { editorInstance.value?.setModel(null) } catch {}
   try { diffEditorInstance.value?.setModel(null) } catch {}
