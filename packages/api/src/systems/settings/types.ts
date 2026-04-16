@@ -1,5 +1,6 @@
 import { BaseEntity } from "@/core/ears";
 import type { EARS } from "@/types";
+import type { AgentSettings } from "@/systems/threads/types";
 
 export type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
 export interface SettingsEntity extends BaseEntity {
@@ -131,6 +132,7 @@ export interface ThreadsSettings {
   chatStates: ChatStateConfig[];
   showOnlyRootThreads: boolean;
   clickToChat: boolean;
+  chat?: AgentSettings;
 }
 
 // Actions plugin settings

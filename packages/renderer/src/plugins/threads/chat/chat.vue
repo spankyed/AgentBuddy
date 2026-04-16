@@ -50,7 +50,7 @@
       <RecentThreads
         :current-thread="currentThread"
         :recent-threads="recentThreads"
-        @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
+        @view-thread="(threadId: string) => handleViewDetails(threadId)"
         @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
         @view-dashboard="handleViewDashboard"
         @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
@@ -199,11 +199,18 @@ function handleViewArtifacts(threadId: string) {
   if (!snapshot.context.defaultToggles.canvas) {
     applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
   }
-  if (snapshot.context.panelSizes.canvasHeight < 20) {
-    applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
-  }
+
   // Opens the thread (sets currentThread) and internally transitions to dashboard
   actor.send({ type: 'OPEN_THREAD_CHAT', threadId });
+}
+
+function handleViewDetails(threadId: string) {
+  const snapshot = applicationState.getSnapshot();
+  if (!snapshot.context.defaultToggles.canvas) {
+    applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
+  }
+
+  actor.send({ type: 'VIEW_THREAD', threadId });
 }
 
 let pendingRestoreFiles = false

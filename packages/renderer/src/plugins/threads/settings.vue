@@ -1,5 +1,227 @@
 <template>
   <div class="max-w-3xl">
+    <!-- Chat (agent) Sections -->
+    <div class="mb-8">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-4">Chat</h3>
+
+      <!-- Conversation -->
+      <CollapsibleSection label="Conversation" :default-open="true" class="mb-8">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="skip-revert-confirm" class="text-sm font-medium text-neutral-200">
+              Skip revert confirmation
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Revert messages without showing a confirmation dialog
+            </p>
+          </div>
+          <input
+            id="skip-revert-confirm"
+            v-model="skipRevertConfirm"
+            type="checkbox"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+            @change="saveSkipRevertConfirm"
+          />
+        </div>
+      </CollapsibleSection>
+
+      <!-- Chat Modes -->
+      <CollapsibleSection label="Chat Modes" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Configure different conversation modes for the AI agent
+        </p>
+        <div class="space-y-4">
+          <div
+            v-for="(mode, index) in modes"
+            :key="mode.id"
+            class="group"
+          >
+            <div class="flex items-center gap-3">
+              <input
+                v-model="mode.name"
+                type="text"
+                placeholder="Mode name"
+                class="w-32 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+                @input="debouncedSaveModes"
+              />
+              <input
+                v-model="mode.description"
+                type="text"
+                placeholder="Description of this mode"
+                class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+                @input="debouncedSaveModes"
+              />
+              <button
+                @click="toggleMode(index)"
+                class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg transition-all"
+                :class="mode.disabled ? 'text-neutral-600 hover:text-neutral-300' : 'text-neutral-400 hover:text-neutral-200'"
+                :title="mode.disabled ? 'Enable mode' : 'Disable mode'"
+              >
+                <EyeOff v-if="mode.disabled" class="w-4 h-4" />
+                <Eye v-else class="w-4 h-4" />
+              </button>
+              <button
+                @click="removeMode(index)"
+                class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+                :disabled="modes.length <= 1"
+                title="Remove mode"
+              >
+                <X class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <button
+            @click="addMode"
+            class="px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all flex items-center gap-1.5"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            Add Mode
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      <!-- Mode Phases -->
+      <CollapsibleSection label="Mode Phases" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Configure phases for modes that support multiple work phases
+        </p>
+
+        <div class="mb-4">
+          <label class="block text-sm text-neutral-400 mb-2">Select mode to configure phases:</label>
+          <select
+            v-model="selectedModeId"
+            class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+          >
+            <option
+              v-for="mode in modes.filter(m => !m.hidden)"
+              :key="mode.id"
+              :value="mode.id"
+            >
+              {{ mode.name }}
+            </option>
+          </select>
+        </div>
+
+        <div v-if="selectedMode">
+          <div v-if="(selectedMode.phases || []).length > 0" class="space-y-3 mb-4">
+            <div
+              v-for="(phase, index) in (selectedMode.phases || [])"
+              :key="phase.id"
+              class="border rounded-md bg-neutral-800/50 border-neutral-700"
+            >
+              <div class="flex items-center gap-2 p-2">
+                <input
+                  v-model="phase.name"
+                  type="text"
+                  placeholder="Phase name"
+                  class="w-32 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+                  @input="debouncedSaveModes"
+                />
+                <input
+                  v-model="phase.description"
+                  type="text"
+                  placeholder="Description of this phase"
+                  class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+                  @input="debouncedSaveModes"
+                />
+                <button
+                  @click="removePhase(index)"
+                  class="p-1 rounded-md hover:bg-neutral-700 hover:text-red-400 transition-all text-neutral-400"
+                  title="Remove phase"
+                >
+                  <X class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            @click="addPhase"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-2 border-dashed rounded-md border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            Add Phase
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      <!-- Quick Prompts -->
+      <CollapsibleSection label="Quick Prompts" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Short reusable prompts that can be quickly inserted into the chat input
+        </p>
+        <div class="space-y-3">
+          <div
+            v-for="(prompt, index) in quickPrompts"
+            :key="prompt.id"
+            class="flex items-start gap-3"
+          >
+            <textarea
+              v-auto-resize
+              v-model="prompt.text"
+              rows="1"
+              placeholder="Prompt text"
+              class="flex-1 px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all resize-none overflow-y-hidden"
+              style="max-height: calc(1.5em * 5 + 16px)"
+              @input="autoResize($event); debouncedSaveQuickPrompts()"
+            />
+            <button
+              @click="removeQuickPrompt(index)"
+              class="px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-neutral-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+              title="Remove prompt"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            @click="addQuickPrompt"
+            class="px-3 py-1.5 text-sm text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800/50 transition-all flex items-center gap-1.5"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            Add Prompt
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      <!-- Agent Hotkeys -->
+      <CollapsibleSection label="Agent Hotkeys" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Keyboard shortcuts available when the agent plugin is active
+        </p>
+        <div class="space-y-6">
+          <div class="group">
+            <KeyboardShortcutInput
+              v-model="hotkeys.textToSpeech"
+              id="text-to-speech"
+              label="Text to Speech"
+              container-class="flex-1"
+              :show-reset-button="true"
+              @change="saveHotkeys"
+            />
+            <p class="mt-1.5 text-xs text-neutral-600">
+              Convert agent responses to speech (currently a stub feature)
+            </p>
+          </div>
+
+          <div class="group">
+            <KeyboardShortcutInput
+              v-model="hotkeys.switchMode"
+              id="switch-mode"
+              label="Switch Mode"
+              container-class="flex-1"
+              :show-reset-button="true"
+              @change="saveHotkeys"
+            />
+            <p class="mt-1.5 text-xs text-neutral-600">
+              Cycle through chat modes (Plan → Work → Chat → Note) - Works across all plugins
+            </p>
+          </div>
+        </div>
+      </CollapsibleSection>
+    </div>
+
     <!-- Status Management Section -->
     <CollapsibleSection label="Thread Statuses" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
@@ -191,7 +413,7 @@
 
     <!-- Display Options Section -->
     <div class="border-t border-neutral-800 pt-8">
-      <CollapsibleSection label="Display Options" :default-open="true">
+      <CollapsibleSection label="Display Options" :default-open="true" class="mb-8">
         <p class="text-sm text-neutral-500 mb-4">
           Configure how threads are displayed in the list
         </p>
@@ -356,14 +578,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
+import { ref, reactive, computed, nextTick, type Directive } from 'vue'
+import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
+import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import { useDebounce } from '@/core/composables/useDebounce'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
-import type { ThreadsSettings, ThreadStatusOption, ThreadTagOption, ChatStateConfig } from '@app/api'
+import type {
+  ThreadsSettings,
+  ThreadStatusOption,
+  ThreadTagOption,
+  ChatStateConfig,
+  AgentSettings,
+  AgentMode,
+  AgentPhase,
+  QuickPrompt,
+} from '@app/api'
 
 interface Props {
   settings?: ThreadsSettings
@@ -395,6 +627,18 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
 
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
+
+// ---- Chat (agent) settings ----
+const chatSettings = props.settings?.chat
+const skipRevertConfirm = ref(chatSettings?.skipRevertConfirm ?? false)
+const modes = ref<AgentMode[]>(chatSettings?.modes ? chatSettings.modes.map(m => ({ ...m, phases: m.phases ? [...m.phases] : undefined })) : [])
+const selectedModeId = ref<string>(modes.value.find(m => !m.hidden)?.id || '')
+const selectedMode = computed(() => modes.value.find(m => m.id === selectedModeId.value))
+const quickPrompts = ref<QuickPrompt[]>(chatSettings?.quickPrompts ? [...chatSettings.quickPrompts] : [])
+const hotkeys = reactive<AgentSettings['hotkeys']>({
+  textToSpeech: chatSettings?.hotkeys?.textToSpeech || null,
+  switchMode: chatSettings?.hotkeys?.switchMode || null,
+})
 
 // Color picker state — single ref keyed by "section:index"
 const activePicker = ref<string | null>(null)
@@ -468,6 +712,23 @@ const saveClickToChat = () => {
   })
 }
 
+// ---- Chat (agent) save helpers ----
+const saveSkipRevertConfirm = () => {
+  emit('update-setting', { path: ['chat', 'skipRevertConfirm'], value: skipRevertConfirm.value })
+}
+
+const saveModes = () => {
+  emit('update-setting', { path: ['chat', 'modes'], value: modes.value })
+}
+
+const saveQuickPrompts = () => {
+  emit('update-setting', { path: ['chat', 'quickPrompts'], value: quickPrompts.value })
+}
+
+const saveHotkeys = () => {
+  emit('update-setting', { path: ['chat', 'hotkeys'], value: hotkeys })
+}
+
 // Use the debounce composable for text input
 const { debounced: debouncedSave } = useDebounce(() => {
   saveStatuses()
@@ -480,6 +741,77 @@ const { debounced: debouncedSaveTags } = useDebounce(() => {
 const { debounced: debouncedSaveChatStates } = useDebounce(() => {
   saveChatStates()
 }, 500)
+
+const { debounced: debouncedSaveModes } = useDebounce(() => {
+  saveModes()
+}, 500)
+
+const { debounced: debouncedSaveQuickPrompts } = useDebounce(() => {
+  saveQuickPrompts()
+}, 500)
+
+// Mode management
+const addMode = () => {
+  modes.value.push({ id: `mode_${Date.now()}`, name: '', description: '' })
+  saveModes()
+}
+
+const toggleMode = (index: number) => {
+  modes.value[index].disabled = !modes.value[index].disabled
+  debouncedSaveModes()
+}
+
+const removeMode = (index: number) => {
+  if (modes.value.length <= 1) return
+  const removed = modes.value[index]
+  modes.value.splice(index, 1)
+  if (removed.id === selectedModeId.value) {
+    selectedModeId.value = modes.value.find(m => !m.hidden)?.id || ''
+  }
+  saveModes()
+}
+
+// Phase management
+const addPhase = () => {
+  if (!selectedMode.value) return
+  const newPhase: AgentPhase = { id: `phase_${Date.now()}`, name: '', description: '' }
+  if (!selectedMode.value.phases) selectedMode.value.phases = []
+  selectedMode.value.phases.push(newPhase)
+  saveModes()
+}
+
+const removePhase = (index: number) => {
+  if (!selectedMode.value?.phases) return
+  selectedMode.value.phases.splice(index, 1)
+  saveModes()
+}
+
+// Quick-prompt management
+const addQuickPrompt = () => {
+  quickPrompts.value.push({ id: `qp_${Date.now()}`, text: '' })
+  saveQuickPrompts()
+}
+
+const removeQuickPrompt = (index: number) => {
+  quickPrompts.value.splice(index, 1)
+  saveQuickPrompts()
+}
+
+// Auto-resize directive for quick-prompt textareas
+const resizeTextarea = (el: HTMLTextAreaElement) => {
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+  const maxHeight = parseFloat(getComputedStyle(el).maxHeight)
+  el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+}
+
+const autoResize = (event: Event) => {
+  resizeTextarea(event.target as HTMLTextAreaElement)
+}
+
+const vAutoResize: Directive<HTMLTextAreaElement> = {
+  mounted(el) { nextTick(() => resizeTextarea(el)) },
+}
 
 // Status management
 const addStatus = () => {
