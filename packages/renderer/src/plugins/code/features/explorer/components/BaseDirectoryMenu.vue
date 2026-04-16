@@ -22,35 +22,6 @@
             :side-offset="5"
             align="start"
           >
-            <DropdownMenuItem
-              @select="$emit('open-directory')"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderOpen class="w-4 h-4" />
-              Open Directory
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              @select="$emit('open-terminal')"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Terminal class="w-4 h-4" />
-              Open Terminal Here
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              @select="copyPath()"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Copy class="w-4 h-4" />
-              Copy Path
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              @select="openInFinder()"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <FolderOpen class="w-4 h-4" />
-              Open in Finder
-            </DropdownMenuItem>
-            <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
             <DropdownMenuSub v-if="allProjects.length > 0">
               <DropdownMenuSubTrigger
                 class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -86,9 +57,38 @@
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
+            <DropdownMenuSeparator v-if="allProjects.length > 0" class="h-px my-1 bg-neutral-700" />
+            <DropdownMenuItem
+              @select="$emit('open-directory')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Open Directory
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              @select="$emit('open-terminal')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Terminal class="w-4 h-4" />
+              Open Terminal Here
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              @select="copyPath()"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <Copy class="w-4 h-4" />
+              Copy Path
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              @select="openInFinder()"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <FolderOpen class="w-4 h-4" />
+              Open in Finder
+            </DropdownMenuItem>
             <ProjectMenuItems
               :directory-path="baseDirectory"
-              :show-separator="false"
+              :show-separator="true"
               :ItemComponent="DropdownMenuItem"
               :SeparatorComponent="DropdownMenuSeparator"
               :SubComponent="DropdownMenuSub"
