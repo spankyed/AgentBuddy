@@ -133,9 +133,9 @@ const NODE_STYLE_CLASSES = {
 // Status styling classes (static for Tailwind)
 const STATUS_STYLE_CLASSES = {
   simple: {
-    active: 'bg-green-400 shadow-green-400/50 shadow-sm',
+    active: 'bg-blue-400 shadow-blue-400/50 shadow-sm',
     paused: 'bg-yellow-400 shadow-yellow-400/50 shadow-sm',
-    completed: 'bg-blue-400 shadow-blue-400/50 shadow-sm',
+    completed: 'bg-green-500 shadow-green-500/70 shadow-md',
     failed: 'bg-red-400 shadow-red-400/50 shadow-sm',
     default: 'bg-neutral-400'
   },
