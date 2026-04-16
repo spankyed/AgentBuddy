@@ -70,14 +70,14 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
       return false
     }
 
-    // Trap Tab inside the editor — listKeymap handles indent/outdent in lists
+    // Trap Tab inside the editor. preventDefault blocks the browser's focus
+    // shift; returning false lets ProseMirror's listKeymap still run
+    // sinkListItem / liftListItem when the cursor is in a list item, and
+    // swallows Tab harmlessly everywhere else (including orphaned list
+    // items where sink/lift fails).
     if (event.key === 'Tab') {
-      const { $head } = view.state.selection
-      for (let d = $head.depth; d > 0; d--) {
-        const nodeName = $head.node(d).type.name
-        if (nodeName === 'listItem' || nodeName === 'taskItem') return false
-      }
-      return true
+      event.preventDefault()
+      return false
     }
 
     // ⌘+Shift+V → paste as plain text, parsed as markdown for structure
