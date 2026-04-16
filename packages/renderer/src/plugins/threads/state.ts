@@ -733,9 +733,15 @@ const threadsState = setup({
     }),
     addArtifact: assign(({ context, event }) => {
       const { tabId, artifact } = typeOf('ARTIFACT_ADDED', event);
-      const tabs = context.tabs.map(tab =>
-        tab.id === tabId ? { ...tab, artifacts: [...tab.artifacts, artifact] } : tab
-      );
+      const tabs = context.tabs.map(tab => {
+        if (tab.id !== tabId) return tab;
+        const artifacts = [...tab.artifacts, artifact];
+        const selectedArtifactId =
+          tab.selectedArtifactId && artifacts.some(a => a.id === tab.selectedArtifactId)
+            ? tab.selectedArtifactId
+            : artifact.id;
+        return { ...tab, artifacts, selectedArtifactId };
+      });
       return { tabs };
     }),
     updateArtifact: assign(({ context, event }) => {
@@ -1088,27 +1094,20 @@ const threadsState = setup({
     THREAD_TAB_REQUESTED: {
       actions: assign(({ context, event }) => {
         const { threadId, topic, artifacts, pinned } = typeOf('THREAD_TAB_REQUESTED', event);
-        const label = topic;
         const existingTab = context.tabs.find(t => t.id === threadId);
-
-        if (existingTab) {
-          return {
-            tabs: context.tabs.map(tab =>
-              tab.id === threadId ? { ...tab, label, artifacts, ...(pinned !== undefined && { pinned }) } : tab
-            ),
-            activeTabId: threadId
-          };
-        }
+        const selectedArtifactId =
+          existingTab?.selectedArtifactId && artifacts.some(a => a.id === existingTab.selectedArtifactId)
+            ? existingTab.selectedArtifactId
+            : artifacts[0]?.id;
+        const patch = { label: topic, artifacts, selectedArtifactId };
 
         return {
-          tabs: [...context.tabs, {
-            id: threadId,
-            label,
-            artifacts,
-            selectedArtifactId: artifacts[0]?.id,
-            ...(pinned && { pinned }),
-          }],
-          activeTabId: threadId
+          tabs: existingTab
+            ? context.tabs.map(tab =>
+                tab.id === threadId ? { ...tab, ...patch, ...(pinned !== undefined && { pinned }) } : tab
+              )
+            : [...context.tabs, { id: threadId, ...patch, ...(pinned && { pinned }) }],
+          activeTabId: threadId,
         };
       })
     },
