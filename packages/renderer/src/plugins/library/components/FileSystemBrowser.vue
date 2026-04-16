@@ -173,37 +173,45 @@
           >
             <RefreshCw class="w-4 h-4" />
           </Button>
-          <ContextMenuRoot>
-            <ContextMenuTrigger as-child>
-              <Button
-                @click="createFolder"
-                variant="transparent"
-                size="sm"
-                class="border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400"
-              >
-                <FolderPlus class="w-4 h-4" />
-                <span class="hidden @lg:inline">New Folder</span>
-              </Button>
-            </ContextMenuTrigger>
-            <ContextMenuPortal>
-              <ContextMenuContent class="z-50 min-w-[160px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md">
-                <ContextMenuItem
-                  @select="createFolder"
-                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+          <div class="inline-flex items-center h-7 rounded-md border border-neutral-600 bg-neutral-700 hover:border-neutral-500 transition-colors">
+            <button
+              @click="createFolder"
+              @contextmenu.prevent="createSymlinkFolder"
+              class="flex items-center gap-1.5 h-full px-2 text-sm text-neutral-200 hover:bg-neutral-600 hover:text-neutral-100 rounded-l-md transition-colors"
+            >
+              <FolderPlus class="w-4 h-4" />
+              <span class="hidden @lg:inline">New Folder</span>
+            </button>
+            <DropdownMenuRoot v-model:open="folderMenuOpen">
+              <DropdownMenuTrigger as-child>
+                <button
+                  class="flex items-center justify-center h-full px-1 border-l border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-neutral-100 rounded-r-md transition-colors"
+                  aria-label="Folder creation options"
                 >
-                  <FolderPlus class="w-4 h-4" />
-                  New Folder
-                </ContextMenuItem>
-                <ContextMenuItem
-                  @select="createSymlinkFolder"
-                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                  <ChevronDown class="w-3 h-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent
+                  class="min-w-[180px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50"
+                  :side-offset="4"
                 >
-                  <Link class="w-4 h-4" />
-                  New Symlink
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenuPortal>
-          </ContextMenuRoot>
+                  <DropdownMenuItem
+                    @select="createFolder"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                  >
+                    <FolderPlus class="w-4 h-4" /> New Folder
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    @select="createSymlinkFolder"
+                    class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
+                  >
+                    <Link class="w-4 h-4" /> New Symlink Folder
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenuRoot>
+          </div>
           <Button @click="createDocument" variant="primary" size="sm" data-onboarding-id="library-create-button">
             <FileText class="w-4 h-4" />
             <span class="hidden @lg:inline">{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>
@@ -304,6 +312,7 @@ import {
   FolderPlus,
   FileText,
   ChevronLeft,
+  ChevronDown,
   Home,
   Trash2,
   // Search, // [SEARCH_INDEX_FF]
@@ -322,6 +331,11 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
   ContextMenuSeparator,
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
 } from 'reka-ui'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -485,6 +499,7 @@ const deleteDialog = reactive({
   isUnlink: false
 })
 
+const folderMenuOpen = ref(false)
 const symlinkInput = reactive({ show: false, path: '' })
 
 // Breadcrumb inline editing (reuse composable)
@@ -816,3 +831,4 @@ onUnmounted(() => {
 }
 
 </style>
+ 
