@@ -86,6 +86,6 @@ export function finishOnboarding(
 
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
-    mode: 'chat',
+    mode: 'manager',
   });
 }
