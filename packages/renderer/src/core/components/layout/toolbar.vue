@@ -1,5 +1,5 @@
 <template>
-  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar" :style="toolbarZoomStyle">
+  <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar" :style="toolbarZoomStyle" @contextmenu.prevent="onContextMenu">
     <!-- Window controls area (macOS traffic lights) -->
     <div class="window-controls-area flex-shrink-0 flex items-center justify-center border-b border-neutral-800" :style="controlsAreaStyle">
       <WindowControls v-if="!isMac" />
@@ -53,13 +53,21 @@
         DEV
       </span>
     </div>
+
+    <ContextMenuPopup :show="showMenu" :pos="menuPos" :items="pluginMenuItems" @close="showMenu = false" />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Plugin } from '@/core/types';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue';
+import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu';
+import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus';
+import { applicationState } from '@/main';
+import allPlugins from '@/plugins';
 
 defineEmits<(e: 'select-plugin', id: string) => void>();
 
@@ -70,6 +78,50 @@ const props = defineProps<{
 
 const pluginItems = computed(() => props.plugins.filter((item) => !item.isPinned));
 const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned));
+
+// --- Right-click menu: toggle plugin visibility ---
+const { showMenu, menuPos, open } = useContextMenu();
+const { updateSettings } = useSettingsSaveStatus();
+const pluginVisibility = useSelector(
+  applicationState,
+  (state) => state.context.pluginVisibility,
+);
+
+const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
+
+const togglePluginVisibility = (id: string) => {
+  if (id === 'settings') return; // Settings plugin cannot be hidden
+  updateSettings({
+    entityType: 'plugin',
+    label: '_meta',
+    path: ['visibility', id],
+    value: !isVisible(id),
+  });
+};
+
+const pluginMenuItems = computed<MenuItem[]>(() =>
+  allPlugins.flatMap((plugin) => {
+    if (!plugin.icon) return [];
+    const locked = plugin.id === 'settings';
+    const visible = isVisible(plugin.id);
+    const textClass = locked
+      ? 'text-neutral-600 cursor-not-allowed'
+      : visible
+        ? 'text-neutral-200'
+        : 'text-neutral-500';
+    return [{
+      label: plugin.label,
+      icon: plugin.icon,
+      class: textClass,
+      iconClass: textClass,
+      action: () => togglePluginVisibility(plugin.id),
+    }];
+  }),
+);
+
+const onContextMenu = (e: MouseEvent) => {
+  open(e, pluginMenuItems.value.length);
+};
 
 const isDev = import.meta.env.DEV;
 
