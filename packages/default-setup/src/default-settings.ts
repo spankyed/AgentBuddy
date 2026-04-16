@@ -82,6 +82,8 @@ const settings: SettingsData = {
     },
     threads: {
       chat: {
+        defaultMode: 'work',
+        defaultPhase: 'plan',
         modes: [
           { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
           {

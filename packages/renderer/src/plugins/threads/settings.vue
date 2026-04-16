@@ -151,6 +151,49 @@
         </div>
       </CollapsibleSection>
 
+      <!-- Default Mode -->
+      <CollapsibleSection label="Default Mode" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Mode and phase applied when starting a new thread or launching the app.
+        </p>
+        <div class="flex items-end gap-3">
+          <div class="flex-1">
+            <label class="block text-sm text-neutral-400 mb-2">Mode</label>
+            <select
+              v-model="defaultMode"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+              @change="onDefaultModeChange"
+            >
+              <option value="">(Use current)</option>
+              <option
+                v-for="mode in selectableDefaultModes"
+                :key="mode.id"
+                :value="mode.id"
+              >
+                {{ mode.name }}
+              </option>
+            </select>
+          </div>
+          <div v-if="defaultModePhases.length > 0" class="flex-1">
+            <label class="block text-sm text-neutral-400 mb-2">Phase</label>
+            <select
+              v-model="defaultPhase"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
+              @change="saveDefaultPhase"
+            >
+              <option value="">(Use first phase)</option>
+              <option
+                v-for="phase in defaultModePhases"
+                :key="phase.id"
+                :value="phase.id"
+              >
+                {{ phase.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </CollapsibleSection>
+
       <!-- Quick Prompts -->
       <CollapsibleSection label="Quick Prompts" :default-open="true" class="mb-8">
         <p class="text-sm text-neutral-500 mb-4">
@@ -627,6 +670,17 @@ const hotkeys = reactive<AgentSettings['hotkeys']>({
   textToSpeech: chatSettings?.hotkeys?.textToSpeech || null,
   switchMode: chatSettings?.hotkeys?.switchMode || null,
 })
+const defaultMode = ref<string>(chatSettings?.defaultMode ?? '')
+const defaultPhase = ref<string>(chatSettings?.defaultPhase ?? '')
+
+const selectableDefaultModes = computed(() =>
+  modes.value.filter(m => !m.hidden && !m.disabled)
+)
+
+const defaultModePhases = computed(() => {
+  const mode = modes.value.find(m => m.id === defaultMode.value)
+  return mode?.phases ?? []
+})
 
 // Save functions
 const saveStatuses = () => {
@@ -695,6 +749,24 @@ const saveQuickPrompts = () => {
 
 const saveHotkeys = () => {
   emit('update-setting', { path: ['chat', 'hotkeys'], value: hotkeys })
+}
+
+const saveDefaultMode = () => {
+  emit('update-setting', { path: ['chat', 'defaultMode'], value: defaultMode.value || undefined })
+}
+
+const saveDefaultPhase = () => {
+  emit('update-setting', { path: ['chat', 'defaultPhase'], value: defaultPhase.value || undefined })
+}
+
+const onDefaultModeChange = () => {
+  // Clear phase if it doesn't belong to the newly-selected mode
+  const phases = defaultModePhases.value
+  if (defaultPhase.value && !phases.some(p => p.id === defaultPhase.value)) {
+    defaultPhase.value = ''
+    saveDefaultPhase()
+  }
+  saveDefaultMode()
 }
 
 // Use the debounce composable for text input

@@ -3,7 +3,7 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.0',
-  description: 'Add claude-session tag, replace chat/note modes with manager mode, backfill recentThreadsLimit',
+  description: 'Add claude-session tag, replace chat/note modes with manager mode, backfill recentThreadsLimit, seed default mode/phase',
   up: () => {
     const data = settingsQueries.getSettings();
 
@@ -114,6 +114,16 @@ export const migration: Migration = {
     // 7. Backfill recentThreadsLimit default (introduced in 0.2.0)
     if (data.plugins?.threads?.recentThreadsLimit === undefined) {
       settingsCommands.updateSettings('plugin', 'threads', ['recentThreadsLimit'], 7);
+    }
+
+    // 8. Seed default mode/phase for "New Thread" (introduced in 0.2.0).
+    // Only set when absent so existing user customization is preserved.
+    const chat = (data.plugins as any)?.threads?.chat ?? {};
+    if (chat.defaultMode === undefined) {
+      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultMode'], 'work');
+    }
+    if (chat.defaultPhase === undefined) {
+      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultPhase'], 'plan');
     }
   },
 };

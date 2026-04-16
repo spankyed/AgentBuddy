@@ -43,6 +43,28 @@ function extractChatSettings(chatSettings: AgentSettings) {
   return { chatSettings, hotkeys, modes: chatSettings.modes || [] };
 }
 
+function resolveDefaultModePhase(
+  settings: AgentSettings | undefined,
+  modes: AgentModeConfig[],
+  fallbackMode: string,
+  fallbackPhase: string | undefined,
+): { mode: string; phase: string | undefined } {
+  const preferred = settings?.defaultMode;
+  const modeOk = !!preferred && modes.some(m => m.id === preferred && !m.hidden && !m.disabled);
+  const mode = modeOk ? preferred! : fallbackMode;
+
+  const modeConfig = modes.find(m => m.id === mode);
+  const hasPhases = !!modeConfig?.phases?.length;
+  const preferredPhase = settings?.defaultPhase;
+  const phaseOk = hasPhases && !!preferredPhase
+    && modeConfig!.phases!.some(p => p.id === preferredPhase);
+  const phase = phaseOk
+    ? preferredPhase!
+    : (hasPhases ? modeConfig!.phases![0].id : fallbackPhase);
+
+  return { mode, phase };
+}
+
 export type ThreadsState = ActorRefFrom<typeof threadsState>;
 
 const defaultThread: ThreadCreateData | ThreadViewData = {
@@ -546,12 +568,14 @@ const threadsState = setup({
       });
     },
     clearThread: assign(({ context }) => {
-      const modeConfig = context.modes.find(m => m.id === context.mode);
-      const defaultPhase = modeConfig?.phases?.length ? modeConfig.phases[0].id : context.phase;
+      const { mode, phase } = resolveDefaultModePhase(
+        context.chatSettings, context.modes, context.mode, context.phase,
+      );
       return {
         currentThread: { ...defaultChatThread, messages: [] },
-        phase: defaultPhase,
-        phaseByMode: { ...context.phaseByMode, [context.mode]: defaultPhase },
+        mode,
+        phase: phase ?? '',
+        phaseByMode: { ...context.phaseByMode, [mode]: phase },
       };
     }),
     handleTokenStream: assign(({ context, event }) => {
@@ -655,11 +679,12 @@ const threadsState = setup({
         modeUpdate = { mode: forcedMode, phase: newPhase };
       } else {
         const visibleModes = extracted.modes.filter(m => !m.hidden);
-        const defaultMode = visibleModes[0];
-        if (defaultMode) {
-          const defaultPhase = defaultMode.phases?.length ? defaultMode.phases[0].id : undefined;
-          modeUpdate = { mode: defaultMode.id, phase: defaultPhase };
-        }
+        const fallbackMode = visibleModes[0]?.id ?? context.mode;
+        const fallbackPhase = visibleModes[0]?.phases?.[0]?.id;
+        const { mode, phase } = resolveDefaultModePhase(
+          extracted.chatSettings, extracted.modes, fallbackMode, fallbackPhase,
+        );
+        modeUpdate = { mode, phase };
       }
 
       return {

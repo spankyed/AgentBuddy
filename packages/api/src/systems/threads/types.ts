@@ -346,6 +346,8 @@ export interface AgentSettings {
   };
   quickPrompts?: QuickPrompt[];
   skipRevertConfirm?: boolean;
+  defaultMode?: string;
+  defaultPhase?: string;
 }
 
 export type AgentConnectedData = {
