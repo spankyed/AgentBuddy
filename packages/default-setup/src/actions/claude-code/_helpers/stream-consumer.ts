@@ -200,6 +200,13 @@ export async function consumeStream(
               recent.push({ name: block.name, summary, at: Date.now() });
               return { recentTools: recent };
             });
+          } else if (block?.type === 'text' && typeof block.text === 'string' && block.text.length > 0) {
+            // Fallback: some CLI turns deliver assistant prose via a terminal
+            // `text` content block instead of streamed `text_delta` events
+            // (observed after --resume-session-at / --fork-session, and on
+            // tool-only-then-text turns). Only harvest if nothing streamed
+            // into this message's writer yet — otherwise we'd duplicate.
+            if (!writer.text) writer.push(block.text);
           }
         }
         continue;
@@ -449,9 +456,22 @@ export async function consumeStream(
     // Finalize writers (needs closure references).
     const hadToolErrors = toolActivity.entries.some(e => e.status === 'error');
     toolActivity.finalise(hadToolErrors ? 'error' : 'done');
-    writer.finalize(writer.text || result.text);
-    // Completed message becomes forkable.
-    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+    // If the stream produced text (either via streamed deltas into `writer`
+    // or a terminal `result.result` string), finalize with it. Otherwise
+    // leave `text` untouched and mark the message complete — mirrors the
+    // paused-turn guard in the catch branch below (lines ~506-516). Without
+    // this check, tool-only turns or turns where the CLI's assistant prose
+    // arrived on a non-streaming code path would clobber the "Thinking…"
+    // placeholder with an empty string.
+    if (writer.text || result.text) {
+      writer.finalize(writer.text || result.text);
+      services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+    } else {
+      services.chat.updateMessageState(currentMessageId as any, {
+        responseTimestamp: Date.now(),
+        forkable: true,
+      } as any);
+    }
     log.debug('stream consumer completed');
 
     // Close stdin so the CLI process exits cleanly (prevents child leak).

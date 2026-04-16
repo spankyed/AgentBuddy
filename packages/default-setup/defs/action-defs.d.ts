@@ -4502,51 +4502,6 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "INSPECT_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_KILLED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_STARTED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_PAUSED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_RESUMED";
-        pluginId: "brain";
-    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         faqs: FAQItem[];
@@ -4620,6 +4575,51 @@ declare const events: {
         type: "SECRETS.EVENT.ERROR";
         message: string;
         pluginId: "settings";
+    } | {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "INSPECT_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_KILLED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_STARTED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_PAUSED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_RESUMED";
+        pluginId: "brain";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -6228,6 +6228,48 @@ interface QueryHandle {
     kill(): void;
 }
 
+/**
+ * Low-level process primitives for the Claude Code wrapper.
+ *
+ * Two flavours, because the CLI has two very different execution modes:
+ *
+ * 1. `execOnce` — one-shot subcommands (`claude mcp list`, `claude auth status`,
+ *    …). Resolves when the child exits. Uses a bounded timeout. Translates
+ *    spawn/exit errors into typed `ClaudeCodeError` subclasses.
+ *
+ * 2. `spawnStream` — long-lived `claude -p --input-format stream-json
+ *    --output-format stream-json` for interactive conversations. Returns a
+ *    handle the caller uses to push user turns (stdin) and iterate events
+ *    (stdout) until the child exits. Abort via `AbortSignal`.
+ *
+ * Neither primitive knows anything about the wire protocol — they just move
+ * bytes. The stream-json schema lives in `types.ts` and parsing in `ndjson.ts`.
+ */
+
+interface ExecOnceOptions {
+    cwd?: string;
+    /**
+     * Override the env passed to the child. Defaults to a copy of `process.env`
+     * with `ANTHROPIC_API_KEY` removed so the CLI uses its own stored auth
+     * (`claude auth login`) instead of an env-var key meant for the server's
+     * LLM client. Pass an explicit object if you want no scrubbing — the
+     * helper assumes you know what you're doing and does not post-process it.
+     */
+    env?: NodeJS.ProcessEnv;
+    /** Bytes piped to stdin. Pass `undefined` to leave stdin closed. */
+    input?: string;
+    /** Milliseconds until the child is SIGKILL'd and a ClaudeTimeoutError thrown. */
+    timeoutMs?: number;
+    signal?: AbortSignal;
+    /** Override the resolved CLI path (primarily for testing). */
+    cliPath?: string;
+}
+interface ExecOnceResult {
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+}
+
 interface SessionInfo {
     id: string;
     file: string;
@@ -6308,6 +6350,14 @@ interface CliServiceType {
         getHandle(key: string): QueryHandle | undefined;
         /** Clear a stored handle (call on query end to avoid leaking references). */
         clearHandle(key: string): void;
+        /**
+         * Low-level one-shot CLI invocation. Used by `CC: Handle Revert` to run
+         * `claude --resume <sid> --rewind-files <uuid>` for file-rewind on revert.
+         * `cwd` defaults to the configured project directory.
+         */
+        exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & {
+            cwd?: string;
+        }): Promise<ExecOnceResult>;
     };
 }
 

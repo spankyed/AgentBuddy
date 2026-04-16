@@ -45,11 +45,11 @@ export async function action(
   const state = getClaudeState(services, threadId);
 
   // Kill the active CLI process if one is running.
-  const handle = (services.cli as any).claudeCode.getHandle(threadId);
+  const handle = services.cli.claudeCode.getHandle(threadId);
   if (handle) {
     log.debug('killing active CLI handle on revert', { threadId });
     handle.kill();
-    (services.cli as any).claudeCode.clearHandle(threadId);
+    services.cli.claudeCode.clearHandle(threadId);
   }
 
   // Find the CLI UUID of the last remaining assistant message.
@@ -79,24 +79,45 @@ export async function action(
 
     if (userCliUuid) {
       log.debug('restoring files via --rewind-files', { threadId, userCliUuid });
+      let failureDetail: string | undefined;
       try {
         // Use execOnce for the one-shot rewind — query() is too heavy
         // (full pump/event-queue plumbing for a CLI that exits immediately).
-        const result = await (services.cli as any).claudeCode.exec([
+        const result = await services.cli.claudeCode.exec([
           '--resume', state.sessionId,
           '--rewind-files', userCliUuid,
         ]);
         filesRestored = result.exitCode === 0;
         if (!filesRestored) {
+          failureDetail = (result.stderr || '').trim() || `exit ${result.exitCode}`;
           log.warn('file restore exited with non-zero', { exitCode: result.exitCode, stderr: result.stderr });
         } else {
           log.debug('files restored successfully');
         }
       } catch (rewindErr: any) {
+        failureDetail = rewindErr?.message || 'unknown error';
         log.warn('file restore failed', { message: rewindErr?.message });
+      }
+      if (!filesRestored) {
+        // Surface the failure so the user isn't left thinking files were
+        // restored when they weren't. Inline message, not auto-hidden —
+        // this is an action they explicitly requested and the outcome
+        // diverged from expectation.
+        services.chat.sendBlockMessage({
+          threadId: threadId as EntityId,
+          text: `⚠️ Could not restore files — ${failureDetail ?? 'rewind call failed'}.`,
+          blocks: [],
+          forkable: false,
+        });
       }
     } else {
       log.warn('no CLI UUID on reverted user message — cannot restore files', { messageId });
+      services.chat.sendBlockMessage({
+        threadId: threadId as EntityId,
+        text: '⚠️ Could not restore files — no CLI UUID on the reverted user message.',
+        blocks: [],
+        forkable: false,
+      });
     }
   }
 

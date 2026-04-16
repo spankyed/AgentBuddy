@@ -4,6 +4,7 @@ import { repository } from '@/repository'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '@/systems/code/types'
 import { claudeCode } from '@/services/claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions } from '@/services/claude-code'
+import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
 
 interface CodeSettings {
@@ -47,6 +48,12 @@ export interface CliServiceType {
     getHandle(key: string): QueryHandle | undefined
     /** Clear a stored handle (call on query end to avoid leaking references). */
     clearHandle(key: string): void
+    /**
+     * Low-level one-shot CLI invocation. Used by `CC: Handle Revert` to run
+     * `claude --resume <sid> --rewind-files <uuid>` for file-rewind on revert.
+     * `cwd` defaults to the configured project directory.
+     */
+    exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & { cwd?: string }): Promise<ExecOnceResult>
   }
 }
 
@@ -130,6 +137,10 @@ function createCliService(): CliServiceType {
       storeHandle,
       getHandle,
       clearHandle,
+      exec(args, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        return claudeCode.exec(args, { ...opts, cwd })
+      },
     },
   }
 }
