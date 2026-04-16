@@ -315,6 +315,13 @@ watch(messagesContent, (el, _, onCleanup) => {
 }
 
 .inputContainer {
-  min-height: min-content;
+  // Cap the input at the chat area's height. When the form is taller than the cap
+  // (lots of attachments + a small chat panel), anchor it to the bottom and clip
+  // the top — so the toolbar (Send/Pause/Mode) stays visible.
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  max-height: 100%;
 }
 </style>
