@@ -278,7 +278,7 @@ const selectedPR = useSelector(prActor, (state: any) => state.context.selectedPR
 const prComments = useSelector(prActor, (state: any) => state.context.prComments)
 const reviewThreads = useSelector(prActor, (state: any) => state.context.reviewThreads)
 const commentTab = useSelector(prActor, (state: any) => state.context.commentTab)
-const isSubmittingComment = useSelector(prActor, (state: any) => state.context.isSubmittingComment)
+const isSubmittingComment = useSelector(prActor, (state: any) => state.context.inflightMutations > 0)
 const viewMode = useSelector(prActor, (state: any) => state.context.viewMode)
 const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAvailable)
 const prAccess = useSelector(prActor, (state: any) => state.context.prAccess)

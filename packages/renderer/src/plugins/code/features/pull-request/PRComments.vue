@@ -273,6 +273,7 @@ import {
 } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import type { GhPRComment, GhReviewThread, GhReviewComment } from '@app/api'
+import { getCommentDatabaseId } from './comment-id'
 
 const props = defineProps<{
   comments: GhPRComment[]
@@ -302,11 +303,6 @@ function submitNewComment() {
   if (!newCommentBody.value.trim()) return
   emit('create-comment', newCommentBody.value)
   newCommentBody.value = ''
-}
-
-function getCommentDatabaseId(comment: GhPRComment): number | null {
-  const match = comment.url.match(/issuecomment-(\d+)/)
-  return match ? parseInt(match[1]) : null
 }
 
 // Edit comment
