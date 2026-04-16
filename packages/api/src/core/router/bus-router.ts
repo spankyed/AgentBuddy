@@ -6,7 +6,7 @@ import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import type { AnyRouter } from '@trpc/server';
 
-const logger = createLogger('bus-router');
+const logger = createLogger('app-events');
 
 export const systemBusRouter = router({
   send: procedure
@@ -14,7 +14,6 @@ export const systemBusRouter = router({
     .mutation(({ ctx, input }) => {
       // Emit to root event emitter
       logger.info(`→ Incoming: "${input.type}"`, { event: input });
-      // logger.info(`→ Incoming: "${input.type}"`);
 
       rootEvents.emitIncoming(input);
     }),

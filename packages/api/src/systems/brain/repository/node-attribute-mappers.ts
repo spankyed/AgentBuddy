@@ -167,11 +167,11 @@ export function prepareNodeAttributes(
     truncatedAttributes[key] = truncateResult(value);
   }
 
-  brainInspect(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
-    baseAttributeKeys: Object.keys(baseAttributes),
-    mappedParamKeys: mappedParams ? Object.keys(mappedParams) : [],
-    finalAttributeKeys: Object.keys(truncatedAttributes)
-  });
+  // brainInspect(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
+  //   baseAttributeKeys: Object.keys(baseAttributes),
+  //   mappedParamKeys: mappedParams ? Object.keys(mappedParams) : [],
+  //   finalAttributeKeys: Object.keys(truncatedAttributes)
+  // });
 
   return truncatedAttributes;
 }

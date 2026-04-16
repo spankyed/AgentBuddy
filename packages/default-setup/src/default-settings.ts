@@ -173,7 +173,8 @@ const settings: SettingsData = {
     },
     logs: {
       maxLogs: 1000,
-      excludedSources: []
+      excludedSources: [],
+      showAppEvents: false
     }
   },
   internal: {

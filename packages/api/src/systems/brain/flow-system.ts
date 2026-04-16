@@ -181,7 +181,7 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
-          brainInspect(`Registered flow actor: ${flowTNodeId}`);
+          // brainInspect(`Registered flow actor: ${flowTNodeId}`);
         },
         unregisterFlowActor: () => {
           // Clean up this flow actor from the registry
@@ -251,9 +251,9 @@ export function createFlowNodeSystem(
               lastStep: undefined,
             };
 
-            brainInspect(`${flowTNodeId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
-              { eventData, eventNodeId: eventNode.id }
-            );
+            // brainInspect(`${flowTNodeId} received event: ${eventType} for node ${eventNode.id}. Will begin handling.`,
+            //   { eventData, eventNodeId: eventNode.id }
+            // );
 
             // Spawn ALL connected downstream steps in parallel
             for (const step of allSteps) {

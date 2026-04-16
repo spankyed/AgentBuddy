@@ -24,6 +24,7 @@ export interface LogsContext {
   settings: {
     maxLogs: number;
     excludedSources: string[];
+    showAppEvents?: boolean;
   };
 }
 

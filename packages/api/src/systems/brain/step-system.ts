@@ -42,9 +42,9 @@ export function createStepNodeSystem(
       actions: {
         executeStep: ({ context, self }) => {
           try {
-            brainInspect(
-              `Executing step: ${context.step.label} (${context.step.nodeType})`,
-            );
+            // brainInspect(
+            //   `Executing step: ${context.step.label} (${context.step.nodeType})`,
+            // );
 
             // Delegate to step executor with TNode
             executeNode(context.tNode, context.step, executionContext, self);

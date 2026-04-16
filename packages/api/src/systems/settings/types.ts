@@ -159,6 +159,7 @@ export interface NotesSettings {
 export interface LogsSettings {
   maxLogs: number; // Maximum number of logs to keep in memory
   excludedSources: string[]; // Array of source patterns to exclude from display
+  showAppEvents?: boolean; // When false/undefined, hide `app-events` source logs from the list
 }
 
 export interface PluginSettings {

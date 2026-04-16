@@ -12,7 +12,7 @@ export function keepAliveNodeHandler(
   executionContext: ExecutionContext,
   actor: any
 ) {
-  brainInspect(`Keep-alive node: ${node.label} - flow will remain active`);
+  // brainInspect(`Keep-alive node: ${node.label} - flow will remain active`);
   
   // Keep-alive nodes don't complete - they keep the flow running
   // The actor will stay in the executing state indefinitely

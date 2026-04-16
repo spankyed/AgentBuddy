@@ -13,6 +13,12 @@ import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 
 export const logs = 'logs' as const;
 
+// Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
+function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
+  const base = settings?.excludedSources ?? [];
+  return settings?.showAppEvents ? base : [...base, 'app-events'];
+}
+
 const busEvent = systemBus(logs);
 
 export const IncomingLogEvents = [
@@ -109,30 +115,30 @@ export const logsSystem = setup({
     sendLogsConnected: ({ context }) => {
       // Get current settings
       const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
-      const excludedSources = settings?.excludedSources || [];
-      
+      const excludedSources = effectiveExcludedSources(settings);
+
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
       const wrapped = emit(logs, {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
-        settings: settings ?? { maxLogs: 1000, excludedSources: [] }
+        settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
       });
       rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastNewLog: ({ context }) => {
       const newLog = context.logs[0];
-      
+
       // Get current settings from repository
       const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
-      const excludedSources = settings?.excludedSources || [];
-      
+      const excludedSources = effectiveExcludedSources(settings);
+
       // Check if new log should be excluded
       if (isSourceExcluded(newLog.source, excludedSources)) {
         return; // Don't broadcast excluded logs
       }
-      
+
       const wrapped = emit(logs, {
         type: 'LOG_ADDED',
         log: newLog,
@@ -142,11 +148,11 @@ export const logsSystem = setup({
     broadcastLogsUpdate: ({ context }) => {
       // Get current settings from repository
       const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
-      const excludedSources = settings?.excludedSources || [];
-      
+      const excludedSources = effectiveExcludedSources(settings);
+
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
-      
+
       const wrapped = emit(logs, {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,

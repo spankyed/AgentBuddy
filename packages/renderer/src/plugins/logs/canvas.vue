@@ -102,6 +102,19 @@
               </button>
             </div>
 
+            <!-- App-events toggle -->
+            <button
+              @click="toggleShowAppEvents"
+              class="flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded transition-colors"
+              :class="settings.showAppEvents
+                ? 'bg-neutral-800 text-neutral-100'
+                : 'text-neutral-500 hover:text-neutral-300'"
+              :title="settings.showAppEvents ? 'Hide app-events logs' : 'Show app-events logs'"
+            >
+              <Radio :size="14" />
+              <span>app-events</span>
+            </button>
+
             <!-- Excluded sources indicator -->
             <button
               v-if="settings.excludedSources && settings.excludedSources.length > 0"
@@ -328,7 +341,8 @@ import {
   FileWarning,
   Terminal,
   X,
-  Trash
+  Trash,
+  Radio
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -593,6 +607,26 @@ const openContextMenu = (event: MouseEvent, source: string) => {
 
 const closeContextMenu = () => {
   contextMenu.visible = false;
+};
+
+const toggleShowAppEvents = () => {
+  const next = !settings.value.showAppEvents;
+
+  // Optimistic local update so the toggle state flips immediately.
+  actor.send({
+    type: 'LOGS_SETTINGS_UPDATED',
+    settings: { ...settings.value, showAppEvents: next }
+  });
+
+  // Persist to settings (will round-trip back and trigger backend rebroadcast).
+  const settingsActor = applicationState.system.get('settings');
+  settingsActor.send({
+    type: 'SETTINGS.UPDATE',
+    entityType: 'plugin',
+    label: 'logs',
+    path: ['showAppEvents'],
+    value: next
+  });
 };
 
 const excludeSource = (source: string) => {
