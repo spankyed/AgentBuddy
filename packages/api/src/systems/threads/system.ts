@@ -667,11 +667,18 @@ export const threadsSystem = setup({
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
+      // Unified `thread.revert` brain event — the `kind` discriminator
+      // tells the claude-code flow which variant to run.
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
-        payload: { threadId, messageId, restoreFiles, userCliUuid },
+        payload: {
+          threadId,
+          messageId,
+          kind: restoreFiles ? 'rewind' : 'revert',
+          ...(restoreFiles && userCliUuid ? { userCliUuid } : {}),
+        },
       });
     },
     summarizeThread: ({ system, event }) => {
@@ -690,8 +697,8 @@ export const threadsSystem = setup({
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'thread.revert.summarize',
-        payload: { threadId, messageId },
+        eventType: 'thread.revert',
+        payload: { threadId, messageId, kind: 'summarize' },
       });
     },
     pauseTurn: ({ system, event }) => {

@@ -40,15 +40,21 @@ export function keepAlive(label: string = 'Keep Alive'): DSLStepNode {
   return { type: 'keep_alive', label };
 }
 
-/** Switch node with conditions and optional else */
+/**
+ * Switch node with conditions and optional else. Pass a `label` when the
+ * flow has more than one branch — the validator auto-labels switch nodes
+ * as "Switch 0" by default and duplicates across tracks collide.
+ */
 export function branch(
   conditions: DSLSwitchCondition[],
   elseSteps?: DSLStepNode[],
+  label?: string,
 ): DSLStepNode {
   return {
     type: 'switch',
     conditions,
     ...(elseSteps && { else: elseSteps }),
+    ...(label && { label }),
   };
 }
 

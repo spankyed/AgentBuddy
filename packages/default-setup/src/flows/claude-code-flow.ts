@@ -192,33 +192,53 @@ export default {
     ),
     // ─── Thread lifecycle ────────────────────────────────────────────
     // Clean up Claude Code state when threads are reverted or forked.
+    // Unified revert-family route — the `kind` discriminator routes to
+    // the plain revert, the --rewind-files variant, or the /compact
+    // summarize variant.
     on(
       "thread.revert",
       [[
-        action("CC: Handle Revert", {
-          label: "revert",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-            messageId: "$.event.data.payload.messageId",
-            restoreFiles: "$.event.data.payload.restoreFiles",
-            userCliUuid: "$.event.data.payload.userCliUuid",
+        branch([
+          {
+            if: "$.event.data.payload.kind == 'revert'",
+            steps: [
+              action("CC: Handle Revert", {
+                label: "revert",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                  messageId: "$.event.data.payload.messageId",
+                },
+              }),
+            ],
           },
-        }),
+          {
+            if: "$.event.data.payload.kind == 'rewind'",
+            steps: [
+              action("CC: Handle Rewind", {
+                label: "rewind",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                  messageId: "$.event.data.payload.messageId",
+                  userCliUuid: "$.event.data.payload.userCliUuid",
+                },
+              }),
+            ],
+          },
+          {
+            if: "$.event.data.payload.kind == 'summarize'",
+            steps: [
+              action("CC: Handle Summarize", {
+                label: "summarize",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                  messageId: "$.event.data.payload.messageId",
+                },
+              }),
+            ],
+          },
+        ], undefined, "Route Revert Kind"),
       ]],
       "Thread reverted",
-    ),
-    on(
-      "thread.revert.summarize",
-      [[
-        action("CC: Handle Summarize", {
-          label: "summarize",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-            messageId: "$.event.data.payload.messageId",
-          },
-        }),
-      ]],
-      "Thread summarized",
     ),
     on(
       "thread.fork",
