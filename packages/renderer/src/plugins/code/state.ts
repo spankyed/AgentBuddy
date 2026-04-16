@@ -279,6 +279,13 @@ const codeState = setup({
       if (!context.tabsRestored) {
         return
       }
+      // Skip noisy per-tab saves while a restoration batch is still in flight,
+      // and avoid persisting an incomplete tab list if the app exits mid-restore.
+      // The save fires naturally on the LAST restoration arrival because addTab
+      // clears pendingTabOrder when the final expected path lands.
+      if (context.pendingTabOrder !== undefined) {
+        return
+      }
       saveOpenTabs(context.openFiles, context.activeFilePath)
       saveTabGroups(context.tabGroups)
     },
