@@ -2,37 +2,52 @@
   <div class="@container relative max-w-[80%] mx-auto pb-2" ref="containerRef">
     <div
       v-if="isOpen"
-      class="absolute bottom-full mb-2 left-0 right-0 px-2 pt-1 border border-neutral-800 bg-neutral-900 rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-slide-down z-50"
+      class="absolute bottom-full mb-2 left-0 right-0 p-1 border border-neutral-700 bg-neutral-900 rounded-lg shadow-xl max-h-80 overflow-y-auto animate-slide-down z-50"
     >
-
-
-      <div v-if="recentThreads.length === 0" class="py-2 text-center">
-        <div class="flex flex-col items-center space-y-2">
-          <!-- <History :size="32" class="text-neutral-600" /> -->
-          <p class="text-sm text-neutral-500">No threads yet</p>
+      <div v-if="recentThreads.length === 0" class="py-8 text-center">
+        <div class="flex flex-col items-center gap-1.5">
+          <History :size="20" class="text-neutral-700" />
+          <p class="text-sm text-neutral-400">No threads yet</p>
           <p class="text-xs text-neutral-600">Recent threads will appear here</p>
         </div>
       </div>
-      <div v-else>
+      <div v-else class="flex flex-col">
         <div
           v-for="thread in recentThreads"
           :key="thread.id"
-          class="flex items-center w-full p-3 px-4 text-left transition-colors rounded-lg group hover:bg-neutral-800 hover:cursor-pointer"
+          class="group flex items-center gap-3 w-full px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white"
           @click="handleSelectThread(thread.id)"
         >
-          <div
-            class="flex items-center justify-start flex-grow"
-          >
-          <span class="mr-2 text-xs text-neutral-500">{{ formatTime(thread.timestamp) }}</span>
-            <span class="text-sm text-neutral-200">{{ thread.topic }}</span>
+          <span
+            class="shrink-0 w-1.5 h-1.5 rounded-full transition-colors"
+            :class="thread.id === currentThread?.id ? 'bg-blue-600' : 'bg-neutral-700 group-hover:bg-neutral-500'"
+          />
+          <span class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
+            {{ thread.topic || 'Untitled' }}
+          </span>
+          <span class="shrink-0 text-xs tabular-nums text-neutral-600">
+            {{ formatTime(thread.timestamp) }}
+          </span>
+          <div class="shrink-0 flex items-center gap-0.5 ml-1">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+              title="Open thread artifacts"
+              @click.stop="handleViewArtifacts(thread.id)"
+            >
+              <PanelLeft :size="12" />
+              Artifacts
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+              title="Open thread details"
+              @click.stop="handleViewThread(thread.id)"
+            >
+              <FileText :size="12" />
+              Details
+            </button>
           </div>
-          <button
-            type="button"
-            class="h-full ml-2 text-sm text-neutral-500 hover:text-neutral-200"
-            @click.stop="handleViewThread(thread.id)"
-          >
-            View Details
-          </button>
         </div>
       </div>
     </div>
@@ -48,12 +63,14 @@
         Recent<span class="hidden @md:inline">&nbsp;Threads</span>
       </button>
 
-      <div class="flex-grow min-w-0 px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 hover:cursor-pointer">
-        <span class="inline-flex items-center justify-center gap-1 max-w-full">
-          <span class="hidden @md:inline truncate">{{ currentThread?.topic }}</span>
-          <span class="shrink-0 px-2 py-1 text-xs font-semibold text-neutral-200/30">
-            {{ currentThread?.shortCode }}
-          </span>
+      <div class="flex-grow min-w-0 px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 cursor-pointer">
+        <span
+          class="group inline-flex items-center justify-center gap-2 max-w-full cursor-pointer"
+          title="Thread Artifacts"
+          @click.stop="handleViewDashboard"
+        >
+          <PanelLeft :size="14" class="shrink-0 transition-colors group-hover:text-neutral-300" />
+          <span class="hidden @md:inline truncate transition-colors group-hover:text-neutral-200 group-hover:underline underline-offset-4 decoration-neutral-600">{{ currentThread?.topic }}</span>
         </span>
       </div>
 
@@ -109,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { History, ChevronUp, Plus } from 'lucide-vue-next'
+import { History, ChevronUp, Plus, PanelLeft, FileText } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
@@ -160,6 +177,8 @@ onUnmounted(() => {
 const emit = defineEmits<{
   (e: 'view-thread', threadId: string): void
   (e: 'open-thread-chat', threadId: string): void
+  (e: 'view-dashboard'): void
+  (e: 'view-artifacts', threadId: string): void
   (e: 'new-thread'): void
   (e: 'new-thread-as-child', parentThreadId: string): void
 }>()
@@ -167,6 +186,18 @@ const emit = defineEmits<{
 const handleViewThread = (id: string | undefined) => {
   if (!id) return
   emit('view-thread', id)
+  isOpen.value = false
+}
+
+const handleViewArtifacts = (id: string | undefined) => {
+  if (!id) return
+  emit('view-artifacts', id)
+  isOpen.value = false
+}
+
+const handleViewDashboard = () => {
+  if (!props.currentThread?.id) return
+  emit('view-dashboard')
   isOpen.value = false
 }
 

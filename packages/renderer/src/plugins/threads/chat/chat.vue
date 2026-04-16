@@ -52,6 +52,8 @@
         :recent-threads="recentThreads"
         @view-thread="(threadId: string) => actor.send({ type: 'VIEW_THREAD', threadId })"
         @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
+        @view-dashboard="handleViewDashboard"
+        @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
         @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
         @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
       />
@@ -177,6 +179,31 @@ function expandChatIfCollapsed() {
   if (snapshot.context.panelSizes.canvasHeight >= 93) {
     applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
+}
+
+function handleViewDashboard() {
+  const snapshot = applicationState.getSnapshot();
+  // Ensure canvas shows the default (threads) plugin
+  if (!snapshot.context.defaultToggles.canvas) {
+    applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
+  }
+  // If canvas is collapsed (chat dominant), give it room to show the dashboard
+  if (snapshot.context.panelSizes.canvasHeight < 20) {
+    applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
+  }
+  actor.send({ type: 'VIEW_DASHBOARD' });
+}
+
+function handleViewArtifacts(threadId: string) {
+  const snapshot = applicationState.getSnapshot();
+  if (!snapshot.context.defaultToggles.canvas) {
+    applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
+  }
+  if (snapshot.context.panelSizes.canvasHeight < 20) {
+    applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
+  }
+  // Opens the thread (sets currentThread) and internally transitions to dashboard
+  actor.send({ type: 'OPEN_THREAD_CHAT', threadId });
 }
 
 let pendingRestoreFiles = false
