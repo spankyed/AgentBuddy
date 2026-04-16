@@ -144,7 +144,7 @@ import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import DeletedFileView from './DeletedFileView.vue'
 import Tabs from './Tabs.vue'
-import type { OpenFile, TerminalTab } from '@/plugins/code/state'
+import type { OpenFile, TerminalTab, TabGroup } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
 import type { GitDiff } from '@/plugins/code/features/commit/state'
@@ -154,7 +154,7 @@ const props = defineProps<{
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]
   activeFilePath: string | null
   baseDirectory?: string
-  tabGroups: any[] // Will be typed properly
+  tabGroups: TabGroup[]
 }>()
 
 // Emits
@@ -225,8 +225,8 @@ const isDeletedFile = computed(() => {
 })
 
 // Get diff content
-const getDiffContent = (file: any): GitDiff | null => {
-  return file && 'gitDiff' in file ? file.gitDiff : null
+const getDiffContent = (file: OpenFile | TerminalTab | ActionTab | PromptTab | undefined): GitDiff | null => {
+  return file && 'gitDiff' in file ? file.gitDiff ?? null : null
 }
 
 // Computed

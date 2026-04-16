@@ -224,7 +224,6 @@ function focus() {
   term?.focus()
 }
 
-// eslint-disable-next-line vue/no-setup-props-destructure
 defineExpose({ focus })
 </script>
 
