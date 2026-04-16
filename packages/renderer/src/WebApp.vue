@@ -36,7 +36,7 @@
                 :collapsed="panelSizes.canvasHeight >= 93"
                 @resize="handleCanvasResize"
                 @double-click="handleCanvasDoubleClick"
-                @right-double-click="handleChatMaximize"
+                @right-click="handleChatMaximize"
             />
 
             <!-- Chat Area — fills remaining space below the canvas header when maximized -->
@@ -92,7 +92,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { Settings as SettingsIcon, PanelRight, Terminal } from 'lucide-vue-next'
+import { Settings as SettingsIcon, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
 import CanvasArea from '@/core/components/layout/canvas-area.vue'
 import ChatArea from '@/core/components/layout/chat-area.vue'
@@ -137,6 +137,12 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
       event: { type: 'APP_OPEN_PLUGIN_SETTINGS', pluginId: currentPluginId.value },
       separator: pluginItems.length > 0,
     },
+    {
+      label: 'Show Canvas',
+      icon: PanelTop,
+      event: { type: 'APP_TOGGLE_CANVAS' },
+      isActive: !chatMaximized.value,
+    },
     ...(canShowPanel.value ? [{
       label: 'Context Panel',
       icon: PanelRight,
@@ -155,6 +161,11 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
 })
 
 const handleMenuAction = (event: { type: string; [key: string]: any }) => {
+  if (event.type === 'APP_TOGGLE_CANVAS') {
+    send({ type: chatMaximized.value ? 'RESTORE_CHAT' : 'MAXIMIZE_CHAT' })
+    return
+  }
+
   if (event.type === 'APP_TOGGLE_INSPECTION_PANEL') {
     send({ type: 'TOGGLE_INSPECTION_PANEL' })
     return
