@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full">
+  <div ref="canvasRoot" class="relative w-full h-full">
     <VueFlow
       :nodes="nodes"
       :edges="edges"
@@ -73,7 +73,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, watch, nextTick, onUnmounted } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import {
   VueFlow,
   ConnectionLineType,
@@ -140,6 +140,25 @@ const DOUBLE_CLICK_DELAY = 250; // ms to wait for double click
 // State
 let previousNodeIds = new Set<string>();
 let animationController: AbortController | null = null;
+
+// Outer wrapper ref — used to catch re-entry into the canvas so we can
+// clear any stale middle-mouse pan state (see clearStalePan below).
+const canvasRoot = ref<HTMLElement | null>(null);
+
+// Workaround for a "stuck pan" bug: Vue Flow's d3-zoom attaches mouseup
+// on window when a drag begins, but if the user releases the mouse
+// outside the Electron window (e.g. over another application) the OS
+// never delivers that mouseup. The drag's mousemove listener stays live
+// and re-entering the canvas resumes panning with no button held. On
+// re-entry with no buttons pressed, synthesise a mouseup on window so
+// d3-zoom tears down its listeners — and also strip the `.dragging`
+// class from the pane, since Vue Flow's end-of-drag cursor state isn't
+// always cleared by the synthetic event alone.
+const clearStalePan = (event: MouseEvent) => {
+  if (event.buttons !== 0) return;
+  window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 1, buttons: 0 }));
+  canvasRoot.value?.querySelector('.vue-flow__pane')?.classList.remove('dragging');
+};
 
 // Helper functions
 const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number }): VueFlowNode => ({
@@ -334,8 +353,13 @@ watch(() => props.selectedNodeId, (newSelectedId, oldSelectedId) => {
   }
 });
 
+onMounted(() => {
+  canvasRoot.value?.addEventListener('mouseenter', clearStalePan);
+});
+
 // Cleanup on unmount
 onUnmounted(() => {
+  canvasRoot.value?.removeEventListener('mouseenter', clearStalePan);
   cancelCurrentAnimation();
   previousNodeIds.clear();
   if (clickTimeout) {
