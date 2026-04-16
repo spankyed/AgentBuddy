@@ -33,6 +33,7 @@ export interface NotesContext {
   notesExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
   showTrash: boolean
   trashedNotes: NoteDTO[]
+  noteScrollPositions: Record<string, number>
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -81,6 +82,7 @@ type UIEvent =
   | { type: 'NOTE.HIDE_TRASH' }
   | { type: 'NOTE.PERMANENTLY_DELETE'; noteId: string }
   | { type: 'NOTE.EMPTY_TRASH' }
+  | { type: 'NOTE.SAVE_SCROLL'; noteId: string; scrollTop: number }
 
 type SettingsEvent =
   | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
@@ -773,6 +775,13 @@ const notesState = setup({
         type: 'EMPTY_TRASH',
       })
     },
+
+    saveScroll: assign(({ context, event }) => {
+      const ev = typeOf('NOTE.SAVE_SCROLL', event)
+      return {
+        noteScrollPositions: { ...context.noteScrollPositions, [ev.noteId]: ev.scrollTop },
+      }
+    }),
   },
   guards: { targetIs },
 }).createMachine({
@@ -795,6 +804,7 @@ const notesState = setup({
     notesExport: { status: 'idle' as const, errors: [], filePath: '', itemCount: 0 },
     showTrash: false,
     trashedNotes: [],
+    noteScrollPositions: {},
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -851,6 +861,7 @@ const notesState = setup({
     'NOTE.HIDE_TRASH': { actions: 'hideTrash' },
     'NOTE.PERMANENTLY_DELETE': { actions: 'sendPermanentlyDelete' },
     'NOTE.EMPTY_TRASH': { actions: 'sendEmptyTrash' },
+    'NOTE.SAVE_SCROLL': { actions: 'saveScroll' },
     TRASHED_NOTES: { actions: 'setTrashedNotes' },
     TRAIL_CLICK: [
       {

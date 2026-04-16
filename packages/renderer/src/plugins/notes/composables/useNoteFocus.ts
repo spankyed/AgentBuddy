@@ -19,7 +19,7 @@ export function useNoteFocus(
         titleRef.value?.focus()
         titleRef.value?.select()
       } else if (note.noteType !== 'tasklist') {
-        editorRef.value?.editor?.commands.focus('start')
+        editorRef.value?.editor?.commands.focus('start', { scrollIntoView: false })
       }
     })
   })
