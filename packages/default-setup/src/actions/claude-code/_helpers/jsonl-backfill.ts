@@ -61,14 +61,20 @@ export async function backfillUserCliUuids(
 
   if (jsonlUserUuids.length === 0) return 0;
 
-  // Pair with the thread's non-deleted user messages in creation order.
+  // Pair with the thread's user messages in creation order, including
+  // just-deleted ones. The threads system soft-deletes the pivot before
+  // firing `thread.revert`, so filtering out deleted rows here would
+  // exclude the very message handle-rewind needs next — the pivot. The
+  // skip-if-populated guard below prevents cross-session overwrites in
+  // multi-revert threads (e.g. a forked S2 JSONL mispairing against S1
+  // messages), so including deleted rows is safe.
   const thread = services.repository.chatQueries.threadData(threadId);
   const threadUserMsgs = ((thread?.messages ?? []) as Array<{
     id?: string;
     sender?: string;
     deleted?: boolean;
     context?: Record<string, unknown>;
-  }>).filter(m => m.sender === 'user' && !m.deleted);
+  }>).filter(m => m.sender === 'user');
 
   let written = 0;
   const limit = Math.min(jsonlUserUuids.length, threadUserMsgs.length);
