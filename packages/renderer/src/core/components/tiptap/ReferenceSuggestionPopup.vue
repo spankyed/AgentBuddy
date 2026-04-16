@@ -205,17 +205,20 @@ function handleKeyDown(event: KeyboardEvent) {
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
+      event.stopPropagation()
       selectedIndex.value = Math.min(selectedIndex.value + 1, maxIndex)
       break
 
     case 'ArrowUp':
       event.preventDefault()
+      event.stopPropagation()
       selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
       break
 
     case 'Enter':
     case 'Tab':
       event.preventDefault()
+      event.stopPropagation()
       if (level.value === 'category') {
         const cat = filteredCategories.value[selectedIndex.value]
         if (cat) selectCategory(cat.id)
@@ -227,12 +230,14 @@ function handleKeyDown(event: KeyboardEvent) {
 
     case 'Escape':
       event.preventDefault()
+      event.stopPropagation()
       deactivateAndClean()
       break
 
     case 'Backspace':
       if (level.value === 'items' && query.value === '') {
         event.preventDefault()
+        event.stopPropagation()
         goBackToCategories()
       }
       break
@@ -247,16 +252,16 @@ watch(isActive, (active) => {
     } else {
       props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
     }
-  } catch {
-    // Editor view may already be destroyed during plugin switch
+  } catch (err) {
+    console.warn('[reference-suggestion-popup] failed to (un)register keydown listener', err)
   }
 }, { immediate: true })
 
 onBeforeUnmount(() => {
   try {
     props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
-  } catch {
-    // Editor view may already be destroyed during plugin switch
+  } catch (err) {
+    console.warn('[reference-suggestion-popup] failed to remove keydown listener', err)
   }
   document.removeEventListener('mousedown', handleClickOutside, true)
 })

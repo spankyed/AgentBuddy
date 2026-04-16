@@ -114,11 +114,13 @@ function handleKeyDown(event: KeyboardEvent) {
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
+      event.stopPropagation()
       selectedIndex.value = Math.min(selectedIndex.value + 1, maxIndex)
       break
 
     case 'ArrowUp':
       event.preventDefault()
+      event.stopPropagation()
       selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
       break
 
@@ -126,6 +128,7 @@ function handleKeyDown(event: KeyboardEvent) {
     case 'Tab':
     case 'ArrowRight':
       event.preventDefault()
+      event.stopPropagation()
       {
         const cmd = filteredCommands.value[selectedIndex.value]
         if (cmd) selectCommand(cmd)
@@ -143,16 +146,16 @@ watch(isPopupVisible, (visible) => {
     } else {
       props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
     }
-  } catch {
-    // Editor view may already be destroyed
+  } catch (err) {
+    console.warn('[command-suggestion-popup] failed to (un)register keydown listener', err)
   }
 }, { immediate: true })
 
 onBeforeUnmount(() => {
   try {
     props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
-  } catch {
-    // Editor view may already be destroyed
+  } catch (err) {
+    console.warn('[command-suggestion-popup] failed to remove keydown listener', err)
   }
   document.removeEventListener('mousedown', handleClickOutside, true)
 })

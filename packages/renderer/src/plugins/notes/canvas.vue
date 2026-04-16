@@ -232,6 +232,7 @@
             @input="handleTitleInput"
             @keydown.enter.prevent="handleTitleEnter"
             @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
+            @keydown.tab.exact.prevent="editorRef?.editor?.commands.focus('start')"
             @keydown.right="handleTitleRight"
           />
         </div>

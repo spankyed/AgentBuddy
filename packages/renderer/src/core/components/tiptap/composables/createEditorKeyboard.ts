@@ -41,9 +41,15 @@ interface KeyboardOptions {
 }
 
 export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPauseAvailable, emit }: KeyboardOptions) {
+  // Per-handler-instance state for ESC double-tap. Do NOT lift this out
+  // of the closure — multiple TiptapEditors must not share this.
   let lastEscTime = 0
 
   return (view: EditorView, event: KeyboardEvent) => {
+    // Skip shortcuts during IME composition so Tab/Enter mid-Pinyin etc.
+    // don't hijack composition commit.
+    if (event.isComposing) return false
+
     // ESC handling:
     //   1. popup active → let popup close (return false)
     //   2. pause available (streaming) → emit pause
@@ -70,12 +76,14 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
       return false
     }
 
-    // Trap Tab inside the editor. preventDefault blocks the browser's focus
-    // shift; returning false lets ProseMirror's listKeymap still run
+    // Trap Tab inside editable editors. preventDefault blocks the browser's
+    // focus shift; returning false lets ProseMirror's listKeymap still run
     // sinkListItem / liftListItem when the cursor is in a list item, and
     // swallows Tab harmlessly everywhere else (including orphaned list
-    // items where sink/lift fails).
+    // items where sink/lift fails). In viewer mode we let Tab pass through
+    // so keyboard-only users can move focus past read-only content.
     if (event.key === 'Tab') {
+      if (!cfg.editable) return false
       event.preventDefault()
       return false
     }
@@ -84,10 +92,16 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
     if (event.key === 'v' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
       const editor = getEditor()
-      navigator.clipboard.readText().then(text => {
-        if (!text || !editor) return
-        editor.commands.insertContent(text)
-      })
+      if (!editor) return true
+      navigator.clipboard.readText()
+        .then(text => {
+          // Drop the read if the editor has been torn down or replaced
+          // between keypress and resolution (prevents out-of-order inserts
+          // when the user pastes rapidly across entity switches).
+          if (!text || getEditor() !== editor) return
+          editor.commands.insertContent(text)
+        })
+        .catch(() => { /* clipboard permission denied — silent */ })
       return true
     }
 
