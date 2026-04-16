@@ -30,9 +30,11 @@
 
     <!-- Main content -->
     <template v-else>
-      <!-- gh CLI not available banner -->
+      <!-- gh CLI not available banner. Gated on authCheckCompleted so the default
+           isGhAvailable: false initial state doesn't flash before the first auth
+           check resolves (was racing pr.BRANCH_PR_CHECKED clearing isGhChecking). -->
       <div
-        v-if="!isGhAvailable && !isPrLoading && !isGhChecking"
+        v-if="authCheckCompleted && !isGhAvailable && !isPrLoading"
         class="flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
       >
         <AlertTriangle :size="12" class="shrink-0" />
@@ -41,7 +43,7 @@
 
       <!-- gh token missing PR permissions banner -->
       <div
-        v-if="isGhAvailable && !prAccess && !isPrLoading && !isGhChecking"
+        v-if="authCheckCompleted && isGhAvailable && !prAccess && !isPrLoading"
         class="flex items-start gap-2 px-3 py-2 text-xs text-yellow-400 bg-yellow-900/20 border-b border-yellow-800/30"
       >
         <AlertTriangle :size="12" class="shrink-0 mt-0.5" />
@@ -284,6 +286,7 @@ const isGhAvailable = useSelector(prActor, (state: any) => state.context.isGhAva
 const prAccess = useSelector(prActor, (state: any) => state.context.prAccess)
 const activeToken = useSelector(prActor, (state: any) => state.context.activeToken)
 const isGhChecking = useSelector(prActor, (state: any) => state.context.isGhChecking)
+const authCheckCompleted = useSelector(prActor, (state: any) => state.context.authCheckCompleted)
 const branchPRCheckFailed = useSelector(prActor, (state: any) => state.context.branchPRCheckFailed)
 const createTitle = useSelector(prActor, (state: any) => state.context.createTitle)
 const createBody = useSelector(prActor, (state: any) => state.context.createBody)

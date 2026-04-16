@@ -79,6 +79,12 @@ export interface Context {
   isGhChecking: boolean
   branchPRCheckFailed: boolean
   prCheckCompleted: boolean
+  /**
+   * True once we've ever received a pr.GH_AUTH_CHECKED response. Used to gate the
+   * "GitHub CLI not available" banner so the default `isGhAvailable: false` initial
+   * state doesn't flash before the first auth check resolves.
+   */
+  authCheckCompleted: boolean
 
   // Create form
   createTitle: string
@@ -324,6 +330,7 @@ export const pullRequestState = setup({
         const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
         return ev.data.available
       },
+      authCheckCompleted: true,
       prAccess: ({ event }) => {
         const ev = event as { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
         return ev.data.prAccess
@@ -830,6 +837,7 @@ export const pullRequestState = setup({
     isGhChecking: false,
     branchPRCheckFailed: false,
     prCheckCompleted: false,
+    authCheckCompleted: false,
 
     createTitle: '',
     createBody: '',
