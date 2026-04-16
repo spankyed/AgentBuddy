@@ -17,7 +17,15 @@ interface PersistedTab {
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
 
-export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]): void {
+interface PersistedTabState {
+  tabs: PersistedTab[]
+  activeFilePath: string | null
+}
+
+export function saveOpenTabs(
+  openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
+  activeFilePath: string | null
+): void {
   try {
     const tabs: PersistedTab[] = openFiles
       .filter(tab => {
@@ -70,39 +78,54 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
         }
       })
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs))
+    const payload: PersistedTabState = { tabs, activeFilePath }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
   } catch (error) {
     console.error('Failed to save open tabs:', error)
   }
 }
 
-export function loadPersistedTabs(): PersistedTab[] {
+function isPersistedTab(tab: unknown): tab is PersistedTab {
+  if (typeof tab !== 'object' || tab === null) return false
+  const t = tab as PersistedTab
+  if (typeof t.path !== 'string') return false
+  if (t.type === 'file') return true
+  if (t.type === 'terminal') return typeof t.terminalId === 'string'
+  if (t.type === 'action') return typeof t.actionId === 'string'
+  if (t.type === 'prompt') return typeof t.promptId === 'string'
+  return false
+}
+
+function normalizeTabs(rawTabs: unknown[]): PersistedTab[] {
+  return rawTabs.filter(isPersistedTab).map((tab, index) => ({
+    ...tab,
+    order: typeof tab.order === 'number' ? tab.order : index // backfill order if missing
+  }))
+}
+
+export function loadPersistedTabs(): PersistedTabState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return []
-    
-    const tabs = JSON.parse(stored)
-    if (!Array.isArray(tabs)) return []
-    
-    // Validate each tab and add order if missing (for backward compatibility)
-    return tabs.filter((tab): tab is PersistedTab => {
-      return (
-        typeof tab === 'object' &&
-        tab !== null &&
-        typeof tab.path === 'string' &&
-        (tab.type === 'file' || tab.type === 'terminal' || tab.type === 'action' || tab.type === 'prompt') &&
-        (tab.type === 'file' || 
-         (tab.type === 'terminal' && typeof tab.terminalId === 'string') ||
-         (tab.type === 'action' && typeof tab.actionId === 'string') ||
-         (tab.type === 'prompt' && typeof tab.promptId === 'string'))
-      )
-    }).map((tab, index) => ({
-      ...tab,
-      order: typeof tab.order === 'number' ? tab.order : index // Add order if missing
-    }))
+    if (!stored) return { tabs: [], activeFilePath: null }
+
+    const parsed = JSON.parse(stored)
+
+    // Legacy shape: top-level array of tabs (no persisted active path).
+    if (Array.isArray(parsed)) {
+      return { tabs: normalizeTabs(parsed), activeFilePath: null }
+    }
+
+    if (typeof parsed !== 'object' || parsed === null || !Array.isArray(parsed.tabs)) {
+      return { tabs: [], activeFilePath: null }
+    }
+
+    return {
+      tabs: normalizeTabs(parsed.tabs),
+      activeFilePath: typeof parsed.activeFilePath === 'string' ? parsed.activeFilePath : null
+    }
   } catch (error) {
     console.error('Failed to load persisted tabs:', error)
-    return []
+    return { tabs: [], activeFilePath: null }
   }
 }
 

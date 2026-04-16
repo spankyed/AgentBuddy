@@ -279,7 +279,7 @@ const codeState = setup({
       if (!context.tabsRestored) {
         return
       }
-      saveOpenTabs(context.openFiles)
+      saveOpenTabs(context.openFiles, context.activeFilePath)
       saveTabGroups(context.tabGroups)
     },
     addTab: assign(({ event, context }) => {
@@ -340,9 +340,18 @@ const codeState = setup({
       // During restore, don't bounce activeFilePath as tabs stream in — leave
       // the previously-active tab focused. For user-initiated opens, focus the
       // new tab as before.
-      const activeFilePath = isRestoring
+      let activeFilePath = isRestoring
         ? context.activeFilePath
         : (ev.extraUpdates?.activeFilePath ?? incomingTab.path)
+
+      // Restore-completion fallback: if the persisted active path's tab failed to
+      // restore (file deleted, terminal rejected by backend), repoint to the first
+      // open tab so the editor isn't left blank with a phantom selection.
+      const justFinishedRestore = pendingTabOrder === undefined && context.pendingTabOrder !== undefined
+      if (justFinishedRestore && openFiles.length > 0
+          && !openFiles.some(f => f.path === activeFilePath)) {
+        activeFilePath = openFiles[0].path
+      }
 
       return {
         ...context,
@@ -389,7 +398,7 @@ const codeState = setup({
     },
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
-      const persistedTabs = loadPersistedTabs()
+      const { tabs: persistedTabs, activeFilePath: persistedActive } = loadPersistedTabs()
       const persistedGroups = loadTabGroups()
       // console.log('[Code Plugin] Restoring persisted tabs:', persistedTabs)
 
@@ -408,12 +417,22 @@ const codeState = setup({
         })
       })
 
+      // Seed activeFilePath from persistence so addTab's "preserve context.activeFilePath
+      // during restore" branch keeps the previously-active tab focused. If the persisted
+      // active path no longer matches a tab (corrupt/stale storage, legacy shape),
+      // fall back to the first persisted tab so the editor isn't blank on load.
+      const persistedPaths = new Set(persistedTabs.map(t => t.path))
+      const seededActive = persistedActive && persistedPaths.has(persistedActive)
+        ? persistedActive
+        : persistedTabs[0]?.path ?? null
+
       // Mark tabs as restored immediately (even if empty)
       enqueue.assign({
         tabsRestored: true,
         pendingTabOrder: tabOrder.length > 0 ? tabOrder : undefined,
         pendingPersistedMetadata: metadataMap.size > 0 ? metadataMap : undefined,
-        tabGroups: persistedGroups
+        tabGroups: persistedGroups,
+        activeFilePath: seededActive
       })
 
       // If no persisted tabs, we're done
