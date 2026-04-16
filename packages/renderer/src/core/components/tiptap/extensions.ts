@@ -110,11 +110,11 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
   if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
   if (cfg.editorInteractions) extensions.push(ImageUploadPlaceholder)
   if (placeholder) extensions.push(Placeholder.configure({
-    placeholder: ({ node }) => {
+    placeholder: ({ editor, node }) => {
       if (node.type.name === 'heading') return `Heading ${node.attrs.level}`
       if (node.type.name === 'codeBlock') return ''
       if (node.type.name === 'detailsSummary') return 'Toggle summary'
-      return placeholder
+      return editor.isEmpty ? placeholder : ''
     },
     includeChildren: true,
   }))
