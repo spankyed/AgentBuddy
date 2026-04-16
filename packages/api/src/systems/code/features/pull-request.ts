@@ -31,6 +31,7 @@ export const IncomingPullRequestEvents = [
   busEvent('pr.CREATE_COMMENT', { number: z.number(), body: z.string() }),
   busEvent('pr.EDIT_COMMENT', { commentId: z.number(), body: z.string() }),
   busEvent('pr.DELETE_COMMENT', { commentId: z.number() }),
+  busEvent('pr.GET_COMMENTS', { number: z.number() }),
   busEvent('pr.GET_REVIEW_THREADS', { number: z.number() }),
   busEvent('pr.REPLY_TO_THREAD', { prNumber: z.number(), commentId: z.number(), body: z.string() }),
   busEvent('pr.RESOLVE_THREAD', { threadId: z.string() }),
@@ -42,12 +43,12 @@ export const IncomingPullRequestEvents = [
 // Outgoing events to frontend
 export type OutgoingPullRequestEvents =
   | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
-  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
+  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string; headBranch?: string } }
+  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
   | { type: 'pr.ERROR'; message: string }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
-  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
+  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
   | { type: 'pr.PR_MERGED'; data: { number: number } }
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
@@ -61,6 +62,7 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.COMMENT_CREATED'; data: { number: number } }
   | { type: 'pr.COMMENT_EDITED'; data: { commentId: number } }
   | { type: 'pr.COMMENT_DELETED'; data: { commentId: number } }
+  | { type: 'pr.COMMENTS_RECEIVED'; data: { number: number; comments: GhPRComment[] } }
   | { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
   | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
   | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
@@ -91,6 +93,7 @@ export type Event =
   | { type: 'pr.CREATE_COMMENT'; number: number; body: string }
   | { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
   | { type: 'pr.DELETE_COMMENT'; commentId: number }
+  | { type: 'pr.GET_COMMENTS'; number: number }
   | { type: 'pr.GET_REVIEW_THREADS'; number: number }
   | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
   | { type: 'pr.RESOLVE_THREAD'; threadId: string }
@@ -99,6 +102,13 @@ export type Event =
   | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
+
+// Monotonic id stamped onto every pr.PR_DETAILS_RECEIVED emit. FE drops events
+// whose id is older than the latest it accepted for that PR number, so that a
+// long-running fetchPRDetailsSettled retry can't overwrite fresher data from a
+// concurrent request (e.g. a manual refresh fired mid-retry). Module-scoped is
+// fine — ids only need to be monotonic within this process.
+let prDetailsRequestId = 0
 
 function humanizeBranchName(branch: string): string {
   const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[\/_]/i, '')
@@ -162,7 +172,7 @@ export const pullRequestSystem = setup({
           const files = await repo.getBranchDiff(baseBranch, head)
           return { files, baseBranch }
         },
-        ({ files, baseBranch }) => emitToFrontend({ type: 'pr.BRANCH_DIFF_RECEIVED', data: { files, baseBranch } })
+        ({ files, baseBranch }) => emitToFrontend({ type: 'pr.BRANCH_DIFF_RECEIVED', data: { files, baseBranch, headBranch: ev.headBranch } })
       )
     },
 
@@ -187,7 +197,7 @@ export const pullRequestSystem = setup({
         },
         ({ diff, originalContent, modifiedContent, isImage }) => emitToFrontend({
           type: 'pr.FILE_DIFF_RECEIVED',
-          data: { path: ev.path, diff, staged: false, originalContent, modifiedContent, isImage }
+          data: { path: ev.path, diff, staged: false, originalContent, modifiedContent, isImage, baseBranch: ev.baseBranch, headBranch: ev.headBranch }
         })
       )
     },
@@ -229,7 +239,7 @@ export const pullRequestSystem = setup({
           return { pr, comments }
         },
         ({ pr, comments }) => {
-          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments } })
+          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments, requestId: ++prDetailsRequestId } })
         }
       )
     },
@@ -260,7 +270,7 @@ export const pullRequestSystem = setup({
               const { comments = [], ...pr } = details
               pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
               for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
-              emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments } })
+              emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments, requestId: ++prDetailsRequestId } })
             }
           } catch { /* swallow — we still want to surface the merge error below */ }
           emitError(err.message)
@@ -347,7 +357,7 @@ export const pullRequestSystem = setup({
         },
         result => {
           emitToFrontend({ type: 'pr.PR_UPDATED', data: { number: ev.number, title: ev.title, body: ev.body, base: ev.base } })
-          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: result })
+          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { ...result, requestId: ++prDetailsRequestId } })
         }
       )
     },
@@ -375,6 +385,19 @@ export const pullRequestSystem = setup({
       withRepo(context,
         repo => ghCli.deletePRComment(repo.getWorkingDir(), ev.commentId),
         () => emitToFrontend({ type: 'pr.COMMENT_DELETED', data: { commentId: ev.commentId } })
+      )
+    },
+
+    getComments: ({ event, context }) => {
+      const ev = event as { type: 'pr.GET_COMMENTS'; number: number }
+      withRepo(context,
+        async repo => {
+          const cwd = repo.getWorkingDir()
+          const comments = await ghCli.getPRComments(cwd, ev.number)
+          for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
+          return comments
+        },
+        comments => emitToFrontend({ type: 'pr.COMMENTS_RECEIVED', data: { number: ev.number, comments } })
       )
     },
 
@@ -478,6 +501,7 @@ export const pullRequestSystem = setup({
         'pr.CREATE_COMMENT': { actions: 'createComment' },
         'pr.EDIT_COMMENT': { actions: 'editComment' },
         'pr.DELETE_COMMENT': { actions: 'deleteComment' },
+        'pr.GET_COMMENTS': { actions: 'getComments' },
         'pr.GET_REVIEW_THREADS': { actions: 'getReviewThreads' },
         'pr.REPLY_TO_THREAD': { actions: 'replyToThread' },
         'pr.RESOLVE_THREAD': { actions: 'resolveThread' },

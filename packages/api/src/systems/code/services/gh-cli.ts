@@ -140,6 +140,14 @@ export async function getPRDetails(cwd: string, number: number, repo?: { owner: 
   return parseJson<GhPullRequest & { comments: GhPRComment[] }>(output, `PR #${number}`)
 }
 
+/** Fetch just the comments for a PR — used by post-mutation refreshes to avoid
+ * re-pulling the full PR (mergeability, diff, threads) when only comments changed. */
+export async function getPRComments(cwd: string, number: number): Promise<GhPRComment[]> {
+  const output = await runGh(['pr', 'view', String(number), '--json', 'comments'], cwd)
+  const parsed = parseJson<{ comments: GhPRComment[] }>(output, `PR #${number} comments`)
+  return parsed.comments ?? []
+}
+
 export async function getPRForBranch(cwd: string, branch: string): Promise<GhPullRequest | null> {
   try {
     const output = await runGh([

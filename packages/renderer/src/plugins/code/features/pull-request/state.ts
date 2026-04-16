@@ -4,6 +4,7 @@ import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@app/api';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { application } from '@/core/actors/application';
+import { getCommentDatabaseId } from './comment-id';
 
 export type { GhPullRequest, GhPRComment }
 
@@ -17,6 +18,24 @@ const sendToBackend = (type: string, data: any) => {
 
 let placeholderIdCounter = -1
 
+/**
+ * Returns true when a branch/file diff response doesn't match the currently-selected
+ * PR's refs — i.e. the user switched PRs while a diff request was in flight. We
+ * accept when there's no selectedPR (branch-only view) or when the response carries
+ * no headBranch echo (legacy/local-branch flow) to preserve existing behavior.
+ */
+function isStalePRDiffResponse(
+  context: { selectedPR: GhPullRequest | null },
+  baseBranch: string,
+  headBranch: string | undefined,
+): boolean {
+  const pr = context.selectedPR
+  if (!pr) return false
+  if (pr.baseRefName !== baseBranch) return true
+  if (headBranch && pr.headRefName !== headBranch) return true
+  return false
+}
+
 const defaultLoadingStates = {
   isPrLoading: false,
   isGhChecking: false,
@@ -28,7 +47,7 @@ const defaultLoadingStates = {
   isUpdatingPR: false,
   isLoadingDetails: false,
   isLoadingPRs: false,
-  isSubmittingComment: false,
+  inflightMutations: 0,
 }
 
 export interface ActiveTokenInfo {
@@ -75,7 +94,13 @@ export interface Context {
   isTogglingDraft: boolean
   isDeletingBranch: boolean
   isUpdatingPR: boolean
-  isSubmittingComment: boolean
+  /**
+   * Number of in-flight optimistic comment / thread mutations. Increments when any
+   * create/edit/delete/reply/resolve/unresolve is sent; decrements on each success.
+   * A single boolean caused double-submit when ops of different types overlapped —
+   * the first success would unlock the submit button for all in-flight ops.
+   */
+  inflightMutations: number
   isLoadingDetails: boolean
   diffStale: boolean
 
@@ -85,6 +110,13 @@ export interface Context {
   // Optimistic update rollback
   _commentSnapshot: GhPRComment[] | null
   _threadSnapshot: GhReviewThread[] | null
+
+  /**
+   * Latest pr.PR_DETAILS_RECEIVED requestId accepted per PR number. Used to drop
+   * stale responses when two fetchPRDetailsSettled calls overlap for the same PR
+   * (e.g. a 6s base-change retry colliding with a manual refresh mid-flight).
+   */
+  latestPrDetailsRequestId: Record<number, number>
 }
 
 export type Event =
@@ -94,8 +126,8 @@ export type Event =
   | { type: 'pr.VIEW_DIFF'; path: string }
   | { type: 'pr.ERROR'; message: string }
   | { type: 'pr.BASE_BRANCH_RECEIVED'; data: { branch: string } }
-  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
-  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
+  | { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string; headBranch?: string } }
+  | { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
   | { type: 'pr.OPEN_FILE'; file: GitStatusFile }
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
   | { type: 'CODE_STARTUP' }
@@ -103,7 +135,7 @@ export type Event =
   | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
   | { type: 'pr.NAVIGATE_TO_HELP' }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
-  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
+  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
   | { type: 'pr.PR_MERGED'; data: { number: number } }
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
@@ -115,6 +147,7 @@ export type Event =
   | { type: 'pr.COMMENT_CREATED'; data: { number: number } }
   | { type: 'pr.COMMENT_EDITED'; data: { commentId: number } }
   | { type: 'pr.COMMENT_DELETED'; data: { commentId: number } }
+  | { type: 'pr.COMMENTS_RECEIVED'; data: { number: number; comments: GhPRComment[] } }
   | { type: 'pr.REVIEW_THREADS_RECEIVED'; data: { threads: GhReviewThread[] } }
   | { type: 'pr.THREAD_REPLIED'; data: { prNumber: number } }
   | { type: 'pr.THREAD_RESOLVED'; data: { threadId: string } }
@@ -214,21 +247,25 @@ export const pullRequestState = setup({
       }
     }),
 
-    handleBranchDiffReceived: assign({
-      prFiles: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
-        return ev.data.files
-      },
-      prBaseBranch: ({ event }) => {
-        const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string } }
-        return ev.data.baseBranch
-      },
-      isPrLoading: false,
-      diffStale: false,
+    handleBranchDiffReceived: enqueueActions(({ enqueue, context, event }) => {
+      const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string; headBranch?: string } }
+      // Drop stale responses from a previously-selected PR. selectedPR may be null
+      // when the branch has no PR (branch-view-only); accept in that case.
+      if (isStalePRDiffResponse(context, ev.data.baseBranch, ev.data.headBranch)) return
+      enqueue.assign({
+        prFiles: ev.data.files,
+        prBaseBranch: ev.data.baseBranch,
+        isPrLoading: false,
+        diffStale: false,
+      })
     }),
 
     handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
-      const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff }
+      const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
+      // Drop stale responses from a previously-selected PR — without this, a slow
+      // diff from PR A arriving after the user switched to PR B would show PR A's
+      // content (and open a stale diff tab) for PR B.
+      if (isStalePRDiffResponse(context, ev.data.baseBranch, ev.data.headBranch)) return
       enqueue.assign({ prDiff: ev.data })
       enqueue(() => {
         if (context.selectedPrFile) {
@@ -303,21 +340,24 @@ export const pullRequestState = setup({
       isLoadingPRs: false
     }),
 
-    // Accept incoming PR details. Guard against stale responses from background refreshes
-    // (where a different PR's details arrive after the user already moved on), but always
-    // accept when isManualPRSelection is true (user explicitly picked this PR from the dropdown).
-    handlePRDetailsReceived: assign({
-      selectedPR: ({ event, context }) => {
-        const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-        if (!context.isManualPRSelection && context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.selectedPR
-        return ev.data.pr
-      },
-      prComments: ({ event, context }) => {
-        const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-        if (!context.isManualPRSelection && context.selectedPR && context.selectedPR.number !== ev.data.pr.number) return context.prComments
-        return ev.data.comments
-      },
-      isLoadingDetails: false
+    // Accept incoming PR details. Two stale-response guards:
+    //   1. Different PR number than currently selected (background refresh for a PR
+    //      the user already moved on from). Skipped when isManualPRSelection is true.
+    //   2. Older requestId than we've already accepted for this PR number — happens
+    //      when a long-running fetchPRDetailsSettled retry's final emit arrives after
+    //      a newer concurrent fetch (e.g. a manual refresh fired mid-retry).
+    handlePRDetailsReceived: enqueueActions(({ enqueue, event, context }) => {
+      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
+      const prNumber = ev.data.pr.number
+      const lastAccepted = context.latestPrDetailsRequestId[prNumber] ?? 0
+      if (ev.data.requestId < lastAccepted) return
+      if (!context.isManualPRSelection && context.selectedPR && context.selectedPR.number !== prNumber) return
+      enqueue.assign({
+        selectedPR: ev.data.pr,
+        prComments: ev.data.comments,
+        isLoadingDetails: false,
+        latestPrDetailsRequestId: { ...context.latestPrDetailsRequestId, [prNumber]: ev.data.requestId },
+      })
     }),
 
     handleBranchPRChecked: enqueueActions(({ enqueue, event, context }) => {
@@ -366,6 +406,9 @@ export const pullRequestState = setup({
       createBody: '',
       createBaseBranch: '',
       createDraft: false,
+      // The newly-created PR is by definition the branch PR — never pin it. Leaving
+      // a stale true value here would block background BRANCH_PR_CHECKED updates.
+      isManualPRSelection: false,
     }),
 
     handlePRMerged: assign({
@@ -565,12 +608,16 @@ export const pullRequestState = setup({
       })
     }),
 
-    // Load diff for the PR whose details just arrived. Same stale-response guard as
-    // handlePRDetailsReceived — skip if this is a background refresh for a different PR,
-    // but always load when the user manually selected it from the dropdown.
+    // Load diff for the PR whose details just arrived. Same stale-response guards as
+    // handlePRDetailsReceived — skip background refreshes for a different PR (unless
+    // manually selected), and skip stale-by-requestId responses so we don't kick off
+    // a pointless diff fetch that the updated guard in handleBranchDiffReceived would
+    // then drop anyway.
     loadDiffForSelectedPR: ({ event, context }) => {
-      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[] } }
-      if (!context.isManualPRSelection && context.selectedPR?.number !== ev.data.pr.number) return
+      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
+      const prNumber = ev.data.pr.number
+      if (ev.data.requestId < (context.latestPrDetailsRequestId[prNumber] ?? 0)) return
+      if (!context.isManualPRSelection && context.selectedPR?.number !== prNumber) return
       sendToBackend('pr.GET_BRANCH_DIFF', {
         baseBranch: ev.data.pr.baseRefName,
         headBranch: ev.data.pr.headRefName,
@@ -593,7 +640,7 @@ export const pullRequestState = setup({
       enqueue.assign({
         _commentSnapshot: context._commentSnapshot ?? context.prComments,
         prComments: [...context.prComments, placeholder],
-        isSubmittingComment: true,
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.CREATE_COMMENT', { number: ev.number, body: ev.body }))
     }),
@@ -603,9 +650,9 @@ export const pullRequestState = setup({
       enqueue.assign({
         _commentSnapshot: context._commentSnapshot ?? context.prComments,
         prComments: context.prComments.map(c =>
-          c.url.includes(`issuecomment-${ev.commentId}`) ? { ...c, body: ev.body } : c
+          getCommentDatabaseId(c) === ev.commentId ? { ...c, body: ev.body } : c
         ),
-        isSubmittingComment: true,
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.EDIT_COMMENT', { commentId: ev.commentId, body: ev.body }))
     }),
@@ -614,8 +661,8 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.DELETE_COMMENT'; commentId: number }
       enqueue.assign({
         _commentSnapshot: context._commentSnapshot ?? context.prComments,
-        prComments: context.prComments.filter(c => !c.url.includes(`issuecomment-${ev.commentId}`)),
-        isSubmittingComment: true,
+        prComments: context.prComments.filter(c => getCommentDatabaseId(c) !== ev.commentId),
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.DELETE_COMMENT', { commentId: ev.commentId }))
     }),
@@ -623,8 +670,22 @@ export const pullRequestState = setup({
     handleCommentMutated: enqueueActions(({ enqueue, context }) => {
       enqueue.assign({ _commentSnapshot: null })
       if (context.selectedPR) {
-        enqueue(() => sendToBackend('pr.SELECT_PR', { number: context.selectedPR!.number }))
+        // Narrow refresh — just the comments. Previously this was pr.SELECT_PR,
+        // which re-fetched the full PR details, diff, threads and ran through
+        // every asset-URL resolver on every click. pr.GET_COMMENTS keeps the UI
+        // snappy and avoids re-rendering unrelated panels on each mutation.
+        enqueue(() => sendToBackend('pr.GET_COMMENTS', { number: context.selectedPR!.number }))
       }
+    }),
+
+    handleCommentsReceived: assign({
+      // Only apply when it matches the currently-selected PR — otherwise a stale
+      // response from a PR the user already left would clobber the new PR's list.
+      prComments: ({ event, context }) => {
+        const ev = event as { type: 'pr.COMMENTS_RECEIVED'; data: { number: number; comments: GhPRComment[] } }
+        if (context.selectedPR?.number !== ev.data.number) return context.prComments
+        return ev.data.comments
+      },
     }),
 
     // --- Review thread actions (optimistic) ---
@@ -647,7 +708,7 @@ export const pullRequestState = setup({
           if (!hasComment) return t
           return { ...t, comments: [...t.comments, placeholder] }
         }),
-        isSubmittingComment: true,
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.REPLY_TO_THREAD', { prNumber: ev.prNumber, commentId: ev.commentId, body: ev.body }))
     }),
@@ -659,6 +720,7 @@ export const pullRequestState = setup({
         reviewThreads: context.reviewThreads.map(t =>
           t.id === ev.threadId ? { ...t, isResolved: true } : t
         ),
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.RESOLVE_THREAD', { threadId: ev.threadId }))
     }),
@@ -670,6 +732,7 @@ export const pullRequestState = setup({
         reviewThreads: context.reviewThreads.map(t =>
           t.id === ev.threadId ? { ...t, isResolved: false } : t
         ),
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.UNRESOLVE_THREAD', { threadId: ev.threadId }))
     }),
@@ -684,7 +747,7 @@ export const pullRequestState = setup({
             c.databaseId === ev.commentId ? { ...c, body: ev.body } : c
           ),
         })),
-        isSubmittingComment: true,
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.EDIT_REVIEW_COMMENT', { commentId: ev.commentId, body: ev.body }))
     }),
@@ -697,7 +760,7 @@ export const pullRequestState = setup({
           ...t,
           comments: t.comments.filter(c => c.databaseId !== ev.commentId),
         })),
-        isSubmittingComment: true,
+        inflightMutations: context.inflightMutations + 1,
       })
       enqueue(() => sendToBackend('pr.DELETE_REVIEW_COMMENT', { commentId: ev.commentId }))
     }),
@@ -759,7 +822,7 @@ export const pullRequestState = setup({
     isTogglingDraft: false,
     isDeletingBranch: false,
     isUpdatingPR: false,
-    isSubmittingComment: false,
+    inflightMutations: 0,
     isLoadingDetails: false,
     diffStale: false,
 
@@ -767,6 +830,8 @@ export const pullRequestState = setup({
 
     _commentSnapshot: null,
     _threadSnapshot: null,
+
+    latestPrDetailsRequestId: {},
   },
   states: {
     idle: {
@@ -799,6 +864,13 @@ export const pullRequestState = setup({
               prFiles: [],
               prBaseBranch: '',
               diffStale: false,
+              // Clear any dangling optimistic rollback snapshots — no selectedPR
+              // means nothing can consume them, and stale refs would leak memory.
+              _commentSnapshot: null,
+              _threadSnapshot: null,
+              // Different directory means potentially a different repo; PR numbers
+              // from the old repo shouldn't gate responses for the new one.
+              latestPrDetailsRequestId: {},
             }),
             'handleCodeStartup',
           ]
@@ -818,15 +890,16 @@ export const pullRequestState = setup({
         'pr.PR_DRAFT_TOGGLED': { actions: 'handlePRDraftToggled' },
         'pr.BRANCH_DELETED': { actions: 'handleBranchDeleted' },
         'pr.PR_UPDATED': { actions: ['handlePRUpdated', 'refreshPrStatus'] },
-        'pr.COMMENT_CREATED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
-        'pr.COMMENT_EDITED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
-        'pr.COMMENT_DELETED': { actions: [assign({ isSubmittingComment: false }), 'handleCommentMutated'] },
+        'pr.COMMENT_CREATED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleCommentMutated'] },
+        'pr.COMMENT_EDITED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleCommentMutated'] },
+        'pr.COMMENT_DELETED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleCommentMutated'] },
+        'pr.COMMENTS_RECEIVED': { actions: 'handleCommentsReceived' },
         'pr.REVIEW_THREADS_RECEIVED': { actions: 'handleReviewThreadsReceived' },
-        'pr.THREAD_REPLIED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
-        'pr.THREAD_RESOLVED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
-        'pr.THREAD_UNRESOLVED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
-        'pr.REVIEW_COMMENT_EDITED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
-        'pr.REVIEW_COMMENT_DELETED': { actions: [assign({ isSubmittingComment: false }), 'handleThreadMutated'] },
+        'pr.THREAD_REPLIED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleThreadMutated'] },
+        'pr.THREAD_RESOLVED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleThreadMutated'] },
+        'pr.THREAD_UNRESOLVED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleThreadMutated'] },
+        'pr.REVIEW_COMMENT_EDITED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleThreadMutated'] },
+        'pr.REVIEW_COMMENT_DELETED': { actions: [assign({ inflightMutations: ({ context }) => Math.max(0, context.inflightMutations - 1) }), 'handleThreadMutated'] },
 
         // User actions
         'pr.LIST_PRS': { actions: ['requestListPRs', assign({ isLoadingPRs: true })] },
