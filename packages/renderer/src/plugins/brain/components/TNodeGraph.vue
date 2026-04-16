@@ -49,7 +49,7 @@
         <!-- Fit to View Button -->
         <button
           class="flex items-center justify-center p-1.5 text-sm rounded-md bg-neutral-900/90 border border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100 transition-all backdrop-blur-sm"
-          title="Fit graph to view"
+          title="Jump to latest"
           @click="handleFitView"
         >
           <Maximize :size="16" />
@@ -124,10 +124,10 @@ const ANIMATION = {
 const ROW_HEIGHT = LAYOUT.NODE_HEIGHT + LAYOUT.VERTICAL_GAP;
 
 // Vue Flow composables
-const { 
-  setCenter, 
-  getNode, 
-  fitView,
+const {
+  setCenter,
+  getNode,
+  getViewport,
   onNodeClick,
   onNodeDoubleClick
 } = useVueFlow();
@@ -205,12 +205,15 @@ const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
     }
   };
 
-  tracks.forEach((track) => {
+  // Iterate in reverse so the newest track (last in array) is placed at the top
+  // (y = 0) and older tracks slide downward as history grows.
+  for (let i = tracks.length - 1; i >= 0; i--) {
+    const track = tracks[i];
     const trackLeaves = subtreeLeafCount(track);
     const trackContentHeight = (trackLeaves - 1) * ROW_HEIGHT + LAYOUT.NODE_HEIGHT;
     traverseTrack(track, 0, trackY + trackContentHeight / 2);
     trackY += trackContentHeight + LAYOUT.TRACK_GAP;
-  });
+  }
 
   return nodes;
 };
@@ -279,12 +282,45 @@ onNodeDoubleClick((event: NodeMouseEvent) => {
   // Step nodes and event nodes don't have double click behavior
 });
 
+const collectTrackNodeIds = (tnode: TrackEntity, ids: string[] = []): string[] => {
+  ids.push(tnode.id);
+  tnode.children.forEach((child) => collectTrackNodeIds(child, ids));
+  return ids;
+};
+
+// Pan the camera to the newest track (now at the top after the bottom-up flip),
+// preserving the current zoom level. Used by both the manual button and the
+// auto-fit-on-structural-change watcher.
+const panToLatestTrack = (duration = 400) => {
+  const tracks = props.tnodeTree;
+  if (!tracks?.length) return;
+
+  const latestTrack = tracks[tracks.length - 1];
+  const latestIds = collectTrackNodeIds(latestTrack);
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const id of latestIds) {
+    const flowNode = getNode.value(id);
+    if (!flowNode) continue;
+    const w = flowNode.dimensions?.width || LAYOUT.NODE_WIDTH;
+    const h = flowNode.dimensions?.height || LAYOUT.NODE_HEIGHT;
+    minX = Math.min(minX, flowNode.position.x);
+    maxX = Math.max(maxX, flowNode.position.x + w);
+    minY = Math.min(minY, flowNode.position.y);
+    maxY = Math.max(maxY, flowNode.position.y + h);
+  }
+
+  if (minX === Infinity) return;
+
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const { zoom } = getViewport();
+
+  setCenter(centerX, centerY, { duration, zoom });
+};
+
 const handleFitView = () => {
-  // Fit all nodes in view with some padding
-  fitView({ 
-    padding: 0.2,
-    duration: 400 
-  });
+  panToLatestTrack(400);
 };
 
 // Animation helpers
@@ -331,7 +367,7 @@ watch(() => nodes.value, (newNodes) => {
   if (isStructuralChange) {
     cancelCurrentAnimation();
     nextTick(() => {
-      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 150);
+      setTimeout(() => panToLatestTrack(400), 150);
     });
   } else if (newNodeIds.length > 0 && props.animationsEnabled) {
     cancelCurrentAnimation();
