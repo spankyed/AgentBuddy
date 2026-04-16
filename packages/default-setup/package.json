@@ -11,7 +11,7 @@
     "compile:notes": "tsx build/compile.ts notes",
     "compile:settings": "tsx build/compile.ts settings",
     "compile:faq": "tsx build/compile.ts faq",
-    "compile": "npm run compile:settings && npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes && npm run compile:faq",
+    "compile": "npm run compile:settings && npm run compile:actions && npm run compile:prompts && npm run compile:flows && npm run compile:library && npm run compile:notes",
     "sync:external": "bash scripts/sync-external.sh",
     "pipeline": "bash scripts/pipeline.sh",
     "typecheck": "tsc --noEmit",
