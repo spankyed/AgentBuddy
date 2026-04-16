@@ -203,6 +203,9 @@ provide('explorer-open-terminal', (path: string) => {
 provide('explorer-search-in-folder', (path: string) => {
   codeActor.send({ type: 'SEARCH_IN_FOLDER', folder: path })
 })
+provide('explorer-promote-preview', (path: string) => {
+  codeActor.send({ type: 'PROMOTE_PREVIEW_TAB', path })
+})
 provide('explorer-selected-paths', () => selectedPaths.value)
 provide('explorer-expanded-dirs', () => expandedDirs.value)
 provide('explorer-dir-contents', () => dirContents.value)

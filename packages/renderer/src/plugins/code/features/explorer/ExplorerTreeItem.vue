@@ -234,6 +234,7 @@ const getRevealPath = inject<() => string | null>('explorer-reveal-path')!
 const clearReveal = inject<() => void>('explorer-clear-reveal')!
 const renameTrigger = inject<{ get: () => string | null, clear: () => void }>('explorer-rename-trigger')!
 const createFolderIn = inject<(path: string) => void>('explorer-create-folder-in')!
+const promotePreview = inject<(path: string) => void>('explorer-promote-preview')!
 const restoreFocus = inject<() => void>('explorer-restore-focus')!
 
 // Drag-drop injections
@@ -324,6 +325,8 @@ function handleDoubleClick(e: MouseEvent) {
   e.stopPropagation()
   if (props.file.type === 'directory') {
     toggleExpand()
+  } else {
+    promotePreview(props.file.path)
   }
 }
 
