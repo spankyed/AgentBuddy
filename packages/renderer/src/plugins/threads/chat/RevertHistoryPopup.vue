@@ -26,14 +26,6 @@
       <!-- Level 2: actions for the selected message -->
       <template v-else>
         <div
-          class="revert-history-breadcrumb"
-          @mousedown.prevent="goBackToMessages"
-          :title="selectedMessage?.text ?? ''"
-        >
-          <ChevronLeft :size="14" class="revert-history-back" />
-          <span class="revert-history-breadcrumb-text">{{ breadcrumbText(selectedMessage?.text ?? '') }}</span>
-        </div>
-        <div
           v-for="(action, index) in actions"
           :key="action.id"
           class="revert-history-item"
@@ -58,7 +50,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
-import { Undo2, FileCode2, ChevronRight, ChevronLeft } from 'lucide-vue-next'
+import { Undo2, FileCode2, ChevronRight } from 'lucide-vue-next'
 import type { MessageEntity } from '@app/api'
 
 // The threads state machine types `currentThread.messages` as
@@ -87,7 +79,10 @@ type MessageRow = {
   createdAt?: number | string
 }
 
-// User-visible messages: user-sent, not cancelled, newest first, capped.
+// User-visible messages: user-sent, not cancelled, capped to the most
+// recent MAX_MESSAGES. Chronological order — oldest at top, most recent
+// at the bottom — so the list reads like the thread itself and the
+// initial selection (most recent) sits nearest the chat input.
 // Drop anything missing an id (shouldn't happen in practice, but the
 // state-machine type models `messages` as `Partial<MessageEntity>[]`).
 const visibleMessages = computed<MessageRow[]>(() => {
@@ -97,11 +92,14 @@ const visibleMessages = computed<MessageRow[]>(() => {
         !!m.id && m.sender === 'user' && (m as any).status !== 'cancelled',
     )
     .slice(-MAX_MESSAGES)
-    .reverse()
     .map((m) => ({
       id: m.id,
       text: m.text ?? '',
-      createdAt: (m as any).createdAt,
+      // Fall back to `timestamp`: the batch picker that loads historic
+      // messages into currentThread.messages doesn't include `createdAt`,
+      // so the very first row of a thread only has `timestamp`. Both
+      // fields hold the message's creation epoch ms, so either renders.
+      createdAt: (m as any).createdAt ?? (m as any).timestamp,
     }))
 })
 
@@ -121,18 +119,32 @@ const selectedMessage = computed(() =>
   visibleMessages.value.find((m) => m.id === selectedMessageId.value) ?? null,
 )
 
-// Reset level and selection whenever the popup (re)opens.
+// Reset level and selection whenever the popup (re)opens. Start the
+// highlight on the most recent message (bottom row) so arrow-up walks
+// backwards in time — the natural "I want to go back N turns" motion.
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     level.value = 'messages'
-    selectedIndex.value = 0
+    selectedIndex.value = Math.max(0, visibleMessages.value.length - 1)
     selectedMessageId.value = null
-    nextTick(updatePosition)
+    nextTick(() => { updatePosition(); scrollSelectedIntoView() })
   }
 })
 
-// Reset selected index when switching levels.
-watch(level, () => { selectedIndex.value = 0 })
+// Keep the selected row visible when navigating a scrolled list.
+function scrollSelectedIntoView() {
+  const el = popupEl.value?.querySelector<HTMLElement>('.revert-history-item.is-selected')
+  el?.scrollIntoView({ block: 'nearest' })
+}
+
+watch(selectedIndex, () => nextTick(scrollSelectedIntoView))
+
+// When drilling into actions, start on the first action. When popping
+// back to messages, `goBackToMessages` chooses the right index itself
+// (and popup-open picks the most-recent row) — don't clobber either.
+watch(level, (newLevel) => {
+  if (newLevel === 'actions') selectedIndex.value = 0
+})
 
 // Clamp index if the message list shrinks while open.
 watch(visibleMessages, (list) => {
@@ -145,12 +157,6 @@ watch(visibleMessages, (list) => {
 function snippet(text: string): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
   return oneLine.length > SNIPPET_LEN ? oneLine.slice(0, SNIPPET_LEN) + '…' : oneLine || '(empty)'
-}
-
-// Breadcrumb shows the full message (whitespace collapsed) — the container
-// allows wrapping so the user sees enough context to confirm.
-function breadcrumbText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim() || '(empty)'
 }
 
 function formatTime(createdAt?: number | string): string {
@@ -191,10 +197,11 @@ function drillIntoActions() {
 
 function goBackToMessages() {
   level.value = 'messages'
-  // Re-highlight the message we just drilled into, if still present.
+  // Re-highlight the message we just drilled into, if still present;
+  // otherwise fall back to the most recent row (matches initial open).
   const prevId = selectedMessageId.value
   const idx = visibleMessages.value.findIndex((m) => m.id === prevId)
-  selectedIndex.value = idx >= 0 ? idx : 0
+  selectedIndex.value = idx >= 0 ? idx : Math.max(0, visibleMessages.value.length - 1)
   selectedMessageId.value = null
 }
 
@@ -310,37 +317,6 @@ onBeforeUnmount(() => {
     0 12px 32px rgba(0, 0, 0, 0.45),
     0 2px 6px rgba(0, 0, 0, 0.3);
   padding: 6px;
-}
-
-.revert-history-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  margin-bottom: 4px;
-  font-size: 0.8rem;
-  color: rgb(150 150 150);
-  cursor: pointer;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.revert-history-breadcrumb:hover {
-  color: rgb(220 220 220);
-}
-
-.revert-history-back {
-  flex-shrink: 0;
-  color: inherit;
-}
-
-.revert-history-breadcrumb-text {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
 }
 
 .revert-history-item {
