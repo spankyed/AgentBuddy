@@ -174,14 +174,23 @@ export async function createPR(
   if (!match) throw new Error('Failed to parse PR number from gh output')
   const prNumber = parseInt(match[1], 10)
   // GitHub computes mergeability asynchronously after PR creation — the first few
-  // reads typically return UNKNOWN. Retry with backoff (2s, then 4s) so we give
-  // GitHub progressively more time to settle, up to ~6s total.
+  // reads typically return UNKNOWN. Retry with backoff (2s, then 4s) until it settles,
+  // up to ~6s total. Draft PRs are always UNKNOWN by design (GitHub skips the check
+  // until the draft is marked ready), so short-circuit those.
   let details = await getPRDetails(cwd, prNumber)
   for (let i = 1; i <= 2; i++) {
-    if (details.mergeable && details.mergeable !== 'UNKNOWN'
-        && details.mergeStateStatus && details.mergeStateStatus !== 'UNKNOWN') break
+    if (details.isDraft
+        || (details.mergeable && details.mergeable !== 'UNKNOWN'
+            && details.mergeStateStatus && details.mergeStateStatus !== 'UNKNOWN')) break
     await new Promise(r => setTimeout(r, 2_000 * i))
-    details = await getPRDetails(cwd, prNumber)
+    try {
+      details = await getPRDetails(cwd, prNumber)
+    } catch {
+      // PR was created successfully; a transient retry failure shouldn't turn that
+      // into an error banner. Return the last good snapshot — UI falls back to
+      // "Checking mergeability…" and the user can refresh manually.
+      break
+    }
   }
   return details
 }
