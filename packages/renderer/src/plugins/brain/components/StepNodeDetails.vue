@@ -23,6 +23,9 @@
           <span v-if="node.stepNodeType" class="text-xs text-neutral-400 flex-shrink-0">
             {{ node.stepNodeType }}
           </span>
+          <span v-if="node.eventType" class="text-xs text-neutral-400 flex-shrink-0 font-mono">
+            {{ node.eventType }}
+          </span>
         </div>
         <button
           @click="$emit('close')"

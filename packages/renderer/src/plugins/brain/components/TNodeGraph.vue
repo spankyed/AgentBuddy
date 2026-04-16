@@ -25,7 +25,7 @@
           v-bind="nodeProps"
           :editable="false"
           :show-status-indicator="true"
-          :selectable="nodeProps.data.tNodeType === 'flow' || nodeProps.data.tNodeType === 'step'"
+          :selectable="nodeProps.data.tNodeType === 'flow' || nodeProps.data.tNodeType === 'step' || nodeProps.data.tNodeType === 'event'"
         />
       </template>
       <Background variant="dots" />
@@ -239,11 +239,10 @@ onNodeClick((event: NodeMouseEvent) => {
       emit('node-click', event.node.id);
       clickTimeout = null;
     }, DOUBLE_CLICK_DELAY);
-  } else if (nodeData.tNodeType === 'step') {
-    // Step nodes always open details immediately
+  } else if (nodeData.tNodeType === 'step' || nodeData.tNodeType === 'event') {
+    // Step and event nodes always open details immediately
     emit('node-click', event.node.id);
   }
-  // Event nodes don't have click behavior
 });
 
 onNodeDoubleClick((event: NodeMouseEvent) => {
