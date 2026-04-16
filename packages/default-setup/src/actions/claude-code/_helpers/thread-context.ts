@@ -130,8 +130,19 @@ export function setRunning(services: Services, threadId: string, running: boolea
   persistClaudeState(services, threadId, { isRunning: running });
 }
 
-/** Queue a message for processing after the current turn ends. Last write wins (burst debounce). */
+/**
+ * Queue a message for processing after the current turn ends. Last write
+ * wins (burst debounce) — if a prior message was already queued on this
+ * thread, mark its status as 'cancelled' so the user sees the "Queued"
+ * indicator flip to "Cancelled — resend" instead of silently overwriting
+ * and leaving a misleading amber pulse on a message that will never run.
+ */
 export function enqueueMessage(services: Services, threadId: string, msg: QueuedMessage): void {
+  const prior = getClaudeState(services, threadId);
+  const prevMessageId = prior?.queuedMessage?.messageId;
+  if (prevMessageId && prevMessageId !== msg.messageId) {
+    services.chat.updateMessageState(prevMessageId as any, { status: 'cancelled' } as any);
+  }
   persistClaudeState(services, threadId, { queuedMessage: msg });
 }
 
