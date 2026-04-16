@@ -8,6 +8,7 @@
         :class="disabled ? 'cursor-not-allowed opacity-50' : 'hover:text-neutral-200'"
         aria-label="Quick message"
         :disabled="disabled"
+        @mousedown="capturePreviousFocus"
       >
         <Sparkle :size="20" />
       </button>
@@ -18,6 +19,7 @@
         :side-offset="8"
         align="center"
         class="w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
+        @close-auto-focus="(e: Event) => e.preventDefault()"
       >
         <!-- Header -->
         <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-700/50">
@@ -67,10 +69,9 @@
                   type="button"
                   class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100"
                   title="Copy prompt"
-                  @click.stop="copyPrompt(prompt.id, prompt.text)"
+                  @click.stop="copyPrompt(prompt.text)"
                 >
-                  <Check v-if="copiedId === prompt.id" :size="14" class="text-green-400" />
-                  <Copy v-else :size="14" />
+                  <Copy :size="14" />
                 </button>
               </div>
             </TooltipProvider>
@@ -157,7 +158,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
-import { Sparkle, Pencil, X, Plus, Copy, Check, GripVertical } from 'lucide-vue-next'
+import { Sparkle, Pencil, X, Plus, Copy, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverContent, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent, TooltipProvider } from 'reka-ui'
 import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
@@ -182,7 +183,12 @@ const localPrompts = ref<QuickPrompt[]>([...props.prompts])
 const addPromptRef = ref<HTMLTextAreaElement | null>(null)
 const editingId = ref<string | null>(null)
 const editingText = ref('')
-const copiedId = ref<string | null>(null)
+const previousFocus = ref<HTMLElement | null>(null)
+
+function capturePreviousFocus() {
+  const active = document.activeElement as HTMLElement | null
+  if (active && active !== document.body) previousFocus.value = active
+}
 
 const reorderGroup = Symbol('quick-prompts')
 const arrangeableOptions = {
@@ -210,7 +216,15 @@ watch(open, async (isOpen) => {
     newPromptText.value = ''
     truncatedIds.clear()
     window.removeEventListener('keydown', handleNumberKey, true)
+    const toFocus = previousFocus.value
+    previousFocus.value = null
+    if (toFocus) {
+      await nextTick()
+      toFocus.focus()
+    }
   } else {
+    // Hotkey path: capture now if we weren't opened via a trigger mousedown.
+    if (!previousFocus.value) capturePreviousFocus()
     window.addEventListener('keydown', handleNumberKey, true)
     await nextTick()
     for (const prompt of props.prompts) {
@@ -271,12 +285,9 @@ function reorderPrompt(moving: MovingItem<QuickPrompt>) {
   emit('update', updated)
 }
 
-function copyPrompt(id: string, text: string) {
+function copyPrompt(text: string) {
   navigator.clipboard.writeText(text)
-  copiedId.value = id
-  setTimeout(() => {
-    copiedId.value = null
-  }, 1500)
+  open.value = false
 }
 
 async function startEdit(prompt: QuickPrompt) {
