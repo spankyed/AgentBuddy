@@ -2,6 +2,7 @@
   <div
     class="tiptap-wrapper"
     :class="[`tiptap-${mode}`, `tiptap-${mode}-${variant}`, $attrs.class]"
+    @mousedown="onWrapperMouseDown"
     @click="onWrapperClick"
   >
     <template v-if="editor">
@@ -80,12 +81,21 @@ defineOptions({ inheritAttrs: false })
 
 const cfg = getEditorConfig(props.mode, props.variant)
 
+// `click` fires on the lowest common ancestor of the mousedown and mouseup
+// targets. Pressing inside the editor content and releasing on a sibling
+// like the block-menu `+` or drag handle would otherwise fire this handler
+// on the wrapper and scroll to the bottom. Only honor clicks whose gesture
+// both started and ended on the wrapper itself.
+let wrapperPressed = false
+function onWrapperMouseDown(event: MouseEvent) {
+  wrapperPressed = event.target === event.currentTarget
+}
 function onWrapperClick(event: MouseEvent) {
+  const pressed = wrapperPressed
+  wrapperPressed = false
+  if (!pressed || event.target !== event.currentTarget) return
   if (!cfg.editable || !editor.value) return
-  const target = event.target as HTMLElement
-  if (target === event.currentTarget || target.classList.contains('tiptap-wrapper')) {
-    editor.value.chain().focus('end').run()
-  }
+  editor.value.chain().focus('end').run()
 }
 
 const { suppressNodeDeletionEvents, onTransaction: subDocOnTransaction } = useSubDocumentTracking({

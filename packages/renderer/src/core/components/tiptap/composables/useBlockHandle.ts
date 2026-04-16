@@ -8,6 +8,11 @@ export function useBlockHandle(getEditor: () => Editor) {
   const hoveredBlockEl = ref<HTMLElement | null>(null)
   const dropIndicatorTop = ref<number | null>(null)
   let dragState: { pos: number; node: any } | null = null
+  // `mouseup` fires on the actual release target regardless of where the
+  // gesture started. Gate the drag-handle mouseup on a matching mousedown
+  // so stray releases over the handle don't trigger focus() (which would
+  // scroll the selection into view).
+  let dragHandlePressed = false
 
   function getBlockNodeAt(blockEl: HTMLElement) {
     const editor = getEditor()
@@ -57,6 +62,7 @@ export function useBlockHandle(getEditor: () => Editor) {
 
   // Drag handle
   function onDragHandleMouseDown() {
+    dragHandlePressed = true
     if (!hoveredBlockEl.value) return
     const editor = getEditor()
     const { pos } = getBlockNodeAt(hoveredBlockEl.value)
@@ -67,6 +73,8 @@ export function useBlockHandle(getEditor: () => Editor) {
   }
 
   function onDragHandleMouseUp() {
+    if (!dragHandlePressed) return
+    dragHandlePressed = false
     getEditor().view.focus()
   }
 
@@ -81,6 +89,7 @@ export function useBlockHandle(getEditor: () => Editor) {
   function onDragEnd() {
     dropIndicatorTop.value = null
     dragState = null
+    dragHandlePressed = false
   }
 
   function getDropBoundary(clientY: number): { indicatorY: number; insertPos: number } {
