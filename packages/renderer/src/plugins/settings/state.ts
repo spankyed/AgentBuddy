@@ -419,7 +419,7 @@ const settingsState = setup({
       cliTestResults: {},
       setupPackImport: freshSetupPack(),
       activeTab: 'general',
-      generalNavItem: 'personal',
+      generalNavItem: 'application',
       selectedPluginId: defaultPluginId,
       isLoading: true,
     }

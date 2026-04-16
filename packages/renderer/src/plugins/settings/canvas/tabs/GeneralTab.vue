@@ -83,10 +83,10 @@ const componentMap: Record<string, any> = {
 }
 
 const navItems = [
+  { id: 'application', label: 'Application', icon: Settings },
   { id: 'secrets', label: 'Providers', icon: Key },
   { id: 'projects', label: 'Projects', icon: Briefcase },
   { id: 'personal', label: 'Personal', icon: User },
-  { id: 'application', label: 'Application', icon: Settings },
 ]
 
 const selectNavItem = (itemId: string) => {

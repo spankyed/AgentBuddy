@@ -2,7 +2,7 @@
   <div class="max-w-3xl">
     <!-- Header Section -->
     <div class="mb-8">
-      <h2 class="text-xl font-semibold text-white mb-2">App</h2>
+      <h2 class="text-xl font-semibold text-white mb-2">Application</h2>
       <p class="text-sm text-neutral-500">
         Import setup packs, configure hotkeys, and manage app data.
       </p>
