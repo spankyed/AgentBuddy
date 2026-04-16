@@ -159,6 +159,30 @@ export async function getPRForBranch(cwd: string, branch: string): Promise<GhPul
   }
 }
 
+/**
+ * Fetch PR details, retrying until GitHub finishes computing mergeability.
+ * GitHub recomputes `mergeable` / `mergeStateStatus` asynchronously after
+ * create / base-edit, so the first read often returns UNKNOWN. Retries with
+ * 2s → 4s backoff (~6s max). Draft PRs short-circuit because GitHub doesn't
+ * compute mergeability for them. Retry fetch errors are swallowed so we keep
+ * the last good snapshot — the initial fetch is unguarded so a totally broken
+ * state still surfaces.
+ */
+export async function fetchPRDetailsSettled(
+  cwd: string,
+  prNumber: number,
+): Promise<GhPullRequest & { comments: GhPRComment[] }> {
+  let details = await getPRDetails(cwd, prNumber)
+  for (let i = 1; i <= 2; i++) {
+    if (details.isDraft
+        || (details.mergeable && details.mergeable !== 'UNKNOWN'
+            && details.mergeStateStatus && details.mergeStateStatus !== 'UNKNOWN')) break
+    await new Promise(r => setTimeout(r, 2_000 * i))
+    try { details = await getPRDetails(cwd, prNumber) } catch { break }
+  }
+  return details
+}
+
 export async function createPR(
   cwd: string,
   opts: { title: string; body: string; base?: string; head?: string; draft?: boolean }
@@ -173,26 +197,7 @@ export async function createPR(
   const match = url.match(/\/pull\/(\d+)/)
   if (!match) throw new Error('Failed to parse PR number from gh output')
   const prNumber = parseInt(match[1], 10)
-  // GitHub computes mergeability asynchronously after PR creation — the first few
-  // reads typically return UNKNOWN. Retry with backoff (2s, then 4s) until it settles,
-  // up to ~6s total. Draft PRs are always UNKNOWN by design (GitHub skips the check
-  // until the draft is marked ready), so short-circuit those.
-  let details = await getPRDetails(cwd, prNumber)
-  for (let i = 1; i <= 2; i++) {
-    if (details.isDraft
-        || (details.mergeable && details.mergeable !== 'UNKNOWN'
-            && details.mergeStateStatus && details.mergeStateStatus !== 'UNKNOWN')) break
-    await new Promise(r => setTimeout(r, 2_000 * i))
-    try {
-      details = await getPRDetails(cwd, prNumber)
-    } catch {
-      // PR was created successfully; a transient retry failure shouldn't turn that
-      // into an error banner. Return the last good snapshot — UI falls back to
-      // "Checking mergeability…" and the user can refresh manually.
-      break
-    }
-  }
-  return details
+  return fetchPRDetailsSettled(cwd, prNumber)
 }
 
 export async function mergePR(

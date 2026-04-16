@@ -248,7 +248,23 @@ export const pullRequestSystem = setup({
       const ev = event as { type: 'pr.MERGE_PR'; number: number; method?: 'merge' | 'squash' | 'rebase' }
       withRepo(context,
         repo => ghCli.mergePR(repo.getWorkingDir(), ev.number, ev.method),
-        () => emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } })
+        () => emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } }),
+        async err => {
+          // Merge was rejected server-side — refresh PR data so the UI reflects the
+          // current check / review / mergeability state the user is actually facing,
+          // not whatever stale data triggered the click.
+          try {
+            if (context.gitRepository) {
+              const cwd = context.gitRepository.getWorkingDir()
+              const details = await ghCli.fetchPRDetailsSettled(cwd, ev.number)
+              const { comments = [], ...pr } = details
+              pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
+              for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
+              emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments } })
+            }
+          } catch { /* swallow — we still want to surface the merge error below */ }
+          emitError(err.message)
+        }
       )
     },
 
@@ -316,8 +332,23 @@ export const pullRequestSystem = setup({
     updatePR: ({ event, context }) => {
       const ev = event as { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
       withRepo(context,
-        repo => ghCli.updatePR(repo.getWorkingDir(), ev.number, { title: ev.title, body: ev.body, base: ev.base }),
-        () => emitToFrontend({ type: 'pr.PR_UPDATED', data: { number: ev.number, title: ev.title, body: ev.body, base: ev.base } })
+        async repo => {
+          const cwd = repo.getWorkingDir()
+          await ghCli.updatePR(cwd, ev.number, { title: ev.title, body: ev.body, base: ev.base })
+          // Base changes cause GitHub to recompute mergeability asynchronously —
+          // fetch fresh details with retry so the Merge button settles correctly.
+          // Title / body edits don't affect mergeability, so skip the extra round-trip.
+          if (!ev.base) return null
+          const details = await ghCli.fetchPRDetailsSettled(cwd, ev.number)
+          const { comments = [], ...pr } = details
+          pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
+          for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
+          return { pr, comments }
+        },
+        result => {
+          emitToFrontend({ type: 'pr.PR_UPDATED', data: { number: ev.number, title: ev.title, body: ev.body, base: ev.base } })
+          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: result })
+        }
       )
     },
 
