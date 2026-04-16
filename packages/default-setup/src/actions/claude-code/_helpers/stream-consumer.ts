@@ -223,12 +223,24 @@ export async function consumeStream(
 
       if (line.type === 'user') {
         // Track the CLI's user message UUID (first user event per turn).
-        // Needed for --rewind-files on revert-with-file-restore.
-        if (!userUuidTracked && line.uuid && ctx.userMessageId) {
-          services.chat.updateMessageState(ctx.userMessageId as any, {
-            context: { cliUuid: line.uuid },
-          } as any);
-          userUuidTracked = true;
+        // Needed for --rewind-files on revert-with-file-restore. Claude
+        // emits user events both as an input echo (uuid absent) and as
+        // a post-persistence replay (uuid required); the replay is what
+        // we need. If neither ever arrives, rewind fails later with
+        // "no CLI UUID on the reverted user message" — the diagnostics
+        // below distinguish "uuid never emitted by CLI" from "we were
+        // given no userMessageId to write onto".
+        if (!userUuidTracked) {
+          if (!ctx.userMessageId) {
+            log.warn('user event without userMessageId — cliUuid tracking skipped', { threadId });
+            userUuidTracked = true; // don't spam on every echo
+          } else if (line.uuid) {
+            services.chat.updateMessageState(ctx.userMessageId as any, {
+              context: { cliUuid: line.uuid },
+            } as any);
+            userUuidTracked = true;
+          }
+          // else: input echo without uuid — silently wait for the replay.
         }
         const content = (line.message as { content?: unknown })?.content;
         if (!Array.isArray(content)) continue;

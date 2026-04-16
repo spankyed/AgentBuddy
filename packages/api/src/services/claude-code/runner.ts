@@ -143,6 +143,19 @@ export function buildChildEnv(override?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   // turn 1. Plan approval flow then works on the first try.
   env.ENABLE_TOOL_SEARCH = '0'
 
+  // Enable Claude Code's file-history checkpointing in SDK / non-interactive
+  // mode. Without this, `fileHistoryEnabled()` in
+  //   packages/claude-code/src/utils/fileHistory.ts
+  // returns false under --print (which we always use), so no per-turn file
+  // snapshots are recorded AND `--rewind-files` bails with
+  //   "File rewinding is not enabled."
+  // Claude's interactive TUI never hits this gate (different code path), so
+  // matching it requires opting into the SDK equivalent explicitly. Callers
+  // can still override by setting the env var themselves (including to '').
+  if (env.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING === undefined) {
+    env.CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING = 'true'
+  }
+
   return env
 }
 
