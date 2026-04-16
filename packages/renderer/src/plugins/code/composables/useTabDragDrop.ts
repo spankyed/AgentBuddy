@@ -16,6 +16,8 @@ interface UseTabDragDropOptions {
   mainContainer: Ref<HTMLElement | null>
   onPinTab: (path: string) => void
   onUnpinTab: (path: string) => void
+  onPinTabAt: (path: string, targetPath: string, side: 'left' | 'right') => void
+  onUnpinTabAt: (path: string, targetPath: string, side: 'left' | 'right') => void
   onAddToGroup: (path: string, groupId: string) => void
   onRemoveFromGroup: (path: string) => void
   onReorder: (fromIndex: number, toIndex: number) => void
@@ -32,6 +34,8 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     mainContainer,
     onPinTab,
     onUnpinTab,
+    onPinTabAt,
+    onUnpinTabAt,
     onAddToGroup,
     onRemoveFromGroup,
     onReorder
@@ -291,23 +295,25 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
       return
     }
 
-    // Update group membership if moving between contexts
+    // Cross-context move: use atomic pin/unpin-at to avoid stale reactivity
     if (sourceContext !== targetContext) {
-      handleContextChange(sourceTab, sourceContext, targetContext)
-
-      // If target context has only the moved tab after the change, no positioning needed
-      const targetContextAfter = getContextTabs(targetContext)
-      if (targetContextAfter.length <= 1) {
-        resetDragState()
-        return
+      if (targetContext === 'pinned') {
+        onPinTabAt(sourceTab.path, targetTab.path, targetSide)
+      } else if (sourceContext === 'pinned' && targetContext === 'ungrouped') {
+        onUnpinTabAt(sourceTab.path, targetTab.path, targetSide)
+      } else {
+        // Group moves — fall back to existing handleContextChange
+        handleContextChange(sourceTab, sourceContext, targetContext)
       }
+
+      resetDragState()
+      return
     }
 
-    // Calculate and apply positioning (using targetTab reference from before context change)
+    // Same-context reorder
     const sourceIndex = tabs.value.findIndex(t => t.path === sourceTab.path)
     const fullTargetIndex = tabs.value.findIndex(t => t.path === targetTab.path)
 
-    // Calculate insertion index accounting for removal of source tab
     const offset = targetSide === 'left'
       ? (sourceIndex < fullTargetIndex ? -1 : 0)
       : (sourceIndex < fullTargetIndex ? 0 : 1)

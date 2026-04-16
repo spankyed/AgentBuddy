@@ -77,7 +77,7 @@ export type Context = {
   selectedPanel: PanelType
   tabsRestored?: boolean
   pendingTabOrder?: Array<{ path: string; order: number }>  // Track desired tab order during restoration
-  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean }>  // Track metadata to apply after restoration
+  pendingPersistedMetadata?: Map<string, { groupId?: string; isPinned?: boolean; isPreview?: boolean }>  // Track metadata to apply after restoration
   // Tab groups state
   tabGroups: TabGroup[]
   // Quick open state
@@ -113,6 +113,8 @@ export type Event =
   // Tab pinning events
   | { type: 'PIN_TAB'; path: string }
   | { type: 'UNPIN_TAB'; path: string }
+  | { type: 'PIN_TAB_AT'; path: string; targetPath: string; side: 'left' | 'right' }
+  | { type: 'UNPIN_TAB_AT'; path: string; targetPath: string; side: 'left' | 'right' }
   // Tab group events
   | { type: 'CREATE_GROUP'; name: string; tabPaths?: string[] }
   | { type: 'RENAME_GROUP'; groupId: string; name: string }
@@ -289,7 +291,7 @@ const codeState = setup({
       // Hydrate isPinned/groupId onto the incoming tab BEFORE it lands in openFiles.
       const persistedMetadata = context.pendingPersistedMetadata?.get(ev.tab.path)
       const incomingTab = persistedMetadata
-        ? { ...ev.tab, groupId: persistedMetadata.groupId, isPinned: persistedMetadata.isPinned }
+        ? { ...ev.tab, groupId: persistedMetadata.groupId, isPinned: persistedMetadata.isPinned, isPreview: persistedMetadata.isPreview }
         : ev.tab
       const isRestoring = persistedMetadata !== undefined
 
@@ -394,15 +396,16 @@ const codeState = setup({
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
 
-      // Create a map of path -> metadata (groupId, isPinned) to apply after tabs are created
-      const metadataMap = new Map<string, { groupId?: string; isPinned?: boolean }>()
+      // Create a map of path -> metadata to apply after tabs are created.
+      // Populate for ALL persisted tabs so the addTab action can detect restoration
+      // and preserve their preview/permanent state.
+      const metadataMap = new Map<string, { groupId?: string; isPinned?: boolean; isPreview?: boolean }>()
       persistedTabs.forEach(tab => {
-        if (tab.groupId || tab.isPinned) {
-          metadataMap.set(tab.path, {
-            groupId: tab.groupId,
-            isPinned: tab.isPinned
-          })
-        }
+        metadataMap.set(tab.path, {
+          groupId: tab.groupId,
+          isPinned: tab.isPinned,
+          isPreview: tab.isPreview
+        })
       })
 
       // Mark tabs as restored immediately (even if empty)
@@ -774,6 +777,46 @@ const codeState = setup({
       }
     }),
 
+    pinTabAt: assign(({ event, context }) => {
+      const ev = event as { type: 'PIN_TAB_AT'; path: string; targetPath: string; side: 'left' | 'right' }
+      const tab = context.openFiles.find(f => f.path === ev.path)
+      if (!tab) return context
+      const groupId = 'groupId' in tab ? tab.groupId : undefined
+
+      const remaining = context.openFiles.filter(f => f.path !== ev.path)
+      const movedTab = { ...tab, isPinned: true, groupId: undefined, isPreview: false }
+
+      const targetIndex = remaining.findIndex(f => f.path === ev.targetPath)
+      const insertAt = targetIndex === -1
+        ? remaining.filter(t => t.isPinned).length
+        : ev.side === 'right' ? targetIndex + 1 : targetIndex
+
+      remaining.splice(insertAt, 0, movedTab)
+
+      const tabGroups = deleteEmptyGroups(remaining, context.tabGroups, groupId as string | undefined)
+      return { ...context, openFiles: remaining, tabGroups }
+    }),
+
+    unpinTabAt: assign(({ event, context }) => {
+      const ev = event as { type: 'UNPIN_TAB_AT'; path: string; targetPath: string; side: 'left' | 'right' }
+      const tab = context.openFiles.find(f => f.path === ev.path)
+      if (!tab) return context
+      const groupId = 'groupId' in tab ? tab.groupId : undefined
+
+      const remaining = context.openFiles.filter(f => f.path !== ev.path)
+      const movedTab = { ...tab, isPinned: false, groupId: undefined }
+
+      const targetIndex = remaining.findIndex(f => f.path === ev.targetPath)
+      const insertAt = targetIndex === -1
+        ? remaining.length
+        : ev.side === 'right' ? targetIndex + 1 : targetIndex
+
+      remaining.splice(insertAt, 0, movedTab)
+
+      const tabGroups = deleteEmptyGroups(remaining, context.tabGroups, groupId as string | undefined)
+      return { ...context, openFiles: remaining, tabGroups }
+    }),
+
     pinGroup: assign(({ event, context }) => {
       const ev = event as { type: 'PIN_GROUP'; groupId: string }
       const updatedGroups = context.tabGroups.map(group =>
@@ -1045,6 +1088,12 @@ const codeState = setup({
         },
         UNPIN_TAB: {
           actions: ['unpinTab', 'saveTabsAction']
+        },
+        PIN_TAB_AT: {
+          actions: ['pinTabAt', 'saveTabsAction']
+        },
+        UNPIN_TAB_AT: {
+          actions: ['unpinTabAt', 'saveTabsAction']
         },
         // Tab groups
         CREATE_GROUP: {

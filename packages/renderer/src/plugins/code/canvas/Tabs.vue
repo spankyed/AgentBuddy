@@ -389,6 +389,8 @@ const emit = defineEmits<{
   'reveal-in-explorer': [path: string]
   'pin-tab': [path: string]
   'unpin-tab': [path: string]
+  'pin-tab-at': [path: string, targetPath: string, side: 'left' | 'right']
+  'unpin-tab-at': [path: string, targetPath: string, side: 'left' | 'right']
   'create-group': [name: string, tabPaths: string[]]
   'rename-group': [groupId: string, name: string]
   'change-group-color': [groupId: string, color: string]
@@ -471,6 +473,8 @@ const {
   mainContainer,
   onPinTab: (path: string) => emit('pin-tab', path),
   onUnpinTab: (path: string) => emit('unpin-tab', path),
+  onPinTabAt: (path: string, targetPath: string, side: 'left' | 'right') => emit('pin-tab-at', path, targetPath, side),
+  onUnpinTabAt: (path: string, targetPath: string, side: 'left' | 'right') => emit('unpin-tab-at', path, targetPath, side),
   onAddToGroup: (path: string, groupId: string) => emit('add-tab-to-group', path, groupId),
   onRemoveFromGroup: (path: string) => emit('remove-tab-from-group', path),
   onReorder: (fromIndex: number, toIndex: number) => emit('reorder', fromIndex, toIndex)

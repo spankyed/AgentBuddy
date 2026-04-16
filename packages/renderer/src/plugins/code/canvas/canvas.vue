@@ -33,6 +33,8 @@
       @reveal-in-explorer="revealInExplorer"
       @pin-tab="pinTab"
       @unpin-tab="unpinTab"
+      @pin-tab-at="pinTabAt"
+      @unpin-tab-at="unpinTabAt"
       @create-group="createGroup"
       @rename-group="renameGroup"
       @change-group-color="changeGroupColor"
@@ -399,6 +401,14 @@ const pinTab = (path: string) => {
 
 const unpinTab = (path: string) => {
   actor.send({ type: 'UNPIN_TAB', path })
+}
+
+const pinTabAt = (path: string, targetPath: string, side: 'left' | 'right') => {
+  actor.send({ type: 'PIN_TAB_AT', path, targetPath, side })
+}
+
+const unpinTabAt = (path: string, targetPath: string, side: 'left' | 'right') => {
+  actor.send({ type: 'UNPIN_TAB_AT', path, targetPath, side })
 }
 
 // Tab group handlers

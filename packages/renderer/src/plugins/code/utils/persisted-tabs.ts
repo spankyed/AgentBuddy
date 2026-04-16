@@ -12,6 +12,7 @@ interface PersistedTab {
   order: number // Track original position
   isPinned?: boolean // Track pinned state
   groupId?: string // Track group membership
+  isPreview?: boolean // Track preview state
 }
 
 const STORAGE_KEY = 'code-plugin-open-tabs'
@@ -22,11 +23,10 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
       .filter(tab => {
         // Skip diff tabs since we can't restore them
         if ('isDiff' in tab && tab.isDiff) return false
-        // Skip preview tabs — they're ephemeral
-        if ('isPreview' in tab && tab.isPreview) return false
         return true
       })
       .map((tab, index) => {
+        const isPreview = 'isPreview' in tab ? tab.isPreview : undefined
         if ('isTerminal' in tab && tab.isTerminal) {
           return {
             path: tab.path,
@@ -34,7 +34,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             terminalId: tab.terminalInfo.id,
             order: index,
             isPinned: tab.isPinned,
-            groupId: tab.groupId
+            groupId: tab.groupId,
+            isPreview
           }
         }
         if ('isAction' in tab && tab.isAction) {
@@ -44,7 +45,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             actionId: tab.path.replace('action:', ''),
             order: index,
             isPinned: tab.isPinned,
-            groupId: tab.groupId
+            groupId: tab.groupId,
+            isPreview
           }
         }
         if ('isPrompt' in tab && tab.isPrompt) {
@@ -54,7 +56,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
             promptId: tab.path.replace('prompt:', ''),
             order: index,
             isPinned: tab.isPinned,
-            groupId: tab.groupId
+            groupId: tab.groupId,
+            isPreview
           }
         }
         return {
@@ -62,7 +65,8 @@ export function saveOpenTabs(openFiles: (OpenFile | TerminalTab | ActionTab | Pr
           type: 'file' as const,
           order: index,
           isPinned: tab.isPinned,
-          groupId: tab.groupId
+          groupId: tab.groupId,
+          isPreview
         }
       })
 
