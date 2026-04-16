@@ -3,7 +3,7 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.0',
-  description: 'Add claude-session tag, replace chat/note modes with manager mode',
+  description: 'Add claude-session tag, replace chat/note modes with manager mode, backfill recentThreadsLimit',
   up: () => {
     const data = settingsQueries.getSettings();
 
@@ -110,5 +110,10 @@ export const migration: Migration = {
     }
 
     settingsCommands.updateSettings('general', 'application', [], existingApp);
+
+    // 7. Backfill recentThreadsLimit default (introduced in 0.2.0)
+    if (data.plugins?.threads?.recentThreadsLimit === undefined) {
+      settingsCommands.updateSettings('plugin', 'threads', ['recentThreadsLimit'], 7);
+    }
   },
 };

@@ -154,11 +154,13 @@ const containerRef = ref<HTMLDivElement | null>(null)
 // Get threads from the threads plugin state
 const threadsActor: ThreadsState = applicationState.system.get(threadsId)
 const allThreads = useSelector(threadsActor, (state) => state.context.threads)
+const recentThreadsLimit = useSelector(
+  threadsActor,
+  (state) => state.context.settings?.recentThreadsLimit ?? 7,
+)
 
 const recentThreads = computed(() => {
-  return allThreads.value
-    // .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-    .slice(0, 10) // Show up to 10 most recent threads
+  return allThreads.value.slice(0, recentThreadsLimit.value)
 })
 
 const handleClickOutside = (event: MouseEvent) => {

@@ -279,8 +279,16 @@ export const threadCommands = {
 // ---- Chat queries & commands (merged from agent system) ----
 
 const THREAD_TOPIC_MAX_LENGTH = 40;
+const RECENT_THREADS_FALLBACK_LIMIT = 7;
 
-function getRecentThreads(limit: number = 4): Partial<ThreadEntity>[] {
+function getConfiguredRecentThreadsLimit(): number {
+  const configured = settingsQueries.getPluginSettings('threads')?.recentThreadsLimit;
+  return typeof configured === 'number' && configured > 0
+    ? configured
+    : RECENT_THREADS_FALLBACK_LIMIT;
+}
+
+function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Partial<ThreadEntity>[] {
   const threadFields = [
     "shortCode", "topic", "instructions", "status", "timestamp",
     "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned",
@@ -297,7 +305,7 @@ function getRecentThreads(limit: number = 4): Partial<ThreadEntity>[] {
     .slice(0, limit);
 }
 
-function getThreadsWithCurrent(limit: number = 4): {
+function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()): {
   threads: Partial<ThreadEntity>[];
   currentThread: AgentThreadData | null;
 } {

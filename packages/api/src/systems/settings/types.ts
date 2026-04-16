@@ -132,6 +132,7 @@ export interface ThreadsSettings {
   chatStates: ChatStateConfig[];
   showOnlyRootThreads: boolean;
   clickToChat: boolean;
+  recentThreadsLimit: number;
   chat?: AgentSettings;
 }
 

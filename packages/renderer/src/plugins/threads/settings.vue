@@ -418,6 +418,25 @@
               </p>
             </div>
           </div>
+          <div class="flex items-start gap-3">
+            <input
+              id="recent-threads-limit"
+              v-model.number="recentThreadsLimit"
+              type="number"
+              min="1"
+              max="50"
+              class="mt-1 w-16 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none"
+              @input="debouncedSaveRecentThreadsLimit"
+            />
+            <div class="flex-1">
+              <label for="recent-threads-limit" class="block text-sm font-medium text-neutral-200 cursor-pointer">
+                Recent threads shown
+              </label>
+              <p class="mt-1 text-xs text-neutral-500">
+                How many recent threads appear in the quick-pick list above the chat input. Scrolls past the visible area when the list is long.
+              </p>
+            </div>
+          </div>
         </div>
       </CollapsibleSection>
     </div>
@@ -595,6 +614,7 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
 
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
+const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
 
 // ---- Chat (agent) settings ----
 const chatSettings = props.settings?.chat
@@ -649,6 +669,17 @@ const saveClickToChat = () => {
   })
 }
 
+const saveRecentThreadsLimit = () => {
+  const clamped = Math.min(50, Math.max(1, Math.floor(recentThreadsLimit.value || 7)))
+  if (clamped !== recentThreadsLimit.value) {
+    recentThreadsLimit.value = clamped
+  }
+  emit('update-setting', {
+    path: ['recentThreadsLimit'],
+    value: clamped
+  })
+}
+
 // ---- Chat (agent) save helpers ----
 const saveSkipRevertConfirm = () => {
   emit('update-setting', { path: ['chat', 'skipRevertConfirm'], value: skipRevertConfirm.value })
@@ -685,6 +716,10 @@ const { debounced: debouncedSaveModes } = useDebounce(() => {
 
 const { debounced: debouncedSaveQuickPrompts } = useDebounce(() => {
   saveQuickPrompts()
+}, 500)
+
+const { debounced: debouncedSaveRecentThreadsLimit } = useDebounce(() => {
+  saveRecentThreadsLimit()
 }, 500)
 
 // Mode management
