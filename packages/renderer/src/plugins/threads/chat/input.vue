@@ -2,7 +2,8 @@
   <div class="flex flex-col w-full">
     <form
       @submit.prevent="handleSubmit"
-      @keydown.shift.tab.prevent="cycleMode"
+      @keydown.shift.tab.prevent="cyclePhase"
+      @keydown.ctrl.tab.prevent="cycleMode"
       class="@container pb-4 pt-3 max-w-[80%] mx-auto w-full flex-shrink-0 overflow-visible"
     >
       <div
@@ -500,6 +501,15 @@ const cycleMode = () => {
   const currentIndex = modes.findIndex(m => m.id === props.currentMode)
   const nextMode = modes[(currentIndex + 1) % modes.length]
   emit('mode-change', nextMode.id)
+}
+
+const cyclePhase = () => {
+  if (props.disabled) return
+  const phases = visibleModes.value.find(m => m.id === props.currentMode)?.phases ?? []
+  if (!phases.length) return
+  const currentIndex = phases.findIndex(p => p.id === props.currentPhase)
+  const nextPhase = phases[(currentIndex + 1) % phases.length]
+  emit('phase-change', nextPhase.id)
 }
 
 const handleModeChange = (newMode: string) => {
