@@ -65,6 +65,7 @@
 
       <div class="flex-grow min-w-0 px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 cursor-pointer">
         <span
+          v-if="currentThread?.topic"
           class="group inline-flex items-center justify-center gap-2 max-w-full cursor-pointer"
           title="Thread Artifacts"
           @click.stop="handleViewDashboard"
