@@ -489,14 +489,15 @@ export async function consumeStream(
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
         writer.finalize(writer.text);
+        services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
       } else {
         // Nothing streamed — don't let the writer overwrite the "Thinking…"
-        // placeholder with its empty buffer. Mark the message complete directly.
+        // placeholder with its empty buffer. Mark the message complete in one shot.
         services.chat.updateMessageState(currentMessageId as any, {
           responseTimestamp: Date.now(),
+          forkable: true,
         } as any);
       }
-      services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
       return;
     }
 
