@@ -49,7 +49,7 @@ const stateConfig = computed(() => {
   return configs?.find(c => c.id === activeId);
 });
 
-const isAnimated = computed(() => stateConfig.value?.colorful ?? false);
+const isAnimated = computed(() => stateConfig.value?.busy ?? false);
 </script>
 
 <style lang="scss" module>

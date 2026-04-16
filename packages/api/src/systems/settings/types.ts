@@ -122,7 +122,7 @@ export interface ChatStateConfig {
   id: string;
   label: string;
   color: string;
-  colorful: boolean;
+  busy: boolean;
 }
 
 // Threads plugin settings
