@@ -761,7 +761,7 @@ const threadsState = setup({
       const { tabId, artifact } = typeOf('ARTIFACT_ADDED', event);
       const tabs = context.tabs.map(tab => {
         if (tab.id !== tabId) return tab;
-        const artifacts = [...tab.artifacts, artifact];
+        const artifacts = [artifact, ...tab.artifacts];
         const selectedArtifactId =
           tab.selectedArtifactId && artifacts.some(a => a.id === tab.selectedArtifactId)
             ? tab.selectedArtifactId

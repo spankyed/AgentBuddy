@@ -342,17 +342,19 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
 
 function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
   const artifacts = qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
-    .pick(['id', 'title', 'content', 'artifactType'] as const);
+    .pick(['id', 'title', 'content', 'artifactType', 'createdAt'] as const);
 
   if (!artifacts || artifacts.length === 0) return [];
 
-  return artifacts.map(artifact => ({
-    id: artifact.id,
-    type: (artifact.artifactType || 'text') as ArtifactType,
-    title: String(artifact.title || ''),
-    content: artifact.content,
-    metadata: { createdAt: Date.now() }
-  }));
+  return artifacts
+    .map(artifact => ({
+      id: artifact.id,
+      type: (artifact.artifactType || 'text') as ArtifactType,
+      title: String(artifact.title || ''),
+      content: artifact.content,
+      metadata: { createdAt: (artifact.createdAt as number) || 0 }
+    }))
+    .sort((a, b) => b.metadata.createdAt - a.metadata.createdAt);
 }
 
 export const chatQueries = {
