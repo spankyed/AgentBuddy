@@ -360,6 +360,16 @@ const threadsState = setup({
         threads: context.threads.map(t => t.id === context.view.id ? newThread : t),
       };
     }),
+    updateCurrentThread: assign(({ event, context }) => {
+      const typedEvent = typeOf('UPDATE_THREAD_FIELD', event);
+      if (!context.currentThread || context.currentThread.id !== context.view.id) return {};
+      return {
+        currentThread: {
+          ...context.currentThread,
+          [typedEvent.key]: typedEvent.value,
+        },
+      };
+    }),
     clearNewThreadFlag: assign(({ context, event }) => ({
       threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
     })),
@@ -1228,7 +1238,7 @@ const threadsState = setup({
           actions: 'setupParentThread'
         },
         UPDATE_THREAD_FIELD: {
-          actions: ['updateThreadData', 'updateThreadInThreads', 'sendUpdateThreadField'],
+          actions: ['updateThreadData', 'updateThreadInThreads', 'updateCurrentThread', 'sendUpdateThreadField'],
         },
       },
     },
