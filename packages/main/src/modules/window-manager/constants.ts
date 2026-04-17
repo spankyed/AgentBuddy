@@ -1,7 +1,7 @@
 export const WINDOW_CONFIG = {
   // Main window dimensions
-  WIDTH: 1400,
-  HEIGHT: 900,
+  WIDTH: 1920,
+  HEIGHT: 1200,
   MIN_WIDTH: 900,
   MIN_HEIGHT: 600,
   
