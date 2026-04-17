@@ -30,12 +30,24 @@
       </div>
     </div>
 
-    <!-- Unified diff viewer (right) -->
-    <div class="flex-1 overflow-auto rounded-md border border-neutral-800 bg-neutral-900">
-      <div v-if="!selectedFile" class="flex items-center justify-center h-full text-xs text-neutral-600">
+    <!-- Monaco diff viewer (right) -->
+    <div class="flex-1 overflow-hidden rounded-md border border-neutral-800">
+      <div v-if="!selectedFile" class="flex items-center justify-center h-full text-xs text-neutral-600 bg-neutral-900">
         Select a file to view its diff
       </div>
-      <pre v-else class="text-[11px] font-mono p-3 leading-relaxed whitespace-pre overflow-x-auto"><template v-for="(line, i) in selectedFile.patch.split('\n')" :key="i"><span :class="lineClass(line)">{{ line }}</span><br></template></pre>
+      <UnifiedMonacoEditor
+        v-else
+        :key="selectedFile.path"
+        :model-value="versions.modified"
+        mode="diff"
+        :diff-original="versions.original"
+        :diff-modified="versions.modified"
+        :language="fileLanguage"
+        :read-only="true"
+        :file-path="selectedFile.path"
+        preset="readonly"
+        :options="diffEditorOptions"
+      />
     </div>
   </div>
 </template>
@@ -44,6 +56,8 @@
 import { computed, ref } from 'vue'
 import { FilePlus2, FileMinus2, FilePenLine, ArrowRightLeft } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
+import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
+import { getLanguageFromPath } from '@/core/utils/monaco-config'
 
 interface DiffFile {
   path: string
@@ -67,6 +81,60 @@ const content = computed(() => props.artifact.content)
 const selectedIdx = ref(0)
 const selectedFile = computed(() => content.value.files[selectedIdx.value])
 
+const fileLanguage = computed(() =>
+  selectedFile.value ? getLanguageFromPath(selectedFile.value.path) : 'plaintext'
+)
+
+/** Extract original and modified content from a unified diff patch. */
+function patchToVersions(patch: string): { original: string; modified: string } {
+  const lines = patch.split('\n')
+  const original: string[] = []
+  const modified: string[] = []
+
+  for (const line of lines) {
+    // Skip diff headers
+    if (
+      line.startsWith('diff --git') ||
+      line.startsWith('index ') ||
+      line.startsWith('new file') ||
+      line.startsWith('deleted file') ||
+      line.startsWith('rename ') ||
+      line.startsWith('---') ||
+      line.startsWith('+++')
+    ) continue
+
+    // Skip hunk headers
+    if (line.startsWith('@@')) continue
+
+    if (line.startsWith('+')) {
+      modified.push(line.slice(1))
+    } else if (line.startsWith('-')) {
+      original.push(line.slice(1))
+    } else {
+      // Context line (starts with space) or empty line
+      const content = line.startsWith(' ') ? line.slice(1) : line
+      original.push(content)
+      modified.push(content)
+    }
+  }
+
+  return {
+    original: original.join('\n'),
+    modified: modified.join('\n'),
+  }
+}
+
+const versions = computed(() =>
+  selectedFile.value ? patchToVersions(selectedFile.value.patch) : { original: '', modified: '' }
+)
+
+const diffEditorOptions = {
+  renderSideBySide: false,
+  originalEditable: false,
+  contextmenu: false,
+  scrollBeyondLastLine: false,
+}
+
 function changeIcon(type: DiffFile['changeType']) {
   switch (type) {
     case 'added': return FilePlus2
@@ -89,16 +157,5 @@ function shortenPath(path: string): string {
   const segments = path.split('/').filter(Boolean)
   if (segments.length <= 3) return path
   return `…/${segments.slice(-3).join('/')}`
-}
-
-function lineClass(line: string): string {
-  if (line.startsWith('diff --git') || line.startsWith('index ') || line.startsWith('new file') || line.startsWith('deleted file') || line.startsWith('rename ')) {
-    return 'text-neutral-600'
-  }
-  if (line.startsWith('+++') || line.startsWith('---')) return 'text-neutral-500'
-  if (line.startsWith('@@')) return 'text-blue-400'
-  if (line.startsWith('+')) return 'text-green-400'
-  if (line.startsWith('-')) return 'text-red-400'
-  return 'text-neutral-300'
 }
 </script>
