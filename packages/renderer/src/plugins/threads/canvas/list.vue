@@ -4,7 +4,7 @@
 
     <!-- Threads Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="filteredThreads.length > 0" class="h-full overflow-y-auto custom-scrollbar">
+      <div v-if="filteredThreads.length > 0" ref="scrollContainer" class="h-full overflow-y-auto custom-scrollbar" @scroll="onScroll">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
@@ -16,7 +16,7 @@
           </thead>
           <tbody>
             <ThreadRow
-              v-for="thread in paginatedThreads"
+              v-for="thread in visibleThreads"
               :key="thread.id"
               :thread="thread"
               :available-tags="availableTags"
@@ -70,14 +70,6 @@
       </div>
     </div>
 
-    <!-- Pagination -->
-    <div v-if="filteredThreads.length > threadsPerPage" class="px-6 py-4 border-t border-neutral-800">
-      <Pagination
-        :total="filteredThreads.length"
-        :items-per-page="threadsPerPage"
-        @page-changed="(page: number) => currentPage = page"
-      />
-    </div>
   </div>
 </template>
 
@@ -87,7 +79,6 @@ import { MessageCircleMore, Plus, SearchX } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
-import Pagination from '@/core/components/design/pagination.vue'
 import ThreadRow from './list/thread-row.vue'
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
@@ -97,8 +88,9 @@ const threads = useSelector(actor, s => s.context.threads)
 const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 const availableTags = useSelector(actor, s => s.context.availableTags)
-const threadsPerPage = 6
-const currentPage = ref(1)
+const BATCH_SIZE = 20
+const displayCount = ref(BATCH_SIZE)
+const scrollContainer = ref<HTMLElement | null>(null)
 
 const hasActiveFilters = computed(() =>
   filters.value.statuses.length > 0 || filters.value.tags.length > 0 || filters.value.search !== ''
@@ -128,13 +120,22 @@ const filteredThreads = computed(() => {
 })
 
 watch(filters, () => {
-  currentPage.value = 1
+  displayCount.value = BATCH_SIZE
+  if (scrollContainer.value) scrollContainer.value.scrollTop = 0
 }, { deep: true })
 
-const paginatedThreads = computed(() => {
-  const start = (currentPage.value - 1) * threadsPerPage
-  return filteredThreads.value.slice(start, start + threadsPerPage)
+const visibleThreads = computed(() => {
+  return filteredThreads.value.slice(0, displayCount.value)
 })
+
+const onScroll = (e: Event) => {
+  const el = e.target as HTMLElement
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+    if (displayCount.value < filteredThreads.value.length) {
+      displayCount.value += BATCH_SIZE
+    }
+  }
+}
 
 const handleDeleteThread = (threadId: string) => {
   const thread = threads.value.find(t => t.id === threadId);
