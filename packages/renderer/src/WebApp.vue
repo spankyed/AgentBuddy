@@ -44,7 +44,7 @@
                 data-onboarding-id="chat-area"
                 class="relative"
                 :style="chatMaximized
-                    ? { flex: '1 1 auto', height: 'auto' }
+                    ? { flex: '1 1 0%', minHeight: 0 }
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
                 <!-- Floating restore handle: hover-revealed bar at the top of the
