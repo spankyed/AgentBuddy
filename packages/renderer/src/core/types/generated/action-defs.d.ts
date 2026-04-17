@@ -5993,6 +5993,7 @@ interface ThreadsSettings {
     clickToChat: boolean;
     recentThreadsLimit: number;
     recordingLimitMinutes: number;
+    autoCollapseChat?: boolean;
     chat?: AgentSettings;
 }
 interface NotesSettings {

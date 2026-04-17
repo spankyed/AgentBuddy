@@ -446,6 +446,23 @@
           </div>
           <div class="flex items-start gap-3">
             <input
+              id="auto-collapse-chat"
+              v-model="autoCollapseChat"
+              type="checkbox"
+              class="mt-1 w-4 h-4 bg-neutral-800 border border-neutral-700 rounded text-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 focus:ring-offset-neutral-900"
+              @change="saveAutoCollapseChat"
+            />
+            <div class="flex-1">
+              <label for="auto-collapse-chat" class="block text-sm font-medium text-neutral-200 cursor-pointer">
+                Auto-collapse chat on plugin switch
+              </label>
+              <p class="mt-1 text-xs text-neutral-500">
+                When enabled, the chat area collapses automatically when switching to a non-threads plugin.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <input
               id="click-to-chat"
               v-model="clickToChat"
               type="checkbox"
@@ -676,6 +693,7 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
 )
 
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
+const autoCollapseChat = ref(props.settings?.autoCollapseChat ?? true)
 const clickToChat = ref(props.settings?.clickToChat || false)
 const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
 const recordingLimitMinutes = ref<number>(props.settings?.recordingLimitMinutes ?? 3)
@@ -734,6 +752,13 @@ const saveDisplayOptions = () => {
   emit('update-setting', {
     path: ['showOnlyRootThreads'],
     value: showOnlyRootThreads.value
+  })
+}
+
+const saveAutoCollapseChat = () => {
+  emit('update-setting', {
+    path: ['autoCollapseChat'],
+    value: autoCollapseChat.value
   })
 }
 
