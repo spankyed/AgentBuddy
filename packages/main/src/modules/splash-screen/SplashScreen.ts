@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, app } from 'electron';
 import { AppModule } from '../../AppModule.js';
 import { ModuleContext } from '../../ModuleContext.js';
 import { join } from 'node:path';
@@ -9,6 +9,7 @@ import { SPLASH_CONFIG } from './constants.js';
 export class SplashScreen implements AppModule {
   private splashWindow: BrowserWindow | null = null;
   private isQuitting = false;
+
 
   async enable({ app }: ModuleContext): Promise<void> {
     app.on('before-quit', () => { this.isQuitting = true; });
@@ -44,6 +45,11 @@ export class SplashScreen implements AppModule {
     // Show window once ready
     this.splashWindow.once('ready-to-show', () => {
       if (this.isValid()) {
+        const version = app.getVersion();
+        this.splashWindow!.webContents.executeJavaScript(`
+          const versionEl = document.getElementById('version');
+          if (versionEl) { versionEl.textContent = 'v${version}'; }
+        `).catch(() => {});
         this.splashWindow!.show();
       }
     });
