@@ -27,7 +27,7 @@ import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
-import { updateSessionArtifact } from './session-artifact';
+import { updateSessionArtifact, updateChatState } from './session-artifact';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -616,7 +616,21 @@ async function replayQueuedMessage(
       references: queued.references,
     });
   } catch (drainErr: any) {
-    log.error('queued message drain failed', { message: drainErr?.message });
+    // If the replayed chat action threw *before* its own try/catch (lines
+    // 137-234 of chat.ts — setRunning / placeholder / artifact setup), it
+    // leaves isRunning=true and chatState='working' behind with no turn
+    // actually running. Every subsequent user message would then queue
+    // forever. Normalise state and surface the failure to the thread.
+    const message = drainErr?.message || 'Queued message replay failed';
+    log.error('queued message drain failed', { message, stack: drainErr?.stack });
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    updateChatState(services, threadId, 'idle');
+    services.chat.sendBlockMessage({
+      threadId,
+      text: `⚠️ Couldn't process queued message: ${message}`,
+      blocks: [],
+      forkable: false,
+    });
   }
 }
 
