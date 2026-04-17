@@ -22,7 +22,7 @@
       </div>
     </ContextMenuTrigger>
 
-    <ContextMenuPortal v-if="!isDashboard">
+    <ContextMenuPortal>
       <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg z-50">
         <ContextMenuItem
           class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -56,7 +56,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { X, MessageSquare, Trash2 } from 'lucide-vue-next';
 import {
   ContextMenuRoot,
@@ -68,7 +67,7 @@ import {
 } from 'reka-ui';
 import type { Tab } from '@app/api';
 
-const props = defineProps<{
+defineProps<{
   tab: Tab;
   isActive: boolean;
   isPinned: boolean;
@@ -80,6 +79,4 @@ defineEmits<{
   'open-in-chat': [];
   'delete-thread': [];
 }>();
-
-const isDashboard = computed(() => props.tab.id === 'dashboard');
 </script>

@@ -690,7 +690,7 @@ const threadsState = setup({
       return {
         currentThread,
         tabs: typedEvent.data.tabs || [],
-        activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || 'dashboard',
+        activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || '',
         ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
@@ -740,19 +740,16 @@ const threadsState = setup({
     }),
     closeTab: assign(({ context, event }) => {
       const tabId = typeOf('CLOSE_TAB', event).tabId;
-      if (tabId === 'dashboard') return {};
-
       const tab = context.tabs.find(t => t.id === tabId);
-      if (tab?.pinned) return {};
+      if (!tab || tab.pinned) return {};
 
       const idx = context.tabs.findIndex(t => t.id === tabId);
       const newTabs = context.tabs.filter(t => t.id !== tabId);
 
       let newActiveTabId = context.activeTabId;
       if (context.activeTabId === tabId) {
-        // Pick the next tab to the right, or the one to the left, or dashboard
         const nextTab = context.tabs[idx + 1] ?? context.tabs[idx - 1];
-        newActiveTabId = nextTab?.id ?? 'dashboard';
+        newActiveTabId = nextTab?.id ?? '';
       }
 
       return { tabs: newTabs, activeTabId: newActiveTabId };
@@ -969,7 +966,7 @@ const threadsState = setup({
     chatStates: {} as Record<string, ChatState>,
     chatStateOverrides: {} as Record<string, { id: string; expiresAt: number }>,
     tabs: [],
-    activeTabId: 'dashboard',
+    activeTabId: '',
     mode: '',
     phase: '',
     phaseByMode: {},

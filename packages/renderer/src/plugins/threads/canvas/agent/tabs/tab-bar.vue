@@ -5,7 +5,7 @@
       :key="tab.id"
       :tab="tab"
       :isActive="tab.id === activeTabId"
-      :isPinned="tab.id === 'dashboard' || tab.pinned === true"
+      :isPinned="tab.pinned === true"
       @select="$emit('select-tab', tab.id)"
       @close="$emit('close-tab', tab.id)"
       @open-in-chat="$emit('open-in-chat', tab.id)"
