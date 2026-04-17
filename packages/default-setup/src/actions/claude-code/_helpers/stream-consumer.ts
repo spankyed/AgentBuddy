@@ -26,11 +26,15 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, killTurn } from './thread-context';
 import { updateSessionArtifact, updateChatState } from './session-artifact';
+import { addBgProcess, updateBgProcess } from './bg-processes-artifact';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+
+/** Auto-release the turn if a Bash command runs longer than this (ms). */
+const LONG_RUNNING_BASH_THRESHOLD_MS = 30_000;
 
 /**
  * Sum per-model costUSD from the CLI's modelUsage map.
@@ -96,6 +100,9 @@ export async function consumeStream(
   // Track whether we've captured the CLI's user message UUID for this turn.
   // The first `user` event echoes the prompt with the UUID the CLI assigned.
   let userUuidTracked = false;
+
+  // Set when a long-running Bash command triggers auto-release of the turn.
+  let autoReleased = false;
 
   // Extracted from the `result` line directly — survives even if handle.result
   // rejects (error subtypes like error_during_execution).
@@ -213,6 +220,13 @@ export async function consumeStream(
               recent.push({ name: block.name, summary, at: Date.now() });
               return { recentTools: recent };
             });
+            // Track Bash commands launched with run_in_background.
+            if (block.name === 'Bash' && (block.input as any)?.run_in_background === true) {
+              addBgProcess(services, threadId as string, {
+                toolUseId: block.id || `tu-${Date.now()}`,
+                command: (block.input as any).command ?? '',
+              });
+            }
           } else if (block?.type === 'text' && typeof block.text === 'string' && block.text.length > 0) {
             // Fallback: some CLI turns deliver assistant prose via a terminal
             // `text` content block instead of streamed `text_delta` events
@@ -230,6 +244,47 @@ export async function consumeStream(
           toolActivity.update(line.tool_use_id, {
             durationMs: Math.round(line.elapsed_time_seconds * 1000),
           });
+
+          // Auto-release: if a Bash command exceeds the threshold, kill the
+          // CLI turn so the user isn't blocked. The spawned process survives
+          // because child.kill() only targets the immediate CLI child.
+          if (
+            (line as any).tool_name === 'Bash' &&
+            line.elapsed_time_seconds * 1000 >= LONG_RUNNING_BASH_THRESHOLD_MS
+          ) {
+            log.info('auto-releasing turn — long-running Bash command', {
+              toolUseId: line.tool_use_id,
+              elapsedSec: line.elapsed_time_seconds,
+            });
+            autoReleased = true;
+
+            // Track the auto-released command as a background process.
+            const bgEntry = toolActivity.entries.find(e => e.id === line.tool_use_id);
+            if (bgEntry) {
+              addBgProcess(services, threadId as string, {
+                toolUseId: line.tool_use_id,
+                command: (bgEntry.details as any)?.input?.command ?? bgEntry.summary ?? '',
+                autoReleased: true,
+                durationMs: Math.round(line.elapsed_time_seconds * 1000),
+                status: 'running',
+              });
+            }
+
+            // Finalize writers before killing.
+            writer.flush();
+            const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
+            toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
+            writer.finalize(
+              (writer.text ? writer.text + '\n\n' : '') +
+              '⏳ Long-running command detected — turn released. The process continues in the background.',
+            );
+            services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+
+            // Kill the CLI turn and release the thread lock.
+            killTurn(services, threadId as string);
+
+            break; // Exit the for-await loop — catch block handles cleanup.
+          }
         }
         continue;
       }
@@ -282,6 +337,13 @@ export async function consumeStream(
             status: isError ? 'error' : 'ok',
             outputSummary: outputSummary || undefined,
             ...(isError ? { details: { error: displayText } } : {}),
+          });
+
+          // Update bg process status (no-op if toolUseId isn't tracked).
+          updateBgProcess(services, threadId as string, toolUseId, {
+            status: isError ? 'failed' : 'completed',
+            completedAt: Date.now(),
+            outputSummary: outputSummary || undefined,
           });
 
           if (isError) {
@@ -463,6 +525,31 @@ export async function consumeStream(
         };
         break;
       }
+    }
+
+    // ─── Auto-released: turn was killed mid-stream ────────────────────────
+    // Writers are already finalized, killTurn() cleared the handle and set
+    // isRunning=false. Drain any queued message and emit cc.stream.completed.
+    if (autoReleased) {
+      const queued = dequeueMessage(services, threadId as string);
+      if (queued) await replayQueuedMessage(services, threadId, queued, log);
+
+      services.emitter.sendToBrainSystem({
+        eventType: 'cc.stream.completed',
+        payload: {
+          threadId,
+          sessionId: resultFromLine?.sessionId || getClaudeState(services, threadId as string)?.sessionId || '',
+          costUsd: resultFromLine?.totalCostUsd ?? 0,
+          durationMs: resultFromLine?.durationMs ?? 0,
+          toolCallCount: toolActivity.entries.length,
+          mutatedFileCount: mutatedPaths.length,
+          mutatedPaths,
+          hadErrors: false,
+          userText: text,
+          releasedEarly: true,
+        },
+      });
+      return;
     }
 
     // ─── Stream drained — check for silent failures ─────────────────────
