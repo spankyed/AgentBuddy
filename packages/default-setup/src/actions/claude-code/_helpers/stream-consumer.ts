@@ -89,11 +89,6 @@ export async function consumeStream(
   // The next `message_start` will split into a new message.
   let splitOnNextMessageStart = false;
 
-  // Deferred space injection: set when an `assistant` event ends a turn that
-  // had streamed text, consumed by the next `text_delta` to inject a space
-  // between successive assistant text segments within the same chat message.
-  let needsSpaceBeforeNextText = false;
-
   // Track file-mutation paths across all messages for the diff artifact.
   const mutatedPathsSet = new Set<string>();
   const mutatedPaths: string[] = [];
@@ -132,15 +127,6 @@ export async function consumeStream(
         log.debug('stream event', { n: eventCount, type: line?.type });
       }
 
-      // ── Diagnostic: trace event types flowing between text segments ──
-      if (line.type === 'stream_event') {
-        const evType = (line as any).event?.type;
-        const cbType = (line as any).event?.content_block?.type;
-        log.info('[stream-dbg]', { n: eventCount, type: line.type, evType, cbType, writerLen: writer.text.length, flag: needsSpaceBeforeNextText });
-      } else {
-        log.info('[stream-dbg]', { n: eventCount, type: line.type, subtype: (line as any).subtype, writerLen: writer.text.length, flag: needsSpaceBeforeNextText });
-      }
-
       // Split into a new message after approval/question answer — but only
       // when the CLI actually starts a new assistant message turn, not on
       // intermediate events (tool results, text deltas) that may arrive
@@ -148,7 +134,6 @@ export async function consumeStream(
       const isMessageStart = line.type === 'assistant' || (line.type === 'stream_event' && (line as any).event?.type === 'message_start');
       if (splitOnNextMessageStart && isMessageStart) {
         splitOnNextMessageStart = false;
-        needsSpaceBeforeNextText = false;
         ({ currentMessageId, writer, toolActivity } = splitMessage());
       }
 
@@ -173,29 +158,15 @@ export async function consumeStream(
       }
 
       if (line.type === 'stream_event') {
-        const evt = (line as any).event;
-
-        // Detect new text content block → mark boundary for space injection.
-        if (evt?.type === 'content_block_start' && evt?.content_block?.type === 'text' && writer.text) {
-          needsSpaceBeforeNextText = true;
-        }
-
         // Anthropic text deltas.
-        const delta = evt?.delta;
+        const delta = line.event?.delta;
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
-          if (needsSpaceBeforeNextText && writer.text) {
-            writer.push(' ');
-          }
-          needsSpaceBeforeNextText = false;
           writer.push(delta.text);
           continue;
         }
       }
 
       if (line.type === 'assistant') {
-        // Mark boundary so a space is injected before the next turn's text.
-        if (writer.text) needsSpaceBeforeNextText = true;
-
         // Track the CLI's message UUID so revert can use --resume-session-at.
         if (line.uuid) {
           services.chat.updateMessageState(currentMessageId as any, {
