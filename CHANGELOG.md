@@ -1,5 +1,282 @@
 -e # Changelog
 
+## v0.2.0 (2026-04-16)
+
+### Features
+- threads): whole-card drag in kanban, title to open
+- threads): cap voice input with configurable limit (3 min default)
+- threads): add default mode/phase setting for new threads
+- settings): default General tab to Application and rename header
+- brain): flip track order and pan-to-latest on fit
+- chat): add "Summarize from here" to ESC-ESC revert menu
+- chat): ESC-ESC in empty input opens revert-history menu
+- brain): complete listener TNodes and hide their status dot
+- brain): open details panel on event-listener node click
+- notes): preserve editor scroll position across note and plugin switches
+- nodes): swap active/completed status colors
+- toolbar): add right-click menu to toggle plugin visibility
+- ui): simplify chat-maximize trigger and expose it in header menu
+-  dbl right click to maximize chat
+- threads): make recent threads count configurable
+- threads): swap shift+tab to cycle phase, ctrl+tab to cycle mode
+- threads): add optional color to phases with picker, tint, migration
+- threads): derive pause visibility from user-selected "busy" state
+- chat): pause work/turn on Esc
+- tiptap): add copy button to code blocks
+- logs): toggle app-events source visibility in logs UI
+- threads): make chat title bar link to thread artifacts dashboard
+- faqs): move FAQs into default-setup as compiled markdown
+- explorer): double-click file to promote preview to permanent
+- seed): add settings to import pipeline, fix wipe mode for all types
+- settings): add reset app, import modes, brain restart, rename to application
+- commit): make commit message textarea bigger and auto-expanding
+- explorer): add "New Folder" to folder right-click context menu
+- voice): add Cmd+R push-to-talk for voice recording in chat
+- terminals): configurable max terminals with toast error and unlimited option
+- Merge pull request #116 from spankyed/AS/flow-seed-hasing
+- seed): per-flow source hashing for incremental seeding
+- threads): flash success indicator on turn completion
+- threads): transient chat state overrides for ephemeral visual feedback
+- threads): config-driven chat state indicators
+- blocks): add markdown block type with scrollable rendered content
+- claude-code): collapse directory picker after selection
+- claude-code): sync frontend phase selector with backend mode changes
+- migrations): add 0.2.0 migration for mode and tag changes
+- claude-code): show "Planning…" instead of "Working…" during plan phase
+- claude-code): show "Cancelled — resend" on queued messages when turn is killed
+- claude-code): show last 3 tools in session artifact card
+- claude-code): hook up Pause button to kill CLI and end the current turn
+- threads): show current/last tool step in activity block header
+- claude-code): add plan approval options with clear-context support
+- claude-code): add auto-accept file edits checkbox to tool approval
+- interaction): implement per-block response routing for improved state handling
+- claude-code): add button to copy resume command for session
+- claude-code): restyle tool approval with structured ToolInputBlock
+- claude-code): add project select and toggles block to directory picker
+- claude-code): add worktree toggle to directory-select picker
+- claude-code): show directory picker when no project directory is configured
+- claude-code): add worktree toggle to session artifact card
+- claude-code): enable coordinator mode for sub-agent spawning
+- claude-code): resolve all reference types (files, notes, threads, docs, folders) for CLI prompts
+- claude-code): bridge image attachments to CLI via base64 content blocks
+- claude-code): add multi-question wizard for AskUserQuestion
+- claude-code): implement context menu for revert options with file restore
+- claude-code): add right-click revert with file restore
+- claude-code): integrate fork/revert with CLI session management
+- claude-code): integrate stream consumer lifecycle into flow with dedicated actions
+- claude-code): default permission mode to acceptEdits
+- claude-code): queue messages during active turn + cancel pending interactions
+- claude-code): render AskUserQuestion as interactive choice blocks
+- claude-code): auto-approve plan-file writes in plan phase
+- claude-code): dedicated plan approval flow for ExitPlanMode
+- claude-code): add keepAlive entry to Claude Code flow
+- claude-code): add integration plan documentation for Claude Code
+- claude-code): permission mode control on session artifact
+- claude-code): collapsible tool-activity block
+- claude-code): wire Claude Code into work-mode chats
+- claude-code): add subprocess wrapper for the Claude Code CLI
+
+### Fixes
+- cc): robust queued-message replay + startup reconcile
+- cc): don't clobber 'working' with 'idle' on queued-message replay
+- thread): improve thread tag display
+- thread): mark prior queued message as 'cancelled' when enqueuing a new message
+- cc): pass session cwd to --rewind-files + verify success marker
+- chat): skip revert confirmation modal for double-ESC history popup
+- cc): propagate `context` through UPDATE_MESSAGE_STATE so rewind works
+- cc): include just-deleted pivot in JSONL cliUuid backfill
+- settings): serialize app reset against concurrent clicks
+- cc): enable SDK file checkpointing so --rewind-files works
+- plan-artifact): bound height to canvas pane instead of 40vh
+- chat): harden "Summarize from here" flow
+- code/monaco): only dispose listeners when underlying editor is torn down
+- claude-code): restore revert+rewind files and empty assistant replies
+- onboarding): change mode from 'chat' to 'manager' in finishOnboarding function
+- code/monaco): dispose listeners attached to monaco emitters
+- claude-code): prevent stream desync when new message preempts awaiting-permission turn
+- brain): clear stuck middle-mouse pan state on canvas re-entry
+- code/tabs): don't persist partial state during incremental restore
+- code/pr): stop "GitHub CLI not available" banner from flashing
+- code/tabs): persist activeFilePath so the editor isn't blank on app load
+- notes): truncate long tasklist titles in the panel header
+- fix type errors
+- notes): stop Tab from defocusing the editor on orphaned list items
+- Merge pull request #119 from spankyed/AS/term-scroll-fix
+- code/terminal): drive viewport scroll from the pool so tab-switch remounts stay in sync
+- code/pr): review follow-ups on PR view race hardening
+-  always open to a tab when showing thread dashboard
+- Merge pull request #118 from spankyed/AS/pr-view-race-hardening
+- code/pr): harden PR view against races from audit findings
+- threads): teleport status indicator out of chat area's clip tree
+- tiptap): ignore stray-gesture clicks on editor wrapper and drag handle
+- tiptap): hide generic placeholder when editor has content
+- code/pr): settle mergeability after UPDATE_PR base changes and MERGE_PR rejections
+- claude-code): preserve "Thinking…" placeholder on early pause
+- threads): hide chat title link when thread has no topic
+- code/pr): skip mergeability wait for drafts + tolerate retry failures
+- claude-code): preserve "Thinking…" placeholder when pausing before first text delta
+- code/pr): wait for GitHub to settle mergeability after PR create
+- threads): keep chat input toolbar visible when panel is squeezed
+- migrations): numeric version compare + gate migrations to app version
+- threads): restore chat settings UI and fix Details action
+- chat): restore focus and close menu on copy in quick prompts
+- code): tab drag-drop cross-section order + preview persistence
+- chat): handle image paste from notes via ProseMirror plugin
+- code): resolve race condition in PR checkout base
+- monaco): suppress diff editor race condition on stale line numbers
+- macos): prevent Cmd+Q from quitting app — hide instead
+- threads): make ToolInputBlock input prop optional
+- tiptap): preserve paragraph breaks in streamed Claude Code text
+- claude-code): accumulate toolCallCount across turns instead of overwriting
+- threads): keep quick-prompt edit form open while typing
+- settings): remove hardcoded chatState defaults from settings.vue
+- settings): include error/success in settings.vue fallback defaults
+- settings): migrate chatStates array to include error and success entries
+- stream): preserve "Thinking…" placeholder when pausing before first delta
+- threads): add missing fields to all message query whitelists
+- threads): preserve block response state when forking threads
+- threads): sync forkable state in real-time without page refresh
+- chat-state): init chatState on startup, guard sendToPlugin behind artifact existence
+- ndjson): honor "never throws" contract on buffer overflow
+- chat-input): clear prefillText after consumption so identical reverts retrigger
+- project-select): derive display string from response to avoid [object Object]
+- auto-hide): include message context in aside text summaries
+- fix type errors
+- auto-hide): include autoHide/asideText in message query pick lists
+- tests): align runner spec with buildChildEnv's merge-and-scrub behavior
+- claude-code): address code review findings across CLI integration
+- threads): restore pause button after approving a tool
+- threads): show pause button when switching to a streaming thread
+- claude-code): rename CANCEL→PAUSE_TURN event and reject orphaned plan drafts on pause
+- claude-code): guard Pause button visibility and handle SIGTERM gracefully
+- stream-consumer): only split message on actual message_start event
+- claude-code): expand DEFAULT_ALLOWED_TOOLS to match CLI's read-only set
+- stream-consumer): split message immediately on first event after approval
+- stream-consumer): extract result data directly from event line to preserve cost/duration on error
+-  add  response display conditions
+- fix double scrollbar on dashboard
+- plan-artifact): reduce max height of notes section to improve visibility
+- claude-code): cancel on AskUserQuestion now ends turn instead of sending message
+- claude-code): show "Thinking…" placeholder and avoid empty bubbles
+- claude-code): always show project-select block with empty state
+- claude-code): suppress SIGTERM warning and fix switch branch field mappings
+- claude-code): invalidate stale interactive blocks when user sends a new message
+-  deny handling to immediately kill turn on denial
+- claude-code): fix revert-with-file-restore bugs from review
+- revert): include target message in deletion and prefill chat input
+- claude-code): disable fork on user messages to prevent app/CLI state mismatch
+- claude-code): disable fork on mid-stream messages
+- claude-code): reject malformed control requests missing tool name
+- claude-code): break consumer loop on result event to unblock finalization
+- claude-code): fix AskUserQuestion custom responses lost + broken Enter key
+- claude-code): stop setRunning(false) from clobbering pendingControlRequest
+- claude-code): clear isRunning during user-input waits
+- claude-code): persist session ID on system/init, not just turn end
+- claude-code): freeze tool-activity block during approval prompts
+- claude-code): split messages only after user interactions, not every model call
+- chat): update isStreaming logic and adjust scroll behavior for async content
+- chat): render tool-activity blocks above text in message bubbles
+- claude-code): split messages at model-call boundaries during streaming
+- claude-code): sync plan phase to CLI permissionMode so ExitPlanMode fires
+-  reorder work mode to show first
+- claude-code): send updatedInput on allow, message on deny
+- claude-code): set ENABLE_TOOL_SEARCH=0 to expose ExitPlanMode
+- claude-code): recognise { approved } shape on approval block responses
+- claude-code): surface tool execution errors from user/tool_result events
+- claude-code): defer stdin EOF until after result promise settles
+- claude-code): emit --permission-prompt-tool stdio
+- fix flow
+- claude-code): paragraph-break between sub-turn messages
+- tiptap): stop double-parsing markdown in resetContent
+- renderer): chat viewer now renders markdown blockquotes + headings
+-  chat viewer now renders markdown blockquotes + headings
+- claude-code): scrub ANTHROPIC_API_KEY from CLI child env
+- query): improve stdin handling for single-turn and multi-turn modes
+- flows): handle `===`/`!==` in DSL predicate parser
+- claude-code): correct permission-mode enum values
+- brain): switch-node no-match routing + allow empty branches
+- claude-code): crash on clean-exit-without-result + mode gate
+
+### Refactors
+- flows): unify revert-family under one thread.revert event
+- threads): prefix summarize event with thread.revert.*
+- tiptap): tighten keyboard handling across viewer, IME, and popups
+- notes): extract scroll preservation into useNoteScroll composable
+- code/terminal): use write-queue callback for viewport sync and drop the rAF guard dance
+- code/explorer): reorder directory menu and rename new-project item
+- threads): rename isWorking → isBusy + document raw-state intent
+- design): unify color pickers into one shared ColorPicker
+- settings): rename Misc → App, move hotkeys into app settings
+- settings): add typed default-settings.ts with compile step and export SettingsData
+- settings): move defaults from API into default-setup as settings.json
+- settings): centralize color picker state into single keyed ref
+- threads): replace ad-hoc statusColor with backend-driven chatState system
+- tool-activity): move loading dots next to label text
+- claude-code): extract shared killTurn helper and fix cleanup gaps
+- threads): route block responses by source to prevent cross-block display
+- stream-consumer): drop handle.result await in favor of direct line extraction
+- claude-code): split route-response into focused actions gated by flow switch
+- claude-code): move toolCallCount update from hot loop to turn-completed
+- blocks): extract question block as a first-class block type
+- claude-code): remove sessionArtifactCache and restore toolCallCount tracking
+- claude-code): make chat action short-lived by extracting stream consumer
+- claude-code): surface control_requests in stream, route responses via flow
+- chat): simplify scroll system — remove pinned flag, use isStreaming
+- threads): type BlockResponse union + plan artifact + allow-path test
+- onboarding): typed discriminated-union step-response parser
+- flows): rethink entry track helpers for explicit keep_alive
+
+### Other
+- docs(faq): rename "saved messages" FAQ to "old brain traces"
+- restyle phase select
+- polish(cc): clearer rewind errors + JSONL-backed cliUuid recovery
+- clear duration timer on error
+- min height for plan artifact
+- code cleanup
+- reverse order and restyle revert history popup
+- Restyle new folder action in library plugin
+- Merge pull request #119 from spankyed/AS/term-scroll-fix
+- Fix is applied. Here's your commit message:
+- Merge pull request #118 from spankyed/AS/pr-view-race-hardening
+- Merge pull request #117 from spankyed/AS/config-driven-busy-chate-state
+- build(faqs): move FAQ compilation into prod-only compile:prod script
+- update defs
+- Merge pull request #116 from spankyed/AS/flow-seed-hasing
+- perf(git): use single git diff command for multi-path diffs
+- re-enable onboarding
+- OpenCode Auth Documentation
+- remove legacy normalization
+- Merge pull request #113 from spankyed/AS/claude-code-integration
+- honest typing
+- honest typing for response
+- code cleanup
+- revert file system browser line remove
+- chore(settings): comment out review phase and add migration to remove it
+- Merge pull request #115 from spankyed/AS/chat-state-cc-integration
+- rename(claude-code): "Resume Turn" → "Approve Tool", "Deny Turn" → "Deny Tool"
+- revert file system browser changes
+- Tweak tool activity block styles
+- add asideContext to the backend and default-setup defs
+- Cleanup autohide UI
+- Fix session cost always showing $0.000
+- delete and move around old integration docs
+- remove integration doc
+- hookup autohide for plan approvals, AskUserQuestions, and tool approvals.
+- ``` Add auto-hide support for interactive messages
+-    call. But setRunning is a helper that only sets isRunning. So add a separate persistClaudeState call      after each setRunning(false).
+- stable pre-created refs for dir submit
+- code cleanup
+- revert  response display conditions in FilePickerInput and ProjectSelectInput
+- ui(plan-artifact): add max height scroll and git branch/PR to header
+- ix(interactions): remove debounced auto-submit from text and choice inputs
+- chore(build): auto-compile default-setup before build:be
+- chore(tests): move claude-code helper tests into default-setup workspace
+-   - Clear gaps between paragraphs (~11px), comparable to ChatGPT/Claude.ai   - Headings with ~15px space above and ~4px below   - Lists with margin above and below the whole list, but individual items staying tight (li + li at 0.15em still wins)   - First block flush with the top of the bubble, last block flush with the bottom (edge-collapse rules preserved)
+- chore(claude-code): add debug logging + make flow re-seed idempotent
+- ix(claude-code): address code review findings + add unit tests
+
+-e # Changelog
+
 ## v0.1.5 (2026-04-10)
 
 ### Features
