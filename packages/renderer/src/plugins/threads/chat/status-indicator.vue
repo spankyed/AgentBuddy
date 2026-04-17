@@ -67,7 +67,7 @@ const positionStyle = computed(() => pos.value && ({
   position: 'fixed' as const,
   top: `${pos.value.top}px`,
   left: `${pos.value.left}px`,
-  zIndex: 50,
+  zIndex: 40,
 }))
 
 function updatePos() {
