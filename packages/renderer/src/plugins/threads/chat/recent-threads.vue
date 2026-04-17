@@ -16,6 +16,7 @@
           v-for="thread in recentThreads"
           :key="thread.id"
           class="group flex items-center gap-3 w-full px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white"
+          :class="thread.id === currentThread?.id ? 'bg-neutral-800/60' : ''"
           @click="handleSelectThread(thread.id)"
         >
           <span
