@@ -582,8 +582,8 @@ const handleSubmit = async () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
   if (!editor) return
-  const md = (editor.storage as any).markdown.getMarkdown() as string
-  if (md.trim() || hasAttachments.value) {
+  const md = ((editor.storage as any).markdown.getMarkdown() as string).trim()
+  if (md || hasAttachments.value) {
     const entityId = props.currentThread?.id || 'chat-attachments'
     const attachmentRefs = await collectAttachments(entityId)
     const contextRefs = collectContextReferences(editor)
