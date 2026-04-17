@@ -160,10 +160,15 @@ export async function consumeStream(
       if (line.type === 'stream_event') {
         const evt = (line as any).event;
 
-        // New text content block starting after prior text → inject paragraph break
+        // New text content block starting after prior text → inject separator
         // so successive assistant segments don't concatenate without whitespace.
+        // Use a space after sentence-ending punctuation; paragraph break otherwise
+        // (e.g. lists, code blocks, headings).
         if (evt?.type === 'content_block_start' && evt?.content_block?.type === 'text') {
-          if (writer.text) writer.push('\n\n');
+          if (writer.text) {
+            const lastChar = writer.text[writer.text.length - 1];
+            writer.push(lastChar === '.' ? ' ' : '\n\n');
+          }
         }
 
         // Anthropic text deltas.
