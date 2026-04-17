@@ -145,12 +145,6 @@ const isBusy = useSelector(actor, ({ context }) => {
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
-const isStreaming = computed(() => {
-  const msgs = messages.value
-  if (!msgs.length) return false
-  const last = msgs[msgs.length - 1]
-  return last.sender !== 'user' && !last.responseTimestamp
-})
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
 const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
@@ -346,14 +340,15 @@ watch(messages, async (newMsgs, oldMsgs) => {
   }
 })
 
-// Auto-scroll during streaming only. The ResizeObserver catches async
-// Tiptap height changes as text deltas render. Outside of streaming,
-// height changes (e.g. expanding a tool-activity block) should NOT
-// trigger a scroll — the user is reading, not watching live output.
+// Auto-scroll while the agent is busy and the user hasn't scrolled away.
+// The ResizeObserver catches async Tiptap height changes as text deltas
+// render. Outside of busy state (or when the user scrolled up), height
+// changes (e.g. expanding a tool-activity block) should NOT trigger a
+// scroll — the user is reading, not watching live output.
 watch(messagesContent, (el, _, onCleanup) => {
   if (!el) return
   const observer = new ResizeObserver(() => {
-    if (isStreaming.value) {
+    if (isBusy.value && isNearBottom.value) {
       scrollToBottom('instant')
     }
   })
