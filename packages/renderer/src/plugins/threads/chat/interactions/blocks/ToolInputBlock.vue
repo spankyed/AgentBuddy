@@ -1,13 +1,14 @@
 <template>
-  <div class="tool-input-block rounded-lg border border-neutral-700 overflow-hidden text-xs font-mono">
+  <div class="tool-input-block rounded-lg border border-neutral-700/60 overflow-hidden text-xs font-mono bg-neutral-900/40">
     <!-- File path header (Edit/Write/NotebookEdit) -->
-    <div v-if="filePath" class="px-3 py-1.5 bg-neutral-800 border-b border-neutral-700 text-neutral-400 truncate" :title="filePath">
-      {{ filePath }}
+    <div v-if="filePath" class="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800/60 border-b border-neutral-700/40 text-neutral-500 truncate" :title="filePath">
+      <FileCode class="w-3.5 h-3.5 flex-shrink-0 text-neutral-500" />
+      <span class="truncate">{{ fileName }}</span>
     </div>
 
     <!-- Edit: Monaco diff viewer -->
     <template v-if="toolName === 'Edit'">
-      <div class="h-48">
+      <div class="diff-container h-48">
         <UnifiedMonacoEditor
           model-value=""
           :diff-original="input?.old_string || ''"
@@ -15,7 +16,9 @@
           :file-path="filePath || undefined"
           mode="diff"
           preset="readonly"
+          :read-only="true"
           theme="vs-dark"
+          :diff-options="diffOptions"
           class="h-full"
         />
       </div>
@@ -54,6 +57,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { FileCode } from 'lucide-vue-next'
 import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
 
 const props = withDefaults(defineProps<{
@@ -66,6 +70,27 @@ const props = withDefaults(defineProps<{
 const filePath = computed(() =>
   props.input?.file_path || props.input?.path || null
 )
+
+const fileName = computed(() => {
+  if (!filePath.value) return ''
+  return filePath.value.split('/').pop() || filePath.value
+})
+
+const diffOptions = {
+  // Diff-specific
+  renderSideBySide: false,
+  renderMarginRevertIcon: false,
+  renderGutterMenu: false,
+  renderIndicators: false,
+  renderOverviewRuler: false,
+  compactMode: true,
+  // Editor chrome
+  lineNumbers: 'off',
+  glyphMargin: false,
+  folding: false,
+  lineDecorationsWidth: 0,
+  scrollBeyondLastLine: false,
+}
 
 const MAX_CONTENT_LENGTH = 2000
 const truncatedContent = computed(() => {
@@ -80,3 +105,30 @@ const fieldCount = computed(() => Object.keys(props.input || {}).length)
 
 const formattedJson = computed(() => JSON.stringify(props.input, null, 2))
 </script>
+
+<style scoped>
+/* Soften Monaco's default diff colors */
+.diff-container :deep(.monaco-editor .line-delete) {
+  background-color: rgba(248, 81, 73, 0.10) !important;
+}
+.diff-container :deep(.monaco-editor .char-delete) {
+  background-color: rgba(248, 81, 73, 0.22) !important;
+}
+.diff-container :deep(.monaco-editor .line-insert) {
+  background-color: rgba(63, 185, 80, 0.10) !important;
+}
+.diff-container :deep(.monaco-editor .char-insert) {
+  background-color: rgba(63, 185, 80, 0.22) !important;
+}
+
+/* Horizontal padding inside diff highlighted regions */
+.diff-container :deep(.monaco-editor .view-lines > .view-line) {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+/* Deleted lines rendered as view zones in inline diff */
+.diff-container :deep(.monaco-editor .line-delete .view-line) {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+</style>

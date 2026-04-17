@@ -18,7 +18,7 @@ window.addEventListener('error', (event) => {
       :original="diffOriginal || ''"
       :modified="diffModified || modelValue"
       :language="resolvedLanguage"
-      :options="resolvedOptions"
+      :options="{ ...resolvedOptions, ...diffOptions }"
       @mount="handleDiffMount"
       class="h-full"
     />
@@ -82,6 +82,7 @@ export interface UnifiedMonacoEditorProps {
   // Diff mode props
   diffOriginal?: string
   diffModified?: string
+  diffOptions?: Record<string, any>
   
   // Dynamic DSL params for autocomplete
   dslParams?: Record<string, { type: string }>
@@ -330,6 +331,16 @@ const handleDiffMount = (diffEditor: editor.IStandaloneDiffEditor) => {
     enableTypeChecking: false,
     enableSuggestions: false
   })
+
+  // Force diff-specific options on the diff editor and both sub-editors.
+  // Monaco's createDiffEditor receives options via the library, but sub-editor
+  // options (lineNumbers, glyphMargin, etc.) need explicit propagation.
+  if (props.diffOptions) {
+    diffEditor.updateOptions(props.diffOptions)
+    const editorOpts = { ...props.diffOptions }
+    diffEditor.getOriginalEditor().updateOptions(editorOpts)
+    diffEditor.getModifiedEditor().updateOptions(editorOpts)
+  }
 
   const modifiedEditor = diffEditor.getModifiedEditor()
   editorDisposables.push(modifiedEditor.onDidChangeModelContent(() => {
