@@ -26,8 +26,8 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
-import { updateSessionArtifact, updateChatState, readSessionPermissionMode } from './session-artifact';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId } from './thread-context';
+import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken } from './session-artifact';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -606,7 +606,16 @@ export async function consumeStream(
     // Real error — not a user-initiated pause.
     log.error('stream consumer failed', { message, stack: err?.stack });
     toolActivity.finalise('error');
-    writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
+
+    // Session-not-found mid-stream: clear stale session and mark artifact.
+    const staleId = extractStaleSessionId(message);
+    if (staleId) {
+      writer.finalize(`${writer.text}\n\n⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.`.trim());
+      clearSessionId(services, threadId);
+      markSessionBroken(services, threadId, `Session ${staleId} not found`);
+    } else {
+      writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
+    }
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
 
     // Kill the CLI process on error (it may be in a bad state).

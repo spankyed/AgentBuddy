@@ -35,7 +35,7 @@ export type PermissionMode =
   | 'auto';
 
 /** Unified chat state used on the artifact, in backend events, and on the frontend. */
-export type ChatState = 'idle' | 'working' | 'paused';
+export type ChatState = 'idle' | 'working' | 'paused' | 'error';
 
 export interface SessionArtifactContent {
   sessionId: string;
@@ -58,6 +58,8 @@ export interface SessionArtifactContent {
   permissionMode?: PermissionMode;
   /** Whether to run in a git worktree for isolated file mutations. */
   useWorktree?: boolean;
+  /** Human-readable error when the session is broken (e.g. JSONL deleted). */
+  sessionError?: string;
 }
 
 /** Build a default SessionArtifactContent for a brand-new turn. */
@@ -219,5 +221,35 @@ export function updateChatState(
     type: 'SET_CHAT_STATE',
     threadId: threadId as string,
     chatState,
+  });
+}
+
+/**
+ * Detect "No conversation found with session ID" from a CLI error message.
+ * Returns the extracted session ID or undefined.
+ */
+export function extractStaleSessionId(errorMessage: string): string | undefined {
+  const match = errorMessage.match(/No conversation found with session ID:?\s*(\S+)/i);
+  return match?.[1];
+}
+
+/**
+ * Mark the session artifact as broken: set chatState to 'error', store
+ * the error message, and clear the sessionId so the next turn starts fresh.
+ */
+export function markSessionBroken(
+  services: Services,
+  threadId: EntityId,
+  errorMessage: string,
+): void {
+  updateSessionArtifact(services, threadId, {
+    chatState: 'error',
+    sessionError: errorMessage,
+    sessionId: '',
+  });
+  services.emitter.sendToPlugin('threads', {
+    type: 'SET_CHAT_STATE',
+    threadId: threadId as string,
+    chatState: 'error',
   });
 }

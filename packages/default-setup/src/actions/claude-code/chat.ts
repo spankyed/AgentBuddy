@@ -17,8 +17,8 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { ensureSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode } from './_helpers/session-artifact';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn } from './_helpers/thread-context';
+import { ensureSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken } from './_helpers/session-artifact';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -208,6 +208,7 @@ export async function action(
   ensureSessionArtifact(services, threadId, {
     chatState: 'working',
     startedAt: Date.now(),
+    sessionError: undefined,
   });
   updateChatState(services, threadId, 'working');
 
@@ -305,12 +306,24 @@ export async function action(
     const message = err?.message || 'Claude Code query failed to start';
     log.error('chat action failed to start query', { message, stack: err?.stack });
     toolActivity.finalise('error');
+    setRunning(services, threadId, false);
+
+    // ─── Session-not-found: clear stale sessionId, mark artifact broken ──
+    const staleId = extractStaleSessionId(message);
+    if (staleId) {
+      const userMessage = 'Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.';
+      writer.finalize(`⚠️ ${userMessage}`);
+      clearSessionId(services, threadId);
+      markSessionBroken(services, threadId, `Session ${staleId} not found`);
+      return { success: false, error: userMessage, messageId: currentMessageId };
+    }
+
+    // ─── Generic error (existing behavior) ───────────────────────────────
     updateChatState(services, threadId, 'idle');
     services.emitter.sendToPlugin('threads', {
       type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
     });
     writer.finalize(`⚠️ ${message}`);
-    setRunning(services, threadId, false);
     return { success: false, error: message, messageId: currentMessageId };
   }
 }

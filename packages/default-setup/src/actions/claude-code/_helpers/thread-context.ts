@@ -141,6 +141,11 @@ export function setRunning(services: Services, threadId: string, running: boolea
   persistClaudeState(services, threadId, { isRunning: running });
 }
 
+/** Clear the sessionId so the next turn starts a fresh CLI session. */
+export function clearSessionId(services: Services, threadId: string): void {
+  persistClaudeState(services, threadId, { sessionId: undefined });
+}
+
 /**
  * Queue a message for processing after the current turn ends. Last write
  * wins (burst debounce) — if a prior message was already queued on this

@@ -25,6 +25,14 @@
         </span>
       </div>
 
+      <!-- Session error banner -->
+      <div
+        v-if="content.sessionError"
+        class="px-3 py-2 bg-red-950/40 border-b border-red-900/50 text-xs text-red-300"
+      >
+        {{ content.sessionError }}
+      </div>
+
       <!-- Key/value grid -->
       <div class="px-3 py-3 space-y-2 text-xs">
         <div class="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2">
@@ -154,10 +162,11 @@ interface SessionContent {
   lastTurnAt: number
   turns: number
   totalCostUsd: number
-  chatState: 'idle' | 'working' | 'paused'
+  chatState: 'idle' | 'working' | 'paused' | 'error'
   toolCallCount: number
   lastTool?: { name: string; summary: string; at: number }
   permissionMode?: PermissionMode
+  sessionError?: string
 }
 
 const props = defineProps<{
