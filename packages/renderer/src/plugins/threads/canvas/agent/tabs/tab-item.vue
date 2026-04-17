@@ -1,21 +1,22 @@
 <template>
   <div
-    class="relative flex items-center px-4 py-2 text-sm transition-colors cursor-pointer group"
+    class="relative flex items-center px-4 py-2 text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
     :class="[
-      isActive 
-        ? 'bg-neutral-850 text-white border-t border-blue-500' 
+      isActive
+        ? 'bg-neutral-850 text-white border-t border-blue-500'
         : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200'
     ]"
+    :title="tab.label"
     @click="$emit('select')"
   >
-    <span class="pr-2">{{ tab.label }}</span>
     <button
       v-if="!isPinned"
-      class="opacity-0 group-hover:opacity-100 transition-opacity ml-1 p-0.5 rounded hover:bg-neutral-700"
+      class="opacity-0 group-hover:opacity-100 transition-opacity mr-1.5 p-0.5 rounded hover:bg-neutral-700"
       @click.stop="$emit('close')"
     >
       <X :size="14" />
     </button>
+    <span class="truncate">{{ tab.label }}</span>
   </div>
 </template>
 

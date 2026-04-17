@@ -327,7 +327,7 @@ export async function consumeStream(
             const pr = await services.cli.gh.getPRForBranch(planBranch);
             if (pr?.number) planPR = String(pr.number);
           } catch { /* non-critical */ }
-          createPlanDraft(services, threadId, parsed.plan, 'Implementation Plan', {
+          createPlanDraft(services, threadId, parsed.plan, undefined, {
             branch: planBranch,
             prNumber: planPR,
           });

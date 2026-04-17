@@ -48,6 +48,16 @@ export interface PlanArtifactContent {
 }
 
 /**
+ * Extract a human-readable title from the plan markdown.
+ * Looks for the first `# heading` line and prefixes it with "plan:".
+ * Falls back to "Implementation Plan" when no heading is found.
+ */
+function extractPlanTitle(planMarkdown: string): string {
+  const match = planMarkdown.match(/^#\s+(.+)/m);
+  return match ? `plan: ${match[1].trim()}` : 'Implementation Plan';
+}
+
+/**
  * Create a new plan artifact in `draft` status containing the given
  * markdown body and notify the frontend.
  *
@@ -59,9 +69,10 @@ export function createPlanDraft(
   services: Services,
   threadId: EntityId,
   planMarkdown: string,
-  title = 'Implementation Plan',
+  title?: string,
   opts?: { branch?: string; prNumber?: string },
 ): EntityId {
+  const resolvedTitle = title ?? extractPlanTitle(planMarkdown);
   const content: PlanArtifactContent = {
     notes: planMarkdown,
     status: 'draft',
@@ -71,7 +82,7 @@ export function createPlanDraft(
   };
   const { artifactId } = services.artifact.createAndNotify({
     artifactType: 'plan',
-    title,
+    title: resolvedTitle,
     content,
     threadId,
   });
