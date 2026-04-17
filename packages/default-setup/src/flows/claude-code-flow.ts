@@ -177,6 +177,21 @@ export default {
       ]],
       "Turn completed",
     ),
+    // ─── Background task lifecycle ────────────────────────────────────
+    // Emitted when a Bash command is auto-approved with run_in_background.
+    on(
+      "cc.task.backgrounded",
+      [[
+        action("CC: Task Backgrounded", {
+          label: "task-bg",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            command: "$.event.data.payload.command",
+          },
+        }),
+      ]],
+      "Bash task backgrounded",
+    ),
     // ─── User-initiated pause ─────────────────────────────────────────
     on(
       "user.thread.pause",

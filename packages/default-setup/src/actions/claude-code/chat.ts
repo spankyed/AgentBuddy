@@ -219,7 +219,8 @@ export async function action(
 
   // Phase-aware system-prompt nudging (plan/edit/review).
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
-  const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
+  const bgHint = 'For long-running processes like dev servers, watchers, or any command that will not exit on its own, use run_in_background: true in the Bash tool. After starting a background process, inform the user and complete your turn — do not poll with TaskOutput.';
+  const composedSystemPrompt = [phaseHint, bgHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
 
   // Clear one-shot flags before the query — their purpose is consumed the
   // moment we read them. If the query throws, we don't want the next turn

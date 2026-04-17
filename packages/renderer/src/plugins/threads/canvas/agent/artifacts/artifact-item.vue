@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList } from 'lucide-vue-next';
+import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList, Terminal } from 'lucide-vue-next';
 import type { ArtifactItem, ArtifactType } from '@app/api';
 
 defineProps<{
@@ -43,6 +43,7 @@ function getIcon(type: ArtifactType) {
     'claude-session': Wrench,
     diff: GitBranch,
     plan: ClipboardList,
+    'background-processes': Terminal,
   };
   return icons[type] || FileText;
 }
