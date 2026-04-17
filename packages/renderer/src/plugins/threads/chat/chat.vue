@@ -190,9 +190,9 @@ function expandChatIfCollapsed() {
 
 function handleViewDashboard() {
   const snapshot = applicationState.getSnapshot();
-  // Ensure canvas shows the default (threads) plugin
-  if (!snapshot.context.defaultToggles.canvas) {
-    applicationState.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
+  // Switch active plugin to threads so the toolbar reflects it
+  if (snapshot.context.activePlugin.id !== 'threads') {
+    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
   }
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
   if (snapshot.context.panelSizes.canvasHeight < 20) {
