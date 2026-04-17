@@ -1,5 +1,57 @@
 -e # Changelog
 
+## v0.2.2 (2026-04-17)
+
+### Features
+-  trim whitespace from chat input before sending
+
+### Fixes
+- stream): add 'space' separator between streamed message segments
+- stream): add paragraph breaks between streamed message segments
+-  emit cc.stream.completed on paused turns so session artifact updates
+-  raise recent threads menu above chat state indicator
+-  restyle diff artifact with Monaco
+-  emit THREAD_UPDATED when claude-session tag is added/removed
+- stream-consumer): surface CLI errors when process exits immediately
+
+### Other
+- Handle "No conversation found" session errors gracefully
+- Fix Cmd+Shift+F to focus search input when already on search panel and prefill with editor selection
+- Make artifacts list more compact on threads dashboard
+- Handle "No conversation found" session errors gracefully
+- Fix "Auto" permission mode not auto-approving file edits
+- Fix review issues: displayCount reset bug, scrollbar CSS, dead scroll handler
+- Limit brain plugin canvas to 150 most recent events and add infinite scroll to panel traces
+- Increase default Electron window size to 1920x1200 (16:10 WUXGA)
+- Replace thread table pagination with infinite scroll
+- Fix thread title under chat input not updating when edited in detail form
+- Focus chat input after reverting a user message
+- Fix chat maximized layout
+- Revert "Add spacing between Claude Code stream messages within a turn"
+- Add Homebrew fallback path for Claude Code CLI
+- Remove special-case tab dashboard id logic, rely on tab.pinned instead
+- Add spacing between Claude Code stream messages within a turn
+- Fix typo in README.md description
+- Restyle diff artifact file list for a cleaner, more compact look
+- Fix thread title click not switching active plugin to threads
+- Add right-click context menu to thread tabs in dashboard
+- remove isStreaming var in favor of isBusy
+- Fix Monaco diff editor rendering and restyle tool approval diff block
+- Move auto-accept checkbox inline with approve/deny buttons and disable reason field
+- Sort recent threads menu by creation time, newest first
+- Add file path tooltip on hover for code plugin tabs
+- Sort recent threads by creation time, not last activity
+- Sort thread dashboard artifacts newest-first
+- Keep toolbar context menu open when toggling plugin visibility
+- Fix reset app not refreshing in production
+- Show app version on splash screen
+- Style thread dashboard tabs with borders, max width, and close button on left
+- update selected style for recent threads
+- Fix recent threads dot color to reflect chat state
+- Move tool activity dots indicator to text baseline
+
+-e # Changelog
+
 ## v0.2.1 (2026-04-16)
 
 ### Fixes
