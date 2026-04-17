@@ -1,27 +1,30 @@
 <template>
   <div class="flex h-full gap-3">
     <!-- File list (left) -->
-    <div class="w-64 flex-shrink-0 overflow-y-auto rounded-md border border-neutral-800 bg-neutral-850">
-      <div class="px-3 py-2 border-b border-neutral-800 text-xs text-neutral-500">
+    <div class="w-56 flex-shrink-0 overflow-y-auto rounded-lg border border-neutral-700/50 bg-neutral-900/60">
+      <div class="px-3 py-2 border-b border-neutral-700/30 text-[11px] text-neutral-500 tracking-wide">
         {{ content.summary || 'No changes' }}
       </div>
-      <div v-for="(file, idx) in content.files" :key="file.path">
+      <div class="py-1">
         <button
+          v-for="(file, idx) in content.files"
+          :key="file.path"
           type="button"
-          class="w-full text-left px-3 py-2 hover:bg-neutral-800/60 border-b border-neutral-800/40 last:border-0 transition-colors"
-          :class="{ 'bg-neutral-800/80': selectedIdx === Number(idx) }"
+          class="group w-full text-left px-3 py-1.5 transition-colors"
+          :class="selectedIdx === Number(idx)
+            ? 'bg-neutral-800/70'
+            : 'hover:bg-neutral-800/40'"
           @click="selectedIdx = Number(idx)"
         >
           <div class="flex items-center gap-2">
-            <component :is="changeIcon(file.changeType)" :size="12" :class="changeIconClass(file.changeType)" />
-            <span class="text-xs font-mono text-neutral-200 truncate flex-1" :title="file.path">
+            <component :is="changeIcon(file.changeType)" :size="11" :class="changeIconClass(file.changeType)" class="flex-shrink-0" />
+            <span class="text-xs font-mono text-neutral-300 truncate flex-1" :title="file.path">
               {{ shortenPath(file.path) }}
             </span>
-          </div>
-          <div class="mt-0.5 text-[10px] text-neutral-500 tabular-nums">
-            <span v-if="file.added" class="text-green-500">+{{ file.added }}</span>
-            <span v-if="file.added && file.removed" class="text-neutral-600"> </span>
-            <span v-if="file.removed" class="text-red-500">-{{ file.removed }}</span>
+            <span class="text-[10px] tabular-nums flex-shrink-0 space-x-0.5">
+              <span v-if="file.added" class="text-green-500/80">+{{ file.added }}</span>
+              <span v-if="file.removed" class="text-red-500/80">-{{ file.removed }}</span>
+            </span>
           </div>
         </button>
       </div>
@@ -31,7 +34,7 @@
     </div>
 
     <!-- Monaco diff viewer (right) -->
-    <div class="flex-1 overflow-hidden rounded-md border border-neutral-800">
+    <div class="flex-1 overflow-hidden rounded-lg border border-neutral-700/50">
       <div v-if="!selectedFile" class="flex items-center justify-center h-full text-xs text-neutral-600 bg-neutral-900">
         Select a file to view its diff
       </div>
