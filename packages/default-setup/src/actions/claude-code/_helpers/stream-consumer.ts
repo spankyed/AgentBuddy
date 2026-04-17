@@ -158,8 +158,16 @@ export async function consumeStream(
       }
 
       if (line.type === 'stream_event') {
+        const evt = (line as any).event;
+
+        // New text content block starting after prior text → inject paragraph break
+        // so successive assistant segments don't concatenate without whitespace.
+        if (evt?.type === 'content_block_start' && evt?.content_block?.type === 'text') {
+          if (writer.text) writer.push('\n\n');
+        }
+
         // Anthropic text deltas.
-        const delta = line.event?.delta;
+        const delta = evt?.delta;
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
           writer.push(delta.text);
           continue;
