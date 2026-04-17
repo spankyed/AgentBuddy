@@ -8,6 +8,8 @@
       :isPinned="tab.id === 'dashboard' || tab.pinned === true"
       @select="$emit('select-tab', tab.id)"
       @close="$emit('close-tab', tab.id)"
+      @open-in-chat="$emit('open-in-chat', tab.id)"
+      @delete-thread="$emit('delete-thread', tab.id)"
     />
   </div>
 </template>
@@ -24,6 +26,8 @@ defineProps<{
 defineEmits<{
   'select-tab': [tabId: string];
   'close-tab': [tabId: string];
+  'open-in-chat': [tabId: string];
+  'delete-thread': [tabId: string];
 }>();
 </script>
 

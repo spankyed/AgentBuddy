@@ -8,6 +8,8 @@
         :activeTabId="activeTabId"
         @select-tab="selectTab"
         @close-tab="closeTab"
+        @open-in-chat="openInChat"
+        @delete-thread="deleteThread"
       />
     </div>
 
@@ -44,6 +46,14 @@ function selectTab(tabId: string) {
 
 function closeTab(tabId: string) {
   actor.send({ type: 'CLOSE_TAB', tabId });
+}
+
+function openInChat(tabId: string) {
+  actor.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId });
+}
+
+function deleteThread(tabId: string) {
+  actor.send({ type: 'DELETE_THREAD', threadId: tabId });
 }
 
 function selectArtifact(artifactId: string) {

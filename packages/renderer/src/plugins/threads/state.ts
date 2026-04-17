@@ -745,8 +745,15 @@ const threadsState = setup({
       const tab = context.tabs.find(t => t.id === tabId);
       if (tab?.pinned) return {};
 
+      const idx = context.tabs.findIndex(t => t.id === tabId);
       const newTabs = context.tabs.filter(t => t.id !== tabId);
-      const newActiveTabId = context.activeTabId === tabId ? 'dashboard' : context.activeTabId;
+
+      let newActiveTabId = context.activeTabId;
+      if (context.activeTabId === tabId) {
+        // Pick the next tab to the right, or the one to the left, or dashboard
+        const nextTab = context.tabs[idx + 1] ?? context.tabs[idx - 1];
+        newActiveTabId = nextTab?.id ?? 'dashboard';
+      }
 
       return { tabs: newTabs, activeTabId: newActiveTabId };
     }),

@@ -35,19 +35,20 @@
       <div v-if="!selectedFile" class="flex items-center justify-center h-full text-xs text-neutral-600 bg-neutral-900">
         Select a file to view its diff
       </div>
-      <UnifiedMonacoEditor
-        v-else
-        :key="selectedFile.path"
-        :model-value="versions.modified"
-        mode="diff"
-        :diff-original="versions.original"
-        :diff-modified="versions.modified"
-        :language="fileLanguage"
-        :read-only="true"
-        :file-path="selectedFile.path"
-        preset="readonly"
-        :options="diffEditorOptions"
-      />
+      <div v-else class="diff-container h-full">
+        <UnifiedMonacoEditor
+          :key="selectedFile.path"
+          :model-value="versions.modified"
+          mode="diff"
+          :diff-original="versions.original"
+          :diff-modified="versions.modified"
+          :language="fileLanguage"
+          :read-only="true"
+          :file-path="selectedFile.path"
+          preset="readonly"
+          :diff-options="diffEditorOptions"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -129,9 +130,20 @@ const versions = computed(() =>
 )
 
 const diffEditorOptions = {
+  // Diff-specific
   renderSideBySide: false,
+  renderMarginRevertIcon: false,
+  renderGutterMenu: false,
+  renderIndicators: false,
+  renderOverviewRuler: false,
+  compactMode: true,
+  // Editor chrome
   originalEditable: false,
   contextmenu: false,
+  lineNumbers: 'off',
+  glyphMargin: false,
+  folding: false,
+  lineDecorationsWidth: 0,
   scrollBeyondLastLine: false,
 }
 
@@ -159,3 +171,29 @@ function shortenPath(path: string): string {
   return `…/${segments.slice(-3).join('/')}`
 }
 </script>
+
+<style scoped>
+/* Soften Monaco's default diff colors */
+.diff-container :deep(.monaco-editor .line-delete) {
+  background-color: rgba(248, 81, 73, 0.10) !important;
+}
+.diff-container :deep(.monaco-editor .char-delete) {
+  background-color: rgba(248, 81, 73, 0.22) !important;
+}
+.diff-container :deep(.monaco-editor .line-insert) {
+  background-color: rgba(63, 185, 80, 0.10) !important;
+}
+.diff-container :deep(.monaco-editor .char-insert) {
+  background-color: rgba(63, 185, 80, 0.22) !important;
+}
+
+/* Horizontal padding inside diff highlighted regions */
+.diff-container :deep(.monaco-editor .view-lines > .view-line) {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+.diff-container :deep(.monaco-editor .line-delete .view-line) {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+</style>
