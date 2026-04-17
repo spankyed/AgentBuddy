@@ -35,7 +35,7 @@ export type PermissionMode =
   | 'auto';
 
 /** Unified chat state used on the artifact, in backend events, and on the frontend. */
-export type ChatState = 'idle' | 'working' | 'paused' | 'background';
+export type ChatState = 'idle' | 'working' | 'paused';
 
 export interface SessionArtifactContent {
   sessionId: string;

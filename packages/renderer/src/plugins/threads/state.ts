@@ -85,7 +85,7 @@ const defaultChatThread: AgentThreadData = {
   artifacts: [],
 };
 
-type ChatState = 'idle' | 'working' | 'paused' | 'background';
+type ChatState = 'idle' | 'working' | 'paused';
 
 // ---- Event types ----
 

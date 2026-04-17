@@ -1,19 +1,21 @@
 /**
- * CC: Task Backgrounded — updates the session artifact and notifies the user
- * when a Bash command has been sent to background.
+ * CC: Task Backgrounded — notifies the user when a Bash command has been
+ * sent to background.
  *
  * Triggered by the `cc.task.backgrounded` brain event, which is emitted from
  * the stream consumer when a Bash control_request is auto-approved with
  * `run_in_background: true` (pattern match or user chose "Allow (Background)").
+ *
+ * Does NOT touch chatState — background processes are orthogonal to the
+ * turn lifecycle (idle/working/paused). The background-processes artifact
+ * communicates this state instead.
  */
 
-import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState } from './_helpers/thread-context';
-import { updateChatState } from './_helpers/session-artifact';
+import type { ActionMeta, Services } from '../../types';
 
 export const meta: ActionMeta = {
   label: 'CC: Task Backgrounded',
-  description: 'Updates chat state and notifies the user when a Bash command is backgrounded.',
+  description: 'Notifies the user when a Bash command is backgrounded.',
   category: 'claude-code',
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },
@@ -31,14 +33,6 @@ export async function action(
   };
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
-
-  // Only set 'background' if no foreground turn is actively running.
-  // If a queued message was replayed, chatState is already 'working' and
-  // should stay that way.
-  const state = getClaudeState(services, threadId);
-  if (!state?.isRunning) {
-    updateChatState(services, threadId as EntityId, 'background');
-  }
 
   // Notify the user in chat.
   const shortCommand = command && command.length > 60
