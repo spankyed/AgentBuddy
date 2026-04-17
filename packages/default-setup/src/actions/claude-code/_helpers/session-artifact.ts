@@ -81,6 +81,16 @@ function makeInitialContent(partial: Partial<SessionArtifactContent>): SessionAr
 }
 
 
+/** Read the current chatState from the session artifact. */
+export function readSessionChatState(
+  services: Services,
+  threadId: EntityId,
+): ChatState | undefined {
+  const session = findSessionArtifact(services, threadId);
+  const content = session?.content as Partial<SessionArtifactContent> | undefined;
+  return content?.chatState;
+}
+
 /** Find the existing claude-session artifact for a thread, or undefined. */
 function findSessionArtifact(
   services: Services,

@@ -11,7 +11,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact, updateChatState } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionChatState } from './_helpers/session-artifact';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 
@@ -83,11 +83,16 @@ export async function action(
   const running = getClaudeState(services, threadId)?.isRunning === true;
 
   if (!running) {
-    updateChatState(services, threadId as EntityId, 'idle');
-    if (!hadErrors) {
-      services.emitter.sendToPlugin('threads', {
-        type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'success', durationMs: 1000,
-      });
+    // Don't overwrite a persistent 'error' state (e.g. session-not-found) —
+    // markSessionBroken already set it and the user needs to see it.
+    const currentChatState = readSessionChatState(services, threadId as EntityId);
+    if (currentChatState !== 'error') {
+      updateChatState(services, threadId as EntityId, 'idle');
+      if (!hadErrors) {
+        services.emitter.sendToPlugin('threads', {
+          type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'success', durationMs: 1000,
+        });
+      }
     }
   }
   // Disabled: hadErrors includes non-critical tool failures (grep no results, bash exit code).

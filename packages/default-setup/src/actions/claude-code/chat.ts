@@ -17,7 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { ensureSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken } from './_helpers/session-artifact';
 import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
@@ -208,8 +208,10 @@ export async function action(
   ensureSessionArtifact(services, threadId, {
     chatState: 'working',
     startedAt: Date.now(),
-    sessionError: undefined,
   });
+  // Clear any prior session error (ensureSessionArtifact only applies
+  // initial content on creation, not on existing artifacts).
+  updateSessionArtifact(services, threadId, { sessionError: undefined });
   updateChatState(services, threadId, 'working');
 
   // Read the user's current permission-mode and worktree choices.
