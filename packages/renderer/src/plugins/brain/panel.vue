@@ -27,7 +27,7 @@
           <span class="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded bg-neutral-700/50 text-neutral-400">Stopped</span>
         </div>
       </div>
-      <div class="flex-1 p-4 opacity-50 pointer-events-none overflow-y-auto" @scroll="onScroll">
+      <div class="flex-1 p-4 opacity-50 pointer-events-none overflow-y-auto tnode-scroll">
         <div class="space-y-1">
           <TNodeListItem
             v-for="node in displayedNodes"
@@ -53,7 +53,7 @@
           </span>
         </div>
       </div>
-      <div class="flex-1 p-4 overflow-y-auto" @scroll="onScroll">
+      <div class="flex-1 p-4 overflow-y-auto tnode-scroll" @scroll="onScroll">
         <div class="space-y-1">
           <TNodeListItem
             v-for="node in displayedNodes"
@@ -91,13 +91,14 @@ import { trpc } from '@/core/trpc'
 const brainActor: BrainState = applicationState.system.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
+const flowTNodeId = useSelector(brainActor, (state) => state.context.flowTNodeId);
 
 // Infinite scroll: show 50 items at a time
 const PAGE_SIZE = 50;
 const displayCount = ref(PAGE_SIZE);
 
-// Reset display count when tree data changes (e.g. navigating to a different flow)
-watch(normalizedTree, () => {
+// Reset display count only on flow navigation (not on every TNODE_SPAWNED)
+watch(flowTNodeId, () => {
   displayCount.value = PAGE_SIZE;
 });
 
@@ -158,6 +159,10 @@ defineEmits<{
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.tnode-scroll {
+  scroll-behavior: smooth;
 
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {
@@ -176,10 +181,5 @@ defineEmits<{
       background: rgba(255, 255, 255, 0.15);
     }
   }
-}
-
-/* Smooth scroll behavior */
-.tnode-tree > div:last-child {
-  scroll-behavior: smooth;
 }
 </style>
