@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import * as fs from 'fs';
 import * as path from 'path';
 
 // API Server Configuration
@@ -48,6 +49,25 @@ export const getEnvironment = (port: number) => {
   // Production Electron inherits a minimal PATH missing common binary locations
   if (app.isPackaged && env.PATH) {
     const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin', '/usr/local/sbin'];
+
+    // CLI tools like `claude` use `#!/usr/bin/env node` shebangs, so `node`
+    // must be on PATH. When installed via nvm, node lives under
+    // ~/.nvm/versions/node/vX.Y.Z/bin/ which isn't in the packaged app's PATH.
+    const nvmBin = process.env.NVM_BIN;
+    if (nvmBin) {
+      extraPaths.unshift(nvmBin);
+    } else {
+      const nvmNodeDir = path.join(process.env.HOME || '', '.nvm', 'versions', 'node');
+      try {
+        const versions = fs.readdirSync(nvmNodeDir)
+          .filter(e => e.startsWith('v'))
+          .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+        if (versions.length > 0) {
+          extraPaths.unshift(path.join(nvmNodeDir, versions[0], 'bin'));
+        }
+      } catch { /* nvm not installed — skip */ }
+    }
+
     const existing = env.PATH.split(':');
     for (const p of extraPaths) {
       if (!existing.includes(p)) existing.push(p);
