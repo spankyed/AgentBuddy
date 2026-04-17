@@ -1,6 +1,6 @@
 # AgentBuddy
 
-A desktop app for building and running AI agent workflows using an actor-based architectures.
+A desktop app for building and running AI agent workflows using an actor-based architecture.
 
 ## Features
 
