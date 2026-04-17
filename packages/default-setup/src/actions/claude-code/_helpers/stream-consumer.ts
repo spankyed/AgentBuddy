@@ -26,11 +26,35 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, addBackgroundTask, updateBackgroundTask } from './thread-context';
 import { updateSessionArtifact, updateChatState } from './session-artifact';
+import { syncBackgroundArtifact } from './background-artifact';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
+
+/**
+ * Patterns that indicate a Bash command is a long-running server/watcher
+ * process. Matched commands are auto-approved with `run_in_background: true`
+ * so the turn is released immediately.
+ */
+const LONG_RUNNING_PATTERNS: RegExp[] = [
+  // npm / yarn / pnpm start / dev / serve
+  /\b(npm|yarn|pnpm)\s+(run\s+)?(start|dev|serve)\b/,
+  // npx dev servers
+  /\bnpx\s+(next|vite|nuxt|remix)\s+dev\b/,
+  // Watch flags
+  /--watch\b/,
+  // Serve flags
+  /--serve\b/,
+  // Hot-reload flags
+  /--hot\b/,
+];
+
+/** Returns true if the command matches a known long-running server/watcher pattern. */
+function isLongRunningCommand(command: string): boolean {
+  return LONG_RUNNING_PATTERNS.some(re => re.test(command));
+}
 
 /**
  * Sum per-model costUSD from the CLI's modelUsage map.
@@ -92,6 +116,10 @@ export async function consumeStream(
   // Track file-mutation paths across all messages for the diff artifact.
   const mutatedPathsSet = new Set<string>();
   const mutatedPaths: string[] = [];
+
+  // Track Bash commands we auto-backgrounded (by control_request requestId).
+  // Used to capture task_ids from subsequent tool_result events.
+  const backgroundedToolIds = new Set<string>();
 
   // Track whether we've captured the CLI's user message UUID for this turn.
   // The first `user` event echoes the prompt with the UUID the CLI assigned.
@@ -323,6 +351,35 @@ export async function consumeStream(
           }
         }
 
+        // Auto-background Bash commands matching server/watcher patterns.
+        // Injects `run_in_background: true` so the CLI runs the command as a
+        // detached background task — the Bash tool returns immediately and the
+        // turn is not blocked.
+        if (req.subtype === 'can_use_tool' && req.tool_name === 'Bash') {
+          const command: string = (req.input as any)?.command ?? '';
+          if (isLongRunningCommand(command)) {
+            log.debug('auto-backgrounding long-running Bash command', { command: command.slice(0, 80) });
+            const updatedInput = { ...(req.input ?? {}), run_in_background: true };
+            handle.respond(requestId, { behavior: 'allow', updatedInput });
+            // Track for artifact — tool_use_id isn't on the control_request,
+            // so use the requestId as the tracking key. The actual task_id
+            // comes later from the tool_result.
+            backgroundedToolIds.add(requestId);
+            addBackgroundTask(services, threadId, {
+              id: requestId,
+              command,
+              startedAt: Date.now(),
+              status: 'running',
+            });
+            syncBackgroundArtifact(services, threadId);
+            services.emitter.sendToBrainSystem({
+              eventType: 'cc.task.backgrounded',
+              payload: { threadId, command },
+            });
+            continue;
+          }
+        }
+
         // Freeze the tool-activity block so it stops showing "Working…".
         writer.flush();
         toolActivity.finalise('done');
@@ -388,13 +445,27 @@ export async function consumeStream(
             continue;
           }
         } else {
+          // Bash commands get an extra "Allow (Background)" option so the
+          // user can send long-running commands to background at approval time.
+          const isBash = req.tool_name === 'Bash';
           const approval = services.chat.sendBlockMessage({
             threadId,
             text: `Claude Code wants to run ${req.tool_name}`,
             blocks: [
               { type: 'prompt', props: { content: `Allow \`${req.tool_name}\`?` } },
               { type: 'tool-input' as any, props: { toolName: req.tool_name, input: req.input } },
-              { type: 'approval', props: { requireReason: false, allowReason: false, autoAcceptOption: FILE_MUTATION_TOOLS.has(req.tool_name) } },
+              { type: 'approval', props: {
+                requireReason: false,
+                allowReason: false,
+                autoAcceptOption: FILE_MUTATION_TOOLS.has(req.tool_name),
+                ...(isBash && {
+                  options: [
+                    { label: 'Allow', variant: 'primary', flags: { approved: true } },
+                    { label: 'Allow (Background)', variant: 'secondary', flags: { approved: true, background: true } },
+                    { label: 'Deny', variant: 'neutral', flags: { approved: false } },
+                  ],
+                }),
+              } },
             ],
             forkable: false,
             autoHide: true,

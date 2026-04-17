@@ -9,6 +9,7 @@
 
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { clearClaudeState } from './_helpers/thread-context';
+import { syncBackgroundArtifact } from './_helpers/background-artifact';
 
 export const meta: ActionMeta = {
   label: 'Claude Code Reset Session',
@@ -33,6 +34,7 @@ export async function action(
 
   try {
     clearClaudeState(services, threadId);
+    syncBackgroundArtifact(services, threadId as string);
     services.chat.sendBlockMessage({
       threadId,
       text: 'Claude Code session reset for this thread.',

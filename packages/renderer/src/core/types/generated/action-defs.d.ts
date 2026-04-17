@@ -1254,7 +1254,7 @@ interface Tab {
     selectedArtifactId?: string;
     pinned?: boolean;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'claude-session' | 'diff' | 'plan';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'claude-session' | 'diff' | 'plan' | 'background-processes';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;

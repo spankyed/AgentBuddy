@@ -21,6 +21,22 @@ export interface QueuedMessage {
   references?: any;
 }
 
+/** A Bash tool execution that was sent to background via `run_in_background: true`. */
+export interface BackgroundTask {
+  /** The tool_use_id from the Bash tool call. */
+  id: string;
+  /** The Bash command string. */
+  command: string;
+  /** Epoch ms when the task was backgrounded. */
+  startedAt: number;
+  /** The CLI's task_id parsed from the tool_result (for TaskOutput lookups). */
+  taskId?: string;
+  /** Current status. */
+  status: 'running' | 'completed' | 'error' | 'unknown';
+  /** Short output summary when completed. */
+  outputSummary?: string;
+}
+
 export interface PendingControlRequest {
   /** The CLI's request_id for the control_response. */
   requestId: string;
@@ -83,6 +99,12 @@ export interface ClaudeCodeThreadState {
    * the query starts.
    */
   revertTo?: { cliUuid: string };
+  /**
+   * Active background tasks (Bash commands sent to background via
+   * `run_in_background: true`). Persisted so the background-processes
+   * artifact can show them across turns.
+   */
+  backgroundTasks?: BackgroundTask[];
 }
 
 export const CLAUDE_SESSION_TAG = 'claude-session';
@@ -208,6 +230,46 @@ export function killTurn(services: Services, threadId: string): void {
     autoAcceptEdits: undefined,
     isRunning: false,
   });
+}
+
+// ─── Background task helpers ──────────────────────────────────────────────────
+
+/** Add a background task to the thread's tracking list. */
+export function addBackgroundTask(services: Services, threadId: string, task: BackgroundTask): void {
+  const prior = getClaudeState(services, threadId);
+  const existing = prior?.backgroundTasks ?? [];
+  persistClaudeState(services, threadId, {
+    backgroundTasks: [...existing, task],
+  });
+}
+
+/** Patch a specific background task by its id. */
+export function updateBackgroundTask(
+  services: Services,
+  threadId: string,
+  taskId: string,
+  patch: Partial<BackgroundTask>,
+): void {
+  const prior = getClaudeState(services, threadId);
+  const tasks = prior?.backgroundTasks ?? [];
+  persistClaudeState(services, threadId, {
+    backgroundTasks: tasks.map(t => t.id === taskId ? { ...t, ...patch } : t),
+  });
+}
+
+/** Remove a background task by its id. */
+export function removeBackgroundTask(services: Services, threadId: string, taskId: string): void {
+  const prior = getClaudeState(services, threadId);
+  const tasks = prior?.backgroundTasks ?? [];
+  persistClaudeState(services, threadId, {
+    backgroundTasks: tasks.filter(t => t.id !== taskId),
+  });
+}
+
+/** Read the current list of background tasks for a thread. */
+export function getBackgroundTasks(services: Services, threadId: string): BackgroundTask[] {
+  const prior = getClaudeState(services, threadId);
+  return prior?.backgroundTasks ?? [];
 }
 
 /**

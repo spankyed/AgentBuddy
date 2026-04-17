@@ -4,8 +4,9 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState, killTurn } from './_helpers/thread-context';
+import { getClaudeState, killTurn, persistClaudeState } from './_helpers/thread-context';
 import { updateChatState } from './_helpers/session-artifact';
+import { syncBackgroundArtifact } from './_helpers/background-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Pause Turn',
@@ -31,6 +32,13 @@ export async function action(
   }
 
   killTurn(services, threadId);
+
+  // Clear background tasks — they belong to the killed CLI session.
+  if (prior?.backgroundTasks?.length) {
+    persistClaudeState(services, threadId, { backgroundTasks: undefined });
+    syncBackgroundArtifact(services, threadId);
+  }
+
   updateChatState(services, threadId as EntityId, 'idle');
 
   return { success: true };

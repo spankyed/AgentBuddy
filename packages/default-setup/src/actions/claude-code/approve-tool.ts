@@ -4,9 +4,10 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, setRunning } from './_helpers/thread-context';
+import { persistClaudeState, setRunning, addBackgroundTask } from './_helpers/thread-context';
 import { updateSessionArtifact, updateChatState } from './_helpers/session-artifact';
 import { resolvePlanDraft } from './_helpers/plan-artifact';
+import { syncBackgroundArtifact } from './_helpers/background-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Approve Tool',
@@ -30,13 +31,37 @@ export async function action(
     requestId: string;
     toolName?: string;
     originalInput?: Record<string, unknown>;
-    response?: { autoAccept?: boolean };
+    response?: { autoAccept?: boolean; background?: boolean };
   };
 
   if (!threadId || !requestId) return { success: false, reason: 'missing threadId or requestId' };
 
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
   if (!handle) return { success: false, reason: 'no active CLI handle' };
+
+  // "Allow (Background)" — inject run_in_background: true so the Bash tool
+  // returns immediately with a task_id instead of blocking the turn.
+  if (response?.background && toolName === 'Bash') {
+    const updatedInput = { ...(originalInput ?? {}), run_in_background: true };
+    handle.respond(requestId, { behavior: 'allow', updatedInput });
+    const command: string = (originalInput as any)?.command ?? 'bash command';
+    addBackgroundTask(services, threadId, {
+      id: requestId,
+      command,
+      startedAt: Date.now(),
+      status: 'running',
+    });
+    syncBackgroundArtifact(services, threadId);
+    services.emitter.sendToBrainSystem({
+      eventType: 'cc.task.backgrounded',
+      payload: { threadId, command },
+    });
+    // Still resume the turn normally — the Bash tool will return quickly.
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    setRunning(services, threadId, true);
+    updateChatState(services, threadId as EntityId, 'working');
+    return { success: true, background: true };
+  }
 
   handle.respond(requestId, { behavior: 'allow', updatedInput: originalInput ?? {} });
 
