@@ -27,7 +27,7 @@ import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage } from './thread-context';
-import { updateSessionArtifact, updateChatState } from './session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionPermissionMode } from './session-artifact';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -313,11 +313,13 @@ export async function consumeStream(
           continue;
         }
 
-        // Auto-approve file edits when user opted in mid-turn via the checkbox.
+        // Auto-approve file edits when the artifact's permission mode is
+        // 'acceptEdits' (the "Auto" toggle) OR the user opted in mid-turn.
         if (req.subtype === 'can_use_tool' && FILE_MUTATION_TOOLS.has(req.tool_name)) {
           const ccState = getClaudeState(services, threadId);
-          if (ccState?.autoAcceptEdits) {
-            log.debug('auto-approved file edit (mid-turn opt-in)', { tool: req.tool_name });
+          const artifactMode = readSessionPermissionMode(services, threadId);
+          if (ccState?.autoAcceptEdits || artifactMode === 'acceptEdits') {
+            log.debug('auto-approved file edit', { tool: req.tool_name, source: ccState?.autoAcceptEdits ? 'mid-turn' : 'artifact' });
             handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
             continue;
           }

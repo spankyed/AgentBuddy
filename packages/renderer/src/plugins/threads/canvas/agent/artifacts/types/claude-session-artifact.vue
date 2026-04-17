@@ -249,12 +249,6 @@ const permissionOptions: Array<{
     tooltip: 'Auto-accept file edits; still prompt for Bash',
     description: 'Auto-accepts file edits',
   },
-  {
-    value: 'plan',
-    label: 'Plan',
-    tooltip: 'Read-only plan; no file changes',
-    description: 'Read-only; produces a plan',
-  },
 ]
 
 const permissionMode = computed<PermissionMode>(
