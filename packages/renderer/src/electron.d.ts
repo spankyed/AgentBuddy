@@ -43,6 +43,7 @@ declare global {
           error?: { message: string; stack?: string };
           restartAttempts: number;
         }>;
+        relaunch: () => Promise<void>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
       apiPort: number;

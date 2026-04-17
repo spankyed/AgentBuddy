@@ -537,7 +537,11 @@ const settingsState = setup({
         },
         APP_RESET_COMPLETE: {
           actions: () => {
-            window.location.reload();
+            if (window.electronAPI?.apiStatus?.relaunch) {
+              window.electronAPI.apiStatus.relaunch();
+            } else {
+              window.location.reload(); // Fallback for dev/browser
+            }
           },
         },
         APP_RESET_FAILED: {
