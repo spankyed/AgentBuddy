@@ -12,7 +12,7 @@
       />
       <Wrench class="w-4 h-4 text-neutral-400 flex-shrink-0 self-center" />
       <span class="text-sm text-neutral-200 truncate shrink">{{ label }}</span>
-      <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0 self-center" aria-hidden>
+      <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0 self-baseline" aria-hidden>
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 0ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 150ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 300ms" />
