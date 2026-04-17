@@ -594,6 +594,26 @@ export async function consumeStream(
           forkable: true,
         } as any);
       }
+
+      // Emit cc.stream.completed so Turn Completed updates the session artifact
+      // (turn count, tool call count, cost). Cost is best-effort: resultFromLine
+      // is only set if the CLI's terminal `result` event arrived before the kill
+      // signal took effect — typically it hasn't, so cost will be 0.
+      services.emitter.sendToBrainSystem({
+        eventType: 'cc.stream.completed',
+        payload: {
+          threadId,
+          sessionId: resultFromLine?.sessionId || state?.sessionId || '',
+          costUsd: resultFromLine?.totalCostUsd ?? 0,
+          durationMs: resultFromLine?.durationMs ?? 0,
+          toolCallCount: toolActivity.entries.length,
+          mutatedFileCount: mutatedPaths.length,
+          mutatedPaths,
+          hadErrors: !!segmentHadErrors,
+          userText: text,
+        },
+      });
+
       return;
     }
 
