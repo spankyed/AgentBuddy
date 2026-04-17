@@ -20,7 +20,7 @@
         >
           <span
             class="shrink-0 w-1.5 h-1.5 rounded-full transition-colors"
-            :class="thread.id === currentThread?.id ? 'bg-blue-600' : 'bg-neutral-700 group-hover:bg-neutral-500'"
+            :style="{ backgroundColor: getThreadDotColor(thread.id) || '#525252' }"
           />
           <span class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
             {{ thread.topic || 'Untitled' }}
@@ -154,10 +154,21 @@ const containerRef = ref<HTMLDivElement | null>(null)
 // Get threads from the threads plugin state
 const threadsActor: ThreadsState = applicationState.system.get(threadsId)
 const allThreads = useSelector(threadsActor, (state) => state.context.threads)
+const chatStates = useSelector(threadsActor, (state) => state.context.chatStates)
+const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides)
+const settings = useSelector(threadsActor, (state) => state.context.settings)
 const recentThreadsLimit = useSelector(
   threadsActor,
   (state) => state.context.settings?.recentThreadsLimit ?? 7,
 )
+
+function getThreadDotColor(threadId: string): string | undefined {
+  const override = chatStateOverrides.value[threadId]
+  const activeStateId = (override && override.expiresAt > Date.now())
+    ? override.id
+    : (chatStates.value[threadId] || 'idle')
+  return settings.value?.chatStates?.find(c => c.id === activeStateId)?.color
+}
 
 const recentThreads = computed(() => {
   return allThreads.value.slice(0, recentThreadsLimit.value)
