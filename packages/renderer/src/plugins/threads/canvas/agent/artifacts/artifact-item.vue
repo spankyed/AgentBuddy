@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-3 rounded-lg cursor-pointer transition-colors"
+    class="px-2.5 py-1.5 rounded-md cursor-pointer transition-colors"
     :class="[
       isSelected 
         ? 'bg-blue-600 text-white' 

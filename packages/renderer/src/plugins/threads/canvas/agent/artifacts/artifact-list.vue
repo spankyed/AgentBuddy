@@ -1,7 +1,7 @@
 <template>
-  <div class="p-4">
+  <div class="p-2">
     <!-- <h3 class="mb-3 text-sm font-semibold text-neutral-300">Artifacts</h3> -->
-    <div class="space-y-2">
+    <div class="space-y-1">
       <ArtifactItem
         v-for="artifact in sortedArtifacts"
         :key="artifact.id"
