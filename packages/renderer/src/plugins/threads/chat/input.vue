@@ -290,6 +290,7 @@ watch(popoverOpen, (isOpen) => {
 watch(() => props.prefillText, (text) => {
   if (text && tiptapRef.value?.editor) {
     tiptapRef.value.editor.commands.setContent(text)
+    tiptapRef.value.editor.commands.focus('end')
   }
 })
 
