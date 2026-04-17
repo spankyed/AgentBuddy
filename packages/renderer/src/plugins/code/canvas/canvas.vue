@@ -95,9 +95,9 @@
 <script setup lang="ts">
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id, type CodeState } from '../state'
+import { id, type CodeState, setEditorSelectionGetter } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/plugins/code/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
@@ -461,8 +461,21 @@ const unpinGroup = (groupId: string) => {
   actor.send({ type: 'UNPIN_GROUP', groupId })
 }
 
+// Register editor selection getter so the state machine can read Monaco selection for search prefill
+onMounted(() => {
+  setEditorSelectionGetter(() => {
+    const editor = fileEditorRef.value?.getEditor()
+    if (!editor) return ''
+    const selection = editor.getSelection()
+    const model = editor.getModel()
+    if (!selection || !model) return ''
+    return model.getValueInRange(selection)
+  })
+})
+
 // Cleanup on unmount
 onUnmounted(() => {
+  setEditorSelectionGetter(null)
   if (refreshTimeout) {
     clearTimeout(refreshTimeout)
   }

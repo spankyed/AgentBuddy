@@ -19,6 +19,13 @@ import { promptsState, type PromptTab } from './features/prompts/state';
 
 export const id = 'code' as const;
 
+// Module-level callback for getting editor selection text.
+// Set by canvas.vue so the state machine can read Monaco selection without Vue refs.
+let _editorSelectionGetter: (() => string) | null = null;
+export function setEditorSelectionGetter(getter: (() => string) | null) {
+  _editorSelectionGetter = getter;
+}
+
 const ALL_PANELS: PanelType[] = ['explorer', 'terminal', 'search', 'commit', 'pr', 'actions', 'prompts'];
 
 export interface OpenFile {
@@ -91,6 +98,8 @@ export type Context = {
   hotkeys: HotkeysMap
   settings?: CodeSettings
   pendingRevealLine: { filePath: string; line: number; column: number; lineText?: string } | null
+  searchFocusTrigger: number
+  searchPrefillText: string
 }
 
 export interface QuickOpenResult {
@@ -131,7 +140,7 @@ export type Event =
   | { type: 'OPEN_TERMINAL' }
   | { type: 'NAVIGATE_PREV_PANEL' }
   | { type: 'NAVIGATE_NEXT_PANEL' }
-  | { type: 'FOCUS_SEARCH' }
+  | { type: 'FOCUS_SEARCH'; selectedText?: string }
   // Quick open events
   | { type: 'TOGGLE_QUICK_OPEN' }
   | { type: 'SHOW_QUICK_OPEN' }
@@ -730,9 +739,15 @@ const codeState = setup({
       self.send({ type: 'SELECT_PANEL', panel: ALL_PANELS[newIndex] });
     },
 
-    focusSearch: ({ self }) => {
+    focusSearch: assign(({ context, self }) => {
+      const selectedText = _editorSelectionGetter?.() || '';
       self.send({ type: 'SELECT_PANEL', panel: 'search' });
-    },
+      return {
+        ...context,
+        searchFocusTrigger: context.searchFocusTrigger + 1,
+        searchPrefillText: selectedText,
+      };
+    }),
 
     searchInFolder: ({ event, context, self, system }) => {
       const ev = event as { type: 'SEARCH_IN_FOLDER'; folder: string }
@@ -1075,6 +1090,8 @@ const codeState = setup({
     // Default hotkeys for code plugin (will be overridden by settings)
     hotkeys: {},
     pendingRevealLine: null,
+    searchFocusTrigger: 0,
+    searchPrefillText: '',
   },
   states: {
     canvas: {

@@ -201,12 +201,26 @@ const searchError = useSelector(searchActor, (state: any) => state.context.searc
 const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
 const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
+const searchFocusTrigger = useSelector(codeActor, (state) => state.context.searchFocusTrigger)
+const searchPrefillText = useSelector(codeActor, (state) => state.context.searchPrefillText)
 
 const searchInput = ref<HTMLInputElement | null>(null)
 
 onMounted(() => {
   nextTick(() => {
     searchInput.value?.focus()
+  })
+})
+
+// Re-focus input (and optionally prefill) when Cmd+Shift+F is pressed while already on this panel
+watch(searchFocusTrigger, () => {
+  if (searchPrefillText.value) {
+    searchQuery.value = searchPrefillText.value
+    nextTick(() => performSearch())
+  }
+  nextTick(() => {
+    searchInput.value?.focus()
+    searchInput.value?.select()
   })
 })
 
