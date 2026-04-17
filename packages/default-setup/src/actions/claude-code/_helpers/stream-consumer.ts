@@ -381,7 +381,7 @@ export async function consumeStream(
             blocks: [
               { type: 'prompt', props: { content: `Allow \`${req.tool_name}\`?` } },
               { type: 'tool-input' as any, props: { toolName: req.tool_name, input: req.input } },
-              { type: 'approval', props: { requireReason: false, allowReason: true, autoAcceptOption: FILE_MUTATION_TOOLS.has(req.tool_name) } },
+              { type: 'approval', props: { requireReason: false, allowReason: false, autoAcceptOption: FILE_MUTATION_TOOLS.has(req.tool_name) } },
             ],
             forkable: false,
             autoHide: true,

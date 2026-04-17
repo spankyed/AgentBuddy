@@ -39,16 +39,6 @@
         ></textarea>
       </div>
 
-      <!-- Auto-accept checkbox (for file mutation tools) -->
-      <label v-if="autoAcceptOption" class="flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          v-model="autoAcceptChecked"
-          class="w-3.5 h-3.5 rounded border-neutral-500 bg-neutral-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
-        />
-        <span class="text-xs text-neutral-400">Auto-accept file edits for rest of session</span>
-      </label>
-
       <!-- Custom Options Mode -->
       <div v-if="options?.length" class="flex flex-wrap items-center gap-2">
         <button
@@ -69,33 +59,45 @@
 
       <!-- Default Approve/Deny Buttons (when no custom options) -->
       <div v-else class="flex items-center gap-2">
-        <button
-          @click="handleApprove"
-          :disabled="isDisabled"
-          :class="[
-            'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
-            isDisabled
-              ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-500 text-white'
-          ]"
-        >
-          <CheckCircle class="w-4 h-4" />
-          {{ approveLabel }}
-        </button>
+        <!-- Auto-accept checkbox (left side, for file mutation tools) -->
+        <label v-if="autoAcceptOption" class="flex items-center gap-2 cursor-pointer select-none mr-3">
+          <input
+            type="checkbox"
+            v-model="autoAcceptChecked"
+            class="w-3.5 h-3.5 rounded border-neutral-500 bg-neutral-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
+          />
+          <span class="text-xs text-neutral-400">Auto-accept file edits for session</span>
+        </label>
 
-        <button
-          @click="handleDeny"
-          :disabled="isDisabled"
-          :class="[
-            'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
-            isDisabled
-              ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
-              : 'bg-neutral-600 hover:bg-neutral-500 text-neutral-200'
-          ]"
-        >
-          <XCircle class="w-4 h-4" />
-          {{ denyLabel }}
-        </button>
+        <div class="ml-auto flex items-center gap-2">
+          <button
+            @click="handleApprove"
+            :disabled="isDisabled"
+            :class="[
+              'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
+              isDisabled
+                ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-500 text-white'
+            ]"
+          >
+            <CheckCircle class="w-4 h-4" />
+            {{ approveLabel }}
+          </button>
+
+          <button
+            @click="handleDeny"
+            :disabled="isDisabled"
+            :class="[
+              'px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center gap-2',
+              isDisabled
+                ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
+                : 'bg-neutral-600 hover:bg-neutral-500 text-neutral-200'
+            ]"
+          >
+            <XCircle class="w-4 h-4" />
+            {{ denyLabel }}
+          </button>
+        </div>
       </div>
     </template>
   </div>
