@@ -72,6 +72,7 @@
                 </button>
                 <button
                   @click="$emit('select', tab.path)"
+                  :title="tab.path"
                   class="flex items-center gap-2 py-2 pr-3 text-sm transition-colors"
                   :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
                 >
@@ -134,6 +135,7 @@
           >
             <button
               @click="$emit('select', tab.path)"
+              :title="tab.path"
               class="flex items-center gap-2 py-2 px-3 text-sm transition-colors"
               :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
             >
@@ -250,6 +252,7 @@
               </button>
               <button
                 @click="$emit('select', tab.path)"
+                :title="tab.path"
                 class="flex items-center gap-2 py-2 pr-3 text-sm transition-colors"
                 :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
               >
@@ -308,6 +311,7 @@
           </button>
           <button
             @click="$emit('select', tab.path)"
+            :title="tab.path"
             class="flex items-center gap-2 py-2 pr-3 text-sm transition-colors"
             :class="activeTabPath === tab.path ? 'text-neutral-100' : 'text-neutral-400'"
           >
