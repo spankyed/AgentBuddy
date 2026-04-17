@@ -298,8 +298,8 @@ function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Pa
 
   return allThreads
     .sort((a, b) => {
-      const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp || 0;
-      const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp || 0;
+      const aTime = a.timestamp || 0;
+      const bTime = b.timestamp || 0;
       return bTime - aTime;
     })
     .slice(0, limit);
