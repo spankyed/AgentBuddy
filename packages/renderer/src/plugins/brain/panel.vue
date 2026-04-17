@@ -27,10 +27,10 @@
           <span class="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded bg-neutral-700/50 text-neutral-400">Stopped</span>
         </div>
       </div>
-      <div class="flex-1 p-4 opacity-50 pointer-events-none">
+      <div class="flex-1 p-4 opacity-50 pointer-events-none overflow-y-auto" @scroll="onScroll">
         <div class="space-y-1">
           <TNodeListItem
-            v-for="node in tNodeTree"
+            v-for="node in displayedNodes"
             :key="node.id"
             :node="node"
             :depth="0"
@@ -43,13 +43,20 @@
       <div class="px-4 pt-4 pb-3 border-b border-neutral-800 bg-neutral-900/30">
         <div class="flex items-center justify-between">
           <h3 class="text-xs font-semibold tracking-wider uppercase text-neutral-500">Event Trace</h3>
-          <span class="text-xs text-neutral-500">{{ tNodeTree.length }} event{{ tNodeTree.length !== 1 ? 's' : '' }}</span>
+          <span class="text-xs text-neutral-500">
+            <template v-if="displayedNodes.length < tNodeTree.length">
+              {{ displayedNodes.length }} of {{ tNodeTree.length }} event{{ tNodeTree.length !== 1 ? 's' : '' }}
+            </template>
+            <template v-else>
+              {{ tNodeTree.length }} event{{ tNodeTree.length !== 1 ? 's' : '' }}
+            </template>
+          </span>
         </div>
       </div>
-      <div class="flex-1 p-4">
+      <div class="flex-1 p-4 overflow-y-auto" @scroll="onScroll">
         <div class="space-y-1">
           <TNodeListItem
-            v-for="node in tNodeTree"
+            v-for="node in displayedNodes"
             :key="node.id"
             :node="node"
             :depth="0"
@@ -73,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/plugins/brain/state'
@@ -85,7 +92,16 @@ const brainActor: BrainState = applicationState.system.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
 
-// Convert normalized tree back to TrackEntity[] format for TNodeListItem
+// Infinite scroll: show 50 items at a time
+const PAGE_SIZE = 50;
+const displayCount = ref(PAGE_SIZE);
+
+// Reset display count when tree data changes (e.g. navigating to a different flow)
+watch(normalizedTree, () => {
+  displayCount.value = PAGE_SIZE;
+});
+
+// Convert normalized tree back to TrackEntity[] format, reversed (newest first)
 const tNodeTree = computed((): TrackEntity[] => {
   if (!normalizedTree.value) return [];
 
@@ -99,8 +115,24 @@ const tNodeTree = computed((): TrackEntity[] => {
     } as TrackEntity;
   }
 
-  return normalizedTree.value.rootIds.map(id => buildNode(id));
+  return normalizedTree.value.rootIds.slice().reverse().map(id => buildNode(id));
 });
+
+// Paginated slice for display
+const displayedNodes = computed(() => {
+  return tNodeTree.value.slice(0, displayCount.value);
+});
+
+// Infinite scroll handler
+const onScroll = (e: Event) => {
+  const el = e.target as HTMLElement;
+  // Load more when within 100px of the bottom
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
+    if (displayCount.value < tNodeTree.value.length) {
+      displayCount.value = Math.min(displayCount.value + PAGE_SIZE, tNodeTree.value.length);
+    }
+  }
+};
 
 // Start brain method
 const startBrain = () => {
@@ -123,6 +155,9 @@ defineEmits<{
 
 .tnode-tree {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   /* Custom scrollbar styling */
   &::-webkit-scrollbar {

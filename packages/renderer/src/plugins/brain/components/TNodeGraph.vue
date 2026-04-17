@@ -218,17 +218,26 @@ const calculateNodePositions = (tracks: TrackEntity[]): VueFlowNode[] => {
   return nodes;
 };
 
+// Limit canvas to the 150 most recent event tracks
+const MAX_CANVAS_TRACKS = 150;
+const recentTracks = computed(() => {
+  if (!props.tnodeTree?.length) return [];
+  return props.tnodeTree.length > MAX_CANVAS_TRACKS
+    ? props.tnodeTree.slice(-MAX_CANVAS_TRACKS)
+    : props.tnodeTree;
+});
+
 // Convert TNode tree to VueFlow nodes
 const nodes = computed<VueFlowNode[]>(() => {
-  if (!props.tnodeTree?.length) return [];
-  return calculateNodePositions(props.tnodeTree);
+  if (!recentTracks.value.length) return [];
+  return calculateNodePositions(recentTracks.value);
 });
 
 const edges = computed<Edge[]>(() => {
-  if (!props.tnodeTree) return [];
-  
+  if (!recentTracks.value.length) return [];
+
   const result: Edge[] = [];
-  
+
   // Helper to recursively build edges — every child connects to its parent
   const buildEdges = (tnode: TrackEntity) => {
     tnode.children.forEach((child) => {
@@ -242,9 +251,9 @@ const edges = computed<Edge[]>(() => {
       buildEdges(child);
     });
   };
-  
-  props.tnodeTree.forEach(track => buildEdges(track));
-  
+
+  recentTracks.value.forEach(track => buildEdges(track));
+
   return result;
 });
 
@@ -285,7 +294,7 @@ onNodeDoubleClick((event: NodeMouseEvent) => {
 // Pan to the latest track (now at the top after the bottom-up flip),
 // preserving the current zoom level.
 const panToLatestTrack = () => {
-  const tracks = props.tnodeTree;
+  const tracks = recentTracks.value;
   if (!tracks?.length) return;
 
   const positions = new Map(nodes.value.map(n => [n.id, n.position]));
