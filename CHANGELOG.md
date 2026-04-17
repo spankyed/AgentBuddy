@@ -1,5 +1,12 @@
 -e # Changelog
 
+## v0.2.1 (2026-04-16)
+
+### Fixes
+- main): add nvm node path to production PATH for CLI shebang resolution
+
+-e # Changelog
+
 ## v0.2.0 (2026-04-16)
 
 ### Features
