@@ -115,10 +115,21 @@ export function persistClaudeState(
     ? existingTags
     : [...existingTags, CLAUDE_SESSION_TAG];
 
+  const tagAdded = !existingTags.includes(CLAUDE_SESSION_TAG);
+
   services.repository.threadCommands.update(threadId as any, {
     context: nextContext,
     tags: nextTags,
   });
+
+  // Notify frontend so tag filters update without a page refresh
+  if (tagAdded) {
+    services.emitter.sendToPlugin('threads', {
+      type: 'THREAD_UPDATED',
+      threadId,
+      updates: { tags: nextTags },
+    });
+  }
 }
 
 // ─── Concurrency helpers ─────────────────────────────────────────────────────
@@ -213,8 +224,19 @@ export function clearClaudeState(services: Services, threadId: string): void {
   const existingTags: string[] = Array.isArray(thread.tags) ? thread.tags : [];
   const nextTags = existingTags.filter((t) => t !== CLAUDE_SESSION_TAG);
 
+  const tagRemoved = existingTags.includes(CLAUDE_SESSION_TAG);
+
   services.repository.threadCommands.update(threadId as any, {
     context: nextContext,
     tags: nextTags,
   });
+
+  // Notify frontend so tag filters update without a page refresh
+  if (tagRemoved) {
+    services.emitter.sendToPlugin('threads', {
+      type: 'THREAD_UPDATED',
+      threadId,
+      updates: { tags: nextTags },
+    });
+  }
 }
