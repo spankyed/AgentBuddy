@@ -452,6 +452,18 @@ export async function consumeStream(
       }
     }
 
+    // ─── Stream drained — check for silent failures ─────────────────────
+    // If no events arrived, the CLI likely failed immediately (wrong binary,
+    // auth error, protocol mismatch, etc.). Await handle.result to surface
+    // the actual error (exit code + stderr) instead of silently completing.
+    if (eventCount === 0) {
+      try {
+        await handle.result;
+      } catch (err: any) {
+        throw err; // Re-throw to hit the catch block's error path below
+      }
+    }
+
     // ─── Stream drained — finalize ─────────────────────────────────────
     // Use the result data extracted directly from the result line in the loop.
     // No need to await handle.result — it may reject for error subtypes
