@@ -208,7 +208,12 @@ const searchInput = ref<HTMLInputElement | null>(null)
 
 onMounted(() => {
   nextTick(() => {
+    if (searchPrefillText.value) {
+      searchQuery.value = searchPrefillText.value
+      performSearch()
+    }
     searchInput.value?.focus()
+    searchInput.value?.select()
   })
 })
 
