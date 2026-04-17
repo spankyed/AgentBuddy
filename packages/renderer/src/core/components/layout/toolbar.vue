@@ -115,6 +115,7 @@ const pluginMenuItems = computed<MenuItem[]>(() =>
       class: textClass,
       iconClass: textClass,
       action: () => togglePluginVisibility(plugin.id),
+      keepOpen: true,
     }];
   }),
 );

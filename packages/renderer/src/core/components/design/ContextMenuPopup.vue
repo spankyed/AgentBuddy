@@ -11,7 +11,7 @@
         :key="item.label"
         class="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-neutral-700 transition-colors"
         :class="item.class"
-        @click="item.action(); $emit('close')"
+        @click="item.action(); !item.keepOpen && $emit('close')"
       >
         <component :is="item.icon" :size="14" class="shrink-0" :class="item.iconClass || 'text-neutral-500'" />
         {{ item.label }}

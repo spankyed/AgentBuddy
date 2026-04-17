@@ -8,6 +8,7 @@ export interface MenuItem {
   class: string
   iconClass?: string
   action: () => void
+  keepOpen?: boolean
 }
 
 export function useContextMenu() {
