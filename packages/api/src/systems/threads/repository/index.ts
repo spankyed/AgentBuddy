@@ -124,11 +124,18 @@ export const threadQueries = {
       ...thread,
       ...threadQueries.extendedData(thread.id),
     }));
-    
+
+    // Sort by creation time (newest first)
+    extendedThreads.sort((a, b) => {
+      const aTime = (a.timestamp as number) || 0;
+      const bTime = (b.timestamp as number) || 0;
+      return bTime - aTime;
+    });
+
     // Get tags from settings
     const threadsSettings = settingsQueries.getPluginSettings('threads') as ThreadsSettings | undefined;
     const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
-    
+
     return {
       threads: extendedThreads,
       availableTags,
