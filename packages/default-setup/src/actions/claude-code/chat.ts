@@ -68,6 +68,8 @@ const PHASE_HINTS: Record<string, string> = {
   // review: 'You are in the REVIEW phase. Critically audit the recent changes. Point out bugs, regressions, and unhandled edge cases.',
 };
 
+const BG_COMMAND_HINT = 'When running shell commands that are not expected to terminate quickly (dev servers, watchers, long builds, `npm start`, `npm run dev`, etc.), always set `run_in_background: true` on the Bash tool so the turn completes immediately. Use TaskOutput to check on the process afterward.';
+
 export async function action(
   params: Record<string, any>,
   services: Services,
@@ -219,7 +221,7 @@ export async function action(
 
   // Phase-aware system-prompt nudging (plan/edit/review).
   const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
-  const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
+  const composedSystemPrompt = [phaseHint, BG_COMMAND_HINT, systemPrompt].filter(Boolean).join('\n\n') || undefined;
 
   // Clear one-shot flags before the query — their purpose is consumed the
   // moment we read them. If the query throws, we don't want the next turn

@@ -381,7 +381,8 @@ export type ArtifactType =
   // Claude Code artifacts (see packages/default-setup/src/actions/claude-code/ROADMAP.md)
   | 'claude-session'
   | 'diff'
-  | 'plan';
+  | 'plan'
+  | 'bg-processes';
 
 // ─── Claude Code artifact content shapes ─────────────────────────────────────
 // Documentation types — `ArtifactEntity.content` is `any` at the storage
@@ -450,6 +451,36 @@ export interface PlanArtifactContent {
     description?: string;
     status: 'pending' | 'in-progress' | 'done' | 'skipped';
   }>;
+}
+
+export type BgProcessStatus = 'running' | 'completed' | 'failed' | 'unknown';
+
+export interface BgProcessEntry {
+  /** tool_use_id from the CLI — stable identifier for this process invocation. */
+  toolUseId: string;
+  /** CLI-assigned background task ID (if available). */
+  backgroundTaskId?: string;
+  /** The full shell command that was launched. */
+  command: string;
+  /** Shortened display version of the command. */
+  commandSummary: string;
+  /** Current status. */
+  status: BgProcessStatus;
+  /** Epoch ms when the process was started. */
+  startedAt: number;
+  /** Epoch ms when the process completed (if it did). */
+  completedAt?: number;
+  /** Duration in ms reported by tool_progress (updated live). */
+  durationMs?: number;
+  /** Truncated output from tool result. */
+  outputSummary?: string;
+  /** Whether this was an auto-released foreground command (not agent-initiated bg). */
+  autoReleased?: boolean;
+}
+
+export interface BgProcessesArtifactContent {
+  /** Ordered list of background processes (most recent last). */
+  processes: BgProcessEntry[];
 }
 
 export interface ArtifactItem {

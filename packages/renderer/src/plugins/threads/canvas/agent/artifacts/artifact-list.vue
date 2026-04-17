@@ -33,12 +33,13 @@ defineEmits<{
   'select-artifact': [artifactId: string];
 }>();
 
-// Pin `claude-session` artifacts to the top of the list so users always see
-// the session header above whatever else the thread has accumulated. Ordering
-// within buckets preserves the original array order (stable sort).
+// Pin `claude-session` and `bg-processes` artifacts to the top of the list
+// so users always see session info and running processes above everything else.
+// Ordering within buckets preserves the original array order (stable sort).
+const pinnedTypes = new Set(['claude-session', 'bg-processes']);
 const sortedArtifacts = computed(() => {
-  const pinned = props.artifacts.filter(a => a.type === 'claude-session');
-  const rest = props.artifacts.filter(a => a.type !== 'claude-session');
+  const pinned = props.artifacts.filter(a => pinnedTypes.has(a.type));
+  const rest = props.artifacts.filter(a => !pinnedTypes.has(a.type));
   return [...pinned, ...rest];
 });
 </script>
