@@ -434,6 +434,17 @@ watch(() => props.mode, (newMode, oldMode) => {
   }
 })
 
+// Watch for file path changes in diff mode to detach models before Vue re-keys
+watch(() => props.filePath, (newPath, oldPath) => {
+  if (props.mode === 'diff' && newPath !== oldPath && diffEditorInstance.value) {
+    diffUpdateDisposable?.dispose()
+    diffUpdateDisposable = null
+    try { diffEditorInstance.value.setModel(null) } catch {}
+    disposeEditorDisposables()
+    diffEditorInstance.value = undefined
+  }
+})
+
 // Watch for dslParams changes
 watch(() => props.dslParams, (newParams) => {
   const monaco = (window as any).monaco
