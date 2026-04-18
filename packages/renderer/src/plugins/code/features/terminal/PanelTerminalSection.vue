@@ -199,8 +199,10 @@ const attachTerminal = (terminalId: string) => {
   }))
 
   resizeObserver = new ResizeObserver(() => {
-    fitAddon?.fit()
-    sendResize(terminalId)
+    // Defer fit to next frame so the browser has finished layout
+    requestAnimationFrame(() => {
+      fitAddon?.fit()
+    })
   })
   resizeObserver.observe(container.value)
 
