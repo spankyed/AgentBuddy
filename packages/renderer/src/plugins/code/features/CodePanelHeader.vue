@@ -56,23 +56,6 @@
         <div class="h-5 w-px bg-neutral-700 mx-1"></div>
 
         <button
-          v-for="panel in supportPanels"
-          :key="panel.id"
-          @click="selectPanel(panel.id)"
-          :class="[
-            'p-1.5 rounded transition-colors',
-            selectedPanel === panel.id
-              ? 'bg-primary-700 text-neutral-100'
-              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
-          ]"
-          :title="panel.label"
-        >
-          <component :is="panel.icon" class="w-4 h-4" />
-        </button>
-
-        <div class="h-5 w-px bg-neutral-700 mx-1"></div>
-
-        <button
           v-for="panel in internalsPanels"
           :key="panel.id"
           @click="selectPanel(panel.id)"
@@ -104,7 +87,6 @@ import {
   Search,
   GitCommitVertical,
   GitPullRequest,
-  Terminal,
   Play,
   Sparkle,
 } from 'lucide-vue-next'
@@ -129,7 +111,7 @@ const changeCount = useSelector(commitActor, (state: any) => state.context.gitSt
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
 
-const directoryMenuPanels = ['explorer', 'commit', 'pr', 'search', 'terminal'] as const
+const directoryMenuPanels = ['explorer', 'commit', 'pr', 'search'] as const
 const showDirectoryMenu = computed(() =>
   directoryMenuPanels.includes(selectedPanel.value as any)
 )
@@ -160,16 +142,12 @@ const codePanels = [
   { id: 'search', label: 'Search', icon: Search },
 ] as const
 
-const supportPanels = [
-  { id: 'terminal', label: 'Terminal', icon: Terminal },
-] as const
-
 const internalsPanels = [
   { id: 'actions', label: 'Actions', icon: Play },
   { id: 'prompts', label: 'Prompts', icon: Sparkle }
 ] as const
 
-const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts') => {
+const selectPanel = (panel: 'explorer' | 'search' | 'commit' | 'pr' | 'actions' | 'prompts') => {
   actor.send({
     type: 'SELECT_PANEL',
     panel
