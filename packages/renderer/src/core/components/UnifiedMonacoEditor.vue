@@ -434,7 +434,12 @@ watch(() => props.mode, (newMode, oldMode) => {
   }
 })
 
-// Watch for file path changes in diff mode to detach models before Vue re-keys
+// Watch for file path changes in diff mode to detach models before Vue re-keys.
+// The mode watcher above only handles diff↔non-diff transitions. When switching
+// between two diff files the mode stays 'diff', so Vue's :key="filePath" on the
+// VueMonacoDiffEditor triggers an unmount/remount. Without detaching here, the
+// library's unmount disposes text models before the DiffEditorWidget resets,
+// causing "TextModel got disposed before DiffEditorWidget model got reset".
 watch(() => props.filePath, (newPath, oldPath) => {
   if (props.mode === 'diff' && newPath !== oldPath && diffEditorInstance.value) {
     diffUpdateDisposable?.dispose()
