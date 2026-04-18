@@ -25,10 +25,11 @@ window.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.cli
 
 const THREADS_VIEW_KEY = 'threads-view-preference';
 
-function getInitialView(): 'list' | 'kanban' {
+function getInitialView(): 'list' | 'kanban' | 'dashboard' {
   try {
     const stored = localStorage.getItem(THREADS_VIEW_KEY);
     if (stored === 'kanban') return 'kanban';
+    if (stored === 'dashboard') return 'dashboard';
   } catch {}
   return 'list';
 }
@@ -435,6 +436,7 @@ const threadsState = setup({
     },
     persistListView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'list'); } catch {} },
     persistKanbanView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'kanban'); } catch {} },
+    persistDashboardView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'dashboard'); } catch {} },
     removeThreadFromList: assign(({ event, context }) => {
       const { threadId } = typeOf('THREAD_DELETED', event);
       return {
@@ -1191,6 +1193,7 @@ const threadsState = setup({
   },
   states: {
     'dashboard': {
+      entry: 'persistDashboardView',
       meta: { ...breadcrumb('dashboard', 'Dashboard') },
       on: {},
     },
