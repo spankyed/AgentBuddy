@@ -71,7 +71,8 @@ export async function consumeStream(
   ctx: ConsumerContext,
   initialWriters: ConsumerWriters,
 ): Promise<void> {
-  const { services, threadId, text, phase } = ctx;
+  const { services, threadId, text } = ctx;
+  let phase = ctx.phase;
   const log = services.logger;
 
   // True when this consumer still owns the thread's handle slot. False after
@@ -422,6 +423,8 @@ export async function consumeStream(
         setRunning(services, threadId, false);
 
         splitOnNextMessageStart = true;
+        // After plan approval, the agent transitions to the edit phase.
+        if (req.tool_name === 'ExitPlanMode') phase = 'edit';
         // Emit to flow → CC: Stream Paused action updates artifact status.
         services.emitter.sendToBrainSystem({
           eventType: 'cc.stream.paused',
