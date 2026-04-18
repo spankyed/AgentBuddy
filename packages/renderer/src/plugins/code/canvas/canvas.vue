@@ -300,7 +300,7 @@ const restartTerminal = (path: string) => {
   if (!file?.isTerminal) return
   const { cwd, shell } = file.terminalInfo
   actor.send({ type: 'KILL_TERMINAL', path })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
+  terminalActor.send({ type: 'terminal.CREATE', cwd, shell, target: 'tab' })
 }
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })

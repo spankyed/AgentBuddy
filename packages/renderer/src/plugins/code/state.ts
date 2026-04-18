@@ -545,6 +545,11 @@ const codeState = setup({
     }) => {
       const ev = event as { type: 'SELECT_PANEL'; panel: PanelType };
 
+      // Guard against invalid panel types (e.g. persisted 'terminal' from before removal)
+      if (!ALL_PANELS.includes(ev.panel)) {
+        return { ...context, selectedPanel: 'explorer' as PanelType };
+      }
+
       // Notify child machines if needed
       if (ev.panel === 'commit') {
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });

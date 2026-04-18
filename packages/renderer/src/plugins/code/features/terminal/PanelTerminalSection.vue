@@ -275,16 +275,8 @@ const cancelRename = () => {
 watch([isExpanded, panelTerminalId], async ([expanded, termId], [wasExpanded, prevTermId]) => {
   if (expanded && termId) {
     // Detach old terminal if switching
-    if (prevTermId && prevTermId !== termId) {
-      terminalPool.detach(prevTermId)
-      for (const d of viewDisposables) {
-        try { d.dispose() } catch { /* ignore */ }
-      }
-      viewDisposables.length = 0
-      resizeObserver?.disconnect()
-      resizeObserver = null
-      term = null
-      fitAddon = null
+    if (attachedTerminalId && attachedTerminalId !== termId) {
+      detachTerminal()
     }
     await nextTick()
     attachTerminal(termId)
