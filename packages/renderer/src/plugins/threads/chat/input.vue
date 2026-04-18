@@ -162,7 +162,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="(!messageContent && !hasAttachments) || disabled"
+              :disabled="(!messageContent.trim() && !hasAttachments) || disabled"
             >
               <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
