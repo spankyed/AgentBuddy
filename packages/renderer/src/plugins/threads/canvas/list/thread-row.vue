@@ -80,16 +80,33 @@
             >
               <MessageCircleMore class="w-4 h-4"/>
             </button>
-            <button
-              v-if="!thread.pinned"
-              @click.stop="$emit('delete-click', thread.id)"
-              type="button"
-              class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-red-400 hover:bg-red-400/10 active:scale-95"
-              aria-label="Delete thread"
-              title="Delete thread"
-            >
-              <Trash2 class="w-4 h-4"/>
-            </button>
+            <ContextMenuRoot v-if="!thread.pinned">
+              <ContextMenuTrigger as-child>
+                <button
+                  @click.stop="$emit('archive-click', thread.id)"
+                  type="button"
+                  class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-amber-400 hover:bg-amber-400/10 active:scale-95"
+                  aria-label="Archive thread"
+                  title="Archive thread (right-click for more)"
+                >
+                  <Archive class="w-4 h-4"/>
+                </button>
+              </ContextMenuTrigger>
+              <ContextMenuPortal>
+                <ContextMenuContent
+                  class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[120px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
+                  :side-offset="2"
+                >
+                  <ContextMenuItem
+                    class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+                    @select="$emit('delete-click', thread.id)"
+                  >
+                    <Trash2 :size="14" />
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenuPortal>
+            </ContextMenuRoot>
           </div>
         </td>
       </tr>
@@ -133,6 +150,13 @@
         <template v-if="!thread.pinned">
           <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
           <ContextMenuItem
+            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+            @select="$emit('archive-click', thread.id)"
+          >
+            <Archive :size="14" class="text-amber-400" />
+            Archive
+          </ContextMenuItem>
+          <ContextMenuItem
             class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
             @select="$emit('delete-click', thread.id)"
           >
@@ -146,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { Copy, MessageCircleMore, PanelLeft, SquarePen, Trash2 } from 'lucide-vue-next'
+import { Archive, Copy, MessageCircleMore, PanelLeft, SquarePen, Trash2 } from 'lucide-vue-next'
 import {
   ContextMenuContent, ContextMenuItem, ContextMenuPortal,
   ContextMenuRoot, ContextMenuSeparator, ContextMenuTrigger,
@@ -164,6 +188,7 @@ defineEmits<{
   select: [id: string]
   'status-change': [id: string, status: string]
   'chat-click': [id: string]
+  'archive-click': [id: string]
   'delete-click': [id: string]
 }>();
 

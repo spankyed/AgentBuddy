@@ -31,11 +31,11 @@ export const threadQueries = {
   byId: (id: EARS.EntityId) => 
     findById<ThreadEntity>(id),
   
-  all: () => 
-    findAll<ThreadEntity>(EARS.Entity.Thread),
-  
+  all: () =>
+    findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived),
+
   allByRecency: () => {
-    const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
+    const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     return threads.sort((a, b) => {
       // Priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp
       const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp;
@@ -76,8 +76,9 @@ export const threadQueries = {
 
   kanbanItems: () => {
     // Get all threads and transform them into kanban work items
-    const allThreads = qx(EARS.Entity.Thread)
-      .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode'] as const)
+    const allThreads = (qx(EARS.Entity.Thread)
+      .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode', 'archived'] as const) as any[])
+      .filter((t: any) => !t.archived)
     
     // Sort threads by most recent update (fallback to createdAt)
     const sortedThreads = allThreads.sort((a, b) => {
@@ -119,7 +120,7 @@ export const threadQueries = {
   
   // Get connected data
   connectedData: (): ThreadConnectedData => {
-    const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
+    const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     const extendedThreads = threads.map(thread => ({
       ...thread,
       ...threadQueries.extendedData(thread.id),
@@ -196,6 +197,7 @@ export const threadCommands = {
     lastVisitedTimestamp?: number;
     forcedMode?: ThreadEntity['forcedMode'] | null;
     context?: ThreadEntity['context'];  // Free-form per-feature state (ThreadContext)
+    archived?: boolean;
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
@@ -298,10 +300,11 @@ function getConfiguredRecentThreadsLimit(): number {
 function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Partial<ThreadEntity>[] {
   const threadFields = [
     "shortCode", "topic", "instructions", "status", "timestamp",
-    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned",
+    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived",
   ] as const;
 
-  const allThreads = qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[];
+  const allThreads = (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
+    .filter(t => !t.archived);
 
   return allThreads
     .sort((a, b) => {
@@ -414,9 +417,10 @@ export const chatQueries = {
     const { threads, currentThread } = getThreadsWithCurrent();
     const tabs: Tab[] = [];
 
-    const pinnedThreads = qx(EARS.Entity.Thread)
+    const pinnedThreads = (qx(EARS.Entity.Thread)
       .where('pinned', true)
-      .pick(["id", "shortCode", "topic"] as const) as Partial<ThreadEntity>[];
+      .pick(["id", "shortCode", "topic", "archived"] as const) as Partial<ThreadEntity>[])
+      .filter(t => !t.archived);
     const pinnedIds = new Set(pinnedThreads.map(t => t.id));
 
     if (currentThread?.id) {

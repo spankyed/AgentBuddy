@@ -24,6 +24,7 @@
               @select="actor.send({ type: 'SELECT_THREAD', id: $event })"
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @chat-click="(threadId) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
+              @archive-click="handleArchiveThread"
               @delete-click="handleDeleteThread"
             />
           </tbody>
@@ -136,6 +137,17 @@ const onScroll = (e: Event) => {
     }
   }
 }
+
+const handleArchiveThread = (threadId: string) => {
+  const thread = threads.value.find(t => t.id === threadId);
+  if (!thread) return;
+
+  const confirmed = confirm(`Archive thread "${thread.topic || 'Untitled'}"? It will be hidden from all lists.`);
+
+  if (confirmed) {
+    actor.send({ type: 'ARCHIVE_THREAD', threadId });
+  }
+};
 
 const handleDeleteThread = (threadId: string) => {
   const thread = threads.value.find(t => t.id === threadId);

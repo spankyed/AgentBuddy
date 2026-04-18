@@ -10,7 +10,7 @@ import type {
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
-import { Trash2 } from 'lucide-vue-next';
+import { Archive, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -112,6 +112,7 @@ type UIEvent =
   | { type: 'CREATE_THREAD' }
   | { type: 'CANCEL_CREATE' }
   | { type: 'DELETE_THREAD'; threadId: string }
+  | { type: 'ARCHIVE_THREAD'; threadId: string }
   | {
     type: 'UPDATE_THREAD_FIELD';
     key: keyof ThreadEditFields;
@@ -420,6 +421,16 @@ const threadsState = setup({
         systemId: id,
         type: 'DELETE_THREAD',
         threadId,
+      });
+    },
+    archiveThread: ({ event }) => {
+      const { threadId } = typeOf('ARCHIVE_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_FIELD',
+        threadId,
+        key: 'archived',
+        value: true,
       });
     },
     persistListView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'list'); } catch {} },
@@ -1030,6 +1041,10 @@ const threadsState = setup({
     DELETE_THREAD: {
       actions: 'deleteThread',
     },
+    ARCHIVE_THREAD: {
+      actions: 'archiveThread',
+      target: '.list',
+    },
     THREAD_DELETED: {
       actions: 'removeThreadFromList',
       target: '.list',
@@ -1230,7 +1245,21 @@ const threadsState = setup({
         }),
         ...contextMenuFn<ThreadsContext>((ctx) => {
           if (!ctx.view?.id) return []
-          return (!ctx.view.pinned ? [{ label: 'Delete Thread', icon: Trash2, event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id }, iconColor: 'text-red-400', confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.` }] : [])
+          return [
+            ...(!ctx.view.pinned ? [{
+              label: 'Archive Thread',
+              icon: Archive,
+              event: { type: 'ARCHIVE_THREAD' as const, threadId: ctx.view.id },
+              confirm: `Archive thread "${ctx.view.topic || 'Untitled'}"? It will be hidden from all lists.`,
+            }] : []),
+            ...(!ctx.view.pinned ? [{
+              label: 'Delete Thread',
+              icon: Trash2,
+              event: { type: 'DELETE_THREAD' as const, threadId: ctx.view.id },
+              iconColor: 'text-red-400',
+              confirm: `Are you sure you want to delete thread "${ctx.view.topic || 'Untitled'}"? This will permanently delete all messages and other data associated.`,
+            }] : []),
+          ]
         }),
       },
       on: {
