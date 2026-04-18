@@ -449,6 +449,7 @@ export const chatQueries = {
     return {
       currentThread,
       threads,
+      recentThreads: getRecentThreads(),
       tabs,
       settings: chatSettings,
       hasRequiredApiKeys: chatQueries.hasRequiredApiKeys(),

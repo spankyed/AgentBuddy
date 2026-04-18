@@ -699,6 +699,7 @@ const threadsState = setup({
 
       return {
         currentThread,
+        recentThreads: (typedEvent.data.recentThreads || []) as ThreadEntity[],
         tabs: typedEvent.data.tabs || [],
         activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || '',
         ...extracted,

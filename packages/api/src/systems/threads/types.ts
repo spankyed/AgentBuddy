@@ -353,6 +353,7 @@ export interface AgentSettings {
 export type AgentConnectedData = {
   currentThread: AgentThreadData | null;
   threads: Partial<ThreadEntity>[];
+  recentThreads: Partial<ThreadEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
   hasRequiredApiKeys: boolean;

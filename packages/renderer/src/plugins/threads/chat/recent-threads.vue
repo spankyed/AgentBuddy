@@ -19,10 +19,18 @@
           :class="thread.id === currentThread?.id ? 'bg-neutral-800/60' : ''"
           @click="handleSelectThread(thread.id)"
         >
-          <span
-            class="shrink-0 w-1.5 h-1.5 rounded-full transition-colors"
-            :style="{ backgroundColor: getThreadDotColor(thread.id) || '#525252' }"
-          />
+          <span class="shrink-0 relative inline-block w-1.5 h-1.5">
+            <span
+              class="block w-full h-full rounded-full transition-colors"
+              :class="isThreadBusy(thread.id) ? $style['mosaic-dot'] : ''"
+              :style="!isThreadBusy(thread.id) ? { backgroundColor: getThreadDotColor(thread.id) || '#525252' } : undefined"
+            />
+            <span
+              v-if="isThreadBusy(thread.id)"
+              class="absolute inset-0 rounded-full scale-[2]"
+              :class="$style['mosaic-glow']"
+            />
+          </span>
           <span class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
             {{ thread.topic || 'Untitled' }}
           </span>
@@ -158,12 +166,20 @@ const chatStates = useSelector(threadsActor, (state) => state.context.chatStates
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides)
 const settings = useSelector(threadsActor, (state) => state.context.settings)
 
-function getThreadDotColor(threadId: string): string | undefined {
+function getThreadStateConfig(threadId: string) {
   const override = chatStateOverrides.value[threadId]
   const activeStateId = (override && override.expiresAt > Date.now())
     ? override.id
     : (chatStates.value[threadId] || 'idle')
-  return settings.value?.chatStates?.find(c => c.id === activeStateId)?.color
+  return settings.value?.chatStates?.find(c => c.id === activeStateId)
+}
+
+function getThreadDotColor(threadId: string): string | undefined {
+  return getThreadStateConfig(threadId)?.color
+}
+
+function isThreadBusy(threadId: string): boolean {
+  return getThreadStateConfig(threadId)?.busy ?? false
 }
 
 const recentThreads = computed(() => props.recentThreads)
@@ -229,4 +245,42 @@ const formatTime = (timestamp: Date | number | string) => {
 </script>
 
 <style lang="scss" module>
+.mosaic-dot {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #facc15,
+    #a855f7,
+    #3b82f6,
+    #facc15
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: saturate(1.5) brightness(1.2);
+}
+
+.mosaic-glow {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #facc15,
+    #a855f7,
+    #3b82f6,
+    #facc15
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: blur(3px) saturate(2) brightness(1.3);
+  opacity: 0.7;
+}
+
+@keyframes thinking-rotate {
+  to {
+    --thinking-angle: 360deg;
+  }
+}
+</style>
+
+<style>
+@property --thinking-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
 </style>
