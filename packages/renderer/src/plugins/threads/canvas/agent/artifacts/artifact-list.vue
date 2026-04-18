@@ -34,11 +34,13 @@ defineEmits<{
 }>();
 
 // Pin `claude-session` artifacts to the top of the list so users always see
-// the session header above whatever else the thread has accumulated. Ordering
-// within buckets preserves the original array order (stable sort).
+// the session header above whatever else the thread has accumulated. Within
+// each bucket, sort by most recently created first.
 const sortedArtifacts = computed(() => {
-  const pinned = props.artifacts.filter(a => a.type === 'claude-session');
-  const rest = props.artifacts.filter(a => a.type !== 'claude-session');
+  const byCreated = (a: ArtifactType, b: ArtifactType) =>
+    (b.metadata?.createdAt ?? 0) - (a.metadata?.createdAt ?? 0);
+  const pinned = props.artifacts.filter(a => a.type === 'claude-session').sort(byCreated);
+  const rest = props.artifacts.filter(a => a.type !== 'claude-session').sort(byCreated);
   return [...pinned, ...rest];
 });
 </script>
