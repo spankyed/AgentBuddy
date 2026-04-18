@@ -18,14 +18,6 @@
         >
           <Plus class="w-3 h-3 text-neutral-400" />
         </button>
-        <button
-          v-if="panelTerminalId"
-          @click="closeTerminal"
-          class="p-0.5 hover:bg-neutral-700 rounded transition-colors"
-          title="Close Terminal"
-        >
-          <X class="w-3 h-3 text-neutral-400 hover:text-red-400" />
-        </button>
       </div>
     </div>
 
@@ -45,7 +37,7 @@
           <ContextMenuTrigger as-child>
             <div
               @click="!isInTab(terminal.id) ? selectTerminal(terminal.id) : undefined"
-              class="flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors truncate"
+              class="group flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors"
               :class="[
                 isInTab(terminal.id)
                   ? 'text-neutral-600 cursor-default'
@@ -67,7 +59,15 @@
                   class="w-full px-1 text-xs bg-transparent border border-primary-500 rounded text-neutral-200 focus:outline-none"
                 />
               </div>
-              <span v-else class="truncate">{{ getTerminalDisplayName(terminal) }}</span>
+              <span v-else class="flex-1 min-w-0 truncate">{{ getTerminalDisplayName(terminal) }}</span>
+              <button
+                v-if="renamingTerminalId !== terminal.id"
+                @click.stop="handleCloseTerminal(terminal)"
+                class="p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                title="Close terminal"
+              >
+                <X class="w-2.5 h-2.5 text-neutral-500 hover:text-red-400" />
+              </button>
             </div>
           </ContextMenuTrigger>
 
@@ -224,16 +224,6 @@ const sendResize = (terminalId: string) => {
 const createTerminal = () => {
   terminalActor?.send({ type: 'terminal.CREATE' })
   isExpanded.value = true
-}
-
-const closeTerminal = () => {
-  if (!panelTerminalId.value) return
-  const info = activeTerminalInfo.value
-  if (info && confirmTerminalClose.value) {
-    const displayName = getTerminalDisplayName(info)
-    if (!confirm(`Close terminal "${displayName}"?`)) return
-  }
-  codeActor.send({ type: 'CLOSE_PANEL_TERMINAL' })
 }
 
 const selectTerminal = (terminalId: string) => {
