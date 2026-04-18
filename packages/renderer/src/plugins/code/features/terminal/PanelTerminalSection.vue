@@ -160,7 +160,7 @@ const isInTab = (terminalId: string) =>
 // Local state
 const isExpanded = useSelector(codeActor, (state) => state.context.panelTerminalExpanded)
 const container = ref<HTMLElement>()
-const listWidth = ref(144) // default ~w-36
+const listWidth = ref(115)
 const MIN_LIST_WIDTH = 80
 const MAX_LIST_WIDTH = 300
 
