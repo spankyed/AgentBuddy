@@ -42,6 +42,7 @@ const currentTab = computed(() => tabs.value.find(tab => tab.id === activeTabId.
 
 function selectTab(tabId: string) {
   actor.send({ type: 'SELECT_TAB', tabId });
+  actor.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId });
 }
 
 function closeTab(tabId: string) {
