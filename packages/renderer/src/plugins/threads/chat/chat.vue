@@ -336,7 +336,13 @@ watch(messages, async (newMsgs, oldMsgs) => {
       requestAnimationFrame(() => scrollToBottom('instant'))
     })
   } else {
-    if (isNearBottom.value) scrollToBottom('smooth')
+    if (isNearBottom.value) {
+      scrollToBottom('smooth')
+      // Follow-up to catch async content (Tiptap) that renders after layout.
+      requestAnimationFrame(() => {
+        if (isNearBottom.value) scrollToBottom('instant')
+      })
+    }
   }
 })
 
