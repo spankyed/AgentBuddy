@@ -3,7 +3,7 @@
     <!-- Collapsible header -->
     <div
       class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors"
-      @click="isExpanded = !isExpanded"
+      @click="codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })"
     >
       <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
         <ChevronRight v-if="!isExpanded" class="w-3 h-3" />
@@ -149,7 +149,7 @@ const isInTab = (terminalId: string) =>
   openFiles.value.some((f: any) => f.path === `terminal:${terminalId}` && f.isTerminal)
 
 // Local state
-const isExpanded = ref(false)
+const isExpanded = useSelector(codeActor, (state) => state.context.panelTerminalExpanded)
 const container = ref<HTMLElement>()
 
 // Terminal rendering
@@ -223,7 +223,9 @@ const sendResize = (terminalId: string) => {
 // Actions
 const createTerminal = () => {
   terminalActor?.send({ type: 'terminal.CREATE' })
-  isExpanded.value = true
+  if (!isExpanded.value) {
+    codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })
+  }
 }
 
 const selectTerminal = (terminalId: string) => {

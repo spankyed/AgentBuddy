@@ -101,6 +101,7 @@ export type Context = {
   searchFocusTrigger: number
   searchPrefillText: string
   panelTerminalId: string | null
+  panelTerminalExpanded: boolean
 }
 
 export interface QuickOpenResult {
@@ -158,7 +159,8 @@ export type Event =
   // Panel terminal events
   | { type: 'SELECT_PANEL_TERMINAL'; terminalId: string }
   | { type: 'CLOSE_PANEL_TERMINAL' }
-  | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string };
+  | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
+  | { type: 'TOGGLE_PANEL_TERMINAL' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
@@ -712,7 +714,7 @@ const codeState = setup({
       system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
       return removeTabLogic(context, system, path)
     }),
-    openTerminal: assign(({ context, system }) => {
+    openTerminal: enqueueActions(({ enqueue, context, system }) => {
       const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
       const tabbedIds = new Set(
         context.openFiles.filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
@@ -720,23 +722,30 @@ const codeState = setup({
 
       if (terminals.length === 0) {
         // No terminals — create one (will be routed to panel by child actor)
-        system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory });
-        return {};
+        enqueue(() => {
+          system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
+        })
+        enqueue(assign({ panelTerminalExpanded: true }))
+        return
       }
 
       if (!context.panelTerminalId) {
         // Terminals exist but none selected for panel — pick first non-tabbed
         const available = terminals.find(t => !tabbedIds.has(t.id))
         if (available) {
-          return { panelTerminalId: available.id };
+          enqueue(assign({ panelTerminalId: available.id, panelTerminalExpanded: true }))
+          return
         }
         // All terminals are in tabs — create a new one
-        system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory });
-        return {};
+        enqueue(() => {
+          system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
+        })
+        enqueue(assign({ panelTerminalExpanded: true }))
+        return
       }
 
-      // Panel terminal already set — no-op (UI handles expand)
-      return {};
+      // Panel terminal already set — toggle expand/collapse
+      enqueue(assign({ panelTerminalExpanded: !context.panelTerminalExpanded }))
     }),
 
     selectPanelTerminal: assign(({ event }) => {
@@ -744,14 +753,20 @@ const codeState = setup({
       return { panelTerminalId: ev.terminalId };
     }),
 
-    closePanelTerminal: assign(({ context, system }) => {
+    closePanelTerminal: enqueueActions(({ enqueue, context, system }) => {
       if (context.panelTerminalId) {
-        system.get('terminal')?.send({
-          type: 'terminal.CLOSE',
-          terminalId: context.panelTerminalId
-        });
+        enqueue(() => {
+          system.get('terminal')?.send({
+            type: 'terminal.CLOSE',
+            terminalId: context.panelTerminalId
+          })
+        })
       }
-      return { panelTerminalId: null };
+      enqueue(assign({ panelTerminalId: null, panelTerminalExpanded: false }))
+    }),
+
+    togglePanelTerminal: assign(({ context }) => {
+      return { panelTerminalExpanded: !context.panelTerminalExpanded }
     }),
 
     openTerminalInTab: assign(({ context, event, system }) => {
@@ -1143,6 +1158,7 @@ const codeState = setup({
     searchFocusTrigger: 0,
     searchPrefillText: '',
     panelTerminalId: null,
+    panelTerminalExpanded: false,
   },
   states: {
     canvas: {
@@ -1235,6 +1251,9 @@ const codeState = setup({
         },
         OPEN_TERMINAL_IN_TAB: {
           actions: 'openTerminalInTab'
+        },
+        TOGGLE_PANEL_TERMINAL: {
+          actions: 'togglePanelTerminal'
         },
         NAVIGATE_PREV_PANEL: {
           actions: 'navigatePrevPanel'
