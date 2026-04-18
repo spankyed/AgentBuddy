@@ -59,27 +59,21 @@ export function parseExitPlanModeInput(input: unknown): ParsedPlanInput {
 }
 
 /**
- * Build a short preview of the plan for the approval block's `context`
- * field (which is a flat text string, not rich markdown — the full plan
- * lives in the plan artifact rendered in the right panel). This is just
- * enough to orient the user on the approval card itself.
+ * Build the plan body for the approval block's markdown content.
+ * The MarkdownBlock component renders this inside a fixed-height
+ * scrollable container (`max-h-80 overflow-y-auto`), so we pass the
+ * full plan text — no truncation needed.
  *
  * Rules:
  *  - Strip leading/trailing whitespace.
- *  - Take the first ~360 chars.
- *  - If truncated, append `…`.
  *  - Fall back to `(no plan content provided)` if empty after trim.
  *  - If allowedPrompts is non-empty, append a short "Requested permissions:"
  *    footer so the user knows what follow-up Bash access Claude wants.
  */
 export function buildPlanApprovalContext(parsed: ParsedPlanInput): string {
   const trimmed = parsed.plan.trim();
-  const max = 360;
-  const preview = trimmed.length > max
-    ? trimmed.slice(0, max - 1).trimEnd() + '…'
-    : trimmed;
   const footer = parsed.allowedPrompts.length > 0
     ? `\n\nRequested permissions:\n${parsed.allowedPrompts.map(p => `• ${p.tool}: ${p.prompt}`).join('\n')}`
     : '';
-  return (preview || '(no plan content provided)') + footer;
+  return (trimmed || '(no plan content provided)') + footer;
 }
