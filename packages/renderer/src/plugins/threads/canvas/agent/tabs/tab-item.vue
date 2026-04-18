@@ -19,6 +19,18 @@
           <X :size="14" />
         </button>
         <span class="truncate">{{ tab.label }}</span>
+        <span class="shrink-0 relative inline-block w-1.5 h-1.5 ml-1.5">
+          <span
+            class="block w-full h-full rounded-full transition-colors"
+            :class="isThreadBusy(tab.id) ? $style['mosaic-dot'] : ''"
+            :style="!isThreadBusy(tab.id) ? { backgroundColor: getThreadDotColor(tab.id) || '#525252' } : undefined"
+          />
+          <span
+            v-if="isThreadBusy(tab.id)"
+            class="absolute inset-0 rounded-full scale-[2]"
+            :class="$style['mosaic-glow']"
+          />
+        </span>
       </div>
     </ContextMenuTrigger>
 
@@ -66,6 +78,9 @@ import {
   ContextMenuSeparator,
 } from 'reka-ui';
 import type { Tab } from '@app/api';
+import { applicationState } from '@/main';
+import { useSelector } from '@xstate/vue';
+import { id as threadsId, type ThreadsState } from '@/plugins/threads/state';
 
 defineProps<{
   tab: Tab;
@@ -79,4 +94,66 @@ defineEmits<{
   'open-in-chat': [];
   'delete-thread': [];
 }>();
+
+const threadsActor: ThreadsState = applicationState.system.get(threadsId);
+const chatStates = useSelector(threadsActor, (state) => state.context.chatStates);
+const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides);
+const settings = useSelector(threadsActor, (state) => state.context.settings);
+
+function getThreadStateConfig(threadId: string) {
+  const override = chatStateOverrides.value[threadId];
+  const activeStateId = (override && override.expiresAt > Date.now())
+    ? override.id
+    : (chatStates.value[threadId] || 'idle');
+  return settings.value?.chatStates?.find(c => c.id === activeStateId);
+}
+
+function getThreadDotColor(threadId: string): string | undefined {
+  return getThreadStateConfig(threadId)?.color;
+}
+
+function isThreadBusy(threadId: string): boolean {
+  return getThreadStateConfig(threadId)?.busy ?? false;
+}
 </script>
+
+<style lang="scss" module>
+.mosaic-dot {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #facc15,
+    #a855f7,
+    #3b82f6,
+    #facc15
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: saturate(1.5) brightness(1.2);
+}
+
+.mosaic-glow {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #facc15,
+    #a855f7,
+    #3b82f6,
+    #facc15
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: blur(3px) saturate(2) brightness(1.3);
+  opacity: 0.7;
+}
+
+@keyframes thinking-rotate {
+  to {
+    --thinking-angle: 360deg;
+  }
+}
+</style>
+
+<style>
+@property --thinking-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+</style>
