@@ -100,11 +100,24 @@ export const terminalState = setup({
       sendToBackend('terminal.REFRESH_LIST', {})
     },
 
-    assignTerminals: assign({
-      terminals: ({ event }) => {
-        const ev = event as { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
-        return ev.data || []
-      }
+    assignTerminals: enqueueActions(({ enqueue, self, event }) => {
+      const ev = event as { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
+      const terminals = ev.data || []
+      enqueue(assign({ terminals }))
+
+      // Auto-select first non-tabbed terminal for panel if none selected
+      enqueue(() => {
+        const parentContext = getParentContext(self)
+        if (!parentContext?.panelTerminalId && terminals.length > 0) {
+          const tabbedIds = new Set(
+            (parentContext?.openFiles || []).filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+          )
+          const available = terminals.find(t => !tabbedIds.has(t.id))
+          if (available) {
+            updateParentState(self, { panelTerminalId: available.id })
+          }
+        }
+      })
     }),
 
     assignTerminalCreated: assign({
