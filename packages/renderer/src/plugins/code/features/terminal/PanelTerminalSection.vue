@@ -8,15 +8,15 @@
       <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
         <ChevronRight v-if="!isExpanded" class="w-3 h-3" />
         <ChevronDown v-else class="w-3 h-3" />
-        TERMINAL{{ activeDisplayName ? ` — ${activeDisplayName}` : '' }}
+        TERMINAL<span v-if="activeDisplayName" class="font-normal text-neutral-500 ml-1">{{ activeDisplayName }}</span>
       </div>
       <div class="flex items-center gap-1" @click.stop>
         <button
           @click="createTerminal"
-          class="p-0.5 hover:bg-neutral-700 rounded transition-colors"
+          class="p-1 hover:bg-neutral-700 rounded transition-colors"
           title="New Terminal"
         >
-          <Plus class="w-3 h-3 text-neutral-400" />
+          <Plus class="w-3.5 h-3.5 text-neutral-400" />
         </button>
       </div>
     </div>
@@ -54,7 +54,7 @@
                     ? 'bg-neutral-800 text-neutral-200 cursor-pointer'
                     : 'text-neutral-400 hover:bg-neutral-800/50 cursor-pointer'
               ]"
-              :title="getTerminalDisplayName(terminal) + (isInTab(terminal.id) ? ' (in tab)' : '')"
+              :title="getShellName(terminal.shell) + ' — ' + getTerminalDisplayName(terminal) + (isInTab(terminal.id) ? ' (in tab)' : '')"
             >
               <TerminalIcon class="w-3 h-3 flex-shrink-0" />
               <!-- Inline rename input -->
@@ -156,6 +156,7 @@ const activeDisplayName = computed(() =>
 )
 const isInTab = (terminalId: string) =>
   openFiles.value.some((f: any) => f.path === `terminal:${terminalId}` && f.isTerminal)
+const getShellName = (shell?: string) => shell?.split('/').pop() ?? 'terminal'
 
 // Local state
 const isExpanded = useSelector(codeActor, (state) => state.context.panelTerminalExpanded)
