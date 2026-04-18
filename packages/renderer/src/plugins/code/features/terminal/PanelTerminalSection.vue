@@ -56,7 +56,18 @@
               :title="getTerminalDisplayName(terminal) + (isInTab(terminal.id) ? ' (in tab)' : '')"
             >
               <TerminalIcon class="w-3 h-3 flex-shrink-0" />
-              <span class="truncate">{{ getTerminalDisplayName(terminal) }}</span>
+              <!-- Inline rename input -->
+              <div v-if="renamingTerminalId === terminal.id" @click.stop class="flex-1 min-w-0">
+                <input
+                  ref="renameInput"
+                  v-model="renameValue"
+                  @blur="finishRename"
+                  @keydown.enter="finishRename"
+                  @keydown.esc="cancelRename"
+                  class="w-full px-1 text-xs bg-transparent border border-primary-500 rounded text-neutral-200 focus:outline-none"
+                />
+              </div>
+              <span v-else class="truncate">{{ getTerminalDisplayName(terminal) }}</span>
             </div>
           </ContextMenuTrigger>
 
@@ -78,7 +89,7 @@
                 Rename
               </ContextMenuItem>
               <ContextMenuItem
-                @select="terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })"
+                @select="handleCloseTerminal(terminal)"
                 class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               >
                 <Trash2 :size="16" />
@@ -87,21 +98,6 @@
             </ContextMenuContent>
           </ContextMenuPortal>
         </ContextMenuRoot>
-      </div>
-    </div>
-
-    <!-- Inline rename dialog (shown over the list) -->
-    <div v-if="renamingTerminalId" class="px-3 pb-2">
-      <div class="flex items-center gap-1">
-        <input
-          ref="renameInput"
-          v-model="renameValue"
-          @blur="finishRename"
-          @keydown.enter="finishRename"
-          @keydown.esc="cancelRename"
-          class="flex-1 px-2 py-1 text-xs bg-transparent border border-primary-500 rounded text-neutral-200 focus:outline-none"
-          placeholder="Terminal name..."
-        />
       </div>
     </div>
   </div>
@@ -140,7 +136,7 @@ const terminals = useSelector(terminalActor, (state: any) => state.context.termi
 const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
 
-const { getTerminalDisplayName } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
+const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
 
 // Derived
 const activeTerminalInfo = computed(() =>
@@ -231,6 +227,12 @@ const createTerminal = () => {
 }
 
 const closeTerminal = () => {
+  if (!panelTerminalId.value) return
+  const info = activeTerminalInfo.value
+  if (info && confirmTerminalClose.value) {
+    const displayName = getTerminalDisplayName(info)
+    if (!confirm(`Close terminal "${displayName}"?`)) return
+  }
   codeActor.send({ type: 'CLOSE_PANEL_TERMINAL' })
 }
 
@@ -242,17 +244,26 @@ const openInTab = (terminalId: string) => {
   codeActor.send({ type: 'OPEN_TERMINAL_IN_TAB', terminalId })
 }
 
+const handleCloseTerminal = (terminal: TerminalInfo) => {
+  if (confirmTerminalClose.value) {
+    const displayName = getTerminalDisplayName(terminal)
+    if (!confirm(`Close terminal "${displayName}"?`)) return
+  }
+  terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
+}
+
 // Rename
 const renamingTerminalId = ref<string | null>(null)
 const renameValue = ref('')
-const renameInput = ref<HTMLInputElement | null>(null)
+const renameInput = ref<HTMLInputElement[]>([])
 
 const startRename = async (terminal: TerminalInfo) => {
   renamingTerminalId.value = terminal.id
   renameValue.value = terminal.customTitle || terminal.cwd.split('/').filter(Boolean).pop() || terminal.title
   await nextTick()
-  renameInput.value?.focus()
-  renameInput.value?.select()
+  const input = renameInput.value?.[0]
+  input?.focus()
+  input?.select()
 }
 
 const finishRename = () => {
