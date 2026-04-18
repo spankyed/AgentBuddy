@@ -168,6 +168,44 @@ export function useAttachments() {
     pendingFiles.value = []
   }
 
+  /** Restore pending attachments from a persisted MessageReferences (e.g. on revert). */
+  const restoreFromReferences = async (refs: MessageReferences) => {
+    // Restore images — fetch uploaded URLs back into data URLs for the pending state
+    if (refs.images?.length) {
+      await Promise.all(refs.images.map(async (img) => {
+        try {
+          const response = await fetch(img.url)
+          if (!response.ok) return
+          const blob = await response.blob()
+          if (blob.size === 0) return
+          const mime = blob.type || 'image/png'
+          const reader = new FileReader()
+          reader.onload = () => {
+            pendingImages.value = [...pendingImages.value, { dataUrl: reader.result as string, name: img.name }]
+          }
+          reader.readAsDataURL(blob.type ? blob : new Blob([blob], { type: mime }))
+        } catch { /* image no longer accessible */ }
+      }))
+    }
+
+    // Restore files — map references back to PendingFile entries, regenerate preview for images
+    if (refs.files?.length) {
+      const restored = await Promise.all(refs.files.map(async (f) => {
+        let previewUrl: string | undefined
+        if (f.isImage) {
+          try {
+            const ext = f.name.split('.').pop()?.toLowerCase() || 'png'
+            const mime = EXT_TO_MIME[ext] || 'image/png'
+            const base64 = await window.electronAPI?.fileUtils.readFileBase64(f.path)
+            if (base64) previewUrl = `data:${mime};base64,${base64}`
+          } catch { /* preview unavailable */ }
+        }
+        return { name: f.name, path: f.path, typeLabel: f.typeLabel, isImage: f.isImage, previewUrl }
+      }))
+      pendingFiles.value = [...pendingFiles.value, ...restored]
+    }
+  }
+
   return {
     pendingImages,
     pendingFiles,
@@ -179,5 +217,6 @@ export function useAttachments() {
     removeFile,
     collectAttachments,
     clearAll,
+    restoreFromReferences,
   }
 }

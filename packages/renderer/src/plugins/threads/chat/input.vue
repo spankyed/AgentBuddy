@@ -221,6 +221,8 @@ const props = defineProps<{
   disabled?: boolean
   /** Text to prefill the input with (e.g., on revert). Consumed once on change. */
   prefillText?: string
+  /** Attachments to prefill the input with (e.g., on revert). Consumed once on change. */
+  prefillReferences?: MessageReferences
   /** Whether the current thread is in the user-marked "busy" chat state. Controls Pause button visibility. */
   isBusy?: boolean
   /** Max duration (in minutes) for a single voice-input session. */
@@ -294,6 +296,11 @@ watch(() => props.prefillText, (text) => {
   }
 })
 
+// Prefill attachments when the parent sets prefillReferences (e.g., on revert).
+watch(() => props.prefillReferences, (refs) => {
+  if (refs) restoreFromReferences(refs)
+})
+
 const HISTORY_STORAGE_KEY = 'chat-sent-history'
 const MAX_HISTORY = 100
 
@@ -323,7 +330,7 @@ const commandHighlight = computed(() => {
 const {
   pendingImages, pendingFiles, hasAttachments,
   handlePaste, addImageFromUrl, removeImage, openFilePicker, removeFile,
-  collectAttachments, clearAll,
+  collectAttachments, clearAll, restoreFromReferences,
 } = useAttachments()
 
 // Handle image-URL paste (e.g. from notes) inside ProseMirror's pipeline

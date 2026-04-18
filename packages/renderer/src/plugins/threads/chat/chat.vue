@@ -29,6 +29,7 @@
           :current-mode="currentMode"
           :current-phase="currentPhase"
           :prefill-text="prefillText"
+          :prefill-references="prefillReferences"
           :is-busy="isBusy"
           :modes="modes"
           :hotkeys="hotkeys"
@@ -280,12 +281,14 @@ function confirmRevert() {
 }
 
 const prefillText = ref('')
+const prefillReferences = ref<MessageReferences | undefined>()
 
 function doRevert(messageId: string) {
   if (!currentThread.value?.id) return
-  // Grab the message text before the revert deletes it.
+  // Grab the message text + attachments before the revert deletes it.
   const msg = messages.value.find(m => m.id === messageId)
   const revertedText = msg?.text || ''
+  const revertedRefs = (msg as any)?.references as MessageReferences | undefined
   actor.send({
     type: 'REVERT_THREAD',
     messageId,
@@ -300,23 +303,36 @@ function doRevert(messageId: string) {
   // Clear after a tick so the watcher fires, then the value resets —
   // this ensures identical consecutive reverts still retrigger the watcher.
   prefillText.value = revertedText
-  nextTick(() => { prefillText.value = '' })
+  if (revertedRefs?.images?.length || revertedRefs?.files?.length) {
+    prefillReferences.value = revertedRefs
+  }
+  nextTick(() => {
+    prefillText.value = ''
+    prefillReferences.value = undefined
+  })
 }
 
 function doSummarize(messageId: string) {
   if (!currentThread.value?.id) return
-  // Grab X's text before the soft-delete removes it — prefill mirrors
+  // Grab X's text + attachments before the soft-delete removes it — prefill mirrors
   // Claude Code's `direction: 'from'` behavior (user resubmits against
   // the freshly compacted session).
   const msg = messages.value.find(m => m.id === messageId)
   const revertedText = msg?.text || ''
+  const revertedRefs = (msg as any)?.references as MessageReferences | undefined
   actor.send({
     type: 'SUMMARIZE_THREAD',
     messageId,
     threadId: currentThread.value.id,
   })
   prefillText.value = revertedText
-  nextTick(() => { prefillText.value = '' })
+  if (revertedRefs?.images?.length || revertedRefs?.files?.length) {
+    prefillReferences.value = revertedRefs
+  }
+  nextTick(() => {
+    prefillText.value = ''
+    prefillReferences.value = undefined
+  })
 }
 
 const prevThreadId = ref(currentThread.value?.id)
