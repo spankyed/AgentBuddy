@@ -173,9 +173,13 @@ function toggleChoice(id: string) {
     if (i > -1) selectedIds.value.splice(i, 1)
     else selectedIds.value.push(id)
   } else {
-    selectedIds.value = [id]
-    // Auto-advance for single-select (unless wizard needs explicit Next)
-    if (!isWizard.value) handleNext()
+    if (selectedIds.value[0] === id) {
+      selectedIds.value = []
+    } else {
+      selectedIds.value = [id]
+      // Auto-advance for single-select (unless wizard needs explicit Next)
+      if (!isWizard.value) handleNext()
+    }
   }
 }
 
