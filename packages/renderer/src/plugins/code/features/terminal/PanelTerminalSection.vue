@@ -31,8 +31,17 @@
         </div>
       </div>
 
+      <!-- Resize handle between terminal and list -->
+      <div
+        v-if="terminals.length > 0"
+        class="w-0 h-full flex-shrink-0 relative cursor-col-resize group z-10"
+        @mousedown.prevent="startListResize"
+      >
+        <div class="absolute top-0 bottom-0 -left-1 w-2 group-hover:bg-blue-500/50 transition-colors" />
+      </div>
+
       <!-- Terminal list (right sidebar) -->
-      <div v-if="terminals.length > 0" class="w-24 flex-shrink-0 border-l border-neutral-800 overflow-y-auto">
+      <div v-if="terminals.length > 0" class="flex-shrink-0 border-l border-neutral-800 overflow-y-auto" :style="{ width: `${listWidth}px` }">
         <ContextMenuRoot v-for="terminal in terminals" :key="terminal.id">
           <ContextMenuTrigger as-child>
             <div
@@ -151,6 +160,9 @@ const isInTab = (terminalId: string) =>
 // Local state
 const isExpanded = useSelector(codeActor, (state) => state.context.panelTerminalExpanded)
 const container = ref<HTMLElement>()
+const listWidth = ref(144) // default ~w-36
+const MIN_LIST_WIDTH = 80
+const MAX_LIST_WIDTH = 300
 
 // Terminal rendering
 let term: Terminal | null = null
@@ -242,6 +254,30 @@ const handleCloseTerminal = (terminal: TerminalInfo) => {
     if (!confirm(`Close terminal "${displayName}"?`)) return
   }
   terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
+}
+
+// List resize
+const startListResize = (e: MouseEvent) => {
+  const startX = e.clientX
+  const startWidth = listWidth.value
+
+  const onMouseMove = (e: MouseEvent) => {
+    const delta = startX - e.clientX // dragging left = wider list
+    listWidth.value = Math.max(MIN_LIST_WIDTH, Math.min(MAX_LIST_WIDTH, startWidth + delta))
+    fitAddon?.fit()
+  }
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
 }
 
 // Rename
