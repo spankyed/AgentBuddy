@@ -227,6 +227,7 @@ export interface ThreadEntity extends BaseEntity {
   tags?: string[]; // Tag names from settings
   forcedMode?: 'birth'; // Force a specific mode for this thread
   pinned?: boolean; // Thread tab should stay pinned in the UI
+  archived?: boolean; // Thread is archived and hidden from lists
   context?: ThreadContext; // Free-form per-feature state (e.g. claudeCode.sessionId)
 }
 

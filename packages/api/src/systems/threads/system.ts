@@ -246,6 +246,18 @@ export const threadsSystem = setup({
           updates: { status: value as string },
         }));
       }
+
+      if (key === 'archived') {
+        // Refresh thread list and recent threads since thread visibility changed
+        system.get(bus).send(emit(threads, {
+          type: 'THREAD_CONNECTED',
+          data: {
+            ...repository.threadQueries.connectedData(),
+            settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+          },
+        }));
+        services.chat.sendRecentThreadsRefresh();
+      }
     },
     updateThreadStatus: ({ system, event }) => {
       const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);

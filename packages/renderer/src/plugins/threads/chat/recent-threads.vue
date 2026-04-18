@@ -56,6 +56,14 @@
               <FileText :size="12" />
               Details
             </button>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-neutral-400 hover:text-amber-400 hover:bg-amber-400/10 transition-colors"
+              title="Archive thread"
+              @click.stop="handleArchiveThread(thread.id)"
+            >
+              <Archive :size="12" />
+            </button>
           </div>
         </div>
       </div>
@@ -136,7 +144,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { History, ChevronUp, Plus, PanelLeft, FileText } from 'lucide-vue-next'
+import { Archive, History, ChevronUp, Plus, PanelLeft, FileText } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
@@ -206,6 +214,15 @@ const emit = defineEmits<{
   (e: 'new-thread'): void
   (e: 'new-thread-as-child', parentThreadId: string): void
 }>()
+
+const handleArchiveThread = (id: string | undefined) => {
+  if (!id) return
+  const confirmed = confirm('Archive this thread? It will be hidden from all lists.')
+  if (confirmed) {
+    threadsActor.send({ type: 'ARCHIVE_THREAD', threadId: id })
+    isOpen.value = false
+  }
+}
 
 const handleViewThread = (id: string | undefined) => {
   if (!id) return

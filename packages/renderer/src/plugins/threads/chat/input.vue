@@ -162,7 +162,7 @@
             </Button>
             <Button
               type="submit"
-              :disabled="(!messageContent.trim() && !hasAttachments) || disabled"
+              :disabled="(!hasTextContent && !hasAttachments) || disabled"
             >
               <span class="hidden @md:inline">Send</span>
               <CornerDownLeft class="-rotate-45" :size="16" />
@@ -258,6 +258,7 @@ interface ActionButton {
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const inputCardRef = ref<HTMLElement | null>(null)
 const messageContent = ref('')
+const hasTextContent = ref(false)
 const popoverOpen = ref(false)
 const navigatingHistory = ref(false)
 const revertMenuOpen = ref(false)
@@ -356,6 +357,7 @@ watch(tiptapRef, (ref) => {
 
 const onContentUpdate = (md: string) => {
   messageContent.value = md
+  hasTextContent.value = !!tiptapRef.value?.editor?.state.doc.textContent.trim()
   if (!navigatingHistory.value) {
     historyIndex.value = -1
   }
@@ -591,7 +593,8 @@ const handleSubmit = async () => {
   const editor = tiptapRef.value?.editor
   if (!editor) return
   const md = ((editor.storage as any).markdown.getMarkdown() as string).trim()
-  if (md || hasAttachments.value) {
+  const textContent = editor.state.doc.textContent.trim()
+  if (textContent || hasAttachments.value) {
     const entityId = props.currentThread?.id || 'chat-attachments'
     const attachmentRefs = await collectAttachments(entityId)
     const contextRefs = collectContextReferences(editor)
@@ -622,6 +625,7 @@ const handleSubmit = async () => {
     lastClearedContent.value = null
     editor.commands.clearContent(true)
     messageContent.value = ''
+    hasTextContent.value = false
     clearAll()
   }
 }
