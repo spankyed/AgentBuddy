@@ -105,17 +105,69 @@ export const terminalState = setup({
       const terminals = ev.data || []
       enqueue(assign({ terminals }))
 
-      // Auto-select first non-tabbed terminal for panel if none selected
       enqueue(() => {
         const parentContext = getParentContext(self)
-        if (!parentContext?.panelTerminalId && terminals.length > 0) {
+        const pendingTabIds: string[] | undefined = parentContext?.pendingTerminalTabIds
+
+        const updates: Record<string, any> = {}
+
+        // Restore deferred terminal tabs
+        if (pendingTabIds && pendingTabIds.length > 0 && terminals.length > 0) {
+          const restoredIds: string[] = []
+          const staleTabPaths: string[] = []
+
+          for (const terminalId of pendingTabIds) {
+            const info = terminals.find(t => t.id === terminalId)
+            if (info) {
+              const terminalTab = {
+                path: `terminal:${info.id}`,
+                content: '',
+                modified: false,
+                isTerminal: true,
+                terminalInfo: info
+              }
+              addTabToParent(self, terminalTab, false, {
+                activeFilePath: parentContext?.activeFilePath
+              })
+              restoredIds.push(terminalId)
+            } else {
+              // Terminal no longer exists on backend — mark for cleanup
+              staleTabPaths.push(`terminal:${terminalId}`)
+            }
+          }
+
+          // Clean stale terminal paths from pendingTabOrder so restoration can complete
+          if (staleTabPaths.length > 0 && parentContext?.pendingTabOrder) {
+            updates.pendingTabOrder = parentContext.pendingTabOrder.filter(
+              (t: any) => !staleTabPaths.includes(t.path)
+            )
+            if (updates.pendingTabOrder.length === 0) updates.pendingTabOrder = undefined
+          }
+
+          updates.pendingTerminalTabIds = undefined
+        }
+
+        // Auto-select panel terminal if none selected or persisted ID is stale
+        const currentPanelId = parentContext?.panelTerminalId
+        const panelTerminalExists = currentPanelId && terminals.some(t => t.id === currentPanelId)
+
+        if ((!currentPanelId || !panelTerminalExists) && terminals.length > 0) {
           const tabbedIds = new Set(
             (parentContext?.openFiles || []).filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
           )
+          if (pendingTabIds) {
+            for (const id of pendingTabIds) tabbedIds.add(id)
+          }
           const available = terminals.find(t => !tabbedIds.has(t.id))
           if (available) {
-            updateParentState(self, { panelTerminalId: available.id })
+            updates.panelTerminalId = available.id
+          } else if (!panelTerminalExists) {
+            updates.panelTerminalId = null
           }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updateParentState(self, updates)
         }
       })
     }),

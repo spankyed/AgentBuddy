@@ -237,6 +237,7 @@ class TerminalService {
       terminal.exitDisposable?.dispose()
       terminal.exitDisposable = undefined
       this.terminals.delete(id)
+      repository.terminalCommands.markClosed(id as EARS.EntityId)
       callback(exitCode, signal)
     })
   }

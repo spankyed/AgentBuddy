@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate'
+import { setup, assign, fromPromise } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { systemBus } from '@/core/helpers/event-helpers'
@@ -60,11 +60,61 @@ export type Event =
   | { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
   | { type: 'CODE_CONNECTED' };
 
+// Shared handler setup for terminal output/exit events (used by both create and restore)
+const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
+  terminalService.onData(terminalInfo.id, (data) => {
+    const osc7Match = data.match(/\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/)
+    const osc633Match = data.match(/\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/)
+    const osc1337Match = data.match(/\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/)
+    const cwdMatch = osc7Match || osc633Match || osc1337Match
+
+    if (cwdMatch) {
+      try {
+        const newCwd = decodeURIComponent(cwdMatch[1])
+        const result = terminalService.updateCwd(terminalInfo.id, newCwd)
+        if (result) {
+          rootEvents.emitOutgoing(emit(pluginId, {
+            type: 'terminal.CWD_CHANGED',
+            data: { terminalId: terminalInfo.id, cwd: result.cwd, title: result.title }
+          }).event)
+        }
+      } catch (error) {
+        console.error('Failed to parse CWD from OSC sequence:', error)
+      }
+    }
+
+    rootEvents.emitOutgoing(emit(pluginId, {
+      type: 'terminal.OUTPUT',
+      data: { terminalId: terminalInfo.id, data }
+    }).event)
+  })
+
+  terminalService.onExit(terminalInfo.id, () => {
+    rootEvents.emitOutgoing(emit(pluginId, {
+      type: 'terminal.CLOSED',
+      data: { terminalId: terminalInfo.id }
+    }).event)
+  })
+}
+
 export const terminalSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null }
+  },
+  actors: {
+    restoreTerminalsActor: fromPromise(async () => {
+      const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
+      if (codeSettings?.restoreTerminals === false) {
+        console.log('[Terminal] Terminal restoration disabled by settings')
+        return
+      }
+      await terminalService.restoreAll((terminalInfo) => {
+        setupTerminalHandlers(terminalInfo)
+      })
+      console.log('Terminal restoration complete')
+    })
   },
   actions: {
     sendConnectedData: ({ context }) => {
@@ -97,56 +147,7 @@ export const terminalSystem = setup({
           rows: ev.rows || 24
         })
 
-        // Set up output handler
-        terminalService.onData(terminalInfo.id, (data) => {
-          // Check for OSC sequences indicating directory change
-          // OSC 7: \033]7;file://hostname/path\007 (or \033]7;file://hostname/path\033\\)
-          // OSC 633;P: \033]633;P;Cwd=/path\007
-          // OSC 1337: \033]1337;CurrentDir=/path\007
-          const osc7Match = data.match(/\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/)
-          const osc633Match = data.match(/\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/)
-          const osc1337Match = data.match(/\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/)
-
-          const cwdMatch = osc7Match || osc633Match || osc1337Match
-
-          if (cwdMatch) {
-            try {
-              const newCwd = decodeURIComponent(cwdMatch[1])
-              const result = terminalService.updateCwd(terminalInfo.id, newCwd)
-
-              if (result) {
-                // Emit CWD change event to frontend
-                const cwdWrapped = emit(pluginId, {
-                  type: 'terminal.CWD_CHANGED',
-                  data: {
-                    terminalId: terminalInfo.id,
-                    cwd: result.cwd,
-                    title: result.title
-                  }
-                })
-                rootEvents.emitOutgoing(cwdWrapped.event)
-              }
-            } catch (error) {
-              console.error('Failed to parse CWD from OSC sequence:', error)
-            }
-          }
-
-          // Send to frontend
-          const wrapped = emit(pluginId, {
-            type: 'terminal.OUTPUT',
-            data: { terminalId: terminalInfo.id, data }
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-        })
-
-        // Set up exit handler
-        terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
-          const wrapped = emit(pluginId, {
-            type: 'terminal.CLOSED',
-            data: { terminalId: terminalInfo.id }
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-        })
+        setupTerminalHandlers(terminalInfo)
 
         const wrapped = emit(pluginId, {
           type: 'terminal.CREATED',
@@ -309,69 +310,6 @@ export const terminalSystem = setup({
       terminalService.killAll()
     },
 
-    restoreTerminals: async ({ context }) => {
-      // Get current settings directly from EARS - this will create default settings if they don't exist
-      const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
-      
-      // Check if terminal restoration is enabled
-      if (codeSettings?.restoreTerminals === false) {
-        console.log('[Terminal] Terminal restoration disabled by settings')
-        return
-      }
-      
-      // Restore all active terminals from EARS
-      await terminalService.restoreAll((terminalInfo) => {
-        // Set up output handler for restored terminal
-        terminalService.onData(terminalInfo.id, (data) => {
-          // Check for OSC sequences indicating directory change
-          const osc7Match = data.match(/\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/)
-          const osc633Match = data.match(/\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/)
-          const osc1337Match = data.match(/\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/)
-
-          const cwdMatch = osc7Match || osc633Match || osc1337Match
-
-          if (cwdMatch) {
-            try {
-              const newCwd = decodeURIComponent(cwdMatch[1])
-              const result = terminalService.updateCwd(terminalInfo.id, newCwd)
-
-              if (result) {
-                // Emit CWD change event to frontend
-                const cwdWrapped = emit(pluginId, {
-                  type: 'terminal.CWD_CHANGED',
-                  data: {
-                    terminalId: terminalInfo.id,
-                    cwd: result.cwd,
-                    title: result.title
-                  }
-                })
-                rootEvents.emitOutgoing(cwdWrapped.event)
-              }
-            } catch (error) {
-              console.error('Failed to parse CWD from OSC sequence:', error)
-            }
-          }
-
-          const wrapped = emit(pluginId, {
-            type: 'terminal.OUTPUT',
-            data: { terminalId: terminalInfo.id, data }
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-        })
-
-        // Set up exit handler for restored terminal
-        terminalService.onExit(terminalInfo.id, (exitCode, signal) => {
-          const wrapped = emit(pluginId, {
-            type: 'terminal.CLOSED',
-            data: { terminalId: terminalInfo.id }
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-        })
-      })
-      
-      console.log('Terminal restoration complete')
-    },
-
     updateBaseDirectory: assign({
       baseDirectory: ({ event }) => {
         const ev = event as { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
@@ -381,13 +319,36 @@ export const terminalSystem = setup({
   }
 }).createMachine({
   id: 'terminal',
-  initial: 'idle',
+  initial: 'initializing',
   context: ({ input }: { input?: { baseDirectory: string | null } }) => ({
     baseDirectory: input?.baseDirectory || null
   }),
-  entry: 'restoreTerminals',
   exit: 'cleanupTerminals',
+  // Stateless handlers safe during initialization
+  on: {
+    'terminal.TERMINAL_INPUT': {
+      actions: 'sendTerminalInput'
+    },
+    'terminal.RESIZE_TERMINAL': {
+      actions: 'resizeTerminal'
+    },
+    'terminal.RENAME_TERMINAL': {
+      actions: 'renameTerminal'
+    },
+    'terminal.UPDATE_BASE_DIRECTORY': {
+      actions: 'updateBaseDirectory'
+    }
+  },
   states: {
+    initializing: {
+      invoke: {
+        src: 'restoreTerminalsActor',
+        onDone: {
+          target: 'idle',
+          actions: 'sendConnectedData'
+        }
+      }
+    },
     idle: {
       on: {
         'CODE_CONNECTED': {
@@ -399,23 +360,11 @@ export const terminalSystem = setup({
         'terminal.CLOSE_TERMINAL': {
           actions: 'closeTerminal'
         },
-        'terminal.TERMINAL_INPUT': {
-          actions: 'sendTerminalInput'
-        },
-        'terminal.RESIZE_TERMINAL': {
-          actions: 'resizeTerminal'
-        },
-        'terminal.RENAME_TERMINAL': {
-          actions: 'renameTerminal'
-        },
         'terminal.REFRESH_LIST': {
           actions: 'listTerminals'
         },
         'terminal.OPEN_TERMINAL_TAB': {
           actions: 'openTerminalTab'
-        },
-        'terminal.UPDATE_BASE_DIRECTORY': {
-          actions: 'updateBaseDirectory'
         }
       }
     }

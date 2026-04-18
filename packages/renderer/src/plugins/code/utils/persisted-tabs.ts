@@ -20,11 +20,13 @@ const STORAGE_KEY = 'code-plugin-open-tabs'
 interface PersistedTabState {
   tabs: PersistedTab[]
   activeFilePath: string | null
+  panelTerminalId: string | null
 }
 
 export function saveOpenTabs(
   openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[],
-  activeFilePath: string | null
+  activeFilePath: string | null,
+  panelTerminalId: string | null = null
 ): void {
   try {
     const tabs: PersistedTab[] = openFiles
@@ -78,7 +80,7 @@ export function saveOpenTabs(
         }
       })
 
-    const payload: PersistedTabState = { tabs, activeFilePath }
+    const payload: PersistedTabState = { tabs, activeFilePath, panelTerminalId }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
   } catch (error) {
     console.error('Failed to save open tabs:', error)
@@ -106,26 +108,27 @@ function normalizeTabs(rawTabs: unknown[]): PersistedTab[] {
 export function loadPersistedTabs(): PersistedTabState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return { tabs: [], activeFilePath: null }
+    if (!stored) return { tabs: [], activeFilePath: null, panelTerminalId: null }
 
     const parsed = JSON.parse(stored)
 
     // Legacy shape: top-level array of tabs (no persisted active path).
     if (Array.isArray(parsed)) {
-      return { tabs: normalizeTabs(parsed), activeFilePath: null }
+      return { tabs: normalizeTabs(parsed), activeFilePath: null, panelTerminalId: null }
     }
 
     if (typeof parsed !== 'object' || parsed === null || !Array.isArray(parsed.tabs)) {
-      return { tabs: [], activeFilePath: null }
+      return { tabs: [], activeFilePath: null, panelTerminalId: null }
     }
 
     return {
       tabs: normalizeTabs(parsed.tabs),
-      activeFilePath: typeof parsed.activeFilePath === 'string' ? parsed.activeFilePath : null
+      activeFilePath: typeof parsed.activeFilePath === 'string' ? parsed.activeFilePath : null,
+      panelTerminalId: typeof parsed.panelTerminalId === 'string' ? parsed.panelTerminalId : null
     }
   } catch (error) {
     console.error('Failed to load persisted tabs:', error)
-    return { tabs: [], activeFilePath: null }
+    return { tabs: [], activeFilePath: null, panelTerminalId: null }
   }
 }
 
