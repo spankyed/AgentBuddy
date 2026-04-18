@@ -154,14 +154,9 @@ const containerRef = ref<HTMLDivElement | null>(null)
 
 // Get threads from the threads plugin state
 const threadsActor: ThreadsState = applicationState.system.get(threadsId)
-const allThreads = useSelector(threadsActor, (state) => state.context.threads)
 const chatStates = useSelector(threadsActor, (state) => state.context.chatStates)
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides)
 const settings = useSelector(threadsActor, (state) => state.context.settings)
-const recentThreadsLimit = useSelector(
-  threadsActor,
-  (state) => state.context.settings?.recentThreadsLimit ?? 7,
-)
 
 function getThreadDotColor(threadId: string): string | undefined {
   const override = chatStateOverrides.value[threadId]
@@ -171,9 +166,7 @@ function getThreadDotColor(threadId: string): string | undefined {
   return settings.value?.chatStates?.find(c => c.id === activeStateId)?.color
 }
 
-const recentThreads = computed(() => {
-  return allThreads.value.slice(0, recentThreadsLimit.value)
-})
+const recentThreads = computed(() => props.recentThreads)
 
 const handleClickOutside = (event: MouseEvent) => {
   if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
