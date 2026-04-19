@@ -125,6 +125,7 @@ type UIEvent =
   | { type: 'TOGGLE_LINKED_SECTION'; show: boolean }
   | { type: 'TOGGLE_FILTER_STATUS'; status: string }
   | { type: 'TOGGLE_FILTER_TAG'; tag: string }
+  | { type: 'TOGGLE_FILTER_CHAT_STATE'; chatState: string }
   | { type: 'SET_SEARCH'; keyword: string }
   | { type: 'CLEAR_FILTERS' }
   | { type: 'TOGGLE_ROOT_ONLY_FILTER' }
@@ -203,6 +204,7 @@ interface ThreadsContext {
   filters: {
     statuses: string[];
     tags: string[];
+    chatStates: string[];
     search: string;
     showRootOnly: boolean;
   };
@@ -518,11 +520,18 @@ const threadsState = setup({
         filters: { ...context.filters, tags: current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag] },
       };
     }),
+    toggleFilterChatState: assign(({ context, event }) => {
+      const chatState = typeOf('TOGGLE_FILTER_CHAT_STATE', event).chatState;
+      const current = context.filters.chatStates;
+      return {
+        filters: { ...context.filters, chatStates: current.includes(chatState) ? current.filter(s => s !== chatState) : [...current, chatState] },
+      };
+    }),
     setSearch: assign(({ context, event }) => ({
       filters: { ...context.filters, search: typeOf('SET_SEARCH', event).keyword },
     })),
     clearFilters: assign(({ context }) => ({
-      filters: { statuses: [] as string[], tags: [] as string[], search: '', showRootOnly: context.filters.showRootOnly },
+      filters: { statuses: [] as string[], tags: [] as string[], chatStates: [] as string[], search: '', showRootOnly: context.filters.showRootOnly },
     })),
 
     refreshViewIfActive: ({ context }) => {
@@ -1015,7 +1024,7 @@ const threadsState = setup({
     create: { ...defaultThread },
     availableTags: [],
     settings: null,
-    filters: { statuses: [], tags: [], search: '', showRootOnly: true },
+    filters: { statuses: [], tags: [], chatStates: [], search: '', showRootOnly: true },
     threadsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     threadsExport: { status: 'idle' as const, errors: [], filePath: '', threadCount: 0 },
     // Chat/agent
@@ -1117,6 +1126,7 @@ const threadsState = setup({
     // Filter events
     TOGGLE_FILTER_STATUS: { actions: 'toggleFilterStatus' },
     TOGGLE_FILTER_TAG: { actions: 'toggleFilterTag' },
+    TOGGLE_FILTER_CHAT_STATE: { actions: 'toggleFilterChatState' },
     SET_SEARCH: { actions: 'setSearch' },
     CLEAR_FILTERS: { actions: 'clearFilters' },
     TOGGLE_ROOT_ONLY_FILTER: { actions: 'toggleRootOnlyFilter' },

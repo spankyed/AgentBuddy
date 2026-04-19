@@ -48,11 +48,14 @@
         <FilterPopover
           :statuses="statuses"
           :tags="availableTags"
+          :chat-state-configs="chatStateConfigs"
           :selected-statuses="filters.statuses"
           :selected-tags="filters.tags"
+          :selected-chat-states="filters.chatStates"
           :show-root-only="filters.showRootOnly"
           @toggle-status="(s) => actor.send({ type: 'TOGGLE_FILTER_STATUS', status: s })"
           @toggle-tag="(t) => actor.send({ type: 'TOGGLE_FILTER_TAG', tag: t })"
+          @toggle-chat-state="(s) => actor.send({ type: 'TOGGLE_FILTER_CHAT_STATE', chatState: s })"
           @toggle-root-only="actor.send({ type: 'TOGGLE_ROOT_ONLY_FILTER' })"
         >
           <Button
@@ -128,9 +131,10 @@ const settings = useSelector(actor, s => s.context.settings)
 const availableTags = useSelector(actor, s => s.context.availableTags)
 
 const statuses = computed(() => settings.value?.statuses || [])
+const chatStateConfigs = computed(() => settings.value?.chatStates || [])
 
 const activeFilterCount = computed(() =>
-  filters.value.statuses.length + filters.value.tags.length
+  filters.value.statuses.length + filters.value.tags.length + filters.value.chatStates.length
 )
 
 const searchKeyword = ref(filters.value.search ?? '')

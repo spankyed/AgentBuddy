@@ -120,7 +120,7 @@ const displayCount = ref(BATCH_SIZE)
 const scrollContainer = ref<HTMLElement | null>(null)
 
 const hasActiveFilters = computed(() =>
-  filters.value.statuses.length > 0 || filters.value.tags.length > 0 || filters.value.search !== ''
+  filters.value.statuses.length > 0 || filters.value.tags.length > 0 || filters.value.chatStates.length > 0 || filters.value.search !== ''
   || (filters.value.showRootOnly && threads.value.some(t => t.parentId))
 )
 
@@ -140,6 +140,17 @@ const filteredThreads = computed(() => {
     result = result.filter(t =>
       t.tags && t.tags.some(tag => filters.value.tags.includes(tag))
     )
+  }
+
+  if (filters.value.chatStates.length > 0) {
+    const now = Date.now()
+    result = result.filter(t => {
+      const override = chatStateOverrides.value[t.id]
+      const effectiveState = (override && override.expiresAt > now)
+        ? override.id
+        : (chatStates.value[t.id] || 'idle')
+      return filters.value.chatStates.includes(effectiveState)
+    })
   }
 
   if (filters.value.search) {
