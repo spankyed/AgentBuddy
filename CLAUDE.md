@@ -66,6 +66,15 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 - Use `breadcrumb()` / `breadcrumbWithParams()` for plugin navigation
 - Frontend components should be "dumb" — emit events up to root components which forward to the plugin state machine
 
+### Migrations
+
+Settings migrations live in `packages/api/src/setup/migrations/`. Each file exports a `Migration` with a `target` version and an `up()` function.
+
+- **Target the next release version** — migrations run when `stored_version < target <= app_version`. Name the file after the version it targets (e.g. `0.2.4.ts` runs when the app is released as 0.2.4+).
+- **Never bump `package.json` version manually** — the release process handles version bumps. Migrations are written ahead of time to target the upcoming release.
+- **Register in `index.ts`** — import and append to the `migrations` array in version order.
+- **Idempotent guards** — always check if the change is needed before applying (e.g. `if (!value) set(value)`), since migrations may re-run after a reset.
+
 ### Path aliases
 
 - Backend: `@/*` → `packages/api/src/*`

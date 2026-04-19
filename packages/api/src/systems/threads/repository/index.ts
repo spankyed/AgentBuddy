@@ -344,6 +344,20 @@ function getConfiguredRecentThreadsLimit(): number {
     : RECENT_THREADS_FALLBACK_LIMIT;
 }
 
+function getConfiguredSortOrder(): 'created' | 'visited' | 'message' {
+  const configured = settingsQueries.getPluginSettings('threads')?.recentThreadsSortOrder;
+  return configured === 'visited' || configured === 'message' ? configured : 'created';
+}
+
+function getSortTimestamp(thread: Partial<ThreadEntity>, sortOrder: 'created' | 'visited' | 'message'): number {
+  switch (sortOrder) {
+    case 'visited': return thread.lastVisitedTimestamp || thread.timestamp || 0;
+    case 'message': return thread.lastMessageTimestamp || thread.timestamp || 0;
+    case 'created':
+    default: return thread.timestamp || 0;
+  }
+}
+
 function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Partial<ThreadEntity>[] {
   const threadFields = [
     "shortCode", "topic", "instructions", "status", "timestamp",
@@ -353,12 +367,10 @@ function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Pa
   const allThreads = (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
     .filter(t => !t.archived);
 
+  const sortOrder = getConfiguredSortOrder();
+
   return allThreads
-    .sort((a, b) => {
-      const aTime = a.timestamp || 0;
-      const bTime = b.timestamp || 0;
-      return bTime - aTime;
-    })
+    .sort((a, b) => getSortTimestamp(b, sortOrder) - getSortTimestamp(a, sortOrder))
     .slice(0, limit);
 }
 

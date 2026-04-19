@@ -279,61 +279,65 @@ export const threadsSystem = setup({
         repository.settingsQueries.getPluginSettings('threads')?.statuses?.[0]?.label;
 
       const { changes } = typeOf('THREADS_SETTINGS_UPDATED', event);
-      if (!changes) return;
 
       const busSvc = system.get(bus);
 
-      const sBlock = (changes.statuses || changes) as ChangeBlock | undefined;
-      const sRenames = toMap(sBlock?.renames);
-      const sRemoved = toIdentifierSet(sBlock?.removed, (item: any) => item.label);
-      const statusNeedsWork = sRenames.size || sRemoved.size;
+      if (changes) {
+        const sBlock = (changes.statuses || changes) as ChangeBlock | undefined;
+        const sRenames = toMap(sBlock?.renames);
+        const sRemoved = toIdentifierSet(sBlock?.removed, (item: any) => item.label);
+        const statusNeedsWork = sRenames.size || sRemoved.size;
 
-      const statusFallback = () => firstStatusLabel();
+        const statusFallback = () => firstStatusLabel();
 
-      const tBlock = changes.tags as ChangeBlock | undefined;
-      const tRenames = toMap(tBlock?.renames);
-      const tRemoved = toIdentifierSet(tBlock?.removed, (item: any) => item.name);
-      const tagNeedsWork = tRenames.size || tRemoved.size;
+        const tBlock = changes.tags as ChangeBlock | undefined;
+        const tRenames = toMap(tBlock?.renames);
+        const tRemoved = toIdentifierSet(tBlock?.removed, (item: any) => item.name);
+        const tagNeedsWork = tRenames.size || tRemoved.size;
 
-      if (!statusNeedsWork && !tagNeedsWork) return;
+        if (statusNeedsWork || tagNeedsWork) {
+          let touched = false;
 
-      let touched = false;
+          for (const th of repository.threadQueries.all()) {
+            const patch: { status?: string; tags?: string[] } = {};
 
-      for (const th of repository.threadQueries.all()) {
-        const patch: { status?: string; tags?: string[] } = {};
+            if (statusNeedsWork) {
+              const nextStatus = mapScalar(th.status, sRenames, sRemoved, statusFallback);
+              if (nextStatus !== th.status && nextStatus) {
+                patch.status = nextStatus;
+              }
+            }
 
-        if (statusNeedsWork) {
-          const nextStatus = mapScalar(th.status, sRenames, sRemoved, statusFallback);
-          if (nextStatus !== th.status && nextStatus) {
-            patch.status = nextStatus;
+            if (tagNeedsWork) {
+              const { next: nextTags, changed } = mapArray(th.tags, tRenames, tRemoved);
+              if (changed) {
+                patch.tags = nextTags;
+              }
+            }
+
+            if (Object.keys(patch).length) {
+              repository.threadCommands.update(th.id, patch);
+              busSvc.send(emit(threads, { type: 'THREAD_UPDATED', threadId: th.id, updates: patch }));
+              touched = true;
+            }
           }
-        }
 
-        if (tagNeedsWork) {
-          const { next: nextTags, changed } = mapArray(th.tags, tRenames, tRemoved);
-          if (changed) {
-            patch.tags = nextTags;
+          if (touched) {
+            busSvc.send(
+              emit(threads, {
+                type: 'THREAD_CONNECTED',
+                data: {
+                  ...repository.threadQueries.connectedData(),
+                  settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+                },
+              })
+            );
           }
-        }
-
-        if (Object.keys(patch).length) {
-          repository.threadCommands.update(th.id, patch);
-          busSvc.send(emit(threads, { type: 'THREAD_UPDATED', threadId: th.id, updates: patch }));
-          touched = true;
         }
       }
 
-      if (touched) {
-        busSvc.send(
-          emit(threads, {
-            type: 'THREAD_CONNECTED',
-            data: {
-              ...repository.threadQueries.connectedData(),
-              settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
-            },
-          })
-        );
-      }
+      // Always refresh recent threads — sort order or limit may have changed
+      services.chat.sendRecentThreadsRefresh();
     },
     setThreadParent: ({ system, event }) => {
       const { childIds, parentId } = typeOf('SET_THREAD_PARENT', event);

@@ -499,6 +499,26 @@
             </div>
           </div>
           <div class="flex items-start gap-3">
+            <select
+              id="recent-threads-sort"
+              v-model="recentThreadsSortOrder"
+              class="mt-1 w-36 px-2 py-1 bg-neutral-800 border border-neutral-700 rounded text-sm text-neutral-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none"
+              @change="saveRecentThreadsSortOrder"
+            >
+              <option value="created">Recently created</option>
+              <option value="visited">Recently visited</option>
+              <option value="message">Recent message</option>
+            </select>
+            <div class="flex-1">
+              <label for="recent-threads-sort" class="block text-sm font-medium text-neutral-200 cursor-pointer">
+                Recent threads sort order
+              </label>
+              <p class="mt-1 text-xs text-neutral-500">
+                How to sort the recent threads list: by creation time, last visited, or most recent message.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
             <input
               id="recording-limit"
               v-model.number="recordingLimitMinutes"
@@ -696,6 +716,7 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
 const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
+const recentThreadsSortOrder = ref<string>(props.settings?.recentThreadsSortOrder ?? 'created')
 const recordingLimitMinutes = ref<number>(props.settings?.recordingLimitMinutes ?? 3)
 
 // ---- Chat (agent) settings ----
@@ -771,6 +792,13 @@ const saveRecentThreadsLimit = () => {
   emit('update-setting', {
     path: ['recentThreadsLimit'],
     value: clamped
+  })
+}
+
+const saveRecentThreadsSortOrder = () => {
+  emit('update-setting', {
+    path: ['recentThreadsSortOrder'],
+    value: recentThreadsSortOrder.value
   })
 }
 
