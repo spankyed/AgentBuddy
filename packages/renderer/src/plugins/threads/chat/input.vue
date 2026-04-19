@@ -183,6 +183,7 @@ import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
 import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
+import { DOUBLE_ESC_MS } from '@/core/components/tiptap/composables/createEditorKeyboard'
 import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments'
 import {
   DropdownMenuRoot,
@@ -459,13 +460,44 @@ const handleVoiceKeydown = (e: KeyboardEvent) => {
 const handleVoiceKeyup = (e: KeyboardEvent) => {
   if (isListening.value) stopSpeech()
 }
+// Global ESC handling (works regardless of which element has focus):
+//   1. pause available (streaming) → single ESC pauses
+//   2. empty input, double-ESC → open revert menu
+let lastGlobalEscTime = 0
+const handleGlobalEsc = (e: KeyboardEvent) => {
+  if (e.key !== 'Escape') return
+  // Skip if focus is inside the ProseMirror editor — the editor's own handler covers that case
+  if ((e.target as HTMLElement)?.closest?.('.ProseMirror')) return
+  // Skip if the revert menu is already open
+  if (revertMenuOpen.value) return
+
+  // Single ESC pauses when streaming
+  if (props.isBusy) {
+    lastGlobalEscTime = 0
+    emit('pause')
+    return
+  }
+
+  // Double-ESC on empty input opens revert menu
+  if (hasTextContent.value) return
+  const now = Date.now()
+  if (now - lastGlobalEscTime < DOUBLE_ESC_MS) {
+    lastGlobalEscTime = 0
+    openRevertMenu()
+  } else {
+    lastGlobalEscTime = now
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleVoiceKeydown)
   window.addEventListener('keyup', handleVoiceKeyup)
+  document.addEventListener('keydown', handleGlobalEsc)
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', handleVoiceKeydown)
   window.removeEventListener('keyup', handleVoiceKeyup)
+  document.removeEventListener('keydown', handleGlobalEsc)
 })
 
 const leftButtons = computed<ActionButton[]>(() => {

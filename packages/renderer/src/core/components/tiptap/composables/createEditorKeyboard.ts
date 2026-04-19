@@ -5,6 +5,9 @@ import type { EditorConfig } from '../editor-config'
 import { commandSuggestionPluginKey } from '../command-suggestion-plugin'
 import { referenceSuggestionPluginKey } from '../reference-suggestion-plugin'
 
+/** Max interval (ms) between two ESC presses to count as a double-tap. */
+export const DOUBLE_ESC_MS = 300
+
 /** Returns true when ProseMirror's default Enter behavior should take over. */
 function shouldDeferEnter(view: EditorView): boolean {
   const { $head } = view.state.selection
@@ -71,7 +74,7 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
         return true
       }
       const now = Date.now()
-      if (now - lastEscTime < 300) {
+      if (now - lastEscTime < DOUBLE_ESC_MS) {
         lastEscTime = 0
         // In the chat input, double-ESC on an already-empty editor opens
         // the revert-history menu. Elsewhere (and when there's text to
