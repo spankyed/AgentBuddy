@@ -780,10 +780,11 @@ export const threadsSystem = setup({
       }));
     },
     updateClaudePermissionMode: ({ event }) => {
-      // User clicked Ask / Auto / Plan on the claude-session artifact's
+      // User clicked Ask / Auto / Bypass on the claude-session artifact's
       // segmented control. Mutate `content.permissionMode` on the session
-      // artifact in place and notify the frontend. The next work-mode turn
-      // reads it via `readSessionPermissionMode` in chat.ts.
+      // artifact in place and notify the frontend. For most modes the next
+      // turn reads it via `readSessionPermissionMode` in chat.ts; bypass
+      // mode also takes effect mid-turn (see below).
       const { threadId, mode } = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event);
       const existing = repository.chatCommands.findArtifactByType(
         threadId as EARS.EntityId,
@@ -796,14 +797,21 @@ export const threadsSystem = setup({
       const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
       const nextContent = { ...prevContent, permissionMode: mode };
 
-      // If switching to bypass and there's a paused control request, auto-approve it.
+      // If switching to bypass and there's a paused control request, auto-approve it
+      // (skip interaction-point tools that aren't permission prompts).
+      const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
       if (mode === 'bypassPermissions') {
         const thread = repository.threadQueries.byId(threadId as EARS.EntityId) as any;
         const pending = thread?.context?.claudeCode?.pendingControlRequest;
-        if (pending?.requestId) {
+        if (pending?.requestId && !DONT_BYPASS.has(pending.toolName)) {
           const cliHandle = getHandle(threadId);
           if (cliHandle) {
             cliHandle.respond(pending.requestId, { behavior: 'allow', updatedInput: pending.originalInput ?? {} });
+            // Invalidate the approval block so it's greyed out in the UI.
+            services.chat.updateMessageState(pending.approvalMessageId as EARS.EntityId, {
+              responseTimestamp: Date.now(),
+              blockResponse: { approved: true },
+            } as any);
             // Clear pending state and resume.
             const ctx = thread.context ?? {};
             repository.threadCommands.update(threadId as EARS.EntityId, {

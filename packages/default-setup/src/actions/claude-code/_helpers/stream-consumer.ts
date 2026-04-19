@@ -314,8 +314,10 @@ export async function consumeStream(
           continue;
         }
 
-        // Auto-approve ALL tool requests when bypass mode is active (mid-turn aware).
-        if (req.subtype === 'can_use_tool') {
+        // Auto-approve tool requests when bypass mode is active (mid-turn aware).
+        // Exclude interaction-point tools that aren't permission prompts.
+        const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
+        if (req.subtype === 'can_use_tool' && !DONT_BYPASS.has(req.tool_name)) {
           const artifactMode = readSessionPermissionMode(services, threadId);
           if (artifactMode === 'bypassPermissions') {
             log.debug('bypass: auto-approved tool', { tool: req.tool_name });
