@@ -346,6 +346,7 @@ export interface AgentSettings {
     [key: string]: KeyboardShortcut | null | undefined;
   };
   quickPrompts?: QuickPrompt[];
+  quickPromptNumberKeyInserts?: boolean;
   skipRevertConfirm?: boolean;
   defaultMode?: string;
   defaultPhase?: string;

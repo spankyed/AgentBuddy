@@ -114,6 +114,7 @@
             <QuickPromptsPopup
               v-model:open="popoverOpen"
               :prompts="quickPrompts || []"
+              :insert-on-number-key="quickPromptNumberKeyInserts ?? true"
               :disabled="disabled"
               :virtual-reference="virtualRef"
               @select="handleQuickPromptSelect"
@@ -217,6 +218,7 @@ const props = defineProps<{
   modes: AgentMode[]
   hotkeys?: HotkeysMap
   quickPrompts?: QuickPrompt[]
+  quickPromptNumberKeyInserts?: boolean
   quickPromptCursor?: { x: number; y: number } | null
   disabled?: boolean
   /** Text to prefill the input with (e.g., on revert). Consumed once on change. */

@@ -166,6 +166,7 @@ import type { QuickPrompt } from '@app/api'
 
 const props = defineProps<{
   prompts: QuickPrompt[]
+  insertOnNumberKey?: boolean
   disabled?: boolean
   virtualReference?: ReferenceElement | null
 }>()
@@ -249,8 +250,12 @@ function handleNumberKey(e: KeyboardEvent) {
   if (!prompt) return
   e.preventDefault()
   e.stopPropagation()
-  navigator.clipboard.writeText(prompt.text)
-  open.value = false
+  if (props.insertOnNumberKey !== false) {
+    selectPrompt(prompt.text)
+  } else {
+    navigator.clipboard.writeText(prompt.text)
+    open.value = false
+  }
 }
 
 onBeforeUnmount(() => {

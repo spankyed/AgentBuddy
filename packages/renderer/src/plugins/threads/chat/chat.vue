@@ -34,6 +34,7 @@
           :modes="modes"
           :hotkeys="hotkeys"
           :quick-prompts="quickPrompts"
+          :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
           :quick-prompt-cursor="quickPromptCursor"
           :recording-limit-minutes="recordingLimitMinutes"
           @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
@@ -131,6 +132,7 @@ const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)
 const hotkeys = useSelector(actor, (state) => state.context.hotkeys)
 const quickPrompts = useSelector(actor, (state) => (state.context.chatSettings?.quickPrompts || []) as QuickPrompt[])
+const quickPromptNumberKeyInserts = useSelector(actor, (state) => state.context.chatSettings?.quickPromptNumberKeyInserts ?? true)
 const quickPromptCursor = useSelector(actor, (state) => state.context.quickPromptCursor)
 const recordingLimitMinutes = useSelector(actor, (state) => state.context.settings?.recordingLimitMinutes ?? 3)
 // True if the current thread's *raw* chat state matches the one the user

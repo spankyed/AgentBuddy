@@ -3,7 +3,7 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.3',
-  description: 'Add default terminal scripts to code settings, enable clickToChat for threads',
+  description: 'Add default terminal scripts to code settings, enable clickToChat and quickPromptNumberKeyInserts for threads',
   up: () => {
     const data = settingsQueries.getSettings();
 
@@ -22,6 +22,11 @@ export const migration: Migration = {
     const threadsSettings = data.plugins?.threads;
     if (threadsSettings?.chat?.clickToChat === false) {
       settingsCommands.updateSettings('plugin', 'threads', ['chat', 'clickToChat'], true);
+    }
+
+    // 3. Enable quickPromptNumberKeyInserts for existing users (new default is true)
+    if (threadsSettings?.chat && threadsSettings.chat.quickPromptNumberKeyInserts === undefined) {
+      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'quickPromptNumberKeyInserts'], true);
     }
   }
 };

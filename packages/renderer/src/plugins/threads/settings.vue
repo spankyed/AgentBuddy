@@ -23,6 +23,24 @@
             @change="saveSkipRevertConfirm"
           />
         </div>
+
+        <div class="flex items-center justify-between mt-4">
+          <div class="flex-1">
+            <label for="quick-prompt-number-key-inserts" class="text-sm font-medium text-neutral-200">
+              Insert quick prompt on number key
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Pressing a number key inserts the prompt into the chat instead of copying to clipboard
+            </p>
+          </div>
+          <input
+            id="quick-prompt-number-key-inserts"
+            v-model="quickPromptNumberKeyInserts"
+            type="checkbox"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+            @change="saveQuickPromptNumberKeyInserts"
+          />
+        </div>
       </CollapsibleSection>
 
       <!-- Chat Modes -->
@@ -683,6 +701,7 @@ const recordingLimitMinutes = ref<number>(props.settings?.recordingLimitMinutes 
 // ---- Chat (agent) settings ----
 const chatSettings = props.settings?.chat
 const skipRevertConfirm = ref(chatSettings?.skipRevertConfirm ?? false)
+const quickPromptNumberKeyInserts = ref(chatSettings?.quickPromptNumberKeyInserts ?? true)
 const modes = ref<AgentMode[]>(chatSettings?.modes ? chatSettings.modes.map(m => ({ ...m, phases: m.phases ? [...m.phases] : undefined })) : [])
 const selectedModeId = ref<string>(modes.value.find(m => !m.hidden)?.id || '')
 const selectedMode = computed(() => modes.value.find(m => m.id === selectedModeId.value))
@@ -770,6 +789,10 @@ const saveRecordingLimit = () => {
 // ---- Chat (agent) save helpers ----
 const saveSkipRevertConfirm = () => {
   emit('update-setting', { path: ['chat', 'skipRevertConfirm'], value: skipRevertConfirm.value })
+}
+
+const saveQuickPromptNumberKeyInserts = () => {
+  emit('update-setting', { path: ['chat', 'quickPromptNumberKeyInserts'], value: quickPromptNumberKeyInserts.value })
 }
 
 const saveModes = () => {
