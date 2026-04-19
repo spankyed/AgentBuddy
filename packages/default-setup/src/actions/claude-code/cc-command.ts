@@ -16,6 +16,7 @@ export const meta: ActionMeta = {
     command: { type: 'string', description: 'Full command name (e.g. cc-sessions)', required: true },
     text: { type: 'string', description: 'Arguments after the command', required: false },
     threadId: { type: 'string', description: 'Thread ID for response', required: false },
+    references: { type: 'object', description: 'Attached references (images, files, context)', required: false },
   },
 };
 

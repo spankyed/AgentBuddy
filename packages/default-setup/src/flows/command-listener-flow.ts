@@ -13,6 +13,7 @@ export default {
             map: {
               text: "$.event.data.payload.text",
               threadId: "$.event.data.payload.threadId",
+              references: "$.event.data.payload.references",
             },
           })],
         },
@@ -23,6 +24,7 @@ export default {
             map: {
               text: "$.event.data.payload.text",
               threadId: "$.event.data.payload.threadId",
+              references: "$.event.data.payload.references",
             },
           })],
         },

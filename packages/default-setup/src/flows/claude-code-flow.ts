@@ -257,6 +257,7 @@ export default {
                 command: "$.event.data.payload.command",
                 text: "$.event.data.payload.text",
                 threadId: "$.event.data.payload.threadId",
+                references: "$.event.data.payload.references",
               },
             })],
           },

@@ -7,6 +7,7 @@ export const meta: ActionMeta = {
   input: {
     text: { type: 'string', description: 'Commit message', required: true },
     threadId: { type: 'string', description: 'Thread ID for feedback', required: false },
+    references: { type: 'object', description: 'Attached references (images, files, context)', required: false },
   },
 };
 
