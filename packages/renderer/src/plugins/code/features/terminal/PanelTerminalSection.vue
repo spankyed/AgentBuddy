@@ -18,6 +18,24 @@
         >
           <Plus class="w-3.5 h-3.5 text-neutral-400" />
         </button>
+        <DropdownMenuRoot>
+          <DropdownMenuTrigger as-child>
+            <button class="p-1 hover:bg-neutral-700 rounded transition-colors" title="Terminal actions">
+              <Ellipsis class="w-3.5 h-3.5 text-neutral-400" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50" :side-offset="5">
+              <DropdownMenuItem
+                @select="killAllTerminals"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <Trash2 :size="16" />
+                Kill All Terminals
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
       </div>
     </div>
 
@@ -123,13 +141,18 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon } from 'lucide-vue-next'
+import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuPortal,
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
 } from 'reka-ui'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -248,6 +271,14 @@ const createTerminal = () => {
   terminalActor?.send({ type: 'terminal.CREATE' })
   if (!isExpanded.value) {
     codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })
+  }
+}
+
+const killAllTerminals = () => {
+  if (terminals.value.length === 0) return
+  if (confirmTerminalClose.value && !confirm(`Kill all ${terminals.value.length} terminals?`)) return
+  for (const terminal of [...terminals.value]) {
+    terminalActor?.send({ type: 'terminal.CLOSE', terminalId: terminal.id })
   }
 }
 
