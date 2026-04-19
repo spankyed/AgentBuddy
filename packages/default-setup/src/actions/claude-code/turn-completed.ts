@@ -87,8 +87,12 @@ export async function action(
     // markSessionBroken already set it and the user needs to see it.
     const currentChatState = readSessionChatState(services, threadId as EntityId);
     if (currentChatState !== 'error') {
+      // If chatState is already 'idle', the turn was paused/cancelled by the
+      // user (pause-turn sets 'idle' before this action fires). Skip the
+      // success flash — the turn didn't complete, it was interrupted.
+      const wasPaused = currentChatState === 'idle';
       updateChatState(services, threadId as EntityId, 'idle');
-      if (!hadErrors) {
+      if (!hadErrors && !wasPaused) {
         services.emitter.sendToPlugin('threads', {
           type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'success', durationMs: 1000,
         });
