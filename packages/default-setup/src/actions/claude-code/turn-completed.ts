@@ -29,7 +29,7 @@ export const meta: ActionMeta = {
     mutatedPaths: { type: 'array', description: 'File paths that were mutated', required: false },
     hadErrors: { type: 'boolean', description: 'Whether errors occurred', required: false },
     error: { type: 'string', description: 'Error message if failed', required: false },
-    userText: { type: 'string', description: 'Original user message (for diff title)', required: false },
+    userText: { type: 'string', description: 'Original user message', required: false },
   },
 };
 
@@ -44,7 +44,6 @@ export async function action(
     hadErrors,
     error: errorMsg,
     mutatedPaths,
-    userText,
   } = params as {
     threadId: string;
     sessionId?: string;
@@ -116,7 +115,7 @@ export async function action(
       const unified = await services.cli.git.getDiff(paths);
       const parsed = parseUnifiedDiff(unified);
       if (parsed.files.length > 0) {
-        const diffTitle = deriveDiffTitle(userText || '');
+        const diffTitle = deriveDiffTitle(parsed.files);
         const result = services.artifact.createAndNotify({
           artifactType: 'diff',
           title: diffTitle,
@@ -141,9 +140,20 @@ export async function action(
   };
 }
 
-function deriveDiffTitle(userText: string): string {
-  const firstLine = userText.split('\n')[0]?.trim() ?? '';
-  if (!firstLine) return 'Claude Code changes';
-  if (firstLine.length <= 60) return firstLine;
-  return firstLine.slice(0, 57) + '…';
+function deriveDiffTitle(files: { path: string }[]): string {
+  if (files.length === 0) return '[Diff] No changes';
+  const basenames = files.map(f => f.path.split('/').pop() ?? f.path);
+  const prefix = `[Diff][${files.length}] `;
+  const joined = basenames.join(', ');
+  if (prefix.length + joined.length <= 80) return prefix + joined;
+  // Truncate: include as many filenames as fit
+  let result = '';
+  for (let i = 0; i < basenames.length; i++) {
+    const next = result ? result + ', ' + basenames[i] : basenames[i];
+    if (prefix.length + next.length + 1 > 80) {
+      return prefix + result + '…';
+    }
+    result = next;
+  }
+  return prefix + result;
 }
