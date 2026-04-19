@@ -2,12 +2,11 @@ import { EARS } from '@/core/types';
 import {
   findById,
   findAll,
-  createEntityWithDefaults,
   updateEntity,
-  createRelation,
   RepositoryError,
   RepositoryErrorCode
 } from '@/core/helpers/repository';
+import { wouldCreateCycle } from '@/core/ears/helpers/graph';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type {
@@ -121,10 +120,15 @@ export const threadQueries = {
   // Get connected data
   connectedData: (): ThreadConnectedData => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
-    const extendedThreads = threads.map(thread => ({
-      ...thread,
-      ...threadQueries.extendedData(thread.id),
-    }));
+    const extendedThreads = threads.map(thread => {
+      // Compute parentId by finding threads that link to this one via 'parent_of' (reverse direction)
+      const parentIds = qx(thread.id).linksTo('parent_of', EARS.Entity.Thread, false).ids();
+      return {
+        ...thread,
+        ...threadQueries.extendedData(thread.id),
+        ...(parentIds.length > 0 ? { parentId: parentIds[0] as string } : {}),
+      };
+    });
 
     // Sort by creation time (newest first)
     extendedThreads.sort((a, b) => {
@@ -242,6 +246,37 @@ export const threadCommands = {
 
   forkCount: (sourceThreadId: EARS.EntityId): number => {
     return qx(sourceThreadId).linksTo('forked_from', EARS.Entity.Thread, false).ids().length;
+  },
+
+  setParent: (parentId: EARS.EntityId, childIds: EARS.EntityId[]): { reparented: string[]; skipped: string[] } => {
+    const reparented: string[] = [];
+    const skipped: string[] = [];
+
+    for (const childId of childIds) {
+      // Skip if trying to parent to self
+      if (childId === parentId) {
+        skipped.push(childId);
+        continue;
+      }
+
+      // Check for cycles: would adding parentId -> childId create a loop?
+      if (wouldCreateCycle(parentId, childId, [EARS.RelKind.PARENT_OF])) {
+        skipped.push(childId);
+        continue;
+      }
+
+      // Remove existing parent link (reverse direction: find who has parent_of pointing to this child)
+      const oldParentIds = qx(childId).linksTo('parent_of', EARS.Entity.Thread, false).ids();
+      for (const oldParentId of oldParentIds) {
+        tx(oldParentId).unlinkIf(EARS.RelKind.PARENT_OF, childId);
+      }
+
+      // Create new parent_of link
+      tx(parentId).link(EARS.RelKind.PARENT_OF, childId);
+      reparented.push(childId);
+    }
+
+    return { reparented, skipped };
   },
 
   delete: (id: EARS.EntityId): void => {

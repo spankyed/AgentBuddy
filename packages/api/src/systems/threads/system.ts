@@ -74,6 +74,10 @@ export const IncomingThreadsEvents = [
     value: z.any(),
   }),
   busEvent('DELETE_THREAD', { threadId: z.string() }),
+  busEvent('SET_THREAD_PARENT', {
+    childIds: z.array(z.string()),
+    parentId: z.string(),
+  }),
   busEvent('EXPORT_THREADS', { directory: z.string() }),
   busEvent('IMPORT_THREADS', { directory: z.string() }),
 
@@ -330,6 +334,23 @@ export const threadsSystem = setup({
           })
         );
       }
+    },
+    setThreadParent: ({ system, event }) => {
+      const { childIds, parentId } = typeOf('SET_THREAD_PARENT', event);
+
+      repository.threadCommands.setParent(
+        parentId as EARS.EntityId,
+        childIds.map(id => id as EARS.EntityId),
+      );
+
+      // Refresh all thread data on the frontend
+      system.get(bus).send(emit(threads, {
+        type: 'THREAD_CONNECTED',
+        data: {
+          ...repository.threadQueries.connectedData(),
+          settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+        },
+      }));
     },
     deleteThread: ({ system, event }) => {
       const { threadId } = typeOf('DELETE_THREAD', event);
@@ -835,6 +856,9 @@ export const threadsSystem = setup({
           },
           DELETE_THREAD: {
             actions: 'deleteThread',
+          },
+          SET_THREAD_PARENT: {
+            actions: 'setThreadParent',
           },
           EXPORT_THREADS: {
             actions: 'exportThreadsToFile',
