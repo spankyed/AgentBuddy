@@ -11,15 +11,31 @@
         :title="tab.label"
         @click="$emit('select')"
       >
-        <button
-          v-if="!isPinned"
-          class="opacity-0 group-hover:opacity-100 transition-opacity mr-1.5 p-0.5 rounded hover:bg-neutral-700"
-          @click.stop="$emit('close')"
-        >
-          <X :size="14" />
-        </button>
-        <span class="truncate">{{ tab.label }}</span>
-        <span class="shrink-0 relative inline-block w-1.5 h-1.5 ml-1.5">
+        <!-- Dot / Close button swap container (non-pinned tabs) -->
+        <span v-if="!isPinned" class="relative flex items-center justify-center w-[22px] h-[22px] mr-1 shrink-0">
+          <!-- State dot (default, hides on hover) -->
+          <span class="group-hover:opacity-0 transition-opacity relative inline-block w-1.5 h-1.5">
+            <span
+              class="block w-full h-full rounded-full transition-colors"
+              :class="isThreadBusy(tab.id) ? $style['mosaic-dot'] : ''"
+              :style="!isThreadBusy(tab.id) ? { backgroundColor: getThreadDotColor(tab.id) || '#525252' } : undefined"
+            />
+            <span
+              v-if="isThreadBusy(tab.id)"
+              class="absolute inset-0 rounded-full scale-[2]"
+              :class="$style['mosaic-glow']"
+            />
+          </span>
+          <!-- Close X (hidden, shows on hover) -->
+          <button
+            class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-neutral-700"
+            @click.stop="$emit('close')"
+          >
+            <X :size="14" />
+          </button>
+        </span>
+        <!-- Pinned tabs: dot only -->
+        <span v-else class="shrink-0 relative inline-block w-1.5 h-1.5 mr-1.5">
           <span
             class="block w-full h-full rounded-full transition-colors"
             :class="isThreadBusy(tab.id) ? $style['mosaic-dot'] : ''"
@@ -31,6 +47,7 @@
             :class="$style['mosaic-glow']"
           />
         </span>
+        <span class="truncate">{{ tab.label }}</span>
       </div>
     </ContextMenuTrigger>
 
