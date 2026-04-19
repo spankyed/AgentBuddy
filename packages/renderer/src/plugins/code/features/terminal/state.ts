@@ -37,10 +37,11 @@ export interface Context {
   terminals: TerminalInfo[]
   terminalError: string | null
   pendingTarget: 'tab' | null  // When 'tab', next created terminal routes to canvas tab instead of panel
+  pendingCommand: string | null  // Command to run in terminal after creation
 }
 
 export type Event =
-  | { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab' }
+  | { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab'; command?: string }
   | { type: 'terminal.CLOSE'; terminalId: string }
   | { type: 'terminal.INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
@@ -65,7 +66,7 @@ export const terminalState = setup({
   },
   actions: {
     createTerminal: assign(({ event, self }) => {
-      const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab' }
+      const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab'; command?: string }
       const parentContext = getParentContext(self)
       const baseDir = parentContext?.baseDirectory
 
@@ -74,7 +75,7 @@ export const terminalState = setup({
         cwd: ev.cwd || (baseDir && baseDir.trim() ? baseDir : undefined)
       })
 
-      return { pendingTarget: ev.target ?? null }
+      return { pendingTarget: ev.target ?? null, pendingCommand: ev.command ?? null }
     }),
 
     closeTerminal: ({ event }) => {
@@ -294,7 +295,8 @@ export const terminalState = setup({
     handleTerminalCreated: enqueueActions(({ enqueue, context, self, event }) => {
       enqueue('assignTerminalCreated')
       const target = context.pendingTarget
-      enqueue(assign({ pendingTarget: null }))
+      const command = context.pendingCommand
+      enqueue(assign({ pendingTarget: null, pendingCommand: null }))
       enqueue(() => {
         const ev = event as { type: 'terminal.CREATED'; data: TerminalInfo }
         const terminalInfo = ev.data
@@ -305,6 +307,14 @@ export const terminalState = setup({
         } else {
           // Default — route to panel
           updateParentState(self, { panelTerminalId: terminalInfo.id })
+        }
+
+        // Run pending command if set
+        if (command) {
+          sendToBackend('terminal.TERMINAL_INPUT', {
+            terminalId: terminalInfo.id,
+            data: command + '\n'
+          })
         }
       })
     }),
@@ -407,7 +417,8 @@ export const terminalState = setup({
   context: {
     terminals: [],
     terminalError: null,
-    pendingTarget: null
+    pendingTarget: null,
+    pendingCommand: null
   },
   on: {
     'terminal.CREATE': {

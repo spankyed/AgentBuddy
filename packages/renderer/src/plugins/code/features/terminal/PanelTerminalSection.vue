@@ -11,6 +11,7 @@
         TERMINAL
       </div>
       <div class="flex items-center gap-1" @click.stop>
+        <RunScriptPopover :scripts="terminalScripts" @run="runScript" @update="updateScripts" />
         <button
           @click="createTerminal"
           class="p-1 hover:bg-neutral-700 rounded transition-colors"
@@ -159,6 +160,8 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { TerminalInfo } from './state'
 import { terminalPool } from '@/plugins/code/utils/terminal-pool'
 import { useTerminalActions } from '@/plugins/code/composables/useTerminalActions'
+import RunScriptPopover from './RunScriptPopover.vue'
+import type { TerminalScript } from '@app/api'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
@@ -175,6 +178,9 @@ const terminals = useSelector(terminalActor, (state: any) => state.context.termi
 
 const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
 const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
+const terminalScripts = useSelector(settingsActor, (state: any) =>
+  (state.context.settings?.plugins?.code?.terminalScripts ?? []) as TerminalScript[]
+)
 
 const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
 
@@ -272,6 +278,23 @@ const createTerminal = () => {
   if (!isExpanded.value) {
     codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })
   }
+}
+
+const runScript = (script: TerminalScript) => {
+  terminalActor?.send({ type: 'terminal.CREATE', title: script.label, command: script.command })
+  if (!isExpanded.value) {
+    codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })
+  }
+}
+
+const updateScripts = (scripts: TerminalScript[]) => {
+  settingsActor.send({
+    type: 'SETTINGS.UPDATE',
+    entityType: 'plugin',
+    label: 'code',
+    path: ['terminalScripts'],
+    value: scripts
+  } as any)
 }
 
 const killAllTerminals = () => {

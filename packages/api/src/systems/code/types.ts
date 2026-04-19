@@ -215,6 +215,12 @@ export interface QuickOpenResult {
   score?: number
 }
 
+export interface TerminalScript {
+  id: string
+  label: string
+  command: string
+}
+
 // Settings types
 export interface CodeSettings {
   hotkeys: {
@@ -235,6 +241,7 @@ export interface CodeSettings {
   enablePreview?: boolean;
   autoFetchRemote?: boolean;
   autoFetchIntervalSeconds?: number;
+  terminalScripts?: TerminalScript[];
 }
 
 export type CodeConnectedData = {
