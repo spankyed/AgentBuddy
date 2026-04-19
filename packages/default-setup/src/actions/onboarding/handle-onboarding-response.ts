@@ -39,6 +39,10 @@ export async function action(
 
   const state = stateArtifact.content as OnboardingState;
 
+  if (state.step === 'complete') {
+    return { success: false, reason: 'already-complete' };
+  }
+
   if (params.messageId !== state.pendingMessageId) {
     await services.logger.info('Ignoring response for non-pending message', {
       received: params.messageId,
