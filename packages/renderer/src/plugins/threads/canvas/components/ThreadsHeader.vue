@@ -86,6 +86,13 @@
           placeholder="Search threads..."
           class="w-32 @3xl:w-64 px-10 py-1.5 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 placeholder-neutral-600 text-neutral-100 focus:outline-none focus:border-neutral-600 focus:bg-neutral-800"
         />
+        <button
+          v-if="searchKeyword"
+          @click="searchKeyword = ''"
+          class="absolute -translate-y-1/2 right-2.5 top-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+        >
+          <X :size="14" />
+        </button>
       </div>
 
       <Button
@@ -103,7 +110,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Search, Filter, List, Columns3, PanelLeft, History } from 'lucide-vue-next'
+import { Search, Filter, List, Columns3, PanelLeft, History, X } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
@@ -123,10 +130,10 @@ const availableTags = useSelector(actor, s => s.context.availableTags)
 const statuses = computed(() => settings.value?.statuses || [])
 
 const activeFilterCount = computed(() =>
-  filters.value.statuses.length + filters.value.tags.length + (filters.value.search ? 1 : 0)
+  filters.value.statuses.length + filters.value.tags.length
 )
 
-const searchKeyword = ref('')
+const searchKeyword = ref(filters.value.search ?? '')
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
 watch(searchKeyword, (val) => {
   clearTimeout(searchTimeout)
