@@ -9,18 +9,28 @@
   >
     <slot name="prefix" />
 
-    <!-- Label: topic + shortCode -->
+    <!-- Label: status dot + topic -->
     <td class="px-6 py-1.5">
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
+        <!-- Status indicator dot -->
+        <span class="shrink-0 relative inline-flex items-center justify-center w-2 h-2">
+          <span
+            class="block w-full h-full rounded-full transition-colors"
+            :class="isThreadBusy(thread.id) ? $style['mosaic-dot'] : ''"
+            :style="!isThreadBusy(thread.id) ? { backgroundColor: getThreadDotColor(thread.id) || '#525252' } : undefined"
+          />
+          <span
+            v-if="isThreadBusy(thread.id)"
+            class="absolute inset-0 rounded-full scale-[2]"
+            :class="$style['mosaic-glow']"
+          />
+        </span>
         <span
           class="text-sm font-medium text-neutral-100 line-clamp-1 hover:underline hover:text-blue-400 transition-colors cursor-pointer"
           :title="thread.topic || 'Untitled thread'"
           @click.stop="$emit('select', thread.id)"
         >
           {{ thread.topic || 'Untitled thread' }}
-        </span>
-        <span class="text-xs font-medium tracking-wider uppercase text-neutral-500">
-          ({{ thread.shortCode || '---' }})
         </span>
       </div>
     </td>
@@ -81,6 +91,8 @@ const props = defineProps<{
   thread: BaseThreadData
   availableTags?: ThreadTagOption[]
   settings?: ThreadsSettings | null
+  chatStates?: Record<string, string>
+  chatStateOverrides?: Record<string, { id: string; expiresAt: number }>
 }>()
 
 defineEmits<{
@@ -100,4 +112,61 @@ const getTagStyles = (tagName: string) => {
     border: `1px solid ${color}33`
   }
 }
+
+function getThreadStateConfig(threadId: string) {
+  const override = props.chatStateOverrides?.[threadId]
+  const activeStateId = (override && override.expiresAt > Date.now())
+    ? override.id
+    : (props.chatStates?.[threadId] || 'idle')
+  return props.settings?.chatStates?.find(c => c.id === activeStateId)
+}
+
+function getThreadDotColor(threadId: string): string | undefined {
+  return getThreadStateConfig(threadId)?.color
+}
+
+function isThreadBusy(threadId: string): boolean {
+  return getThreadStateConfig(threadId)?.busy ?? false
+}
 </script>
+
+<style lang="scss" module>
+.mosaic-dot {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #facc15,
+    #a855f7,
+    #3b82f6,
+    #facc15
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: saturate(1.5) brightness(1.2);
+}
+
+.mosaic-glow {
+  background: conic-gradient(
+    from var(--thinking-angle, 0deg),
+    #facc15,
+    #a855f7,
+    #3b82f6,
+    #facc15
+  );
+  animation: thinking-rotate 3s linear infinite;
+  filter: blur(3px) saturate(2) brightness(1.3);
+  opacity: 0.7;
+}
+
+@keyframes thinking-rotate {
+  to {
+    --thinking-angle: 360deg;
+  }
+}
+</style>
+
+<style>
+@property --thinking-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+</style>

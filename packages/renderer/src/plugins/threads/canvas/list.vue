@@ -21,6 +21,8 @@
               :thread="thread"
               :available-tags="availableTags"
               :settings="settings"
+              :chat-states="chatStates"
+              :chat-state-overrides="chatStateOverrides"
               :is-selected="selectedThreadIds.includes(thread.id)"
               :drag-class="getRowClass(thread.id)"
               @select="actor.send({ type: 'SELECT_THREAD', id: $event })"
@@ -99,6 +101,8 @@ const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 const availableTags = useSelector(actor, s => s.context.availableTags)
 const selectedThreadIds = useSelector(actor, s => s.context.selectedThreadIds)
+const chatStates = useSelector(actor, s => s.context.chatStates)
+const chatStateOverrides = useSelector(actor, s => s.context.chatStateOverrides)
 
 const { selectItem, clearSelection } = useThreadSelection(
   () => filteredThreads.value,

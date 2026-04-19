@@ -5,6 +5,8 @@
         :thread="thread"
         :available-tags="availableTags"
         :settings="settings"
+        :chat-states="chatStates"
+        :chat-state-overrides="chatStateOverrides"
         :class="[
           'cursor-pointer group thread-row',
           { 'animate-highlight': thread.isNew },
@@ -148,6 +150,8 @@ const props = defineProps<{
   thread: ThreadListItem;
   availableTags?: ThreadTagOption[];
   settings?: ThreadsSettings | null;
+  chatStates?: Record<string, string>;
+  chatStateOverrides?: Record<string, { id: string; expiresAt: number }>;
   isSelected?: boolean;
   dragClass?: string;
 }>();
