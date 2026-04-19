@@ -529,7 +529,7 @@ export class GitRepository {
 
     // Single git command for all tracked files
     if (tracked.length > 0) {
-      const args = ['diff', '--binary', '-M', '--', ...tracked]
+      const args = ['diff', 'HEAD', '--binary', '-M', '--', ...tracked]
       const result = await this.executeGitCommand(args)
       if (!result.success) {
         throw new Error(result.error || 'Failed to get diff')
