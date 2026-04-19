@@ -8,7 +8,7 @@
       <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
         <ChevronRight v-if="!isExpanded" class="w-3 h-3" />
         <ChevronDown v-else class="w-3 h-3" />
-        TERMINAL<span v-if="activeDisplayName" class="font-normal text-neutral-500 ml-1">{{ activeDisplayName }}</span>
+        TERMINAL
       </div>
       <div class="flex items-center gap-1" @click.stop>
         <button
