@@ -9,7 +9,7 @@
     @click="$emit('select')"
   >
     <div class="flex items-center space-x-2">
-      <component :is="getIcon(artifact.type)" :size="16" />
+      <component :is="getIcon(artifact.type)" :size="16" class="shrink-0 w-4 h-4" />
       <span class="text-sm font-medium truncate">{{ artifact.title }}</span>
     </div>
   </div>
