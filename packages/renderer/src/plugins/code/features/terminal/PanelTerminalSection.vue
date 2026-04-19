@@ -307,13 +307,33 @@ const renamingTerminalId = ref<string | null>(null)
 const renameValue = ref('')
 const renameInput = ref<HTMLInputElement[]>([])
 
-const startRename = async (terminal: TerminalInfo) => {
+const startRename = (terminal: TerminalInfo) => {
   renamingTerminalId.value = terminal.id
   renameValue.value = terminal.customTitle || terminal.cwd.split('/').filter(Boolean).pop() || terminal.title
-  await nextTick()
+}
+
+// Focus the rename input when it appears + click-outside to dismiss
+watch(renamingTerminalId, async (id) => {
+  if (id) {
+    // Wait for Vue to render the input, then focus
+    await nextTick()
+    // May need a second tick for the v-for array ref to populate
+    await nextTick()
+    const input = renameInput.value?.[0]
+    input?.focus()
+    input?.select()
+    document.addEventListener('mousedown', onDocumentClick, true)
+  } else {
+    document.removeEventListener('mousedown', onDocumentClick, true)
+  }
+})
+
+const onDocumentClick = (e: MouseEvent) => {
+  if (!renamingTerminalId.value) return
   const input = renameInput.value?.[0]
-  input?.focus()
-  input?.select()
+  if (input && !input.contains(e.target as Node)) {
+    finishRename()
+  }
 }
 
 const finishRename = () => {
@@ -351,6 +371,7 @@ watch([isExpanded, panelTerminalId, activeTerminalInfo], async ([expanded, termI
 
 onBeforeUnmount(() => {
   detachTerminal()
+  document.removeEventListener('mousedown', onDocumentClick, true)
 })
 </script>
 
