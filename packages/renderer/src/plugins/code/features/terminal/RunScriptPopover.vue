@@ -34,17 +34,30 @@
         <div class="max-h-60 overflow-y-auto select-none">
           <!-- View mode -->
           <template v-if="!editing">
-            <button
+            <div
               v-for="script in localScripts"
               :key="script.id"
-              type="button"
-              class="w-full text-left px-3 py-2 text-sm hover:bg-neutral-800 truncate flex items-center gap-2"
-              :title="script.command"
-              @click="runScript(script)"
+              class="group flex items-center hover:bg-neutral-800"
             >
-              <span class="text-neutral-300 hover:text-white">{{ script.label }}</span>
-              <span class="text-neutral-600 text-xs font-mono truncate">{{ script.command }}</span>
-            </button>
+              <button
+                type="button"
+                class="flex-1 min-w-0 text-left px-3 py-2 text-sm truncate flex items-center gap-2"
+                :title="script.command"
+                @click="runScript(script)"
+              >
+                <span class="text-neutral-300 group-hover:text-white">{{ script.label }}</span>
+                <span class="text-neutral-600 text-xs font-mono truncate">{{ script.command }}</span>
+              </button>
+              <button
+                type="button"
+                class="px-2 py-2 text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                title="Copy command"
+                @click.stop="copyCommand(script)"
+              >
+                <Check v-if="copiedId === script.id" :size="14" class="text-green-400" />
+                <Copy v-else :size="14" />
+              </button>
+            </div>
             <div v-if="localScripts.length === 0" class="px-3 py-4 text-sm text-neutral-600 text-center">
               No scripts saved
             </div>
@@ -131,7 +144,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Play, Pencil, X, Plus } from 'lucide-vue-next'
+import { Play, Pencil, X, Plus, Copy, Check } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { TerminalScript } from '@app/api'
 
@@ -158,6 +171,15 @@ const editLabelRef = ref<HTMLInputElement[]>([])
 const newLabel = ref('')
 const newCommand = ref('')
 const canAdd = computed(() => newLabel.value.trim() && newCommand.value.trim())
+
+// Copy feedback
+const copiedId = ref<string | null>(null)
+
+function copyCommand(script: TerminalScript) {
+  navigator.clipboard.writeText(script.command)
+  copiedId.value = script.id
+  setTimeout(() => { copiedId.value = null }, 1500)
+}
 
 // Sync from props
 watch(() => props.scripts, (val) => {
