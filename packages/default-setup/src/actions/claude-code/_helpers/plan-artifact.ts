@@ -54,7 +54,7 @@ export interface PlanArtifactContent {
  */
 function extractPlanTitle(planMarkdown: string): string {
   const match = planMarkdown.match(/^#\s+(.+)/m);
-  return match ? `plan: ${match[1].trim()}` : 'Implementation Plan';
+  return match ? `[Plan] ${match[1].trim()}` : 'Implementation Plan';
 }
 
 /**
