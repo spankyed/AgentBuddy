@@ -26,7 +26,14 @@ export function setEditorSelectionGetter(getter: (() => string) | null) {
   _editorSelectionGetter = getter;
 }
 
-const ALL_PANELS: PanelType[] = ['explorer', 'terminal', 'search', 'commit', 'pr', 'actions', 'prompts'];
+const ALL_PANELS: PanelType[] = ['explorer', 'search', 'commit', 'pr', 'actions', 'prompts'];
+
+/** IDs of terminals currently open as canvas tabs */
+function getTabbedTerminalIds(openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]): Set<string> {
+  return new Set(
+    openFiles.filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+  )
+}
 
 export interface OpenFile {
   path: string
@@ -100,6 +107,9 @@ export type Context = {
   pendingRevealLine: { filePath: string; line: number; column: number; lineText?: string } | null
   searchFocusTrigger: number
   searchPrefillText: string
+  panelTerminalId: string | null
+  panelTerminalExpanded: boolean
+  pendingTerminalTabIds?: string[]
 }
 
 export interface QuickOpenResult {
@@ -153,11 +163,17 @@ export type Event =
   | { type: 'CLOSE_ACTIVE_TAB' }
   | { type: 'CLOSE_TAB'; path: string }
   | { type: 'KILL_TERMINAL'; path: string }
-  | { type: 'PROMOTE_PREVIEW_TAB'; path: string };
+  | { type: 'PROMOTE_PREVIEW_TAB'; path: string }
+  // Panel terminal events
+  | { type: 'SELECT_PANEL_TERMINAL'; terminalId: string }
+  | { type: 'CLOSE_PANEL_TERMINAL' }
+  | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
+  | { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
+  | { type: 'TOGGLE_PANEL_TERMINAL' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
 
-type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'terminal' | 'actions' | 'prompts';
+type PanelType = 'explorer' | 'search' | 'commit' | 'pr' | 'actions' | 'prompts';
 
 // Shared tab removal logic (tab removal + group cleanup + explorer notify)
 function removeTabLogic(context: Context, system: any, path: string) {
@@ -295,7 +311,7 @@ const codeState = setup({
       if (context.pendingTabOrder !== undefined) {
         return
       }
-      saveOpenTabs(context.openFiles, context.activeFilePath)
+      saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
       saveTabGroups(context.tabGroups)
     },
     addTab: assign(({ event, context }) => {
@@ -414,9 +430,8 @@ const codeState = setup({
     },
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
-      const { tabs: persistedTabs, activeFilePath: persistedActive } = loadPersistedTabs()
+      const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
       const persistedGroups = loadTabGroups()
-      // console.log('[Code Plugin] Restoring persisted tabs:', persistedTabs)
 
       // Store the desired tab order
       const tabOrder = persistedTabs.map(tab => ({ path: tab.path, order: tab.order }))
@@ -443,12 +458,18 @@ const codeState = setup({
         : persistedTabs[0]?.path ?? null
 
       // Mark tabs as restored immediately (even if empty)
+      // Collect terminal tab IDs to restore later (when TERMINALS_LISTED arrives from backend)
+      const terminalTabIds = persistedTabs.filter(t => t.type === 'terminal').map(t => t.terminalId!)
+
       enqueue.assign({
         tabsRestored: true,
         pendingTabOrder: tabOrder.length > 0 ? tabOrder : undefined,
         pendingPersistedMetadata: metadataMap.size > 0 ? metadataMap : undefined,
         tabGroups: persistedGroups,
-        activeFilePath: seededActive
+        activeFilePath: seededActive,
+        panelTerminalId: persistedPanelTerminal,
+        panelTerminalExpanded: persistedExpanded,
+        pendingTerminalTabIds: terminalTabIds.length > 0 ? terminalTabIds : undefined
       })
 
       // If no persisted tabs, we're done
@@ -459,7 +480,6 @@ const codeState = setup({
       // Restore tabs
       enqueue(({ system }) => {
         const explorerActor = system.get('explorer')
-        const terminalActor = system.get('terminal')
         const actionsActor = system.get('codeActions')
         const promptsActor = system.get('codePrompts')
 
@@ -485,14 +505,9 @@ const codeState = setup({
           })
         }
 
-        // Send terminal IDs to restore
-        if (terminalTabs.length > 0 && terminalActor) {
-          const terminalIds = terminalTabs.map(tab => tab.terminalId!)
-          terminalActor.send({
-            type: 'terminal.OPEN_TABS',
-            terminalIds
-          })
-        }
+        // Terminal tabs are NOT sent here — they're deferred to assignTerminals
+        // (when TERMINALS_LISTED arrives) to avoid racing with backend restore.
+        // See pendingTerminalTabIds in context.
 
         // Send action IDs to restore
         if (actionTabs.length > 0 && actionsActor) {
@@ -540,13 +555,16 @@ const codeState = setup({
     }) => {
       const ev = event as { type: 'SELECT_PANEL'; panel: PanelType };
 
+      // Guard against invalid panel types (e.g. persisted 'terminal' from before removal)
+      if (!ALL_PANELS.includes(ev.panel)) {
+        return { ...context, selectedPanel: 'explorer' as PanelType };
+      }
+
       // Notify child machines if needed
       if (ev.panel === 'commit') {
         system.get('commit')?.send({ type: 'commit.REFRESH_STATUS' });
       } else if (ev.panel === 'pr') {
         system.get('pr')?.send({ type: 'pr.REFRESH_STATUS' });
-      } else if (ev.panel === 'terminal') {
-        system.get('terminal')?.send({ type: 'terminal.REFRESH_LIST' });
       }
       // Actions and prompts are loaded by their respective main plugin actors
       return {
@@ -696,36 +714,108 @@ const codeState = setup({
       const { path } = event as { type: 'CLOSE_TAB'; path: string }
       return closeTabWithConfirmation(context, system, path)
     }),
-    killTerminal: assign(({ context, system, event }) => {
+    killTerminal: enqueueActions(({ enqueue, context, system, event }) => {
       const { path } = event as { type: 'KILL_TERMINAL'; path: string }
       const file = context.openFiles.find(f => f.path === path)
-      if (!file || !('isTerminal' in file)) return {}
-      // Kill without confirmation
-      system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
-      return removeTabLogic(context, system, path)
+      if (!file || !('isTerminal' in file)) return
+      enqueue(() => {
+        system.get('terminal').send({ type: 'terminal.CLOSE', terminalId: (file as any).terminalInfo.id })
+      })
+      enqueue(assign(() => removeTabLogic(context, system, path)))
     }),
-    openTerminal: ({ context, self, system }) => {
-      // Look for an existing terminal at the active directory
-      // const existingTerminal = context.openFiles.find((file): file is TerminalTab => {
-      //   return 'isTerminal' in file &&
-      //     file.isTerminal === true &&
-      //     file.terminalInfo.cwd === context.activeDirectory;
-      // });
-      // if (existingTerminal) {
-      //   // Activate the existing terminal tab
-      //   self.send({
-      //     type: 'UPDATE_STATE',
-      //     updates: { activeFilePath: existingTerminal.path }
-      //   });
-      // } else {
-        // Create a new terminal at the base directory
-        // Title will be auto-generated from cwd by backend
-        system.get('terminal')?.send({
-            type: 'terminal.CREATE',
-            cwd: context.baseDirectory
-          });
-      // }
-    },
+    openTerminal: enqueueActions(({ enqueue, context, system }) => {
+      const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
+      const tabbedIds = getTabbedTerminalIds(context.openFiles)
+
+      if (terminals.length === 0) {
+        // No terminals — create one (will be routed to panel by child actor)
+        enqueue(() => {
+          system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
+        })
+        enqueue(assign({ panelTerminalExpanded: true }))
+        return
+      }
+
+      if (!context.panelTerminalId) {
+        // Terminals exist but none selected for panel — pick first non-tabbed
+        const available = terminals.find(t => !tabbedIds.has(t.id))
+        if (available) {
+          enqueue(assign({ panelTerminalId: available.id, panelTerminalExpanded: true }))
+          return
+        }
+        // All terminals are in tabs — create a new one
+        enqueue(() => {
+          system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory })
+        })
+        enqueue(assign({ panelTerminalExpanded: true }))
+        return
+      }
+
+      // Panel terminal already set — toggle expand/collapse
+      enqueue(assign({ panelTerminalExpanded: !context.panelTerminalExpanded }))
+    }),
+
+    selectPanelTerminal: assign(({ event }) => {
+      const ev = event as { type: 'SELECT_PANEL_TERMINAL'; terminalId: string };
+      return { panelTerminalId: ev.terminalId };
+    }),
+
+    closePanelTerminal: enqueueActions(({ enqueue, context, system }) => {
+      if (context.panelTerminalId) {
+        enqueue(() => {
+          system.get('terminal')?.send({
+            type: 'terminal.CLOSE',
+            terminalId: context.panelTerminalId
+          })
+        })
+      }
+      enqueue(assign({ panelTerminalId: null, panelTerminalExpanded: false }))
+    }),
+
+    togglePanelTerminal: assign(({ context }) => {
+      return { panelTerminalExpanded: !context.panelTerminalExpanded }
+    }),
+
+    openTerminalInTab: enqueueActions(({ enqueue, context, event, system }) => {
+      const ev = event as { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
+      const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
+      const terminalInfo = terminals.find(t => t.id === ev.terminalId)
+
+      if (!terminalInfo) return
+
+      // Open as canvas tab
+      enqueue(() => {
+        system.get('terminal')?.send({ type: 'terminal.OPEN_TAB', terminalInfo })
+      })
+
+      // If this was the panel terminal, auto-select next available
+      if (context.panelTerminalId === ev.terminalId) {
+        const tabbedIds = new Set(
+          context.openFiles.filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+        )
+        tabbedIds.add(ev.terminalId)
+        const next = terminals.find(t => !tabbedIds.has(t.id))
+        enqueue(assign({ panelTerminalId: next?.id ?? null }))
+      }
+    }),
+
+    moveTerminalToPanel: assign(({ context, event }) => {
+      const { path } = event as { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
+      const file = context.openFiles.find(f => f.path === path)
+      if (!file || !('isTerminal' in file)) return {}
+      const terminalId = (file as any).terminalInfo.id
+      // Remove tab without killing the process, set as panel terminal
+      const newOpenFiles = context.openFiles.filter(f => f.path !== path)
+      const newActiveFilePath = context.activeFilePath === path
+        ? nextActiveFromHistory(context.tabViewHistory, newOpenFiles)
+        : context.activeFilePath
+      return {
+        openFiles: newOpenFiles,
+        activeFilePath: newActiveFilePath,
+        panelTerminalId: terminalId,
+        panelTerminalExpanded: true
+      }
+    }),
 
     navigatePrevPanel: ({ context, self }) => {
       const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
@@ -1092,6 +1182,8 @@ const codeState = setup({
     pendingRevealLine: null,
     searchFocusTrigger: 0,
     searchPrefillText: '',
+    panelTerminalId: null,
+    panelTerminalExpanded: false,
   },
   states: {
     canvas: {
@@ -1175,6 +1267,21 @@ const codeState = setup({
         },
         OPEN_TERMINAL: {
           actions: 'openTerminal'
+        },
+        SELECT_PANEL_TERMINAL: {
+          actions: ['selectPanelTerminal', 'saveTabsAction']
+        },
+        CLOSE_PANEL_TERMINAL: {
+          actions: ['closePanelTerminal', 'saveTabsAction']
+        },
+        OPEN_TERMINAL_IN_TAB: {
+          actions: ['openTerminalInTab', 'saveTabsAction']
+        },
+        MOVE_TERMINAL_TO_PANEL: {
+          actions: ['moveTerminalToPanel', 'saveTabsAction']
+        },
+        TOGGLE_PANEL_TERMINAL: {
+          actions: ['togglePanelTerminal', 'saveTabsAction']
         },
         NAVIGATE_PREV_PANEL: {
           actions: 'navigatePrevPanel'

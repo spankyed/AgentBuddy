@@ -48,6 +48,7 @@
       @unpin-group="unpinGroup"
       @rename-terminal="renameTerminal"
       @kill-terminal="killTerminal"
+      @move-to-panel="moveToPanel"
       @restart-terminal="restartTerminal"
       @promote-preview="promotePreview"
       @editor-mount="tryRevealLine"
@@ -294,13 +295,14 @@ const selectFile = (path: string) => {
 }
 
 const killTerminal = (path: string) => actor.send({ type: 'KILL_TERMINAL', path })
+const moveToPanel = (path: string) => actor.send({ type: 'MOVE_TERMINAL_TO_PANEL', path })
 
 const restartTerminal = (path: string) => {
   const file = openFiles.value.find(f => f.path === path) as any
   if (!file?.isTerminal) return
   const { cwd, shell } = file.terminalInfo
   actor.send({ type: 'KILL_TERMINAL', path })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
+  terminalActor.send({ type: 'terminal.CREATE', cwd, shell, target: 'tab' })
 }
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })

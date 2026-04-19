@@ -17,6 +17,14 @@ export interface TerminalInfo {
   rows: number
 }
 
+const createTerminalTab = (info: TerminalInfo) => ({
+  path: `terminal:${info.id}`,
+  content: '',
+  modified: false,
+  isTerminal: true,
+  terminalInfo: info
+})
+
 const sendToBackend = (type: string, data: any) => {
   trpc.bus.send.mutate({
     systemId: 'code' as any,
@@ -28,10 +36,11 @@ const sendToBackend = (type: string, data: any) => {
 export interface Context {
   terminals: TerminalInfo[]
   terminalError: string | null
+  pendingTarget: 'tab' | null  // When 'tab', next created terminal routes to canvas tab instead of panel
 }
 
 export type Event =
-  | { type: 'terminal.CREATE'; title?: string; cwd?: string }
+  | { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab' }
   | { type: 'terminal.CLOSE'; terminalId: string }
   | { type: 'terminal.INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE'; terminalId: string; cols: number; rows: number }
@@ -55,8 +64,8 @@ export const terminalState = setup({
     events: {} as Event
   },
   actions: {
-    createTerminal: ({ event, self }) => {
-      const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string }
+    createTerminal: assign(({ event, self }) => {
+      const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab' }
       const parentContext = getParentContext(self)
       const baseDir = parentContext?.baseDirectory
 
@@ -64,7 +73,9 @@ export const terminalState = setup({
         title: ev.title,
         cwd: ev.cwd || (baseDir && baseDir.trim() ? baseDir : undefined)
       })
-    },
+
+      return { pendingTarget: ev.target ?? null }
+    }),
 
     closeTerminal: ({ event }) => {
       const ev = event as { type: 'terminal.CLOSE'; terminalId: string }
@@ -97,11 +108,69 @@ export const terminalState = setup({
       sendToBackend('terminal.REFRESH_LIST', {})
     },
 
-    assignTerminals: assign({
-      terminals: ({ event }) => {
-        const ev = event as { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
-        return ev.data || []
-      }
+    assignTerminals: enqueueActions(({ enqueue, self, event }) => {
+      const ev = event as { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
+      const terminals = ev.data || []
+      enqueue(assign({ terminals }))
+
+      enqueue(() => {
+        const parentContext = getParentContext(self)
+        const pendingTabIds: string[] | undefined = parentContext?.pendingTerminalTabIds
+
+        const updates: Partial<{ panelTerminalId: string | null; pendingTerminalTabIds: undefined; pendingTabOrder: Array<{ path: string; order: number }> | undefined }> = {}
+
+        // Restore deferred terminal tabs
+        if (pendingTabIds && pendingTabIds.length > 0 && terminals.length > 0) {
+          const restoredIds: string[] = []
+          const staleTabPaths: string[] = []
+
+          for (const terminalId of pendingTabIds) {
+            const info = terminals.find(t => t.id === terminalId)
+            if (info) {
+              addTabToParent(self, createTerminalTab(info), false, {
+                activeFilePath: parentContext?.activeFilePath
+              })
+              restoredIds.push(terminalId)
+            } else {
+              // Terminal no longer exists on backend — mark for cleanup
+              staleTabPaths.push(`terminal:${terminalId}`)
+            }
+          }
+
+          // Clean stale terminal paths from pendingTabOrder so restoration can complete
+          if (staleTabPaths.length > 0 && parentContext?.pendingTabOrder) {
+            const filtered = parentContext.pendingTabOrder.filter(
+              (t: any) => !staleTabPaths.includes(t.path)
+            )
+            updates.pendingTabOrder = filtered.length > 0 ? filtered : undefined
+          }
+
+          updates.pendingTerminalTabIds = undefined
+        }
+
+        // Auto-select panel terminal if none selected or persisted ID is stale
+        const currentPanelId = parentContext?.panelTerminalId
+        const panelTerminalExists = currentPanelId && terminals.some(t => t.id === currentPanelId)
+
+        if ((!currentPanelId || !panelTerminalExists) && terminals.length > 0) {
+          const tabbedIds = new Set(
+            (parentContext?.openFiles || []).filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+          )
+          if (pendingTabIds) {
+            for (const id of pendingTabIds) tabbedIds.add(id)
+          }
+          const available = terminals.find(t => !tabbedIds.has(t.id))
+          if (available) {
+            updates.panelTerminalId = available.id
+          } else if (!panelTerminalExists) {
+            updates.panelTerminalId = null
+          }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updateParentState(self, updates)
+        }
+      })
     }),
 
     assignTerminalCreated: assign({
@@ -222,47 +291,54 @@ export const terminalState = setup({
       terminalEventBus.emit(ev.data.terminalId, ev.data.data)
     },
 
-    handleTerminalCreated: enqueueActions(({ enqueue, self, event }) => {
+    handleTerminalCreated: enqueueActions(({ enqueue, context, self, event }) => {
       enqueue('assignTerminalCreated')
+      const target = context.pendingTarget
+      enqueue(assign({ pendingTarget: null }))
       enqueue(() => {
         const ev = event as { type: 'terminal.CREATED'; data: TerminalInfo }
         const terminalInfo = ev.data
 
-        // Create terminal tab object
-        const terminalTab = {
-          path: `terminal:${terminalInfo.id}`,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalInfo: terminalInfo
+        if (target === 'tab') {
+          // Explicit tab target — create canvas tab
+          addTabToParent(self, createTerminalTab(terminalInfo))
+        } else {
+          // Default — route to panel
+          updateParentState(self, { panelTerminalId: terminalInfo.id })
         }
-
-        addTabToParent(self, terminalTab)
       })
     }),
 
-    handleTerminalClosed: enqueueActions(({ enqueue, self, event }) => {
+    handleTerminalClosed: enqueueActions(({ enqueue, context, self, event }) => {
       enqueue('removeTerminal')
       enqueue('cleanupTerminalOutput')
       enqueue(() => {
         const ev = event as { type: 'terminal.CLOSED'; data: { terminalId: string } }
         const terminalId = ev.data.terminalId
-
         const parentContext = getParentContext(self)
         const terminalPath = `terminal:${terminalId}`
 
+        // Remove canvas tab if present
         const result = removeTabs(
           parentContext?.openFiles || [],
           terminalPath,
           parentContext?.activeFilePath
         )
-
-        // Use history-based fallback if closing the active terminal
         if (parentContext?.activeFilePath === terminalPath && result.openFiles.length > 0) {
           result.activeFilePath = nextActiveFromHistory(parentContext?.tabViewHistory || [], result.openFiles)
         }
 
-        updateParentState(self, result)
+        // If this was the panel terminal, auto-select next available
+        let panelUpdate: { panelTerminalId: string | null } | undefined
+        if (parentContext?.panelTerminalId === terminalId) {
+          const tabbedIds = new Set(
+            (result.openFiles || []).filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+          )
+          const next = context.terminals.find(t => !tabbedIds.has(t.id))
+          panelUpdate = { panelTerminalId: next?.id ?? null }
+        }
+
+        updateParentState(self, { ...result, ...panelUpdate })
       })
     }),
 
@@ -292,16 +368,7 @@ export const terminalState = setup({
           activeFilePath: terminalPath
         })
       } else {
-        // Create terminal tab object
-        const terminalTab = {
-          path: terminalPath,
-          content: '',
-          modified: false,
-          isTerminal: true,
-          terminalInfo: ev.terminalInfo
-        }
-
-        addTabToParent(self, terminalTab)
+        addTabToParent(self, createTerminalTab(ev.terminalInfo))
       }
     },
 
@@ -329,14 +396,7 @@ export const terminalState = setup({
       }
 
       // Create terminal tab but keep current active tab
-      const terminalTab = {
-        path: terminalPath,
-        content: '',
-        modified: false,
-        isTerminal: true,
-        terminalInfo: ev.data
-      }
-      addTabToParent(self, terminalTab, false, {
+      addTabToParent(self, createTerminalTab(ev.data), false, {
         activeFilePath: parentContext?.activeFilePath
       })
     }
@@ -346,7 +406,8 @@ export const terminalState = setup({
   initial: 'idle',
   context: {
     terminals: [],
-    terminalError: null
+    terminalError: null,
+    pendingTarget: null
   },
   on: {
     'terminal.CREATE': {

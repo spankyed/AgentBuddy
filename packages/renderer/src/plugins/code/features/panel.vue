@@ -18,10 +18,6 @@
         v-else-if="selectedPanel === 'pr'"
       />
 
-      <TerminalPanel
-        v-else-if="selectedPanel === 'terminal'"
-      />
-
       <ActionsPanel
         v-else-if="selectedPanel === 'actions'"
       />
@@ -30,6 +26,9 @@
         v-else-if="selectedPanel === 'prompts'"
       />
     </div>
+
+    <!-- Terminal section — always visible at bottom -->
+    <PanelTerminalSection />
   </div>
 </template>
 
@@ -41,9 +40,9 @@ import ExplorerPanel from '@/plugins/code/features/explorer/ExplorerPanel.vue'
 import SearchPanel from '@/plugins/code/features/search/SearchPanel.vue'
 import CommitPanel from '@/plugins/code/features/commit/CommitPanel.vue'
 import PullRequestPanel from '@/plugins/code/features/pull-request/PullRequestPanel.vue'
-import TerminalPanel from '@/plugins/code/features/terminal/TerminalPanel.vue'
 import ActionsPanel from '@/plugins/code/features/actions/ActionsPanel.vue'
 import PromptsPanel from '@/plugins/code/features/prompts/PromptsPanel.vue'
+import PanelTerminalSection from '@/plugins/code/features/terminal/PanelTerminalSection.vue'
 
 const actor: CodeState = applicationState.system.get(id)
 

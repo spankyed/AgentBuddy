@@ -184,16 +184,18 @@ class TerminalService {
     if (!terminal) return false
 
     try {
+      // Dispose data listener but keep exit handler alive so it can fire terminal.CLOSED
       terminal.dataDisposable?.dispose()
       terminal.dataDisposable = undefined
-      terminal.exitDisposable?.dispose()
-      terminal.exitDisposable = undefined
 
       terminal.pty.kill()
-      this.terminals.delete(id)
 
-      // Mark as closed in EARS storage
-      repository.terminalCommands.markClosed(id as EARS.EntityId)
+      // If no exit handler is registered (shouldn't happen), clean up immediately
+      if (!terminal.exitDisposable) {
+        this.terminals.delete(id)
+        repository.terminalCommands.markClosed(id as EARS.EntityId)
+      }
+      // Otherwise, the onExit callback handles cleanup and emitting terminal.CLOSED
 
       return true
     } catch (error) {
@@ -235,6 +237,7 @@ class TerminalService {
       terminal.exitDisposable?.dispose()
       terminal.exitDisposable = undefined
       this.terminals.delete(id)
+      repository.terminalCommands.markClosed(id as EARS.EntityId)
       callback(exitCode, signal)
     })
   }

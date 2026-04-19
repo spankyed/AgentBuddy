@@ -198,7 +198,7 @@ provide('explorer-delete', (file: FileInfo) => {
   showDeleteDialog.value = true
 })
 provide('explorer-open-terminal', (path: string) => {
-  terminalActor?.send({ type: 'terminal.CREATE', cwd: path })
+  terminalActor?.send({ type: 'terminal.CREATE', cwd: path, target: 'tab' })
 })
 provide('explorer-search-in-folder', (path: string) => {
   codeActor.send({ type: 'SEARCH_IN_FOLDER', folder: path })
