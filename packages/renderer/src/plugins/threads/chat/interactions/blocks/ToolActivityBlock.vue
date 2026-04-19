@@ -22,7 +22,7 @@
         <span class="text-[11px] text-neutral-500 flex-shrink-0">{{ previewEntry.tool }}</span>
         <span class="text-[11px] text-neutral-600 truncate font-mono text-right min-w-0">{{ previewEntry.summary }}</span>
       </template>
-      <span v-if="badge" class="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{{ badge }}</span>
+      <!-- <span v-if="badge" class="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{{ badge }}</span> -->
     </button>
 
     <!-- Artifact ref link — shown below the header when set (Phase C diff) -->
