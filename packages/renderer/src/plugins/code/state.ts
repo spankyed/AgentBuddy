@@ -168,6 +168,7 @@ export type Event =
   | { type: 'SELECT_PANEL_TERMINAL'; terminalId: string }
   | { type: 'CLOSE_PANEL_TERMINAL' }
   | { type: 'OPEN_TERMINAL_IN_TAB'; terminalId: string }
+  | { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
   | { type: 'TOGGLE_PANEL_TERMINAL' };
 
 export type CodeState = ActorRefFrom<typeof codeState>;
@@ -798,6 +799,24 @@ const codeState = setup({
       }
     }),
 
+    moveTerminalToPanel: assign(({ context, event }) => {
+      const { path } = event as { type: 'MOVE_TERMINAL_TO_PANEL'; path: string }
+      const file = context.openFiles.find(f => f.path === path)
+      if (!file || !('isTerminal' in file)) return {}
+      const terminalId = (file as any).terminalInfo.id
+      // Remove tab without killing the process, set as panel terminal
+      const newOpenFiles = context.openFiles.filter(f => f.path !== path)
+      const newActiveFilePath = context.activeFilePath === path
+        ? nextActiveFromHistory(context.tabViewHistory, newOpenFiles)
+        : context.activeFilePath
+      return {
+        openFiles: newOpenFiles,
+        activeFilePath: newActiveFilePath,
+        panelTerminalId: terminalId,
+        panelTerminalExpanded: true
+      }
+    }),
+
     navigatePrevPanel: ({ context, self }) => {
       const currentIndex = ALL_PANELS.indexOf(context.selectedPanel);
       const newIndex = currentIndex === 0 ? ALL_PANELS.length - 1 : currentIndex - 1;
@@ -1257,6 +1276,9 @@ const codeState = setup({
         },
         OPEN_TERMINAL_IN_TAB: {
           actions: ['openTerminalInTab', 'saveTabsAction']
+        },
+        MOVE_TERMINAL_TO_PANEL: {
+          actions: ['moveTerminalToPanel', 'saveTabsAction']
         },
         TOGGLE_PANEL_TERMINAL: {
           actions: ['togglePanelTerminal', 'saveTabsAction']

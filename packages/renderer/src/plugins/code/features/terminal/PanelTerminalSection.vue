@@ -91,6 +91,14 @@
                 Open in Tab
               </ContextMenuItem>
               <ContextMenuItem
+                v-if="isInTab(terminal.id)"
+                @select="moveToPanel(terminal.id)"
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+              >
+                <PanelBottom :size="16" />
+                Move back here
+              </ContextMenuItem>
+              <ContextMenuItem
                 @select="startRename(terminal)"
                 class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               >
@@ -115,7 +123,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, Terminal as TerminalIcon } from 'lucide-vue-next'
+import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -249,6 +257,10 @@ const selectTerminal = (terminalId: string) => {
 
 const openInTab = (terminalId: string) => {
   codeActor.send({ type: 'OPEN_TERMINAL_IN_TAB', terminalId })
+}
+
+const moveToPanel = (terminalId: string) => {
+  codeActor.send({ type: 'MOVE_TERMINAL_TO_PANEL', path: `terminal:${terminalId}` })
 }
 
 const handleCloseTerminal = (terminal: TerminalInfo) => {

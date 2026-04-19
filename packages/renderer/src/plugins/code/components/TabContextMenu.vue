@@ -103,9 +103,16 @@
       </ContextMenuItem>
     </template>
 
-    <!-- Kill terminal -->
+    <!-- Terminal actions -->
     <template v-if="isTerminalTab">
       <ContextMenuSeparator class="h-px bg-neutral-700" />
+      <ContextMenuItem
+        @select="$emit('move-to-panel', tab.path)"
+        class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+      >
+        <PanelBottom class="w-4 h-4" />
+        Move to Panel
+      </ContextMenuItem>
       <ContextMenuItem
         @select="$emit('kill-terminal', tab.path)"
         class="flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
@@ -136,7 +143,8 @@ import {
   FolderPlus,
   Pin,
   ChevronRight,
-  Pencil
+  Pencil,
+  PanelBottom
 } from 'lucide-vue-next'
 import type { OpenFile, TerminalTab, TabGroup as TabGroupType } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
@@ -160,6 +168,7 @@ defineEmits<{
   'copy-path': [path: string]
   'reveal-in-explorer': [path: string]
   'kill-terminal': [path: string]
+  'move-to-panel': [path: string]
 }>()
 
 const isTerminalTab = computed(() => 'isTerminal' in props.tab && props.tab.isTerminal === true)

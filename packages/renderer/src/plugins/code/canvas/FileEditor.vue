@@ -27,6 +27,7 @@
       @unpin-group="(groupId) => $emit('unpin-group', groupId)"
       @rename-terminal="(path, customTitle) => $emit('rename-terminal', path, customTitle)"
       @kill-terminal="(path) => $emit('kill-terminal', path)"
+      @move-to-panel="(path) => $emit('move-to-panel', path)"
       @promote-preview="(path) => $emit('promote-preview', path)"
     />
 
@@ -181,6 +182,7 @@ const emit = defineEmits<{
   'unpin-group': [groupId: string]
   'rename-terminal': [path: string, customTitle: string]
   'kill-terminal': [path: string]
+  'move-to-panel': [path: string]
   'restart-terminal': [path: string]
   'promote-preview': [path: string]
   editorMount: []

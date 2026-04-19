@@ -108,6 +108,7 @@
                 @copy-path="copyRelativePath(tab)"
                 @reveal-in-explorer="revealInExplorer(tab)"
                 @kill-terminal="$emit('kill-terminal', $event)"
+                @move-to-panel="$emit('move-to-panel', $event)"
               />
             </ContextMenuPortal>
           </ContextMenuRoot>
@@ -176,6 +177,7 @@
             @copy-path="copyRelativePath(tab)"
             @reveal-in-explorer="revealInExplorer(tab)"
             @kill-terminal="$emit('kill-terminal', $event)"
+            @move-to-panel="$emit('move-to-panel', $event)"
           />
         </ContextMenuPortal>
       </ContextMenuRoot>
@@ -278,6 +280,7 @@
               @copy-path="copyRelativePath(tab)"
               @reveal-in-explorer="revealInExplorer(tab)"
               @kill-terminal="$emit('kill-terminal', $event)"
+              @move-to-panel="$emit('move-to-panel', $event)"
             />
           </ContextMenuPortal>
         </ContextMenuRoot>
@@ -346,6 +349,7 @@
             @copy-path="copyRelativePath(tab)"
             @reveal-in-explorer="revealInExplorer(tab)"
             @kill-terminal="$emit('kill-terminal', $event)"
+            @move-to-panel="$emit('move-to-panel', $event)"
           />
       </ContextMenuPortal>
     </ContextMenuRoot>
@@ -408,6 +412,7 @@ const emit = defineEmits<{
   'unpin-group': [groupId: string]
   'rename-terminal': [path: string, customTitle: string]
   'kill-terminal': [path: string]
+  'move-to-panel': [path: string]
   'promote-preview': [path: string]
 }>()
 
