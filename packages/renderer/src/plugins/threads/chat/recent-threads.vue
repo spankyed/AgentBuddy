@@ -62,6 +62,7 @@
               @click.stop="handleArchiveThread(thread.id)"
             >
               <Archive :size="12" />
+              Archive
             </button>
           </div>
         </div>
