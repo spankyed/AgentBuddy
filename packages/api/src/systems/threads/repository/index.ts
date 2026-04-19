@@ -377,8 +377,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
           .filter((m: any) => !m.deleted)) as Partial<MessageEntity>[]
       : [],
     artifacts: mostRecentThread.id
-      ? (qx().relatedTo(mostRecentThread.id).ofType(EARS.Entity.Artifact)
-          .pick(['id', 'title', 'content', 'artifactType'] as const) ?? []) as any as ArtifactEntity[]
+      ? getThreadArtifacts(mostRecentThread.id) as any as ArtifactEntity[]
       : [],
   };
 
@@ -413,14 +412,7 @@ export const chatQueries = {
   },
 
   threadArtifacts: (threadId: EARS.EntityId) => {
-    return qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
-      .pick(['id', 'title', 'content', 'artifactType'] as const)
-      .map(artifact => ({
-        id: artifact.id,
-        type: artifact.artifactType,
-        title: artifact.title,
-        content: artifact.content
-      }));
+    return getThreadArtifacts(threadId);
   },
 
   threadData: (threadId: EARS.EntityId): AgentThreadData => {
@@ -428,9 +420,6 @@ export const chatQueries = {
       .orderBy('timestamp', 'desc')
       .limit(4)
       .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned"] as const);
-
-    const threadArtifacts = qx().relatedTo(threadId).ofType(EARS.Entity.Artifact)
-      .pick(['id', 'title', 'content', 'artifactType'] as const) ?? [];
 
     return {
       ...thread[0] as AgentThreadData,
@@ -440,7 +429,7 @@ export const chatQueries = {
           ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status"] as const,
           EARS.Entity.Message,
         ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
-      artifacts: threadArtifacts as any as ArtifactEntity[],
+      artifacts: getThreadArtifacts(threadId) as any as ArtifactEntity[],
     };
   },
 
