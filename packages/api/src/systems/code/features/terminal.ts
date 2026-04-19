@@ -60,6 +60,11 @@ export type Event =
   | { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
   | { type: 'CODE_CONNECTED' };
 
+/** Emit an event to the frontend code plugin */
+const emitToFrontend = (event: Omit<OutgoingTerminalEvents, 'pluginId'> & { type: string }) => {
+  rootEvents.emitOutgoing(emit(pluginId, event).event)
+}
+
 // Pre-compiled regex patterns for OSC sequence detection (hot path — runs on every terminal data event)
 const OSC_PATTERNS = [
   /\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/,       // OSC 7
@@ -81,27 +86,18 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
         const newCwd = decodeURIComponent(cwdMatch[1])
         const result = terminalService.updateCwd(terminalInfo.id, newCwd)
         if (result) {
-          rootEvents.emitOutgoing(emit(pluginId, {
-            type: 'terminal.CWD_CHANGED',
-            data: { terminalId: terminalInfo.id, cwd: result.cwd, title: result.title }
-          }).event)
+          emitToFrontend({ type: 'terminal.CWD_CHANGED', data: { terminalId: terminalInfo.id, cwd: result.cwd, title: result.title } })
         }
       } catch (error) {
         console.error('Failed to parse CWD from OSC sequence:', error)
       }
     }
 
-    rootEvents.emitOutgoing(emit(pluginId, {
-      type: 'terminal.OUTPUT',
-      data: { terminalId: terminalInfo.id, data }
-    }).event)
+    emitToFrontend({ type: 'terminal.OUTPUT', data: { terminalId: terminalInfo.id, data } })
   })
 
   terminalService.onExit(terminalInfo.id, () => {
-    rootEvents.emitOutgoing(emit(pluginId, {
-      type: 'terminal.CLOSED',
-      data: { terminalId: terminalInfo.id }
-    }).event)
+    emitToFrontend({ type: 'terminal.CLOSED', data: { terminalId: terminalInfo.id } })
   })
 }
 
@@ -126,14 +122,7 @@ export const terminalSystem = setup({
   },
   actions: {
     sendConnectedData: ({ context }) => {
-      // Send terminal list and trigger tab restoration
-      const terminals = terminalService.list()
-      
-      const wrapped = emit(pluginId, {
-        type: 'terminal.TERMINALS_LISTED',
-        data: terminals
-      })
-      rootEvents.emitOutgoing(wrapped.event)
+      emitToFrontend({ type: 'terminal.TERMINALS_LISTED', data: terminalService.list() })
     },
 
     createTerminal: ({ event, context }) => {
@@ -157,17 +146,9 @@ export const terminalSystem = setup({
 
         setupTerminalHandlers(terminalInfo)
 
-        const wrapped = emit(pluginId, {
-          type: 'terminal.CREATED',
-          data: terminalInfo
-        })
-        rootEvents.emitOutgoing(wrapped.event)
+        emitToFrontend({ type: 'terminal.CREATED', data: terminalInfo })
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
-          type: 'terminal.ERROR',
-          data: { message: error.message }
-        })
-        rootEvents.emitOutgoing(wrapped.event)
+        emitToFrontend({ type: 'terminal.ERROR', data: { message: error.message } })
       }
     },
 

@@ -264,10 +264,17 @@ const startListResize = (e: MouseEvent) => {
   const startX = e.clientX
   const startWidth = listWidth.value
 
+  let rafPending = false
   const onMouseMove = (e: MouseEvent) => {
     const delta = startX - e.clientX // dragging left = wider list
     listWidth.value = Math.max(MIN_LIST_WIDTH, Math.min(MAX_LIST_WIDTH, startWidth + delta))
-    fitAddon?.fit()
+    if (!rafPending) {
+      rafPending = true
+      requestAnimationFrame(() => {
+        fitAddon?.fit()
+        rafPending = false
+      })
+    }
   }
 
   const onMouseUp = () => {
