@@ -132,7 +132,7 @@ const settings: SettingsData = {
         { id: 'success', label: 'Success', color: '#10B981', busy: false },
       ],
       showOnlyRootThreads: false,
-      clickToChat: false,
+      clickToChat: true,
       recentThreadsLimit: 7,
       recordingLimitMinutes: 3
     },
