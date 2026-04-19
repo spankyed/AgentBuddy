@@ -162,6 +162,15 @@ function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   el.scrollTo({ top: el.scrollHeight, behavior })
 }
 
+/** Instant scroll + double rAF to catch async content (Tiptap, images). */
+function forceScrollToBottom() {
+  scrollToBottom('instant')
+  requestAnimationFrame(() => {
+    scrollToBottom('instant')
+    requestAnimationFrame(() => scrollToBottom('instant'))
+  })
+}
+
 function handleSendMessage(text: string, references?: MessageReferences) {
   actor.send({ type: 'SEND_MESSAGE', text, references })
   pendingScrollOnSend.value = true
@@ -356,30 +365,14 @@ watch(messages, async (newMsgs, oldMsgs) => {
   if (threadChanged) prevThreadId.value = currentThread.value?.id
 
   const isThreadLoad = threadChanged || !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
-  if (isThreadLoad) {
-    scrollToBottom('instant')
-    // Double rAF to catch async content (Tiptap editors, images)
-    // that renders after the initial layout pass.
+  if (isThreadLoad || pendingScrollOnSend.value) {
+    pendingScrollOnSend.value = false
+    forceScrollToBottom()
+  } else if (isNearBottom.value) {
+    scrollToBottom('smooth')
     requestAnimationFrame(() => {
-      scrollToBottom('instant')
-      requestAnimationFrame(() => scrollToBottom('instant'))
+      if (isNearBottom.value) scrollToBottom('instant')
     })
-  } else {
-    if (pendingScrollOnSend.value) {
-      pendingScrollOnSend.value = false
-      scrollToBottom('instant')
-      // Double rAF to catch async content (Tiptap) that renders after layout.
-      requestAnimationFrame(() => {
-        scrollToBottom('instant')
-        requestAnimationFrame(() => scrollToBottom('instant'))
-      })
-    } else if (isNearBottom.value) {
-      scrollToBottom('smooth')
-      // Follow-up to catch async content (Tiptap) that renders after layout.
-      requestAnimationFrame(() => {
-        if (isNearBottom.value) scrollToBottom('instant')
-      })
-    }
   }
 })
 
