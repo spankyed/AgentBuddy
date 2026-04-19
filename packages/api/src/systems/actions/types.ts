@@ -18,6 +18,8 @@ export interface ActionEntity {
   input: Record<string, ActionParameter>;
   actionFn: string;
   output?: any;
+  /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
+  sourceHash?: string;
   createdAt: number;
   updatedAt: number;
 }
