@@ -141,9 +141,21 @@ export const threadQueries = {
     const threadsSettings = settingsQueries.getPluginSettings('threads') as ThreadsSettings | undefined;
     const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
 
+    // Build chat states map from session artifacts
+    const chatStates: Record<string, string> = {};
+    for (const thread of extendedThreads) {
+      const artifacts = getThreadArtifacts(thread.id as EARS.EntityId);
+      const sessionArtifact = artifacts.find(a => a.type === 'claude-session');
+      const chatState = (sessionArtifact?.content as Record<string, unknown>)?.chatState;
+      if (typeof chatState === 'string') {
+        chatStates[thread.id as string] = chatState;
+      }
+    }
+
     return {
       threads: extendedThreads,
       availableTags,
+      chatStates,
     };
   },
 } as const;

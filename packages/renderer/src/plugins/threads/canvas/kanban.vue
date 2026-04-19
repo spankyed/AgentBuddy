@@ -12,6 +12,8 @@ const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
 const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
+const chatStates = useSelector(actor, s => s.context.chatStates)
+const chatStateOverrides = useSelector(actor, s => s.context.chatStateOverrides)
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -87,6 +89,16 @@ function initializeItems() {
   if (filters.value.search) {
     const keyword = filters.value.search.toLowerCase()
     source = source.filter(t => t.topic?.toLowerCase().includes(keyword))
+  }
+  if (filters.value.chatStates.length > 0) {
+    const now = Date.now()
+    source = source.filter(t => {
+      const override = chatStateOverrides.value[t.id]
+      const effectiveState = (override && override.expiresAt > now)
+        ? override.id
+        : (chatStates.value[t.id] || 'idle')
+      return filters.value.chatStates.includes(effectiveState)
+    })
   }
 
   const workItemsByStatus: Record<string, WorkItem[]> = {}

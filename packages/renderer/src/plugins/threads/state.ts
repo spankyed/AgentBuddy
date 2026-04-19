@@ -283,6 +283,7 @@ const threadsState = setup({
         selectedThreadIds: [],
         availableTags: typedEvent.data.availableTags,
         settings: typedEvent.data.settings,
+        chatStates: (typedEvent.data.chatStates || {}) as Record<string, ChatState>,
       };
     }),
     addThenResetCreateForm: assign(({ context, event }) => {

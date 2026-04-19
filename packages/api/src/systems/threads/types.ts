@@ -291,6 +291,7 @@ export type ThreadConnectedData = {
   threads: ThreadExtended[];
   availableTags: ThreadTagOption[];  // Tags from settings
   settings?: ThreadsSettings | null; // Full thread settings
+  chatStates?: Record<string, string>;
 }
 
 // ---- Chat/Agent types (merged from agent system) ----
