@@ -1179,7 +1179,9 @@ type ThreadCreateData = Simplify<ThreadEditFields & {
     forcedMode?: 'birth';
     pinned?: boolean;
 }>;
-type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
+type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & {
+    parentId?: string;
+}>;
 type ThreadExtendedData = ThreadLinkedFields & {
     messages?: Partial<MessageEntity>[];
     tags?: string[];
@@ -1857,6 +1859,21 @@ declare const events: {
         type: "DELETE_THREAD";
         systemId: "threads";
         threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SET_THREAD_PARENT">;
+        systemId: zod.ZodLiteral<"threads">;
+        childIds: zod.ZodArray<zod.ZodString, "many">;
+        parentId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SET_THREAD_PARENT";
+        systemId: "threads";
+        childIds: string[];
+        parentId: string;
+    }, {
+        type: "SET_THREAD_PARENT";
+        systemId: "threads";
+        childIds: string[];
+        parentId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"EXPORT_THREADS">;
         systemId: zod.ZodLiteral<"threads">;
@@ -7797,6 +7814,10 @@ declare const services: {
             readonly markAsVisited: (id: EARS.EntityId) => void;
             readonly linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId) => void;
             readonly forkCount: (sourceThreadId: EARS.EntityId) => number;
+            readonly setParent: (parentId: EARS.EntityId, childIds: EARS.EntityId[]) => {
+                reparented: string[];
+                skipped: string[];
+            };
             readonly delete: (id: EARS.EntityId) => void;
         };
         readonly noteQueries: {

@@ -127,6 +127,9 @@ type UIEvent =
   | { type: 'TOGGLE_FILTER_TAG'; tag: string }
   | { type: 'SET_SEARCH'; keyword: string }
   | { type: 'CLEAR_FILTERS' }
+  | { type: 'TOGGLE_ROOT_ONLY_FILTER' }
+  | { type: 'SELECT_THREAD_ITEMS'; itemIds: string[] }
+  | { type: 'SET_THREAD_PARENT'; childIds: string[]; parentId: string }
   | { type: 'THREADS.IMPORT'; directory: string }
   | { type: 'THREADS.RESET_IMPORT_STATUS' }
   | { type: 'THREADS.EXPORT'; directory: string }
@@ -178,6 +181,7 @@ const typeOf = safeEvents<ThreadEvents>();
 export type ThreadListItem = Simplify<ThreadEntity & {
   tags?: string[];
   isNew?: boolean;
+  parentId?: string;
 }>;
 
 // ---- Context ----
@@ -185,6 +189,7 @@ export type ThreadListItem = Simplify<ThreadEntity & {
 interface ThreadsContext {
   // Thread management
   threads: ThreadListItem[];
+  selectedThreadIds: string[];
   selectedThreadCode?: string;
   view: ThreadViewData;
   create: ThreadCreateData & {
@@ -199,6 +204,7 @@ interface ThreadsContext {
     statuses: string[];
     tags: string[];
     search: string;
+    showRootOnly: boolean;
   };
   threadsImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number };
   threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
@@ -271,7 +277,8 @@ const threadsState = setup({
       const typedEvent = typeOf('THREAD_CONNECTED', event);
 
       return {
-        threads: typedEvent.data.threads,
+        threads: typedEvent.data.threads as ThreadListItem[],
+        selectedThreadIds: [],
         availableTags: typedEvent.data.availableTags,
         settings: typedEvent.data.settings,
       };
@@ -515,8 +522,25 @@ const threadsState = setup({
       filters: { ...context.filters, search: typeOf('SET_SEARCH', event).keyword },
     })),
     clearFilters: assign({
-      filters: { statuses: [] as string[], tags: [] as string[], search: '' },
+      filters: { statuses: [] as string[], tags: [] as string[], search: '', showRootOnly: true },
     }),
+
+    /* ── Selection & drag-drop actions ─────────────────────── */
+    selectThreadItems: assign(({ event }) => ({
+      selectedThreadIds: typeOf('SELECT_THREAD_ITEMS', event).itemIds,
+    })),
+    toggleRootOnlyFilter: assign(({ context }) => ({
+      filters: { ...context.filters, showRootOnly: !context.filters.showRootOnly },
+    })),
+    sendSetThreadParent: ({ event }) => {
+      const { childIds, parentId } = typeOf('SET_THREAD_PARENT', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'SET_THREAD_PARENT',
+        childIds,
+        parentId,
+      });
+    },
 
     // ---- Chat/agent actions ----
     requestThreadChatData: ({ event }) => {
@@ -968,6 +992,7 @@ const threadsState = setup({
   context: () => ({
     // Thread management
     threads: [],
+    selectedThreadIds: [],
     selectedThreadCode: undefined,
     view: {
       id: '' as ThreadEntity['id'],
@@ -979,7 +1004,7 @@ const threadsState = setup({
     create: { ...defaultThread },
     availableTags: [],
     settings: null,
-    filters: { statuses: [], tags: [], search: '' },
+    filters: { statuses: [], tags: [], search: '', showRootOnly: true },
     threadsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     threadsExport: { status: 'idle' as const, errors: [], filePath: '', threadCount: 0 },
     // Chat/agent
@@ -1083,6 +1108,9 @@ const threadsState = setup({
     TOGGLE_FILTER_TAG: { actions: 'toggleFilterTag' },
     SET_SEARCH: { actions: 'setSearch' },
     CLEAR_FILTERS: { actions: 'clearFilters' },
+    TOGGLE_ROOT_ONLY_FILTER: { actions: 'toggleRootOnlyFilter' },
+    SELECT_THREAD_ITEMS: { actions: 'selectThreadItems' },
+    SET_THREAD_PARENT: { actions: 'sendSetThreadParent' },
 
     // Breadcrumb trail clicks
     ...TRAIL_CLICK([

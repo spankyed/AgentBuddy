@@ -276,7 +276,7 @@ export type ThreadViewData = Simplify<
   }
 >;
 
-export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData>;
+export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & { parentId?: string }>;
 export type ThreadExtendedData = ThreadLinkedFields & {
   messages?: Partial<MessageEntity>[];
   tags?: string[];  // Tag names from thread entity

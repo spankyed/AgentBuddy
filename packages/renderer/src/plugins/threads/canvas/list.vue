@@ -4,7 +4,7 @@
 
     <!-- Threads Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="filteredThreads.length > 0" ref="scrollContainer" class="h-full overflow-y-auto custom-scrollbar" @scroll="onScroll">
+      <div v-if="filteredThreads.length > 0" ref="scrollContainer" class="h-full overflow-y-auto custom-scrollbar" @scroll="onScroll" @dragend="handleDragEnd" @click="handleBackgroundClick">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
@@ -21,11 +21,18 @@
               :thread="thread"
               :available-tags="availableTags"
               :settings="settings"
+              :is-selected="selectedThreadIds.includes(thread.id)"
+              :drag-class="getRowClass(thread.id)"
               @select="actor.send({ type: 'SELECT_THREAD', id: $event })"
+              @multi-select="(id, event) => selectItem(thread, filteredThreads, event)"
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @chat-click="(threadId) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
               @archive-click="handleArchiveThread"
               @delete-click="handleDeleteThread"
+              @drag-start="handleDragStart"
+              @drag-over="handleDragOver"
+              @drag-leave="handleDragLeave"
+              @drop="handleDrop"
             />
           </tbody>
         </table>
@@ -83,22 +90,43 @@ import Button from '@/core/components/design/button.vue'
 import ThreadRow from './list/thread-row.vue'
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { id, type ThreadsState } from '@/plugins/threads/state'
+import { useThreadSelection } from '@/plugins/threads/composables/useThreadSelection'
+import { useThreadDragDrop } from '@/plugins/threads/composables/useThreadDragDrop'
 
 const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
 const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 const availableTags = useSelector(actor, s => s.context.availableTags)
+const selectedThreadIds = useSelector(actor, s => s.context.selectedThreadIds)
+
+const { selectItem, clearSelection } = useThreadSelection(
+  () => filteredThreads.value,
+  () => selectedThreadIds.value,
+  (itemIds) => actor.send({ type: 'SELECT_THREAD_ITEMS', itemIds })
+)
+
+const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, getRowClass } = useThreadDragDrop({
+  selectedItems: selectedThreadIds,
+  onReparent: (childIds, parentId) => actor.send({ type: 'SET_THREAD_PARENT', childIds, parentId })
+})
+
 const BATCH_SIZE = 20
 const displayCount = ref(BATCH_SIZE)
 const scrollContainer = ref<HTMLElement | null>(null)
 
 const hasActiveFilters = computed(() =>
   filters.value.statuses.length > 0 || filters.value.tags.length > 0 || filters.value.search !== ''
+  || (filters.value.showRootOnly && threads.value.some(t => t.parentId))
 )
 
 const filteredThreads = computed(() => {
   let result = threads.value
+
+  // Show only root threads (no parent) by default
+  if (filters.value.showRootOnly) {
+    result = result.filter(t => !t.parentId)
+  }
 
   if (filters.value.statuses.length > 0) {
     result = result.filter(t => filters.value.statuses.includes(t.status))
@@ -135,6 +163,14 @@ const onScroll = (e: Event) => {
     if (displayCount.value < filteredThreads.value.length) {
       displayCount.value += BATCH_SIZE
     }
+  }
+}
+
+const handleBackgroundClick = (e: MouseEvent) => {
+  // Clear selection when clicking outside any row (empty table area, below rows, etc.)
+  const target = e.target as HTMLElement
+  if (!target.closest('tr') || target.closest('thead')) {
+    clearSelection()
   }
 }
 

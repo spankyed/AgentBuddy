@@ -2,11 +2,18 @@
   <ContextMenuRoot>
     <ContextMenuTrigger as-child>
       <tr
+        draggable="true"
         :class="[
-          'transition-all duration-200 cursor-pointer group hover:bg-neutral-800',
-          { 'animate-highlight': thread.isNew }
+          'transition-all duration-200 cursor-pointer group hover:bg-neutral-800 thread-row',
+          { 'animate-highlight': thread.isNew },
+          { 'selected': isSelected },
+          dragClass,
         ]"
-        @click="settings?.clickToChat ? $emit('chat-click', thread.id) : $emit('select', thread.id)"
+        @click="handleRowClick"
+        @dragstart="$emit('drag-start', $event, thread.id)"
+        @dragover="$emit('drag-over', $event, thread.id)"
+        @dragleave="$emit('drag-leave', $event)"
+        @drop="$emit('drop', $event, thread.id)"
       >
         <td class="px-6 py-1.5">
           <div class="flex items-center gap-3">
@@ -182,15 +189,36 @@ const props = defineProps<{
   thread: ThreadListItem;
   availableTags?: ThreadTagOption[];
   settings?: ThreadsSettings | null;
+  isSelected?: boolean;
+  dragClass?: string;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   select: [id: string]
+  'multi-select': [id: string, event: MouseEvent]
   'status-change': [id: string, status: string]
   'chat-click': [id: string]
   'archive-click': [id: string]
   'delete-click': [id: string]
+  'drag-start': [e: DragEvent, id: string]
+  'drag-over': [e: DragEvent, id: string]
+  'drag-leave': [e: DragEvent]
+  'drop': [e: DragEvent, id: string]
 }>();
+
+function handleRowClick(event: MouseEvent) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey) {
+    // Modifier key: toggle/range selection only
+    emit('multi-select', props.thread.id, event)
+  } else {
+    // Plain click: navigate (no selection change)
+    if (props.settings?.clickToChat) {
+      emit('chat-click', props.thread.id)
+    } else {
+      emit('select', props.thread.id)
+    }
+  }
+}
 
 function copyId() {
   navigator.clipboard.writeText(props.thread.shortCode || props.thread.id)
@@ -220,5 +248,14 @@ const getTagStyles = (tagName: string) => {
 
 .animate-highlight {
   animation: highlight 2s ease-out forwards;
+}
+
+tr.thread-row.selected {
+  background-color: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 3px 0 0 0 rgba(139, 92, 246, 0.7); /* left accent bar */
+}
+
+tr.thread-row.selected:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 </style>
