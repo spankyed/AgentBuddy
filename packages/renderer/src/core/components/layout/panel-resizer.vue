@@ -3,7 +3,7 @@
     :class="[
       'panel-resizer',
       `panel-resizer--${orientation}`,
-      { 'panel-resizer--dragging': isDragging, 'panel-resizer--collapsed': collapsed }
+      { 'panel-resizer--dragging': isDragging, 'panel-resizer--collapsed': collapsed, 'panel-resizer--reverse': reverse }
     ]"
     @mousedown="startDrag"
     @dblclick="handleDoubleClick"
@@ -21,12 +21,15 @@ interface Props {
   min?: number
   max?: number
   collapsed?: boolean
+  /** When true, the horizontal handle extends leftward instead of rightward */
+  reverse?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   min: 200,
   max: Infinity,
-  collapsed: false
+  collapsed: false,
+  reverse: false
 })
 
 const emit = defineEmits<{
@@ -121,6 +124,14 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   right: -8px;
+  bottom: 0;
+}
+
+/* Reverse: handle extends leftward into the preceding panel */
+.panel-resizer--horizontal.panel-resizer--reverse .panel-resizer__handle {
+  top: 0;
+  left: -8px;
+  right: 0;
   bottom: 0;
 }
 

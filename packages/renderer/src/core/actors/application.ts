@@ -39,6 +39,7 @@ export interface ApplicationContext {
     inspectionWidth: number; // pixels
     previousInspectionWidth?: number; // for restoring after collapse
     chatMaximized?: boolean; // when true, chat fills the main area and canvas + resizer are hidden
+    chatWidth: number; // percentage of content area for chat in horizontal (threads) layout
   };
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
@@ -55,7 +56,7 @@ export type ApplicationEvent =
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: any }
-  | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
+  | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection' | 'chat'; size: number }
   | { type: 'TOGGLE_INSPECTION_PANEL' }
   | { type: 'MAXIMIZE_CHAT' }
   | { type: 'RESTORE_CHAT' }
@@ -463,6 +464,26 @@ export const createApplicationState = () => setup({
         return updates;
       });
 
+      // Auto-collapse chat when leaving threads plugin (if setting enabled)
+      if (context.activePlugin.id !== newPlugin.id) {
+        const isLeavingThreads = context.activePlugin.id === context.defaultPlugin.id;
+        const isEnteringThreads = newPlugin.id === context.defaultPlugin.id;
+
+        if (isLeavingThreads && !isEnteringThreads) {
+          const threadsActor = system.get(context.defaultPlugin.id);
+          const threadsSettings = threadsActor?.getSnapshot?.()?.context?.settings;
+          const autoCollapse = threadsSettings?.autoCollapseChat ?? true;
+
+          if (autoCollapse && context.panelSizes.canvasHeight < 93) {
+            enqueue.assign(({ context }) => {
+              const newSizes = { ...context.panelSizes, chatMaximized: false, canvasHeight: 95 };
+              localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
+              return { panelSizes: newSizes };
+            });
+          }
+        }
+      }
+
       // Persist the new active plugin if it changed
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(({ context }) => {
@@ -522,12 +543,14 @@ export const createApplicationState = () => setup({
     }),
     resizePanel: assign(({ context, event }) => {
       const { panel, size } = typeOf('RESIZE_PANEL', event);
+      const sizeUpdate = panel === 'canvas'
+        ? { canvasHeight: Math.max(20, Math.min(95, size)) } // 20-95% bounds
+        : panel === 'chat'
+          ? { chatWidth: Math.max(20, Math.min(80, size)) } // 20-80% bounds
+          : { inspectionWidth: Math.max(300, Math.min(800, size)) }; // 300-800px bounds
       const newSizes = {
         ...context.panelSizes,
-        ...(panel === 'canvas'
-          ? { canvasHeight: Math.max(20, Math.min(95, size)) } // 20-95% bounds
-          : { inspectionWidth: Math.max(300, Math.min(800, size)) } // 300-800px bounds
-        )
+        ...sizeUpdate,
       };
 
       // Save to localStorage
@@ -680,6 +703,7 @@ export const createApplicationState = () => setup({
       canvasHeight: 50, // 50% of main area
       inspectionWidth: 448, // 28rem = 448px (16px base),
       chatMaximized: false,
+      chatWidth: 50, // percentage — 50/50 equal split
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
 

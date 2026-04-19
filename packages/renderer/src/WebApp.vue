@@ -10,23 +10,64 @@
 
     <!-- Main Area -->
     <div class="flex flex-grow overflow-hidden" :style="{ paddingRight: canShowPanel && panelSizes.inspectionWidth === 0 ? '2px' : '0' }">
-        <div class="flex flex-col flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
+
+        <!-- Threads active: horizontal split (Canvas LEFT, Chat RIGHT) -->
+        <div v-if="isThreadsActive && !chatMaximized" class="flex flex-row flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
+            <!-- Canvas (LEFT, fills remaining space) -->
+            <CanvasArea
+                data-onboarding-id="canvas-area"
+                :header-only="false"
+                @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
+                @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
+                @menu-action="handleMenuAction"
+                class="border-r border-neutral-800"
+                :style="{ width: `${100 - panelSizes.chatWidth}%`, minWidth: '200px' }"
+                :breadcrumbs="breadcrumbs"
+                :menu-items="allMenuItems"
+                :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
+                :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass"
+            >
+                <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
+                <Router v-else :views="activePlugin.canvas" :target="targetView" />
+            </CanvasArea>
+
+            <!-- Resizer (handle extends rightward into chat so it's always reachable) -->
+            <PanelResizer
+                orientation="horizontal"
+                :collapsed="false"
+                @resize="handleChatResize"
+                @double-click="handleChatDoubleClick"
+            />
+
+            <!-- Chat (RIGHT) -->
+            <ChatArea
+                data-onboarding-id="chat-area"
+                class="flex-shrink-0"
+                :style="{ width: `${panelSizes.chatWidth}%` }"
+            >
+                <component :is="defaultPlugin.chat" />
+            </ChatArea>
+        </div>
+
+        <!-- Default: vertical split (Canvas TOP, Chat BOTTOM) -->
+        <div v-else class="flex flex-col flex-grow overflow-hidden" :style="{ width: canShowPanel && panelSizes.inspectionWidth > 0 ? `calc(100% - ${panelSizes.inspectionWidth}px)` : '100%' }">
             <!-- Canvas Area — always rendered; collapses to just its header when chat is maximized -->
             <CanvasArea
-            data-onboarding-id="canvas-area"
-            :header-only="chatMaximized"
-            @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
-            @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
-            @menu-action="handleMenuAction"
-            :style="chatMaximized
-                ? { flex: '0 0 auto', height: 'auto' }
-                : { height: `${panelSizes.canvasHeight}%` }"
-            :breadcrumbs="breadcrumbs"
-            :menu-items="allMenuItems"
-            :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
-            :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
-            <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
-            <Router v-else :views="activePlugin.canvas" :target="targetView" />
+                data-onboarding-id="canvas-area"
+                :header-only="chatMaximized"
+                @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
+                @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
+                @menu-action="handleMenuAction"
+                :style="chatMaximized
+                    ? { flex: '0 0 auto', height: 'auto' }
+                    : { height: `${panelSizes.canvasHeight}%` }"
+                :breadcrumbs="breadcrumbs"
+                :menu-items="allMenuItems"
+                :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
+                :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass"
+            >
+                <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
+                <Router v-else :views="activePlugin.canvas" :target="targetView" />
             </CanvasArea>
 
             <!-- Vertical Resizer (hidden while chat is maximized) -->
@@ -47,11 +88,7 @@
                     ? { flex: '1 1 0%', minHeight: 0 }
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
-                <!-- Floating restore handle: hover-revealed bar at the top of the
-                     maximized chat. Matches the original vertical PanelResizer's 7px
-                     hover zone, but extended *downward* into the chat (the original
-                     straddles the border with 4px above + 3px at border; here "above"
-                     would be outside the chat/window, so we put the full 7px inside). -->
+                <!-- Floating restore handle -->
                 <div
                     v-if="chatMaximized"
                     class="group absolute top-0 left-0 right-0 h-2 z-20 cursor-row-resize"
@@ -79,7 +116,7 @@
         <InspectionPanel
             v-if="canShowPanel && panelSizes.inspectionWidth > 0"
             data-onboarding-id="inspection-panel"
-:style="{ width: `${panelSizes.inspectionWidth}px` }"
+            :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
             <component v-if="activePlugin.panel" :is="activePlugin.panel" />
             <BrainInspectPanel v-else-if="inspectMode" />
@@ -124,6 +161,7 @@ const currentPluginId = computed(() =>
   toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
 )
 
+const isThreadsActive = computed(() => activePlugin.value.id === defaultPlugin.value.id)
 const canShowPanel = computed(() => inspectMode.value || !!activePlugin.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
 
@@ -215,6 +253,22 @@ const handleCanvasDoubleClick = () => {
 
 const handleChatMaximize = () => send({ type: 'MAXIMIZE_CHAT' })
 const handleChatRestore = () => send({ type: 'RESTORE_CHAT' })
+
+const handleChatResize = (delta: number) => {
+  // Convert pixel delta to percentage of the content area
+  const toolbarWidth = 72
+  const inspectionWidth = canShowPanel.value ? panelSizes.value.inspectionWidth : 0
+  const contentWidth = window.innerWidth - toolbarWidth - inspectionWidth
+  const deltaPercent = (delta / contentWidth) * 100
+  send({ type: 'RESIZE_PANEL', panel: 'chat', size: panelSizes.value.chatWidth - deltaPercent })
+}
+
+const DEFAULT_CHAT_WIDTH = 50 // 50% — equal split
+
+const handleChatDoubleClick = () => {
+  // Always reset to 50/50 equal split — acts as a safe restore
+  send({ type: 'RESIZE_PANEL', panel: 'chat', size: DEFAULT_CHAT_WIDTH })
+}
 
 const handleInspectionDoubleClick = () => {
   // Toggle inspection panel between collapsed and default
