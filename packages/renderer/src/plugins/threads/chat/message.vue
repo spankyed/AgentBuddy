@@ -56,6 +56,15 @@
           </button>
 
           <button
+            v-if="isUser && isTruncated && userExpanded"
+            @click="userExpanded = false"
+            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+            title="Collapse"
+          >
+            <ChevronsUpDown :size="16" />
+          </button>
+
+          <button
             @click="copyMessageText"
             class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
             title="Copy message text"
@@ -125,7 +134,7 @@
 
         <!-- Truncation overlay for long user messages -->
         <div v-if="isUser && isTruncated && !userExpanded"
-          class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-neutral-800 to-transparent flex items-end justify-center pb-2 pointer-events-none">
+          class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-neutral-800 via-neutral-800/90 to-transparent flex items-end justify-center pb-2 pointer-events-none">
           <span class="text-xs text-neutral-400 flex items-center gap-1">
             <ChevronDown :size="14" /> Click to view
           </span>
@@ -162,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUpdated } from 'vue'
+import { computed, ref, onUpdated, watch } from 'vue'
 import type { MessageEntity } from '@app/api'
 import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
@@ -208,7 +217,15 @@ function checkTruncation() {
   }
 }
 
-onMounted(checkTruncation)
+// Use ResizeObserver so truncation is detected even when TiptapEditor renders async (e.g. on refresh)
+watch(bubbleRef, (el, _prev, onCleanup) => {
+  if (!el || !isUser.value) return
+  const observer = new ResizeObserver(checkTruncation)
+  observer.observe(el)
+  checkTruncation()
+  onCleanup(() => observer.disconnect())
+}, { immediate: true })
+
 onUpdated(checkTruncation)
 
 const revertMenuItems = [
