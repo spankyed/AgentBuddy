@@ -640,3 +640,14 @@
 .tiptap-viewer-chat .ProseMirror hr {
   margin: 1.25em 0;
 }
+
+/* Search highlights */
+.tiptap-wrapper .ProseMirror .search-highlight {
+  background: rgba(250, 204, 21, 0.25);
+  border-radius: 2px;
+}
+
+.tiptap-wrapper .ProseMirror .search-highlight-current {
+  background: rgba(250, 204, 21, 0.6);
+  border-radius: 2px;
+}

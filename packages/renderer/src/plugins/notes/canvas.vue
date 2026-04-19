@@ -208,7 +208,14 @@
       />
 
       <!-- Editor area -->
-      <div class="flex flex-col flex-1 h-full min-w-0">
+      <div class="flex flex-col flex-1 h-full min-w-0 relative" @keydown="handleEditorKeydown">
+        <!-- Search bar -->
+        <TiptapSearchBar
+          v-if="editorRef?.editor"
+          ref="searchBarRef"
+          :editor="editorRef.editor"
+        />
+
         <!-- Title row -->
         <div class="flex items-center gap-1 px-4 py-3">
           <EmojiPicker :model-value="editingNote.icon" @update:model-value="handleIconUpdate">
@@ -282,6 +289,7 @@ import { useNoteScroll } from './composables/useNoteScroll'
 import { useSubDocumentInsert } from './composables/useSubDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
+import TiptapSearchBar from '@/core/components/tiptap/TiptapSearchBar.vue'
 
 const actor: NotesState = applicationState.system.get(id)
 const state = useSelector(actor, (s) => s)
@@ -368,6 +376,7 @@ watch(searchQuery, (query) => {
 })
 
 const editorRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
+const searchBarRef = ref<InstanceType<typeof TiptapSearchBar> | null>(null)
 const titleRef = ref<HTMLInputElement | null>(null)
 const carouselRef = ref<HTMLDivElement | null>(null)
 const canScrollLeft = ref(false)
@@ -520,6 +529,13 @@ function handleTitleEnter() {
   const editor = editorRef.value?.editor
   if (!editor) return
   editor.commands.focus('start')
+}
+
+function handleEditorKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+    e.preventDefault()
+    searchBarRef.value?.open()
+  }
 }
 
 function handleIconUpdate(icon: string | null) {

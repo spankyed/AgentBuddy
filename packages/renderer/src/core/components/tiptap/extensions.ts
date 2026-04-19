@@ -27,6 +27,7 @@ import { BlockquotePipe } from './extensions/blockquote-pipe'
 import { DetailsBlock, DetailsBlockSummary, DetailsBlockContent } from './extensions/details-block'
 import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder'
 import { CustomHorizontalRule } from './extensions/custom-horizontal-rule'
+import { SearchAndFind } from './extensions/search-extension'
 
 const lowlight = createLowlight(common)
 
@@ -109,6 +110,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
   if (cfg.commandViewerDeco && isCommand) extensions.push(CommandViewerDecoration)
   if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
   if (cfg.editorInteractions) extensions.push(ImageUploadPlaceholder)
+  if (cfg.searchBar) extensions.push(SearchAndFind)
   if (placeholder) extensions.push(Placeholder.configure({
     placeholder: ({ editor, node }) => {
       if (node.type.name === 'heading') return `Heading ${node.attrs.level}`

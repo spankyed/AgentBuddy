@@ -18,6 +18,7 @@ export interface EditorConfig {
   textBubbleMenu: boolean
   referencePopup: boolean
   commandPopup: boolean
+  searchBar: boolean
 }
 
 type ConfigKey = `${TiptapMode}:${TiptapVariant}`
@@ -41,6 +42,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     textBubbleMenu: true,
     referencePopup: true,
     commandPopup: false,
+    searchBar: true,
   },
   'input:chat': {
     editable: true,
@@ -60,6 +62,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     textBubbleMenu: true,
     referencePopup: true,
     commandPopup: true,
+    searchBar: false,
   },
   'viewer:full': {
     editable: false,
@@ -79,6 +82,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     textBubbleMenu: false,
     referencePopup: false,
     commandPopup: false,
+    searchBar: false,
   },
   'viewer:chat': {
     editable: false,
@@ -98,6 +102,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     textBubbleMenu: false,
     referencePopup: false,
     commandPopup: false,
+    searchBar: false,
   },
 }
 
