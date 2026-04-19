@@ -55,6 +55,7 @@ export const promptCommands = {
     templateFn: string;
     inputs?: Record<string, any>;
     category?: string;
+    sourceHash?: string;
   }): PromptEntity => {
     if (!input.label?.trim()) {
       throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
@@ -78,6 +79,7 @@ export const promptCommands = {
     templateFn?: string;
     inputs?: Record<string, any>;
     category?: string;
+    sourceHash?: string;
   }): void => {
     if (!promptQueries.byId(id)) {
       throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);

@@ -6,6 +6,7 @@ export interface ExportedDocument {
   name: string
   content: ContentSection[]
   tags: string[]
+  sourceHash?: string
 }
 
 export interface ExportedCollection {
@@ -14,6 +15,7 @@ export interface ExportedCollection {
   name: string
   description?: string
   children: ExportedItem[]
+  sourceHash?: string
 }
 
 export interface ExportedSymlink {

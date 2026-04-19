@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import ts from 'typescript';
 import * as esbuild from 'esbuild';
 
@@ -268,7 +269,13 @@ async function compileSourceFile(
     ...(meta[config.fields.output] && { [config.fields.output]: meta[config.fields.output] }),
   };
 
-  return { entry: compiled, warnings };
+  // Compute per-item sourceHash so the seed logic can detect DSL changes
+  const sourceHash = crypto.createHash('sha256')
+    .update(JSON.stringify(compiled))
+    .digest('hex')
+    .slice(0, 16);
+
+  return { entry: { ...compiled, sourceHash }, warnings };
 }
 
 // --- Main compilation loop ---

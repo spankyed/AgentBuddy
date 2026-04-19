@@ -32,6 +32,8 @@ export interface PromptEntity extends BaseEntity {
   inputs: Record<string, TemplateInput>;
   templateFn: string;  // Stored as string, evaluated at runtime
   outputSchema?: any;  // Optional JSON schema for structured output
+  /** SHA256 hash of DSL source at last seed. Absent on user-created prompts. */
+  sourceHash?: string;
   createdAt: number;
   updatedAt: number;
 }

@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import * as crypto from 'crypto'
 import type { ExportedItem, ExportedLibrary } from '../defs/default-setup-defs'
 import { toDisplayName, countDocs, parseMarkdownSections, parseFrontmatter } from './library-utils'
 
@@ -7,6 +8,13 @@ const ROOT = path.resolve(import.meta.dirname, '..')
 const LIBRARY_DIR = path.join(ROOT, 'src', 'library')
 const COMPILED_DIR = path.join(ROOT, 'dist')
 const OUTPUT_FILE = path.join(COMPILED_DIR, 'compiled-library.json')
+
+function itemHash(data: object): string {
+  return crypto.createHash('sha256')
+    .update(JSON.stringify(data))
+    .digest('hex')
+    .slice(0, 16)
+}
 
 function walkDirectory(dir: string): ExportedItem[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
@@ -26,21 +34,27 @@ function walkDirectory(dir: string): ExportedItem[] {
         if (meta.name) name = meta.name
         description = meta.description
       }
+      const children = walkDirectory(fullPath)
+      const childHashes = children.map(c => 'sourceHash' in c ? c.sourceHash : null).filter(Boolean)
       items.push({
         type: 'collection',
         name,
         ...(description && { description }),
-        children: walkDirectory(fullPath),
+        children,
+        sourceHash: itemHash({ name, description, children: childHashes }),
       })
     } else if (entry.name.endsWith('.md')) {
       const text = fs.readFileSync(fullPath, 'utf-8')
       const { tags, name: fmName, body } = parseFrontmatter(text)
       const name = fmName || toDisplayName(entry.name.replace(/\.md$/, ''))
+      const content = parseMarkdownSections(body || text)
+      const resolvedTags = tags.length ? tags : ['default']
       items.push({
         type: 'document',
         name,
-        content: parseMarkdownSections(body || text),
-        tags: tags.length ? tags : ['default'],
+        content,
+        tags: resolvedTags,
+        sourceHash: itemHash({ name, content, tags: resolvedTags }),
       })
     }
   }

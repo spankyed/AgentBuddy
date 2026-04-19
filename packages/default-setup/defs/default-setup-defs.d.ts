@@ -301,6 +301,7 @@ interface ExportedDocument {
     name: string;
     content: ContentSection[];
     tags: string[];
+    sourceHash?: string;
 }
 interface ExportedCollection {
     id?: string;
@@ -308,6 +309,7 @@ interface ExportedCollection {
     name: string;
     description?: string;
     children: ExportedItem[];
+    sourceHash?: string;
 }
 interface ExportedSymlink {
     id?: string;

@@ -53,6 +53,8 @@ export interface Document extends BaseEntity {
   content: ContentSection[]
   shortCode: DocumentShortCode
   displayOrder?: number
+  /** SHA256 hash of DSL source at last seed. Absent on user-created documents. */
+  sourceHash?: string
 }
 
 export interface Collection extends BaseEntity {
@@ -61,6 +63,8 @@ export interface Collection extends BaseEntity {
   description?: string
   displayOrder?: number
   symlinkPath?: string
+  /** SHA256 hash of DSL source at last seed. Absent on user-created collections. */
+  sourceHash?: string
 }
 
 export interface DocumentDTO {

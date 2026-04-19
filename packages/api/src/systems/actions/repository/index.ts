@@ -59,6 +59,7 @@ export const actionCommands = {
     input?: Record<string, any>;
     actionFn: string;
     output?: any;
+    sourceHash?: string;
   }): ActionEntity => {
     if (!data.label?.trim()) {
       throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
@@ -86,6 +87,7 @@ export const actionCommands = {
     input?: Record<string, any>;
     actionFn?: string;
     output?: any;
+    sourceHash?: string;
   }): void => {
     if (!actionQueries.byId(id)) {
       throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);

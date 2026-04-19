@@ -9,13 +9,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { EARS } from '@/core/types';
-import { findWhere, findAll } from '@/core/helpers/repository/query-helpers';
+import { findById, findWhere, findAll } from '@/core/helpers/repository/query-helpers';
 import { actionCommands } from '@/systems/actions/repository';
 import { promptQueries, promptCommands } from '@/systems/prompts/repository';
 import { validate, compile, isFlowConfig } from '@/systems/flows/dsl';
 import { flowsCommands } from '@/systems/flows/repository';
 import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import type { ActionEntity } from '@/systems/actions/types';
+import type { PromptEntity } from '@/systems/prompts/types';
 import type { FlowDSL } from '@/systems/flows/dsl';
 import type { FlowEntity } from '@/systems/flows/config/types';
 import { libraryCommands } from '@/systems/library/repository';
@@ -94,6 +95,16 @@ export function loadJSON<T>(filePath: string): T | null {
   }
 }
 
+/** Returns a skip reason if the item should not be updated, or null to proceed. */
+function shouldSkipByHash(
+  existingHash: string | undefined,
+  compiledHash: string | undefined,
+): 'untracked' | 'unchanged' | null {
+  if (!existingHash) return 'untracked';
+  if (compiledHash && existingHash === compiledHash) return 'unchanged';
+  return null;
+}
+
 function seedCollection<T>(opts: {
   file: string;
   label: string;
@@ -105,6 +116,10 @@ function seedCollection<T>(opts: {
   include?: SeedIncludeSet;
   mode?: ImportMode;
   wipe?: () => void;
+  /** Extract sourceHash from compiled item. Enables hash-aware seed logic. */
+  getSourceHash?: (item: T) => string | undefined;
+  /** Extract sourceHash from existing DB entity. Required if getSourceHash is set. */
+  getExistingSourceHash?: (existing: { id: EARS.EntityId }) => string | undefined;
 }): SeedCounts {
   const counts: SeedCounts = { created: 0, updated: 0, skipped: 0 };
   const raw = loadJSON<T[]>(opts.file);
@@ -121,6 +136,7 @@ function seedCollection<T>(opts: {
     opts.wipe();
     opts.log(`  ${opts.label} wiped`);
   }
+  const hashAware = opts.getSourceHash && opts.getExistingSourceHash;
   for (const item of data) {
     const key = opts.getKey(item);
     const existing = opts.findExisting(item);
@@ -128,6 +144,16 @@ function seedCollection<T>(opts: {
       if (opts.mode === 'keep-existing') {
         opts.log(`  ${opts.label} skipped (existing): ${key}`);
         counts.skipped++;
+      } else if (hashAware) {
+        const skip = shouldSkipByHash(opts.getExistingSourceHash!(existing), opts.getSourceHash!(item));
+        if (skip) {
+          opts.log(`  ${opts.label} ${skip}: ${key}`);
+          counts.skipped++;
+        } else {
+          opts.update(existing.id, item);
+          opts.log(`  ${opts.label} updated: ${key}`);
+          counts.updated++;
+        }
       } else {
         opts.update(existing.id, item);
         opts.log(`  ${opts.label} updated: ${key}`);
@@ -149,6 +175,7 @@ interface CompiledAction {
   input: any;
   actionFn: string;
   output: any;
+  sourceHash?: string;
 }
 
 interface CompiledPrompt {
@@ -157,6 +184,7 @@ interface CompiledPrompt {
   category: string;
   inputs: any;
   templateFn: string;
+  sourceHash?: string;
 }
 
 function buildLabelMap<T extends { label: string; id: string }>(entities: T[]): Map<string, string> {
@@ -214,15 +242,21 @@ function seedLibraryTree(
         continue;
       }
       if (existing) {
+        const skip = shouldSkipByHash(existing.sourceHash, item.sourceHash);
+        if (skip) {
+          counts.skipped++;
+          log(`  library doc ${skip}: ${item.name}`);
+          continue;
+        }
         const { content } = restoreDocMedia(item.content, existing.id, mediaDir, log);
-        libraryCommands.updateDocument(existing.id, item.name, content, item.tags ?? []);
+        libraryCommands.updateDocument(existing.id, item.name, content, item.tags ?? [], undefined, item.sourceHash);
         counts.updated++;
         log(`  library doc updated: ${item.name}`);
       } else {
-        const doc = libraryCommands.createDocument(item.name, item.content, item.tags ?? [], parentId);
+        const doc = libraryCommands.createDocument(item.name, item.content, item.tags ?? [], parentId, undefined, item.sourceHash);
         const { content, mediaCount } = restoreDocMedia(item.content, doc.id, mediaDir, log);
         if (mediaCount > 0) {
-          libraryCommands.updateDocument(doc.id as EARS.EntityId, item.name, content, item.tags ?? []);
+          libraryCommands.updateDocument(doc.id as EARS.EntityId, item.name, content, item.tags ?? [], undefined, item.sourceHash);
         }
         counts.created++;
         log(`  library doc created: ${item.name}`);
@@ -236,12 +270,19 @@ function seedLibraryTree(
       }
       let colId: EARS.EntityId;
       if (existing) {
+        const skip = shouldSkipByHash(existing.sourceHash, item.sourceHash);
+        if (skip) {
+          counts.skipped++;
+          log(`  library collection ${skip}: ${item.name}`);
+          seedLibraryTree(item.children, existing.id, counts, log, mediaDir, mode);
+          continue;
+        }
         colId = existing.id;
-        libraryCommands.updateCollection(colId, item.name, item.description);
+        libraryCommands.updateCollection(colId, item.name, item.description, item.sourceHash);
         counts.updated++;
         log(`  library collection updated: ${item.name}`);
       } else {
-        const col = libraryCommands.createCollection(item.name, item.description, parentId);
+        const col = libraryCommands.createCollection(item.name, item.description, parentId, undefined, item.sourceHash);
         colId = col.id;
         counts.created++;
         log(`  library collection created: ${item.name}`);
@@ -396,15 +437,19 @@ export function seedData(options: {
     create: item => actionCommands.create({
       label: item.label, description: item.description, category: item.category,
       input: item.input, actionFn: item.actionFn, output: item.output,
+      sourceHash: item.sourceHash,
     }),
     update: (id, item) => actionCommands.update(id, {
       description: item.description, category: item.category,
       input: item.input, actionFn: item.actionFn, output: item.output,
+      sourceHash: item.sourceHash,
     }),
     log,
     include: include?.actions,
     mode,
     wipe: () => { for (const e of findAll<ActionEntity>(EARS.Entity.Action)) actionCommands.delete(e.id); },
+    getSourceHash: item => item.sourceHash,
+    getExistingSourceHash: existing => findById<ActionEntity>(existing.id)?.sourceHash,
   });
 
   // --- Prompts ---
@@ -416,15 +461,19 @@ export function seedData(options: {
     create: item => promptCommands.create({
       label: item.label, description: item.description, category: item.category,
       inputs: item.inputs, templateFn: item.templateFn,
+      sourceHash: item.sourceHash,
     }),
     update: (id, item) => promptCommands.update(id, {
       label: item.label, description: item.description, category: item.category,
       inputs: item.inputs, templateFn: item.templateFn,
+      sourceHash: item.sourceHash,
     }),
     log,
     include: include?.prompts,
     mode,
     wipe: () => { for (const e of promptQueries.all()) promptCommands.delete(e.id); },
+    getSourceHash: item => item.sourceHash,
+    getExistingSourceHash: existing => findById<PromptEntity>(existing.id)?.sourceHash,
   });
 
   // --- Flows ---
@@ -546,9 +595,21 @@ export function runBootSeed(options?: { verbose?: boolean }): SeedResult | null 
     return null;
   }
 
-  // Skip settings and notes during boot seed. Settings are handled by
-  // createDefaultSettings() via deep-merge. Notes are user-owned content —
-  // seeded once at first install, new notes on upgrade go through migrations.
+  // ── Boot seed strategy ──────────────────────────────────────────────
+  //
+  // EXCLUDED (user-owned content, seeded once at first install):
+  //   settings — handled by createDefaultSettings() via deep-merge
+  //   notes    — user-owned; new notes on upgrade go through migrations
+  //
+  // INCLUDED (system-managed, DSL updates propagate on upgrade):
+  //   actions  — sourceHash tracking; user-created actions are protected
+  //   prompts  — sourceHash tracking; user-created prompts are protected
+  //   flows    — sourceHash tracking; user-created flows are protected
+  //   library  — sourceHash tracking; user-created docs are protected
+  //
+  // All included types use per-item sourceHash to distinguish DSL-sourced
+  // from user-created items. Only DSL items with changed hashes are updated.
+  // ────────────────────────────────────────────────────────────────────
   const result = seedData({ compiledDir, include: { settings: new Set(), notes: new Set() }, verbose: options?.verbose });
   settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   return result;
