@@ -1,19 +1,23 @@
 <template>
   <div class="collapsible-section">
-    <button
-      @click="toggle"
-      class="flex items-center gap-2 w-full text-left focus:outline-none"
-      :class="buttonClass"
-    >
-      <ChevronRight
-        class="w-4 h-4 transition-transform text-neutral-500"
-        :class="{ 'rotate-90': isOpen }"
-      />
-      <label class="text-xs font-medium tracking-wider uppercase text-neutral-400 cursor-pointer">
-        <slot name="label">{{ label }}</slot>
-      </label>
-    </button>
-    <div v-if="isOpen" class="mt-4">
+    <div class="flex items-center w-full" :class="buttonClass">
+      <button
+        @click="toggle"
+        class="flex items-center gap-2 text-left focus:outline-none"
+      >
+        <ChevronRight
+          class="w-4 h-4 transition-transform text-neutral-500"
+          :class="{ 'rotate-90': isOpen }"
+        />
+        <label class="text-xs font-medium tracking-wider uppercase text-neutral-400 cursor-pointer">
+          <slot name="label">{{ label }}</slot>
+        </label>
+      </button>
+      <div v-if="isOpen && $slots['header-actions']" class="ml-auto flex items-center gap-2">
+        <slot name="header-actions" />
+      </div>
+    </div>
+    <div v-if="isOpen" class="mb-4">
       <slot></slot>
     </div>
   </div>

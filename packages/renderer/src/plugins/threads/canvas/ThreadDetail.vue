@@ -52,7 +52,7 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto custom-scrollbar">
-      <div class="max-w-4xl p-4 mx-auto space-y-6">
+      <div class="max-w-4xl p-4 mx-auto">
         <div class="space-y-4">
           <!-- Instructions -->
           <div data-onboarding-id="thread-instructions-input">
@@ -104,7 +104,7 @@
 
         <!-- Messages Section (view only) -->
         <div v-if="isViewMode" ref="messagesSection" class="border-t border-neutral-800">
-          <CollapsibleSection :default-open="false" button-class="py-4" @toggle="onMessagesToggle">
+          <CollapsibleSection :default-open="false" button-class="py-3" @toggle="onMessagesToggle">
             <template #label>
               Messages ({{ messages.length }})
             </template>
@@ -118,12 +118,33 @@
         </div>
 
         <!-- Linked Threads Section -->
-        <div class="border-t border-neutral-800">
-          <CollapsibleSection :default-open="false" button-class="py-4">
+        <div ref="linkedThreadsSection" class="border-t border-neutral-800">
+          <CollapsibleSection :default-open="false" button-class="py-3" @toggle="onLinkedThreadsToggle">
             <template #label>
               Linked Threads ({{ linkedThreads.length }})
             </template>
+            <template #header-actions>
+              <button
+                data-onboarding-id="thread-linked-section"
+                type="button"
+                @click.stop="linkThreadInput?.toggleInput()"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <Link :size="14" />
+                Link Thread
+              </button>
+              <button
+                v-if="isViewMode"
+                @click.stop="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
+                type="button"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors rounded-md text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-neutral-100"
+              >
+                <Plus :size="14" />
+                Create Child
+              </button>
+            </template>
             <ThreadLinkInput
+              ref="linkThreadInput"
               :lite="!isViewMode"
               v-model="linkedThreads"
               :available-threads="threadsList"
@@ -133,18 +154,8 @@
               @select="(id) => actor.send({ type: 'SELECT_THREAD', id })"
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @update:modelValue="(links) => updateField('linkedThreads', links)"
-            >
-              <template v-if="isViewMode" #extra-buttons>
-                <button
-                  @click="actor.send({ type: 'SHOW_CREATE_FORM_AS_CHILD', parentThreadId: threadId })"
-                  type="button"
-                  class="flex items-center gap-2 px-4 py-2 ml-auto text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
-                >
-                  Create Child Thread
-                  <Plus :size="16" />
-                </button>
-              </template>
-            </ThreadLinkInput>
+              @set-parent="(childIds, parentId) => actor.send({ type: 'SET_THREAD_PARENT', childIds, parentId })"
+            />
           </CollapsibleSection>
         </div>
       </div>
@@ -154,7 +165,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { Plus, MessageSquare } from 'lucide-vue-next'
+import { Plus, MessageSquare, Link } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -205,13 +216,23 @@ const updateField = (key: keyof ThreadEditFields, value: ThreadEditFields[keyof 
   actor.send({ type: 'UPDATE_THREAD_FIELD', key, value, state: mode.value });
 };
 
-// Messages scroll handling (view only)
+// Section scroll handling
 const messagesSection: Ref<HTMLDivElement | null> = ref(null);
+const linkedThreadsSection: Ref<HTMLDivElement | null> = ref(null);
+const linkThreadInput = ref<InstanceType<typeof ThreadLinkInput> | null>(null);
 
 const onMessagesToggle = (isOpen: boolean) => {
   if (isOpen && messagesSection.value) {
     nextTick(() => {
       messagesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+};
+
+const onLinkedThreadsToggle = (isOpen: boolean) => {
+  if (isOpen && linkedThreadsSection.value) {
+    nextTick(() => {
+      linkedThreadsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   }
 };

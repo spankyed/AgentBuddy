@@ -1,9 +1,9 @@
 <template>
-  <div v-if="isMessagesOpen" class="p-4 pr-2 mt-2 overflow-hidden rounded-sm bg-neutral-900">
+  <div v-if="isMessagesOpen" class="pb-4 pr-2overflow-hidden rounded-sm bg-neutral-900">
     <div class="overflow-y-auto max-h-96 messages-container">
       <ul class="mr-2 space-y-1">
-        <li v-for="(message, index) in messages" 
-            :key="index" 
+        <li v-for="(message, index) in messages"
+            :key="index"
             @click="toggleMessage(index)"
             :class="[
               'group relative px-3 py-2 text-sm rounded-sm cursor-pointer',

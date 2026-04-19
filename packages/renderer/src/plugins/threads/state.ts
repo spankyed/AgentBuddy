@@ -525,6 +525,17 @@ const threadsState = setup({
       filters: { statuses: [] as string[], tags: [] as string[], search: '', showRootOnly: true },
     }),
 
+    refreshViewIfActive: ({ context }) => {
+      // After a THREAD_CONNECTED refresh, re-fetch view data if we're viewing a thread
+      if (context.view?.id) {
+        trpc.bus.send.mutate({
+          systemId: id,
+          type: 'VIEW_THREAD',
+          threadId: context.view.id,
+        });
+      }
+    },
+
     /* ── Selection & drag-drop actions ─────────────────────── */
     selectThreadItems: assign(({ event }) => ({
       selectedThreadIds: typeOf('SELECT_THREAD_ITEMS', event).itemIds,
@@ -1054,7 +1065,7 @@ const threadsState = setup({
       ]
     },
     THREAD_CONNECTED: {
-      actions: 'setPluginData'
+      actions: ['setPluginData', 'refreshViewIfActive']
     },
     SET_VIEW_DATA: {
       actions: 'setViewData',
