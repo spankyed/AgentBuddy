@@ -163,7 +163,7 @@ export const threadCommands = {
       ? tx(input.id as EARS.EntityId, true).id()
       : tx(EARS.Entity.Thread).id();
 
-    const status = settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || "Backlog";
+    const status = settingsQueries.getPluginSettings('threads')?.statuses[0]?.label ?? '';
     tx(id).updateBatch({
       status: status,
       shortCode: shortCode,
