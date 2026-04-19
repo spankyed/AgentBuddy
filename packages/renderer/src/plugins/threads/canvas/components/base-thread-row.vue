@@ -10,7 +10,7 @@
     <slot name="prefix" />
 
     <!-- Label: status dot + topic -->
-    <td class="px-6 py-1.5">
+    <td class="px-6 py-1.5 w-full">
       <div class="flex items-center gap-2.5">
         <!-- Status indicator dot -->
         <span class="shrink-0 relative inline-flex items-center justify-center w-2 h-2">
@@ -35,25 +35,25 @@
     </td>
 
     <!-- Tags -->
-    <td class="px-6 py-1.5">
-      <div class="flex items-center gap-2">
+    <td class="px-6 py-1.5 max-w-[16rem]">
+      <div class="flex items-center gap-2 overflow-hidden">
         <span
-          v-for="(tag, index) in (thread.tags || []).slice(0, 3)"
+          v-for="(tag, index) in visibleTags"
           :key="index"
           :style="getTagStyles(tag)"
           :title="tag"
-          class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md max-w-[6rem]"
+          class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md max-w-[6rem] shrink-0"
         >
           <span class="truncate">{{ tag }}</span>
         </span>
-        <span v-if="thread.tags && thread.tags.length > 3" class="px-2 py-0.5 text-xs text-neutral-400">
-          +{{ thread.tags.length - 3 }} more
+        <span v-if="hiddenTagCount > 0" class="text-xs text-neutral-400 shrink-0">
+          +{{ hiddenTagCount }}
         </span>
       </div>
     </td>
 
     <!-- Status -->
-    <td class="px-6 py-1.5">
+    <td class="px-6 py-1.5 whitespace-nowrap">
       <select
         @click.stop
         :value="thread.status"
@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { ThreadTagOption, ThreadsSettings } from '@app/api'
 
 export interface BaseThreadData {
@@ -102,6 +103,11 @@ defineEmits<{
   'drag-leave': [e: DragEvent]
   'drop': [e: DragEvent, id: string]
 }>()
+
+const MAX_VISIBLE_TAGS = 3
+const allTags = computed(() => props.thread.tags || [])
+const visibleTags = computed(() => allTags.value.slice(0, MAX_VISIBLE_TAGS))
+const hiddenTagCount = computed(() => Math.max(0, allTags.value.length - MAX_VISIBLE_TAGS))
 
 const getTagStyles = (tagName: string) => {
   const color = props.availableTags?.find(t => t.name === tagName)?.color || '#A855F7'
