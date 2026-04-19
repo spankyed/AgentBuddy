@@ -238,6 +238,74 @@
     </CollapsibleSection>
     </div>
 
+    <!-- Terminal Scripts Section -->
+    <div class="border-t border-neutral-800 pt-8">
+      <CollapsibleSection label="Terminal Scripts" :default-open="true" class="mb-8">
+        <p class="text-sm text-neutral-500 mb-4">
+          Saved commands that can be run in new terminals via the ▶ button in the terminal header
+        </p>
+        <div class="space-y-3">
+          <!-- Existing scripts -->
+          <div
+            v-for="(script, index) in localScripts"
+            :key="script.id"
+            class="flex items-center gap-2"
+          >
+            <input
+              v-model="localScripts[index].label"
+              placeholder="Label"
+              @blur="saveScripts"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+              class="w-32 px-2 py-1 text-sm bg-neutral-800 border border-neutral-600 rounded text-neutral-200 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+            />
+            <input
+              v-model="localScripts[index].command"
+              placeholder="Command"
+              @blur="saveScripts"
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
+              class="flex-1 px-2 py-1 text-sm bg-neutral-800 border border-neutral-600 rounded text-neutral-200 font-mono focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+            />
+            <button
+              @click="deleteScript(index)"
+              class="p-1 text-neutral-500 hover:text-red-400 transition-colors flex-shrink-0"
+              title="Remove script"
+            >
+              <X :size="16" />
+            </button>
+          </div>
+
+          <!-- Add new script -->
+          <div class="flex items-center gap-2">
+            <input
+              v-model="newScriptLabel"
+              placeholder="Label"
+              @keydown.enter="addScript"
+              class="w-32 px-2 py-1 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-200 placeholder-neutral-600 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+            />
+            <input
+              v-model="newScriptCommand"
+              placeholder="Command"
+              @keydown.enter="addScript"
+              class="flex-1 px-2 py-1 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-200 placeholder-neutral-600 font-mono focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+            />
+            <button
+              @click="addScript"
+              :disabled="!newScriptLabel.trim() || !newScriptCommand.trim()"
+              class="p-1 transition-colors flex-shrink-0"
+              :class="newScriptLabel.trim() && newScriptCommand.trim() ? 'text-neutral-400 hover:text-white' : 'text-neutral-700 cursor-not-allowed'"
+              title="Add script"
+            >
+              <Plus :size="16" />
+            </button>
+          </div>
+
+          <p v-if="localScripts.length === 0" class="text-xs text-neutral-600">
+            No scripts saved. Add one above.
+          </p>
+        </div>
+      </CollapsibleSection>
+    </div>
+
     <!-- Code Hotkeys Section -->
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Code Hotkeys" :default-open="true" class="mb-8">
@@ -312,10 +380,10 @@ import { useSelector } from '@xstate/vue'
 import KeyboardShortcutInput from '@/core/components/design/KeyboardShortcutInput.vue'
 import CollapsibleSection from '@/core/components/design/CollapsibleSection.vue'
 import DirectorySelect from '@/core/components/design/DirectorySelect.vue'
-import { X } from 'lucide-vue-next'
+import { X, Plus } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { trpc } from '@/core/trpc'
-import type { CodeSettings } from '@app/api'
+import type { CodeSettings, TerminalScript } from '@app/api'
 
 interface Project {
   name: string
@@ -356,6 +424,11 @@ const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
 const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? false)
 const autoFetchIntervalSeconds = ref(props.settings?.autoFetchIntervalSeconds ?? 180)
+
+// Terminal scripts
+const localScripts = ref<TerminalScript[]>([...(props.settings?.terminalScripts ?? [])])
+const newScriptLabel = ref('')
+const newScriptCommand = ref('')
 
 // Get projects from general settings
 const settingsActor = applicationState.system.get('settings')
@@ -457,6 +530,28 @@ const saveDefaultDirectory = () => {
     path: ['defaultBaseDirectory'],
     value: defaultBaseDirectory.value
   })
+}
+
+const saveScripts = () => {
+  emit('update-setting', {
+    path: ['terminalScripts'],
+    value: [...localScripts.value]
+  })
+}
+
+const addScript = () => {
+  const label = newScriptLabel.value.trim()
+  const command = newScriptCommand.value.trim()
+  if (!label || !command) return
+  localScripts.value.push({ id: `ts_${Date.now()}`, label, command })
+  newScriptLabel.value = ''
+  newScriptCommand.value = ''
+  saveScripts()
+}
+
+const deleteScript = (index: number) => {
+  localScripts.value.splice(index, 1)
+  saveScripts()
 }
 
 const goToProjects = () => {

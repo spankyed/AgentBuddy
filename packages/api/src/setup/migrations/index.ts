@@ -10,8 +10,9 @@ export interface Migration {
 // Register migrations in version order
 import { migration as m010 } from './0.1.0';
 import { migration as m020 } from './0.2.0';
+import { migration as m023 } from './0.2.3';
 
-const migrations: Migration[] = [m010, m020];
+const migrations: Migration[] = [m010, m020, m023];
 
 /** Compare dot-separated numeric versions. Returns <0, 0, >0. */
 function compareVersions(a: string, b: string): number {
