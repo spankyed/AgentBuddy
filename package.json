@@ -28,6 +28,7 @@
     "unrelease": "bash build/release/unrelease.sh",
     "release:minor": "sh build/release/release.sh minor",
     "release:major": "sh build/release/release.sh major",
+    "release:no-migrate": "sh build/release/release.sh --skip-migration-check",
     "build-prod:signed": "sh -c 'set -a; . ./.env.signing; set +a; sh build/build.sh'",
     "rebuild": "cd packages/api && npm rebuild",
     "package:all": "electron-builder --mac --win --linux",

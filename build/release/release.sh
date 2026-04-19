@@ -1,13 +1,14 @@
 #!/bin/bash
 
 # Release script for AgentBuddy
-# Usage: npm run release [patch|minor|major] [--dry-run]
+# Usage: npm run release [patch|minor|major] [--dry-run] [--skip-migration-check]
 #
 # 1. Validates clean working tree
-# 2. Runs typecheck + tests
+# 2. Runs typecheck
 # 3. Bumps version in package.json
-# 4. Generates changelog from conventional commits
-# 5. Commits, tags, and pushes (triggering CI)
+# 4. Checks if default-settings.ts changed and requires a migration
+# 5. Generates changelog from conventional commits
+# 6. Commits, tags, and pushes (triggering CI)
 
 set -e
 
@@ -24,12 +25,14 @@ NC='\033[0m'
 # Parse arguments
 BUMP_TYPE="patch"
 DRY_RUN=false
+SKIP_MIGRATION_CHECK=false
 
 for arg in "$@"; do
   case "$arg" in
     patch|minor|major) BUMP_TYPE="$arg" ;;
     --dry-run) DRY_RUN=true ;;
-    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run]"; exit 1 ;;
+    --skip-migration-check) SKIP_MIGRATION_CHECK=true ;;
+    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run] [--skip-migration-check]"; exit 1 ;;
   esac
 done
 
@@ -54,15 +57,11 @@ npm run typecheck
 echo -e "${GREEN}✓${NC} Type checks passed"
 echo ""
 
-# Step 3: Run tests (disabled — e2e tests are stale boilerplate, fix separately)
-# echo -e "${BLUE}[3/6]${NC} Running tests..."
-# npm test
-# echo -e "${GREEN}✓${NC} Tests passed"
-# echo ""
+# (tests disabled — e2e tests are stale boilerplate, fix separately)
 
-# Step 4: Bump version
+# Step 3: Bump version
 CURRENT_VERSION=$(node -p "require('./package.json').version")
-echo -e "${BLUE}[4/6]${NC} Bumping version ($BUMP_TYPE)..."
+echo -e "${BLUE}[3/6]${NC} Bumping version ($BUMP_TYPE)..."
 
 # Use npm version to calculate the new version without committing
 npm version "$BUMP_TYPE" --no-git-tag-version > /dev/null 2>&1
@@ -71,15 +70,37 @@ NEW_VERSION=$(node -p "require('./package.json').version")
 echo "  $CURRENT_VERSION → $NEW_VERSION"
 
 if [ "$DRY_RUN" = true ]; then
+  # Check migration status for dry-run output
+  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+  MIGRATION_STATUS="no settings changes"
+  if [ -n "$LAST_TAG" ]; then
+    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
+    if [ -n "$SETTINGS_CHANGED" ]; then
+      MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
+      if [ -f "$MIGRATION_FILE" ]; then
+        MIGRATION_STATUS="settings changed, migration found ✓"
+      elif [ "$SKIP_MIGRATION_CHECK" = true ]; then
+        MIGRATION_STATUS="settings changed, no migration (skipped)"
+      else
+        MIGRATION_STATUS="settings changed, NO migration ✗"
+      fi
+    fi
+  fi
+
   # Revert the version bump
   npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
   echo ""
   echo -e "${YELLOW}[DRY RUN] Would create:${NC}"
   echo "  - Version bump: $CURRENT_VERSION → $NEW_VERSION"
+  echo "  - Migration check: $MIGRATION_STATUS"
   echo "  - Commit: chore(release): v$NEW_VERSION"
   echo "  - Tag: v$NEW_VERSION"
   echo "  - Push to origin (triggers CI build)"
   echo ""
+  if [[ "$MIGRATION_STATUS" == *"NO migration"* ]]; then
+    echo -e "${RED}Release would fail: missing migration for v$NEW_VERSION${NC}"
+    exit 1
+  fi
   echo -e "${YELLOW}Run without --dry-run to execute.${NC}"
   exit 0
 fi
@@ -87,10 +108,37 @@ fi
 echo -e "${GREEN}✓${NC} Version bumped"
 echo ""
 
+# Step 4: Check if default-settings.ts changed and requires a migration
+echo -e "${BLUE}[4/6]${NC} Checking for settings migration..."
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ "$SKIP_MIGRATION_CHECK" = true ]; then
+  echo -e "${YELLOW}⊘${NC} Migration check skipped (--skip-migration-check)"
+elif [ -z "$LAST_TAG" ]; then
+  echo -e "${GREEN}✓${NC} No previous release tag found, skipping check"
+else
+  SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/default-settings.ts)
+  if [ -n "$SETTINGS_CHANGED" ]; then
+    MIGRATION_FILE="packages/api/src/setup/migrations/$NEW_VERSION.ts"
+    if [ ! -f "$MIGRATION_FILE" ]; then
+      echo -e "${RED}✗ default-settings.ts has changed since $LAST_TAG but no migration found at:${NC}"
+      echo "    $MIGRATION_FILE"
+      echo ""
+      echo -e "  Create a migration for v$NEW_VERSION or re-run with ${YELLOW}--skip-migration-check${NC}"
+      # Revert version bump
+      npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
+      exit 1
+    fi
+    echo -e "${GREEN}✓${NC} Settings changed — migration found at $MIGRATION_FILE"
+  else
+    echo -e "${GREEN}✓${NC} No settings changes since $LAST_TAG"
+  fi
+fi
+echo ""
+
 # Step 5: Generate changelog
 echo -e "${BLUE}[5/6]${NC} Generating changelog..."
 
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+# LAST_TAG already computed in step 4
 if [ -n "$LAST_TAG" ]; then
   RANGE="$LAST_TAG..HEAD"
 else
