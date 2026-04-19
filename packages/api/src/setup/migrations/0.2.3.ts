@@ -3,11 +3,12 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.3',
-  description: 'Add default terminal scripts to code settings',
+  description: 'Add default terminal scripts to code settings, enable clickToChat for threads',
   up: () => {
     const data = settingsQueries.getSettings();
-    const codeSettings = data.plugins?.code;
 
+    // 1. Add default terminal scripts to code settings
+    const codeSettings = data.plugins?.code;
     if (codeSettings && codeSettings.terminalScripts === undefined) {
       settingsCommands.updateSettings('plugin', 'code', ['terminalScripts'], [
         { id: 'ts_default_0', label: 'Start', command: 'npm start' },
@@ -15,6 +16,12 @@ export const migration: Migration = {
         { id: 'ts_default_2', label: 'Build', command: 'npm run build' },
         { id: 'ts_default_3', label: 'Test', command: 'npm test' },
       ]);
+    }
+
+    // 2. Enable clickToChat for threads (default changed from false to true)
+    const threadsSettings = data.plugins?.threads;
+    if (threadsSettings?.chat?.clickToChat === false) {
+      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'clickToChat'], true);
     }
   }
 };
