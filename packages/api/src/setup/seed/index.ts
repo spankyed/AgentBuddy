@@ -546,9 +546,10 @@ export function runBootSeed(options?: { verbose?: boolean }): SeedResult | null 
     return null;
   }
 
-  // Skip settings during boot seed — createDefaultSettings() handles boot-time
-  // defaults via deep-merge. Settings are only seeded during interactive imports.
-  const result = seedData({ compiledDir, include: { settings: new Set() }, verbose: options?.verbose });
+  // Skip settings and notes during boot seed. Settings are handled by
+  // createDefaultSettings() via deep-merge. Notes are user-owned content —
+  // seeded once at first install, new notes on upgrade go through migrations.
+  const result = seedData({ compiledDir, include: { settings: new Set(), notes: new Set() }, verbose: options?.verbose });
   settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   return result;
 }
