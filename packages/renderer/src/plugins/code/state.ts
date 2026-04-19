@@ -310,7 +310,7 @@ const codeState = setup({
       if (context.pendingTabOrder !== undefined) {
         return
       }
-      saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId)
+      saveOpenTabs(context.openFiles, context.activeFilePath, context.panelTerminalId, context.panelTerminalExpanded)
       saveTabGroups(context.tabGroups)
     },
     addTab: assign(({ event, context }) => {
@@ -429,7 +429,7 @@ const codeState = setup({
     },
 
     restorePersistedTabs: enqueueActions(({ enqueue }) => {
-      const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal } = loadPersistedTabs()
+      const { tabs: persistedTabs, activeFilePath: persistedActive, panelTerminalId: persistedPanelTerminal, panelTerminalExpanded: persistedExpanded } = loadPersistedTabs()
       const persistedGroups = loadTabGroups()
 
       // Store the desired tab order
@@ -467,6 +467,7 @@ const codeState = setup({
         tabGroups: persistedGroups,
         activeFilePath: seededActive,
         panelTerminalId: persistedPanelTerminal,
+        panelTerminalExpanded: persistedExpanded,
         pendingTerminalTabIds: terminalTabIds.length > 0 ? terminalTabIds : undefined
       })
 
@@ -1258,7 +1259,7 @@ const codeState = setup({
           actions: ['openTerminalInTab', 'saveTabsAction']
         },
         TOGGLE_PANEL_TERMINAL: {
-          actions: 'togglePanelTerminal'
+          actions: ['togglePanelTerminal', 'saveTabsAction']
         },
         NAVIGATE_PREV_PANEL: {
           actions: 'navigatePrevPanel'

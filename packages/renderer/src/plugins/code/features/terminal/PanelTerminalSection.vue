@@ -320,15 +320,18 @@ const cancelRename = () => {
   renameValue.value = ''
 }
 
-// Watch expand/collapse and panelTerminalId changes
-watch([isExpanded, panelTerminalId], async ([expanded, termId], [wasExpanded, prevTermId]) => {
-  if (expanded && termId) {
+// Watch expand/collapse, panelTerminalId, and activeTerminalInfo (for when terminals list arrives after expand)
+watch([isExpanded, panelTerminalId, activeTerminalInfo], async ([expanded, termId, info]) => {
+  if (expanded && termId && info) {
     // Detach old terminal if switching
     if (attachedTerminalId && attachedTerminalId !== termId) {
       detachTerminal()
     }
-    await nextTick()
-    attachTerminal(termId)
+    // Only attach if not already attached to this terminal
+    if (attachedTerminalId !== termId) {
+      await nextTick()
+      attachTerminal(termId)
+    }
   } else if (!expanded || !termId) {
     detachTerminal()
   }
