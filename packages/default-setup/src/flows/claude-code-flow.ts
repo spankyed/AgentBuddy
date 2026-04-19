@@ -241,6 +241,29 @@ export default {
       ]],
       "Thread reverted",
     ),
+    // ─── CC commands ─────────────────────────────────────────────────
+    // Catch all /cc-* user commands via a single starts_with guard.
+    // The dispatcher action looks up the command in a handler registry,
+    // so adding a new cc- command never requires flow changes.
+    on(
+      "user.command",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.command starts_with 'cc-'",
+            steps: [action("CC: Run Command", {
+              label: "cc-command",
+              map: {
+                command: "$.event.data.payload.command",
+                text: "$.event.data.payload.text",
+                threadId: "$.event.data.payload.threadId",
+              },
+            })],
+          },
+        ], undefined, "CC Command Guard"),
+      ]],
+      "CC command",
+    ),
     on(
       "thread.fork",
       [[
