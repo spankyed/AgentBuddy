@@ -198,7 +198,7 @@ const getShellName = (shell?: string) => shell?.split('/').pop() ?? 'terminal'
 // Local state
 const isExpanded = useSelector(codeActor, (state) => state.context.panelTerminalExpanded)
 const container = ref<HTMLElement>()
-const listWidth = ref(115)
+const listWidth = ref(125)
 const MIN_LIST_WIDTH = 80
 const MAX_LIST_WIDTH = 300
 
