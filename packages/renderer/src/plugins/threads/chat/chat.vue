@@ -37,8 +37,8 @@
           :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
           :quick-prompt-cursor="quickPromptCursor"
           :recording-limit-minutes="recordingLimitMinutes"
-          @send-message="(text: string, references?: MessageReferences) => actor.send({ type: 'SEND_MESSAGE', text, references })"
-          @send-command="(command: string, text: string, references?: MessageReferences) => actor.send({ type: 'SEND_COMMAND', command, text, references })"
+          @send-message="handleSendMessage"
+          @send-command="handleSendCommand"
           @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
           @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
           @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
@@ -148,6 +148,7 @@ const isBusy = useSelector(actor, ({ context }) => {
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
+const pendingScrollOnSend = ref(false)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
 const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
@@ -159,6 +160,16 @@ function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   const el = messagesContainer.value
   if (!el) return
   el.scrollTo({ top: el.scrollHeight, behavior })
+}
+
+function handleSendMessage(text: string, references?: MessageReferences) {
+  actor.send({ type: 'SEND_MESSAGE', text, references })
+  pendingScrollOnSend.value = true
+}
+
+function handleSendCommand(command: string, text: string, references?: MessageReferences) {
+  actor.send({ type: 'SEND_COMMAND', command, text, references })
+  pendingScrollOnSend.value = true
 }
 
 function onScroll() {
@@ -354,7 +365,15 @@ watch(messages, async (newMsgs, oldMsgs) => {
       requestAnimationFrame(() => scrollToBottom('instant'))
     })
   } else {
-    if (isNearBottom.value) {
+    if (pendingScrollOnSend.value) {
+      pendingScrollOnSend.value = false
+      scrollToBottom('instant')
+      // Double rAF to catch async content (Tiptap) that renders after layout.
+      requestAnimationFrame(() => {
+        scrollToBottom('instant')
+        requestAnimationFrame(() => scrollToBottom('instant'))
+      })
+    } else if (isNearBottom.value) {
       scrollToBottom('smooth')
       // Follow-up to catch async content (Tiptap) that renders after layout.
       requestAnimationFrame(() => {
