@@ -594,7 +594,9 @@ const handleSubmit = async () => {
   if (props.disabled) return
   const editor = tiptapRef.value?.editor
   if (!editor) return
-  const md = ((editor.storage as any).markdown.getMarkdown() as string).trim()
+  const md = ((editor.storage as any).markdown.getMarkdown() as string)
+    .replace(/(\n&nbsp;)+$/, '')  // strip trailing empty-line placeholders from EmptyLinePreserver
+    .trim()
   const textContent = editor.state.doc.textContent.trim()
   if (textContent || hasAttachments.value) {
     const entityId = props.currentThread?.id || 'chat-attachments'
