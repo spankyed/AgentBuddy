@@ -132,6 +132,8 @@ interface PromptEntity extends BaseEntity {
     inputs: Record<string, TemplateInput>;
     templateFn: string;
     outputSchema?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created prompts. */
+    sourceHash?: string;
     createdAt: number;
     updatedAt: number;
 }

@@ -268,6 +268,8 @@ interface PromptEntity extends BaseEntity {
     inputs: Record<string, TemplateInput>;
     templateFn: string;
     outputSchema?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created prompts. */
+    sourceHash?: string;
     createdAt: number;
     updatedAt: number;
 }
@@ -311,21 +313,6 @@ declare const LogEntry: z.ZodObject<{
 }>;
 type LogEntry = z.infer<typeof LogEntry>;
 
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
-
 interface ActionParameter {
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
     description?: string;
@@ -342,6 +329,8 @@ interface ActionEntity {
     input: Record<string, ActionParameter>;
     actionFn: string;
     output?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
+    sourceHash?: string;
     createdAt: number;
     updatedAt: number;
 }
@@ -351,6 +340,21 @@ interface ActionsStartupData {
     totalPages: number;
     totalCount: number;
     categories?: Category[];
+}
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
 }
 
 /**
@@ -1192,6 +1196,7 @@ type ThreadConnectedData = {
     threads: ThreadExtended[];
     availableTags: ThreadTagOption[];
     settings?: ThreadsSettings | null;
+    chatStates?: Record<string, string>;
 };
 type AgentThreadData = {
     id?: ThreadEntity['id'];
@@ -2155,6 +2160,141 @@ declare const events: {
         threadId: string;
         useWorktree: boolean;
     }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"EXECUTE_QUERY">;
+        systemId: zod.ZodLiteral<"database">;
+        code: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        code: string;
+        type: "EXECUTE_QUERY";
+        systemId: "database";
+    }, {
+        code: string;
+        type: "EXECUTE_QUERY";
+        systemId: "database";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXECUTE_TRANSACTION">;
+        systemId: zod.ZodLiteral<"database">;
+        code: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        code: string;
+        type: "EXECUTE_TRANSACTION";
+        systemId: "database";
+    }, {
+        code: string;
+        type: "EXECUTE_TRANSACTION";
+        systemId: "database";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GENERATE_AI_QUERY">;
+        systemId: zod.ZodLiteral<"database">;
+        prompt: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        prompt: string;
+        type: "GENERATE_AI_QUERY";
+        systemId: "database";
+    }, {
+        prompt: string;
+        type: "GENERATE_AI_QUERY";
+        systemId: "database";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REFRESH_SCHEMA">;
+        systemId: zod.ZodLiteral<"database">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REFRESH_SCHEMA";
+        systemId: "database";
+    }, {
+        type: "REFRESH_SCHEMA";
+        systemId: "database";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TRACE_FLOWS">;
+        systemId: zod.ZodLiteral<"database">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TRACE_FLOWS";
+        systemId: "database";
+    }, {
+        type: "GET_TRACE_FLOWS";
+        systemId: "database";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_FLOW_EVENTS">;
+        systemId: zod.ZodLiteral<"database">;
+        flowId: zod.ZodString;
+        offset: zod.ZodOptional<zod.ZodNumber>;
+        limit: zod.ZodOptional<zod.ZodNumber>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_FLOW_EVENTS";
+        systemId: "database";
+        flowId: string;
+        offset?: number | undefined;
+        limit?: number | undefined;
+    }, {
+        type: "GET_FLOW_EVENTS";
+        systemId: "database";
+        flowId: string;
+        offset?: number | undefined;
+        limit?: number | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_NODE_DETAILS">;
+        systemId: zod.ZodLiteral<"database">;
+        nodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_NODE_DETAILS";
+        systemId: "database";
+        nodeId: string;
+    }, {
+        type: "GET_NODE_DETAILS";
+        systemId: "database";
+        nodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_DATABASE">;
+        systemId: zod.ZodLiteral<"database">;
+        path: zod.ZodString;
+        name: zod.ZodOptional<zod.ZodString>;
+        databases: zod.ZodArray<zod.ZodEnum<["lmdb", "volatileLmdb", "secretsLmdb"]>, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_DATABASE";
+        systemId: "database";
+        path: string;
+        databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
+        name?: string | undefined;
+    }, {
+        type: "EXPORT_DATABASE";
+        systemId: "database";
+        path: string;
+        databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
+        name?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_DATABASE">;
+        systemId: zod.ZodLiteral<"database">;
+        path: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_DATABASE";
+        systemId: "database";
+        path: string;
+    }, {
+        type: "IMPORT_DATABASE";
+        systemId: "database";
+        path: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_BACKUP_INFO">;
+        systemId: zod.ZodLiteral<"database">;
+        path: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_BACKUP_INFO";
+        systemId: "database";
+        path: string;
+    }, {
+        type: "GET_BACKUP_INFO";
+        systemId: "database";
+        path: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_DATABASE">;
+        systemId: zod.ZodLiteral<"database">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_DATABASE";
+        systemId: "database";
+    }, {
+        type: "RESET_DATABASE";
+        systemId: "database";
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"GET_SETTINGS">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -2294,15 +2434,15 @@ declare const events: {
         }, "strip", zod.ZodTypeAny, {
             settings: string[] | null;
             actions: string[] | null;
-            prompts: string[] | null;
             flows: string[] | null;
+            prompts: string[] | null;
             library: string[] | null;
             notes: string[] | null;
         }, {
             settings: string[] | null;
             actions: string[] | null;
-            prompts: string[] | null;
             flows: string[] | null;
+            prompts: string[] | null;
             library: string[] | null;
             notes: string[] | null;
         }>>;
@@ -2316,8 +2456,8 @@ declare const events: {
         include?: {
             settings: string[] | null;
             actions: string[] | null;
-            prompts: string[] | null;
             flows: string[] | null;
+            prompts: string[] | null;
             library: string[] | null;
             notes: string[] | null;
         } | undefined;
@@ -2330,8 +2470,8 @@ declare const events: {
         include?: {
             settings: string[] | null;
             actions: string[] | null;
-            prompts: string[] | null;
             flows: string[] | null;
+            prompts: string[] | null;
             library: string[] | null;
             notes: string[] | null;
         } | undefined;
@@ -2558,141 +2698,6 @@ declare const events: {
         prefix: string;
         index: number;
         direction: 1 | -1;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"EXECUTE_QUERY">;
-        systemId: zod.ZodLiteral<"database">;
-        code: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        code: string;
-        type: "EXECUTE_QUERY";
-        systemId: "database";
-    }, {
-        code: string;
-        type: "EXECUTE_QUERY";
-        systemId: "database";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"EXECUTE_TRANSACTION">;
-        systemId: zod.ZodLiteral<"database">;
-        code: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        code: string;
-        type: "EXECUTE_TRANSACTION";
-        systemId: "database";
-    }, {
-        code: string;
-        type: "EXECUTE_TRANSACTION";
-        systemId: "database";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GENERATE_AI_QUERY">;
-        systemId: zod.ZodLiteral<"database">;
-        prompt: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        prompt: string;
-        type: "GENERATE_AI_QUERY";
-        systemId: "database";
-    }, {
-        prompt: string;
-        type: "GENERATE_AI_QUERY";
-        systemId: "database";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REFRESH_SCHEMA">;
-        systemId: zod.ZodLiteral<"database">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REFRESH_SCHEMA";
-        systemId: "database";
-    }, {
-        type: "REFRESH_SCHEMA";
-        systemId: "database";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TRACE_FLOWS">;
-        systemId: zod.ZodLiteral<"database">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_TRACE_FLOWS";
-        systemId: "database";
-    }, {
-        type: "GET_TRACE_FLOWS";
-        systemId: "database";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_FLOW_EVENTS">;
-        systemId: zod.ZodLiteral<"database">;
-        flowId: zod.ZodString;
-        offset: zod.ZodOptional<zod.ZodNumber>;
-        limit: zod.ZodOptional<zod.ZodNumber>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_FLOW_EVENTS";
-        systemId: "database";
-        flowId: string;
-        offset?: number | undefined;
-        limit?: number | undefined;
-    }, {
-        type: "GET_FLOW_EVENTS";
-        systemId: "database";
-        flowId: string;
-        offset?: number | undefined;
-        limit?: number | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_NODE_DETAILS">;
-        systemId: zod.ZodLiteral<"database">;
-        nodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_NODE_DETAILS";
-        systemId: "database";
-        nodeId: string;
-    }, {
-        type: "GET_NODE_DETAILS";
-        systemId: "database";
-        nodeId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"EXPORT_DATABASE">;
-        systemId: zod.ZodLiteral<"database">;
-        path: zod.ZodString;
-        name: zod.ZodOptional<zod.ZodString>;
-        databases: zod.ZodArray<zod.ZodEnum<["lmdb", "volatileLmdb", "secretsLmdb"]>, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "EXPORT_DATABASE";
-        systemId: "database";
-        path: string;
-        databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
-        name?: string | undefined;
-    }, {
-        type: "EXPORT_DATABASE";
-        systemId: "database";
-        path: string;
-        databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
-        name?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_DATABASE">;
-        systemId: zod.ZodLiteral<"database">;
-        path: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_DATABASE";
-        systemId: "database";
-        path: string;
-    }, {
-        type: "IMPORT_DATABASE";
-        systemId: "database";
-        path: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_BACKUP_INFO">;
-        systemId: zod.ZodLiteral<"database">;
-        path: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_BACKUP_INFO";
-        systemId: "database";
-        path: string;
-    }, {
-        type: "GET_BACKUP_INFO";
-        systemId: "database";
-        path: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_DATABASE">;
-        systemId: zod.ZodLiteral<"database">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_DATABASE";
-        systemId: "database";
-    }, {
-        type: "RESET_DATABASE";
-        systemId: "database";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EMPTY">;
         systemId: zod.ZodLiteral<"logs">;
@@ -3896,16 +3901,16 @@ declare const events: {
         base: zod.ZodOptional<zod.ZodString>;
         draft: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        title: string;
         type: "pr.CREATE_PR";
         systemId: "code";
+        title: string;
         body: string;
         base?: string | undefined;
         draft?: boolean | undefined;
     }, {
-        title: string;
         type: "pr.CREATE_PR";
         systemId: "code";
+        title: string;
         body: string;
         base?: string | undefined;
         draft?: boolean | undefined;
@@ -4340,9 +4345,9 @@ declare const events: {
         noteType: zod.ZodOptional<zod.ZodEnum<["document", "tasklist", "task"]>>;
         completed: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        title: string;
         type: "CREATE_NOTE";
         systemId: "notes";
+        title: string;
         completed?: boolean | undefined;
         content?: string | undefined;
         parentId?: string | undefined;
@@ -4350,9 +4355,9 @@ declare const events: {
         skipContentSync?: boolean | undefined;
         noteType?: "document" | "tasklist" | "task" | undefined;
     }, {
-        title: string;
         type: "CREATE_NOTE";
         systemId: "notes";
+        title: string;
         completed?: boolean | undefined;
         content?: string | undefined;
         parentId?: string | undefined;
@@ -4374,8 +4379,8 @@ declare const events: {
         type: "UPDATE_NOTE";
         systemId: "notes";
         completed?: boolean | undefined;
-        title?: string | undefined;
         content?: string | undefined;
+        title?: string | undefined;
         icon?: string | null | undefined;
         hideCompletedChildren?: boolean | undefined;
         favorite?: boolean | undefined;
@@ -4384,8 +4389,8 @@ declare const events: {
         type: "UPDATE_NOTE";
         systemId: "notes";
         completed?: boolean | undefined;
-        title?: string | undefined;
         content?: string | undefined;
+        title?: string | undefined;
         icon?: string | null | undefined;
         hideCompletedChildren?: boolean | undefined;
         favorite?: boolean | undefined;
@@ -4716,6 +4721,83 @@ declare const events: {
         commands: CommandItem[];
         pluginId: "threads";
     } | {
+        type: "DATABASE_REFRESH";
+        data: DatabaseStartupData;
+        pluginId: "database";
+    } | {
+        type: "QUERY_RESULT";
+        result: any;
+        executionTime: number;
+        pluginId: "database";
+    } | {
+        type: "QUERY_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "TRANSACTION_RESULT";
+        result: any;
+        executionTime: number;
+        pluginId: "database";
+    } | {
+        type: "TRANSACTION_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "AI_QUERY_LOADING";
+        pluginId: "database";
+    } | {
+        type: "AI_QUERY_GENERATED";
+        query: string;
+        pluginId: "database";
+    } | {
+        type: "TRACE_FLOWS_RESULT";
+        flows: TNodeEntity[];
+        pluginId: "database";
+    } | {
+        type: "FLOW_EVENTS_RESULT";
+        flowId: string;
+        events: TNodeEntity[];
+        hasMore: boolean;
+        pluginId: "database";
+    } | {
+        type: "NODE_DETAILS_RESULT";
+        nodeId: string;
+        details: TNodeEntity | null;
+        pluginId: "database";
+    } | {
+        type: "EXPORT_DATABASE_SUCCESS";
+        path: string;
+        pluginId: "database";
+    } | {
+        type: "EXPORT_DATABASE_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "IMPORT_DATABASE_SUCCESS";
+        message?: string | undefined;
+        pluginId: "database";
+    } | {
+        type: "IMPORT_DATABASE_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
+        type: "BACKUP_INFO_RESULT";
+        info: {
+            timestamp: number;
+            databases: string[];
+            size: number;
+            hasMedia?: boolean;
+        } | null;
+        pluginId: "database";
+    } | {
+        type: "RESET_DATABASE_SUCCESS";
+        message: string;
+        pluginId: "database";
+    } | {
+        type: "RESET_DATABASE_ERROR";
+        error: string;
+        pluginId: "database";
+    } | {
         type: "SETTINGS_LOADED";
         data: SettingsData;
         faqs: FAQItem[];
@@ -4886,83 +4968,6 @@ declare const events: {
         type: "DSL_EXPORT_FAILED";
         errors: string[];
         pluginId: "flows";
-    } | {
-        type: "DATABASE_REFRESH";
-        data: DatabaseStartupData;
-        pluginId: "database";
-    } | {
-        type: "QUERY_RESULT";
-        result: any;
-        executionTime: number;
-        pluginId: "database";
-    } | {
-        type: "QUERY_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "TRANSACTION_RESULT";
-        result: any;
-        executionTime: number;
-        pluginId: "database";
-    } | {
-        type: "TRANSACTION_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "AI_QUERY_LOADING";
-        pluginId: "database";
-    } | {
-        type: "AI_QUERY_GENERATED";
-        query: string;
-        pluginId: "database";
-    } | {
-        type: "TRACE_FLOWS_RESULT";
-        flows: TNodeEntity[];
-        pluginId: "database";
-    } | {
-        type: "FLOW_EVENTS_RESULT";
-        flowId: string;
-        events: TNodeEntity[];
-        hasMore: boolean;
-        pluginId: "database";
-    } | {
-        type: "NODE_DETAILS_RESULT";
-        nodeId: string;
-        details: TNodeEntity | null;
-        pluginId: "database";
-    } | {
-        type: "EXPORT_DATABASE_SUCCESS";
-        path: string;
-        pluginId: "database";
-    } | {
-        type: "EXPORT_DATABASE_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "IMPORT_DATABASE_SUCCESS";
-        message?: string | undefined;
-        pluginId: "database";
-    } | {
-        type: "IMPORT_DATABASE_ERROR";
-        error: string;
-        pluginId: "database";
-    } | {
-        type: "BACKUP_INFO_RESULT";
-        info: {
-            timestamp: number;
-            databases: string[];
-            size: number;
-            hasMedia?: boolean;
-        } | null;
-        pluginId: "database";
-    } | {
-        type: "RESET_DATABASE_SUCCESS";
-        message: string;
-        pluginId: "database";
-    } | {
-        type: "RESET_DATABASE_ERROR";
-        error: string;
-        pluginId: "database";
     } | {
         type: "LOGS_CONNECTED";
         logs: LogEntry[];
@@ -7464,6 +7469,7 @@ declare const services: {
                 input?: Record<string, any>;
                 actionFn: string;
                 output?: any;
+                sourceHash?: string;
             }) => ActionEntity;
             readonly update: (id: EARS.EntityId, updates: {
                 label?: string;
@@ -7472,17 +7478,13 @@ declare const services: {
                 input?: Record<string, any>;
                 actionFn?: string;
                 output?: any;
+                sourceHash?: string;
             }) => void;
             readonly delete: (id: EARS.EntityId) => void;
         };
         readonly chatQueries: {
             readonly hasRequiredApiKeys: () => boolean;
-            readonly threadArtifacts: (threadId: EARS.EntityId) => {
-                id: `Agent-${string}` | `Brain-${string}` | `Message-${string}` | `Thread-${string}` | `Relation-${string}` | `Artifact-${string}` | `Flow-${string}` | `Node-${string}` | `TNode-${string}` | `Prompt-${string}` | `Action-${string}` | `Document-${string}` | `Collection-${string}` | `SearchIndex-${string}` | `IndexedDoc-${string}` | `Terminal-${string}` | `Directory-${string}` | `Settings-${string}` | `FAQ-${string}` | `Secret-${string}` | `Note-${string}`;
-                type: unknown;
-                title: unknown;
-                content: unknown;
-            }[];
+            readonly threadArtifacts: (threadId: EARS.EntityId) => ArtifactItem[];
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
             readonly connectedData: () => AgentConnectedData;
@@ -7652,11 +7654,11 @@ declare const services: {
             readonly getAllDocuments: () => DocumentDTO[];
         };
         readonly libraryCommands: {
-            readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string) => DocumentDTO;
-            readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId) => DocumentDTO;
+            readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, sourceHash?: string) => DocumentDTO;
+            readonly updateDocument: (id: EARS.EntityId, name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, sourceHash?: string) => DocumentDTO;
             readonly deleteDocument: (id: EARS.EntityId) => void;
-            readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string) => CollectionDTO;
-            readonly updateCollection: (id: EARS.EntityId, name: string, description?: string) => CollectionDTO;
+            readonly createCollection: (name: string, description?: string, parentId?: EARS.EntityId, id?: string, sourceHash?: string) => CollectionDTO;
+            readonly updateCollection: (id: EARS.EntityId, name: string, description?: string, sourceHash?: string) => CollectionDTO;
             readonly deleteCollection: (id: EARS.EntityId) => void;
             readonly moveDocument: (documentId: EARS.EntityId, newCollectionId?: EARS.EntityId) => DocumentDTO;
             readonly renameItem: (id: EARS.EntityId, name: string, type: "document" | "folder") => LibraryItem;
@@ -7686,6 +7688,7 @@ declare const services: {
                 templateFn: string;
                 inputs?: Record<string, any>;
                 category?: string;
+                sourceHash?: string;
             }) => PromptEntity;
             update: (id: EARS.EntityId, updates: {
                 label?: string;
@@ -7693,6 +7696,7 @@ declare const services: {
                 templateFn?: string;
                 inputs?: Record<string, any>;
                 category?: string;
+                sourceHash?: string;
             }) => void;
             delete: (id: EARS.EntityId) => void;
         };
