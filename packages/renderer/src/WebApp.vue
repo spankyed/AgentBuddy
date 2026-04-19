@@ -35,7 +35,7 @@
                 orientation="vertical"
                 :collapsed="panelSizes.canvasHeight >= 93"
                 @resize="handleCanvasResize"
-                @double-click="handleCanvasDoubleClick"
+                @click="handleCanvasClick"
                 @right-click="handleChatMaximize"
             />
 
@@ -72,7 +72,7 @@
             orientation="horizontal"
             :collapsed="!isPanelOpen"
             @resize="handleInspectionResize"
-            @double-click="handleInspectionDoubleClick"
+            @click="handleInspectionClick"
         />
 
         <!-- Context Panel -->
@@ -207,7 +207,7 @@ const handleInspectionResize = (delta: number) => {
   send({ type: 'RESIZE_PANEL', panel: 'inspection', size: newWidth });
 }
 
-const handleCanvasDoubleClick = () => {
+const handleCanvasClick = () => {
   // Toggle between collapsed (thread bar only) and default (50/50)
   const isCollapsed = panelSizes.value.canvasHeight >= 93;
   send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 95 });
@@ -216,7 +216,7 @@ const handleCanvasDoubleClick = () => {
 const handleChatMaximize = () => send({ type: 'MAXIMIZE_CHAT' })
 const handleChatRestore = () => send({ type: 'RESTORE_CHAT' })
 
-const handleInspectionDoubleClick = () => {
+const handleInspectionClick = () => {
   // Toggle inspection panel between collapsed and default
   send({ type: 'TOGGLE_INSPECTION_PANEL' });
 }

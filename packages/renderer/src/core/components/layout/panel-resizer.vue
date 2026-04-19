@@ -6,7 +6,6 @@
       { 'panel-resizer--dragging': isDragging, 'panel-resizer--collapsed': collapsed }
     ]"
     @mousedown="startDrag"
-    @dblclick="handleDoubleClick"
     @contextmenu="onContextMenu"
   >
     <div class="panel-resizer__handle" />
@@ -31,23 +30,29 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'resize', delta: number): void
-  (e: 'double-click'): void
+  (e: 'click'): void
   (e: 'right-click'): void
 }>()
 
+const DRAG_THRESHOLD = 3
+
 const isDragging = ref(false)
 let startPosition = 0
-let startSize = 0
+let startX = 0
+let startY = 0
+let clickIntent = true
 
 const startDrag = (e: MouseEvent) => {
   e.preventDefault()
 
   if (props.collapsed) {
-    emit('double-click')
+    emit('click')
     return
   }
 
-  isDragging.value = true
+  clickIntent = true
+  startX = e.clientX
+  startY = e.clientY
   startPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
 
   document.addEventListener('mousemove', handleDrag)
@@ -57,7 +62,15 @@ const startDrag = (e: MouseEvent) => {
 }
 
 const handleDrag = (e: MouseEvent) => {
-  if (!isDragging.value) return
+  const dx = Math.abs(e.clientX - startX)
+  const dy = Math.abs(e.clientY - startY)
+
+  if (clickIntent && dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return
+
+  if (clickIntent) {
+    clickIntent = false
+    isDragging.value = true
+  }
 
   const currentPosition = props.orientation === 'horizontal' ? e.clientX : e.clientY
   const delta = currentPosition - startPosition
@@ -67,15 +80,17 @@ const handleDrag = (e: MouseEvent) => {
 }
 
 const stopDrag = () => {
-  isDragging.value = false
   document.removeEventListener('mousemove', handleDrag)
   document.removeEventListener('mouseup', stopDrag)
   document.body.style.cursor = ''
   document.body.style.userSelect = ''
-}
 
-const handleDoubleClick = () => {
-  emit('double-click')
+  if (clickIntent) {
+    emit('click')
+  }
+
+  clickIntent = false
+  isDragging.value = false
 }
 
 // Suppress the browser context menu on the resizer and emit a simple
