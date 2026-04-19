@@ -258,6 +258,12 @@ const permissionOptions: Array<{
     tooltip: 'Auto-accept file edits; still prompt for Bash',
     description: 'Auto-accepts file edits',
   },
+  {
+    value: 'bypassPermissions',
+    label: 'Bypass',
+    tooltip: 'Skip all permission prompts (edits + bash)',
+    description: 'Bypasses all permissions',
+  },
 ]
 
 const permissionMode = computed<PermissionMode>(

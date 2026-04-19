@@ -17,6 +17,7 @@ import { brain } from '../brain/system';
 import services from '@/services';
 import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/helpers/debug/logger';
+import { getHandle } from '@/services/claude-code/handle-store';
 import type { FieldContent } from '@/systems/library/types';
 
 const logger = createLogger('threads');
@@ -794,6 +795,26 @@ export const threadsSystem = setup({
       }
       const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
       const nextContent = { ...prevContent, permissionMode: mode };
+
+      // If switching to bypass and there's a paused control request, auto-approve it.
+      if (mode === 'bypassPermissions') {
+        const thread = repository.threadQueries.byId(threadId as EARS.EntityId) as any;
+        const pending = thread?.context?.claudeCode?.pendingControlRequest;
+        if (pending?.requestId) {
+          const cliHandle = getHandle(threadId);
+          if (cliHandle) {
+            cliHandle.respond(pending.requestId, { behavior: 'allow', updatedInput: pending.originalInput ?? {} });
+            // Clear pending state and resume.
+            const ctx = thread.context ?? {};
+            repository.threadCommands.update(threadId as EARS.EntityId, {
+              context: { ...ctx, claudeCode: { ...ctx.claudeCode, pendingControlRequest: undefined, isRunning: true } },
+            } as any);
+            // Update artifact chat state to 'working'.
+            (nextContent as any).chatState = 'working';
+          }
+        }
+      }
+
       services.artifact.updateAndNotify(existing.id, {
         content: nextContent,
         threadId: threadId as EARS.EntityId,

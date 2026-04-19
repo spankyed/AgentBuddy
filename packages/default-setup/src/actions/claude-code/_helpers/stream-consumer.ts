@@ -314,6 +314,16 @@ export async function consumeStream(
           continue;
         }
 
+        // Auto-approve ALL tool requests when bypass mode is active (mid-turn aware).
+        if (req.subtype === 'can_use_tool') {
+          const artifactMode = readSessionPermissionMode(services, threadId);
+          if (artifactMode === 'bypassPermissions') {
+            log.debug('bypass: auto-approved tool', { tool: req.tool_name });
+            handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
+            continue;
+          }
+        }
+
         // Auto-approve file edits when the artifact's permission mode is
         // 'acceptEdits' (the "Auto" toggle) OR the user opted in mid-turn.
         if (req.subtype === 'can_use_tool' && FILE_MUTATION_TOOLS.has(req.tool_name)) {
