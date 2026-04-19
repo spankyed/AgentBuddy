@@ -1,7 +1,9 @@
+const isDev = import.meta.env.DEV;
+
 export const WINDOW_CONFIG = {
   // Main window dimensions
-  WIDTH: 1920,
-  HEIGHT: 1200,
+  WIDTH: isDev ? 1400 : 1920,
+  HEIGHT: isDev ? 900 : 1200,
   MIN_WIDTH: 900,
   MIN_HEIGHT: 600,
   
