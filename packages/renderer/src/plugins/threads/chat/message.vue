@@ -67,14 +67,17 @@
 
       <!-- Bubble (visual styling + overflow constraint) -->
       <div
+        ref="bubbleRef"
         :class="[
-          'rounded-xl px-4 py-3 transition-all duration-200 overflow-hidden',
+          'rounded-xl px-4 py-3 transition-all duration-200 overflow-hidden relative',
           isUser
             ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
             : ' text-neutral-100 border border-neutral-800',
           isUser && isCommand && 'command-bubble',
           (message as any).status === 'cancelled' ? 'opacity-50' : 'hover:shadow-md',
+          isUser && isTruncated && !userExpanded && 'max-h-[200px] cursor-pointer',
         ]"
+        @click="isUser && isTruncated && !userExpanded && (userExpanded = true)"
       >
         <!-- Attachments: files then images, horizontal scroll -->
         <div v-if="message.references?.files?.length || message.references?.images?.length"
@@ -119,6 +122,14 @@
           <span class="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-pulse" style="animation-delay: 200ms"></span>
           <span class="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-pulse" style="animation-delay: 400ms"></span>
         </div>
+
+        <!-- Truncation overlay for long user messages -->
+        <div v-if="isUser && isTruncated && !userExpanded"
+          class="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-neutral-800 to-transparent flex items-end justify-center pb-2 pointer-events-none">
+          <span class="text-xs text-neutral-400 flex items-center gap-1">
+            <ChevronDown :size="14" /> Click to view
+          </span>
+        </div>
       </div>
       </template>
 
@@ -151,9 +162,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUpdated } from 'vue'
 import type { MessageEntity } from '@app/api'
-import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown } from 'lucide-vue-next'
+import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
@@ -182,6 +193,24 @@ const emit = defineEmits<ChatMessageEmits>()
 const expanded = ref(false)
 const revertMenu = useContextMenu()
 
+const isUser = computed(() => props.message.sender === 'user')
+const isCommand = computed(() => props.message.isCommand ?? false)
+
+// Long user message truncation
+const bubbleRef = ref<HTMLElement | null>(null)
+const userExpanded = ref(false)
+const isTruncated = ref(false)
+const MAX_USER_MSG_HEIGHT = 200
+
+function checkTruncation() {
+  if (bubbleRef.value && isUser.value) {
+    isTruncated.value = bubbleRef.value.scrollHeight > MAX_USER_MSG_HEIGHT
+  }
+}
+
+onMounted(checkTruncation)
+onUpdated(checkTruncation)
+
 const revertMenuItems = [
   {
     label: 'Revert & restore files',
@@ -194,9 +223,6 @@ const revertMenuItems = [
 function openRevertMenu(e: MouseEvent) {
   revertMenu.open(e, revertMenuItems.length)
 }
-
-const isUser = computed(() => props.message.sender === 'user')
-const isCommand = computed(() => props.message.isCommand ?? false)
 
 // Split aside text into primary outcome and secondary context at the " — " separator
 const asideOutcome = computed(() => {
