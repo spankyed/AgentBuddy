@@ -60,13 +60,21 @@ export type Event =
   | { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
   | { type: 'CODE_CONNECTED' };
 
+// Pre-compiled regex patterns for OSC sequence detection (hot path — runs on every terminal data event)
+const OSC_PATTERNS = [
+  /\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/,       // OSC 7
+  /\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/,                 // OSC 633
+  /\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/,            // OSC 1337
+] as const
+
 // Shared handler setup for terminal output/exit events (used by both create and restore)
 const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
   terminalService.onData(terminalInfo.id, (data) => {
-    const osc7Match = data.match(/\x1b\]7;file:\/\/[^\/]*(\/.+?)(?:\x07|\x1b\\)/)
-    const osc633Match = data.match(/\x1b\]633;P;Cwd=(.+?)(?:\x07|\x1b\\)/)
-    const osc1337Match = data.match(/\x1b\]1337;CurrentDir=(.+?)(?:\x07|\x1b\\)/)
-    const cwdMatch = osc7Match || osc633Match || osc1337Match
+    let cwdMatch: RegExpMatchArray | null = null
+    for (const pattern of OSC_PATTERNS) {
+      cwdMatch = data.match(pattern)
+      if (cwdMatch) break
+    }
 
     if (cwdMatch) {
       try {

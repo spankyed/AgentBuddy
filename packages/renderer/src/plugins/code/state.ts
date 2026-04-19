@@ -28,6 +28,13 @@ export function setEditorSelectionGetter(getter: (() => string) | null) {
 
 const ALL_PANELS: PanelType[] = ['explorer', 'search', 'commit', 'pr', 'actions', 'prompts'];
 
+/** IDs of terminals currently open as canvas tabs */
+function getTabbedTerminalIds(openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[]): Set<string> {
+  return new Set(
+    openFiles.filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
+  )
+}
+
 export interface OpenFile {
   path: string
   content: string
@@ -716,9 +723,7 @@ const codeState = setup({
     }),
     openTerminal: enqueueActions(({ enqueue, context, system }) => {
       const terminals: TerminalInfo[] = system.get('terminal')?.getSnapshot()?.context?.terminals || []
-      const tabbedIds = new Set(
-        context.openFiles.filter((f: any) => f.isTerminal).map((f: any) => f.terminalInfo.id)
-      )
+      const tabbedIds = getTabbedTerminalIds(context.openFiles)
 
       if (terminals.length === 0) {
         // No terminals — create one (will be routed to panel by child actor)
