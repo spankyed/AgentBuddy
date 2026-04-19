@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full bg-neutral-900">
     <ThreadsHeader />
     <!-- Tab Bar -->
-    <div class="flex items-center min-h-[37px] border-b border-neutral-800 bg-neutral-900" data-onboarding-id="agent-thread-tabs">
+    <div class="flex items-center min-h-[37px] border-b border-neutral-800 bg-neutral-900 overflow-hidden" data-onboarding-id="agent-thread-tabs">
       <TabBar
         :tabs="tabs"
         :activeTabId="activeTabId"
