@@ -10,6 +10,21 @@
         align="start"
         class="w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
       >
+        <!-- Root-only toggle -->
+        <div class="flex items-center justify-between px-3 pt-3 pb-0">
+          <span class="text-xs text-neutral-300">Root threads only</span>
+          <button
+            type="button"
+            class="p-1 rounded-md transition-colors"
+            :class="showRootOnly
+              ? 'bg-neutral-700 text-neutral-100'
+              : 'text-neutral-500 hover:text-neutral-300'"
+            @click="emit('toggle-root-only')"
+          >
+            <Network :size="14" />
+          </button>
+        </div>
+
         <!-- Status section -->
         <div v-if="statuses.length > 0" class="px-3 pt-3 pb-2">
           <span class="text-[11px] font-medium uppercase tracking-wider text-neutral-500">Status</span>
@@ -65,6 +80,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Network } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { ThreadStatusOption, ThreadTagOption } from '@app/api'
 
@@ -73,11 +89,13 @@ defineProps<{
   tags: ThreadTagOption[]
   selectedStatuses: string[]
   selectedTags: string[]
+  showRootOnly: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'toggle-status', status: string): void
   (e: 'toggle-tag', tag: string): void
+  (e: 'toggle-root-only'): void
 }>()
 
 const open = ref(false)

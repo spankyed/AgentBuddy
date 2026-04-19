@@ -521,9 +521,9 @@ const threadsState = setup({
     setSearch: assign(({ context, event }) => ({
       filters: { ...context.filters, search: typeOf('SET_SEARCH', event).keyword },
     })),
-    clearFilters: assign({
-      filters: { statuses: [] as string[], tags: [] as string[], search: '', showRootOnly: true },
-    }),
+    clearFilters: assign(({ context }) => ({
+      filters: { statuses: [] as string[], tags: [] as string[], search: '', showRootOnly: context.filters.showRootOnly },
+    })),
 
     refreshViewIfActive: ({ context }) => {
       // After a THREAD_CONNECTED refresh, re-fetch view data if we're viewing a thread

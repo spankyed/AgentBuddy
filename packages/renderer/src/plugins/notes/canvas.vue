@@ -216,39 +216,38 @@
           :editor="editorRef.editor"
         />
 
-        <!-- Title row -->
-        <div class="flex items-center gap-1 px-4 py-3">
-          <EmojiPicker :model-value="editingNote.icon" @update:model-value="handleIconUpdate">
-            <template #default="{ toggle }">
-              <button
-                class="flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-800 transition-colors shrink-0"
-                @click="toggle"
-              >
-                <span v-if="editingNote.icon" class="text-xl leading-none">{{ editingNote.icon }}</span>
-                <ListChecks v-else-if="editingNote.noteType === 'tasklist'" :size="20" class="text-neutral-500" />
-                <CircleCheck v-else-if="editingNote.noteType === 'task'" :size="20" class="text-neutral-500" />
-                <FileText v-else :size="20" class="text-neutral-500" />
-              </button>
-            </template>
-          </EmojiPicker>
-          <input
-            ref="titleRef"
-            v-model="localTitle"
-            class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
-            placeholder="Untitled"
-            @input="handleTitleInput"
-            @keydown.enter.prevent="handleTitleEnter"
-            @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
-            @keydown.tab.exact.prevent="editorRef?.editor?.commands.focus('start')"
-            @keydown.right="handleTitleRight"
-          />
-        </div>
-
         <!-- Editor -->
         <div
           ref="scrollContainerRef"
           class="flex-1 overflow-y-auto pl-1 pr-4"
         >
+          <!-- Title row -->
+          <div class="flex items-center gap-1 px-4 py-3">
+            <EmojiPicker :model-value="editingNote.icon" @update:model-value="handleIconUpdate">
+              <template #default="{ toggle }">
+                <button
+                  class="flex items-center justify-center w-8 h-8 rounded hover:bg-neutral-800 transition-colors shrink-0"
+                  @click="toggle"
+                >
+                  <span v-if="editingNote.icon" class="text-xl leading-none">{{ editingNote.icon }}</span>
+                  <ListChecks v-else-if="editingNote.noteType === 'tasklist'" :size="20" class="text-neutral-500" />
+                  <CircleCheck v-else-if="editingNote.noteType === 'task'" :size="20" class="text-neutral-500" />
+                  <FileText v-else :size="20" class="text-neutral-500" />
+                </button>
+              </template>
+            </EmojiPicker>
+            <input
+              ref="titleRef"
+              v-model="localTitle"
+              class="w-full text-2xl font-bold bg-transparent text-neutral-100 border-none outline-none placeholder-neutral-600"
+              placeholder="Untitled"
+              @input="handleTitleInput"
+              @keydown.enter.prevent="handleTitleEnter"
+              @keydown.down.prevent="editorRef?.editor?.commands.focus('start')"
+              @keydown.tab.exact.prevent="editorRef?.editor?.commands.focus('start')"
+              @keydown.right="handleTitleRight"
+            />
+          </div>
           <TiptapEditor
             ref="editorRef"
             :key="editingNote.id"

@@ -43,18 +43,6 @@
           <PanelLeft :size="16" />
         </button>
       </div>
-      <!-- Root-only filter -->
-      <button
-        @click="actor.send({ type: 'TOGGLE_ROOT_ONLY_FILTER' })"
-        class="p-1.5 rounded-md transition-colors flex-shrink-0"
-        :class="filters.showRootOnly
-          ? 'bg-neutral-700 text-neutral-100'
-          : 'text-neutral-400 hover:text-neutral-200'"
-        :title="filters.showRootOnly ? 'Showing root threads only' : 'Showing all threads'"
-      >
-        <Network :size="16" />
-      </button>
-
       <!-- Filter buttons -->
       <div class="flex gap-2 flex-shrink-0 whitespace-nowrap">
         <FilterPopover
@@ -62,8 +50,10 @@
           :tags="availableTags"
           :selected-statuses="filters.statuses"
           :selected-tags="filters.tags"
+          :show-root-only="filters.showRootOnly"
           @toggle-status="(s) => actor.send({ type: 'TOGGLE_FILTER_STATUS', status: s })"
           @toggle-tag="(t) => actor.send({ type: 'TOGGLE_FILTER_TAG', tag: t })"
+          @toggle-root-only="actor.send({ type: 'TOGGLE_ROOT_ONLY_FILTER' })"
         >
           <Button
             type="button"
@@ -113,7 +103,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Search, Filter, List, Columns3, PanelLeft, History, Network } from 'lucide-vue-next'
+import { Search, Filter, List, Columns3, PanelLeft, History } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
