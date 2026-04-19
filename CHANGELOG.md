@@ -1,5 +1,78 @@
 -e # Changelog
 
+## v0.2.3 (2026-04-19)
+
+### Features
+-  quick prompt number key inserts into chat instead of copying
+- release): require migration when default-settings.ts changes
+-  persist dashboard view state across page refresh
+-  switch chat conversation when selecting a dashboard tab
+-  add state indicator dot to thread tabs in dashboard
+
+### Fixes
+- fix tab terminal refresh persistence
+-  Allow unselecting an option in single-select question blocks by toggling off when the same option is clicked again.
+-  scroll fully to bottom when new message appears in chat
+-  sort artifact list by most recent first
+-  show "Working..." instead of "Planning..." on tool activity after plan approval
+-  recent threads menu now updates statuses without page refresh
+
+### Other
+- Fix stale forkFrom/revertTo causing CLI crash after reverting on a fork
+- Fix diff artifacts showing message text instead of code
+- Move "root threads only" toggle into filter popover as independent control
+- Change diff artifact labels to show file count and names
+- Centralize mosaic thinking-state animation styles into global stylesheet
+- Add status indicator dot to threads list and remove shortcode
+- Change panel resizer collapse from double-click to single-click
+- Restyle thread tab state indicator to swap with close button on hover
+- Fix green success flash when pausing/cancelling a message
+- Merge pull request #125 from spankyed/AS/threads-drag-and-drop
+- Restyle linked threads input as inline table row with cancel controls
+- Extract shared BaseThreadRow component and restyle linked threads as table
+- Add drag-and-drop with multi-select to threads list for parent/child reparenting
+- Add Ctrl+F find-in-document support for notes editor
+- Fix horizontal scroll on threads dashboard tab bar
+- Migrate clickToChat default to true for existing users
+- Add terminal scripts settings UI, defaults, and 0.2.3 migration
+- Add run script button to terminal section header
+- Add max-height truncation for long user messages in chat
+- Fix inconsistent artifact icon sizes in sidebar list
+- Add 3-dot dropdown menu to terminal section header with "Kill All Terminals" option
+- clicking a thread list row should open it in chat/dashboard. click on the titile specifically opens details
+- remove count from tool activity block
+- Update plan artifact title prefix
+- Merge pull request #124 from spankyed/AS/in-panel-terminal
+- Fix rename input auto-focus and click-outside dismiss
+- Remove terminal name from section header
+- Add "Move to Panel" context menu option for terminal tabs
+- Persist terminal section expanded state and fix xterm not attaching on restore
+- ``` Clean up terminal code: extract shared helpers, pre-compile regex, type updates bag
+- Clean up terminal code: extract shared helpers, pre-compile regex, type updates bag
+- Auto-select first terminal for panel on startup
+- add shell name prefix and make add button bigger
+- slightly narrower terminal list
+- Fix xterm cursor misalignment when inspection panel is narrow
+- Widen terminal list default and add drag-to-resize handle
+- Move panel terminal expand/collapse into state machine for hotkey toggle
+- move close x for terminals in-panel from section header to terminal list item
+- Fix panel terminal rename, close, and confirmation dialog handling
+- Fix terminal.CLOSED never firing after kill by preserving exit handler
+- Fix terminal routing bugs and add persisted panel type fallback
+- Restructure terminal as always-visible panel section instead of standalone feature panel
+- Merge pull request #123 from spankyed/AS/archived-threads
+- Add ability to archive threads
+- Prefill images and file attachments when reverting messages
+- Disable send button for whitespace-only chat messages
+- undo accidental cc-command changes
+- Add mosaic busy indicator to recent threads menu and fix empty list on page load
+- comment bug
+- Fix Monaco diff editor model disposal error when switching files
+- Show full plan text in plan block with fixed-height scroll
+- Fix Cmd+Shift+F to focus search input when already on search panel and prefill with editor selection
+
+-e # Changelog
+
 ## v0.2.2 (2026-04-17)
 
 ### Features
