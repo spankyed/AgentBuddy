@@ -1,9 +1,9 @@
 <template>
   <div class="flex flex-col w-full">
-    <!-- Existing links as table -->
-    <div v-if="values.length" class="mt-2" @dragend="handleDragEnd">
+    <!-- Linked threads table + input row -->
+    <div v-if="values.length || isInputVisible" class="mt-2" @dragend="handleDragEnd">
       <table class="w-full">
-        <thead>
+        <thead v-if="values.length">
           <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
             <th class="pl-2 pr-1 py-2 w-8"></th>
             <th class="px-3 py-2 w-24">Relation</th>
@@ -29,7 +29,6 @@
             @drop="handleDrop"
           >
             <template #prefix>
-              <!-- Remove button -->
               <td class="pl-2 pr-1 py-1.5">
                 <button
                   type="button"
@@ -39,7 +38,6 @@
                   <X :size="14" class="text-neutral-400 hover:text-neutral-200" />
                 </button>
               </td>
-              <!-- Relation badge -->
               <td class="px-3 py-1.5">
                 <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800 border border-neutral-700 text-neutral-400">
                   {{ item.relation }}
@@ -62,78 +60,87 @@
               </td>
             </template>
           </BaseThreadRow>
+          <!-- Input row inside the same table -->
+          <tr v-if="isInputVisible" ref="inputSection" class="border-t border-neutral-800/50 bg-neutral-800/30">
+            <td class="pl-2 pr-1 py-1.5">
+              <button
+                type="button"
+                @click="toggleInput"
+                class="p-1 rounded-md hover:bg-neutral-700 focus:outline-none transition-colors"
+              >
+                <X :size="14" class="text-neutral-400 hover:text-neutral-200" />
+              </button>
+            </td>
+            <td class="px-3 py-1.5">
+              <select v-model="relation" class="w-full px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-800 border border-neutral-700 text-neutral-400 appearance-none">
+                <option value="parent_of">parent_of</option>
+                <option value="blocks">blocks</option>
+                <option value="blocked_by">blocked_by</option>
+                <option value="duplicates">duplicates</option>
+              </select>
+            </td>
+            <td class="px-6 py-1.5" colspan="2">
+              <ComboboxRoot v-model="query" :open="isOpen" @update:open="isOpen = $event" class="relative">
+                <ComboboxAnchor class="inline-flex items-center w-full gap-2 px-3 py-1 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus-within:border-neutral-600">
+                  <ComboboxInput
+                    placeholder="Search for threads..."
+                    class="flex-1 w-full bg-transparent focus:outline-none placeholder:text-neutral-600"
+                    @click="isOpen = true"
+                    :display-value="displayThread"
+                    @keydown.backspace="query = ''"
+                  />
+                </ComboboxAnchor>
+                <ComboboxPortal>
+                  <ComboboxContent
+                    v-if="filteredOptions.length"
+                    position="popper"
+                    side="bottom"
+                    align="start"
+                    :side-offset="4"
+                    class="z-10 w-[var(--reka-popper-anchor-width)] overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
+                  >
+                    <ComboboxViewport class="py-1 overflow-y-auto max-h-60">
+                      <ComboboxGroup>
+                        <ComboboxItem
+                          v-for="thread in filteredOptions"
+                          :key="thread.id"
+                          :value="thread.id"
+                          class="flex items-center gap-3 px-4 py-1.5 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-700/50 data-[highlighted]:bg-neutral-700/50"
+                        >
+                          <span class="text-sm font-medium truncate text-neutral-100 flex-1">
+                            {{ thread.topic || 'Untitled thread...' }}
+                          </span>
+                          <span class="text-xs font-medium tracking-wider uppercase text-neutral-500 shrink-0">
+                            {{ thread.shortCode }}
+                          </span>
+                        </ComboboxItem>
+                      </ComboboxGroup>
+                    </ComboboxViewport>
+                  </ComboboxContent>
+                </ComboboxPortal>
+              </ComboboxRoot>
+            </td>
+            <td class="px-6 py-1.5" colspan="2">
+              <div class="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  @click="linkThread"
+                  class="flex items-center px-3 py-1 text-xs font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
+                >
+                  Link
+                </button>
+                <button
+                  type="button"
+                  @click="toggleInput"
+                  class="flex items-center px-3 py-1 text-xs font-medium transition-colors rounded-md text-neutral-400 hover:text-neutral-100 hover:bg-neutral-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </td>
+          </tr>
         </tbody>
       </table>
-    </div>
-
-    <!-- Link Thread Input (toggled externally) -->
-    <div v-if="isInputVisible" ref="inputSection" class="mt-2">
-      <div class="flex items-center gap-2">
-        <select v-model="relation" class="px-3 py-2 text-sm font-medium transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700 focus:outline-none focus:border-neutral-600">
-          <option value="parent_of">parent_of</option>
-          <option value="blocks">blocks</option>
-          <option value="blocked_by">blocked_by</option>
-          <option value="duplicates">duplicates</option>
-        </select>
-
-        <ComboboxRoot v-model="query" :open="isOpen" @update:open="isOpen = $event" class="relative flex-grow">
-          <ComboboxAnchor class="inline-flex items-center flex-1 w-full gap-2 px-3 py-2 text-sm transition-all duration-200 border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus-within:border-neutral-600">
-            <ComboboxInput
-              placeholder="Search for threads"
-              class="flex-1 w-full bg-transparent focus:outline-none placeholder:text-neutral-600"
-              @click="isOpen = true"
-              :display-value="displayThread"
-              @keydown.backspace="query = ''"
-            />
-          </ComboboxAnchor>
-
-          <ComboboxPortal>
-            <ComboboxContent
-              v-if="filteredOptions.length"
-              position="popper"
-              side="bottom"
-              align="start"
-              :side-offset="4"
-              class="z-10 min-w-[300px] max-w-[600px] overflow-hidden border rounded-md shadow-lg bg-neutral-800 border-neutral-700"
-            >
-            <ComboboxViewport class="p-2 overflow-y-auto max-h-60">
-              <ComboboxGroup>
-                <ComboboxItem
-                  v-for="thread in filteredOptions"
-                  :key="thread.id"
-                  :value="thread.id"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors rounded cursor-pointer text-neutral-200 hover:bg-neutral-700 data-[highlighted]:bg-neutral-700"
-                >
-                  <div class="flex items-center flex-1 space-x-2">
-                    <span class="min-w-[5rem] text-xs font-medium uppercase tracking-wider text-neutral-500">
-                      {{ thread.shortCode }}
-                    </span>
-                    <span class="text-sm truncate max-w-96 text-neutral-200 hover:text-neutral-100">
-                      {{ thread.topic || 'Untitled thread...' }}
-                    </span>
-                  </div>
-                </ComboboxItem>
-              </ComboboxGroup>
-            </ComboboxViewport>
-            </ComboboxContent>
-          </ComboboxPortal>
-        </ComboboxRoot>
-
-        <button
-          type="button"
-          @click="linkThread"
-          class="flex items-center px-3 py-2 ml-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-md hover:bg-blue-700"
-        >
-          Link
-        </button>
-        <button
-          type="button"
-          @click="toggleInput"
-          class="flex items-center px-3 py-2 text-sm font-medium transition-colors rounded-md text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
-        >
-          Cancel
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -150,7 +157,7 @@ import {
   ComboboxRoot,
   ComboboxViewport,
 } from 'reka-ui'
-import { X, Plus, MessageCircleMore } from 'lucide-vue-next'
+import { X, Plus, MessageCircleMore, Link2 } from 'lucide-vue-next'
 import type { ThreadLinkItem, ThreadLinkRelation, ThreadEntity, ThreadTagOption, ThreadsSettings } from '@app/api'
 import { useThreadDragDrop } from '@/plugins/threads/composables/useThreadDragDrop'
 import BaseThreadRow from './base-thread-row.vue'
@@ -175,7 +182,7 @@ const isInputVisible = ref(false)
 const isOpen = ref(false)
 const query = ref('')
 const relation = ref<ThreadLinkRelation>('parent_of')
-const inputSection = ref<HTMLDivElement | null>(null)
+const inputSection = ref<HTMLTableRowElement | null>(null)
 
 // Drag-and-drop for reparenting between linked threads
 const noSelection = ref<string[]>([])
