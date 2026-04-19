@@ -60,6 +60,10 @@ export interface SessionArtifactContent {
   useWorktree?: boolean;
   /** Human-readable error when the session is broken (e.g. JSONL deleted). */
   sessionError?: string;
+  /** Cumulative input tokens from the latest turn — context window consumption. */
+  contextTokens?: number;
+  /** Threshold percentages that have already fired an alert (avoids re-alerting). */
+  alertedThresholds?: number[];
 }
 
 /** Build a default SessionArtifactContent for a brand-new turn. */

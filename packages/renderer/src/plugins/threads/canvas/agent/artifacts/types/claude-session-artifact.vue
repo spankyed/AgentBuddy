@@ -68,6 +68,14 @@
 
           <span class="text-neutral-500">Cost</span>
           <span class="text-neutral-200 tabular-nums">${{ (content.totalCostUsd ?? 0).toFixed(3) }}</span>
+
+          <span class="text-neutral-500">Context</span>
+          <span class="tabular-nums" :class="contextUsage.color">
+            {{ contextUsage.pct }}%
+            <span v-if="content.contextTokens" class="text-neutral-500 text-[10px] ml-1">
+              ({{ (content.contextTokens ?? 0).toLocaleString() }} tokens)
+            </span>
+          </span>
         </div>
 
         <!-- Recent tools (last 3, collapsible) -->
@@ -167,6 +175,7 @@ interface SessionContent {
   lastTool?: { name: string; summary: string; at: number }
   permissionMode?: PermissionMode
   sessionError?: string
+  contextTokens?: number
 }
 
 const props = defineProps<{
@@ -184,6 +193,15 @@ const currentThreadId = useSelector(
 const recentTools = computed(() =>
   content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
 )
+
+// Context window usage
+const CONTEXT_LIMIT = 200_000
+const contextUsage = computed(() => {
+  const t = content.value?.contextTokens ?? 0
+  const pct = t > 0 ? Math.min(100, Math.round((t / CONTEXT_LIMIT) * 100)) : 0
+  const color = pct >= 90 ? 'text-red-400' : pct >= 75 ? 'text-yellow-400' : 'text-neutral-200'
+  return { pct, color }
+})
 
 const settings = useSelector(threadsActor, (state: any) => state.context.settings);
 const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides);

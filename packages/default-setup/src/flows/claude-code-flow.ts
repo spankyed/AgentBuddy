@@ -167,6 +167,7 @@ export default {
             costUsd: "$.event.data.payload.costUsd",
             durationMs: "$.event.data.payload.durationMs",
             toolCallCount: "$.event.data.payload.toolCallCount",
+            inputTokens: "$.event.data.payload.inputTokens",
             mutatedFileCount: "$.event.data.payload.mutatedFileCount",
             mutatedPaths: "$.event.data.payload.mutatedPaths",
             hadErrors: "$.event.data.payload.hadErrors",

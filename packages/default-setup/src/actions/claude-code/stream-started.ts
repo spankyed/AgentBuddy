@@ -37,10 +37,15 @@ export async function action(
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  updateSessionArtifact(services, threadId as EntityId, {
-    sessionId: sessionId || '',
-    model: model || '',
-    cwd: cwd || '',
+  updateSessionArtifact(services, threadId as EntityId, (prev) => {
+    const isNewSession = !!sessionId && sessionId !== prev.sessionId;
+    return {
+      sessionId: sessionId || '',
+      model: model || '',
+      cwd: cwd || '',
+      // Reset context tracking when starting a fresh CLI session.
+      ...(isNewSession ? { alertedThresholds: [], contextTokens: 0 } : {}),
+    };
   });
 
   return { success: true, sessionId, model };

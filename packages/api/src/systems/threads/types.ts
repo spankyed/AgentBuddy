@@ -427,6 +427,10 @@ export interface ClaudeSessionArtifactContent {
    * persisted before this field existed; readers coalesce to `'default'`.
    */
   permissionMode?: PermissionMode;
+  /** Cumulative input tokens from the latest turn — context window consumption. */
+  contextTokens?: number;
+  /** Threshold percentages that have already fired an alert (avoids re-alerting). */
+  alertedThresholds?: number[];
 }
 
 export interface DiffArtifactContent {

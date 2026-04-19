@@ -25,6 +25,7 @@ export const meta: ActionMeta = {
     costUsd: { type: 'number', description: 'Total cost in USD', required: false },
     durationMs: { type: 'number', description: 'Turn duration in ms', required: false },
     toolCallCount: { type: 'number', description: 'Number of tool calls', required: false },
+    inputTokens: { type: 'number', description: 'Cumulative input tokens (context window usage)', required: false },
     mutatedFileCount: { type: 'number', description: 'Files mutated', required: false },
     mutatedPaths: { type: 'array', description: 'File paths that were mutated', required: false },
     hadErrors: { type: 'boolean', description: 'Whether errors occurred', required: false },
@@ -41,6 +42,7 @@ export async function action(
     threadId,
     costUsd,
     durationMs,
+    inputTokens,
     hadErrors,
     error: errorMsg,
     mutatedPaths,
@@ -49,6 +51,7 @@ export async function action(
     sessionId?: string;
     costUsd?: number;
     durationMs?: number;
+    inputTokens?: number;
     toolCallCount?: number;
     mutatedFileCount?: number;
     mutatedPaths?: string[];
@@ -63,12 +66,48 @@ export async function action(
 
   // ─── Update session artifact ──────────────────────────────────────
   const { toolCallCount } = params as { toolCallCount?: number };
-  updateSessionArtifact(services, threadId as EntityId, (prev) => ({
-    turns: (prev.turns ?? 0) + 1,
-    totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
-    toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
-    lastTurnAt: Date.now(),
-  }));
+
+  // Track newly crossed context thresholds in a closure so we can
+  // send alerts after the artifact update completes.
+  const CONTEXT_LIMIT = 200_000;
+  const THRESHOLDS = [25, 50, 75, 90];
+  let newAlerts: number[] = [];
+  let contextPercentage = 0;
+
+  updateSessionArtifact(services, threadId as EntityId, (prev) => {
+    const contextTokens = inputTokens ?? prev.contextTokens ?? 0;
+    const alerted = prev.alertedThresholds ?? [];
+
+    if (contextTokens > 0) {
+      contextPercentage = Math.round((contextTokens / CONTEXT_LIMIT) * 100);
+      newAlerts = THRESHOLDS.filter(t => contextPercentage >= t && !alerted.includes(t));
+    }
+
+    return {
+      turns: (prev.turns ?? 0) + 1,
+      totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
+      toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
+      lastTurnAt: Date.now(),
+      contextTokens,
+      ...(newAlerts.length > 0 ? { alertedThresholds: [...alerted, ...newAlerts] } : {}),
+    };
+  });
+
+  // ─── Context threshold alerts ─────────────────────────────────────
+  if (newAlerts.length > 0 && inputTokens) {
+    const highest = Math.max(...newAlerts);
+    const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
+    const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
+    let message = `Context window is ${contextPercentage}% full (${inputTokens.toLocaleString()} / ${CONTEXT_LIMIT.toLocaleString()} tokens).`;
+    if (highest >= 90) message += ' Consider starting a new session soon.';
+
+    services.chat.sendBlockMessage({
+      threadId: threadId as any,
+      text: message,
+      blocks: [{ type: 'note', props: { content: message, variant, label } }],
+      forkable: false,
+    });
+  }
 
   // A queued-message replay re-enters chat.ts BEFORE this action fires
   // (stream-consumer awaits `replayQueuedMessage` before emitting
