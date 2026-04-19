@@ -22,13 +22,12 @@
           <span class="shrink-0 relative inline-block w-1.5 h-1.5">
             <span
               class="block w-full h-full rounded-full transition-colors"
-              :class="isThreadBusy(thread.id) ? $style['mosaic-dot'] : ''"
+              :class="isThreadBusy(thread.id) ? 'mosaic-dot' : ''"
               :style="!isThreadBusy(thread.id) ? { backgroundColor: getThreadDotColor(thread.id) || '#525252' } : undefined"
             />
             <span
               v-if="isThreadBusy(thread.id)"
-              class="absolute inset-0 rounded-full scale-[2]"
-              :class="$style['mosaic-glow']"
+              class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
             />
           </span>
           <span class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
@@ -260,44 +259,3 @@ const formatTime = (timestamp: Date | number | string) => {
   })
 }
 </script>
-
-<style lang="scss" module>
-.mosaic-dot {
-  background: conic-gradient(
-    from var(--thinking-angle, 0deg),
-    #facc15,
-    #a855f7,
-    #3b82f6,
-    #facc15
-  );
-  animation: thinking-rotate 3s linear infinite;
-  filter: saturate(1.5) brightness(1.2);
-}
-
-.mosaic-glow {
-  background: conic-gradient(
-    from var(--thinking-angle, 0deg),
-    #facc15,
-    #a855f7,
-    #3b82f6,
-    #facc15
-  );
-  animation: thinking-rotate 3s linear infinite;
-  filter: blur(3px) saturate(2) brightness(1.3);
-  opacity: 0.7;
-}
-
-@keyframes thinking-rotate {
-  to {
-    --thinking-angle: 360deg;
-  }
-}
-</style>
-
-<style>
-@property --thinking-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
-</style>

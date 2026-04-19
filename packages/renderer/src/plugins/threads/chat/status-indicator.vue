@@ -12,7 +12,7 @@
       <span
         :class="[
           'block h-3 w-3 rounded-full transition-colors duration-300 ease-in-out',
-          isAnimated ? $style['thinking-dot'] : ''
+          isAnimated ? 'mosaic-dot' : ''
         ]"
         :style="!isAnimated ? { backgroundColor: stateConfig.color } : undefined"
       />
@@ -20,7 +20,7 @@
       <span
         :class="[
           'absolute inset-0 rounded-full scale-[2] transition-colors duration-300 ease-in-out',
-          isAnimated ? $style['thinking-glow'] : 'blur-[1px] opacity-40'
+          isAnimated ? 'mosaic-glow' : 'blur-[1px] opacity-40'
         ]"
         :style="!isAnimated ? { backgroundColor: stateConfig.color } : undefined"
       />
@@ -125,44 +125,5 @@ onBeforeUnmount(() => {
   // Positioning lives on the element's inline :style — fixed to the input
   // card's top-left via the anchor prop so the dot renders outside the chat
   // area's overflow-clipped tree.
-}
-
-.thinking-dot {
-  background: conic-gradient(
-    from var(--thinking-angle, 0deg),
-    #facc15,
-    #a855f7,
-    #3b82f6,
-    #facc15
-  );
-  animation: thinking-rotate 3s linear infinite;
-  filter: saturate(1.5) brightness(1.2);
-}
-
-.thinking-glow {
-  background: conic-gradient(
-    from var(--thinking-angle, 0deg),
-    #facc15,
-    #a855f7,
-    #3b82f6,
-    #facc15
-  );
-  animation: thinking-rotate 3s linear infinite;
-  filter: blur(4px) saturate(2) brightness(1.3);
-  opacity: 0.7;
-}
-
-@keyframes thinking-rotate {
-  to {
-    --thinking-angle: 360deg;
-  }
-}
-</style>
-
-<style>
-@property --thinking-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
 }
 </style>
