@@ -14,7 +14,7 @@
         side="top"
         :side-offset="8"
         align="end"
-        class="w-72 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
+        class="w-fit max-w-72 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
         @close-auto-focus="(e: Event) => e.preventDefault()"
       >
         <!-- Header -->
@@ -38,11 +38,12 @@
               v-for="script in localScripts"
               :key="script.id"
               type="button"
-              class="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white truncate"
+              class="w-full text-left px-3 py-2 text-sm hover:bg-neutral-800 truncate flex items-center gap-2"
               :title="script.command"
               @click="runScript(script)"
             >
-              {{ script.label }}
+              <span class="text-neutral-300 hover:text-white">{{ script.label }}</span>
+              <span class="text-neutral-600 text-xs font-mono truncate">{{ script.command }}</span>
             </button>
             <div v-if="localScripts.length === 0" class="px-3 py-4 text-sm text-neutral-600 text-center">
               No scripts saved
