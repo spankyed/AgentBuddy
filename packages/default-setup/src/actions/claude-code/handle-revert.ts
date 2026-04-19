@@ -77,8 +77,12 @@ export async function action(
     queuedMessage: undefined,
     ...(cliUuid ? { revertTo: { cliUuid } } : {
       // No CLI UUID found (reverting to first message or no prior assistant).
-      // Clear sessionId so the next turn starts fresh.
+      // Clear sessionId and any stale one-shot flags so the next turn starts
+      // fresh. Without this, a leftover forkFrom or revertTo would cause
+      // --resume-session-at to be passed without --resume.
       sessionId: undefined,
+      forkFrom: undefined,
+      revertTo: undefined,
     }),
   });
 
