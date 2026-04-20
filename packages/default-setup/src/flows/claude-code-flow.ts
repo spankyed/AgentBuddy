@@ -242,26 +242,27 @@ export default {
       "Thread reverted",
     ),
     // ─── CC commands ─────────────────────────────────────────────────
-    // Catch all /cc-* user commands via a single starts_with guard.
-    // The dispatcher action looks up the command in a handler registry,
-    // so adding a new cc- command never requires flow changes.
+    // Route cc-* commands to the appropriate action by command name.
+    // Session-heavy and thread-mutating commands have dedicated actions;
+    // everything else falls through to the generic dispatcher.
     on(
       "user.command",
       [[
         branch([
-          {
-            if: "$.event.data.payload.command starts_with 'cc-'",
-            steps: [action("CC: Run Command", {
-              label: "cc-command",
-              map: {
-                command: "$.event.data.payload.command",
-                text: "$.event.data.payload.text",
-                threadId: "$.event.data.payload.threadId",
-                references: "$.event.data.payload.references",
-              },
-            })],
-          },
-        ], undefined, "CC Command Guard"),
+          // Session operations (resume, import) — share transcript import helpers
+          { if: "$.event.data.payload.command == 'cc-resume'", steps: [action("CC: Session Ops", { label: "cc-resume", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+          { if: "$.event.data.payload.command == 'cc-import'", steps: [action("CC: Session Ops", { label: "cc-import", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+          // Standalone commands
+          { if: "$.event.data.payload.command == 'cc-compact'", steps: [action("CC: Compact", { label: "cc-compact", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+          { if: "$.event.data.payload.command == 'cc-fork'", steps: [action("CC: Fork", { label: "cc-fork", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+          { if: "$.event.data.payload.command == 'cc-context'", steps: [action("CC: Context", { label: "cc-context", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+          // Directory operations (add-dir, set-dir) — share path helpers
+          { if: "$.event.data.payload.command == 'cc-add-dir'", steps: [action("CC: Dir Ops", { label: "cc-add-dir", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+          { if: "$.event.data.payload.command == 'cc-set-dir'", steps: [action("CC: Dir Ops", { label: "cc-set-dir", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+        ], [
+          // Else: info/config commands + passthrough (sessions, config, model, etc.)
+          action("CC: Run Command", { label: "cc-command", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } }),
+        ], "CC Command Router"),
       ]],
       "CC command",
     ),
