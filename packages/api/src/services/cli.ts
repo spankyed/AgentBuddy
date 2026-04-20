@@ -82,9 +82,14 @@ function createCliService(): CliServiceType {
 
   function resolveCwd(): string {
     const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings | undefined
-    const cwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || null
+    let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
+    }
+    if (cwd.startsWith('~/')) {
+      cwd = path.join(os.homedir(), cwd.slice(2))
+    } else if (cwd === '~') {
+      cwd = os.homedir()
     }
     return cwd
   }

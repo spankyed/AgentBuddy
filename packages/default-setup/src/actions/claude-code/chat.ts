@@ -249,6 +249,8 @@ export async function action(
       };
     }
 
+    const addDirs = [...new Set([...(prior?.additionalDirs ?? []), ...(resolved.addDirs ?? [])])];
+
     log.debug('invoking claudeCode.query', {
       model,
       resumeSessionId: resumeSessionId ?? null,
@@ -272,11 +274,7 @@ export async function action(
       surfaceControlRequests: true,
       env: { CLAUDE_CODE_COORDINATOR_MODE: '1' },
       ...(useWorktree && { worktree: true }),
-      ...(() => {
-        const storedDirs = prior?.additionalDirs ?? [];
-        const allDirs = [...new Set([...storedDirs, ...(resolved.addDirs ?? [])])];
-        return allDirs.length > 0 ? { addDir: allDirs } : {};
-      })(),
+      ...(addDirs.length > 0 && { addDir: addDirs }),
       // Fork/revert: create a new CLI session JSONL file, truncated to the
       // fork/revert point via --resume-session-at.
       ...((forkFrom || revertTo) && { forkSession: true }),

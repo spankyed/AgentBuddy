@@ -7,7 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setProjectDirectory } from './_helpers/thread-context';
 import { updateChatState, updateSessionArtifact, ensureSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
@@ -49,19 +49,33 @@ function makePassthroughHandler(spec: { cmd: string; defaultArgs?: string[] }): 
   };
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────
+
+/** Rejoin args (split by dispatcher) into a single path, stripping flags and trailing slashes. */
+function parseDirPath(args: string[]): string {
+  return args.filter(a => !a.startsWith('--')).join(' ').replace(/\/+$/, '');
+}
+
+/** Shorten a path to at most the last 2 segments for display. */
+function shortenPath(p: string): string {
+  const s = p.split('/').filter(Boolean);
+  return s.length <= 2 ? p : `…/${s.slice(-2).join('/')}`;
+}
+
 // ── Handler registry ────────────────────────────────────────────────
 
 const handlers: Record<string, Handler> = {
   sessions: handleSessions,
   config: handleConfig,
   context: handleContext,
-  status: handleStatus,
+  status: handleStats,
   model: handleModel,
   memory: handleMemory,
   skills: handleSkills,
   compact: handleCompact,
   resume: handleResume,
   'add-dir': handleAddDir,
+  'set-dir': handleSetDir,
   stats: handleStats,
   // Passthrough commands — exec and relay stdout
   ...Object.fromEntries(
@@ -257,7 +271,7 @@ async function handleAddDir(
   if (!args.length) return { text: 'Usage: /cc-add-dir <path> [--remember]' };
 
   const remember = args.includes('--remember');
-  const dirPath = args.filter(a => !a.startsWith('--')).join(' ').replace(/\/+$/, '');
+  const dirPath = parseDirPath(args);
   if (!dirPath) return { text: 'Usage: /cc-add-dir <path> [--remember]' };
 
   // Session-scoped: store in thread context so it's passed via --add-dir on every query
@@ -290,20 +304,31 @@ async function handleAddDir(
   return { text: `Added directory: ${dirPath}${suffix}` };
 }
 
-async function handleStatus(
-  _args: string[],
+async function handleSetDir(
+  args: string[],
   services: Services,
-): Promise<{ text: string; data?: any }> {
-  const [version, auth] = await Promise.all([
-    services.cli.claudeCode.version(),
-    services.cli.claudeCode.authStatus(),
-  ]);
-  const lines = [
-    `Version: ${version.trim()}`,
-    `Auth: ${auth.authenticated ? 'authenticated' : 'not authenticated'}`,
-  ];
-  if (auth.account) lines.push(`Account: ${JSON.stringify(auth.account)}`);
-  return { text: lines.join('\n'), data: { version, auth } };
+  threadId?: string,
+): Promise<{ text: string }> {
+  const dirPath = parseDirPath(args);
+  if (!dirPath) return { text: 'Usage: /cc-set-dir <path>' };
+
+  setProjectDirectory(services, dirPath);
+
+  // If thread has an active session, create a new thread for the new directory
+  if (threadId) {
+    const state = getClaudeState(services, threadId);
+    if (state?.sessionId) {
+      const topic = `New session — ${shortenPath(dirPath)}`;
+      const { id: newThreadId } = services.chat.createThreadAndNotify({
+        topic,
+        instructions: '',
+      });
+      services.chat.openThreadChatAndRefreshRecent(newThreadId as any);
+      return { text: `Working directory set to: ${dirPath} (new thread created)` };
+    }
+  }
+
+  return { text: `Working directory set to: ${dirPath}` };
 }
 
 async function handleModel(

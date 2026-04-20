@@ -89,6 +89,11 @@ export interface ClaudeCodeThreadState {
 
 export const CLAUDE_SESSION_TAG = 'claude-session';
 
+/** Set the global project directory used by Claude Code sessions. */
+export function setProjectDirectory(services: Services, directory: string): void {
+  services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], directory);
+}
+
 /** Read the Claude Code state stashed on a thread. Returns `undefined` if none. */
 export function getClaudeState(services: Services, threadId: string): ClaudeCodeThreadState | undefined {
   const thread = services.repository.threadQueries.byId(threadId as any) as any;

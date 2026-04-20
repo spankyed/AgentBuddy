@@ -11,6 +11,7 @@
 **cc-compact**: Custom instructions (optional, summarize context)
 **cc-resume**: Session ID (optional, lists sessions if omitted)
 **cc-add-dir**: <path> [--remember]
+**cc-set-dir**: <path> (set working directory for new threads)
 **cc-stats**: Show version, auth, and config info
 **cc-doctor**: Diagnose installation
 **cc-mcp**: Manage MCP servers
