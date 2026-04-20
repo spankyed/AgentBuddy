@@ -7222,6 +7222,19 @@ declare function createMarkerMessage(params: {
     compactedMessageIds: EARS.EntityId[];
 };
 /**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+declare function addMessagesToThread(params: {
+    threadId: EARS.EntityId;
+    messages: Array<{
+        text: string;
+        sender: 'user' | 'assistant' | 'system' | 'marker';
+        forkable?: boolean;
+        context?: Record<string, unknown>;
+    }>;
+}): void;
+/**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
  *
@@ -7291,6 +7304,7 @@ declare function generateAsideText(message: MessageEntity, response: BlockRespon
 
 const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
+  addMessagesToThread: addMessagesToThread,
   createBlockMessage: createBlockMessage,
   createMarkerMessage: createMarkerMessage,
   createThreadAndNotify: createThreadAndNotify,

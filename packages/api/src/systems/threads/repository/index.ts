@@ -537,6 +537,7 @@ export const chatCommands = {
     responseTimestamp?: number;
     asideText?: string;
     compacted?: boolean;
+    context?: Record<string, unknown>;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -544,7 +545,7 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText, compacted } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText, compacted, context } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
@@ -568,7 +569,7 @@ export const chatCommands = {
       .put('updatedAt', timestamp);
 
     if (blocks) messageTx.put('blocks', blocks);
-    if (forkable === false) messageTx.put('forkable', forkable);
+    if (forkable !== undefined) messageTx.put('forkable', forkable);
     if (references) messageTx.put('references', references);
     if (isCommand) messageTx.put('isCommand', isCommand);
     if (command) messageTx.put('command', command);
@@ -578,6 +579,7 @@ export const chatCommands = {
     if (responseTimestamp) messageTx.put('responseTimestamp', responseTimestamp);
     if (asideText) messageTx.put('asideText', asideText);
     if (compacted) messageTx.put('compacted', compacted);
+    if (context) messageTx.put('context', context);
 
     const messageId = messageTx.link(EARS.RelKind.CONTAINS, threadId).id();
 

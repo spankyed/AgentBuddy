@@ -9,6 +9,7 @@
 **cc-memory**: File name or add|remove <name>
 **cc-skills**: List installed skills
 **cc-compact**: Custom instructions (optional, summarize context)
+**cc-resume**: Session ID (optional, lists sessions if omitted)
 **cc-add-dir**: <path> [--remember]
 **cc-stats**: Show version, auth, and config info
 **cc-doctor**: Diagnose installation

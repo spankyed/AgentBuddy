@@ -7219,6 +7219,19 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>): void;
 /**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+declare function addMessagesToThread(params: {
+  threadId: EARS.EntityId;
+  messages: Array<{
+    text: string;
+    sender: 'user' | 'assistant' | 'system' | 'marker';
+    forkable?: boolean;
+    context?: Record<string, unknown>;
+  }>;
+}): void;
+/**
  * Create a marker message that compacts eligible prior messages in a thread.
  * The repository determines which messages are eligible (excludes markers and already-compacted).
  */
@@ -7229,6 +7242,19 @@ declare function createMarkerMessage(params: {
     messageId: EARS.EntityId;
     compactedMessageIds: EARS.EntityId[];
 };
+/**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+declare function addMessagesToThread(params: {
+    threadId: EARS.EntityId;
+    messages: Array<{
+        text: string;
+        sender: 'user' | 'assistant' | 'system' | 'marker';
+        forkable?: boolean;
+        context?: Record<string, unknown>;
+    }>;
+}): void;
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -7297,6 +7323,7 @@ declare function resolveReferences(references: MessageReferences | undefined): P
  */
 declare function generateAsideText(message: MessageEntity, response: BlockResponse): string;
 
+declare const chat_addMessagesToThread: typeof addMessagesToThread;
 declare const chat_createBlockMessage: typeof createBlockMessage;
 declare const chat_createMarkerMessage: typeof createMarkerMessage;
 declare const chat_createThreadAndNotify: typeof createThreadAndNotify;
@@ -7317,6 +7344,7 @@ declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse
 declare const chat_updateMessageState: typeof updateMessageState;
 declare namespace chat {
   export {
+    chat_addMessagesToThread as addMessagesToThread,
     chat_createBlockMessage as createBlockMessage,
     chat_createMarkerMessage as createMarkerMessage,
     chat_createThreadAndNotify as createThreadAndNotify,

@@ -445,6 +445,27 @@ export function createMarkerMessage(params: {
 }
 
 /**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+export function addMessagesToThread(params: {
+  threadId: EARS.EntityId;
+  messages: Array<{
+    text: string;
+    sender: 'user' | 'assistant' | 'system' | 'marker';
+    forkable?: boolean;
+    context?: Record<string, unknown>;
+  }>;
+}): void {
+  for (const msg of params.messages) {
+    repository.chatCommands.addMessage({
+      threadId: params.threadId,
+      ...msg,
+    });
+  }
+}
+
+/**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
  *

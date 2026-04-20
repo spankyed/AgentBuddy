@@ -8,7 +8,7 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
-import { updateChatState, updateSessionArtifact } from './_helpers/session-artifact';
+import { updateChatState, updateSessionArtifact, ensureSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -60,6 +60,7 @@ const handlers: Record<string, Handler> = {
   memory: handleMemory,
   skills: handleSkills,
   compact: handleCompact,
+  resume: handleResume,
   'add-dir': handleAddDir,
   stats: handleStats,
   // Passthrough commands — exec and relay stdout
@@ -117,7 +118,7 @@ async function handleSessions(
   if (sessionId) {
     const entries = await services.cli.claudeCode.viewSession(sessionId);
     const summary = entries
-      .filter(e => e.type === 'human' || e.type === 'assistant')
+      .filter(e => e.type === 'user' || e.type === 'assistant')
       .slice(0, 10)
       .map(e => `[${e.type}] ${typeof e.message === 'string' ? e.message : JSON.stringify(e.message)}`)
       .join('\n');
@@ -426,4 +427,151 @@ function parseDetailSection(md: string, heading: string, columns: string[]): any
     rows.push(entry);
   }
   return rows;
+}
+
+// ── Resume ──────────────────────────────────────────────────────────
+
+/**
+ * Extract displayable text from a CLI transcript content array.
+ * Skips tool_use / tool_result blocks; concatenates text blocks.
+ */
+function extractText(content: any): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter((b: any) => b.type === 'text' && b.text)
+    .map((b: any) => b.text)
+    .join('\n');
+}
+
+/**
+ * Parse a CLI session transcript and batch-import messages into a thread.
+ * No per-message frontend events — caller must refresh the thread afterwards.
+ */
+function importSessionMessages(
+  services: Services,
+  threadId: string,
+  transcript: any[],
+): number {
+  const messages: Array<{
+    text: string;
+    sender: 'user' | 'assistant';
+    forkable?: boolean;
+    context?: Record<string, unknown>;
+  }> = [];
+
+  for (const entry of transcript) {
+    if (entry.type === 'user' && entry.message?.role === 'user') {
+      const text = extractText(entry.message.content);
+      if (!text) continue;
+      messages.push({
+        text,
+        sender: 'user',
+        forkable: false,
+        ...(entry.uuid && { context: { cliUuid: entry.uuid } }),
+      });
+    } else if (entry.type === 'assistant') {
+      const text = extractText(entry.message?.content) || '(tool use only)';
+      messages.push({
+        text,
+        sender: 'assistant',
+        forkable: true,
+        ...(entry.uuid && { context: { cliUuid: entry.uuid } }),
+      });
+    }
+  }
+
+  if (messages.length > 0) {
+    services.chat.addMessagesToThread({
+      threadId: threadId as any,
+      messages: messages as any,
+    });
+  }
+
+  return messages.length;
+}
+
+async function handleResume(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any; blocks?: any[]; skipMessage?: boolean }> {
+  const [sessionId] = args;
+
+  // No args: show session picker
+  if (!sessionId) {
+    const sessions = await services.cli.claudeCode.listSessions();
+    if (!sessions.length) return { text: 'No sessions found.' };
+
+    const items = sessions.map((s: any) => ({
+      id: s.id,
+      title: s.title || '(untitled)',
+      modifiedAt: s.modifiedAt ? new Date(s.modifiedAt).toISOString() : '',
+      size: s.size ?? 0,
+    }));
+
+    return {
+      text: 'Pick a session to resume (use `/cc-resume <session-id>`):',
+      blocks: [{ type: 'session-list', props: { sessions: items } }],
+      data: sessions,
+    };
+  }
+
+  // Validate session exists
+  const sessions = await services.cli.claudeCode.listSessions();
+  const session = sessions.find((s: any) => s.id === sessionId);
+  if (!session) return { text: `Session not found: ${sessionId}` };
+
+  if (!threadId) return { text: 'No active thread.' };
+
+  // Fetch transcript for message import
+  const transcript = await services.cli.claudeCode.viewSession(sessionId);
+
+  // Determine target thread
+  const existingMessages = services.repository.threadQueries.messages(threadId as any);
+  const hasMessages = existingMessages && existingMessages.length > 0;
+  let targetThreadId = threadId;
+
+  if (hasMessages) {
+    const title = (session as any).title || 'Resumed session';
+    const { id: newThreadId } = services.chat.createThreadAndNotify({
+      topic: title,
+      instructions: '',
+    });
+    targetThreadId = newThreadId as string;
+  }
+
+  // Import messages from transcript (batch — no per-message events)
+  const importedCount = importSessionMessages(services, targetThreadId, transcript);
+
+  // Set up session state — persistClaudeState adds 'claude-session' tag
+  persistClaudeState(services, targetThreadId, { sessionId });
+  ensureSessionArtifact(services, targetThreadId as any, {
+    sessionId,
+    cwd: (session as any).cwd || '',
+    chatState: 'idle',
+  });
+
+  // Build confirmation text
+  const sessionTitle = (session as any).title || '(untitled)';
+  const confirmText = `Session resumed: **${sessionTitle}** (${importedCount} messages imported)\nSend a message to continue.`;
+
+  if (hasMessages) {
+    // New thread: send confirmation there and navigate
+    services.chat.sendBlockMessage({
+      threadId: targetThreadId as any,
+      text: confirmText,
+      blocks: [],
+    });
+    services.chat.openThreadChatAndRefreshRecent(targetThreadId as any);
+    return { text: confirmText, skipMessage: true };
+  }
+
+  // Same thread: reload thread data to show imported messages
+  services.emitter.sendToPlugin('threads', {
+    type: 'LOAD_CHAT_THREAD',
+    data: services.repository.chatQueries.threadData(targetThreadId as any),
+  });
+
+  return { text: confirmText };
 }
