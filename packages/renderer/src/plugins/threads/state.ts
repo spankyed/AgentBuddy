@@ -34,6 +34,31 @@ function getInitialView(): 'list' | 'kanban' | 'dashboard' {
   return 'list';
 }
 
+const THREADS_TABS_KEY = 'threads-open-tabs';
+
+interface StoredTabs {
+  tabIds: string[];
+  activeTabId: string;
+}
+
+function saveTabsToStorage(tabs: Tab[], activeTabId: string) {
+  try {
+    const data: StoredTabs = {
+      tabIds: tabs.filter(t => !t.pinned).map(t => t.id),
+      activeTabId,
+    };
+    localStorage.setItem(THREADS_TABS_KEY, JSON.stringify(data));
+  } catch {}
+}
+
+function loadTabsFromStorage(): StoredTabs | null {
+  try {
+    const raw = localStorage.getItem(THREADS_TABS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
 function extractChatSettings(chatSettings: AgentSettings) {
   const hotkeys: HotkeysMap = {};
   if (chatSettings.hotkeys) {
@@ -724,7 +749,7 @@ const threadsState = setup({
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
       return { recentThreads: typedEvent.data.recentThreads as ThreadEntity[] };
     }),
-    setStartupData: assign(({ context, event }) => {
+    setStartupData: enqueueActions(({ enqueue, context, event, self }) => {
       const typedEvent = typeOf('AGENT_CONNECTED', event);
 
       const currentThreadTab = typedEvent.data.tabs?.find(tab =>
@@ -756,17 +781,43 @@ const threadsState = setup({
         modeUpdate = { mode, phase };
       }
 
-      return {
+      // Restore previously open tabs from localStorage
+      const backendTabs: Tab[] = typedEvent.data.tabs || [];
+      const stored = loadTabsFromStorage();
+      const backendTabIds = new Set(backendTabs.map(t => t.id));
+      let activeTabId = currentThreadTab?.id || backendTabs[0]?.id || '';
+
+      // If we have a stored active tab that's already in backend tabs, prefer it
+      if (stored?.activeTabId && backendTabIds.has(stored.activeTabId)) {
+        activeTabId = stored.activeTabId;
+      }
+
+      enqueue(assign({
         currentThread,
         recentThreads: (typedEvent.data.recentThreads || []) as ThreadEntity[],
-        tabs: typedEvent.data.tabs || [],
-        activeTabId: currentThreadTab?.id || typedEvent.data.tabs?.[0]?.id || '',
+        tabs: backendTabs,
+        activeTabId,
         ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
         ...modeUpdate,
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
-      };
+      }));
+
+      // Re-open stored tabs that aren't already provided by the backend
+      if (stored) {
+        const missingTabIds = stored.tabIds.filter(id => !backendTabIds.has(id));
+        for (const tabId of missingTabIds) {
+          enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId }));
+        }
+        // If stored active tab is one of the missing tabs, select it after it loads
+        if (stored.activeTabId && missingTabIds.includes(stored.activeTabId)) {
+          enqueue(() => self.send({ type: 'SELECT_TAB', tabId: stored.activeTabId }));
+        }
+      }
+
+      // Persist the current tab state
+      saveTabsToStorage(backendTabs, activeTabId);
     }),
     handleChatSettingsUpdate: assign(({ event }) => {
       const typedEvent = typeOf('AGENT_SETTINGS_UPDATED', event);
@@ -843,6 +894,9 @@ const threadsState = setup({
         enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
       }
     }),
+    persistTabs: ({ context }: { context: ThreadsContext }) => {
+      saveTabsToStorage(context.tabs, context.activeTabId);
+    },
     selectArtifact: assign(({ context, event }) => {
       const artifactId = typeOf('SELECT_ARTIFACT', event).artifactId;
       const tabs = context.tabs.map(tab =>
@@ -1236,32 +1290,35 @@ const threadsState = setup({
     LLM_DONE: {
       actions: 'finishStream',
     },
-    SELECT_TAB: { actions: 'selectTab' },
-    OPEN_THREAD_TAB: { actions: 'openThreadTab' },
-    CLOSE_TAB: { actions: 'closeTab' },
-    CLOSE_ACTIVE_TAB: { actions: 'closeActiveTab' },
+    SELECT_TAB: { actions: ['selectTab', 'persistTabs'] },
+    OPEN_THREAD_TAB: { actions: ['openThreadTab', 'persistTabs'] },
+    CLOSE_TAB: { actions: ['closeTab', 'persistTabs'] },
+    CLOSE_ACTIVE_TAB: { actions: ['closeActiveTab', 'persistTabs'] },
     SELECT_ARTIFACT: { actions: 'selectArtifact' },
     ARTIFACT_ADDED: { actions: 'addArtifact' },
     ARTIFACT_UPDATED: { actions: 'updateArtifact' },
     THREAD_TAB_REQUESTED: {
-      actions: assign(({ context, event }) => {
-        const { threadId, topic, artifacts, pinned } = typeOf('THREAD_TAB_REQUESTED', event);
-        const existingTab = context.tabs.find(t => t.id === threadId);
-        const selectedArtifactId =
-          existingTab?.selectedArtifactId && artifacts.some(a => a.id === existingTab.selectedArtifactId)
-            ? existingTab.selectedArtifactId
-            : artifacts[0]?.id;
-        const patch = { label: topic, artifacts, selectedArtifactId };
+      actions: [
+        assign(({ context, event }) => {
+          const { threadId, topic, artifacts, pinned } = typeOf('THREAD_TAB_REQUESTED', event);
+          const existingTab = context.tabs.find(t => t.id === threadId);
+          const selectedArtifactId =
+            existingTab?.selectedArtifactId && artifacts.some(a => a.id === existingTab.selectedArtifactId)
+              ? existingTab.selectedArtifactId
+              : artifacts[0]?.id;
+          const patch = { label: topic, artifacts, selectedArtifactId };
 
-        return {
-          tabs: existingTab
-            ? context.tabs.map(tab =>
-                tab.id === threadId ? { ...tab, ...patch, ...(pinned !== undefined && { pinned }) } : tab
-              )
-            : [...context.tabs, { id: threadId, ...patch, ...(pinned && { pinned }) }],
-          activeTabId: threadId,
-        };
-      })
+          return {
+            tabs: existingTab
+              ? context.tabs.map(tab =>
+                  tab.id === threadId ? { ...tab, ...patch, ...(pinned !== undefined && { pinned }) } : tab
+                )
+              : [...context.tabs, { id: threadId, ...patch, ...(pinned && { pinned }) }],
+            activeTabId: threadId,
+          };
+        }),
+        'persistTabs',
+      ]
     },
   },
   states: {
