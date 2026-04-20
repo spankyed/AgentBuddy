@@ -103,6 +103,56 @@ export interface SessionViewOptions {
 
 // ─── Internals ────────────────────────────────────────────────────────────────
 
+const CHUNK_SIZE = 4096
+
+/**
+ * Extract a session title from a JSONL file by reading head + tail chunks.
+ * Mirrors the CLI's `parseSessionInfoFromLite()` pattern — checks for
+ * `customTitle` first, falls back to `aiTitle`.
+ */
+async function extractTitle(filePath: string, fileSize: number): Promise<string | undefined> {
+  let fh: fs.promises.FileHandle | undefined
+  try {
+    fh = await fs.promises.open(filePath, 'r')
+    const headBuf = Buffer.alloc(Math.min(CHUNK_SIZE, fileSize))
+    await fh.read(headBuf, 0, headBuf.length, 0)
+    const head = headBuf.toString('utf8')
+
+    let tail = head
+    if (fileSize > CHUNK_SIZE) {
+      const tailBuf = Buffer.alloc(Math.min(CHUNK_SIZE, fileSize))
+      await fh.read(tailBuf, 0, tailBuf.length, fileSize - tailBuf.length)
+      tail = tailBuf.toString('utf8')
+    }
+
+    // Check tail first (titles are appended), then head
+    return extractJsonField(tail, 'customTitle')
+      ?? extractJsonField(head, 'customTitle')
+      ?? extractJsonField(tail, 'aiTitle')
+      ?? extractJsonField(head, 'aiTitle')
+  } catch {
+    return undefined
+  } finally {
+    await fh?.close()
+  }
+}
+
+/** Extract a JSON string field value by simple string search (no full parse). */
+function extractJsonField(text: string, key: string): string | undefined {
+  for (const pattern of [`"${key}":"`, `"${key}": "`]) {
+    const idx = text.lastIndexOf(pattern)
+    if (idx < 0) continue
+    const start = idx + pattern.length
+    let i = start
+    while (i < text.length) {
+      if (text[i] === '\\') { i += 2; continue }
+      if (text[i] === '"') return text.slice(start, i)
+      i++
+    }
+  }
+  return undefined
+}
+
 /** Read all sessions from a bucket directory. `cwd` is stored on each SessionInfo for context. */
 async function listBucket(bucketPath: string, cwd?: string): Promise<SessionInfo[]> {
   let files: string[]
@@ -121,10 +171,12 @@ async function listBucket(bucketPath: string, cwd?: string): Promise<SessionInfo
     const stat = await fs.promises.stat(file).catch(() => null)
     if (!stat) continue
     const id = name.replace(/\.jsonl$/, '')
+    const title = await extractTitle(file, stat.size)
     infos.push({
       id,
       file,
       cwd,
+      title,
       modifiedAt: stat.mtime,
       size: stat.size,
     })

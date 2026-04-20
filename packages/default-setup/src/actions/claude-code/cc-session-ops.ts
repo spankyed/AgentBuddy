@@ -135,10 +135,12 @@ async function handleResume(
   services: Services,
   threadId?: string,
 ): Promise<{ text: string; data?: any; blocks?: any[]; skipMessage?: boolean }> {
-  const [sessionId] = args;
+  // Join args back and strip outer quotes to support titles with spaces
+  // e.g. `/cc-resume "Branched conversation (Branch 14)"`
+  const identifier = args.join(' ').replace(/^["']|["']$/g, '').trim();
 
   // No args: show session picker
-  if (!sessionId) {
+  if (!identifier) {
     const sessions = await services.cli.claudeCode.listSessions();
     if (!sessions.length) return { text: 'No sessions found.' };
 
@@ -156,12 +158,15 @@ async function handleResume(
     };
   }
 
-  // Validate session exists
+  // Validate session exists — match by UUID first, then by title
   const sessions = await services.cli.claudeCode.listSessions();
-  const session = sessions.find((s: any) => s.id === sessionId);
-  if (!session) return { text: `Session not found: ${sessionId}` };
+  const session = sessions.find((s: any) => s.id === identifier)
+    || sessions.find((s: any) => s.title && s.title.toLowerCase() === identifier.toLowerCase());
+  if (!session) return { text: `Session not found: ${identifier}` };
 
   if (!threadId) return { text: 'No active thread.' };
+
+  const sessionId = session.id;
 
   // Fetch transcript for message import — use the session's own cwd bucket
   const transcript = await services.cli.claudeCode.viewSession(sessionId, { cwd: (session as any).cwd });
