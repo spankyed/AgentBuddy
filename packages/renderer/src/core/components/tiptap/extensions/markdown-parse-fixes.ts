@@ -27,6 +27,18 @@ export const MarkdownParseFixes = Extension.create({
                 }
               }
             })
+
+            // Don't render backtick-space content as inline code (e.g. ` text`)
+            markdownit.core.ruler.push('no-spaced-code-inline', (state: any) => {
+              for (const token of state.tokens) {
+                if (token.type !== 'inline' || !token.children) continue
+                for (const child of token.children) {
+                  if (child.type === 'code_inline' && child.content.startsWith(' ')) {
+                    Object.assign(child, { type: 'text', tag: '', markup: '', content: `\`${child.content}\`` })
+                  }
+                }
+              }
+            })
           },
         },
       },
