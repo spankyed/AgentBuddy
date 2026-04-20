@@ -36,26 +36,19 @@ function getInitialView(): 'list' | 'kanban' | 'dashboard' {
 
 const THREADS_TABS_KEY = 'threads-open-tabs';
 
-interface StoredTabs {
-  tabIds: string[];
-  activeTabId: string;
-}
-
 function saveTabsToStorage(tabs: Tab[], activeTabId: string) {
   try {
-    const data: StoredTabs = {
+    localStorage.setItem(THREADS_TABS_KEY, JSON.stringify({
       tabIds: tabs.filter(t => !t.pinned).map(t => t.id),
       activeTabId,
-    };
-    localStorage.setItem(THREADS_TABS_KEY, JSON.stringify(data));
+    }));
   } catch {}
 }
 
-function loadTabsFromStorage(): StoredTabs | null {
+function loadTabsFromStorage(): { tabIds: string[]; activeTabId: string } | null {
   try {
     const raw = localStorage.getItem(THREADS_TABS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
 
@@ -475,8 +468,14 @@ const threadsState = setup({
     persistDashboardView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'dashboard'); } catch {} },
     removeThreadFromList: assign(({ event, context }) => {
       const { threadId } = typeOf('THREAD_DELETED', event);
+      const tabs = context.tabs.filter(t => t.id !== threadId);
+      const activeTabId = context.activeTabId === threadId
+        ? (tabs[tabs.length - 1]?.id ?? '')
+        : context.activeTabId;
       return {
         threads: context.threads.filter(t => t.id !== threadId),
+        tabs,
+        activeTabId,
         view: context.view.id === threadId ? { ...defaultThread, id: '' as EARS.EntityId, shortCode: '', status: '', timestamp: 0 } as ThreadViewData : context.view,
         selectedThreadCode: context.view.id === threadId ? undefined : context.selectedThreadCode,
       };
@@ -785,12 +784,9 @@ const threadsState = setup({
       const backendTabs: Tab[] = typedEvent.data.tabs || [];
       const stored = loadTabsFromStorage();
       const backendTabIds = new Set(backendTabs.map(t => t.id));
-      let activeTabId = currentThreadTab?.id || backendTabs[0]?.id || '';
-
-      // If we have a stored active tab that's already in backend tabs, prefer it
-      if (stored?.activeTabId && backendTabIds.has(stored.activeTabId)) {
-        activeTabId = stored.activeTabId;
-      }
+      const activeTabId = (stored?.activeTabId && backendTabIds.has(stored.activeTabId))
+        ? stored.activeTabId
+        : (currentThreadTab?.id || backendTabs[0]?.id || '');
 
       enqueue(assign({
         currentThread,
@@ -804,19 +800,17 @@ const threadsState = setup({
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       }));
 
-      // Re-open stored tabs that aren't already provided by the backend
+      // Re-open stored tabs not already provided by the backend.
+      // The stored active tab is opened last so it ends up as activeTabId.
       if (stored) {
-        const missingTabIds = stored.tabIds.filter(id => !backendTabIds.has(id));
-        for (const tabId of missingTabIds) {
+        const missing = stored.tabIds.filter(id => !backendTabIds.has(id));
+        const activeIdx = missing.indexOf(stored.activeTabId);
+        if (activeIdx > -1) missing.push(missing.splice(activeIdx, 1)[0]);
+        for (const tabId of missing) {
           enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId }));
-        }
-        // If stored active tab is one of the missing tabs, select it after it loads
-        if (stored.activeTabId && missingTabIds.includes(stored.activeTabId)) {
-          enqueue(() => self.send({ type: 'SELECT_TAB', tabId: stored.activeTabId }));
         }
       }
 
-      // Persist the current tab state
       saveTabsToStorage(backendTabs, activeTabId);
     }),
     handleChatSettingsUpdate: assign(({ event }) => {
@@ -894,9 +888,7 @@ const threadsState = setup({
         enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
       }
     }),
-    persistTabs: ({ context }: { context: ThreadsContext }) => {
-      saveTabsToStorage(context.tabs, context.activeTabId);
-    },
+    persistTabs: ({ context }) => saveTabsToStorage(context.tabs, context.activeTabId),
     selectArtifact: assign(({ context, event }) => {
       const artifactId = typeOf('SELECT_ARTIFACT', event).artifactId;
       const tabs = context.tabs.map(tab =>
@@ -1170,7 +1162,7 @@ const threadsState = setup({
       target: '.list',
     },
     THREAD_DELETED: {
-      actions: 'removeThreadFromList',
+      actions: ['removeThreadFromList', 'persistTabs'],
       target: '.list',
     },
 
