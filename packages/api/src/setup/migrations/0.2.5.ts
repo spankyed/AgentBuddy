@@ -2,13 +2,15 @@ import { EARS } from '@/core/types';
 import { findAll } from '@/core/helpers/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
+import { settingsCommands } from '@/systems/settings/repository';
 import type { ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.5',
-  description: 'Backfill chatState from session artifacts onto thread entities',
+  description: 'Backfill chatState from session artifacts; backfill sourceHash on DSL entities to enable seed updates',
   up: () => {
+    // ── 1. Backfill chatState from session artifacts onto thread entities ──
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
     for (const thread of threads) {
       // Skip if thread already has chatState set
@@ -24,5 +26,37 @@ export const migration: Migration = {
         tx(thread.id as any).put('chatState', chatState).put('updatedAt', Date.now()).id();
       }
     }
+
+    // ── 2. Backfill sourceHash on DSL-sourced entities ────────────────────
+    // In 0.2.4 the seed system started using sourceHash to distinguish
+    // DSL-sourced items from user-created ones. Items without sourceHash are
+    // treated as "untracked" (user-created) and skipped forever. Stamping a
+    // placeholder value forces the next boot seed to update them and set the
+    // real hash.
+    const dslEntityTypes = [
+      EARS.Entity.Document,
+      EARS.Entity.Collection,
+      EARS.Entity.Action,
+      EARS.Entity.Prompt,
+      EARS.Entity.Flow,
+    ];
+
+    for (const entityType of dslEntityTypes) {
+      const entities = findAll<{ id: EARS.EntityId; sourceHash?: string }>(entityType);
+      let count = 0;
+      for (const entity of entities) {
+        if (!entity.sourceHash) {
+          tx(entity.id as any).put('sourceHash', 'migrated').put('updatedAt', Date.now()).id();
+          count++;
+        }
+      }
+      if (count > 0) {
+        console.log(`[migration] Backfilled sourceHash on ${count} ${entityType} entities`);
+      }
+    }
+
+    // Clear seedHash so runBootSeed() doesn't short-circuit — forces a full
+    // re-seed that replaces the "migrated" placeholder with real hashes.
+    settingsCommands.updateSettings('internal', null, ['seedHash'], null);
   },
 };
