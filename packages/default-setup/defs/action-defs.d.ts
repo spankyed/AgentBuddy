@@ -1100,7 +1100,7 @@ type BlockResponse =
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
-    sender: 'user' | 'assistant' | 'system';
+    sender: 'user' | 'assistant' | 'system' | 'marker';
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
@@ -1126,6 +1126,8 @@ interface MessageEntity extends BaseEntity {
     asideText?: string;
     /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
     asideContext?: string;
+    /** When true, message is hidden because a marker message compacted it. */
+    compacted?: boolean;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -7191,7 +7193,15 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>): void;
+/**
+ * Create a marker message that compacts eligible prior messages in a thread.
+ * The repository determines which messages are eligible (excludes markers and already-compacted).
+ */
+declare function createMarkerMessage(params: {
+  threadId: EARS.EntityId;
+  text: string;
+}): { messageId: EARS.EntityId; compactedMessageIds: EARS.EntityId[] };
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -7276,9 +7286,11 @@ declare const chat_sendQuestionBlock: typeof sendQuestionBlock;
 declare const chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
 declare const chat_sendTextInputBlock: typeof sendTextInputBlock;
 declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
+declare const chat_createMarkerMessage: typeof createMarkerMessage;
 declare const chat_updateMessageState: typeof updateMessageState;
 declare namespace chat {
   export {
+    chat_createMarkerMessage as createMarkerMessage,
     chat_createBlockMessage as createBlockMessage,
     chat_createThreadAndNotify as createThreadAndNotify,
     chat_generateAsideText as generateAsideText,
@@ -7532,7 +7544,7 @@ declare const services: {
             readonly addMessage: (params: {
                 threadId: EARS.EntityId;
                 text: string;
-                sender: "user" | "assistant" | "system";
+                sender: "user" | "assistant" | "system" | "marker";
                 blocks?: BlockConfig[];
                 forkable?: boolean;
                 references?: MessageReferences;
@@ -7540,6 +7552,7 @@ declare const services: {
                 command?: string;
                 autoHide?: boolean;
                 asideContext?: string;
+                compacted?: boolean;
                 blockResponse?: any;
                 responseTimestamp?: number;
                 asideText?: string;
@@ -7572,7 +7585,7 @@ declare const services: {
             };
             readonly updateMessageState: (params: {
                 messageId: EARS.EntityId;
-                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context">>;
+                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context" | "compacted">>;
             }) => {
                 messageId: EARS.EntityId;
                 updatedAt: number;

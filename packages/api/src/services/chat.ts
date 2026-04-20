@@ -395,7 +395,7 @@ export function updateMessageBlockResponse(
  */
 export function updateMessageState(
   messageId: EARS.EntityId,
-  updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>
+  updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>
 ): void {
   const result = repository.chatCommands.updateMessageState({
     messageId,
@@ -408,6 +408,40 @@ export function updateMessageState(
     messageId: result.messageId,
     ...result.updates
   });
+}
+
+/**
+ * Create a marker message that compacts eligible prior messages in a thread.
+ * The repository determines which messages are eligible (excludes markers and already-compacted).
+ */
+export function createMarkerMessage(params: {
+  threadId: EARS.EntityId;
+  text: string;
+}): { messageId: EARS.EntityId; compactedMessageIds: EARS.EntityId[] } {
+  const result = repository.chatCommands.createMarkerMessage(params);
+
+  // Notify frontend: add the marker message
+  sendToPlugin('threads', {
+    type: 'MESSAGE_ADDED',
+    threadId: params.threadId,
+    message: {
+      id: result.id,
+      text: result.text,
+      sender: result.sender,
+      timestamp: result.timestamp,
+    } as MessageEntity,
+  });
+
+  // Notify frontend: mark each compacted message
+  for (const id of result.compactedMessageIds) {
+    sendToPlugin('threads', {
+      type: 'UPDATE_MESSAGE_STATE',
+      messageId: id,
+      compacted: true,
+    });
+  }
+
+  return { messageId: result.id, compactedMessageIds: result.compactedMessageIds };
 }
 
 /**

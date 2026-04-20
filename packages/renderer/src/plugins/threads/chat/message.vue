@@ -2,10 +2,24 @@
   <div
     :class="[
       'flex pb-3 animate-fade-in w-full',
-      isUser ? 'justify-end' : 'justify-start'
+      isMarker ? 'justify-center' : isUser ? 'justify-end' : 'justify-start'
     ]"
   >
-    <div class="relative group max-w-full min-w-0">
+    <!-- Marker message: compact divider with toggle -->
+    <div v-if="isMarker" class="flex items-center gap-3 w-full px-4 py-1">
+      <div class="flex-1 h-px bg-neutral-700/50"></div>
+      <button
+        @click="markerExpanded = !markerExpanded; $emit('toggle-compacted', message.id, !markerExpanded)"
+        class="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200 transition-colors px-2 py-1 rounded hover:bg-neutral-800/50"
+        :title="markerExpanded ? 'Collapse compacted messages' : 'Expand compacted messages'"
+      >
+        <component :is="markerExpanded ? ChevronUp : ChevronDown" :size="14" />
+        <span class="italic">{{ message.text }}</span>
+      </button>
+      <div class="flex-1 h-px bg-neutral-700/50"></div>
+    </div>
+
+    <div v-else class="relative group max-w-full min-w-0">
       <!-- Aside: collapsed interactive message (click to expand) -->
       <div v-if="message.autoHide && message.asideText && !expanded"
            class="text-xs italic py-1 px-2 cursor-pointer hover:bg-neutral-800/50 rounded transition-colors"
@@ -173,7 +187,7 @@
 <script setup lang="ts">
 import { computed, ref, onUpdated, watch } from 'vue'
 import type { MessageEntity } from '@app/api'
-import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown } from 'lucide-vue-next'
+import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
@@ -191,6 +205,7 @@ interface ChatMessageEmits {
   (e: 'revert-with-files', messageId: string): void
   (e: 'fork', messageId: string): void
   (e: 'open-lightbox', imageSrc: string): void
+  (e: 'toggle-compacted', markerId: string, compacted: boolean): void
 }
 
 const props = withDefaults(defineProps<ChatMessageProps>(), {
@@ -203,6 +218,8 @@ const expanded = ref(false)
 const revertMenu = useContextMenu()
 
 const isUser = computed(() => props.message.sender === 'user')
+const isMarker = computed(() => props.message.sender === 'marker')
+const markerExpanded = ref(false)
 const isCommand = computed(() => props.message.isCommand ?? false)
 
 // Long user message truncation

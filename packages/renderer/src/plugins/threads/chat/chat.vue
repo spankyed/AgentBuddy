@@ -5,22 +5,23 @@
       <!-- Agent Chat Content -->
       <div class="relative flex-grow w-full overflow-hidden min-h-0">
         <div class="h-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer" @scroll="onScroll">
-          <div v-if="messages.length === 0" class="flex items-center justify-center h-full">
+          <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
             <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
           </div>
           <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
             <ChatMessage
-              v-for="message in messages"
+              v-for="message in visibleMessages"
               :key="message.id"
               :message="message"
               @open-lightbox="openLightbox"
               @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
               @revert="(messageId: string) => handleRevert(messageId)"
               @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
+              @toggle-compacted="handleToggleCompacted"
             />
           </div>
         </div>
-        <ScrollToBottomFob :visible="!isNearBottom && messages.length > 0" @click="scrollToBottom('smooth')" />
+        <ScrollToBottomFob :visible="!isNearBottom && allMessages.length > 0" @click="scrollToBottom('smooth')" />
       </div>
       <!-- Input -->
       <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
@@ -124,7 +125,8 @@ import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, Q
 import { trpc } from '@/core/trpc'
 
 const actor: ThreadsState = applicationState.system.get(id);
-const messages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
+const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
+const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
 const recentThreads = useSelector(actor, (state) => (state.context.recentThreads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
@@ -308,7 +310,7 @@ const prefillReferences = ref<MessageReferences | undefined>()
 function doRevert(messageId: string) {
   if (!currentThread.value?.id) return
   // Grab the message text + attachments before the revert deletes it.
-  const msg = messages.value.find(m => m.id === messageId)
+  const msg = allMessages.value.find(m => m.id === messageId)
   const revertedText = msg?.text || ''
   const revertedRefs = (msg as any)?.references as MessageReferences | undefined
   actor.send({
@@ -339,7 +341,7 @@ function doSummarize(messageId: string) {
   // Grab X's text + attachments before the soft-delete removes it — prefill mirrors
   // Claude Code's `direction: 'from'` behavior (user resubmits against
   // the freshly compacted session).
-  const msg = messages.value.find(m => m.id === messageId)
+  const msg = allMessages.value.find(m => m.id === messageId)
   const revertedText = msg?.text || ''
   const revertedRefs = (msg as any)?.references as MessageReferences | undefined
   actor.send({
@@ -357,9 +359,18 @@ function doSummarize(messageId: string) {
   })
 }
 
+function handleToggleCompacted(markerId: string, compacted: boolean) {
+  trpc.bus.send.mutate({
+    systemId: 'threads',
+    type: 'TOGGLE_COMPACTED',
+    markerId,
+    compacted,
+  })
+}
+
 const prevThreadId = ref(currentThread.value?.id)
 
-watch(messages, async (newMsgs, oldMsgs) => {
+watch(allMessages, async (newMsgs, oldMsgs) => {
   await nextTick()
   const threadChanged = currentThread.value?.id !== prevThreadId.value
   if (threadChanged) prevThreadId.value = currentThread.value?.id

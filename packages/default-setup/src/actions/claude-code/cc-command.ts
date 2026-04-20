@@ -80,7 +80,7 @@ export async function action(
 
   const handler = handlers[name];
 
-  let result: { text: string; data?: any; blocks?: any[] };
+  let result: { text: string; data?: any; blocks?: any[]; skipMessage?: boolean };
 
   if (handler) {
     try {
@@ -93,7 +93,7 @@ export async function action(
     result = { text: `Unknown command: cc-${name}\nAvailable: ${available}` };
   }
 
-  if (threadId) {
+  if (threadId && !result.skipMessage) {
     services.chat.sendBlockMessage({
       threadId,
       text: result.text,
@@ -215,7 +215,7 @@ async function handleCompact(
   args: string[],
   services: Services,
   threadId?: string,
-): Promise<{ text: string; data?: any }> {
+): Promise<{ text: string; data?: any; skipMessage?: boolean }> {
   if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
   const sessionId = getClaudeState(services, threadId)?.sessionId;
@@ -229,7 +229,16 @@ async function handleCompact(
   });
 
   const result = await handle.result;
-  return { text: result.text || 'Session compacted.' };
+  const summaryText = result.text || 'Session compacted.';
+
+  // Create a marker message that compacts eligible prior messages
+  // (repository filters out markers and already-compacted messages)
+  const { compactedMessageIds } = services.chat.createMarkerMessage({
+    threadId: threadId as any,
+    text: summaryText,
+  });
+
+  return { text: summaryText, skipMessage: compactedMessageIds.length > 0 };
 }
 
 async function handleStatus(
