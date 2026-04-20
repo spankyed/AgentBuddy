@@ -58,7 +58,6 @@ const handlers: Record<string, Handler> = {
   model: handleModel,
   memory: handleMemory,
   skills: handleSkills,
-  tasks: handleTasks,
   stats: handleStats,
   // Passthrough commands — exec and relay stdout
   ...Object.fromEntries(
@@ -244,68 +243,29 @@ async function handleMemory(
   args: string[],
   services: Services,
 ): Promise<{ text: string; data?: any }> {
-  if (args[0] === 'add' && args[1]) {
-    const result = await services.cli.claudeCode.exec(['memory', 'add', args[1]]);
-    return { text: result.stdout.trim() || `Added memory file: ${args[1]}` };
+  if (args[0] === 'add' || args[0] === 'remove') {
+    return { text: `Memory add/remove is only available in the Claude Code terminal. Use /memory ${args[0]} there.` };
   }
-  if (args[0] === 'remove' && args[1]) {
-    const result = await services.cli.claudeCode.exec(['memory', 'remove', args[1]]);
-    return { text: result.stdout.trim() || `Removed memory file: ${args[1]}` };
-  }
-  const result = await services.cli.claudeCode.exec(['memory', 'list', '--json']);
-  const output = result.stdout.trim();
-  if (!output) return { text: 'No memory files found.' };
-  try {
-    const files = JSON.parse(output);
-    const lines = files.map((f: any) => {
-      const scope = f.scope ? ` [${f.scope}]` : '';
-      return `${f.name}${scope}${f.path ? `  ${f.path}` : ''}`;
-    });
-    return { text: lines.join('\n'), data: files };
-  } catch {
-    return { text: output };
-  }
+  const files = await services.cli.claudeCode.listMemoryFiles();
+  if (!files.length) return { text: 'No memory files found.' };
+  const lines = files.map((f: any) => {
+    const scope = f.scope ? ` [${f.scope}]` : '';
+    return `${f.name}${scope}  ${f.path}`;
+  });
+  return { text: lines.join('\n'), data: files };
 }
 
 async function handleSkills(
   _args: string[],
   services: Services,
 ): Promise<{ text: string; data?: any }> {
-  const result = await services.cli.claudeCode.exec(['skills', 'list', '--json']);
-  const output = result.stdout.trim();
-  if (!output) return { text: 'No skills installed.' };
-  try {
-    const skills = JSON.parse(output);
-    if (!skills.length) return { text: 'No skills installed.' };
-    const lines = skills.map((s: any) => {
-      const status = s.enabled === false ? ' (disabled)' : '';
-      const scope = s.scope ? ` [${s.scope}]` : '';
-      return `${s.name}${status}${scope}`;
-    });
-    return { text: lines.join('\n'), data: skills };
-  } catch {
-    return { text: output };
-  }
-}
-
-async function handleTasks(
-  _args: string[],
-  services: Services,
-): Promise<{ text: string; data?: any }> {
-  const result = await services.cli.claudeCode.exec(['task', 'list', '--json']);
-  const output = result.stdout.trim();
-  if (!output) return { text: 'No tasks found.' };
-  try {
-    const tasks = JSON.parse(output);
-    if (!tasks.length) return { text: 'No tasks found.' };
-    const lines = tasks.map((t: any) => {
-      const status = t.status ? ` [${t.status}]` : '';
-      return `${t.id}  ${t.subject || '(untitled)'}${status}`;
-    });
-    return { text: lines.join('\n'), data: tasks };
-  } catch {
-    return { text: output };
-  }
+  const skills = await services.cli.claudeCode.listSkills();
+  if (!skills.length) return { text: 'No skills installed.' };
+  const lines = skills.map((s: any) => {
+    const scope = s.scope ? ` [${s.scope}]` : '';
+    return `${s.name}${scope}`;
+  });
+  return { text: lines.join('\n'), data: skills };
 }
 
 async function handleStats(

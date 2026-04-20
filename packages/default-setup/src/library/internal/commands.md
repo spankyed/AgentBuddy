@@ -8,7 +8,6 @@
 **cc-model**: Model name (optional, shows current if omitted)
 **cc-memory**: File name or add|remove <name>
 **cc-skills**: List installed skills
-**cc-tasks**: List tasks
 **cc-stats**: Show version, auth, and config info
 **cc-doctor**: Diagnose installation
 **cc-mcp**: Manage MCP servers

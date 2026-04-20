@@ -6430,6 +6430,10 @@ interface CliServiceType {
         readSettings(): Promise<Record<string, any>>;
         /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
         writeSettings(settings: Record<string, any>): Promise<void>;
+        /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
+        listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>;
+        /** List memory/CLAUDE.md files from known locations. */
+        listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>;
     };
 }
 

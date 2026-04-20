@@ -9,6 +9,7 @@ import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/hand
 import { configDir } from '@/services/claude-code/sessions'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -68,6 +69,10 @@ export interface CliServiceType {
     readSettings(): Promise<Record<string, any>>
     /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
     writeSettings(settings: Record<string, any>): Promise<void>
+    /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
+    listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** List memory/CLAUDE.md files from known locations. */
+    listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
   }
 }
 
@@ -179,6 +184,63 @@ function createCliService(): CliServiceType {
       async writeSettings(settings) {
         const settingsPath = path.join(configDir(), 'settings.json')
         await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2))
+      },
+      async listSkills() {
+        const results: Array<{ name: string; scope: string; path: string }> = []
+        const dirs = [
+          { dir: path.join(configDir(), 'skills'), scope: 'user' },
+          { dir: path.join(resolveCwd(), '.claude', 'skills'), scope: 'project' },
+        ]
+        for (const { dir, scope } of dirs) {
+          try {
+            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push({
+                  name: entry.name.replace(/\.md$/, ''),
+                  scope,
+                  path: path.join(dir, entry.name),
+                })
+              }
+            }
+          } catch { /* dir doesn't exist */ }
+        }
+        return results
+      },
+      async listMemoryFiles() {
+        const cwd = resolveCwd()
+        const results: Array<{ name: string; scope: string; path: string }> = []
+        const candidates = [
+          { filePath: path.join(os.homedir(), '.claude', 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'user' },
+          { filePath: path.join(cwd, 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'project' },
+          { filePath: path.join(cwd, 'CLAUDE.local.md'), name: 'CLAUDE.local.md', scope: 'local' },
+        ]
+        for (const { filePath, name, scope } of candidates) {
+          try {
+            await fs.promises.access(filePath)
+            results.push({ name, scope, path: filePath })
+          } catch { /* doesn't exist */ }
+        }
+        // Scan rules directories
+        const rulesDirs = [
+          { dir: path.join(os.homedir(), '.claude', 'rules'), scope: 'user' },
+          { dir: path.join(cwd, '.claude', 'rules'), scope: 'project' },
+        ]
+        for (const { dir, scope } of rulesDirs) {
+          try {
+            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push({
+                  name: `rules/${entry.name}`,
+                  scope,
+                  path: path.join(dir, entry.name),
+                })
+              }
+            }
+          } catch { /* dir doesn't exist */ }
+        }
+        return results
       },
     },
   }
