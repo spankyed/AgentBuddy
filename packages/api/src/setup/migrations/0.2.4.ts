@@ -3,7 +3,7 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.4',
-  description: 'Update Plan phase color; backfill recentThreadsSortOrder default',
+  description: 'Update Plan phase color; backfill recentThreadsSortOrder default; add closeTab hotkey',
   up: () => {
     const data = settingsQueries.getSettings();
 
@@ -24,6 +24,12 @@ export const migration: Migration = {
     const threads = data.plugins?.threads;
     if (threads && !threads.recentThreadsSortOrder) {
       settingsCommands.updateSettings('plugin', 'threads', ['recentThreadsSortOrder'], 'created');
+    }
+
+    // 3. Add closeTab hotkey to threads chat settings
+    const hotkeys = data.plugins?.threads?.chat?.hotkeys;
+    if (hotkeys && !hotkeys.closeTab) {
+      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'hotkeys', 'closeTab'], { key: 'w', modifiers: ['cmd'] });
     }
   }
 };

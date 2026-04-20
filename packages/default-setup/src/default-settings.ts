@@ -105,7 +105,8 @@ const settings: SettingsData = {
         ],
         hotkeys: {
           textToSpeech: { key: 'r', modifiers: ['cmd'], global: true },
-          quickPrompts: { key: 'd', modifiers: ['cmd'], global: true }
+          quickPrompts: { key: 'd', modifiers: ['cmd'], global: true },
+          closeTab: { key: 'w', modifiers: ['cmd'] },
         },
         quickPrompts: [
           { id: 'qp_1', text: 'Write a commit message' },

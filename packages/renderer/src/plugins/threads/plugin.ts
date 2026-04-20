@@ -30,6 +30,10 @@ const threadsPlugin: Plugin = {
     {
       action: 'quickPrompts',
       global: true
+    },
+    {
+      action: 'closeTab',
+      global: false
     }
   ],
 };

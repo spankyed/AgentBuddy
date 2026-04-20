@@ -1,7 +1,7 @@
 import breadcrumb, { breadcrumbWithParams } from '@/core/breadcrumb';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@/core/actors/route-trailer';
 import { safeEvents } from '@/core/types/safe-events';
-import { setup, assign, fromPromise, spawnChild } from 'xstate';
+import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
 import type { ActorRefFrom } from 'xstate';
 import type {
   ThreadEntity, OutgoingThreadsEvents,
@@ -146,6 +146,7 @@ type UIEvent =
   | { type: 'SELECT_TAB'; tabId: string }
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
+  | { type: 'CLOSE_ACTIVE_TAB' }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: string }
   | { type: 'SET_PHASE'; phase: string }
@@ -807,10 +808,10 @@ const threadsState = setup({
         activeTabId: threadId
       };
     }),
-    closeTab: assign(({ context, event }) => {
+    closeTab: enqueueActions(({ enqueue, context, event, self }) => {
       const tabId = typeOf('CLOSE_TAB', event).tabId;
       const tab = context.tabs.find(t => t.id === tabId);
-      if (!tab || tab.pinned) return {};
+      if (!tab || tab.pinned) return;
 
       const idx = context.tabs.findIndex(t => t.id === tabId);
       const newTabs = context.tabs.filter(t => t.id !== tabId);
@@ -821,7 +822,26 @@ const threadsState = setup({
         newActiveTabId = nextTab?.id ?? '';
       }
 
-      return { tabs: newTabs, activeTabId: newActiveTabId };
+      enqueue(assign({ tabs: newTabs, activeTabId: newActiveTabId }));
+      if (context.activeTabId === tabId && newActiveTabId) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
+      }
+    }),
+    closeActiveTab: enqueueActions(({ enqueue, context, self }) => {
+      const tabId = context.activeTabId;
+      if (!tabId) return;
+      const tab = context.tabs.find(t => t.id === tabId);
+      if (!tab || tab.pinned) return;
+
+      const idx = context.tabs.findIndex(t => t.id === tabId);
+      const newTabs = context.tabs.filter(t => t.id !== tabId);
+      const nextTab = context.tabs[idx + 1] ?? context.tabs[idx - 1];
+      const newActiveTabId = nextTab?.id ?? '';
+
+      enqueue(assign({ tabs: newTabs, activeTabId: newActiveTabId }));
+      if (newActiveTabId) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
+      }
     }),
     selectArtifact: assign(({ context, event }) => {
       const artifactId = typeOf('SELECT_ARTIFACT', event).artifactId;
@@ -892,6 +912,7 @@ const threadsState = setup({
     },
     handleHotkey: createHotkeyProcessor({
       quickPrompts: 'TOGGLE_QUICK_PROMPTS',
+      closeTab: 'CLOSE_ACTIVE_TAB',
     }),
     openQuickPromptsAtCursor: assign(() => ({
       quickPromptCursor: { x: mouseX, y: mouseY },
@@ -1218,6 +1239,7 @@ const threadsState = setup({
     SELECT_TAB: { actions: 'selectTab' },
     OPEN_THREAD_TAB: { actions: 'openThreadTab' },
     CLOSE_TAB: { actions: 'closeTab' },
+    CLOSE_ACTIVE_TAB: { actions: 'closeActiveTab' },
     SELECT_ARTIFACT: { actions: 'selectArtifact' },
     ARTIFACT_ADDED: { actions: 'addArtifact' },
     ARTIFACT_UPDATED: { actions: 'updateArtifact' },
