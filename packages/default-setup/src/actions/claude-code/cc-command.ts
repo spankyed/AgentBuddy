@@ -109,7 +109,7 @@ export async function action(
 async function handleSessions(
   args: string[],
   services: Services,
-): Promise<{ text: string; data?: any }> {
+): Promise<{ text: string; data?: any; blocks?: any[] }> {
   const [sessionId] = args;
 
   if (sessionId) {
@@ -126,15 +126,20 @@ async function handleSessions(
   }
 
   const sessions = await services.cli.claudeCode.listSessions();
-  if (!sessions.length) {
-    return { text: 'No sessions found.' };
-  }
-  const lines = sessions.map(s => {
-    const title = s.title || '(untitled)';
-    const date = s.modifiedAt ? new Date(s.modifiedAt).toLocaleDateString() : '';
-    return `${s.id}  ${title}  ${date}`;
-  });
-  return { text: lines.join('\n'), data: sessions };
+  if (!sessions.length) return { text: 'No sessions found.' };
+
+  const items = sessions.map(s => ({
+    id: s.id,
+    title: s.title || '(untitled)',
+    modifiedAt: s.modifiedAt ? new Date(s.modifiedAt).toISOString() : '',
+    size: s.size ?? 0,
+  }));
+
+  return {
+    text: `${sessions.length} sessions`,
+    blocks: [{ type: 'session-list', props: { sessions: items } }],
+    data: sessions,
+  };
 }
 
 async function handleConfig(
