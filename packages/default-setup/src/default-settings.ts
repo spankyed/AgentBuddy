@@ -56,6 +56,7 @@ const settings: SettingsData = {
     code: {
       hotkeys: {
         openTerminal: { key: '`', modifiers: ['ctrl'] },
+        openTerminalTab: { key: '`', modifiers: ['ctrl', 'shift'] },
         navigatePrevPanel: { key: '[', modifiers: ['cmd', 'shift'] },
         navigateNextPanel: { key: ']', modifiers: ['cmd', 'shift'] },
         focusSearch: { key: 'f', modifiers: ['cmd', 'shift'] },

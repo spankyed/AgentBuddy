@@ -329,6 +329,20 @@
 
           <div class="group">
             <KeyboardShortcutInput
+              v-model="hotkeys.openTerminalTab"
+              id="open-terminal-tab"
+              label="Open Terminal Tab"
+              @change="saveHotkeys"
+              container-class="flex-1"
+              :show-reset-button="true"
+            />
+            <p class="mt-1.5 text-xs text-neutral-600">
+              Open a new terminal as an editor tab
+            </p>
+          </div>
+
+          <div class="group">
+            <KeyboardShortcutInput
               v-model="hotkeys.focusSearch"
               id="focus-search"
               label="Focus Search"
@@ -409,6 +423,7 @@ const emit = defineEmits<{
 // State - initialize directly from props with defaults
 const hotkeys = reactive<CodeSettings['hotkeys']>({
   openTerminal: props.settings?.hotkeys?.openTerminal || null,
+  openTerminalTab: props.settings?.hotkeys?.openTerminalTab || null,
   navigatePrevPanel: props.settings?.hotkeys?.navigatePrevPanel || null,
   navigateNextPanel: props.settings?.hotkeys?.navigateNextPanel || null,
   focusSearch: props.settings?.hotkeys?.focusSearch || null

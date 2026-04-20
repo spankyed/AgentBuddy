@@ -148,6 +148,7 @@ export type Event =
   // Hotkey events
   | HotkeyEvent
   | { type: 'OPEN_TERMINAL' }
+  | { type: 'OPEN_TERMINAL_TAB' }
   | { type: 'NAVIGATE_PREV_PANEL' }
   | { type: 'NAVIGATE_NEXT_PANEL' }
   | { type: 'FOCUS_SEARCH'; selectedText?: string }
@@ -684,6 +685,7 @@ const codeState = setup({
 
     handleHotkey: createHotkeyProcessor({
       openTerminal: 'OPEN_TERMINAL',
+      openTerminalTab: 'OPEN_TERMINAL_TAB',
       navigatePrevPanel: 'NAVIGATE_PREV_PANEL',
       navigateNextPanel: 'NAVIGATE_NEXT_PANEL',
       focusSearch: 'FOCUS_SEARCH',
@@ -753,6 +755,12 @@ const codeState = setup({
 
       // Panel terminal already set — toggle expand/collapse
       enqueue(assign({ panelTerminalExpanded: !context.panelTerminalExpanded }))
+    }),
+
+    openTerminalTab: enqueueActions(({ enqueue, context, system }) => {
+      enqueue(() => {
+        system.get('terminal')?.send({ type: 'terminal.CREATE', cwd: context.baseDirectory, target: 'tab' })
+      })
     }),
 
     selectPanelTerminal: assign(({ event }) => {
@@ -1267,6 +1275,9 @@ const codeState = setup({
         },
         OPEN_TERMINAL: {
           actions: 'openTerminal'
+        },
+        OPEN_TERMINAL_TAB: {
+          actions: ['openTerminalTab', 'saveTabsAction']
         },
         SELECT_PANEL_TERMINAL: {
           actions: ['selectPanelTerminal', 'saveTabsAction']

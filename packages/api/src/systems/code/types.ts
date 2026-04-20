@@ -225,6 +225,7 @@ export interface TerminalScript {
 export interface CodeSettings {
   hotkeys: {
     openTerminal?: KeyboardShortcut | null;
+    openTerminalTab?: KeyboardShortcut | null;
     navigatePrevPanel?: KeyboardShortcut | null;
     navigateNextPanel?: KeyboardShortcut | null;
     focusSearch?: KeyboardShortcut | null;

@@ -20,6 +20,10 @@ const codePlugin: Plugin = {
       global: false
     },
     {
+      action: 'openTerminalTab',
+      global: false
+    },
+    {
       action: 'navigatePrevPanel',
       global: false
     },
