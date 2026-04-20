@@ -312,20 +312,17 @@ async function handleStats(
   _args: string[],
   services: Services,
 ): Promise<{ text: string; data?: any }> {
-  const [version, auth, sourcesResult] = await Promise.all([
+  const [version, auth, settings] = await Promise.all([
     services.cli.claudeCode.version(),
     services.cli.claudeCode.authStatus(),
-    services.cli.claudeCode.exec(['config', 'sources', '--json']),
+    services.cli.claudeCode.readSettings(),
   ]);
   const lines = [
     `Version: ${version.trim()}`,
     `Auth: ${auth.authenticated ? 'authenticated' : 'not authenticated'}`,
   ];
-  try {
-    const sources = JSON.parse(sourcesResult.stdout.trim());
-    lines.push(`Config sources: ${sources.sources?.length ?? 0}`);
-  } catch { /* ignore parse failures */ }
-  return { text: lines.join('\n'), data: { version, auth } };
+  if (settings.model) lines.push(`Model: ${settings.model}`);
+  return { text: lines.join('\n'), data: { version, auth, settings } };
 }
 
 // ── Context markdown parser ─────────────────────────────────────────
