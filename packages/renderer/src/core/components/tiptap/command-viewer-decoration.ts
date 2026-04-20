@@ -10,7 +10,7 @@ export const CommandViewerDecoration = Extension.create({
         props: {
           decorations(state) {
             const text = state.doc.textContent
-            const match = text.match(/^\/\w+/)
+            const match = text.match(/^\/[\w-]+/)
             if (!match) return DecorationSet.empty
 
             const cmdStart = 1 // position after doc node opening
