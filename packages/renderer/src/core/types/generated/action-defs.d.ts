@@ -1102,7 +1102,7 @@ type BlockResponse =
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
-    sender: 'user' | 'assistant' | 'system';
+    sender: 'user' | 'assistant' | 'system' | 'marker';
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
@@ -1128,6 +1128,8 @@ interface MessageEntity extends BaseEntity {
     asideText?: string;
     /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
     asideContext?: string;
+    /** When true, message is hidden because a marker message compacted it. */
+    compacted?: boolean;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small

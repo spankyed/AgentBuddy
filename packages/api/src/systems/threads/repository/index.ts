@@ -512,7 +512,7 @@ export const chatQueries = {
     const message = qx(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
       'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asideText', 'asideContext',
-      'forkable', 'references', 'isCommand', 'command', 'status', 'context'
+      'forkable', 'references', 'isCommand', 'command', 'status', 'context', 'compacted'
     ] as const);
 
     if (!message) return null;
