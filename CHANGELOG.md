@@ -1,5 +1,79 @@
 -e # Changelog
 
+## v0.2.4 (2026-04-20)
+
+### Fixes
+-  detect CLI error results and clear broken session IDs
+
+### Other
+- Clean up tabs when threads are deleted to prevent ghost tabs.
+- Prefill last focused input on quick prompt select instead of always targeting chat
+- Persist thread tabs to localStorage across page refreshes
+- Fix kill all terminals crash when terminal not found or errors during kill
+- Fix CWD resolution across all session operations
+- Add Cmd+W hotkey to close active dashboard tab and switch chat
+- Fix scroll-into-view for arrow key navigation in chat commands menu
+- Merge pull request #127 from spankyed/AS/cc-command-flow
+- Fix /cc-import frontend crash and thread list not updating
+- Add a pattern to extractStaleSessionId that matches "No message found with message.uuid of: ..." errors. Now when a fork/revert    fails because the CLI UUID is stale, the existing handler clears the session, marks it broken, and shows a clean "Session expired"   message instead of the raw CLI error.
+- Add cross-directory import and better titles to /cc-import
+- Split cc-command into routed actions by concern
+- Fix session lookup failure when thread CWD differs from baseDirectory
+- Add /cc-fork command to fork from last assistant message
+- Add /cc-import command for bulk session import
+- Add /cc-set-dir command and extract directory setup helper
+- Add /cc-resume command to resume CLI sessions in chat
+- code cleanup
+- Fix FE build: add 'marker' sender type to MessageList interface
+- Show additional directories on Claude Code session artifact
+- Add /cc-add-dir to register additional working directories for Claude   Code tool access. Directories are stored in thread context and passed   via --add-dir on every CLI query. Supports --remember to persist to   ~/.claude/settings.json.
+- Show busy state during /cc-compact and add marker message compaction
+- Show busy state during /cc-compact and add marker message compaction
+- code cleanup
+- code cleanup
+- Add marker message system for /cc-compact context collapse
+- Add /cc-compact command to compact session context from chat
+- Fix cc-skills, cc-memory commands; remove cc-tasks
+- Fix broken stats command
+- Fix cc-model and cc-config commands calling non-existent CLI subcommand
+- Fix command message rendering splitting at hyphens
+- Add styled session-list block for /cc-sessions command
+- Restyle context usage block with stacked bar and spacious layout
+- Add styled context-usage block for /cc-context command output
+- Add /cc-context command via CLI session resume with slash command
+- Implement 9 cc-* commands as dedicated handlers
+- Pass references through command flow mappings to action handlers
+- Add unified /cc-* command dispatcher with sessions and config handlers
+- Fix bypass permissions: invalidate approval message, exclude interactive tools
+- Add context window usage tracking to Claude Code session artifact
+- Add bypass permissions toggle to Claude Code session artifact
+- Fix onboarding crash when response arrives after completion
+- Add global ESC shortcuts for pause and revert menu outside editor focus
+- Add recent threads sort order setting (created/visited/message)
+- update defs
+- Fix chat state dots not syncing on startup
+- Add gradient fade to truncated user message overlay
+- Update default quick prompts
+- Merge pull request #126 from spankyed/AS/sourceHash-actions-prompts-library
+- Add sourceHash tracking for actions, prompts, and library
+- Add chat state filter to threads filter popover
+- Right-align Tags, Status, and Actions columns in threads table
+- Add copy button and auto-fit width to terminal scripts popover
+- Add script command as secondary text in terminal run menu
+- Update Plan phase default color to orange (#F97316) and add 0.2.4 migration
+- Add "Archive" label to archive button in recent threads dropdown
+- Fix artifact sort order to display most recent first
+- Fix trailing empty line in chat messages ending with bullet lists
+- code cleanup
+- Scroll to bottom on user message submit
+- Remove hardcoded "Backlog" fallback for new thread default status
+- Fix search input UX: show inline X instead of "Clear filters" for search, and hydrate search input from persisted actor state on mount
+- Exclude notes from boot seed — notes are user-owned content
+- increase terminal list width
+- Reduce app window size in dev mode (1400×900)
+
+-e # Changelog
+
 ## v0.2.3 (2026-04-19)
 
 ### Features
