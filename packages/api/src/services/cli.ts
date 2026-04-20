@@ -183,7 +183,14 @@ function createCliService(): CliServiceType {
       },
       async writeSettings(settings) {
         const settingsPath = path.join(configDir(), 'settings.json')
-        await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2))
+        try {
+          await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2))
+        } catch (err: any) {
+          if (err?.code === 'ENOENT') {
+            throw new Error('Claude Code config directory not found (~/.claude/). Is Claude Code installed?')
+          }
+          throw err
+        }
       },
       async listSkills() {
         const results: Array<{ name: string; scope: string; path: string }> = []

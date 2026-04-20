@@ -83,6 +83,8 @@ export interface ClaudeCodeThreadState {
    * the query starts.
    */
   revertTo?: { cliUuid: string };
+  /** Additional working directories added via /cc-add-dir. Passed as --add-dir on every query. */
+  additionalDirs?: string[];
 }
 
 export const CLAUDE_SESSION_TAG = 'claude-session';

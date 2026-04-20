@@ -7,7 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
 import { updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
@@ -60,6 +60,7 @@ const handlers: Record<string, Handler> = {
   memory: handleMemory,
   skills: handleSkills,
   compact: handleCompact,
+  'add-dir': handleAddDir,
   stats: handleStats,
   // Passthrough commands — exec and relay stdout
   ...Object.fromEntries(
@@ -245,6 +246,44 @@ async function handleCompact(
   } finally {
     updateChatState(services, threadId as any, 'idle');
   }
+}
+
+async function handleAddDir(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any }> {
+  if (!args.length) return { text: 'Usage: /cc-add-dir <path> [--remember]' };
+
+  const remember = args.includes('--remember');
+  const dirPath = args.filter(a => !a.startsWith('--')).join(' ').replace(/\/+$/, '');
+  if (!dirPath) return { text: 'Usage: /cc-add-dir <path> [--remember]' };
+
+  // Session-scoped: store in thread context so it's passed via --add-dir on every query
+  if (threadId) {
+    const state = getClaudeState(services, threadId);
+    const existing = state?.additionalDirs ?? [];
+    if (!existing.includes(dirPath)) {
+      persistClaudeState(services, threadId, {
+        additionalDirs: [...existing, dirPath],
+      });
+    }
+  }
+
+  // Persistent: write to ~/.claude/settings.json
+  if (remember) {
+    const settings = await services.cli.claudeCode.readSettings();
+    const perms = settings.permissions ?? {};
+    const dirs: string[] = perms.additionalDirectories ?? [];
+    if (!dirs.includes(dirPath)) {
+      perms.additionalDirectories = [...dirs, dirPath];
+      settings.permissions = perms;
+      await services.cli.claudeCode.writeSettings(settings);
+    }
+  }
+
+  const suffix = remember ? ' (remembered across sessions)' : ' (this session only)';
+  return { text: `Added directory: ${dirPath}${suffix}` };
 }
 
 async function handleStatus(
