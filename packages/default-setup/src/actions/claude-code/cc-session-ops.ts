@@ -183,7 +183,7 @@ async function handleResume(
   // Import messages from transcript (batch — no per-message events)
   const importedCount = importSessionMessages(services, targetThreadId, transcript);
 
-  // Set up session state — persistClaudeState adds 'claude-session' tag
+  // Set up session state — persistClaudeState adds 'claude-code' tag
   persistClaudeState(services, targetThreadId, { sessionId });
   ensureSessionArtifact(services, targetThreadId as any, {
     sessionId,
@@ -297,7 +297,7 @@ async function handleImport(
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
       services.repository.threadCommands.update(newThreadId, {
         context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id } },
-        tags: [...(thread?.tags || ['imported']), 'claude-session'],
+        tags: [...(thread?.tags || ['imported']), 'claude-code'],
       });
 
       const now = Date.now();

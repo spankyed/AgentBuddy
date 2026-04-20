@@ -1,6 +1,6 @@
 /**
  * Thin helpers for reading/writing `thread.context.claudeCode` and
- * toggling the `claude-session` tag.
+ * toggling the `claude-code` tag.
  *
  * The Thread entity now carries a free-form `context` field (see
  * `packages/api/src/systems/threads/types.ts` → `ThreadContext`). Claude
@@ -87,7 +87,7 @@ export interface ClaudeCodeThreadState {
   additionalDirs?: string[];
 }
 
-export const CLAUDE_SESSION_TAG = 'claude-session';
+export const CLAUDE_CODE_TAG = 'claude-code';
 
 /** Set the global project directory used by Claude Code sessions. */
 export function setProjectDirectory(services: Services, directory: string): void {
@@ -102,7 +102,7 @@ export function getClaudeState(services: Services, threadId: string): ClaudeCode
 
 /**
  * Persist a sessionId onto a thread (merging with any existing `context`)
- * and add the `claude-session` tag if missing. Idempotent.
+ * and add the `claude-code` tag if missing. Idempotent.
  */
 export function persistClaudeState(
   services: Services,
@@ -118,11 +118,11 @@ export function persistClaudeState(
   };
 
   const existingTags: string[] = Array.isArray(thread.tags) ? thread.tags : [];
-  const nextTags = existingTags.includes(CLAUDE_SESSION_TAG)
+  const nextTags = existingTags.includes(CLAUDE_CODE_TAG)
     ? existingTags
-    : [...existingTags, CLAUDE_SESSION_TAG];
+    : [...existingTags, CLAUDE_CODE_TAG];
 
-  const tagAdded = !existingTags.includes(CLAUDE_SESSION_TAG);
+  const tagAdded = !existingTags.includes(CLAUDE_CODE_TAG);
 
   services.repository.threadCommands.update(threadId as any, {
     context: nextContext,
@@ -223,7 +223,7 @@ export function killTurn(services: Services, threadId: string): void {
 }
 
 /**
- * Clear Claude Code state from a thread and remove the `claude-session` tag.
+ * Clear Claude Code state from a thread and remove the `claude-code` tag.
  * Used by the reset action.
  */
 export function clearClaudeState(services: Services, threadId: string): void {
@@ -234,9 +234,9 @@ export function clearClaudeState(services: Services, threadId: string): void {
   delete nextContext.claudeCode;
 
   const existingTags: string[] = Array.isArray(thread.tags) ? thread.tags : [];
-  const nextTags = existingTags.filter((t) => t !== CLAUDE_SESSION_TAG);
+  const nextTags = existingTags.filter((t) => t !== CLAUDE_CODE_TAG);
 
-  const tagRemoved = existingTags.includes(CLAUDE_SESSION_TAG);
+  const tagRemoved = existingTags.includes(CLAUDE_CODE_TAG);
 
   services.repository.threadCommands.update(threadId as any, {
     context: nextContext,

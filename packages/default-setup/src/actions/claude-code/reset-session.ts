@@ -1,7 +1,7 @@
 /**
  * Claude Code Reset Session — drops the Claude Code state off a thread.
  *
- * Clears `thread.context.claudeCode` and removes the `claude-session` tag.
+ * Clears `thread.context.claudeCode` and removes the `claude-code` tag.
  * The next `Claude Code Chat` turn in the thread will start a brand-new
  * Claude Code session. The on-disk JSONL from the prior session is NOT
  * deleted — it's still recoverable via `claudeCode.sessions.list()`.

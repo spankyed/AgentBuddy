@@ -2,13 +2,13 @@ import { EARS } from '@/core/types';
 import { findAll } from '@/core/helpers/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { settingsCommands } from '@/systems/settings/repository';
+import { settingsQueries, settingsCommands } from '@/systems/settings/repository';
 import type { ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
 import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.5',
-  description: 'Backfill chatState from session artifacts; backfill sourceHash on DSL entities to enable seed updates',
+  description: 'Backfill chatState from session artifacts; backfill sourceHash on DSL entities; rename claude-session tag to claude-code',
   up: () => {
     // ── 1. Backfill chatState from session artifacts onto thread entities ──
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
@@ -58,5 +58,22 @@ export const migration: Migration = {
     // Clear seedHash so runBootSeed() doesn't short-circuit — forces a full
     // re-seed that replaces the "migrated" placeholder with real hashes.
     settingsCommands.updateSettings('internal', null, ['seedHash'], null);
+
+    // ── 3. Rename claude-session tag → claude-code on threads ──────────
+    for (const thread of threads) {
+      const tags: string[] = (thread as any).tags;
+      if (!Array.isArray(tags) || !tags.includes('claude-session')) continue;
+      const nextTags = tags.map((t: string) => t === 'claude-session' ? 'claude-code' : t);
+      tx(thread.id as any).put('tags', nextTags).put('updatedAt', Date.now()).id();
+    }
+
+    // ── 4. Rename claude-session tag → claude-code in settings ─────────
+    const data = settingsQueries.getSettings();
+    const settingsTags: Array<{ name: string; color?: string }> = data.plugins?.threads?.tags ?? [];
+    const idx = settingsTags.findIndex((t: any) => t.name === 'claude-session');
+    if (idx !== -1) {
+      settingsTags[idx] = { ...settingsTags[idx], name: 'claude-code' };
+      settingsCommands.updateSettings('plugin', 'threads', ['tags'], settingsTags);
+    }
   },
 };

@@ -132,7 +132,7 @@ const settings: SettingsData = {
         { name: 'Feature', color: '#10B981' },
         { name: 'Enhancement', color: '#3B82F6' },
         { name: 'Documentation', color: '#6366F1' },
-        { name: 'claude-session', color: '#7C3AED' },
+        { name: 'claude-code', color: '#7C3AED' },
       ],
       chatStates: [
         { id: 'idle',    label: 'Idle',    color: '#6B7280', busy: false },
