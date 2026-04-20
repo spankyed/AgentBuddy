@@ -141,12 +141,10 @@ export const threadQueries = {
     const threadsSettings = settingsQueries.getPluginSettings('threads') as ThreadsSettings | undefined;
     const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
 
-    // Build chat states map from session artifacts
+    // Build chat states map from thread entities directly
     const chatStates: Record<string, string> = {};
     for (const thread of extendedThreads) {
-      const artifacts = getThreadArtifacts(thread.id as EARS.EntityId);
-      const sessionArtifact = artifacts.find(a => a.type === 'claude-session');
-      const chatState = (sessionArtifact?.content as Record<string, unknown>)?.chatState;
+      const chatState = (thread as any).chatState;
       if (typeof chatState === 'string') {
         chatStates[thread.id as string] = chatState;
       }
@@ -214,6 +212,7 @@ export const threadCommands = {
     forcedMode?: ThreadEntity['forcedMode'] | null;
     context?: ThreadEntity['context'];  // Free-form per-feature state (ThreadContext)
     archived?: boolean;
+    chatState?: string;
   }): void => {
     if (!threadQueries.byId(id)) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);

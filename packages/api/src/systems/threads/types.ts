@@ -230,6 +230,7 @@ export interface ThreadEntity extends BaseEntity {
   forcedMode?: 'birth'; // Force a specific mode for this thread
   pinned?: boolean; // Thread tab should stay pinned in the UI
   archived?: boolean; // Thread is archived and hidden from lists
+  chatState?: string; // Chat state indicator (idle, working, paused, error)
   context?: ThreadContext; // Free-form per-feature state (e.g. claudeCode.sessionId)
 }
 

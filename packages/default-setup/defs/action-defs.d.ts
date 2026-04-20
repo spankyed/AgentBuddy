@@ -1157,6 +1157,7 @@ interface ThreadEntity extends BaseEntity {
     forcedMode?: 'birth';
     pinned?: boolean;
     archived?: boolean;
+    chatState?: string;
     context?: ThreadContext;
 }
 interface ArtifactEntity extends BaseEntity {
@@ -6421,7 +6422,9 @@ interface CliServiceType {
         authStatus(): Promise<AuthStatus>;
         listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>;
         /** List sessions across ALL project directories (not just the configured cwd). */
-        listAllSessions(opts?: { limit?: number }): Promise<SessionInfo[]>;
+        listAllSessions(opts?: {
+            limit?: number;
+        }): Promise<SessionInfo[]>;
         /**
          * Parse a session's JSONL transcript into an in-memory array of entries.
          * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
@@ -6432,7 +6435,10 @@ interface CliServiceType {
             cwd?: string;
         }): Promise<SessionTranscriptEntry[]>;
         /** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
-        viewSessionByFile(filePath: string, opts?: { limit?: number; offset?: number }): Promise<SessionTranscriptEntry[]>;
+        viewSessionByFile(filePath: string, opts?: {
+            limit?: number;
+            offset?: number;
+        }): Promise<SessionTranscriptEntry[]>;
         getWorkingDir(): string;
         /** Store a live query handle so other actions can write control_responses. */
         storeHandle(key: string, handle: QueryHandle): void;
@@ -7223,19 +7229,6 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>): void;
 /**
- * Add multiple messages to a thread without emitting per-message frontend events.
- * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
- */
-declare function addMessagesToThread(params: {
-  threadId: EARS.EntityId;
-  messages: Array<{
-    text: string;
-    sender: 'user' | 'assistant' | 'system' | 'marker';
-    forkable?: boolean;
-    context?: Record<string, unknown>;
-  }>;
-}): void;
-/**
  * Create a marker message that compacts eligible prior messages in a thread.
  * The repository determines which messages are eligible (excludes markers and already-compacted).
  */
@@ -7535,6 +7528,29 @@ declare namespace media {
   export type { media_ImagePart as ImagePart };
 }
 
+/**
+ * Threads Service
+ *
+ * Provides primitives for updating thread-level state with automatic
+ * frontend notification, following the same pattern as artifact service.
+ */
+
+/**
+ * Update a thread's chatState and notify the frontend.
+ *
+ * This is the canonical service-level write for chatState. The DSL helper
+ * `updateChatState()` in session-artifact.ts handles the artifact side,
+ * then delegates here for the thread write + emit.
+ */
+declare function updateChatState(threadId: EARS.EntityId, chatState: string): void;
+
+declare const threads_updateChatState: typeof updateChatState;
+declare namespace threads {
+  export {
+    threads_updateChatState as updateChatState,
+  };
+}
+
 declare const services: {
     logger: {
         source?: string;
@@ -7615,6 +7631,7 @@ declare const services: {
                 responseTimestamp?: number;
                 asideText?: string;
                 compacted?: boolean;
+                context?: Record<string, unknown>;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
@@ -7908,6 +7925,7 @@ declare const services: {
                 forcedMode?: ThreadEntity["forcedMode"] | null;
                 context?: ThreadEntity["context"];
                 archived?: boolean;
+                chatState?: string;
             }) => void;
             readonly markAsVisited: (id: EARS.EntityId) => void;
             readonly linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId) => void;
@@ -7974,6 +7992,7 @@ declare const services: {
     media: typeof media;
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
+    threads: typeof threads;
 };
 
 /**

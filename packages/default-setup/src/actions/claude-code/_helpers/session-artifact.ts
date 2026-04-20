@@ -233,11 +233,7 @@ export function updateChatState(
 ): void {
   const updated = updateSessionArtifact(services, threadId, { chatState });
   if (!updated) return;
-  services.emitter.sendToPlugin('threads', {
-    type: 'SET_CHAT_STATE',
-    threadId: threadId as string,
-    chatState,
-  });
+  services.threads.updateChatState(threadId, chatState);
 }
 
 /**
@@ -269,13 +265,8 @@ export function markSessionBroken(
   errorMessage: string,
 ): void {
   updateSessionArtifact(services, threadId, {
-    chatState: 'error',
     sessionError: errorMessage,
     sessionId: '',
   });
-  services.emitter.sendToPlugin('threads', {
-    type: 'SET_CHAT_STATE',
-    threadId: threadId as string,
-    chatState: 'error',
-  });
+  updateChatState(services, threadId, 'error');
 }

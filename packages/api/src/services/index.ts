@@ -15,6 +15,7 @@ import * as brain from './brain';
 import * as media from './media';
 import { cliService } from './cli';
 import { filesystemService } from './filesystem';
+import * as threads from './threads';
 
 const services = {
   logger: loggerService,
@@ -34,6 +35,7 @@ const services = {
   media,
   cli: cliService,
   filesystem: filesystemService,
+  threads,
 }
 
 export default services;

@@ -717,13 +717,8 @@ const threadsState = setup({
         });
       }
 
-      // Initialize chatState from the session artifact so the indicator
-      // shows the correct state immediately on thread switch.
-      const sessionArtifact = ((thread as any).artifacts ?? []).find(
-        (a: any) => a.artifactType === 'claude-session',
-      );
-      const content = sessionArtifact?.content as any;
-      const chatState: ChatState = content?.chatState ?? 'idle';
+      // Read chatState from thread entity (canonical source).
+      const chatState: ChatState = (thread as any).chatState ?? 'idle';
 
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
@@ -758,10 +753,7 @@ const threadsState = setup({
       const extracted = extractChatSettings(typedEvent.data.settings || { modes: [], hotkeys: {} });
 
       const currentThread = typedEvent.data.currentThread;
-      const startupSessionArtifact = ((currentThread as any)?.artifacts ?? []).find(
-        (a: any) => a.artifactType === 'claude-session',
-      );
-      const startupChatState: ChatState = (startupSessionArtifact?.content as any)?.chatState ?? 'idle';
+      const startupChatState: ChatState = (currentThread as any)?.chatState ?? 'idle';
       const forcedMode = currentThread?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {

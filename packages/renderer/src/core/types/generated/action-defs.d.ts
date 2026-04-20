@@ -1159,6 +1159,7 @@ interface ThreadEntity extends BaseEntity {
     forcedMode?: 'birth';
     pinned?: boolean;
     archived?: boolean;
+    chatState?: string;
     context?: ThreadContext;
 }
 interface ArtifactEntity extends BaseEntity {
@@ -6422,6 +6423,10 @@ interface CliServiceType {
         version(): Promise<string>;
         authStatus(): Promise<AuthStatus>;
         listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>;
+        /** List sessions across ALL project directories (not just the configured cwd). */
+        listAllSessions(opts?: {
+            limit?: number;
+        }): Promise<SessionInfo[]>;
         /**
          * Parse a session's JSONL transcript into an in-memory array of entries.
          * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
@@ -6430,6 +6435,11 @@ interface CliServiceType {
          */
         viewSession(id: string, opts?: Omit<SessionViewOptions, 'cwd'> & {
             cwd?: string;
+        }): Promise<SessionTranscriptEntry[]>;
+        /** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
+        viewSessionByFile(filePath: string, opts?: {
+            limit?: number;
+            offset?: number;
         }): Promise<SessionTranscriptEntry[]>;
         getWorkingDir(): string;
         /** Store a live query handle so other actions can write control_responses. */
@@ -7487,6 +7497,27 @@ const media = /*#__PURE__*/Object.freeze({
   stripMediaRefs: stripMediaRefs
 });
 
+/**
+ * Threads Service
+ *
+ * Provides primitives for updating thread-level state with automatic
+ * frontend notification, following the same pattern as artifact service.
+ */
+
+/**
+ * Update a thread's chatState and notify the frontend.
+ *
+ * This is the canonical service-level write for chatState. The DSL helper
+ * `updateChatState()` in session-artifact.ts handles the artifact side,
+ * then delegates here for the thread write + emit.
+ */
+declare function updateChatState(threadId: EARS.EntityId, chatState: string): void;
+
+const threads = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  updateChatState: updateChatState
+});
+
 declare const services: {
     logger: {
         source?: string;
@@ -7567,6 +7598,7 @@ declare const services: {
                 responseTimestamp?: number;
                 asideText?: string;
                 compacted?: boolean;
+                context?: Record<string, unknown>;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
@@ -7860,6 +7892,7 @@ declare const services: {
                 forcedMode?: ThreadEntity["forcedMode"] | null;
                 context?: ThreadEntity["context"];
                 archived?: boolean;
+                chatState?: string;
             }) => void;
             readonly markAsVisited: (id: EARS.EntityId) => void;
             readonly linkFork: (sourceThreadId: EARS.EntityId, forkedThreadId: EARS.EntityId) => void;
@@ -7926,6 +7959,7 @@ declare const services: {
     media: typeof media;
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
+    threads: typeof threads;
 };
 
 /**

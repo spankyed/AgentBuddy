@@ -14,9 +14,9 @@ import type { ThreadEntity, ArtifactEntity } from '@/systems/threads/types';
  * Without this reconcile step:
  *   - chat.ts:119 keeps queueing every new user message against the
  *     phantom "running" turn and the queue never drains.
- *   - The FE seeds `chatStates[threadId]` from the claude-session
- *     artifact (see renderer state.ts:625-655), so the chat panel shows
- *     "working" indefinitely after a crash mid-turn.
+ *   - The FE seeds `chatStates[threadId]` from the thread entity
+ *     (see renderer state.ts), so the chat panel shows "working"
+ *     indefinitely after a crash mid-turn.
  *
  * Runs once at boot, before actors start (so no events race the writes).
  * Safe to call with no live threads — both queries return empty and the
@@ -26,25 +26,28 @@ export function reconcileStaleClaudeState(): void {
   let threadsFixed = 0;
   let artifactsFixed = 0;
 
-  // ─── Thread context: clear transient mid-turn flags ─────────────────
+  // ─── Threads: clear transient mid-turn flags + stale chatState ──────
   const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
   for (const thread of threads) {
     const cc = (thread.context as any)?.claudeCode;
-    if (!cc) continue;
-    const needsRepair =
+    const needsContextRepair = cc && (
       cc.isRunning === true ||
       cc.pendingControlRequest !== undefined ||
-      cc.autoAcceptEdits !== undefined;
-    if (!needsRepair) continue;
+      cc.autoAcceptEdits !== undefined
+    );
+    const staleChatState = (thread as any).chatState === 'working' || (thread as any).chatState === 'paused';
 
-    const nextCc = {
-      ...cc,
-      isRunning: false,
-      autoAcceptEdits: undefined,
-      pendingControlRequest: undefined,
-    };
-    const nextContext = { ...(thread.context as any || {}), claudeCode: nextCc };
-    tx(thread.id as any).put('context', nextContext).put('updatedAt', Date.now()).id();
+    if (!needsContextRepair && !staleChatState) continue;
+
+    const threadTx = tx(thread.id as any).put('updatedAt', Date.now());
+    if (needsContextRepair) {
+      const nextCc = { ...cc, isRunning: false, autoAcceptEdits: undefined, pendingControlRequest: undefined };
+      threadTx.put('context', { ...(thread.context as any || {}), claudeCode: nextCc });
+    }
+    if (staleChatState) {
+      threadTx.put('chatState', 'idle');
+    }
+    threadTx.id();
     threadsFixed++;
   }
 

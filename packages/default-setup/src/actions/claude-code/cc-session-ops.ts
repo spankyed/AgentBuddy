@@ -7,7 +7,7 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { persistClaudeState } from './_helpers/thread-context';
-import { ensureSessionArtifact } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Session Ops',
@@ -188,8 +188,8 @@ async function handleResume(
   ensureSessionArtifact(services, targetThreadId as any, {
     sessionId,
     cwd: (session as any).cwd || '',
-    chatState: 'idle',
   });
+  updateChatState(services, targetThreadId as any, 'idle');
 
   // Build confirmation text
   const sessionTitle = (session as any).title || '(untitled)';
