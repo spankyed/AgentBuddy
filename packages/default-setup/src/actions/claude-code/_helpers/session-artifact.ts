@@ -248,6 +248,9 @@ export function extractStaleSessionId(errorMessage: string): string | undefined 
   // Direct "session not found" message from the CLI
   const match = errorMessage.match(/No conversation found with session ID:?\s*(\S+)/i);
   if (match) return match[1];
+  // Message UUID not found during --resume-session-at (fork/revert)
+  const uuidNotFound = errorMessage.match(/No message found with message\.uuid of:?\s*(\S+)/i);
+  if (uuidNotFound) return uuidNotFound[1];
   // Generic resume failure (corrupt JSONL, OOM, etc.) — try to extract a UUID
   if (/Failed to resume session/i.test(errorMessage)) {
     const uuidMatch = errorMessage.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
