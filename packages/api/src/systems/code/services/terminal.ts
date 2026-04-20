@@ -190,6 +190,9 @@ class TerminalService {
 
       terminal.pty.kill()
 
+      // If onExit already fired synchronously during pty.kill(), terminal is cleaned up
+      if (!this.terminals.has(id)) return true
+
       // If no exit handler is registered (shouldn't happen), clean up immediately
       if (!terminal.exitDisposable) {
         this.terminals.delete(id)
@@ -200,6 +203,9 @@ class TerminalService {
       return true
     } catch (error) {
       console.error('Error killing terminal:', error)
+      // Ensure cleanup even on error so terminals don't leak
+      this.terminals.delete(id)
+      try { repository.terminalCommands.markClosed(id as EARS.EntityId) } catch { /* already logged */ }
       return false
     }
   }
@@ -231,14 +237,18 @@ class TerminalService {
 
     terminal.exitDisposable?.dispose()
     terminal.exitDisposable = terminal.pty.onExit(({ exitCode, signal }) => {
-      // Dispose listeners before removing terminal
-      terminal.dataDisposable?.dispose()
-      terminal.dataDisposable = undefined
-      terminal.exitDisposable?.dispose()
-      terminal.exitDisposable = undefined
-      this.terminals.delete(id)
-      repository.terminalCommands.markClosed(id as EARS.EntityId)
-      callback(exitCode, signal)
+      try {
+        // Dispose listeners before removing terminal
+        terminal.dataDisposable?.dispose()
+        terminal.dataDisposable = undefined
+        terminal.exitDisposable?.dispose()
+        terminal.exitDisposable = undefined
+        this.terminals.delete(id)
+        repository.terminalCommands.markClosed(id as EARS.EntityId)
+        callback(exitCode, signal)
+      } catch (error) {
+        console.error(`[Terminal] Error in exit handler for ${id}:`, error)
+      }
     })
   }
 

@@ -97,7 +97,11 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
   })
 
   terminalService.onExit(terminalInfo.id, () => {
-    emitToFrontend({ type: 'terminal.CLOSED', data: { terminalId: terminalInfo.id } })
+    try {
+      emitToFrontend({ type: 'terminal.CLOSED', data: { terminalId: terminalInfo.id } })
+    } catch (error) {
+      console.error(`[Terminal] Error emitting CLOSED for ${terminalInfo.id}:`, error)
+    }
   })
 }
 
