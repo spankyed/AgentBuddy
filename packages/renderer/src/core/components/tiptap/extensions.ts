@@ -1,5 +1,7 @@
 import 'highlight.js/styles/github-dark.css'
 import type { AnyExtension } from '@tiptap/vue-3'
+import { markInputRule } from '@tiptap/core'
+import Code from '@tiptap/extension-code'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import { Table } from '@tiptap/extension-table'
@@ -30,6 +32,21 @@ import { CustomHorizontalRule } from './extensions/custom-horizontal-rule'
 import { SearchAndFind } from './extensions/search-extension'
 
 const lowlight = createLowlight(common)
+
+// Custom Code extension: don't trigger inline code when backtick is followed by a space.
+// Default regex: /(^|[^`])`([^`]+)`(?!`)$/
+// Modified:      /(^|[^`])`([^\s`][^`]*)`(?!`)$/  — first char inside backticks must be non-whitespace
+const codeInputRegex = /(^|[^`])`([^\s`][^`]*)`(?!`)$/
+const CustomCode = Code.extend({
+  addInputRules() {
+    return [
+      markInputRule({
+        find: codeInputRegex,
+        type: this.type,
+      }),
+    ]
+  },
+})
 
 export type TiptapMode = 'editor' | 'input' | 'viewer'
 export type TiptapVariant = 'full' | 'chat'
@@ -72,7 +89,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       gapcursor: false,
       horizontalRule: false,
       dropcursor: { color: 'rgb(96 165 250 / 0.5)', width: 4 },
-      code: { HTMLAttributes: { spellcheck: 'false' } },
+      code: false,
       listKeymap: {
         listTypes: [
           { itemName: 'listItem', wrapperNames: ['bulletList', 'orderedList'] },
@@ -100,6 +117,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       autolink: true,
       protocols: ['note', 'thread', 'doc'],
     }),
+    CustomCode.configure({ HTMLAttributes: { spellcheck: 'false' } }),
     ReferenceNode,
     EmptyLinePreserver,
   ]
