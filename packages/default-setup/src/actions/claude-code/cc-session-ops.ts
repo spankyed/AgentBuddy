@@ -217,20 +217,30 @@ async function handleResume(
 
 // ── Import ──────────────────────────────────────────────────────────
 
-const DEFAULT_IMPORT_LIMIT = 250;
+const DEFAULT_IMPORT_LIMIT = 50;
+
+/** Extract the last path segment from a cwd for use as a thread title prefix. */
+function dirPrefix(cwd?: string): string {
+  if (!cwd) return '';
+  const segments = cwd.split('/').filter(Boolean);
+  const last = segments[segments.length - 1];
+  return last ? `[${last}] ` : '';
+}
 
 async function handleImport(
   args: string[],
   services: Services,
   threadId?: string,
 ): Promise<{ text: string; data?: any; skipMessage?: boolean }> {
-  const importAll = args.includes('all');
-  const limit = importAll ? undefined : DEFAULT_IMPORT_LIMIT;
+  const allDirs = args.includes('all');
+  const noLimit = args.includes('no-limit');
+  const limit = noLimit ? undefined : DEFAULT_IMPORT_LIMIT;
 
-  // List available CLI sessions
-  const sessions = await services.cli.claudeCode.listSessions(
-    limit ? { limit } : undefined,
-  );
+  // List sessions — either current directory or all project directories
+  const sessions = allDirs
+    ? await services.cli.claudeCode.listAllSessions(limit ? { limit } : undefined)
+    : await services.cli.claudeCode.listSessions(limit ? { limit } : undefined);
+
   if (!sessions.length) return { text: 'No sessions found to import.' };
 
   // Build set of already-imported sessionIds to avoid duplicates
@@ -250,9 +260,10 @@ async function handleImport(
   if (!threadId) return { text: 'No active thread.' };
 
   // Send progress message
+  const scope = allDirs ? 'across all directories' : 'from current directory';
   const { messageId: progressMsgId } = services.chat.sendBlockMessage({
     threadId: threadId as any,
-    text: `Importing ${toImport.length} sessions…`,
+    text: `Importing ${toImport.length} sessions ${scope}…`,
     blocks: [],
   });
 
@@ -261,8 +272,14 @@ async function handleImport(
 
   for (const session of toImport) {
     try {
-      const transcript = await services.cli.claudeCode.viewSession(session.id);
-      const title = (session as any).title || `Session ${session.id.slice(0, 8)}`;
+      // Use viewSessionByFile when we have a file path (works for cross-directory imports)
+      const transcript = (session as any).file
+        ? await services.cli.claudeCode.viewSessionByFile((session as any).file)
+        : await services.cli.claudeCode.viewSession(session.id);
+
+      const prefix = dirPrefix((session as any).cwd);
+      const sessionTitle = (session as any).title || `Session ${session.id.slice(0, 8)}`;
+      const title = `${prefix}${sessionTitle}`;
 
       // Create thread directly (no per-thread frontend events)
       const { id: newThreadId } = services.repository.threadCommands.create({

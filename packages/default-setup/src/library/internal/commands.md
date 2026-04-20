@@ -10,7 +10,7 @@
 **cc-skills**: List installed skills
 **cc-compact**: Custom instructions (optional, summarize context)
 **cc-resume**: Session ID (optional, lists sessions if omitted)
-**cc-import**: "all" (optional, imports up to 250 by default)
+**cc-import**: [all] [no-limit] (imports up to 50 from current dir by default; "all" imports from all dirs; "no-limit" removes cap)
 **cc-add-dir**: <path> [--remember]
 **cc-set-dir**: <path> (set working directory for new threads)
 **cc-fork**: Fork from last assistant message

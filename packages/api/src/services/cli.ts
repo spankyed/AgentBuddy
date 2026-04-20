@@ -45,6 +45,8 @@ export interface CliServiceType {
     version(): Promise<string>
     authStatus(): Promise<AuthStatus>
     listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
+    /** List sessions across ALL project directories (not just the configured cwd). */
+    listAllSessions(opts?: { limit?: number }): Promise<SessionInfo[]>
     /**
      * Parse a session's JSONL transcript into an in-memory array of entries.
      * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
@@ -52,6 +54,8 @@ export interface CliServiceType {
      * `cwd` defaults to the configured project directory.
      */
     viewSession(id: string, opts?: Omit<SessionViewOptions, 'cwd'> & { cwd?: string }): Promise<SessionTranscriptEntry[]>
+    /** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
+    viewSessionByFile(filePath: string, opts?: { limit?: number; offset?: number }): Promise<SessionTranscriptEntry[]>
     getWorkingDir(): string
     /** Store a live query handle so other actions can write control_responses. */
     storeHandle(key: string, handle: QueryHandle): void
@@ -163,9 +167,15 @@ function createCliService(): CliServiceType {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.sessions.list({ ...opts, cwd })
       },
+      listAllSessions(opts) {
+        return claudeCode.sessions.listAll(opts)
+      },
       viewSession(id, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.sessions.view(id, { ...opts, cwd })
+      },
+      viewSessionByFile(filePath, opts) {
+        return claudeCode.sessions.viewByFile(filePath, opts)
       },
       getWorkingDir() {
         return resolveCwd()

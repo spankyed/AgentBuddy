@@ -101,16 +101,13 @@ export interface SessionViewOptions {
   offset?: number
 }
 
-// ─── API ─────────────────────────────────────────────────────────────────────
+// ─── Internals ────────────────────────────────────────────────────────────────
 
-/** List sessions saved for the given working directory. */
-export async function list(opts: SessionListOptions = {}): Promise<SessionInfo[]> {
-  const cwd = opts.cwd ?? process.cwd()
-  const bucket = projectBucket(cwd)
-
+/** Read all sessions from a bucket directory. `cwd` is stored on each SessionInfo for context. */
+async function listBucket(bucketPath: string, cwd?: string): Promise<SessionInfo[]> {
   let files: string[]
   try {
-    files = await fs.promises.readdir(bucket)
+    files = await fs.promises.readdir(bucketPath)
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
     throw err
@@ -120,7 +117,7 @@ export async function list(opts: SessionListOptions = {}): Promise<SessionInfo[]
   const infos: SessionInfo[] = []
 
   for (const name of jsonl) {
-    const file = path.join(bucket, name)
+    const file = path.join(bucketPath, name)
     const stat = await fs.promises.stat(file).catch(() => null)
     if (!stat) continue
     const id = name.replace(/\.jsonl$/, '')
@@ -133,10 +130,68 @@ export async function list(opts: SessionListOptions = {}): Promise<SessionInfo[]
     })
   }
 
+  return infos
+}
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+
+/** List sessions saved for the given working directory. */
+export async function list(opts: SessionListOptions = {}): Promise<SessionInfo[]> {
+  const cwd = opts.cwd ?? process.cwd()
+  const infos = await listBucket(projectBucket(cwd), cwd)
+
   infos.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
   const offset = opts.offset ?? 0
   const limit = opts.limit ?? infos.length
   return infos.slice(offset, offset + limit)
+}
+
+/** List sessions across ALL project directories. */
+export async function listAll(opts: { limit?: number } = {}): Promise<SessionInfo[]> {
+  const projectsDir = path.join(configDir(), 'projects')
+  let dirents: fs.Dirent[]
+  try {
+    dirents = await fs.promises.readdir(projectsDir, { withFileTypes: true })
+  } catch { return [] }
+
+  const results: SessionInfo[] = []
+  for (const d of dirents) {
+    if (!d.isDirectory()) continue
+    const bucketPath = path.join(projectsDir, d.name)
+    // Best-effort cwd: derive from bucket dir name (replace leading hyphens with slashes)
+    const approxCwd = '/' + d.name.replace(/^-/, '').replace(/-/g, '/')
+    let sessions = await listBucket(bucketPath, approxCwd)
+    if (opts.limit) {
+      sessions.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
+      sessions = sessions.slice(0, opts.limit)
+    }
+    results.push(...sessions)
+  }
+
+  results.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
+  return results
+}
+
+/** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
+export async function viewByFile(
+  filePath: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<SessionTranscriptEntry[]> {
+  const raw = await fs.promises.readFile(filePath, 'utf8')
+  const lines = raw.split('\n').filter(l => l.length > 0)
+  const offset = opts.offset ?? 0
+  const limit = opts.limit ?? lines.length
+  const slice = lines.slice(offset, offset + limit)
+
+  const entries: SessionTranscriptEntry[] = []
+  for (const line of slice) {
+    try {
+      entries.push(JSON.parse(line))
+    } catch {
+      entries.push({ type: '__parse_error', raw: line })
+    }
+  }
+  return entries
 }
 
 /** Load basic metadata about a single session. */
