@@ -8,6 +8,7 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
+import { updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -221,24 +222,29 @@ async function handleCompact(
   const sessionId = getClaudeState(services, threadId)?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
-  const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
-  const handle = await services.cli.claudeCode.query({
-    prompt,
-    resume: sessionId,
-    permissionMode: 'plan',
-  });
+  updateChatState(services, threadId as any, 'working');
+  try {
+    const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
+    const handle = await services.cli.claudeCode.query({
+      prompt,
+      resume: sessionId,
+      permissionMode: 'plan',
+    });
 
-  const result = await handle.result;
-  const summaryText = result.text || 'Session compacted.';
+    const result = await handle.result;
+    const summaryText = result.text || 'Session compacted.';
 
-  // Create a marker message that compacts eligible prior messages
-  // (repository filters out markers and already-compacted messages)
-  const { compactedMessageIds } = services.chat.createMarkerMessage({
-    threadId: threadId as any,
-    text: summaryText,
-  });
+    // Create a marker message that compacts eligible prior messages
+    // (repository filters out markers and already-compacted messages)
+    const { compactedMessageIds } = services.chat.createMarkerMessage({
+      threadId: threadId as any,
+      text: summaryText,
+    });
 
-  return { text: summaryText, skipMessage: compactedMessageIds.length > 0 };
+    return { text: summaryText, skipMessage: compactedMessageIds.length > 0 };
+  } finally {
+    updateChatState(services, threadId as any, 'idle');
+  }
 }
 
 async function handleStatus(
