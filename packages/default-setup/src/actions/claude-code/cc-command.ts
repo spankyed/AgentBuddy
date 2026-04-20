@@ -58,6 +58,7 @@ const handlers: Record<string, Handler> = {
   model: handleModel,
   memory: handleMemory,
   skills: handleSkills,
+  compact: handleCompact,
   stats: handleStats,
   // Passthrough commands — exec and relay stdout
   ...Object.fromEntries(
@@ -208,6 +209,27 @@ async function handleContext(
   }
 
   return { text: md || '(no context data)' };
+}
+
+async function handleCompact(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any }> {
+  if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
+
+  const sessionId = getClaudeState(services, threadId)?.sessionId;
+  if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
+
+  const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
+  const handle = await services.cli.claudeCode.query({
+    prompt,
+    resume: sessionId,
+    permissionMode: 'plan',
+  });
+
+  const result = await handle.result;
+  return { text: result.text || 'Session compacted.' };
 }
 
 async function handleStatus(
