@@ -291,12 +291,32 @@ async function handleImport(
       // Import messages
       importSessionMessages(services, newThreadId as string, transcript);
 
-      // Set up session state (adds 'claude-session' tag automatically)
-      persistClaudeState(services, newThreadId as string, { sessionId: session.id });
-      ensureSessionArtifact(services, newThreadId as any, {
-        sessionId: session.id,
-        cwd: (session as any).cwd || '',
-        chatState: 'idle',
+      // Write session state directly — no frontend events during bulk import.
+      // Using persistClaudeState + ensureSessionArtifact would emit THREAD_UPDATED
+      // + ARTIFACT_ADDED per thread, causing an event storm that crashes the frontend.
+      const thread = services.repository.threadQueries.byId(newThreadId) as any;
+      services.repository.threadCommands.update(newThreadId, {
+        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id } },
+        tags: [...(thread?.tags || ['imported']), 'claude-session'],
+      });
+
+      const now = Date.now();
+      services.repository.chatCommands.createArtifact({
+        artifactType: 'claude-session' as any,
+        title: 'Claude Code session',
+        content: {
+          sessionId: session.id,
+          model: '',
+          cwd: (session as any).cwd || '',
+          startedAt: now,
+          lastTurnAt: now,
+          turns: 0,
+          totalCostUsd: 0,
+          chatState: 'idle',
+          toolCallCount: 0,
+          permissionMode: 'default',
+        },
+        threadId: newThreadId,
       });
 
       imported++;
@@ -313,8 +333,14 @@ async function handleImport(
 
   services.chat.updateMessageState(progressMsgId as any, { text: summary });
 
-  // Single frontend refresh
-  services.chat.sendRecentThreadsRefresh();
+  // Full refresh: update the entire thread list, tags, and chat states.
+  // sendRecentThreadsRefresh() only updates the sidebar (recent 7 threads).
+  const connectedData = services.repository.threadQueries.connectedData();
+  const threadsSettings = services.repository.settingsQueries.getPluginSettings('threads');
+  services.emitter.sendToPlugin('threads', {
+    type: 'THREAD_CONNECTED',
+    data: { ...connectedData, settings: threadsSettings || null },
+  });
 
   return { text: summary, skipMessage: true };
 }
