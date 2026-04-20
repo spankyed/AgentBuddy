@@ -17,7 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { ensureSessionArtifact, updateSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken, readSessionCwd } from './_helpers/session-artifact';
 import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
@@ -262,7 +262,12 @@ export async function action(
       fileCount: references?.files?.length ?? 0,
       contextCount: references?.context?.length ?? 0,
     });
+    // When resuming, use the CWD where the session was originally created so
+    // the CLI can locate the session JSONL in the correct project bucket.
+    const sessionCwd = resumeSessionId ? readSessionCwd(services, threadId) : undefined;
+
     const handle = await services.cli.claudeCode.query({
+      ...(sessionCwd && { cwd: sessionCwd }),
       prompt,
       resume: resumeSessionId,
       model,
