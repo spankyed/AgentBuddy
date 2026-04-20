@@ -74,6 +74,7 @@ const handlers: Record<string, Handler> = {
   skills: handleSkills,
   compact: handleCompact,
   resume: handleResume,
+  import: handleImport,
   'add-dir': handleAddDir,
   'set-dir': handleSetDir,
   stats: handleStats,
@@ -599,4 +600,91 @@ async function handleResume(
   });
 
   return { text: confirmText };
+}
+
+// ── Import ──────────────────────────────────────────────────────────
+
+const DEFAULT_IMPORT_LIMIT = 250;
+
+async function handleImport(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any; skipMessage?: boolean }> {
+  const importAll = args.includes('all');
+  const limit = importAll ? undefined : DEFAULT_IMPORT_LIMIT;
+
+  // List available CLI sessions
+  const sessions = await services.cli.claudeCode.listSessions(
+    limit ? { limit } : undefined,
+  );
+  if (!sessions.length) return { text: 'No sessions found to import.' };
+
+  // Build set of already-imported sessionIds to avoid duplicates
+  const existingSessionIds = new Set<string>();
+  for (const thread of services.repository.threadQueries.all()) {
+    const sid = (thread as any)?.context?.claudeCode?.sessionId;
+    if (sid) existingSessionIds.add(sid);
+  }
+
+  const toImport = sessions.filter((s: any) => !existingSessionIds.has(s.id));
+  const alreadyImported = sessions.length - toImport.length;
+
+  if (!toImport.length) {
+    return { text: `All ${sessions.length} sessions are already imported.` };
+  }
+
+  if (!threadId) return { text: 'No active thread.' };
+
+  // Send progress message
+  const { messageId: progressMsgId } = services.chat.sendBlockMessage({
+    threadId: threadId as any,
+    text: `Importing ${toImport.length} sessions…`,
+    blocks: [],
+  });
+
+  let imported = 0;
+  let failed = 0;
+
+  for (const session of toImport) {
+    try {
+      const transcript = await services.cli.claudeCode.viewSession(session.id);
+      const title = (session as any).title || `Session ${session.id.slice(0, 8)}`;
+
+      // Create thread directly (no per-thread frontend events)
+      const { id: newThreadId } = services.repository.threadCommands.create({
+        topic: title,
+        instructions: '',
+        tags: ['imported'],
+      });
+
+      // Import messages
+      importSessionMessages(services, newThreadId as string, transcript);
+
+      // Set up session state (adds 'claude-session' tag automatically)
+      persistClaudeState(services, newThreadId as string, { sessionId: session.id });
+      ensureSessionArtifact(services, newThreadId as any, {
+        sessionId: session.id,
+        cwd: (session as any).cwd || '',
+        chatState: 'idle',
+      });
+
+      imported++;
+    } catch {
+      failed++;
+    }
+  }
+
+  // Update progress message with final summary
+  const parts = [`Imported ${imported} sessions.`];
+  if (alreadyImported > 0) parts.push(`${alreadyImported} already imported.`);
+  if (failed > 0) parts.push(`${failed} failed.`);
+  const summary = parts.join(' ');
+
+  services.chat.updateMessageState(progressMsgId as any, { text: summary });
+
+  // Single frontend refresh
+  services.chat.sendRecentThreadsRefresh();
+
+  return { text: summary, skipMessage: true };
 }

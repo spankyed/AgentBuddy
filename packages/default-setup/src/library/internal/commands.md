@@ -10,6 +10,7 @@
 **cc-skills**: List installed skills
 **cc-compact**: Custom instructions (optional, summarize context)
 **cc-resume**: Session ID (optional, lists sessions if omitted)
+**cc-import**: "all" (optional, imports up to 250 by default)
 **cc-add-dir**: <path> [--remember]
 **cc-set-dir**: <path> (set working directory for new threads)
 **cc-stats**: Show version, auth, and config info
