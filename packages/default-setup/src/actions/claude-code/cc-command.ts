@@ -25,11 +25,42 @@ type Handler = (
   services: Services,
 ) => Promise<{ text: string; data?: any }>;
 
+// ── Passthrough commands ─────────────────────────────────────────────
+// Commands that map directly to `claude <subcommand> [...args]` and
+// relay stdout. Only commands registered as top-level CLI subcommands
+// (via Commander.js in main.tsx) work here — REPL-only slash commands
+// need dedicated handlers instead.
+
+const PASSTHROUGH: Record<string, { cmd: string; defaultArgs?: string[] }> = {
+  doctor: { cmd: 'doctor' },
+  mcp:    { cmd: 'mcp', defaultArgs: ['list'] },
+  agents: { cmd: 'agents' },
+};
+
+function makePassthroughHandler(spec: { cmd: string; defaultArgs?: string[] }): Handler {
+  return async (args, services) => {
+    const fullArgs = [spec.cmd, ...(args.length > 0 ? args : spec.defaultArgs ?? [])];
+    const result = await services.cli.claudeCode.exec(fullArgs);
+    const output = (result.stdout + result.stderr).trim();
+    return { text: output || `(no output from cc-${spec.cmd})` };
+  };
+}
+
 // ── Handler registry ────────────────────────────────────────────────
 
 const handlers: Record<string, Handler> = {
   sessions: handleSessions,
   config: handleConfig,
+  status: handleStatus,
+  model: handleModel,
+  memory: handleMemory,
+  skills: handleSkills,
+  tasks: handleTasks,
+  stats: handleStats,
+  // Passthrough commands — exec and relay stdout
+  ...Object.fromEntries(
+    Object.entries(PASSTHROUGH).map(([name, spec]) => [name, makePassthroughHandler(spec)]),
+  ),
 };
 
 // ── Dispatcher ──────────────────────────────────────────────────────
@@ -132,4 +163,120 @@ async function handleConfig(
     default:
       return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | sources` };
   }
+}
+
+async function handleStatus(
+  _args: string[],
+  services: Services,
+): Promise<{ text: string; data?: any }> {
+  const [version, auth] = await Promise.all([
+    services.cli.claudeCode.version(),
+    services.cli.claudeCode.authStatus(),
+  ]);
+  const lines = [
+    `Version: ${version.trim()}`,
+    `Auth: ${auth.authenticated ? 'authenticated' : 'not authenticated'}`,
+  ];
+  if (auth.account) lines.push(`Account: ${JSON.stringify(auth.account)}`);
+  return { text: lines.join('\n'), data: { version, auth } };
+}
+
+async function handleModel(
+  args: string[],
+  services: Services,
+): Promise<{ text: string; data?: any }> {
+  if (args.length === 0) {
+    const result = await services.cli.claudeCode.exec(['config', 'get', 'model']);
+    return { text: result.stdout.trim() || '(using default model)' };
+  }
+  await services.cli.claudeCode.exec(['config', 'set', 'model', args[0]]);
+  return { text: `Model set to: ${args[0]}` };
+}
+
+async function handleMemory(
+  args: string[],
+  services: Services,
+): Promise<{ text: string; data?: any }> {
+  if (args[0] === 'add' && args[1]) {
+    const result = await services.cli.claudeCode.exec(['memory', 'add', args[1]]);
+    return { text: result.stdout.trim() || `Added memory file: ${args[1]}` };
+  }
+  if (args[0] === 'remove' && args[1]) {
+    const result = await services.cli.claudeCode.exec(['memory', 'remove', args[1]]);
+    return { text: result.stdout.trim() || `Removed memory file: ${args[1]}` };
+  }
+  const result = await services.cli.claudeCode.exec(['memory', 'list', '--json']);
+  const output = result.stdout.trim();
+  if (!output) return { text: 'No memory files found.' };
+  try {
+    const files = JSON.parse(output);
+    const lines = files.map((f: any) => {
+      const scope = f.scope ? ` [${f.scope}]` : '';
+      return `${f.name}${scope}${f.path ? `  ${f.path}` : ''}`;
+    });
+    return { text: lines.join('\n'), data: files };
+  } catch {
+    return { text: output };
+  }
+}
+
+async function handleSkills(
+  _args: string[],
+  services: Services,
+): Promise<{ text: string; data?: any }> {
+  const result = await services.cli.claudeCode.exec(['skills', 'list', '--json']);
+  const output = result.stdout.trim();
+  if (!output) return { text: 'No skills installed.' };
+  try {
+    const skills = JSON.parse(output);
+    if (!skills.length) return { text: 'No skills installed.' };
+    const lines = skills.map((s: any) => {
+      const status = s.enabled === false ? ' (disabled)' : '';
+      const scope = s.scope ? ` [${s.scope}]` : '';
+      return `${s.name}${status}${scope}`;
+    });
+    return { text: lines.join('\n'), data: skills };
+  } catch {
+    return { text: output };
+  }
+}
+
+async function handleTasks(
+  _args: string[],
+  services: Services,
+): Promise<{ text: string; data?: any }> {
+  const result = await services.cli.claudeCode.exec(['task', 'list', '--json']);
+  const output = result.stdout.trim();
+  if (!output) return { text: 'No tasks found.' };
+  try {
+    const tasks = JSON.parse(output);
+    if (!tasks.length) return { text: 'No tasks found.' };
+    const lines = tasks.map((t: any) => {
+      const status = t.status ? ` [${t.status}]` : '';
+      return `${t.id}  ${t.subject || '(untitled)'}${status}`;
+    });
+    return { text: lines.join('\n'), data: tasks };
+  } catch {
+    return { text: output };
+  }
+}
+
+async function handleStats(
+  _args: string[],
+  services: Services,
+): Promise<{ text: string; data?: any }> {
+  const [version, auth, sourcesResult] = await Promise.all([
+    services.cli.claudeCode.version(),
+    services.cli.claudeCode.authStatus(),
+    services.cli.claudeCode.exec(['config', 'sources', '--json']),
+  ]);
+  const lines = [
+    `Version: ${version.trim()}`,
+    `Auth: ${auth.authenticated ? 'authenticated' : 'not authenticated'}`,
+  ];
+  try {
+    const sources = JSON.parse(sourcesResult.stdout.trim());
+    lines.push(`Config sources: ${sources.sources?.length ?? 0}`);
+  } catch { /* ignore parse failures */ }
+  return { text: lines.join('\n'), data: { version, auth } };
 }
