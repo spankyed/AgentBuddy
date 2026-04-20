@@ -6426,6 +6426,10 @@ interface CliServiceType {
         exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & {
             cwd?: string;
         }): Promise<ExecOnceResult>;
+        /** Read the CLI's user-scope settings.json (~/.claude/settings.json). */
+        readSettings(): Promise<Record<string, any>>;
+        /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
+        writeSettings(settings: Record<string, any>): Promise<void>;
     };
 }
 

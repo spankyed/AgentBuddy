@@ -6,6 +6,9 @@ import { claudeCode } from '@/services/claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from '@/services/claude-code'
 import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
+import { configDir } from '@/services/claude-code/sessions'
+import fs from 'fs'
+import path from 'path'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -61,6 +64,10 @@ export interface CliServiceType {
      * `cwd` defaults to the configured project directory.
      */
     exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & { cwd?: string }): Promise<ExecOnceResult>
+    /** Read the CLI's user-scope settings.json (~/.claude/settings.json). */
+    readSettings(): Promise<Record<string, any>>
+    /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
+    writeSettings(settings: Record<string, any>): Promise<void>
   }
 }
 
@@ -159,6 +166,19 @@ function createCliService(): CliServiceType {
       exec(args, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.exec(args, { ...opts, cwd })
+      },
+      async readSettings() {
+        const settingsPath = path.join(configDir(), 'settings.json')
+        try {
+          const raw = await fs.promises.readFile(settingsPath, 'utf-8')
+          return JSON.parse(raw)
+        } catch {
+          return {}
+        }
+      },
+      async writeSettings(settings) {
+        const settingsPath = path.join(configDir(), 'settings.json')
+        await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2))
       },
     },
   }

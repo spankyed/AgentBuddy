@@ -149,27 +149,30 @@ async function handleConfig(
   const [subcommand, key, ...rest] = args;
 
   if (!subcommand) {
-    return { text: 'Usage: /cc-config get <key> | set <key> <value> | sources' };
+    return { text: 'Usage: /cc-config get <key> | set <key> <value>' };
   }
+
+  const settings = await services.cli.claudeCode.readSettings();
 
   switch (subcommand) {
     case 'get': {
       if (!key) return { text: 'Usage: /cc-config get <key>' };
-      const result = await services.cli.claudeCode.exec(['config', 'get', key]);
-      return { text: result.stdout.trim() || `(no value for "${key}")` };
+      const value = settings[key];
+      if (value === undefined) return { text: `(no value for "${key}")` };
+      const display = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+      return { text: display, data: value };
     }
     case 'set': {
       if (!key || !rest.length) return { text: 'Usage: /cc-config set <key> <value>' };
-      const value = rest.join(' ');
-      const result = await services.cli.claudeCode.exec(['config', 'set', key, value]);
-      return { text: result.stdout.trim() || `Set ${key} = ${value}` };
-    }
-    case 'sources': {
-      const result = await services.cli.claudeCode.exec(['config', 'sources', '--json']);
-      return { text: result.stdout.trim() || 'No config sources', data: result.stdout };
+      const raw = rest.join(' ');
+      let parsed: any = raw;
+      try { parsed = JSON.parse(raw); } catch { /* keep as string */ }
+      settings[key] = parsed;
+      await services.cli.claudeCode.writeSettings(settings);
+      return { text: `Set ${key} = ${raw}` };
     }
     default:
-      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | sources` };
+      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value>` };
   }
 }
 
@@ -228,11 +231,12 @@ async function handleModel(
   args: string[],
   services: Services,
 ): Promise<{ text: string; data?: any }> {
+  const settings = await services.cli.claudeCode.readSettings();
   if (args.length === 0) {
-    const result = await services.cli.claudeCode.exec(['config', 'get', 'model']);
-    return { text: result.stdout.trim() || '(using default model)' };
+    return { text: settings.model || '(using default model)' };
   }
-  await services.cli.claudeCode.exec(['config', 'set', 'model', args[0]]);
+  settings.model = args[0];
+  await services.cli.claudeCode.writeSettings(settings);
   return { text: `Model set to: ${args[0]}` };
 }
 
