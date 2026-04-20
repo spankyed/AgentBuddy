@@ -153,7 +153,7 @@ type UIEvent =
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
   | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown> }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown>; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
   | { type: 'TEXT_TO_SPEECH' }
@@ -933,6 +933,7 @@ const threadsState = setup({
                 ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
                 ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText }),
                 ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable }),
+                ...('compacted' in typedEvent && typedEvent.compacted !== undefined && { compacted: typedEvent.compacted }),
                 // Shallow-merge context so partial backend updates (e.g.
                 // the stream-consumer writing only `cliUuid`) don't wipe
                 // existing keys. Without this branch, `msg.context.cliUuid`

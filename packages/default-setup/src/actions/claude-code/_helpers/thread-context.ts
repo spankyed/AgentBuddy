@@ -83,9 +83,16 @@ export interface ClaudeCodeThreadState {
    * the query starts.
    */
   revertTo?: { cliUuid: string };
+  /** Additional working directories added via /cc-add-dir. Passed as --add-dir on every query. */
+  additionalDirs?: string[];
 }
 
 export const CLAUDE_SESSION_TAG = 'claude-session';
+
+/** Set the global project directory used by Claude Code sessions. */
+export function setProjectDirectory(services: Services, directory: string): void {
+  services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], directory);
+}
 
 /** Read the Claude Code state stashed on a thread. Returns `undefined` if none. */
 export function getClaudeState(services: Services, threadId: string): ClaudeCodeThreadState | undefined {

@@ -7,6 +7,7 @@ export const meta: ActionMeta = {
   input: {
     text: { type: 'string', description: 'PR number or GitHub PR URL', required: false },
     threadId: { type: 'string', description: 'Thread ID for feedback', required: false },
+    references: { type: 'object', description: 'Attached references (images, files, context)', required: false },
   },
 };
 

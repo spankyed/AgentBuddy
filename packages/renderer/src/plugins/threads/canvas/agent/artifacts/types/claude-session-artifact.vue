@@ -60,6 +60,23 @@
             {{ shortenCwd(content.cwd) || '—' }}
           </span>
 
+          <template v-if="content.additionalDirs?.length">
+            <span class="text-neutral-500">Dirs</span>
+            <details class="text-neutral-200 min-w-0">
+              <summary class="cursor-pointer text-neutral-300 hover:text-neutral-200 select-none">
+                {{ content.additionalDirs.length }} additional
+              </summary>
+              <div
+                v-for="dir in content.additionalDirs"
+                :key="dir"
+                class="font-mono truncate text-neutral-400 mt-0.5"
+                :title="dir"
+              >
+                {{ shortenCwd(dir) }}
+              </div>
+            </details>
+          </template>
+
           <span class="text-neutral-500">Turns</span>
           <span class="text-neutral-200 tabular-nums">{{ content.turns ?? 0 }}</span>
 
@@ -176,6 +193,7 @@ interface SessionContent {
   permissionMode?: PermissionMode
   sessionError?: string
   contextTokens?: number
+  additionalDirs?: string[]
 }
 
 const props = defineProps<{

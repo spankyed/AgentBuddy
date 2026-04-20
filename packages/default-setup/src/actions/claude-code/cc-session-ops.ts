@@ -1,0 +1,346 @@
+/**
+ * CC: Session Ops — handles session-heavy cc- commands (resume, import).
+ *
+ * Separated from cc-command.ts because these handlers share transcript
+ * parsing, message import, and session artifact setup plumbing.
+ */
+
+import type { ActionMeta, Services, Z } from '../../types';
+import { persistClaudeState } from './_helpers/thread-context';
+import { ensureSessionArtifact } from './_helpers/session-artifact';
+
+export const meta: ActionMeta = {
+  label: 'CC: Session Ops',
+  description: 'Dispatcher for session-heavy cc- commands (resume, import)',
+  category: 'claude-code',
+  input: {
+    command: { type: 'string', description: 'Full command name (e.g. cc-resume)', required: true },
+    text: { type: 'string', description: 'Arguments after the command', required: false },
+    threadId: { type: 'string', description: 'Thread ID for response', required: false },
+    references: { type: 'object', description: 'Attached references', required: false },
+  },
+};
+
+type Handler = (
+  args: string[],
+  services: Services,
+  threadId?: string,
+) => Promise<{ text: string; data?: any; blocks?: any[]; skipMessage?: boolean }>;
+
+const handlers: Record<string, Handler> = {
+  resume: handleResume,
+  import: handleImport,
+};
+
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+  _z: Z,
+  _flowId: string,
+) {
+  const { command, text, threadId } = params;
+  const name = (command as string).replace(/^cc-/, '');
+  const args = text?.trim() ? text.trim().split(/\s+/) : [];
+
+  const handler = handlers[name];
+  let result: { text: string; data?: any; blocks?: any[]; skipMessage?: boolean };
+
+  if (handler) {
+    try {
+      result = await handler(args, services, threadId);
+    } catch (error: any) {
+      result = { text: `cc-${name} failed: ${error?.message || 'Unknown error'}` };
+    }
+  } else {
+    result = { text: `Unknown session command: cc-${name}` };
+  }
+
+  if (threadId && !result.skipMessage) {
+    services.chat.sendBlockMessage({
+      threadId,
+      text: result.text,
+      blocks: result.blocks ?? [],
+    });
+  }
+
+  return { success: !!handler, command: `cc-${name}`, text: result.text, data: result.data };
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Extract displayable text from a CLI transcript content array.
+ * Skips tool_use / tool_result blocks; concatenates text blocks.
+ */
+function extractText(content: any): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter((b: any) => b.type === 'text' && b.text)
+    .map((b: any) => b.text)
+    .join('\n');
+}
+
+/**
+ * Parse a CLI session transcript and batch-import messages into a thread.
+ * No per-message frontend events — caller must refresh the thread afterwards.
+ */
+function importSessionMessages(
+  services: Services,
+  threadId: string,
+  transcript: any[],
+): number {
+  const messages: Array<{
+    text: string;
+    sender: 'user' | 'assistant';
+    forkable?: boolean;
+    context?: Record<string, unknown>;
+  }> = [];
+
+  for (const entry of transcript) {
+    if (entry.type === 'user' && entry.message?.role === 'user') {
+      const text = extractText(entry.message.content);
+      if (!text) continue;
+      messages.push({
+        text,
+        sender: 'user',
+        forkable: false,
+        ...(entry.uuid && { context: { cliUuid: entry.uuid } }),
+      });
+    } else if (entry.type === 'assistant') {
+      const text = extractText(entry.message?.content) || '(tool use only)';
+      messages.push({
+        text,
+        sender: 'assistant',
+        forkable: true,
+        ...(entry.uuid && { context: { cliUuid: entry.uuid } }),
+      });
+    }
+  }
+
+  if (messages.length > 0) {
+    services.chat.addMessagesToThread({
+      threadId: threadId as any,
+      messages: messages as any,
+    });
+  }
+
+  return messages.length;
+}
+
+// ── Handlers ────────────────────────────────────────────────────────
+
+async function handleResume(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any; blocks?: any[]; skipMessage?: boolean }> {
+  const [sessionId] = args;
+
+  // No args: show session picker
+  if (!sessionId) {
+    const sessions = await services.cli.claudeCode.listSessions();
+    if (!sessions.length) return { text: 'No sessions found.' };
+
+    const items = sessions.map((s: any) => ({
+      id: s.id,
+      title: s.title || '(untitled)',
+      modifiedAt: s.modifiedAt ? new Date(s.modifiedAt).toISOString() : '',
+      size: s.size ?? 0,
+    }));
+
+    return {
+      text: 'Pick a session to resume (use `/cc-resume <session-id>`):',
+      blocks: [{ type: 'session-list', props: { sessions: items } }],
+      data: sessions,
+    };
+  }
+
+  // Validate session exists
+  const sessions = await services.cli.claudeCode.listSessions();
+  const session = sessions.find((s: any) => s.id === sessionId);
+  if (!session) return { text: `Session not found: ${sessionId}` };
+
+  if (!threadId) return { text: 'No active thread.' };
+
+  // Fetch transcript for message import
+  const transcript = await services.cli.claudeCode.viewSession(sessionId);
+
+  // Determine target thread
+  const existingMessages = services.repository.threadQueries.messages(threadId as any);
+  const hasMessages = existingMessages && existingMessages.length > 0;
+  let targetThreadId = threadId;
+
+  if (hasMessages) {
+    const title = (session as any).title || 'Resumed session';
+    const { id: newThreadId } = services.chat.createThreadAndNotify({
+      topic: title,
+      instructions: '',
+    });
+    targetThreadId = newThreadId as string;
+  }
+
+  // Import messages from transcript (batch — no per-message events)
+  const importedCount = importSessionMessages(services, targetThreadId, transcript);
+
+  // Set up session state — persistClaudeState adds 'claude-session' tag
+  persistClaudeState(services, targetThreadId, { sessionId });
+  ensureSessionArtifact(services, targetThreadId as any, {
+    sessionId,
+    cwd: (session as any).cwd || '',
+    chatState: 'idle',
+  });
+
+  // Build confirmation text
+  const sessionTitle = (session as any).title || '(untitled)';
+  const confirmText = `Session resumed: **${sessionTitle}** (${importedCount} messages imported)\nSend a message to continue.`;
+
+  if (hasMessages) {
+    // New thread: send confirmation there and navigate
+    services.chat.sendBlockMessage({
+      threadId: targetThreadId as any,
+      text: confirmText,
+      blocks: [],
+    });
+    services.chat.openThreadChatAndRefreshRecent(targetThreadId as any);
+    return { text: confirmText, skipMessage: true };
+  }
+
+  // Same thread: reload thread data to show imported messages
+  services.emitter.sendToPlugin('threads', {
+    type: 'LOAD_CHAT_THREAD',
+    data: services.repository.chatQueries.threadData(targetThreadId as any),
+  });
+
+  return { text: confirmText };
+}
+
+// ── Import ──────────────────────────────────────────────────────────
+
+const DEFAULT_IMPORT_LIMIT = 50;
+
+/** Extract the last path segment from a cwd for use as a thread title prefix. */
+function dirPrefix(cwd?: string): string {
+  if (!cwd) return '';
+  const segments = cwd.split('/').filter(Boolean);
+  const last = segments[segments.length - 1];
+  return last ? `[${last}] ` : '';
+}
+
+async function handleImport(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any; skipMessage?: boolean }> {
+  const allDirs = args.includes('all');
+  const noLimit = args.includes('no-limit');
+  const limit = noLimit ? undefined : DEFAULT_IMPORT_LIMIT;
+
+  // List sessions — either current directory or all project directories
+  const sessions = allDirs
+    ? await services.cli.claudeCode.listAllSessions(limit ? { limit } : undefined)
+    : await services.cli.claudeCode.listSessions(limit ? { limit } : undefined);
+
+  if (!sessions.length) return { text: 'No sessions found to import.' };
+
+  // Build set of already-imported sessionIds to avoid duplicates
+  const existingSessionIds = new Set<string>();
+  for (const thread of services.repository.threadQueries.all()) {
+    const sid = (thread as any)?.context?.claudeCode?.sessionId;
+    if (sid) existingSessionIds.add(sid);
+  }
+
+  const toImport = sessions.filter((s: any) => !existingSessionIds.has(s.id));
+  const alreadyImported = sessions.length - toImport.length;
+
+  if (!toImport.length) {
+    return { text: `All ${sessions.length} sessions are already imported.` };
+  }
+
+  if (!threadId) return { text: 'No active thread.' };
+
+  // Send progress message
+  const scope = allDirs ? 'across all directories' : 'from current directory';
+  const { messageId: progressMsgId } = services.chat.sendBlockMessage({
+    threadId: threadId as any,
+    text: `Importing ${toImport.length} sessions ${scope}…`,
+    blocks: [],
+  });
+
+  let imported = 0;
+  let failed = 0;
+
+  for (const session of toImport) {
+    try {
+      // Use viewSessionByFile when we have a file path (works for cross-directory imports)
+      const transcript = (session as any).file
+        ? await services.cli.claudeCode.viewSessionByFile((session as any).file)
+        : await services.cli.claudeCode.viewSession(session.id);
+
+      const prefix = dirPrefix((session as any).cwd);
+      const sessionTitle = (session as any).title || `Session ${session.id.slice(0, 8)}`;
+      const title = `${prefix}${sessionTitle}`;
+
+      // Create thread directly (no per-thread frontend events)
+      const { id: newThreadId } = services.repository.threadCommands.create({
+        topic: title,
+        instructions: '',
+        tags: ['imported'],
+      });
+
+      // Import messages
+      importSessionMessages(services, newThreadId as string, transcript);
+
+      // Write session state directly — no frontend events during bulk import.
+      // Using persistClaudeState + ensureSessionArtifact would emit THREAD_UPDATED
+      // + ARTIFACT_ADDED per thread, causing an event storm that crashes the frontend.
+      const thread = services.repository.threadQueries.byId(newThreadId) as any;
+      services.repository.threadCommands.update(newThreadId, {
+        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id } },
+        tags: [...(thread?.tags || ['imported']), 'claude-session'],
+      });
+
+      const now = Date.now();
+      services.repository.chatCommands.createArtifact({
+        artifactType: 'claude-session' as any,
+        title: 'Claude Code session',
+        content: {
+          sessionId: session.id,
+          model: '',
+          cwd: (session as any).cwd || '',
+          startedAt: now,
+          lastTurnAt: now,
+          turns: 0,
+          totalCostUsd: 0,
+          chatState: 'idle',
+          toolCallCount: 0,
+          permissionMode: 'default',
+        },
+        threadId: newThreadId,
+      });
+
+      imported++;
+    } catch {
+      failed++;
+    }
+  }
+
+  // Update progress message with final summary
+  const parts = [`Imported ${imported} sessions.`];
+  if (alreadyImported > 0) parts.push(`${alreadyImported} already imported.`);
+  if (failed > 0) parts.push(`${failed} failed.`);
+  const summary = parts.join(' ');
+
+  services.chat.updateMessageState(progressMsgId as any, { text: summary });
+
+  // Full refresh: update the entire thread list, tags, and chat states.
+  // sendRecentThreadsRefresh() only updates the sidebar (recent 7 threads).
+  const connectedData = services.repository.threadQueries.connectedData();
+  const threadsSettings = services.repository.settingsQueries.getPluginSettings('threads');
+  services.emitter.sendToPlugin('threads', {
+    type: 'THREAD_CONNECTED',
+    data: { ...connectedData, settings: threadsSettings || null },
+  });
+
+  return { text: summary, skipMessage: true };
+}

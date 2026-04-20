@@ -47,7 +47,7 @@ export const threadQueries = {
   messages: (threadId: EARS.EntityId) => 
     qx(threadId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
-      .pick(["text", "sender", "timestamp"] as const) as Partial<MessageEntity>[],
+      .pick(["text", "sender", "timestamp", "compacted"] as const) as Partial<MessageEntity>[],
   
   // Get linked threads
   linkedThreads: (threadId: EARS.EntityId) =>
@@ -385,7 +385,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
   }
 
   const mostRecentThread = threads[0];
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asideText", "asideContext", "status", "context"] as const;
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asideText", "asideContext", "status", "context", "compacted"] as const;
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -450,7 +450,7 @@ export const chatQueries = {
       messages: (qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status", "compacted"] as const,
           EARS.Entity.Message,
         ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
       artifacts: getThreadArtifacts(threadId) as any as ArtifactEntity[],
@@ -512,7 +512,7 @@ export const chatQueries = {
     const message = qx(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
       'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asideText', 'asideContext',
-      'forkable', 'references', 'isCommand', 'command', 'status', 'context'
+      'forkable', 'references', 'isCommand', 'command', 'status', 'context', 'compacted'
     ] as const);
 
     if (!message) return null;
@@ -525,7 +525,7 @@ export const chatCommands = {
   addMessage: (params: {
     threadId: EARS.EntityId;
     text: string;
-    sender: 'user' | 'assistant' | 'system';
+    sender: 'user' | 'assistant' | 'system' | 'marker';
     blocks?: BlockConfig[];
     forkable?: boolean;
     references?: MessageReferences;
@@ -536,6 +536,8 @@ export const chatCommands = {
     blockResponse?: any;
     responseTimestamp?: number;
     asideText?: string;
+    compacted?: boolean;
+    context?: Record<string, unknown>;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -543,14 +545,14 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText, compacted, context } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
       throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
 
-    const validSenders = ['user', 'assistant', 'system'];
+    const validSenders = ['user', 'assistant', 'system', 'marker'];
     if (!validSenders.includes(sender)) {
       throw new RepositoryError(
         `Invalid sender type. Must be one of: ${validSenders.join(', ')}`,
@@ -567,7 +569,7 @@ export const chatCommands = {
       .put('updatedAt', timestamp);
 
     if (blocks) messageTx.put('blocks', blocks);
-    if (forkable === false) messageTx.put('forkable', forkable);
+    if (forkable !== undefined) messageTx.put('forkable', forkable);
     if (references) messageTx.put('references', references);
     if (isCommand) messageTx.put('isCommand', isCommand);
     if (command) messageTx.put('command', command);
@@ -576,6 +578,8 @@ export const chatCommands = {
     if (blockResponse) messageTx.put('blockResponse', blockResponse);
     if (responseTimestamp) messageTx.put('responseTimestamp', responseTimestamp);
     if (asideText) messageTx.put('asideText', asideText);
+    if (compacted) messageTx.put('compacted', compacted);
+    if (context) messageTx.put('context', context);
 
     const messageId = messageTx.link(EARS.RelKind.CONTAINS, threadId).id();
 
@@ -655,7 +659,7 @@ export const chatCommands = {
 
   updateMessageState: (params: {
     messageId: EARS.EntityId;
-    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context'>>;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context' | 'compacted'>>;
   }): {
     messageId: EARS.EntityId;
     updatedAt: number;
@@ -675,6 +679,71 @@ export const chatCommands = {
     return { messageId, updatedAt: now, updates };
   },
 
+  createMarkerMessage: (params: {
+    threadId: EARS.EntityId;
+    text: string;
+  }): {
+    id: EARS.EntityId;
+    threadId: EARS.EntityId;
+    text: string;
+    sender: string;
+    timestamp: number;
+    compactedMessageIds: EARS.EntityId[];
+  } => {
+    const { threadId, text } = params;
+
+    const thread = qx(threadId).id();
+    if (!thread) {
+      throw new RepositoryError(`Thread ${threadId} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    // Collect eligible messages: exclude markers and already-compacted messages
+    const allMessages = threadQueries.messages(threadId);
+    const eligible = allMessages.filter(
+      (m: any) => m.sender !== 'marker' && !m.compacted && m.id
+    );
+
+    const timestamp = Date.now();
+    const markerTx = tx(EARS.Entity.Message)
+      .put('text', text.trim())
+      .put('timestamp', timestamp)
+      .put('sender', 'marker')
+      .put('createdAt', timestamp)
+      .put('updatedAt', timestamp);
+
+    const markerId = markerTx.link(EARS.RelKind.CONTAINS, threadId).id();
+    tx(threadId).link(EARS.RelKind.CONTAINS, markerId);
+    tx(threadId).update('lastMessageTimestamp', timestamp);
+
+    // Link marker to eligible messages and set compacted flag
+    const compactedMessageIds: EARS.EntityId[] = [];
+    for (const msg of eligible) {
+      const msgId = (msg as any).id as EARS.EntityId;
+      tx(markerId).link(EARS.RelKind.Custom('compacts'), msgId);
+      tx(msgId).put('compacted', true);
+      compactedMessageIds.push(msgId);
+    }
+
+    return { id: markerId, threadId, text: text.trim(), sender: 'marker', timestamp, compactedMessageIds };
+  },
+
+  toggleMarkerCompacted: (markerId: EARS.EntityId, compacted: boolean): EARS.EntityId[] => {
+    const marker = qx(markerId).id();
+    if (!marker) {
+      throw new RepositoryError(`Marker ${markerId} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+
+    const messageIds = (qx(markerId)
+      .linksTo(EARS.RelKind.Custom('compacts'), EARS.Entity.Message)
+      .pick([] as const) ?? []).map((m: any) => m.id) as EARS.EntityId[];
+
+    for (const msgId of messageIds) {
+      tx(msgId).put('compacted', compacted);
+    }
+
+    return messageIds;
+  },
+
   copyMessagesUpTo: (params: {
     sourceThreadId: EARS.EntityId;
     targetThreadId: EARS.EntityId;
@@ -684,7 +753,7 @@ export const chatCommands = {
     const sourceData = chatQueries.threadData(sourceThreadId);
     const sourceMessages = sourceData.messages || [];
 
-    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context'] as const;
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context', 'compacted'] as const;
 
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};

@@ -100,7 +100,7 @@ export async function consumeStream(
 
   // Extracted from the `result` line directly — survives even if handle.result
   // rejects (error subtypes like error_during_execution).
-  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; inputTokens: number } | undefined;
+  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; inputTokens: number; subtype?: string; errors?: string[] } | undefined;
 
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
@@ -468,9 +468,13 @@ export async function consumeStream(
       // directly — handle.result may reject for error subtypes, losing this data.
       if (line.type === 'result') {
         log.debug('result line received', {
+          subtype: (line as any).subtype,
           total_cost_usd: (line as any).total_cost_usd,
           modelUsage: (line as any).modelUsage ? Object.keys((line as any).modelUsage) : undefined,
           duration_ms: (line as any).duration_ms,
+          num_turns: (line as any).num_turns,
+          result: ((line as any).result || '').slice(0, 200),
+          errors: (line as any).errors,
         });
         resultFromLine = {
           sessionId: (line as any).session_id ?? '',
@@ -478,6 +482,8 @@ export async function consumeStream(
           totalCostUsd: (line as any).total_cost_usd || sumModelUsageCost((line as any).modelUsage),
           durationMs: (line as any).duration_ms ?? 0,
           inputTokens: (line as any).usage?.input_tokens ?? 0,
+          subtype: (line as any).subtype,
+          errors: (line as any).errors,
         };
         break;
       }
@@ -507,32 +513,58 @@ export async function consumeStream(
       durationMs: result.durationMs,
     });
 
-    // Critical state: persist sessionId for resume.
-    if (result.sessionId) {
-      persistClaudeState(services, threadId, {
-        sessionId: result.sessionId,
-        lastTurnAt: Date.now(),
-      });
-    }
+    // ─── Error-result guard: don't re-persist broken sessions ─────────
+    // The CLI emits `subtype: 'error_during_execution'` (or similar non-success
+    // subtypes) when it fails to load/resume a session. Without this guard,
+    // the broken sessionId gets re-persisted at line ~540, locking the thread
+    // to a permanently un-resumable session.
+    const isErrorResult = result.subtype != null && result.subtype !== 'success';
 
-    // Finalize writers (needs closure references).
     const hadToolErrors = toolActivity.entries.some(e => e.status === 'error');
-    toolActivity.finalise(hadToolErrors ? 'error' : 'done');
-    // If the stream produced text (either via streamed deltas into `writer`
-    // or a terminal `result.result` string), finalize with it. Otherwise
-    // leave `text` untouched and mark the message complete — mirrors the
-    // paused-turn guard in the catch branch below (lines ~506-516). Without
-    // this check, tool-only turns or turns where the CLI's assistant prose
-    // arrived on a non-streaming code path would clobber the "Thinking…"
-    // placeholder with an empty string.
-    if (writer.text || result.text) {
-      writer.finalize(writer.text || result.text);
+
+    if (isErrorResult) {
+      const errorText = Array.isArray(result.errors) ? result.errors.join('; ') : `CLI error: ${result.subtype}`;
+      log.error('CLI returned error result', { subtype: result.subtype, errors: result.errors, eventCount });
+
+      // Detect stale session and clear it so the next turn starts fresh.
+      const staleId = extractStaleSessionId(errorText);
+      if (staleId) {
+        writer.finalize('⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.');
+      } else {
+        writer.finalize(`⚠️ ${errorText}`);
+      }
+      clearSessionId(services, threadId);
+      markSessionBroken(services, threadId, staleId ? `Session ${staleId} not found` : errorText);
+
+      toolActivity.finalise('error');
       services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     } else {
-      services.chat.updateMessageState(currentMessageId as any, {
-        responseTimestamp: Date.now(),
-        forkable: true,
-      } as any);
+      // Critical state: persist sessionId for resume.
+      if (result.sessionId) {
+        persistClaudeState(services, threadId, {
+          sessionId: result.sessionId,
+          lastTurnAt: Date.now(),
+        });
+      }
+
+      // Finalize writers (needs closure references).
+      toolActivity.finalise(hadToolErrors ? 'error' : 'done');
+      // If the stream produced text (either via streamed deltas into `writer`
+      // or a terminal `result.result` string), finalize with it. Otherwise
+      // leave `text` untouched and mark the message complete — mirrors the
+      // paused-turn guard in the catch branch below (lines ~506-516). Without
+      // this check, tool-only turns or turns where the CLI's assistant prose
+      // arrived on a non-streaming code path would clobber the "Thinking…"
+      // placeholder with an empty string.
+      if (writer.text || result.text) {
+        writer.finalize(writer.text || result.text);
+        services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+      } else {
+        services.chat.updateMessageState(currentMessageId as any, {
+          responseTimestamp: Date.now(),
+          forkable: true,
+        } as any);
+      }
     }
     log.debug('stream consumer completed');
 
@@ -571,7 +603,7 @@ export async function consumeStream(
         toolCallCount: toolActivity.entries.length,
         mutatedFileCount: mutatedPaths.length,
         mutatedPaths,
-        hadErrors: !!hadToolErrors,
+        hadErrors: !!hadToolErrors || !!isErrorResult,
         userText: text,
       },
     });

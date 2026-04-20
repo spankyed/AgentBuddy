@@ -6,6 +6,10 @@ import { claudeCode } from '@/services/claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from '@/services/claude-code'
 import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
+import { configDir } from '@/services/claude-code/sessions'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -41,6 +45,8 @@ export interface CliServiceType {
     version(): Promise<string>
     authStatus(): Promise<AuthStatus>
     listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
+    /** List sessions across ALL project directories (not just the configured cwd). */
+    listAllSessions(opts?: { limit?: number }): Promise<SessionInfo[]>
     /**
      * Parse a session's JSONL transcript into an in-memory array of entries.
      * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
@@ -48,6 +54,8 @@ export interface CliServiceType {
      * `cwd` defaults to the configured project directory.
      */
     viewSession(id: string, opts?: Omit<SessionViewOptions, 'cwd'> & { cwd?: string }): Promise<SessionTranscriptEntry[]>
+    /** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
+    viewSessionByFile(filePath: string, opts?: { limit?: number; offset?: number }): Promise<SessionTranscriptEntry[]>
     getWorkingDir(): string
     /** Store a live query handle so other actions can write control_responses. */
     storeHandle(key: string, handle: QueryHandle): void
@@ -61,6 +69,14 @@ export interface CliServiceType {
      * `cwd` defaults to the configured project directory.
      */
     exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & { cwd?: string }): Promise<ExecOnceResult>
+    /** Read the CLI's user-scope settings.json (~/.claude/settings.json). */
+    readSettings(): Promise<Record<string, any>>
+    /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
+    writeSettings(settings: Record<string, any>): Promise<void>
+    /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
+    listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** List memory/CLAUDE.md files from known locations. */
+    listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
   }
 }
 
@@ -70,9 +86,14 @@ function createCliService(): CliServiceType {
 
   function resolveCwd(): string {
     const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings | undefined
-    const cwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || null
+    let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
+    }
+    if (cwd.startsWith('~/')) {
+      cwd = path.join(os.homedir(), cwd.slice(2))
+    } else if (cwd === '~') {
+      cwd = os.homedir()
     }
     return cwd
   }
@@ -146,9 +167,15 @@ function createCliService(): CliServiceType {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.sessions.list({ ...opts, cwd })
       },
+      listAllSessions(opts) {
+        return claudeCode.sessions.listAll(opts)
+      },
       viewSession(id, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.sessions.view(id, { ...opts, cwd })
+      },
+      viewSessionByFile(filePath, opts) {
+        return claudeCode.sessions.viewByFile(filePath, opts)
       },
       getWorkingDir() {
         return resolveCwd()
@@ -159,6 +186,83 @@ function createCliService(): CliServiceType {
       exec(args, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
         return claudeCode.exec(args, { ...opts, cwd })
+      },
+      async readSettings() {
+        const settingsPath = path.join(configDir(), 'settings.json')
+        try {
+          const raw = await fs.promises.readFile(settingsPath, 'utf-8')
+          return JSON.parse(raw)
+        } catch {
+          return {}
+        }
+      },
+      async writeSettings(settings) {
+        const settingsPath = path.join(configDir(), 'settings.json')
+        try {
+          await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2))
+        } catch (err: any) {
+          if (err?.code === 'ENOENT') {
+            throw new Error('Claude Code config directory not found (~/.claude/). Is Claude Code installed?')
+          }
+          throw err
+        }
+      },
+      async listSkills() {
+        const results: Array<{ name: string; scope: string; path: string }> = []
+        const dirs = [
+          { dir: path.join(configDir(), 'skills'), scope: 'user' },
+          { dir: path.join(resolveCwd(), '.claude', 'skills'), scope: 'project' },
+        ]
+        for (const { dir, scope } of dirs) {
+          try {
+            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push({
+                  name: entry.name.replace(/\.md$/, ''),
+                  scope,
+                  path: path.join(dir, entry.name),
+                })
+              }
+            }
+          } catch { /* dir doesn't exist */ }
+        }
+        return results
+      },
+      async listMemoryFiles() {
+        const cwd = resolveCwd()
+        const results: Array<{ name: string; scope: string; path: string }> = []
+        const candidates = [
+          { filePath: path.join(os.homedir(), '.claude', 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'user' },
+          { filePath: path.join(cwd, 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'project' },
+          { filePath: path.join(cwd, 'CLAUDE.local.md'), name: 'CLAUDE.local.md', scope: 'local' },
+        ]
+        for (const { filePath, name, scope } of candidates) {
+          try {
+            await fs.promises.access(filePath)
+            results.push({ name, scope, path: filePath })
+          } catch { /* doesn't exist */ }
+        }
+        // Scan rules directories
+        const rulesDirs = [
+          { dir: path.join(os.homedir(), '.claude', 'rules'), scope: 'user' },
+          { dir: path.join(cwd, '.claude', 'rules'), scope: 'project' },
+        ]
+        for (const { dir, scope } of rulesDirs) {
+          try {
+            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile() && entry.name.endsWith('.md')) {
+                results.push({
+                  name: `rules/${entry.name}`,
+                  scope,
+                  path: path.join(dir, entry.name),
+                })
+              }
+            }
+          } catch { /* dir doesn't exist */ }
+        }
+        return results
       },
     },
   }

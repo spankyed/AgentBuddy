@@ -4,7 +4,7 @@ import type { EARS } from "@/types";
 import type { PermissionMode } from "@/services/claude-code/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
+export type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
 
 export interface BlockConfig {
   type: BlockType;
@@ -170,7 +170,7 @@ export type BlockResponse =
 export interface MessageEntity extends BaseEntity {
   entityType: EARS.Entity.Message;
   text: string;
-  sender: 'user' | 'assistant' | 'system';
+  sender: 'user' | 'assistant' | 'system' | 'marker';
   timestamp: number;
   // Block-based interaction system
   responseTimestamp?: number; // Timestamp when the message was responded to
@@ -197,6 +197,8 @@ export interface MessageEntity extends BaseEntity {
   asideText?: string;
   /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
   asideContext?: string;
+  /** When true, message is hidden because a marker message compacted it. */
+  compacted?: boolean;
 }
 
 /**

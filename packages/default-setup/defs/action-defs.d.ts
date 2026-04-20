@@ -989,7 +989,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
+type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -1100,7 +1100,7 @@ type BlockResponse =
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
-    sender: 'user' | 'assistant' | 'system';
+    sender: 'user' | 'assistant' | 'system' | 'marker';
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
@@ -1126,6 +1126,8 @@ interface MessageEntity extends BaseEntity {
     asideText?: string;
     /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
     asideContext?: string;
+    /** When true, message is hidden because a marker message compacted it. */
+    compacted?: boolean;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -2348,6 +2350,21 @@ declare const events: {
         systemId: "threads";
         threadId: string;
         useWorktree: boolean;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_COMPACTED">;
+        systemId: zod.ZodLiteral<"threads">;
+        markerId: zod.ZodString;
+        compacted: zod.ZodBoolean;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        compacted: boolean;
+        type: "TOGGLE_COMPACTED";
+        systemId: "threads";
+        markerId: string;
+    }, {
+        compacted: boolean;
+        type: "TOGGLE_COMPACTED";
+        systemId: "threads";
+        markerId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -4757,6 +4774,7 @@ declare const events: {
         context?: Record<string, unknown> | undefined;
         asideText?: string | undefined;
         asideContext?: string | undefined;
+        compacted?: boolean | undefined;
         pluginId: "threads";
     } | {
         type: "MESSAGE_ADDED";
@@ -6402,6 +6420,8 @@ interface CliServiceType {
         version(): Promise<string>;
         authStatus(): Promise<AuthStatus>;
         listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>;
+        /** List sessions across ALL project directories (not just the configured cwd). */
+        listAllSessions(opts?: { limit?: number }): Promise<SessionInfo[]>;
         /**
          * Parse a session's JSONL transcript into an in-memory array of entries.
          * Used by `CC: Handle Rewind` to retroactively backfill `context.cliUuid`
@@ -6411,6 +6431,8 @@ interface CliServiceType {
         viewSession(id: string, opts?: Omit<SessionViewOptions, 'cwd'> & {
             cwd?: string;
         }): Promise<SessionTranscriptEntry[]>;
+        /** Parse a JSONL file directly by path (bypasses cwd→bucket lookup). */
+        viewSessionByFile(filePath: string, opts?: { limit?: number; offset?: number }): Promise<SessionTranscriptEntry[]>;
         getWorkingDir(): string;
         /** Store a live query handle so other actions can write control_responses. */
         storeHandle(key: string, handle: QueryHandle): void;
@@ -6426,6 +6448,22 @@ interface CliServiceType {
         exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & {
             cwd?: string;
         }): Promise<ExecOnceResult>;
+        /** Read the CLI's user-scope settings.json (~/.claude/settings.json). */
+        readSettings(): Promise<Record<string, any>>;
+        /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
+        writeSettings(settings: Record<string, any>): Promise<void>;
+        /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
+        listSkills(): Promise<Array<{
+            name: string;
+            scope: string;
+            path: string;
+        }>>;
+        /** List memory/CLAUDE.md files from known locations. */
+        listMemoryFiles(): Promise<Array<{
+            name: string;
+            scope: string;
+            path: string;
+        }>>;
     };
 }
 
@@ -7183,7 +7221,44 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>): void;
+/**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+declare function addMessagesToThread(params: {
+  threadId: EARS.EntityId;
+  messages: Array<{
+    text: string;
+    sender: 'user' | 'assistant' | 'system' | 'marker';
+    forkable?: boolean;
+    context?: Record<string, unknown>;
+  }>;
+}): void;
+/**
+ * Create a marker message that compacts eligible prior messages in a thread.
+ * The repository determines which messages are eligible (excludes markers and already-compacted).
+ */
+declare function createMarkerMessage(params: {
+    threadId: EARS.EntityId;
+    text: string;
+}): {
+    messageId: EARS.EntityId;
+    compactedMessageIds: EARS.EntityId[];
+};
+/**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+declare function addMessagesToThread(params: {
+    threadId: EARS.EntityId;
+    messages: Array<{
+        text: string;
+        sender: 'user' | 'assistant' | 'system' | 'marker';
+        forkable?: boolean;
+        context?: Record<string, unknown>;
+    }>;
+}): void;
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -7252,7 +7327,9 @@ declare function resolveReferences(references: MessageReferences | undefined): P
  */
 declare function generateAsideText(message: MessageEntity, response: BlockResponse): string;
 
+declare const chat_addMessagesToThread: typeof addMessagesToThread;
 declare const chat_createBlockMessage: typeof createBlockMessage;
+declare const chat_createMarkerMessage: typeof createMarkerMessage;
 declare const chat_createThreadAndNotify: typeof createThreadAndNotify;
 declare const chat_generateAsideText: typeof generateAsideText;
 declare const chat_openThreadChatAndRefreshRecent: typeof openThreadChatAndRefreshRecent;
@@ -7271,7 +7348,9 @@ declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse
 declare const chat_updateMessageState: typeof updateMessageState;
 declare namespace chat {
   export {
+    chat_addMessagesToThread as addMessagesToThread,
     chat_createBlockMessage as createBlockMessage,
+    chat_createMarkerMessage as createMarkerMessage,
     chat_createThreadAndNotify as createThreadAndNotify,
     chat_generateAsideText as generateAsideText,
     chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent,
@@ -7524,7 +7603,7 @@ declare const services: {
             readonly addMessage: (params: {
                 threadId: EARS.EntityId;
                 text: string;
-                sender: "user" | "assistant" | "system";
+                sender: "user" | "assistant" | "system" | "marker";
                 blocks?: BlockConfig[];
                 forkable?: boolean;
                 references?: MessageReferences;
@@ -7535,6 +7614,7 @@ declare const services: {
                 blockResponse?: any;
                 responseTimestamp?: number;
                 asideText?: string;
+                compacted?: boolean;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
@@ -7564,12 +7644,24 @@ declare const services: {
             };
             readonly updateMessageState: (params: {
                 messageId: EARS.EntityId;
-                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context">>;
+                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context" | "compacted">>;
             }) => {
                 messageId: EARS.EntityId;
                 updatedAt: number;
                 updates: typeof params.updates;
             };
+            readonly createMarkerMessage: (params: {
+                threadId: EARS.EntityId;
+                text: string;
+            }) => {
+                id: EARS.EntityId;
+                threadId: EARS.EntityId;
+                text: string;
+                sender: string;
+                timestamp: number;
+                compactedMessageIds: EARS.EntityId[];
+            };
+            readonly toggleMarkerCompacted: (markerId: EARS.EntityId, compacted: boolean) => EARS.EntityId[];
             readonly copyMessagesUpTo: (params: {
                 sourceThreadId: EARS.EntityId;
                 targetThreadId: EARS.EntityId;

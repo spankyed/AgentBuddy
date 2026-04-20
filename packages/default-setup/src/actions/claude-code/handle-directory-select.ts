@@ -5,7 +5,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState } from './_helpers/thread-context';
+import { persistClaudeState, setProjectDirectory } from './_helpers/thread-context';
 import { updateSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
@@ -58,7 +58,7 @@ export async function action(
   }
 
   // Save the selected directory as the default base directory.
-  services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], selectedDir);
+  setProjectDirectory(services, selectedDir);
 
   // Persist worktree preference on the session artifact so chat.ts reads it.
   if (useWorktree) {

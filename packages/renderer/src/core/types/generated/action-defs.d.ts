@@ -991,7 +991,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input';
+type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -1102,7 +1102,7 @@ type BlockResponse =
 interface MessageEntity extends BaseEntity {
     entityType: EARS.Entity.Message;
     text: string;
-    sender: 'user' | 'assistant' | 'system';
+    sender: 'user' | 'assistant' | 'system' | 'marker';
     timestamp: number;
     responseTimestamp?: number;
     blocks?: BlockConfig[];
@@ -1128,6 +1128,8 @@ interface MessageEntity extends BaseEntity {
     asideText?: string;
     /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */
     asideContext?: string;
+    /** When true, message is hidden because a marker message compacted it. */
+    compacted?: boolean;
 }
 /**
  * Free-form per-thread scratchpad for features that need to persist small
@@ -1461,16 +1463,16 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
         entityType: "general" | "plugin" | "internal";
-        path: string[];
         type: "UPDATE_SETTINGS";
         systemId: "settings";
+        path: string[];
         value?: any;
     }, {
         label: string;
         entityType: "general" | "plugin" | "internal";
-        path: string[];
         type: "UPDATE_SETTINGS";
         systemId: "settings";
+        path: string[];
         value?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_SETTINGS">;
@@ -1497,15 +1499,15 @@ declare const events: {
         value: zod.ZodString;
         customName: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        value: string;
         type: "SECRETS.CMD.CREATE_API_KEY";
         systemId: "settings";
+        value: string;
         provider: string;
         customName?: string | undefined;
     }, {
-        value: string;
         type: "SECRETS.CMD.CREATE_API_KEY";
         systemId: "settings";
+        value: string;
         provider: string;
         customName?: string | undefined;
     }>, zod.ZodObject<{
@@ -1515,14 +1517,14 @@ declare const events: {
         value: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         id: string;
-        value: string;
         type: "SECRETS.CMD.UPDATE_API_KEY";
         systemId: "settings";
+        value: string;
     }, {
         id: string;
-        value: string;
         type: "SECRETS.CMD.UPDATE_API_KEY";
         systemId: "settings";
+        value: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
         systemId: zod.ZodLiteral<"settings">;
@@ -2350,6 +2352,21 @@ declare const events: {
         systemId: "threads";
         threadId: string;
         useWorktree: boolean;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_COMPACTED">;
+        systemId: zod.ZodLiteral<"threads">;
+        markerId: zod.ZodString;
+        compacted: zod.ZodBoolean;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        compacted: boolean;
+        type: "TOGGLE_COMPACTED";
+        systemId: "threads";
+        markerId: string;
+    }, {
+        compacted: boolean;
+        type: "TOGGLE_COMPACTED";
+        systemId: "threads";
+        markerId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -2654,15 +2671,15 @@ declare const events: {
         name: zod.ZodOptional<zod.ZodString>;
         databases: zod.ZodArray<zod.ZodEnum<["lmdb", "volatileLmdb", "secretsLmdb"]>, "many">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "EXPORT_DATABASE";
         systemId: "database";
+        path: string;
         databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }, {
-        path: string;
         type: "EXPORT_DATABASE";
         systemId: "database";
+        path: string;
         databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }>, zod.ZodObject<{
@@ -2670,25 +2687,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "IMPORT_DATABASE";
         systemId: "database";
+        path: string;
     }, {
-        path: string;
         type: "IMPORT_DATABASE";
         systemId: "database";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GET_BACKUP_INFO">;
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "GET_BACKUP_INFO";
         systemId: "database";
+        path: string;
     }, {
-        path: string;
         type: "GET_BACKUP_INFO";
         systemId: "database";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_DATABASE">;
         systemId: zod.ZodLiteral<"database">;
@@ -3439,25 +3456,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.READ_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.WRITE_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -3465,41 +3482,41 @@ declare const events: {
         content: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         content: string;
-        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
+        path: string;
     }, {
         content: string;
-        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CREATE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
         content: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
+        path: string;
         content?: string | undefined;
     }, {
-        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
+        path: string;
         content?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.DELETE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.RENAME_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -3520,37 +3537,37 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.GET_FILE_INFO">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CLOSE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.QUICK_OPEN_SEARCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -3590,9 +3607,9 @@ declare const events: {
         useRegex: zod.ZodOptional<zod.ZodBoolean>;
         maxResults: zod.ZodOptional<zod.ZodNumber>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
+        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -3601,9 +3618,9 @@ declare const events: {
         useRegex?: boolean | undefined;
         maxResults?: number | undefined;
     }, {
-        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
+        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -3673,13 +3690,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         message: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        message: string;
         type: "commit.COMMIT";
         systemId: "code";
+        message: string;
     }, {
-        message: string;
         type: "commit.COMMIT";
         systemId: "code";
+        message: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.GET_CURRENT_BRANCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -3694,13 +3711,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
+        path: string;
     }, {
-        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
+        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.REVERT_FILES">;
         systemId: zod.ZodLiteral<"code">;
@@ -3861,15 +3878,15 @@ declare const events: {
         baseBranch: zod.ZodString;
         headBranch: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
+        path: string;
         baseBranch: string;
         headBranch?: string | undefined;
     }, {
-        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
+        path: string;
         baseBranch: string;
         headBranch?: string | undefined;
     }>, zod.ZodObject<{
@@ -4325,14 +4342,14 @@ declare const events: {
         path: zod.ZodString;
         fromUserNavigation: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        path: string;
         type: "SET_BASE_DIRECTORY";
         systemId: "code";
+        path: string;
         fromUserNavigation?: boolean | undefined;
     }, {
-        path: string;
         type: "SET_BASE_DIRECTORY";
         systemId: "code";
+        path: string;
         fromUserNavigation?: boolean | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_NOTE">;
@@ -4759,6 +4776,7 @@ declare const events: {
         context?: Record<string, unknown> | undefined;
         asideText?: string | undefined;
         asideContext?: string | undefined;
+        compacted?: boolean | undefined;
         pluginId: "threads";
     } | {
         type: "MESSAGE_ADDED";
@@ -6428,6 +6446,22 @@ interface CliServiceType {
         exec(args: readonly string[], opts?: Omit<ExecOnceOptions, 'cwd'> & {
             cwd?: string;
         }): Promise<ExecOnceResult>;
+        /** Read the CLI's user-scope settings.json (~/.claude/settings.json). */
+        readSettings(): Promise<Record<string, any>>;
+        /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
+        writeSettings(settings: Record<string, any>): Promise<void>;
+        /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
+        listSkills(): Promise<Array<{
+            name: string;
+            scope: string;
+            path: string;
+        }>>;
+        /** List memory/CLAUDE.md files from known locations. */
+        listMemoryFiles(): Promise<Array<{
+            name: string;
+            scope: string;
+            path: string;
+        }>>;
     };
 }
 
@@ -7175,7 +7209,31 @@ declare function updateMessageBlockResponse(messageId: EARS.EntityId, response: 
  *   text: 'Updated message content'
  * });
  */
-declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable'>>): void;
+declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'status' | 'context' | 'forkable' | 'compacted'>>): void;
+/**
+ * Create a marker message that compacts eligible prior messages in a thread.
+ * The repository determines which messages are eligible (excludes markers and already-compacted).
+ */
+declare function createMarkerMessage(params: {
+    threadId: EARS.EntityId;
+    text: string;
+}): {
+    messageId: EARS.EntityId;
+    compactedMessageIds: EARS.EntityId[];
+};
+/**
+ * Add multiple messages to a thread without emitting per-message frontend events.
+ * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
+ */
+declare function addMessagesToThread(params: {
+    threadId: EARS.EntityId;
+    messages: Array<{
+        text: string;
+        sender: 'user' | 'assistant' | 'system' | 'marker';
+        forkable?: boolean;
+        context?: Record<string, unknown>;
+    }>;
+}): void;
 /**
  * Create a new thread and notify the frontend
  * Use this in flow actions that need automatic frontend updates
@@ -7246,7 +7304,9 @@ declare function generateAsideText(message: MessageEntity, response: BlockRespon
 
 const chat = /*#__PURE__*/Object.freeze({
   __proto__: null,
+  addMessagesToThread: addMessagesToThread,
   createBlockMessage: createBlockMessage,
+  createMarkerMessage: createMarkerMessage,
   createThreadAndNotify: createThreadAndNotify,
   generateAsideText: generateAsideText,
   openThreadChatAndRefreshRecent: openThreadChatAndRefreshRecent,
@@ -7495,7 +7555,7 @@ declare const services: {
             readonly addMessage: (params: {
                 threadId: EARS.EntityId;
                 text: string;
-                sender: "user" | "assistant" | "system";
+                sender: "user" | "assistant" | "system" | "marker";
                 blocks?: BlockConfig[];
                 forkable?: boolean;
                 references?: MessageReferences;
@@ -7506,6 +7566,7 @@ declare const services: {
                 blockResponse?: any;
                 responseTimestamp?: number;
                 asideText?: string;
+                compacted?: boolean;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;
@@ -7535,12 +7596,24 @@ declare const services: {
             };
             readonly updateMessageState: (params: {
                 messageId: EARS.EntityId;
-                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context">>;
+                updates: Partial<Pick<MessageEntity, "text" | "blocks" | "blockResponse" | "responseTimestamp" | "forkable" | "status" | "context" | "compacted">>;
             }) => {
                 messageId: EARS.EntityId;
                 updatedAt: number;
                 updates: typeof params.updates;
             };
+            readonly createMarkerMessage: (params: {
+                threadId: EARS.EntityId;
+                text: string;
+            }) => {
+                id: EARS.EntityId;
+                threadId: EARS.EntityId;
+                text: string;
+                sender: string;
+                timestamp: number;
+                compactedMessageIds: EARS.EntityId[];
+            };
+            readonly toggleMarkerCompacted: (markerId: EARS.EntityId, compacted: boolean) => EARS.EntityId[];
             readonly copyMessagesUpTo: (params: {
                 sourceThreadId: EARS.EntityId;
                 targetThreadId: EARS.EntityId;

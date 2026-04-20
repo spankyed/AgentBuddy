@@ -135,6 +135,10 @@ export const IncomingThreadsEvents = [
     threadId: z.string(),
     useWorktree: z.boolean(),
   }),
+  busEvent('TOGGLE_COMPACTED', {
+    markerId: z.string(),
+    compacted: z.boolean(),
+  }),
 ] as const
 
 export type ThreadsInternalEvents =
@@ -165,7 +169,7 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
-  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'SET_MODE'; mode: string }
@@ -841,6 +845,20 @@ export const threadsSystem = setup({
         threadId: threadId as EARS.EntityId,
       });
     },
+    toggleCompacted: ({ system, event }) => {
+      const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
+      const messageIds = repository.chatCommands.toggleMarkerCompacted(
+        markerId as EARS.EntityId,
+        compacted,
+      );
+      for (const msgId of messageIds) {
+        system.get(bus).send(emit(threads, {
+          type: 'UPDATE_MESSAGE_STATE',
+          messageId: msgId as string,
+          compacted,
+        }));
+      }
+    },
   },
 }).createMachine(
   {
@@ -923,6 +941,9 @@ export const threadsSystem = setup({
           },
           SUMMARIZE_THREAD: {
             actions: 'summarizeThread',
+          },
+          TOGGLE_COMPACTED: {
+            actions: 'toggleCompacted',
           },
           PAUSE_TURN: {
             actions: 'pauseTurn',

@@ -32,7 +32,7 @@ import { ChevronDown } from 'lucide-vue-next'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
 interface Message {
-  sender?: 'user' | 'assistant' | 'system'
+  sender?: 'user' | 'assistant' | 'system' | 'marker'
   text?: string
 }
 const isUserMsg = (message: Message) => message.sender === 'user'
