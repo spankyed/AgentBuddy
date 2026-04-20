@@ -3,6 +3,7 @@
 **pr2md**: PR number or GitHub URL (optional)
 **cc-sessions**: Session ID (optional, lists all if omitted)
 **cc-config**: get|set|sources <key> [value]
+**cc-context**: Show context window usage breakdown
 **cc-status**: Show version and auth info
 **cc-model**: Model name (optional, shows current if omitted)
 **cc-memory**: File name or add|remove <name>

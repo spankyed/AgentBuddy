@@ -7,6 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
+import { getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -23,6 +24,7 @@ export const meta: ActionMeta = {
 type Handler = (
   args: string[],
   services: Services,
+  threadId?: string,
 ) => Promise<{ text: string; data?: any }>;
 
 // ── Passthrough commands ─────────────────────────────────────────────
@@ -51,6 +53,7 @@ function makePassthroughHandler(spec: { cmd: string; defaultArgs?: string[] }): 
 const handlers: Record<string, Handler> = {
   sessions: handleSessions,
   config: handleConfig,
+  context: handleContext,
   status: handleStatus,
   model: handleModel,
   memory: handleMemory,
@@ -81,7 +84,7 @@ export async function action(
 
   if (handler) {
     try {
-      result = await handler(args, services);
+      result = await handler(args, services, threadId);
     } catch (error: any) {
       result = { text: `cc-${name} failed: ${error?.message || 'Unknown error'}` };
     }
@@ -163,6 +166,30 @@ async function handleConfig(
     default:
       return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | sources` };
   }
+}
+
+async function handleContext(
+  _args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any }> {
+  if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
+
+  const sessionId = getClaudeState(services, threadId)?.sessionId;
+  if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
+
+  // Resume the session with /context as the prompt. The CLI processes it
+  // as a slash command and returns the markdown table without invoking the model.
+  const handle = await services.cli.claudeCode.query({
+    prompt: '/context',
+    resume: sessionId,
+    maxTurns: 1,
+    permissionMode: 'plan',
+    noSessionPersistence: true,
+  });
+
+  const result = await handle.result;
+  return { text: result.text || '(no context data)', data: result };
 }
 
 async function handleStatus(
