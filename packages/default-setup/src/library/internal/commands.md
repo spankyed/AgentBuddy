@@ -13,6 +13,7 @@
 **cc-import**: "all" (optional, imports up to 250 by default)
 **cc-add-dir**: <path> [--remember]
 **cc-set-dir**: <path> (set working directory for new threads)
+**cc-fork**: Fork from last assistant message
 **cc-stats**: Show version, auth, and config info
 **cc-doctor**: Diagnose installation
 **cc-mcp**: Manage MCP servers

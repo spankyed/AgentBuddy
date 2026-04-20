@@ -77,6 +77,7 @@ const handlers: Record<string, Handler> = {
   import: handleImport,
   'add-dir': handleAddDir,
   'set-dir': handleSetDir,
+  fork: handleFork,
   stats: handleStats,
   // Passthrough commands — exec and relay stdout
   ...Object.fromEntries(
@@ -330,6 +331,40 @@ async function handleSetDir(
   }
 
   return { text: `Working directory set to: ${dirPath}` };
+}
+
+async function handleFork(
+  _args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; skipMessage?: boolean }> {
+  if (!threadId) return { text: 'No active thread.' };
+
+  const threadData = services.repository.chatQueries.threadData(threadId as any);
+  const messages = (threadData?.messages ?? []) as any[];
+  const lastAssistant = [...messages].reverse().find(m => m.sender === 'assistant');
+  if (!lastAssistant?.id) return { text: 'No assistant message to fork from.' };
+
+  const topic = threadData?.topic || 'Untitled';
+  const forkCount = services.repository.threadCommands.forkCount(threadId as any);
+  const forkTopic = `Fork ${forkCount + 1} - ${topic}`;
+
+  const { id: newThreadId } = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
+  services.repository.threadCommands.linkFork(threadId as any, newThreadId);
+  services.repository.chatCommands.copyMessagesUpTo({
+    sourceThreadId: threadId as any,
+    targetThreadId: newThreadId,
+    upToMessageId: lastAssistant.id,
+  });
+
+  await services.action.getAndExecute('CC: Handle Fork', {
+    sourceThreadId: threadId,
+    sourceMessageId: lastAssistant.id,
+    newThreadId,
+  });
+
+  services.chat.openThreadChatAndRefreshRecent(newThreadId);
+  return { text: `Forked to: ${forkTopic}`, skipMessage: true };
 }
 
 async function handleModel(
