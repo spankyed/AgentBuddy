@@ -80,7 +80,7 @@ export async function action(
 
   const handler = handlers[name];
 
-  let result: { text: string; data?: any };
+  let result: { text: string; data?: any; blocks?: any[] };
 
   if (handler) {
     try {
@@ -97,11 +97,11 @@ export async function action(
     services.chat.sendBlockMessage({
       threadId,
       text: result.text,
-      blocks: [],
+      blocks: result.blocks ?? [],
     });
   }
 
-  return { success: !!handler, command: `cc-${name}`, ...result };
+  return { success: !!handler, command: `cc-${name}`, text: result.text, data: result.data };
 }
 
 // ── Handlers ────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ async function handleContext(
   _args: string[],
   services: Services,
   threadId?: string,
-): Promise<{ text: string; data?: any }> {
+): Promise<{ text: string; data?: any; blocks?: any[] }> {
   if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
   const sessionId = getClaudeState(services, threadId)?.sessionId;
@@ -189,7 +189,18 @@ async function handleContext(
   });
 
   const result = await handle.result;
-  return { text: result.text || '(no context data)', data: result };
+  const md = result.text || '';
+  const parsed = parseContextMarkdown(md);
+
+  if (parsed) {
+    return {
+      text: 'Context usage',
+      blocks: [{ type: 'context-usage', props: { data: parsed } }],
+      data: parsed,
+    };
+  }
+
+  return { text: md || '(no context data)' };
 }
 
 async function handleStatus(
@@ -306,4 +317,68 @@ async function handleStats(
     lines.push(`Config sources: ${sources.sources?.length ?? 0}`);
   } catch { /* ignore parse failures */ }
   return { text: lines.join('\n'), data: { version, auth } };
+}
+
+// ── Context markdown parser ─────────────────────────────────────────
+
+function parseTokenCount(s: string): number {
+  const trimmed = s.trim();
+  const n = parseFloat(trimmed);
+  if (trimmed.endsWith('k') || trimmed.endsWith('K')) return Math.round(n * 1000);
+  if (trimmed.endsWith('M') || trimmed.endsWith('m')) return Math.round(n * 1_000_000);
+  return Math.round(n);
+}
+
+function parseContextMarkdown(md: string): any | null {
+  if (!md) return null;
+
+  const modelMatch = md.match(/\*\*Model:\*\*\s*(.+)/);
+  const tokensMatch = md.match(/\*\*Tokens:\*\*\s*([\d,.]+[kKmM]?)\s*\/\s*([\d,.]+[kKmM]?)\s*\((\d+)%\)/);
+  if (!tokensMatch) return null;
+
+  // Parse category rows from the main table
+  const categories: Array<{ name: string; tokens: number; percentage: number }> = [];
+  const catRegex = /\|\s*([^|]+?)\s*\|\s*([\d,.]+[kKmM]?)\s*\|\s*([\d.]+)%\s*\|/g;
+  let m;
+  while ((m = catRegex.exec(md)) !== null) {
+    const name = m[1].trim();
+    if (name === 'Category' || name.startsWith('---')) continue;
+    categories.push({ name, tokens: parseTokenCount(m[2]), percentage: parseFloat(m[3]) });
+  }
+
+  // Parse detail tables (Memory Files, Skills)
+  const memoryFiles = parseDetailSection(md, 'Memory Files', ['type', 'path', 'tokens']);
+  const skills = parseDetailSection(md, 'Skills', ['name', 'source', 'tokens']);
+
+  return {
+    model: modelMatch?.[1]?.trim() || '',
+    totalTokens: parseTokenCount(tokensMatch[1]),
+    maxTokens: parseTokenCount(tokensMatch[2]),
+    percentage: parseInt(tokensMatch[3]),
+    categories,
+    memoryFiles: memoryFiles.length ? memoryFiles : undefined,
+    skills: skills.length ? skills : undefined,
+  };
+}
+
+function parseDetailSection(md: string, heading: string, columns: string[]): any[] {
+  const sectionRegex = new RegExp(`### ${heading}[\\s\\S]*?(?=###|$)`);
+  const section = md.match(sectionRegex)?.[0];
+  if (!section) return [];
+
+  const rows: any[] = [];
+  const rowRegex = /\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/g;
+  let m;
+  let skipCount = 0;
+  while ((m = rowRegex.exec(section)) !== null) {
+    // Skip header + separator rows
+    if (skipCount < 2) { skipCount++; continue; }
+    const entry: any = {};
+    for (let i = 0; i < columns.length; i++) {
+      const val = m[i + 1]?.trim() || '';
+      entry[columns[i]] = columns[i] === 'tokens' ? parseTokenCount(val) : val;
+    }
+    rows.push(entry);
+  }
+  return rows;
 }

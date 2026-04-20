@@ -153,6 +153,12 @@
         :artifact-ref="(block.props as any).artifactRef"
         :phase="(block.props as any).phase"
       />
+
+      <!-- Context Usage Block — styled token breakdown from /cc-context -->
+      <ContextUsageBlock
+        v-else-if="block.type === 'context-usage'"
+        :data="(block.props as any).data"
+      />
     </template>
   </div>
 </template>
@@ -174,6 +180,7 @@ import ApprovalButtons from './inputs/ApprovalButtons.vue'
 import ButtonGroupInput from './inputs/ButtonGroupInput.vue'
 import ProjectSelectInput from './inputs/ProjectSelectInput.vue'
 import TogglesBlock from './blocks/TogglesBlock.vue'
+import ContextUsageBlock from './blocks/ContextUsageBlock.vue'
 import { ref, computed } from 'vue'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
