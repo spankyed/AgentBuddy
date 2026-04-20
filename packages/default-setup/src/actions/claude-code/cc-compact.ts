@@ -4,7 +4,7 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
-import { updateChatState } from './_helpers/session-artifact';
+import { updateChatState, readSessionCwd } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Compact',
@@ -54,8 +54,10 @@ async function handleCompact(
 
   updateChatState(services, threadId as any, 'working');
   try {
+    const sessionCwd = readSessionCwd(services, threadId as any);
     const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
     const handle = await services.cli.claudeCode.query({
+      ...(sessionCwd && { cwd: sessionCwd }),
       prompt,
       resume: sessionId,
       permissionMode: 'plan',

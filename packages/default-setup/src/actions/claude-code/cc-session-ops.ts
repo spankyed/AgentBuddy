@@ -163,8 +163,8 @@ async function handleResume(
 
   if (!threadId) return { text: 'No active thread.' };
 
-  // Fetch transcript for message import
-  const transcript = await services.cli.claudeCode.viewSession(sessionId);
+  // Fetch transcript for message import — use the session's own cwd bucket
+  const transcript = await services.cli.claudeCode.viewSession(sessionId, { cwd: (session as any).cwd });
 
   // Determine target thread
   const existingMessages = services.repository.threadQueries.messages(threadId as any);
@@ -275,7 +275,7 @@ async function handleImport(
       // Use viewSessionByFile when we have a file path (works for cross-directory imports)
       const transcript = (session as any).file
         ? await services.cli.claudeCode.viewSessionByFile((session as any).file)
-        : await services.cli.claudeCode.viewSession(session.id);
+        : await services.cli.claudeCode.viewSession(session.id, { cwd: (session as any).cwd });
 
       const prefix = dirPrefix((session as any).cwd);
       const sessionTitle = (session as any).title || `Session ${session.id.slice(0, 8)}`;

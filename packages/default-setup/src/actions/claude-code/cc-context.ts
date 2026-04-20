@@ -4,6 +4,7 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
+import { readSessionCwd } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Context',
@@ -55,7 +56,10 @@ async function handleContext(
   const sessionId = getClaudeState(services, threadId)?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
+  const sessionCwd = readSessionCwd(services, threadId as any);
+
   const handle = await services.cli.claudeCode.query({
+    ...(sessionCwd && { cwd: sessionCwd }),
     prompt: '/context',
     resume: sessionId,
     maxTurns: 1,
