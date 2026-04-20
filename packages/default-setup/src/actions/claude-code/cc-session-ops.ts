@@ -171,18 +171,25 @@ async function handleResume(
   // Fetch transcript for message import — use the session's own cwd bucket
   const transcript = await services.cli.claudeCode.viewSession(sessionId, { cwd: (session as any).cwd });
 
-  // Determine target thread
+  // Determine target thread — only spawn a new one if the current thread
+  // has real conversation (not just command/system messages).
   const existingMessages = services.repository.threadQueries.messages(threadId as any);
-  const hasMessages = existingMessages && existingMessages.length > 0;
+  const hasRealMessages = existingMessages?.some((m: any) =>
+    m.sender !== 'system' && m.sender !== 'marker' && !m.isCommand
+  );
   let targetThreadId = threadId;
 
-  if (hasMessages) {
+  if (hasRealMessages) {
     const title = (session as any).title || 'Resumed session';
     const { id: newThreadId } = services.chat.createThreadAndNotify({
       topic: title,
       instructions: '',
     });
     targetThreadId = newThreadId as string;
+  } else {
+    // Empty thread — reuse it and rename to match the session
+    const title = (session as any).title || 'Resumed session';
+    services.repository.threadCommands.update(threadId as any, { topic: title });
   }
 
   // Import messages from transcript (batch — no per-message events)
@@ -200,7 +207,7 @@ async function handleResume(
   const sessionTitle = (session as any).title || '(untitled)';
   const confirmText = `Session resumed: **${sessionTitle}** (${importedCount} messages imported)\nSend a message to continue.`;
 
-  if (hasMessages) {
+  if (hasRealMessages) {
     // New thread: send confirmation there and navigate
     services.chat.sendBlockMessage({
       threadId: targetThreadId as any,
