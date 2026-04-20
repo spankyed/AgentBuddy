@@ -117,7 +117,7 @@
               :insert-on-number-key="quickPromptNumberKeyInserts ?? true"
               :disabled="disabled"
               :virtual-reference="virtualRef"
-              @select="handleQuickPromptSelect"
+
               @update="(prompts) => emit('update-quick-prompts', prompts)"
             />
 
@@ -572,11 +572,6 @@ const handleButtonClick = (action: string) => {
   emit(action)
 }
 
-const handleQuickPromptSelect = (text: string) => {
-  const editor = tiptapRef.value?.editor
-  if (!editor) return
-  editor.chain().focus('end').insertContent(text + ' ').run()
-}
 
 const cycleMode = () => {
   if (props.disabled) return

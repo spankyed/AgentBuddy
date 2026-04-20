@@ -236,6 +236,14 @@ class TerminalPool {
     return entry.term.element?.querySelector('.xterm-viewport') as HTMLElement | null
   }
 
+  /** Find a pool entry whose wrapper contains the given DOM element. */
+  findByElement(el: HTMLElement): PoolEntry | undefined {
+    for (const entry of this.entries.values()) {
+      if (entry.wrapper.contains(el)) return entry
+    }
+    return undefined
+  }
+
   /** Dispose xterm + all wire-level disposables. Call on terminal.CLOSED. */
   dispose(terminalId: string): void {
     const entry = this.entries.get(terminalId)

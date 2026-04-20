@@ -163,6 +163,7 @@ import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverConte
 import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '@app/api'
+import { terminalPool } from '@/plugins/code/utils/terminal-pool'
 
 const props = defineProps<{
   prompts: QuickPrompt[]
@@ -172,7 +173,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', text: string): void
   (e: 'update', prompts: QuickPrompt[]): void
 }>()
 
@@ -278,7 +278,18 @@ function checkTruncation(prompt: QuickPrompt) {
 }
 
 function selectPrompt(text: string) {
-  emit('select', text)
+  const target = previousFocus.value
+  previousFocus.value = null // consumed — skip redundant refocus in close watcher
+  if (target) {
+    const termEntry = terminalPool.findByElement(target)
+    if (termEntry) {
+      target.focus()
+      termEntry.term.paste(text)
+    } else {
+      target.focus()
+      document.execCommand('insertText', false, text + ' ')
+    }
+  }
   open.value = false
 }
 
