@@ -64,6 +64,8 @@ export interface SessionArtifactContent {
   contextTokens?: number;
   /** Threshold percentages that have already fired an alert (avoids re-alerting). */
   alertedThresholds?: number[];
+  /** Additional working directories added via /cc-add-dir. */
+  additionalDirs?: string[];
 }
 
 /** Build a default SessionArtifactContent for a brand-new turn. */

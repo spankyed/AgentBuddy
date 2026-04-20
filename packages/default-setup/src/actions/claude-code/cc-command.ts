@@ -8,7 +8,7 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { getClaudeState, persistClaudeState } from './_helpers/thread-context';
-import { updateChatState } from './_helpers/session-artifact';
+import { updateChatState, updateSessionArtifact } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -267,6 +267,9 @@ async function handleAddDir(
       persistClaudeState(services, threadId, {
         additionalDirs: [...existing, dirPath],
       });
+      updateSessionArtifact(services, threadId as any, (prev: any) => ({
+        additionalDirs: [...new Set([...(prev.additionalDirs ?? []), dirPath])],
+      }));
     }
   }
 
