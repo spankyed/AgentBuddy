@@ -9,11 +9,43 @@
       :success-message="successMessage"
       :mode="mode"
       :execute-query="settings?.hotkeys?.executeQuery"
+      :is-ai-prompt-open="showAiPrompt"
       @execute="handleExecute"
       @clear="handleClear"
-      @ai-query="showAiQueryDialog = true"
+      @ai-query="toggleAiPrompt"
       @toggle-mode="handleToggleMode"
     />
+
+    <!-- Inline AI prompt input -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      leave-active-class="transition-all duration-150 ease-in"
+      enter-from-class="opacity-0 -translate-y-1 max-h-0"
+      enter-to-class="opacity-100 translate-y-0 max-h-40"
+      leave-from-class="opacity-100 translate-y-0 max-h-40"
+      leave-to-class="opacity-0 -translate-y-1 max-h-0"
+    >
+      <div v-if="showAiPrompt" ref="aiPromptContainer" class="border-b border-neutral-800 overflow-hidden">
+        <div class="flex items-start gap-2 px-3 py-2 bg-neutral-800">
+          <textarea
+            ref="aiPromptInput"
+            v-model="aiPrompt"
+            placeholder="Describe what you want to query..."
+            class="flex-1 bg-transparent text-sm text-neutral-100 placeholder-neutral-500 resize-none focus:outline-none leading-5"
+            rows="1"
+            @keydown="handleAiPromptKeydown"
+            @input="autoGrow"
+          />
+          <button
+            v-if="aiPrompt.trim()"
+            class="mt-0.5 text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors shrink-0"
+            @click="submitAiPrompt"
+          >
+            ↵
+          </button>
+        </div>
+      </div>
+    </Transition>
 
     <div class="flex-1 overflow-hidden relative">
       <SimpleMonacoEditor
@@ -45,34 +77,25 @@
           class="absolute inset-0 flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm z-10"
         >
           <div class="flex flex-col items-center space-y-3">
-            <!-- Loading spinner -->
-            <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <div class="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
             <div class="text-sm text-neutral-300">
-              Generating query from prompt...
+              Generating {{ mode === 'transaction' ? 'transaction' : 'query' }} from prompt...
             </div>
           </div>
         </div>
       </Transition>
     </div>
-
-
-    <AiQueryDialog
-      v-model="showAiQueryDialog"
-      @generate="handleAiQuery"
-      @cancel="showAiQueryDialog = false"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import { applicationState } from '@/main';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
 import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
-import AiQueryDialog from './query-editor/AiQueryDialog.vue';
 
 const actor: DatabaseState = applicationState.system.get(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
@@ -93,7 +116,10 @@ const emit = defineEmits<{
 
 // Local state
 const successMessage = ref('');
-const showAiQueryDialog = ref(false);
+const showAiPrompt = ref(false);
+const aiPrompt = ref('');
+const aiPromptInput = ref<HTMLTextAreaElement | null>(null);
+const aiPromptContainer = ref<HTMLElement | null>(null);
 const editorQuery = ref(currentQuery.value);
 
 // Sync editor query with state
@@ -117,6 +143,22 @@ watch(successMessage, (msg) => {
   }
 });
 
+// Close prompt bar on outside click
+function handleOutsideClick(e: MouseEvent) {
+  if (showAiPrompt.value && aiPromptContainer.value && !aiPromptContainer.value.contains(e.target as Node)) {
+    showAiPrompt.value = false;
+  }
+}
+onMounted(() => document.addEventListener('mousedown', handleOutsideClick));
+onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick));
+
+// Close prompt bar when generation starts
+watch(isAiQueryLoading, (loading) => {
+  if (loading) {
+    showAiPrompt.value = false;
+  }
+});
+
 const SUCCESS_MESSAGES = {
   query: 'Query executed successfully',
   transaction: 'Transaction executed successfully'
@@ -131,8 +173,7 @@ function handleExecute() {
       type: mode.value === 'query' ? 'QUERY.EXECUTE' : 'TRANSACTION.EXECUTE',
       code: editorQuery.value
     });
-    
-    // Show success message after a delay if no error
+
     setTimeout(() => {
       if (!error.value) {
         successMessage.value = SUCCESS_MESSAGES[mode.value];
@@ -145,13 +186,39 @@ function handleClear() {
   editorQuery.value = '';
 }
 
-function handleAiQuery(prompt: string) {
-  showAiQueryDialog.value = false;
+function toggleAiPrompt() {
+  showAiPrompt.value = !showAiPrompt.value;
+  if (showAiPrompt.value) {
+    nextTick(() => {
+      aiPromptInput.value?.focus();
+    });
+  }
+}
+
+function submitAiPrompt() {
+  const prompt = aiPrompt.value.trim();
+  if (!prompt) return;
   actor.send({
     type: 'AI_QUERY.GENERATE',
     prompt,
     mode: mode.value,
   });
+  aiPrompt.value = '';
+}
+
+function handleAiPromptKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitAiPrompt();
+  } else if (e.key === 'Escape') {
+    showAiPrompt.value = false;
+  }
+}
+
+function autoGrow(e: Event) {
+  const el = e.target as HTMLTextAreaElement;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 
 function handleExampleSelect(query: string) {
@@ -159,10 +226,9 @@ function handleExampleSelect(query: string) {
   emit('update:activeMode', 'query');
 }
 
-
 function handleToggleMode() {
   actor.send({
     type: 'MODE.TOGGLE'
   });
 }
-</script> 
+</script>

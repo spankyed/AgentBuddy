@@ -18,7 +18,12 @@
       
       <button
         @click="$emit('ai-query')"
-        class="p-1.5 text-neutral-500 hover:text-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-800 dark:hover:bg-neutral-700 rounded transition-colors"
+        :class="[
+          'p-1.5 rounded transition-colors',
+          isAiPromptOpen
+            ? 'text-amber-400 bg-amber-500/15'
+            : 'text-neutral-500 hover:text-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-800 dark:hover:bg-neutral-700'
+        ]"
         title="Generate query with AI"
       >
         <Wand2 class="w-4 h-4" />
@@ -61,6 +66,7 @@ defineProps<{
   successMessage: string;
   mode: 'query' | 'transaction';
   executeQuery?: KeyboardShortcut;
+  isAiPromptOpen?: boolean;
 }>();
 
 defineEmits<{
