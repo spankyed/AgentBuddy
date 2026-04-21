@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { spawn } from 'child_process'
+import { spawn, execFile } from 'child_process'
 import { rgPath } from '@vscode/ripgrep'
 import { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
 
@@ -435,73 +435,98 @@ export class FileSystemRepository {
     return []
   }
 
-  // Get all files recursively for quick open
-  async getAllFiles(
-    rootPath: string, 
+  // Get all files for quick open, respecting .gitignore
+  async getAllFiles(rootPath: string): Promise<QuickOpenResult[]> {
+    const validPath = this.validatePath(rootPath)
+
+    // Try git ls-files first (respects all gitignore rules)
+    try {
+      const files = await this.getFilesViaGit(validPath)
+      if (files.length > 0) return files
+    } catch {
+      // Not a git repo or git not available — fall back
+    }
+
+    return this.getFilesViaWalk(validPath)
+  }
+
+  private getFilesViaGit(rootPath: string): Promise<QuickOpenResult[]> {
+    return new Promise((resolve, reject) => {
+      execFile(
+        'git',
+        ['ls-files', '--cached', '--others', '--exclude-standard'],
+        { cwd: rootPath, maxBuffer: 10 * 1024 * 1024 },
+        (error, stdout) => {
+          if (error) return reject(error)
+
+          const results: QuickOpenResult[] = stdout
+            .split('\n')
+            .filter(Boolean)
+            .map(relativePath => ({
+              path: path.join(rootPath, relativePath),
+              relativePath,
+              name: path.basename(relativePath),
+              type: 'file' as const,
+              extension: path.extname(relativePath).slice(1),
+            }))
+
+          resolve(results)
+        },
+      )
+    })
+  }
+
+  private async getFilesViaWalk(
+    rootPath: string,
     excludePatterns: string[] = [
-      'node_modules',
-      '.git',
-      '.next',
-      'dist',
-      'build',
-      'coverage',
-      '.turbo',
-      '.cache',
-      '.vscode',
-      '.idea',
-      '*.log',
-      '*.lock'
-    ]
+      'node_modules', '.git', '.next', 'dist', 'build', 'coverage',
+      '.turbo', '.cache', '.vscode', '.idea', '*.log', '*.lock',
+    ],
   ): Promise<QuickOpenResult[]> {
     const results: QuickOpenResult[] = []
-    const validPath = this.validatePath(rootPath)
-    
+
     const shouldExclude = (filePath: string): boolean => {
-      const relativePath = path.relative(validPath, filePath)
+      const relativePath = path.relative(rootPath, filePath)
       return excludePatterns.some(pattern => {
-        // Simple glob pattern matching
         if (pattern.includes('*')) {
           const regex = new RegExp(pattern.replace(/\*/g, '.*'))
           return regex.test(relativePath)
         }
-        // Direct name matching
         return relativePath.split(path.sep).some(part => part === pattern)
       })
     }
-    
+
     const walk = async (dir: string) => {
       if (shouldExclude(dir)) return
-      
+
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true })
-        
+
         for (const entry of entries) {
           const fullPath = path.join(dir, entry.name)
-          
           if (shouldExclude(fullPath)) continue
-          
+
           if (entry.isDirectory()) {
             await walk(fullPath)
           } else {
-            const relativePath = path.relative(validPath, fullPath)
+            const relativePath = path.relative(rootPath, fullPath)
             results.push({
               path: fullPath,
               relativePath,
               name: entry.name,
               type: 'file',
-              extension: path.extname(entry.name).slice(1)
+              extension: path.extname(entry.name).slice(1),
             })
           }
         }
       } catch (error) {
-        // Ignore permission errors and continue
         if ((error as any).code !== 'EACCES') {
           console.error(`Error reading directory ${dir}:`, error)
         }
       }
     }
-    
-    await walk(validPath)
+
+    await walk(rootPath)
     return results
   }
 
