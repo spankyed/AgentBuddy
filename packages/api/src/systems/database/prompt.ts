@@ -1,137 +1,132 @@
-import type { DatabaseSchemaInfo } from './types';
+import { EARS } from '@/core/types';
+import { getEntitiesOfType, getAll, getAllEntityTypes } from '@/core/ears/attribute-storage';
+import { relationIndex } from '@/core/ears/relation-index';
 
-interface SchemaStats {
-  entities: Record<string, number>;
-  attributes: Record<string, { entityCount: number; totalValues: number }>;
-  relations: Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>;
+/**
+ * Sample one entity per type to extract real attribute names + values.
+ * Truncates long string values and skips large objects to keep prompt compact.
+ */
+function sampleEntities(): Map<string, { count: number; fields: string[]; sample: Record<string, unknown> }> {
+  const result = new Map<string, { count: number; fields: string[]; sample: Record<string, unknown> }>();
+
+  for (const type of getAllEntityTypes()) {
+    const ids = getEntitiesOfType(type as EARS.Entity);
+    if (ids.length === 0) continue;
+
+    const raw = getAll(ids[0]);
+    const sample: Record<string, unknown> = {};
+    const fields: string[] = [];
+
+    for (const [key, value] of Object.entries(raw)) {
+      fields.push(key);
+      // Keep sample values compact
+      if (typeof value === 'string') {
+        sample[key] = value.length > 60 ? value.slice(0, 60) + '…' : value;
+      } else if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+        sample[key] = value;
+      } else if (Array.isArray(value)) {
+        sample[key] = `[${value.length} items]`;
+      } else {
+        sample[key] = '{…}';
+      }
+    }
+
+    result.set(type, { count: ids.length, fields, sample });
+  }
+
+  return result;
 }
 
-function formatEntityStats(stats: SchemaStats): string {
-  return Object.entries(stats.entities)
+/**
+ * Build a relationship topology from the live relation index.
+ * Returns lines like: `Thread --contains--> Message (42)`
+ */
+function buildTopology(): string[] {
+  const edges = new Map<string, number>();
+
+  for (const [kind, entry] of Object.entries(relationIndex)) {
+    for (const [sourceId, relIds] of Object.entries(entry.bySource)) {
+      const sourceType = sourceId.split('-')[0];
+      for (const relId of relIds) {
+        // Find target type by checking byTarget
+        for (const [targetId, tRelIds] of Object.entries(entry.byTarget)) {
+          if (tRelIds.includes(relId)) {
+            const targetType = targetId.split('-')[0];
+            const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
+            edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return [...edges.entries()]
     .sort(([, a], [, b]) => b - a)
-    .map(([type, count]) => `  ${type}: ${count}`)
-    .join('\n');
+    .map(([edge, count]) => `  ${edge} (${count})`);
 }
 
-function formatRelationStats(stats: SchemaStats): string {
-  return Object.entries(stats.relations)
-    .filter(([, s]) => s.totalRelations > 0)
-    .sort(([, a], [, b]) => b.totalRelations - a.totalRelations)
-    .map(([kind, s]) => `  ${kind}: ${s.totalRelations} relations (${s.uniqueSources} sources → ${s.uniqueTargets} targets)`)
-    .join('\n');
-}
+export function buildQueryPrompt(userPrompt: string): string {
+  const samples = sampleEntities();
+  const topology = buildTopology();
 
-export function buildQueryPrompt(userPrompt: string, schema: DatabaseSchemaInfo, stats?: SchemaStats): string {
-  const entityTypes = schema.entities.map(e => e.type).join(', ');
-  const attrKinds = schema.attributes.map(a => a.kind).join(', ');
-
-  const entityStatsBlock = stats ? `\nEntity counts:\n${formatEntityStats(stats)}` : '';
-  const relationStatsBlock = stats ? `\nRelation counts:\n${formatRelationStats(stats)}` : '';
+  // Build schema section with real field names
+  const schemaLines: string[] = [];
+  for (const [type, info] of samples) {
+    const sampleStr = JSON.stringify(info.sample);
+    const truncatedSample = sampleStr.length > 200 ? sampleStr.slice(0, 200) + '…}' : sampleStr;
+    schemaLines.push(`${type} (${info.count})\n  fields: ${info.fields.join(', ')}\n  sample: ${truncatedSample}`);
+  }
 
   return `Generate a read-only TypeScript query for EARS, an in-memory entity-attribute-relation database.
+Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
+MUST include a return statement. qx() is synchronous — never use await.
 
-STRICT OUTPUT RULES:
-- Output ONLY executable TypeScript code
-- NO markdown fencing, NO explanations, NO comments
-- MUST include a \`return\` statement
-- qx() is synchronous — NEVER use await
-- This is a read-only context — tx() is NOT available
+SCHEMA:
 
-AVAILABLE GLOBALS:
-- qx(...)          — query builder (see API below)
-- EARS.Entity.*    — entity type enum: ${entityTypes}
-- EARS.RelKind.*   — relation kind constants
-- getAll(id)       — returns Record<string, any> of all attributes for an entity
-- getAttr(id, EARS.AttrKind.Custom(name)) — single attribute value
-- getSchemaStats() — returns { entities, attributes, relations } with counts
+${schemaLines.join('\n\n')}
 
-LIVE SCHEMA:
-${entityStatsBlock}
+RELATIONSHIPS:
+${topology.join('\n')}
 
-Attribute kinds in use: ${attrKinds}
-${relationStatsBlock}
+API:
 
-qx() API:
+qx(EARS.Entity.Thread)              → all of a type
+qx('Thread-1')                      → single entity by ID
+.where('field', value)               → filter by exact attribute match
+.where('field')                      → filter: has attribute
+.linksTo('contains', EARS.Entity.Message)        → follow outgoing relations → new qx
+.linksTo('contains', EARS.Entity.X, false)       → follow INCOMING relations (reverse)
+.links('contains', EARS.Entity.Message)          → Array<{ relation, id }>
+.orderBy('field', 'desc').limit(n)               → sort + take first n
+.pick(['f1', 'f2'])                  → Array<{ id, f1, f2 }>
+.pickAll()                           → Array<{ id, ...allAttributes }>
+.pickOne(['f1'])                     → { id, f1 } | null
+.ids()                               → string[]
+.count()                             → number
+.first()                             → string | null
+.exists()                            → boolean
 
-  Entry:
-    qx()                          → all entities
-    qx(EARS.Entity.Thread)        → all of a type
-    qx('entity-id')               → single entity by ID
-    qx(['id1','id2'])             → multiple by ID
+Note: .pick() and .pickAll() return arrays of objects. Use standard Array methods
+(.map, .filter, .reduce) on these results — NOT qx's .map() which iterates entity IDs.
+getAll(id) returns Record<string, any> of all attributes for a single entity.
 
-  Filter (chainable, returns qx):
-    .ofType(EARS.Entity.X)        → filter by entity type
-    .where(attr, value)           → filter by attribute value
-    .where(attr)                  → filter: has attribute (any value)
-    .withRole(role)               → filter by role
-    .relatedTo(targetId)          → filter: any relation to target
-    .inIds([...ids])              → filter to specific IDs
+PATTERNS:
 
-  Traversal (returns new qx with linked entities):
-    .linksTo(relKind, targetType?)           → follow outgoing relations
-    .linksTo(relKind, targetType, false)     → follow INCOMING relations (reverse)
-    .links(relKind, targetType?)             → array of { relation, id }
-    .linksPick(relKind, fields, targetType?) → traverse + project in one call
-
-  Terminals (consume the chain):
-    .pick(['field1','field2'])  → Array<{ id, field1, field2 }>
-    .pickAll()                  → Array<{ id, ...allAttributes }>
-    .pickOne(['f1','f2'])       → { id, f1, f2 } | null
-    .ids()                      → string[]  (entity IDs)
-    .count()                    → number
-    .first()                    → string | null  (first entity ID)
-    .exists()                   → boolean
-
-  Shaping (chainable before terminals):
-    .orderBy(field, 'asc'|'desc')
-    .limit(n)
-    .reverse()
-    .distinct(field?)
-    .groupBy(field)             → Map<value, qx>
-
-  Iteration (over entity IDs):
-    .map(id => ...)             → Array<T>
-    .forEach(id => ...)
-    .reduce(fn, init)
-
-EXAMPLES:
-
-// All threads with their attributes
-return qx(EARS.Entity.Thread).pickAll();
-
-// Count entities by type
-const stats = getSchemaStats();
-return Object.entries(stats.entities).map(([type, count]) => ({ type, count }));
-
-// Threads ordered by creation date
-return qx(EARS.Entity.Thread)
-  .orderBy('createdAt', 'desc')
-  .limit(20)
+return qx(EARS.Entity.Thread).orderBy('createdAt', 'desc').limit(20)
   .pick(['topic', 'status', 'createdAt']);
 
-// Flows with their node counts
-return qx(EARS.Entity.Flow).pick(['label', 'description']).map(flow => ({
-  ...flow,
-  nodeCount: qx(flow.id).linksTo('contains', EARS.Entity.Node).count()
-}));
+return qx(EARS.Entity.Thread).where('status', 'active').pickAll();
 
-// Messages in a thread (parent → child via CONTAINS)
 const threadId = qx(EARS.Entity.Thread).first();
-return qx(threadId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
+return qx(threadId).linksTo('contains', EARS.Entity.Message)
   .pick(['text', 'sender', 'timestamp']);
 
-// Find which entities link TO a target (reverse relation)
-const targetId = qx(EARS.Entity.Flow).first();
-return qx(targetId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Node, false).pickAll();
-
-// Search entities by attribute value
-return qx(EARS.Entity.Thread)
-  .where('status', 'active')
-  .pick(['topic', 'status']);
-
-// All attributes of a single entity
-const id = qx(EARS.Entity.Thread).first();
-return getAll(id);
+const threads = qx(EARS.Entity.Thread).pick(['topic']);
+return threads.map(t => ({
+  ...t,
+  messageCount: qx(t.id).linksTo('contains', EARS.Entity.Message).count()
+}));
 
 USER REQUEST:
 
