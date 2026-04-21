@@ -55,7 +55,7 @@ export async function action(
       { timeoutMs: 60_000, cwd: '/tmp' },
     );
 
-    const query = result.stdout.trim();
+    const query = result.stdout.trim().replace(/^```(?:typescript|ts|javascript|js)?\n?/, '').replace(/\n?```$/, '').trim();
 
     if (!query) {
       services.emitter.sendToPlugin('database', {
