@@ -239,9 +239,9 @@ const attachTerminal = (terminalId: string) => {
   }))
 
   resizeObserver = new ResizeObserver(() => {
-    // Defer fit to next frame so the browser has finished layout
     requestAnimationFrame(() => {
       fitAddon?.fit()
+      if (attachedTerminalId) terminalPool.syncViewport(attachedTerminalId)
     })
   })
   resizeObserver.observe(container.value)

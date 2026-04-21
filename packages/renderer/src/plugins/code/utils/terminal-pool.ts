@@ -58,7 +58,7 @@ export interface PoolEntry {
   // attach we re-drive the DOM scroll position ourselves rather than relying
   // on xterm's scrollToBottom() — which is a no-op when ydisp === ybase.
   pinnedToBottom: boolean
-  savedScrollTop: number | null
+  savedScrollFraction: number | null
 }
 
 const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
@@ -125,7 +125,7 @@ class TerminalPool {
       attachedContainer: null,
       isShowingLoadingContent: false,
       pinnedToBottom: true,
-      savedScrollTop: null
+      savedScrollFraction: null
     }
 
     // Shift+Enter inserts a newline instead of executing. Wired once here
@@ -191,7 +191,9 @@ class TerminalPool {
     // document-remove. Used by syncViewport() on the next attach when the
     // user isn't pinned to bottom.
     const viewport = this.getViewport(entry)
-    if (viewport) entry.savedScrollTop = viewport.scrollTop
+    if (viewport && viewport.scrollHeight > 0) {
+      entry.savedScrollFraction = viewport.scrollTop / viewport.scrollHeight
+    }
     entry.wrapper.remove()
     entry.attachedContainer = null
   }
@@ -222,13 +224,17 @@ class TerminalPool {
     entry.term.write('', () => {
       const current = this.entries.get(terminalId)
       if (!current || !current.attachedContainer) return
-      const viewport = this.getViewport(current)
-      if (!viewport) return
-      if (current.pinnedToBottom) {
-        viewport.scrollTop = viewport.scrollHeight
-      } else if (current.savedScrollTop != null) {
-        viewport.scrollTop = current.savedScrollTop
-      }
+      // Defer to next frame so the browser has laid out the re-attached wrapper
+      // and scrollHeight reflects the current content.
+      requestAnimationFrame(() => {
+        const viewport = this.getViewport(current)
+        if (!viewport) return
+        if (current.pinnedToBottom) {
+          viewport.scrollTop = viewport.scrollHeight
+        } else if (current.savedScrollFraction != null) {
+          viewport.scrollTop = current.savedScrollFraction * viewport.scrollHeight
+        }
+      })
     })
   }
 
