@@ -11,9 +11,11 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact, updateChatState, readSessionChatState } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionChatState, readSessionCwd } from './_helpers/session-artifact';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
+import { parseContextMarkdown } from './_helpers/context-parser';
+import type { ContextUsageData } from './_helpers/context-parser';
 
 export const meta: ActionMeta = {
   label: 'CC: Turn Completed',
@@ -25,7 +27,6 @@ export const meta: ActionMeta = {
     costUsd: { type: 'number', description: 'Total cost in USD', required: false },
     durationMs: { type: 'number', description: 'Turn duration in ms', required: false },
     toolCallCount: { type: 'number', description: 'Number of tool calls', required: false },
-    inputTokens: { type: 'number', description: 'Cumulative input tokens (context window usage)', required: false },
     mutatedFileCount: { type: 'number', description: 'Files mutated', required: false },
     mutatedPaths: { type: 'array', description: 'File paths that were mutated', required: false },
     hadErrors: { type: 'boolean', description: 'Whether errors occurred', required: false },
@@ -42,7 +43,6 @@ export async function action(
     threadId,
     costUsd,
     durationMs,
-    inputTokens,
     hadErrors,
     error: errorMsg,
     mutatedPaths,
@@ -51,7 +51,6 @@ export async function action(
     sessionId?: string;
     costUsd?: number;
     durationMs?: number;
-    inputTokens?: number;
     toolCallCount?: number;
     mutatedFileCount?: number;
     mutatedPaths?: string[];
@@ -67,47 +66,12 @@ export async function action(
   // ─── Update session artifact ──────────────────────────────────────
   const { toolCallCount } = params as { toolCallCount?: number };
 
-  // Track newly crossed context thresholds in a closure so we can
-  // send alerts after the artifact update completes.
-  const CONTEXT_LIMIT = 200_000;
-  const THRESHOLDS = [25, 50, 75, 90];
-  let newAlerts: number[] = [];
-  let contextPercentage = 0;
-
-  updateSessionArtifact(services, threadId as EntityId, (prev) => {
-    const contextTokens = inputTokens ?? prev.contextTokens ?? 0;
-    const alerted = prev.alertedThresholds ?? [];
-
-    if (contextTokens > 0) {
-      contextPercentage = Math.round((contextTokens / CONTEXT_LIMIT) * 100);
-      newAlerts = THRESHOLDS.filter(t => contextPercentage >= t && !alerted.includes(t));
-    }
-
-    return {
-      turns: (prev.turns ?? 0) + 1,
-      totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
-      toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
-      lastTurnAt: Date.now(),
-      contextTokens,
-      ...(newAlerts.length > 0 ? { alertedThresholds: [...alerted, ...newAlerts] } : {}),
-    };
-  });
-
-  // ─── Context threshold alerts ─────────────────────────────────────
-  if (newAlerts.length > 0 && inputTokens) {
-    const highest = Math.max(...newAlerts);
-    const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
-    const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
-    let message = `Context window is ${contextPercentage}% full (${inputTokens.toLocaleString()} / ${CONTEXT_LIMIT.toLocaleString()} tokens).`;
-    if (highest >= 90) message += ' Consider starting a new session soon.';
-
-    services.chat.sendBlockMessage({
-      threadId: threadId as any,
-      text: message,
-      blocks: [{ type: 'note', props: { content: message, variant, label } }],
-      forkable: false,
-    });
-  }
+  updateSessionArtifact(services, threadId as EntityId, (prev) => ({
+    turns: (prev.turns ?? 0) + 1,
+    totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
+    toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
+    lastTurnAt: Date.now(),
+  }));
 
   // A queued-message replay re-enters chat.ts BEFORE this action fires
   // (stream-consumer awaits `replayQueuedMessage` before emitting
@@ -137,13 +101,6 @@ export async function action(
       }
     }
   }
-  // Disabled: hadErrors includes non-critical tool failures (grep no results, bash exit code).
-  // Enable once we distinguish process-level errors from routine tool errors.
-  // if (hadErrors) {
-  //   services.emitter.sendToPlugin('threads', {
-  //     type: 'FLASH_CHAT_STATE', threadId: threadId as string, stateId: 'error', durationMs: 3000,
-  //   });
-  // }
 
   // ─── Diff artifact ────────────────────────────────────────────────
   let artifactId: string | undefined;
@@ -169,6 +126,55 @@ export async function action(
     log.warn('diff artifact assembly failed', { message: diffErr?.message });
   }
 
+  // ─── Context usage refresh + threshold alerts ─────────────────────
+  // Query the CLI with `/context` to get the full context window breakdown
+  // (same mechanism as /cc-context). Best-effort — don't fail the turn.
+  try {
+    const sessionId = getClaudeState(services, threadId)?.sessionId;
+    const sessionCwd = readSessionCwd(services, threadId as EntityId);
+    if (sessionId) {
+      const handle = await services.cli.claudeCode.query({
+        ...(sessionCwd && { cwd: sessionCwd }),
+        prompt: '/context',
+        resume: sessionId,
+        maxTurns: 1,
+        permissionMode: 'plan',
+        noSessionPersistence: true,
+      });
+      const ctxResult = await handle.result;
+      const contextUsage = parseContextMarkdown(ctxResult.text || '');
+      if (contextUsage) {
+        // Check for newly crossed thresholds before writing to artifact
+        const newAlerts = checkContextThresholds(services, threadId as EntityId, contextUsage);
+
+        updateSessionArtifact(services, threadId as EntityId, (prev) => ({
+          contextUsage,
+          ...(newAlerts.length > 0
+            ? { alertedThresholds: [...(prev.alertedThresholds ?? []), ...newAlerts] }
+            : {}),
+        }));
+
+        // Send threshold alert messages
+        if (newAlerts.length > 0) {
+          const highest = Math.max(...newAlerts);
+          const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
+          const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
+          let message = `Context window is ${contextUsage.percentage}% full (${fmtTokens(contextUsage.totalTokens)} / ${fmtTokens(contextUsage.maxTokens)} tokens).`;
+          if (highest >= 90) message += ' Consider starting a new session soon.';
+
+          services.chat.sendBlockMessage({
+            threadId: threadId as any,
+            text: message,
+            blocks: [{ type: 'note', props: { content: message, variant, label } }],
+            forkable: false,
+          });
+        }
+      }
+    }
+  } catch {
+    log.debug('context usage refresh failed (best-effort)');
+  }
+
   return {
     success: true,
     hadErrors: !!hadErrors,
@@ -179,13 +185,35 @@ export async function action(
   };
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+const THRESHOLDS = [25, 50, 75, 90];
+
+/** Check which thresholds are newly crossed based on accurate contextUsage data. */
+function checkContextThresholds(
+  services: Services,
+  threadId: EntityId,
+  contextUsage: ContextUsageData,
+): number[] {
+  const prev = services.repository.chatQueries.threadArtifacts(threadId)
+    ?.find((a: any) => a.artifactType === 'claude-session');
+  const alerted: number[] = (prev?.content as any)?.alertedThresholds ?? [];
+  const pct = contextUsage.percentage;
+  return THRESHOLDS.filter(t => pct >= t && !alerted.includes(t));
+}
+
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
 function deriveDiffTitle(files: { path: string }[]): string {
   if (files.length === 0) return '[Diff] No changes';
   const basenames = files.map(f => f.path.split('/').pop() ?? f.path);
   const prefix = `[Diff][${files.length}] `;
   const joined = basenames.join(', ');
   if (prefix.length + joined.length <= 80) return prefix + joined;
-  // Truncate: include as many filenames as fit
   let result = '';
   for (let i = 0; i < basenames.length; i++) {
     const next = result ? result + ', ' + basenames[i] : basenames[i];

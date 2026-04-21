@@ -100,7 +100,7 @@ export async function consumeStream(
 
   // Extracted from the `result` line directly — survives even if handle.result
   // rejects (error subtypes like error_during_execution).
-  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; inputTokens: number; subtype?: string; errors?: string[] } | undefined;
+  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; errors?: string[] } | undefined;
 
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
@@ -481,7 +481,6 @@ export async function consumeStream(
           text: (line as any).result ?? '',
           totalCostUsd: (line as any).total_cost_usd || sumModelUsageCost((line as any).modelUsage),
           durationMs: (line as any).duration_ms ?? 0,
-          inputTokens: (line as any).usage?.input_tokens ?? 0,
           subtype: (line as any).subtype,
           errors: (line as any).errors,
         };
@@ -505,7 +504,7 @@ export async function consumeStream(
     // Use the result data extracted directly from the result line in the loop.
     // No need to await handle.result — it may reject for error subtypes
     // (error_during_execution, etc.) or SIGTERM kills, losing cost/duration.
-    const result = resultFromLine ?? { sessionId: '', text: '', totalCostUsd: 0, durationMs: 0, inputTokens: 0 };
+    const result = resultFromLine ?? { sessionId: '', text: '', totalCostUsd: 0, durationMs: 0 };
     log.debug('stream drained', {
       eventCount,
       sessionId: result.sessionId,
@@ -599,7 +598,6 @@ export async function consumeStream(
         sessionId: result.sessionId,
         costUsd: result.totalCostUsd,
         durationMs: result.durationMs,
-        inputTokens: result.inputTokens,
         toolCallCount: toolActivity.entries.length,
         mutatedFileCount: mutatedPaths.length,
         mutatedPaths,
@@ -641,7 +639,6 @@ export async function consumeStream(
           sessionId: resultFromLine?.sessionId || state?.sessionId || '',
           costUsd: resultFromLine?.totalCostUsd ?? 0,
           durationMs: resultFromLine?.durationMs ?? 0,
-          inputTokens: resultFromLine?.inputTokens ?? 0,
           toolCallCount: toolActivity.entries.length,
           mutatedFileCount: mutatedPaths.length,
           mutatedPaths,
@@ -688,7 +685,7 @@ export async function consumeStream(
     //   updateChatState(services, threadId, 'idle')
     services.emitter.sendToBrainSystem({
       eventType: 'cc.stream.completed',
-      payload: { threadId, hadErrors: true, error: message, inputTokens: resultFromLine?.inputTokens ?? 0 },
+      payload: { threadId, hadErrors: true, error: message },
     });
   }
 }
