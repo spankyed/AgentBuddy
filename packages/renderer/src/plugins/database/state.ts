@@ -218,6 +218,7 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
+        isAiQueryLoading: false,
       };
     }),
 
