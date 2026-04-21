@@ -116,12 +116,10 @@ const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
 const fileEditorRef = ref<InstanceType<typeof FileEditor>>()
 const pendingRevealLine = useSelector(actor, (state) => state.context.pendingRevealLine)
 
-// Reveal pending line in editor (called from watcher, editor mount, and file ready)
-let revealRetryPending = false
+// Reveal pending line in editor (called from @editor-file-ready and @editor-mount)
 const tryRevealLine = async () => {
   const reveal = pendingRevealLine.value
   if (!reveal) return
-  // Wait until the target file is actually active
   if (reveal.filePath !== activeFilePath.value) return
   await nextTick()
 
@@ -143,7 +141,6 @@ const tryRevealLine = async () => {
   if (tiptapEditor) {
     const searchText = reveal.lineText?.trim()
     if (searchText) {
-      // Find a node containing the match text
       let targetPos: number | null = null
       tiptapEditor.state.doc.descendants((node, pos) => {
         if (targetPos !== null) return false
@@ -158,19 +155,7 @@ const tryRevealLine = async () => {
     actor.send({ type: 'UPDATE_STATE', updates: { pendingRevealLine: null } })
     return
   }
-
-  // Neither editor ready yet (e.g. Monaco still initializing after v-if remount) — retry once
-  if (!revealRetryPending) {
-    revealRetryPending = true
-    setTimeout(() => {
-      revealRetryPending = false
-      tryRevealLine()
-    }, 50)
-  }
 }
-
-// Watch for pending reveal line (from search result clicks)
-watch([pendingRevealLine, activeFilePath], tryRevealLine)
 
 // Computed
 const activeFile = computed(() =>
