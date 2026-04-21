@@ -9,7 +9,7 @@ import { brain } from '@/systems/brain/system';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
-import { generateSchemaInfo } from './repository/schema';
+import { generateSchemaInfo, getSchemaStats } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
 import { buildQueryPrompt } from './prompt';
@@ -166,7 +166,8 @@ export const databaseSystem = setup({
       }
 
       const schema = generateSchemaInfo();
-      const promptText = buildQueryPrompt(prompt.trim(), schema);
+      const stats = getSchemaStats();
+      const promptText = buildQueryPrompt(prompt.trim(), schema, stats);
 
       getActor(system, brain).send({
         type: 'HANDLE_BRAIN_EVENT',

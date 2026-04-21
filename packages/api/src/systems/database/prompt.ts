@@ -1,142 +1,139 @@
 import type { DatabaseSchemaInfo } from './types';
 
-export function buildQueryPrompt(userPrompt: string, schema: DatabaseSchemaInfo): string {
+interface SchemaStats {
+  entities: Record<string, number>;
+  attributes: Record<string, { entityCount: number; totalValues: number }>;
+  relations: Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>;
+}
+
+function formatEntityStats(stats: SchemaStats): string {
+  return Object.entries(stats.entities)
+    .sort(([, a], [, b]) => b - a)
+    .map(([type, count]) => `  ${type}: ${count}`)
+    .join('\n');
+}
+
+function formatRelationStats(stats: SchemaStats): string {
+  return Object.entries(stats.relations)
+    .filter(([, s]) => s.totalRelations > 0)
+    .sort(([, a], [, b]) => b.totalRelations - a.totalRelations)
+    .map(([kind, s]) => `  ${kind}: ${s.totalRelations} relations (${s.uniqueSources} sources → ${s.uniqueTargets} targets)`)
+    .join('\n');
+}
+
+export function buildQueryPrompt(userPrompt: string, schema: DatabaseSchemaInfo, stats?: SchemaStats): string {
   const entityTypes = schema.entities.map(e => e.type).join(', ');
   const attrKinds = schema.attributes.map(a => a.kind).join(', ');
-  const relKinds = schema.relations.map(r => r.kind).join(', ');
 
-  return `You are generating TypeScript code for EARS (Embedded Attribute-Relation Store), an in-memory entity-attribute-relation database.
+  const entityStatsBlock = stats ? `\nEntity counts:\n${formatEntityStats(stats)}` : '';
+  const relationStatsBlock = stats ? `\nRelation counts:\n${formatRelationStats(stats)}` : '';
 
-OUTPUT RULES:
-- Output ONLY executable TypeScript code — no markdown fencing, no explanation, no comments
-- Code MUST include a \`return\` statement
-- Use qx() for reads, tx() for writes
+  return `Generate a read-only TypeScript query for EARS, an in-memory entity-attribute-relation database.
 
-## qx() API — Query
+STRICT OUTPUT RULES:
+- Output ONLY executable TypeScript code
+- NO markdown fencing, NO explanations, NO comments
+- MUST include a \`return\` statement
+- qx() is synchronous — NEVER use await
+- This is a read-only context — tx() is NOT available
 
-Entry points:
-  qx()                         — all entities
-  qx('EntityType')             — all of a type (e.g. qx(EARS.Entity.Thread))
-  qx('Entity-id')              — single entity by ID
-  qx(['id1','id2'])            — multiple by ID
+AVAILABLE GLOBALS:
+- qx(...)          — query builder (see API below)
+- EARS.Entity.*    — entity type enum: ${entityTypes}
+- EARS.RelKind.*   — relation kind constants
+- getAll(id)       — returns Record<string, any> of all attributes for an entity
+- getAttr(id, EARS.AttrKind.Custom(name)) — single attribute value
+- getSchemaStats() — returns { entities, attributes, relations } with counts
 
-Filters:
-  .ofType(EARS.Entity.X)       — filter by entity type
-  .where(attrName, value)      — filter by attribute value
-  .where(attrName)             — filter: has attribute
-  .withRole(role)              — filter by role
-  .relatedTo(targetId)         — filter: related to target
+LIVE SCHEMA:
+${entityStatsBlock}
 
-Traversal:
-  .linksTo(relKind, targetType?)  — follow relations to linked entities
-  .links(relKind, targetType?)    — get array of { relation, id }
-  .linksPick(relKind, fields, targetType?) — traverse + project
-
-List shaping:
-  .orderBy(field, 'asc'|'desc') — sort by attribute
-  .limit(n)                     — take first n
-  .distinct(field?)             — deduplicate
-  .reverse()                    — reverse order
-
-Terminals:
-  .pick(fields)     — project to objects with selected fields + id
-  .pickAll()        — project to objects with all attributes + id
-  .pickOne(fields)  — pick first match (or null)
-  .ids()            — array of entity IDs
-  .count()          — number of matches
-  .first()          — first ID or null
-  .last()           — last ID or null
-  .exists()         — boolean
-
-Iterators:
-  .map(fn)          — map over IDs
-  .forEach(fn)      — iterate IDs
-  .reduce(fn, init) — reduce over IDs
-
-## tx() API — Transaction
-
-Entry points:
-  tx('EntityType')   — create new entity (e.g. tx(EARS.Entity.Thread))
-  tx('Entity-id')    — reference existing entity by ID
-
-Attributes:
-  .put(key, value)       — set attribute
-  .batchPut({ k: v })   — set multiple attributes
-  .merge(kind, value)    — merge into attribute
-  .drop(kind)            — remove attribute
-  .update(key, value)    — update existing attribute
-
-Relations:
-  .link(kind, targetId)      — add relation
-  .linkOne(kind, targetId)   — add/replace single relation
-  .unlink(relationId)        — remove relation by ID
-  .unlinkWhere({ kind?, target? }) — remove relations by criteria
-  .safeLink(kind, targetId, opts?) — link with cycle prevention
-
-Roles:
-  .grant(role)     — grant role
-  .revoke(role)    — revoke role
-  .ensure(role)    — grant role, revoking from others
-
-Lifecycle:
-  .destroy()       — delete entity
-  .id()            — returns EntityId of this entity
-
-Bulk:
-  .define({ attributes?, links?, roles? }) — set up entity in one call
-
-## Available Globals
-
-EARS.Entity enum: ${entityTypes}
-EARS.RelKind values: PARENT_OF, CONTAINS, REPLIED_TO, HAS, BLOCKS, DEPENDS_ON, RELATES_TO, DUPLICATES, TRANSITIONS_TO, EMITS, INSTANCE_OF, SPAWNED, TRACKED, Custom(string)
-EARS.AttrKind values: Role, RelationDetails, Custom(string)
-
-Helper functions: getAllEntities(), getAll(entityId), getAttr(id, EARS.AttrKind.Custom(attr)), getAttrs(id, kind), getRoles(id), getEntitiesOfType(type), queryEntitiesByAttribute(kind, value), queryEntitiesInRelationTo(target), relationIndex, getSchemaStats()
-
-## Live Schema
-
-Entity types: ${entityTypes}
 Attribute kinds in use: ${attrKinds}
-Relation kinds in use: ${relKinds}
+${relationStatsBlock}
 
-## Examples
+qx() API:
 
-// Find all active threads
+  Entry:
+    qx()                          → all entities
+    qx(EARS.Entity.Thread)        → all of a type
+    qx('entity-id')               → single entity by ID
+    qx(['id1','id2'])             → multiple by ID
+
+  Filter (chainable, returns qx):
+    .ofType(EARS.Entity.X)        → filter by entity type
+    .where(attr, value)           → filter by attribute value
+    .where(attr)                  → filter: has attribute (any value)
+    .withRole(role)               → filter by role
+    .relatedTo(targetId)          → filter: any relation to target
+    .inIds([...ids])              → filter to specific IDs
+
+  Traversal (returns new qx with linked entities):
+    .linksTo(relKind, targetType?)           → follow outgoing relations
+    .linksTo(relKind, targetType, false)     → follow INCOMING relations (reverse)
+    .links(relKind, targetType?)             → array of { relation, id }
+    .linksPick(relKind, fields, targetType?) → traverse + project in one call
+
+  Terminals (consume the chain):
+    .pick(['field1','field2'])  → Array<{ id, field1, field2 }>
+    .pickAll()                  → Array<{ id, ...allAttributes }>
+    .pickOne(['f1','f2'])       → { id, f1, f2 } | null
+    .ids()                      → string[]  (entity IDs)
+    .count()                    → number
+    .first()                    → string | null  (first entity ID)
+    .exists()                   → boolean
+
+  Shaping (chainable before terminals):
+    .orderBy(field, 'asc'|'desc')
+    .limit(n)
+    .reverse()
+    .distinct(field?)
+    .groupBy(field)             → Map<value, qx>
+
+  Iteration (over entity IDs):
+    .map(id => ...)             → Array<T>
+    .forEach(id => ...)
+    .reduce(fn, init)
+
+EXAMPLES:
+
+// All threads with their attributes
+return qx(EARS.Entity.Thread).pickAll();
+
+// Count entities by type
+const stats = getSchemaStats();
+return Object.entries(stats.entities).map(([type, count]) => ({ type, count }));
+
+// Threads ordered by creation date
+return qx(EARS.Entity.Thread)
+  .orderBy('createdAt', 'desc')
+  .limit(20)
+  .pick(['topic', 'status', 'createdAt']);
+
+// Flows with their node counts
+return qx(EARS.Entity.Flow).pick(['label', 'description']).map(flow => ({
+  ...flow,
+  nodeCount: qx(flow.id).linksTo('contains', EARS.Entity.Node).count()
+}));
+
+// Messages in a thread (parent → child via CONTAINS)
+const threadId = qx(EARS.Entity.Thread).first();
+return qx(threadId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
+  .pick(['text', 'sender', 'timestamp']);
+
+// Find which entities link TO a target (reverse relation)
+const targetId = qx(EARS.Entity.Flow).first();
+return qx(targetId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Node, false).pickAll();
+
+// Search entities by attribute value
 return qx(EARS.Entity.Thread)
   .where('status', 'active')
-  .limit(10)
-  .pickAll();
+  .pick(['topic', 'status']);
 
-// List flows with node counts
-const flows = qx(EARS.Entity.Flow).pick(['id', 'label', 'description']);
-return flows.map(f => ({
-  ...f,
-  nodeCount: qx(f.id).linksTo('contains', EARS.Entity.Node).count()
-}));
+// All attributes of a single entity
+const id = qx(EARS.Entity.Thread).first();
+return getAll(id);
 
-// Create a new thread
-const threadId = tx(EARS.Entity.Thread)
-  .put('title', 'Dev Environment Setup')
-  .put('status', 'active')
-  .put('createdAt', Date.now())
-  .id();
-return { created: threadId };
-
-// Bulk delete completed trace nodes
-const oldNodes = qx(EARS.Entity.TNode)
-  .where('status', 'completed')
-  .limit(50)
-  .ids();
-oldNodes.forEach(id => tx(id).destroy());
-return { deleted: oldNodes.length };
-
-// Find agents with their flows
-return qx(EARS.Entity.Agent).pickAll().map(agent => ({
-  ...agent,
-  flows: qx(agent.id).linksTo('has', EARS.Entity.Flow).pick(['id', 'label'])
-}));
-
-## User Request
+USER REQUEST:
 
 ${userPrompt}`;
 }
