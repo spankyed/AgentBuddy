@@ -512,9 +512,13 @@ export const commitSystem = setup({
         // Truncate diff to 40k chars
         const truncatedDiff = diff.length > 40000 ? diff.substring(0, 40000) + '\n... (truncated)' : diff
 
+        const branch = await context.gitRepository.getCurrentBranch()
+        const repoDir = context.gitRepository.getWorkingDir()
+        const repoName = repoDir.split('/').pop() || ''
+
         sendToBrainSystem({
           eventType: 'commit.generate',
-          payload: { diff: truncatedDiff },
+          payload: { diff: truncatedDiff, branch, repoName },
         })
       } catch (error: any) {
         const wrapped = emit(pluginId, {

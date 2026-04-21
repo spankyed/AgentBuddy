@@ -299,6 +299,8 @@ export default {
           label: "commit-message",
           map: {
             diff: "$.event.data.payload.diff",
+            branch: "$.event.data.payload.branch",
+            repoName: "$.event.data.payload.repoName",
           },
         }),
       ]],

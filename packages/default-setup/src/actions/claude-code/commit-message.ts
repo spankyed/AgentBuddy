@@ -13,8 +13,42 @@ export const meta: ActionMeta = {
   category: 'claude-code',
   input: {
     diff: { type: 'string', description: 'Git diff to generate a commit message from', required: true },
+    branch: { type: 'string', description: 'Current branch name', required: false },
+    repoName: { type: 'string', description: 'Repository name', required: false },
   },
 };
+
+/**
+ * Clean up model output into a usable commit message.
+ * Strips markdown fences, preamble prose, surrounding quotes,
+ * and enforces 72-char subject line.
+ */
+function postprocess(raw: string): string {
+  let msg = raw.trim();
+
+  // Strip markdown code fences
+  msg = msg.replace(/^```(?:\w+)?\n?/, '').replace(/\n?```$/, '').trim();
+
+  // Strip preamble like "Here is a commit message:" or "Sure, here's..."
+  msg = msg.replace(/^(?:here(?:'s| is) (?:a |the )?(?:commit )?message[:\s]*)/i, '').trim();
+  msg = msg.replace(/^(?:sure[,!.]?\s*)/i, '').trim();
+
+  // Strip surrounding quotes
+  if ((msg.startsWith('"') && msg.endsWith('"')) || (msg.startsWith("'") && msg.endsWith("'"))) {
+    msg = msg.slice(1, -1).trim();
+  }
+
+  // Strip Co-Authored-By trailers
+  msg = msg.replace(/\n*Co-Authored-By:.*$/gim, '').trim();
+
+  // Enforce 72-char subject line
+  const lines = msg.split('\n');
+  if (lines[0] && lines[0].length > 72) {
+    lines[0] = lines[0].slice(0, 72);
+  }
+
+  return lines.join('\n').trim();
+}
 
 export async function action(
   params: Record<string, any>,
@@ -22,7 +56,7 @@ export async function action(
   _z: Z,
   _flowId: string,
 ) {
-  const { diff } = params;
+  const { diff, branch, repoName } = params;
 
   if (!diff?.trim()) {
     services.emitter.sendToPlugin('code', {
@@ -35,7 +69,11 @@ export async function action(
   services.emitter.sendToPlugin('code', { type: 'commit.GENERATING_MESSAGE' });
 
   try {
-    const fullPrompt = services.prompt.usePrompt('Commit Message', { diff });
+    const fullPrompt = services.prompt.usePrompt('Commit Message', {
+      diff,
+      branch: branch || '',
+      repoName: repoName || '',
+    });
 
     if (!fullPrompt) {
       services.emitter.sendToPlugin('code', {
@@ -50,10 +88,7 @@ export async function action(
       { timeoutMs: 60_000, cwd: '/tmp' },
     );
 
-    const message = result.stdout.trim()
-      .replace(/^```(?:typescript|ts|javascript|js)?\n?/, '')
-      .replace(/\n?```$/, '')
-      .trim();
+    const message = postprocess(result.stdout);
 
     if (!message) {
       services.emitter.sendToPlugin('code', {
