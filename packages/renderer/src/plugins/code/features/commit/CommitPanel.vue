@@ -419,16 +419,32 @@
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
           <ChevronDown v-else class="w-3 h-3" />
-          STASHES ({{ stashList.length }})
+          STASHES ({{ stashSearchQuery.trim() ? `${filteredStashes.length}/` : '' }}{{ stashList.length }})
         </div>
         <button @click.stop="openClearStashesDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Clear All Stashes">
           <Trash2 class="w-3 h-3 text-gray-400" />
         </button>
       </div>
       <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 pb-3">
+        <div class="relative mx-3 mb-1.5">
+          <Search :size="12" class="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+          <input
+            v-model="stashSearchQuery"
+            placeholder="Search stashes..."
+            class="w-full pl-7 pr-7 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+            @click.stop
+          />
+          <button
+            v-if="stashSearchQuery"
+            @click.stop="stashSearchQuery = ''"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-neutral-700 rounded"
+          >
+            <X :size="12" class="text-neutral-400" />
+          </button>
+        </div>
         <div class="space-y-0.5 pl-3">
           <div
-            v-for="stash in stashList"
+            v-for="stash in filteredStashes"
             :key="stash.ref"
             class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors cursor-pointer"
             @click="applyStash(stash.index)"
@@ -486,7 +502,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
@@ -529,6 +545,7 @@ const newBranchName = ref('')
 const newBranchInput = ref<HTMLInputElement | null>(null)
 const showStashMenu = ref(false)
 const isStashesExpanded = ref(false)
+const stashSearchQuery = ref('')
 const showDropStashDialog = ref(false)
 const pendingDropIndex = ref<number | null>(null)
 const showClearStashesDialog = ref(false)
@@ -640,6 +657,16 @@ const filteredBranches = computed(() => {
   return availableBranches.value.filter((branch: string) =>
     branch.toLowerCase().includes(input)
   )
+})
+
+const filteredStashes = computed(() => {
+  const query = stashSearchQuery.value.trim()
+  if (!query) return stashList.value
+  const lowerQuery = query.toLowerCase()
+  return stashList.value.filter((stash: any) => {
+    const text = `${stash.ref} ${stash.message}`.toLowerCase()
+    return text.includes(lowerQuery)
+  })
 })
 
 // Event handlers
