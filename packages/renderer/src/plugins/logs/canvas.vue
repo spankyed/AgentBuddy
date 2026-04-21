@@ -129,15 +129,28 @@
             </button>
           </div>
 
-          <!-- Clear logs button (moved to far right) -->
-          <button
-            @click="clearLogs"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:text-neutral-200"
-            title="Clear all logs"
-          >
-            <Trash :size="16" />
-            <span>Clear</span>
-          </button>
+          <div class="flex items-center gap-1">
+            <!-- Copy logs button -->
+            <button
+              @click="copyLogs"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors"
+              :class="copied ? 'text-green-400' : 'text-neutral-400 hover:text-neutral-200'"
+              title="Copy logs to clipboard"
+            >
+              <component :is="copied ? Check : Copy" :size="16" />
+              <span>{{ copied ? 'Copied' : 'Copy' }}</span>
+            </button>
+
+            <!-- Clear logs button -->
+            <button
+              @click="clearLogs"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:text-neutral-200"
+              title="Clear all logs"
+            >
+              <Trash :size="16" />
+              <span>Clear</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -342,7 +355,9 @@ import {
   Terminal,
   X,
   Trash,
-  Radio
+  Radio,
+  Copy,
+  Check
 } from 'lucide-vue-next';
 import { id } from './state';
 import type { LogsState, LogEntry } from './state';
@@ -455,6 +470,33 @@ const clearSearch = () => {
 
 const clearLogs = () => {
   actor.send({ type: 'CLEAR_LOGS' });
+};
+
+const copied = ref(false);
+let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const copyLogs = async () => {
+  const text = filteredLogs.value
+    .map((log: LogEntry) => {
+      const time = formatTime(log.timestamp);
+      const level = log.level.toUpperCase();
+      const source = log.source ? `[${log.source}]` : '';
+      let line = `${time} ${level} ${source} ${log.message}`;
+      if (log.meta && Object.keys(log.meta).length > 0) {
+        line += `\n  meta: ${JSON.stringify(log.meta, null, 2).split('\n').join('\n  ')}`;
+      }
+      if (log.stack) {
+        line += `\n  stack: ${log.stack}`;
+      }
+      return line;
+    })
+    .join('\n');
+
+  await navigator.clipboard.writeText(text);
+
+  if (copiedTimeout) clearTimeout(copiedTimeout);
+  copied.value = true;
+  copiedTimeout = setTimeout(() => { copied.value = false; }, 2000);
 };
 
 const goToExcludedSourcesSettings = () => {
