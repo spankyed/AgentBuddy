@@ -12,7 +12,6 @@ import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
-import { buildQueryPrompt } from './prompt';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
@@ -165,12 +164,10 @@ export const databaseSystem = setup({
         return;
       }
 
-      const promptText = buildQueryPrompt(prompt.trim());
-
       getActor(system, brain).send({
         type: 'HANDLE_BRAIN_EVENT',
         eventType: 'db.query',
-        payload: { prompt: promptText },
+        payload: { prompt: prompt.trim() },
       });
     },
     getTraceFlows: ({ system }) => {

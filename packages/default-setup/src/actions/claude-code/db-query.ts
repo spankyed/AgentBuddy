@@ -2,9 +2,9 @@
  * CC: DB Query — generates an EARS database query using Claude CLI.
  *
  * Triggered by the `db.query` brain event (forwarded from the database
- * system's GENERATE_AI_QUERY handler). The full prompt (including EARS
- * API docs and schema) is assembled by the database system and passed
- * through as `prompt`.
+ * system's GENERATE_AI_QUERY handler). Builds the prompt dynamically
+ * from live schema data via `services.database.buildQueryContext()` and
+ * the "DB Query" prompt template.
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
@@ -14,7 +14,7 @@ export const meta: ActionMeta = {
   description: 'Generate an EARS database query using Claude CLI',
   category: 'claude-code',
   input: {
-    prompt: { type: 'string', description: 'Full prompt with EARS API docs, schema, and user request', required: true },
+    prompt: { type: 'string', description: 'Natural language query request from the user', required: true },
   },
 };
 
@@ -24,9 +24,9 @@ export async function action(
   _z: Z,
   _flowId: string,
 ) {
-  const { prompt } = params;
+  const { prompt: userPrompt } = params;
 
-  if (!prompt?.trim()) {
+  if (!userPrompt?.trim()) {
     services.emitter.sendToPlugin('database', {
       type: 'QUERY_ERROR',
       error: 'Please provide a valid prompt',
@@ -37,8 +37,24 @@ export async function action(
   services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
 
   try {
+    const { schema, topology } = services.database.buildQueryContext();
+
+    const fullPrompt = services.prompt.usePrompt('DB Query', {
+      userPrompt: userPrompt.trim(),
+      schema,
+      topology,
+    });
+
+    if (!fullPrompt) {
+      services.emitter.sendToPlugin('database', {
+        type: 'QUERY_ERROR',
+        error: 'DB Query prompt template not found. Import the setup pack.',
+      });
+      return { success: false, error: 'Prompt not found' };
+    }
+
     const result = await services.cli.claudeCode.exec(
-      ['--bare', '-p', prompt.trim()],
+      ['--bare', '-p', fullPrompt],
       { timeoutMs: 60_000 },
     );
 

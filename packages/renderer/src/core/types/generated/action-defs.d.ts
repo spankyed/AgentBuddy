@@ -6891,10 +6891,13 @@ declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T 
  * including EARS transaction and query utilities.
  */
 
+declare function buildQueryContext(): { schema: string; topology: string };
+
 const database = /*#__PURE__*/Object.freeze({
   __proto__: null,
   EARS: EARS,
   SafeLinkOptions: SafeLinkOptions,
+  buildQueryContext: buildQueryContext,
   countEntities: countEntities,
   createEntityWithDefaults: createEntityWithDefaults,
   createRelation: createRelation,

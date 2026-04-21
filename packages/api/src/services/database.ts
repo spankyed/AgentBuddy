@@ -39,3 +39,71 @@ export {
 
 // Re-export EARS types for convenience
 export { EARS } from '@/core/types';
+
+// ─── Query context for AI prompt generation ─────────────────────────────
+
+import { EARS as EARSTypes } from '@/core/types';
+import { getEntitiesOfType, getAll, getAllEntityTypes } from '@/core/ears/attribute-storage';
+import { relationIndex } from '@/core/ears/relation-index';
+
+/**
+ * Build a query context from live data for AI query generation.
+ * Samples one entity per type to extract real attribute names + values,
+ * and maps the relationship topology.
+ */
+export function buildQueryContext(): { schema: string; topology: string } {
+  // Sample entities
+  const schemaLines: string[] = [];
+  for (const type of getAllEntityTypes()) {
+    const ids = getEntitiesOfType(type as EARSTypes.Entity);
+    if (ids.length === 0) continue;
+
+    const raw = getAll(ids[0]);
+    const fields: string[] = [];
+    const sample: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(raw)) {
+      fields.push(key);
+      if (typeof value === 'string') {
+        sample[key] = value.length > 60 ? value.slice(0, 60) + '…' : value;
+      } else if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+        sample[key] = value;
+      } else if (Array.isArray(value)) {
+        sample[key] = `[${value.length} items]`;
+      } else {
+        sample[key] = '{…}';
+      }
+    }
+
+    const sampleStr = JSON.stringify(sample);
+    const truncated = sampleStr.length > 200 ? sampleStr.slice(0, 200) + '…}' : sampleStr;
+    schemaLines.push(`${type} (${ids.length})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
+  }
+
+  // Build topology
+  const edges = new Map<string, number>();
+  for (const [kind, entry] of Object.entries(relationIndex)) {
+    for (const [sourceId, relIds] of Object.entries(entry.bySource)) {
+      const sourceType = sourceId.split('-')[0];
+      for (const relId of relIds) {
+        for (const [targetId, tRelIds] of Object.entries(entry.byTarget)) {
+          if (tRelIds.includes(relId)) {
+            const targetType = targetId.split('-')[0];
+            const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
+            edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  const topologyLines = [...edges.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .map(([edge, count]) => `  ${edge} (${count})`);
+
+  return {
+    schema: schemaLines.join('\n\n'),
+    topology: topologyLines.join('\n'),
+  };
+}
