@@ -41,13 +41,7 @@ function postprocess(raw: string): string {
   // Strip Co-Authored-By trailers
   msg = msg.replace(/\n*Co-Authored-By:.*$/gim, '').trim();
 
-  // Enforce 72-char subject line
-  const lines = msg.split('\n');
-  if (lines[0] && lines[0].length > 72) {
-    lines[0] = lines[0].slice(0, 72);
-  }
-
-  return lines.join('\n').trim();
+  return msg;
 }
 
 export async function action(
