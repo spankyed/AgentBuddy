@@ -6,6 +6,12 @@ window.addEventListener('error', (event) => {
     event.stopImmediatePropagation()
   }
 })
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = event.reason?.message ?? String(event.reason)
+  if (msg.includes('cannot be after endLineNumberExclusive')) {
+    event.preventDefault()
+  }
+})
 </script>
 
 <template>
@@ -448,7 +454,7 @@ watch(() => props.filePath, (newPath, oldPath) => {
     disposeEditorDisposables()
     diffEditorInstance.value = undefined
   }
-})
+}, { flush: 'sync' })
 
 // Watch for dslParams changes
 watch(() => props.dslParams, (newParams) => {
