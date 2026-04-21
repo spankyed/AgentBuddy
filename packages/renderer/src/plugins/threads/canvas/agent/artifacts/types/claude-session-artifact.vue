@@ -88,12 +88,12 @@
         </div>
 
         <!-- Context usage breakdown (from CLI /context query) -->
-        <details v-if="ctx" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500">
-          <summary class="text-[10px] uppercase tracking-wide cursor-pointer select-none hover:text-neutral-400">
-            Context
+        <details v-if="ctx" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500 ml-1">
+          <summary class="text-[10px] uppercase tracking-wide cursor-pointer select-none hover:text-neutral-400 [&::marker]:mr-1">
+            &nbsp;Context
             <span class="float-right text-xs tabular-nums normal-case tracking-normal" :class="ctx.percentage >= 90 ? 'text-red-400' : ctx.percentage >= 75 ? 'text-yellow-400' : 'text-neutral-400'">{{ ctx.percentage }}%</span>
           </summary>
-          <div class="mt-2">
+          <div class="mt-2 px-3">
             <div class="flex items-baseline justify-between mb-1.5">
               <span class="text-xs text-neutral-500 font-mono">{{ ctx.model || '—' }}</span>
             </div>
@@ -144,16 +144,18 @@
         </details>
 
         <!-- Recent tools (last 3, collapsible) -->
-        <details v-if="recentTools.length" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500">
-          <summary class="text-[10px] uppercase tracking-wide cursor-pointer select-none hover:text-neutral-400">Recent</summary>
-          <div
-            v-for="(tool, i) in recentTools"
-            :key="i"
-            class="text-neutral-300 truncate mt-0.5"
-          >
-            <span class="font-mono text-xs">{{ tool.name }}</span>
-            <span v-if="tool.summary" class="text-neutral-500 text-xs"> · {{ tool.summary }}</span>
-            <span class="text-neutral-600 text-[10px]"> · {{ relativeTime(tool.at) }}</span>
+        <details v-if="recentTools.length" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500 ml-1">
+          <summary class="text-[10px] uppercase tracking-wide cursor-pointer select-none hover:text-neutral-400 [&::marker]:mr-1">&nbsp;Recent</summary>
+          <div class="mt-1 px-3">
+            <div
+              v-for="(tool, i) in recentTools"
+              :key="i"
+              class="text-neutral-300 truncate mt-0.5"
+            >
+              <span class="font-mono text-xs">{{ tool.name }}</span>
+              <span v-if="tool.summary" class="text-neutral-500 text-xs"> · {{ tool.summary }}</span>
+              <span class="text-neutral-600 text-[10px]"> · {{ relativeTime(tool.at) }}</span>
+            </div>
           </div>
         </details>
 
