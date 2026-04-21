@@ -14,7 +14,7 @@
         :side="'top'"
         :align="'start'"
         :side-offset="5"
-        class="z-50 w-96 max-w-[90vw] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden"
+        class="z-50 w-[36rem] max-w-[90vw] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden"
         @pointer-down-outside.prevent
       >
         <div class="relative">
