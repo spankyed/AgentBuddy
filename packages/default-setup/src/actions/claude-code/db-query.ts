@@ -51,8 +51,8 @@ export async function action(
     }
 
     const result = await services.cli.claudeCode.exec(
-      ['--bare', '-p', fullPrompt],
-      { timeoutMs: 60_000 },
+      ['-p', fullPrompt],
+      { timeoutMs: 60_000, cwd: '/tmp' },
     );
 
     const query = result.stdout.trim();
