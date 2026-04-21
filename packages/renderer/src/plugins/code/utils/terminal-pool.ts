@@ -59,6 +59,7 @@ export interface PoolEntry {
   // on xterm's scrollToBottom() — which is a no-op when ydisp === ybase.
   pinnedToBottom: boolean
   savedScrollFraction: number | null
+  webglLoaded: boolean
 }
 
 const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
@@ -113,7 +114,7 @@ class TerminalPool {
     wrapper.style.width = '100%'
 
     term.open(wrapper)
-    try { term.loadAddon(new WebglAddon()) } catch { /* falls back to canvas renderer */ }
+    // WebGL addon is loaded later in attach() — see comment there.
     if (term.element) term.element.style.height = '100%'
 
     const entry: PoolEntry = {
@@ -125,7 +126,8 @@ class TerminalPool {
       attachedContainer: null,
       isShowingLoadingContent: false,
       pinnedToBottom: true,
-      savedScrollFraction: null
+      savedScrollFraction: null,
+      webglLoaded: false
     }
 
     // Shift+Enter inserts a newline instead of executing. Wired once here
@@ -180,6 +182,12 @@ class TerminalPool {
     }
     host.appendChild(entry.wrapper)
     entry.attachedContainer = host
+    // Load WebGL on first in-DOM attach so the GL canvas is sized from live
+    // DOM metrics rather than a detached wrapper with zero dimensions.
+    if (!entry.webglLoaded) {
+      try { entry.term.loadAddon(new WebglAddon()) } catch { /* falls back to canvas renderer */ }
+      entry.webglLoaded = true
+    }
     return entry
   }
 
