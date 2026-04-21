@@ -5391,6 +5391,9 @@ declare const events: {
         };
         pluginId: "code";
     } | {
+        type: "commit.GENERATING_MESSAGE";
+        pluginId: "code";
+    } | {
         type: "commit.MESSAGE_GENERATED";
         data: {
             message: string;
