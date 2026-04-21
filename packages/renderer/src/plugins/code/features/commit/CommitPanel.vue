@@ -217,9 +217,10 @@
             <label class="text-sm text-neutral-400">Commit Message</label>
           </div>
           <button
-            disabled
-            class="p-1 rounded transition-colors text-neutral-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Out of order"
+            :disabled="isGeneratingMessage"
+            class="p-1 rounded transition-colors text-neutral-400 hover:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Generate commit message"
+            @click="generateMessage"
           >
             <Sparkles :size="14" />
           </button>
@@ -413,6 +414,13 @@
       </div>
     </div>
 
+    <!-- Stash resize handle -->
+    <PanelResizer
+      v-if="stashList.length > 0 && isStashesExpanded"
+      orientation="vertical"
+      @resize="onStashResize"
+    />
+
     <!-- Stashes Section (pinned to bottom) -->
     <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isStashesExpanded = !isStashesExpanded">
@@ -421,14 +429,21 @@
           <ChevronDown v-else class="w-3 h-3" />
           STASHES ({{ stashSearchQuery.trim() ? `${filteredStashes.length}/` : '' }}{{ stashList.length }})
         </div>
-        <button @click.stop="openClearStashesDialog" class="p-0.5 hover:bg-neutral-700 rounded" title="Clear All Stashes">
-          <Trash2 class="w-3 h-3 text-gray-400" />
-        </button>
+        <div class="flex items-center gap-1" @click.stop>
+          <button @click="toggleStashSearch" class="p-1 hover:bg-neutral-700 rounded transition-colors" :class="showStashSearch ? 'bg-neutral-700' : ''" title="Search Stashes">
+            <Search class="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+          <button @click="openClearStashesDialog" class="p-1 hover:bg-neutral-700 rounded transition-colors" title="Clear All Stashes">
+            <Trash2 class="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+        </div>
       </div>
-      <div v-if="isStashesExpanded" class="overflow-y-auto max-h-48 pb-3">
-        <div class="relative mx-3 mb-1.5">
+      <div v-if="isStashesExpanded" class="overflow-y-auto pb-3" :style="{ maxHeight: stashHeight + 'px' }">
+        <div v-if="showStashSearch" class="pl-5 pr-3 mb-1.5">
+          <div class="relative">
           <Search :size="12" class="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
           <input
+            ref="stashSearchInput"
             v-model="stashSearchQuery"
             placeholder="Search stashes..."
             class="w-full pl-7 pr-7 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
@@ -441,6 +456,7 @@
           >
             <X :size="12" class="text-neutral-400" />
           </button>
+          </div>
         </div>
         <div class="space-y-0.5 pl-3">
           <div
@@ -511,6 +527,7 @@ import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
+import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -545,7 +562,12 @@ const newBranchName = ref('')
 const newBranchInput = ref<HTMLInputElement | null>(null)
 const showStashMenu = ref(false)
 const isStashesExpanded = ref(false)
+const MIN_STASH_HEIGHT = 80
+const MAX_STASH_HEIGHT = 400
+const stashHeight = ref(192)
 const stashSearchQuery = ref('')
+const showStashSearch = ref(false)
+const stashSearchInput = ref<HTMLInputElement | null>(null)
 const showDropStashDialog = ref(false)
 const pendingDropIndex = ref<number | null>(null)
 const showClearStashesDialog = ref(false)
@@ -555,6 +577,10 @@ const isErrorOverflowing = ref(false)
 const toast = ref<InstanceType<typeof ToastNotification>>()
 const syncFeedback = ref<string | null>(null)
 let syncClearTimer: ReturnType<typeof setTimeout> | undefined
+
+const onStashResize = (delta: number) => {
+  stashHeight.value = Math.max(MIN_STASH_HEIGHT, Math.min(MAX_STASH_HEIGHT, stashHeight.value - delta))
+}
 
 const showSyncFeedback = (message: string) => {
   syncFeedback.value = message
@@ -832,6 +858,16 @@ const popStash = (index: number) => {
 const copyStashMessage = (stash: any) => {
   const message = formatStashMessage(stash)
   navigator.clipboard.writeText(message)
+}
+
+const toggleStashSearch = async () => {
+  showStashSearch.value = !showStashSearch.value
+  if (showStashSearch.value) {
+    await nextTick()
+    stashSearchInput.value?.focus()
+  } else {
+    stashSearchQuery.value = ''
+  }
 }
 
 const openDropStashDialog = (index: number) => {
