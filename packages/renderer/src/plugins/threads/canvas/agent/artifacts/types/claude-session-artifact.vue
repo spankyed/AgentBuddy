@@ -88,55 +88,60 @@
         </div>
 
         <!-- Context usage breakdown (from CLI /context query) -->
-        <div v-if="ctx" class="pt-2 mt-2 border-t border-neutral-800">
-          <div class="flex items-baseline justify-between mb-1.5">
-            <span class="text-xs text-neutral-500 font-mono">{{ ctx.model || '—' }}</span>
-            <span class="text-xs tabular-nums" :class="ctxPct.color">{{ ctx.percentage }}%</span>
-          </div>
+        <details v-if="ctx" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500">
+          <summary class="text-[10px] uppercase tracking-wide cursor-pointer select-none hover:text-neutral-400">
+            Context
+            <span class="float-right text-xs tabular-nums normal-case tracking-normal" :class="ctx.percentage >= 90 ? 'text-red-400' : ctx.percentage >= 75 ? 'text-yellow-400' : 'text-neutral-400'">{{ ctx.percentage }}%</span>
+          </summary>
+          <div class="mt-2">
+            <div class="flex items-baseline justify-between mb-1.5">
+              <span class="text-xs text-neutral-500 font-mono">{{ ctx.model || '—' }}</span>
+            </div>
 
-          <!-- Stacked progress bar -->
-          <div class="h-2 bg-neutral-800 rounded-full overflow-hidden flex">
-            <div
-              v-for="cat in visibleCategories"
-              :key="'bar-' + cat.name"
-              class="h-full first:rounded-l-full last:rounded-r-full transition-all duration-300"
-              :class="getCategoryColor(cat.name)"
-              :style="{ width: `${cat.percentage}%` }"
-            />
-          </div>
-          <div class="flex justify-between mt-1.5 text-[11px] tabular-nums text-neutral-500">
-            <span>{{ fmt(ctx.totalTokens) }} used</span>
-            <span>{{ fmt(ctx.maxTokens) }} limit</span>
-          </div>
+            <!-- Stacked progress bar -->
+            <div class="h-2 bg-neutral-800 rounded-full overflow-hidden flex">
+              <div
+                v-for="cat in visibleCategories"
+                :key="'bar-' + cat.name"
+                class="h-full first:rounded-l-full last:rounded-r-full transition-all duration-300"
+                :class="getCategoryColor(cat.name)"
+                :style="{ width: `${cat.percentage}%` }"
+              />
+            </div>
+            <div class="flex justify-between mt-1.5 text-[11px] tabular-nums text-neutral-500">
+              <span>{{ fmt(ctx.totalTokens) }} used</span>
+              <span>{{ fmt(ctx.maxTokens) }} limit</span>
+            </div>
 
-          <!-- Category breakdown -->
-          <div class="mt-3 space-y-2">
-            <p class="text-[10px] uppercase tracking-wide text-neutral-500">Breakdown</p>
-            <div
-              v-for="cat in visibleCategories"
-              :key="cat.name"
-              class="space-y-0.5"
-            >
-              <div class="flex items-baseline justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-sm shrink-0" :class="getCategoryColor(cat.name)" />
-                  <span class="text-xs text-neutral-300">{{ cat.name }}</span>
+            <!-- Category breakdown -->
+            <div class="mt-3 space-y-2">
+              <p class="text-[10px] uppercase tracking-wide text-neutral-500">Breakdown</p>
+              <div
+                v-for="cat in visibleCategories"
+                :key="cat.name"
+                class="space-y-0.5"
+              >
+                <div class="flex items-baseline justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-sm shrink-0" :class="getCategoryColor(cat.name)" />
+                    <span class="text-xs text-neutral-300">{{ cat.name }}</span>
+                  </div>
+                  <div class="flex items-baseline gap-3">
+                    <span class="text-xs tabular-nums text-neutral-400">{{ fmt(cat.tokens) }}</span>
+                    <span class="text-[11px] tabular-nums text-neutral-600 w-10 text-right">{{ cat.percentage.toFixed(1) }}%</span>
+                  </div>
                 </div>
-                <div class="flex items-baseline gap-3">
-                  <span class="text-xs tabular-nums text-neutral-400">{{ fmt(cat.tokens) }}</span>
-                  <span class="text-[11px] tabular-nums text-neutral-600 w-10 text-right">{{ cat.percentage.toFixed(1) }}%</span>
+                <div class="h-1 bg-neutral-800 rounded-full overflow-hidden">
+                  <div
+                    class="h-full rounded-full transition-all duration-300"
+                    :class="getCategoryColor(cat.name)"
+                    :style="{ width: barWidth(cat.percentage) }"
+                  />
                 </div>
-              </div>
-              <div class="h-1 bg-neutral-800 rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all duration-300"
-                  :class="getCategoryColor(cat.name)"
-                  :style="{ width: barWidth(cat.percentage) }"
-                />
               </div>
             </div>
           </div>
-        </div>
+        </details>
 
         <!-- Recent tools (last 3, collapsible) -->
         <details v-if="recentTools.length" class="pt-2 mt-2 border-t border-neutral-800 text-neutral-500">
@@ -278,12 +283,6 @@ const visibleCategories = computed(() =>
   ctx.value?.categories.filter((c: ContextCategory) => c.name !== 'Free space' && c.name !== 'Autocompact buffer') ?? []
 )
 
-// Simple percentage for the key/value grid row
-const ctxPct = computed(() => {
-  const pct = ctx.value?.percentage ?? 0
-  const color = pct >= 90 ? 'text-red-400' : pct >= 75 ? 'text-yellow-400' : 'text-neutral-200'
-  return { pct, color }
-})
 
 const CATEGORY_COLORS: Record<string, string> = {
   'System prompt': 'bg-neutral-500',
