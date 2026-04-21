@@ -145,7 +145,7 @@ const settings: SettingsData = {
       showOnlyRootThreads: false,
       clickToChat: true,
       recentThreadsLimit: 7,
-      recentThreadsSortOrder: 'created',
+      recentThreadsSortOrder: 'visited',
       recordingLimitMinutes: 3
     },
     prompts: {
