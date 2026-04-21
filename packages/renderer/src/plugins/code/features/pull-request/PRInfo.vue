@@ -11,9 +11,8 @@
               v-model="editTitle"
               class="w-full text-sm font-medium bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-neutral-100 focus:outline-none focus:border-blue-600"
             />
-            <div v-else class="flex items-baseline gap-1.5">
-              <span class="text-base font-medium text-neutral-100 leading-snug">{{ pr.title }}</span>
-              <span class="text-sm text-neutral-500 shrink-0">#{{ pr.number }}</span>
+            <div v-else class="text-base font-medium text-neutral-100 leading-snug">
+              {{ pr.title }}
             </div>
 
             <!-- Branch info -->
@@ -34,6 +33,7 @@
             </div>
           </div>
           <div class="flex items-center gap-1 shrink-0 mt-0.5">
+            <span v-if="!editing" class="text-sm text-neutral-500 shrink-0">#{{ pr.number }}</span>
             <!-- Edit toggle (only for OPEN PRs) -->
             <button
               v-if="pr.state === 'OPEN' && !editing"
