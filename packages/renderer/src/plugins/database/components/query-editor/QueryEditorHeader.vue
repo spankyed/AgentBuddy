@@ -1,13 +1,13 @@
 <template>
   <div class="@container flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1.5">
       <ModeTabs
         :active-mode="activeMode"
         @update:active-mode="$emit('update:activeMode', $event)"
       />
-      
-      <div class="w-px h-5 bg-neutral-200 dark:bg-neutral-700"></div>
-      
+
+      <div class="w-px ml-1.5 h-5 bg-neutral-200 dark:bg-neutral-700"></div>
+
       <button
         @click="$emit('clear')"
         class="p-1.5 text-neutral-500 hover:text-neutral-300 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-800 dark:hover:bg-neutral-700 rounded transition-colors"
@@ -15,7 +15,7 @@
       >
         <FileX class="w-4 h-4" />
       </button>
-      
+
       <button
         @click="$emit('ai-query')"
         :class="[
@@ -36,8 +36,8 @@
         :error="error"
         :success-message="successMessage"
       />
-      
-      
+
+
       <QueryEditorActions
         :is-loading="isLoading"
         :is-disabled="!currentQuery.trim()"
@@ -76,4 +76,4 @@ defineEmits<{
   'ai-query': [];
   toggleMode: [];
 }>();
-</script> 
+</script>
