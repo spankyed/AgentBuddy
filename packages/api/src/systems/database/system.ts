@@ -12,7 +12,6 @@ import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
-import * as copilotCli from '@/systems/code/services/copilot-cli';
 import { buildQueryPrompt } from './prompt';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
@@ -154,7 +153,7 @@ export const databaseSystem = setup({
         }));
       }
     },
-    handleAiQuery: async ({ system, event }) => {
+    handleAiQuery: ({ system, event }) => {
       const { prompt } = typeOf('GENERATE_AI_QUERY', event);
 
       if (!prompt?.trim()) {
@@ -168,32 +167,14 @@ export const databaseSystem = setup({
 
       system.get(bus).send(emit(database, { type: 'AI_QUERY_LOADING' }));
 
-      try {
-        const schema = generateSchemaInfo();
-        const promptText = buildQueryPrompt(prompt.trim(), schema);
-        const query = await copilotCli.prompt(promptText, { timeout: 60_000 });
+      const schema = generateSchemaInfo();
+      const promptText = buildQueryPrompt(prompt.trim(), schema);
 
-        if (!query) {
-          system.get(bus).send(emit(database, {
-            type: 'QUERY_ERROR',
-            error: 'Copilot returned an empty response.'
-          }));
-          return;
-        }
-
-        system.get(bus).send(emit(database, {
-          type: 'AI_QUERY_GENERATED',
-          query
-        }));
-        logger.info('AI query generated successfully');
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('AI query generation failed:', { error: errorMessage });
-        system.get(bus).send(emit(database, {
-          type: 'QUERY_ERROR',
-          error: errorMessage
-        }));
-      }
+      getActor(system, brain).send({
+        type: 'HANDLE_BRAIN_EVENT',
+        eventType: 'db.query',
+        payload: { prompt: promptText },
+      });
     },
     getTraceFlows: ({ system }) => {
       try {

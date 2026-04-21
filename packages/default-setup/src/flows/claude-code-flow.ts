@@ -266,6 +266,21 @@ export default {
       ]],
       "CC command",
     ),
+    // ─── DB query generation ──────────────────────────────────────────
+    // The database system forwards GENERATE_AI_QUERY as a db.query brain
+    // event. This listener calls Claude CLI to generate the EARS query.
+    on(
+      "db.query",
+      [[
+        action("CC: DB Query", {
+          label: "db-query",
+          map: {
+            prompt: "$.event.data.payload.prompt",
+          },
+        }),
+      ]],
+      "DB query generation",
+    ),
     on(
       "thread.fork",
       [[
