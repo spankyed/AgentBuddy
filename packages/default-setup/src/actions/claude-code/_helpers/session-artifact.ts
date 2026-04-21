@@ -98,7 +98,7 @@ export function readSessionChatState(
 }
 
 /** Find the existing claude-session artifact for a thread, or undefined. */
-function findSessionArtifact(
+export function findSessionArtifact(
   services: Services,
   threadId: EntityId,
 ): { id: EntityId; content: unknown } | undefined {

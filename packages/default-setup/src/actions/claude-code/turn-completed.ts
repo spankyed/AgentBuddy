@@ -11,7 +11,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact, updateChatState, readSessionChatState } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionChatState, findSessionArtifact } from './_helpers/session-artifact';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 import type { ContextUsageData } from './_helpers/context-parser';
@@ -177,8 +177,7 @@ function checkContextThresholds(
   threadId: EntityId,
   contextUsage: ContextUsageData,
 ): number[] {
-  const prev = services.repository.chatQueries.threadArtifacts(threadId)
-    ?.find((a: any) => a.artifactType === 'claude-session');
+  const prev = findSessionArtifact(services, threadId);
   const alerted: number[] = (prev?.content as any)?.alertedThresholds ?? [];
   const pct = contextUsage.percentage;
   return THRESHOLDS.filter(t => pct >= t && !alerted.includes(t));
