@@ -76,7 +76,7 @@ type UIEvent =
   |{ type: 'DATABASE.REFRESH_SCHEMA' }
   | { type: 'DATABASE.RESET' }
   | { type: 'MODE.TOGGLE' }
-  | { type: 'AI_QUERY.GENERATE'; prompt: string }
+  | { type: 'AI_QUERY.GENERATE'; prompt: string; mode: 'query' | 'transaction' }
   | { type: 'VIEW_MODE.TOGGLE' }
   | { type: 'TRACE.SELECT_FLOW'; flowId: string }
   | { type: 'TRACE.EXPAND_NODE'; nodeId: string }
@@ -244,6 +244,7 @@ const databaseState = setup({
         systemId: id,
         type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
+        mode: ev.mode,
       });
     },
 

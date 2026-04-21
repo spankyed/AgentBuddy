@@ -2608,14 +2608,17 @@ declare const events: {
         type: zod.ZodLiteral<"GENERATE_AI_QUERY">;
         systemId: zod.ZodLiteral<"database">;
         prompt: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodEnum<["query", "transaction"]>>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         prompt: string;
         type: "GENERATE_AI_QUERY";
         systemId: "database";
+        mode?: "query" | "transaction" | undefined;
     }, {
         prompt: string;
         type: "GENERATE_AI_QUERY";
         systemId: "database";
+        mode?: "query" | "transaction" | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"REFRESH_SCHEMA">;
         systemId: zod.ZodLiteral<"database">;
@@ -6896,8 +6899,19 @@ declare function findFirstWithRole<T>(entityType: EARS.Entity, role: string): T 
  * including EARS transaction and query utilities.
  */
 
+/**
+ * Build a query context from live data for AI query generation.
+ * Samples one entity per type to extract real attribute names + values,
+ * and maps the relationship topology.
+ */
+declare function buildQueryContext(): {
+    schema: string;
+    topology: string;
+};
+
 import database_EARS = EARS;
 type database_SafeLinkOptions = SafeLinkOptions;
+declare const database_buildQueryContext: typeof buildQueryContext;
 declare const database_countEntities: typeof countEntities;
 declare const database_createEntityWithDefaults: typeof createEntityWithDefaults;
 declare const database_createRelation: typeof createRelation;
@@ -6917,7 +6931,6 @@ declare const database_removeRelation: typeof removeRelation;
 declare const database_revokeRole: typeof revokeRole;
 declare const database_tx: typeof tx;
 declare const database_updateEntity: typeof updateEntity;
-declare function database_buildQueryContext(): { schema: string; topology: string };
 declare namespace database {
   export { database_EARS as EARS, database_buildQueryContext as buildQueryContext, database_countEntities as countEntities, database_createEntityWithDefaults as createEntityWithDefaults, database_createRelation as createRelation, database_exists as exists, database_findAll as findAll, database_findById as findById, database_findByIdWithFields as findByIdWithFields, database_findFirst as findFirst, database_findFirstWithRole as findFirstWithRole, database_findWhere as findWhere, database_findWithFields as findWithFields, database_findWithRole as findWithRole, database_grantRole as grantRole, database_prepareEntity as prepareEntity, database_qx as qx, database_removeRelation as removeRelation, database_revokeRole as revokeRole, database_tx as tx, database_updateEntity as updateEntity };
   export type { database_SafeLinkOptions as SafeLinkOptions };

@@ -149,7 +149,8 @@ function handleAiQuery(prompt: string) {
   showAiQueryDialog.value = false;
   actor.send({
     type: 'AI_QUERY.GENERATE',
-    prompt
+    prompt,
+    mode: mode.value,
   });
 }
 

@@ -33,6 +33,7 @@ export const IncomingDatabaseEvents = [
   }),
 busEvent('GENERATE_AI_QUERY', {
     prompt: z.string(),
+    mode: z.enum(['query', 'transaction']).optional(),
   }),
   busEvent('REFRESH_SCHEMA', {}),
   busEvent('GET_TRACE_FLOWS', {}),
@@ -153,7 +154,7 @@ export const databaseSystem = setup({
       }
     },
     handleAiQuery: ({ system, event }) => {
-      const { prompt } = typeOf('GENERATE_AI_QUERY', event);
+      const { prompt, mode } = typeOf('GENERATE_AI_QUERY', event);
 
       if (!prompt?.trim()) {
         logger.error('Invalid prompt provided for AI query generation');
@@ -167,7 +168,7 @@ export const databaseSystem = setup({
       getActor(system, brain).send({
         type: 'HANDLE_BRAIN_EVENT',
         eventType: 'db.query',
-        payload: { prompt: prompt.trim() },
+        payload: { prompt: prompt.trim(), mode: mode ?? 'query' },
       });
     },
     getTraceFlows: ({ system }) => {

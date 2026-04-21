@@ -1,17 +1,17 @@
 /**
- * CC: DB Query — generates a read-only EARS database query using Claude CLI.
+ * CC: DB Transaction — generates an EARS database transaction using Claude CLI.
  *
- * Triggered by the `db.query` brain event when mode is 'query' (default).
+ * Triggered by the `db.query` brain event when mode is 'transaction'.
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
 
 export const meta: ActionMeta = {
-  label: 'CC: DB Query',
-  description: 'Generate a read-only EARS database query using Claude CLI',
+  label: 'CC: DB Transaction',
+  description: 'Generate an EARS database transaction using Claude CLI',
   category: 'claude-code',
   input: {
-    prompt: { type: 'string', description: 'Natural language query request from the user', required: true },
+    prompt: { type: 'string', description: 'Natural language transaction request from the user', required: true },
   },
 };
 
@@ -36,7 +36,7 @@ export async function action(
   try {
     const { schema, topology } = services.database.buildQueryContext();
 
-    const fullPrompt = services.prompt.usePrompt('DB Query', {
+    const fullPrompt = services.prompt.usePrompt('DB Transaction', {
       userPrompt: userPrompt.trim(),
       schema,
       topology,
@@ -45,7 +45,7 @@ export async function action(
     if (!fullPrompt) {
       services.emitter.sendToPlugin('database', {
         type: 'QUERY_ERROR',
-        error: 'DB Query prompt template not found. Import the setup pack.',
+        error: 'DB Transaction prompt template not found. Import the setup pack.',
       });
       return { success: false, error: 'Prompt not found' };
     }

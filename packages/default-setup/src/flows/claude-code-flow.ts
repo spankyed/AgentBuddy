@@ -268,16 +268,26 @@ export default {
     ),
     // ─── DB query generation ──────────────────────────────────────────
     // The database system forwards GENERATE_AI_QUERY as a db.query brain
-    // event. This listener calls Claude CLI to generate the EARS query.
+    // event. Routes to the appropriate action based on mode.
     on(
       "db.query",
       [[
-        action("CC: DB Query", {
-          label: "db-query",
-          map: {
-            prompt: "$.event.data.payload.prompt",
+        branch([
+          {
+            if: "$.event.data.payload.mode == 'transaction'",
+            steps: [
+              action("CC: DB Transaction", {
+                label: "db-transaction",
+                map: { prompt: "$.event.data.payload.prompt" },
+              }),
+            ],
           },
-        }),
+        ], [
+          action("CC: DB Query", {
+            label: "db-query",
+            map: { prompt: "$.event.data.payload.prompt" },
+          }),
+        ], "DB Mode Router"),
       ]],
       "DB query generation",
     ),
