@@ -28,6 +28,7 @@ import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approva
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId } from './thread-context';
 import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken } from './session-artifact';
+import { parseContextMarkdown } from './context-parser';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -100,7 +101,12 @@ export async function consumeStream(
 
   // Extracted from the `result` line directly — survives even if handle.result
   // rejects (error subtypes like error_during_execution).
-  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; inputTokens: number; subtype?: string; errors?: string[] } | undefined;
+  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; errors?: string[] } | undefined;
+
+  // After the main turn completes, we send `/context` through the existing
+  // handle to get context window usage without spawning a new subprocess.
+  let contextQueryPending = false;
+  let contextUsageParsed: any;
 
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
@@ -124,6 +130,12 @@ export async function consumeStream(
     for await (const ev of handle.events) {
       const line = ev as any;
       eventCount++;
+
+      // While waiting for the /context result, skip all normal event handlers.
+      // No timeout needed: /context is a local-jsx command (synchronous), and
+      // the loop terminates naturally when the child exits (eventQueue.close).
+      if (contextQueryPending && line.type !== 'result') continue;
+
       if (eventCount <= 5 || eventCount % 20 === 0) {
         log.debug('stream event', { n: eventCount, type: line?.type });
       }
@@ -467,6 +479,13 @@ export async function consumeStream(
       // The `result` event is the CLI's terminal signal. Extract cost/duration
       // directly — handle.result may reject for error subtypes, losing this data.
       if (line.type === 'result') {
+        // Second result: /context response — parse and break
+        if (contextQueryPending) {
+          contextUsageParsed = parseContextMarkdown((line as any).result ?? '');
+          break;
+        }
+
+        // First result: main turn completed
         log.debug('result line received', {
           subtype: (line as any).subtype,
           total_cost_usd: (line as any).total_cost_usd,
@@ -481,10 +500,18 @@ export async function consumeStream(
           text: (line as any).result ?? '',
           totalCostUsd: (line as any).total_cost_usd || sumModelUsageCost((line as any).modelUsage),
           durationMs: (line as any).duration_ms ?? 0,
-          inputTokens: (line as any).usage?.input_tokens ?? 0,
           subtype: (line as any).subtype,
           errors: (line as any).errors,
         };
+
+        // Only query /context on successful turns — error results mean the
+        // CLI may be exiting or in a bad state.
+        const isSuccess = (line as any).subtype == null || (line as any).subtype === 'success';
+        if (isSuccess) {
+          contextQueryPending = true;
+          try { handle.send('/context'); } catch { break; }
+          continue;
+        }
         break;
       }
     }
@@ -505,7 +532,7 @@ export async function consumeStream(
     // Use the result data extracted directly from the result line in the loop.
     // No need to await handle.result — it may reject for error subtypes
     // (error_during_execution, etc.) or SIGTERM kills, losing cost/duration.
-    const result = resultFromLine ?? { sessionId: '', text: '', totalCostUsd: 0, durationMs: 0, inputTokens: 0 };
+    const result = resultFromLine ?? { sessionId: '', text: '', totalCostUsd: 0, durationMs: 0 };
     log.debug('stream drained', {
       eventCount,
       sessionId: result.sessionId,
@@ -599,12 +626,12 @@ export async function consumeStream(
         sessionId: result.sessionId,
         costUsd: result.totalCostUsd,
         durationMs: result.durationMs,
-        inputTokens: result.inputTokens,
         toolCallCount: toolActivity.entries.length,
         mutatedFileCount: mutatedPaths.length,
         mutatedPaths,
         hadErrors: !!hadToolErrors || !!isErrorResult,
         userText: text,
+        contextUsage: contextUsageParsed,
       },
     });
 
@@ -641,7 +668,6 @@ export async function consumeStream(
           sessionId: resultFromLine?.sessionId || state?.sessionId || '',
           costUsd: resultFromLine?.totalCostUsd ?? 0,
           durationMs: resultFromLine?.durationMs ?? 0,
-          inputTokens: resultFromLine?.inputTokens ?? 0,
           toolCallCount: toolActivity.entries.length,
           mutatedFileCount: mutatedPaths.length,
           mutatedPaths,
@@ -688,7 +714,7 @@ export async function consumeStream(
     //   updateChatState(services, threadId, 'idle')
     services.emitter.sendToBrainSystem({
       eventType: 'cc.stream.completed',
-      payload: { threadId, hadErrors: true, error: message, inputTokens: resultFromLine?.inputTokens ?? 0 },
+      payload: { threadId, hadErrors: true, error: message },
     });
   }
 }

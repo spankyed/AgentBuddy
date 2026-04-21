@@ -44,7 +44,7 @@ export async function action(
       model: model || '',
       cwd: cwd || '',
       // Reset context tracking when starting a fresh CLI session.
-      ...(isNewSession ? { alertedThresholds: [], contextTokens: 0 } : {}),
+      ...(isNewSession ? { alertedThresholds: [], contextUsage: undefined } : {}),
     };
   });
 

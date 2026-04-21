@@ -430,10 +430,18 @@ export interface ClaudeSessionArtifactContent {
    * persisted before this field existed; readers coalesce to `'default'`.
    */
   permissionMode?: PermissionMode;
-  /** Cumulative input tokens from the latest turn — context window consumption. */
-  contextTokens?: number;
   /** Threshold percentages that have already fired an alert (avoids re-alerting). */
   alertedThresholds?: number[];
+  /** Full context usage breakdown from CLI `/context` query (populated after each turn). */
+  contextUsage?: {
+    model: string;
+    totalTokens: number;
+    maxTokens: number;
+    percentage: number;
+    categories: Array<{ name: string; tokens: number; percentage: number }>;
+    memoryFiles?: Array<{ type: string; path: string; tokens: number }>;
+    skills?: Array<{ name: string; source: string; tokens: number }>;
+  };
 }
 
 export interface DiffArtifactContent {

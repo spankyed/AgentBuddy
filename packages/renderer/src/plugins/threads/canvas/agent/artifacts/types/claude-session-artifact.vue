@@ -85,14 +85,57 @@
 
           <span class="text-neutral-500">Cost</span>
           <span class="text-neutral-200 tabular-nums">${{ (content.totalCostUsd ?? 0).toFixed(3) }}</span>
+        </div>
 
-          <span class="text-neutral-500">Context</span>
-          <span class="tabular-nums" :class="contextUsage.color">
-            {{ contextUsage.pct }}%
-            <span v-if="content.contextTokens" class="text-neutral-500 text-[10px] ml-1">
-              ({{ (content.contextTokens ?? 0).toLocaleString() }} tokens)
-            </span>
-          </span>
+        <!-- Context usage breakdown (from CLI /context query) -->
+        <div v-if="ctx" class="pt-2 mt-2 border-t border-neutral-800">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <span class="text-xs text-neutral-500 font-mono">{{ ctx.model || '—' }}</span>
+            <span class="text-xs tabular-nums" :class="ctxPct.color">{{ ctx.percentage }}%</span>
+          </div>
+
+          <!-- Stacked progress bar -->
+          <div class="h-2 bg-neutral-800 rounded-full overflow-hidden flex">
+            <div
+              v-for="cat in visibleCategories"
+              :key="'bar-' + cat.name"
+              class="h-full first:rounded-l-full last:rounded-r-full transition-all duration-300"
+              :class="getCategoryColor(cat.name)"
+              :style="{ width: `${cat.percentage}%` }"
+            />
+          </div>
+          <div class="flex justify-between mt-1.5 text-[11px] tabular-nums text-neutral-500">
+            <span>{{ fmt(ctx.totalTokens) }} used</span>
+            <span>{{ fmt(ctx.maxTokens) }} limit</span>
+          </div>
+
+          <!-- Category breakdown -->
+          <div class="mt-3 space-y-2">
+            <p class="text-[10px] uppercase tracking-wide text-neutral-500">Breakdown</p>
+            <div
+              v-for="cat in visibleCategories"
+              :key="cat.name"
+              class="space-y-0.5"
+            >
+              <div class="flex items-baseline justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-sm shrink-0" :class="getCategoryColor(cat.name)" />
+                  <span class="text-xs text-neutral-300">{{ cat.name }}</span>
+                </div>
+                <div class="flex items-baseline gap-3">
+                  <span class="text-xs tabular-nums text-neutral-400">{{ fmt(cat.tokens) }}</span>
+                  <span class="text-[11px] tabular-nums text-neutral-600 w-10 text-right">{{ cat.percentage.toFixed(1) }}%</span>
+                </div>
+              </div>
+              <div class="h-1 bg-neutral-800 rounded-full overflow-hidden">
+                <div
+                  class="h-full rounded-full transition-all duration-300"
+                  :class="getCategoryColor(cat.name)"
+                  :style="{ width: barWidth(cat.percentage) }"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Recent tools (last 3, collapsible) -->
@@ -179,6 +222,22 @@ type PermissionMode =
   | 'dontAsk'
   | 'auto'
 
+interface ContextCategory {
+  name: string
+  tokens: number
+  percentage: number
+}
+
+interface ContextUsageData {
+  model: string
+  totalTokens: number
+  maxTokens: number
+  percentage: number
+  categories: ContextCategory[]
+  memoryFiles?: Array<{ type: string; path: string; tokens: number }>
+  skills?: Array<{ name: string; source: string; tokens: number }>
+}
+
 interface SessionContent {
   sessionId: string
   model: string
@@ -192,7 +251,7 @@ interface SessionContent {
   lastTool?: { name: string; summary: string; at: number }
   permissionMode?: PermissionMode
   sessionError?: string
-  contextTokens?: number
+  contextUsage?: ContextUsageData
   additionalDirs?: string[]
 }
 
@@ -212,14 +271,44 @@ const recentTools = computed(() =>
   content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
 )
 
-// Context window usage
-const CONTEXT_LIMIT = 200_000
-const contextUsage = computed(() => {
-  const t = content.value?.contextTokens ?? 0
-  const pct = t > 0 ? Math.min(100, Math.round((t / CONTEXT_LIMIT) * 100)) : 0
+// Context usage — prefer full contextUsage data from CLI /context query
+const ctx = computed(() => content.value?.contextUsage ?? null)
+
+const visibleCategories = computed(() =>
+  ctx.value?.categories.filter((c: ContextCategory) => c.name !== 'Free space' && c.name !== 'Autocompact buffer') ?? []
+)
+
+// Simple percentage for the key/value grid row
+const ctxPct = computed(() => {
+  const pct = ctx.value?.percentage ?? 0
   const color = pct >= 90 ? 'text-red-400' : pct >= 75 ? 'text-yellow-400' : 'text-neutral-200'
   return { pct, color }
 })
+
+const CATEGORY_COLORS: Record<string, string> = {
+  'System prompt': 'bg-neutral-500',
+  'System tools': 'bg-blue-500',
+  'MCP tools': 'bg-cyan-500',
+  'Memory files': 'bg-orange-500',
+  'Skills': 'bg-yellow-500',
+  'Messages': 'bg-purple-500',
+  'Custom Agents': 'bg-emerald-500',
+}
+
+function getCategoryColor(name: string): string {
+  return CATEGORY_COLORS[name] ?? 'bg-neutral-500'
+}
+
+function barWidth(pct: number): string {
+  if (pct <= 0) return '0%'
+  return `${Math.max(pct, 0.5)}%`
+}
+
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
 
 const settings = useSelector(threadsActor, (state: any) => state.context.settings);
 const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides);
