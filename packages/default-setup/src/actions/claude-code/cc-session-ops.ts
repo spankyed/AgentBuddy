@@ -175,7 +175,7 @@ async function handleResume(
   // has real conversation (not just command/system messages).
   const existingMessages = services.repository.threadQueries.messages(threadId as any);
   const hasRealMessages = existingMessages?.some((m: any) =>
-    m.sender !== 'system' && m.sender !== 'marker' && !m.isCommand
+    m.sender === 'user' && !m.isCommand
   );
   let targetThreadId = threadId;
 

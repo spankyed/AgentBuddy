@@ -32,8 +32,8 @@
               <span v-else class="truncate" :title="pr.baseRefName">{{ pr.baseRefName }}</span>
             </div>
           </div>
-          <div class="flex items-center gap-1 shrink-0 mt-0.5">
-            <span v-if="!editing" class="text-sm text-neutral-500 shrink-0">#{{ pr.number }}</span>
+          <div class="flex items-center gap-1 shrink-0">
+            <span v-if="!editing" class="text-sm text-neutral-500 shrink-0 py-1.5">#{{ pr.number }}</span>
             <!-- Edit toggle (only for OPEN PRs) -->
             <button
               v-if="pr.state === 'OPEN' && !editing"

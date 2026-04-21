@@ -47,7 +47,7 @@ export const threadQueries = {
   messages: (threadId: EARS.EntityId) => 
     qx(threadId)
       .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
-      .pick(["text", "sender", "timestamp", "compacted"] as const) as Partial<MessageEntity>[],
+      .pick(["text", "sender", "timestamp", "compacted", "isCommand"] as const) as Partial<MessageEntity>[],
   
   // Get linked threads
   linkedThreads: (threadId: EARS.EntityId) =>
