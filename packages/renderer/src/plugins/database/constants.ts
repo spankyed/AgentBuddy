@@ -1,21 +1,18 @@
-// export const exampleQuery = `return qx(EARS.Entity.Thread).limit(10).pickAll();`
-
 export const exampleQuery =
   `// Query all threads with their data
 return qx(EARS.Entity.Thread).limit(10).pickAll();
 
 // Or try these examples:
 // return qx(EARS.Entity.Thread).where('status', 'active').pickAll();
-// return qx().where('label').limit(20).pick(['id', 'label']);
-// return qx(EARS.Entity.Tag).orderBy('name').pick(['id', 'name', 'color']);
-// return qx(EARS.Entity.User).distinct('role').pick(['id', 'name', 'role']);
-// return qx().ofType(EARS.Entity.Message).reverse().limit(10).pick(['id', 'content', 'timestamp']);
-// return qx(EARS.Entity.Thread).linksTo('HAS', EARS.Entity.Tag).pick(['id', 'name', 'color']);
-// return qx('Thread-1').linksTo('CONTAINS', EARS.Entity.Message).pick(['id', 'text', 'sender']);
+// return qx().where('label').limit(20).pick(['label']);
+// return qx(EARS.Entity.Flow).orderBy('label').pick(['label', 'description']);
+// return qx(EARS.Entity.Message).reverse().limit(10).pick(['text', 'sender', 'timestamp']);
+// return qx('Thread-1').linksTo('contains', EARS.Entity.Message).pick(['text', 'sender']);
+// return qx('Thread-1').linksPick('contains', ['text', 'sender'], EARS.Entity.Message);
 
 // IMPORTANT: Chain methods in this order:
-// 1. Filters/Transforms: ofType(), where(), withRole(), orderBy(), limit(), distinct()
-// 2. Projections (terminal): pick(), pickAll(), pickOne(), ids(), count()
+// 1. Filters/Shaping: ofType(), where(), withRole(), orderBy(), limit(), distinct(), reverse()
+// 2. Terminals: pick(), pickAll(), pickOne(), ids(), count(), first(), exists()
 `
 
 
@@ -23,7 +20,7 @@ export const entityQueryTemplate = (value: string) =>
   `return qx(EARS.Entity.${value}).limit(20).pickAll();`
 
 export const attributeQueryTemplate = (value: string) =>
-  `return qx().where('${value}').limit(20).pick(['id', '${value}']);`
+  `return qx().where('${value}').limit(20).pick(['${value}']);`
 
 export const relationQueryTemplate = (value: string) =>
   `// Query entities with ${value} relations
@@ -31,14 +28,13 @@ const results = [];
 const allEntities = getAllEntities();
 
 for (const entityId of allEntities) {
-  const targets = qx(entityId).linksTo('${value}', Object.values(EARS.Entity)).ids();
-  
+  const targets = qx(entityId).linksTo('${value}').ids();
+
   if (targets.length > 0) {
-    const entityData = qx(entityId).pickOne(['id']);
     const allData = getAll(entityId);
-    
+
     results.push({
-      source: entityData.id,
+      source: entityId,
       relationType: '${value}',
       targets: targets.slice(0, 5),
       targetCount: targets.length,
@@ -49,7 +45,7 @@ for (const entityId of allEntities) {
 
 return results.slice(0, 20);`
 
-export const transactionExampleQuery = 
+export const transactionExampleQuery =
   `// Create a new agent entity
 const agentId = tx(EARS.Entity.Agent)
   .put('name', 'My Assistant')
@@ -70,7 +66,7 @@ const threadId = tx(EARS.Entity.Thread)
   .link(EARS.RelKind.CONTAINS, agentId)
   .id();
 
-return { 
+return {
   created: { agentId, threadId },
   message: 'Successfully created agent and thread'
 };
@@ -78,6 +74,5 @@ return {
 // More transaction examples:
 // Delete an entity: tx(entityId).destroy();
 // Grant/revoke roles: tx(entityId).grant('admin').revoke('user');
-// Create symmetric relations: tx(id1).link(EARS.RelKind.relates_to, id2, { symmetric: true });
 // Batch operations: tx(id).batchPut({ name: 'New Name', status: 'updated' });
 `
