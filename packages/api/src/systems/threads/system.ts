@@ -177,6 +177,7 @@ export type OutgoingThreadsEvents =
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
+  | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
 
 export interface ThreadsContext {}
 
@@ -479,11 +480,29 @@ export const threadsSystem = setup({
     },
     sendThreadChatData: ({ system, event }) => {
       const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
-      services.chat.openThreadChatAndRefreshRecent(threadId);
+      try {
+        services.chat.openThreadChatAndRefreshRecent(threadId);
+      } catch (err) {
+        logger.warn('Thread not found for chat open, skipping', { threadId });
+        system.get(bus).send(emit(threads, {
+          type: 'THREAD_CHAT_ERROR',
+          threadId: threadId as string,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      }
     },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = typeOf('OPEN_THREAD_TAB', event);
-      services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
+      try {
+        services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
+      } catch (err) {
+        logger.warn('Thread not found for tab open, skipping', { threadId });
+        system.get(bus).send(emit(threads, {
+          type: 'THREAD_CHAT_ERROR',
+          threadId: threadId as string,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+      }
     },
     forwardUserMessage: ({ system, event }) => {
       const { text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_MSG', event);

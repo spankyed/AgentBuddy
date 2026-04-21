@@ -718,7 +718,7 @@ const threadsState = setup({
       }
 
       // Read chatState from thread entity (canonical source).
-      const chatState: ChatState = (thread as any).chatState ?? 'idle';
+      const chatState: ChatState = (thread.chatState as ChatState) ?? 'idle';
 
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
@@ -879,6 +879,17 @@ const threadsState = setup({
       if (newActiveTabId) {
         enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
       }
+    }),
+    removeStaleTab: assign(({ context, event }) => {
+      const { threadId } = event as unknown as { type: 'THREAD_CHAT_ERROR'; threadId: string };
+      const newTabs = context.tabs.filter(t => t.id !== threadId);
+      let newActiveTabId = context.activeTabId;
+      if (context.activeTabId === threadId) {
+        const idx = context.tabs.findIndex(t => t.id === threadId);
+        const nextTab = context.tabs[idx + 1] ?? context.tabs[idx - 1];
+        newActiveTabId = nextTab?.id ?? '';
+      }
+      return { tabs: newTabs, activeTabId: newActiveTabId };
     }),
     persistTabs: ({ context }) => saveTabsToStorage(context.tabs, context.activeTabId),
     selectArtifact: assign(({ context, event }) => {
@@ -1170,6 +1181,9 @@ const threadsState = setup({
     },
     THREADS_IMPORT_FAILED: {
       actions: 'handleThreadsImportFailed',
+    },
+    THREAD_CHAT_ERROR: {
+      actions: ['removeStaleTab', 'persistTabs'],
     },
     'THREADS.EXPORT': {
       actions: ['setExportingThreads', 'sendExportThreads'],

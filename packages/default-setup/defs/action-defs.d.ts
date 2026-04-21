@@ -1210,6 +1210,7 @@ type AgentThreadData = {
     artifacts: ArtifactEntity[];
     forcedMode?: ThreadEntity['forcedMode'];
     pinned?: boolean;
+    chatState?: string;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -4812,6 +4813,11 @@ declare const events: {
         commands: CommandItem[];
         pluginId: "threads";
     } | {
+        type: "THREAD_CHAT_ERROR";
+        threadId: string;
+        error: string;
+        pluginId: "threads";
+    } | {
         type: "FLOWS_CONNECTED";
         data: FlowsConnectedData;
         pluginId: "flows";
@@ -6218,6 +6224,7 @@ interface TerminalScript {
 interface CodeSettings {
     hotkeys: {
         openTerminal?: KeyboardShortcut | null;
+        openTerminalTab?: KeyboardShortcut | null;
         navigatePrevPanel?: KeyboardShortcut | null;
         navigateNextPanel?: KeyboardShortcut | null;
         focusSearch?: KeyboardShortcut | null;

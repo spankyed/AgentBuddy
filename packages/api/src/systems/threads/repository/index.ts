@@ -144,7 +144,7 @@ export const threadQueries = {
     // Build chat states map from thread entities directly
     const chatStates: Record<string, string> = {};
     for (const thread of extendedThreads) {
-      const chatState = (thread as any).chatState;
+      const chatState = thread.chatState;
       if (typeof chatState === 'string') {
         chatStates[thread.id as string] = chatState;
       }
@@ -360,7 +360,7 @@ function getSortTimestamp(thread: Partial<ThreadEntity>, sortOrder: 'created' | 
 function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Partial<ThreadEntity>[] {
   const threadFields = [
     "shortCode", "topic", "instructions", "status", "timestamp",
-    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived",
+    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState",
   ] as const;
 
   const allThreads = (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
@@ -394,7 +394,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
     status: mostRecentThread.status || 'backlog',
     timestamp: mostRecentThread.timestamp || Date.now(),
     forcedMode: mostRecentThread.forcedMode,
-    chatState: (mostRecentThread as any).chatState,
+    chatState: mostRecentThread.chatState,
     messages: mostRecentThread.id
       ? ((qx(mostRecentThread.id)
           .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
