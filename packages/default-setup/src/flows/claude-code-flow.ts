@@ -291,6 +291,19 @@ export default {
       ]],
       "DB query generation",
     ),
+    // ─── Commit message generation ────────────────────────────────────
+    on(
+      "commit.generate",
+      [[
+        action("CC: Commit Message", {
+          label: "commit-message",
+          map: {
+            diff: "$.event.data.payload.diff",
+          },
+        }),
+      ]],
+      "Commit message generation",
+    ),
     on(
       "thread.fork",
       [[

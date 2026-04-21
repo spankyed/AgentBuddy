@@ -90,6 +90,7 @@ export type Event =
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
   | { type: 'commit.DISMISS_ERROR' }
   | { type: 'commit.GENERATE_MESSAGE' }
+  | { type: 'commit.GENERATING_MESSAGE' }
   | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
   | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
   | { type: 'commit.STASH_LIST' }
@@ -518,7 +519,10 @@ export const commitState = setup({
           actions: 'handleBranchPulled'
         },
         'commit.GENERATE_MESSAGE': {
-          actions: ['setGeneratingMessage', 'requestGenerateMessage']
+          actions: 'requestGenerateMessage'
+        },
+        'commit.GENERATING_MESSAGE': {
+          actions: 'setGeneratingMessage'
         },
         'commit.MESSAGE_GENERATED': {
           actions: 'handleMessageGenerated'

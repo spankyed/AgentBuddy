@@ -7,7 +7,7 @@ import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff, StashEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import * as copilotCli from '../services/copilot-cli'
+import { sendToBrainSystem } from '@/services/event-emitter'
 
 const pluginId = 'code' as const
 const busEvent = systemBus(pluginId)
@@ -50,6 +50,7 @@ export type OutgoingCommitEvents =
   | { type: 'commit.BRANCH_CHECKOUT_SUCCESS'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PUSHED'; data: { branchName: string } }
   | { type: 'commit.BRANCH_PULLED'; data: { branchName: string } }
+  | { type: 'commit.GENERATING_MESSAGE' }
   | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
   | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
   | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
@@ -511,25 +512,10 @@ export const commitSystem = setup({
         // Truncate diff to 40k chars
         const truncatedDiff = diff.length > 40000 ? diff.substring(0, 40000) + '\n... (truncated)' : diff
 
-        const promptText = `Generate a concise git commit message for the following diff. Use conventional commits format (e.g., feat:, fix:, refactor:, docs:, chore:). Keep it to a single line, no markdown wrapping, no backticks. Just output the commit message text.\n\n${truncatedDiff}`
-
-        const cwd = context.gitRepository.getWorkingDir()
-        const message = await copilotCli.prompt(promptText, { cwd })
-
-        if (!message) {
-          const wrapped = emit(pluginId, {
-            type: 'commit.ERROR_RECEIVED',
-            data: { message: 'Copilot returned an empty response.' }
-          })
-          rootEvents.emitOutgoing(wrapped.event)
-          return
-        }
-
-        const wrapped = emit(pluginId, {
-          type: 'commit.MESSAGE_GENERATED',
-          data: { message }
+        sendToBrainSystem({
+          eventType: 'commit.generate',
+          payload: { diff: truncatedDiff },
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
