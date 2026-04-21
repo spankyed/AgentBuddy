@@ -16,6 +16,35 @@ A desktop app for building and running AI agent workflows using an actor-based a
 
 Electron, Vue 3, XState v5, tRPC, Tailwind CSS, Vite, LMDB, Monaco Editor
 
+## Project Structure
+
+```
+packages/
+├── api/                  # Backend — Fastify + tRPC server, XState actor systems, LMDB persistence
+│   ├── src/
+│   │   ├── core/         # Server bootstrap, event bus, tRPC router
+│   │   ├── repository/   # EARS graph database layer
+│   │   ├── services/     # Shared services (LLM, embeddings, etc.)
+│   │   ├── setup/        # Seed data, migrations, initialization
+│   │   └── systems/      # Backend actor systems (actions, brain, flows, library, etc.)
+│   └── tests/
+├── default-setup/        # DSL source + compiler for actions, prompts, flows, library
+│   ├── src/
+│   │   ├── actions/
+│   │   ├── flows/
+│   │   ├── library/
+│   │   └── prompts/
+│   └── build/            # Compiler scripts
+├── main/                 # Electron main process
+│   └── src/modules/      # Window manager, API server launcher, security, etc.
+├── preload/              # IPC bridge (contextBridge APIs)
+└── renderer/             # Frontend — Vue 3 + Tailwind CSS
+    └── src/
+        ├── core/         # App shell, router, event bus client
+        ├── plugins/      # Frontend plugin actors (actions, flows, library, etc.)
+        └── setup/        # Plugin registration
+```
+
 ## Prerequisites
 
 - Node.js &gt;= 23
