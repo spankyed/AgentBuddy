@@ -386,6 +386,7 @@ export type ArtifactType =
   | 'json'
   | 'graph'
   | 'table'
+  | 'markdown'
   // Claude Code artifacts (see packages/default-setup/src/actions/claude-code/ROADMAP.md)
   | 'claude-session'
   | 'diff'

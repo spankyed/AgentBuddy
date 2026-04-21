@@ -1268,7 +1268,7 @@ interface Tab {
     selectedArtifactId?: string;
     pinned?: boolean;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'claude-session' | 'diff' | 'plan';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
@@ -1465,16 +1465,16 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
         entityType: "general" | "plugin" | "internal";
+        path: string[];
         type: "UPDATE_SETTINGS";
         systemId: "settings";
-        path: string[];
         value?: any;
     }, {
         label: string;
         entityType: "general" | "plugin" | "internal";
+        path: string[];
         type: "UPDATE_SETTINGS";
         systemId: "settings";
-        path: string[];
         value?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_SETTINGS">;
@@ -1501,15 +1501,15 @@ declare const events: {
         value: zod.ZodString;
         customName: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        value: string;
         type: "SECRETS.CMD.CREATE_API_KEY";
         systemId: "settings";
-        value: string;
         provider: string;
         customName?: string | undefined;
     }, {
+        value: string;
         type: "SECRETS.CMD.CREATE_API_KEY";
         systemId: "settings";
-        value: string;
         provider: string;
         customName?: string | undefined;
     }>, zod.ZodObject<{
@@ -1519,14 +1519,14 @@ declare const events: {
         value: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         id: string;
+        value: string;
         type: "SECRETS.CMD.UPDATE_API_KEY";
         systemId: "settings";
-        value: string;
     }, {
         id: string;
+        value: string;
         type: "SECRETS.CMD.UPDATE_API_KEY";
         systemId: "settings";
-        value: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
         systemId: zod.ZodLiteral<"settings">;
@@ -2676,15 +2676,15 @@ declare const events: {
         name: zod.ZodOptional<zod.ZodString>;
         databases: zod.ZodArray<zod.ZodEnum<["lmdb", "volatileLmdb", "secretsLmdb"]>, "many">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "EXPORT_DATABASE";
         systemId: "database";
-        path: string;
         databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }, {
+        path: string;
         type: "EXPORT_DATABASE";
         systemId: "database";
-        path: string;
         databases: ("lmdb" | "volatileLmdb" | "secretsLmdb")[];
         name?: string | undefined;
     }>, zod.ZodObject<{
@@ -2692,25 +2692,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "IMPORT_DATABASE";
         systemId: "database";
-        path: string;
     }, {
+        path: string;
         type: "IMPORT_DATABASE";
         systemId: "database";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GET_BACKUP_INFO">;
         systemId: zod.ZodLiteral<"database">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "GET_BACKUP_INFO";
         systemId: "database";
-        path: string;
     }, {
+        path: string;
         type: "GET_BACKUP_INFO";
         systemId: "database";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"RESET_DATABASE">;
         systemId: zod.ZodLiteral<"database">;
@@ -3461,25 +3461,25 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.LIST_FILES";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.READ_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.READ_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.WRITE_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -3487,41 +3487,41 @@ declare const events: {
         content: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         content: string;
+        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
-        path: string;
     }, {
         content: string;
+        path: string;
         type: "explorer.WRITE_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CREATE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
         content: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
-        path: string;
         content?: string | undefined;
     }, {
+        path: string;
         type: "explorer.CREATE_FILE";
         systemId: "code";
-        path: string;
         content?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.DELETE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.DELETE_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.RENAME_FILE">;
         systemId: zod.ZodLiteral<"code">;
@@ -3542,37 +3542,37 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.CREATE_DIRECTORY";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.GET_FILE_INFO">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.GET_FILE_INFO";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CLOSE_FILE">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "explorer.CLOSE_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.QUICK_OPEN_SEARCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -3612,9 +3612,9 @@ declare const events: {
         useRegex: zod.ZodOptional<zod.ZodBoolean>;
         maxResults: zod.ZodOptional<zod.ZodNumber>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
-        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -3623,9 +3623,9 @@ declare const events: {
         useRegex?: boolean | undefined;
         maxResults?: number | undefined;
     }, {
+        path: string;
         type: "search.SEARCH_FILES";
         systemId: "code";
-        path: string;
         query: string;
         includePattern?: string | undefined;
         excludePattern?: string | undefined;
@@ -3695,13 +3695,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         message: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        message: string;
         type: "commit.COMMIT";
         systemId: "code";
-        message: string;
     }, {
+        message: string;
         type: "commit.COMMIT";
         systemId: "code";
-        message: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.GET_CURRENT_BRANCH">;
         systemId: zod.ZodLiteral<"code">;
@@ -3716,13 +3716,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
-        path: string;
     }, {
+        path: string;
         type: "commit.REVERT_FILE";
         systemId: "code";
-        path: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"commit.REVERT_FILES">;
         systemId: zod.ZodLiteral<"code">;
@@ -3883,15 +3883,15 @@ declare const events: {
         baseBranch: zod.ZodString;
         headBranch: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
-        path: string;
         baseBranch: string;
         headBranch?: string | undefined;
     }, {
+        path: string;
         type: "pr.GET_BRANCH_FILE_DIFF";
         systemId: "code";
-        path: string;
         baseBranch: string;
         headBranch?: string | undefined;
     }>, zod.ZodObject<{
@@ -4347,14 +4347,14 @@ declare const events: {
         path: zod.ZodString;
         fromUserNavigation: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        path: string;
         type: "SET_BASE_DIRECTORY";
         systemId: "code";
-        path: string;
         fromUserNavigation?: boolean | undefined;
     }, {
+        path: string;
         type: "SET_BASE_DIRECTORY";
         systemId: "code";
-        path: string;
         fromUserNavigation?: boolean | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_NOTE">;

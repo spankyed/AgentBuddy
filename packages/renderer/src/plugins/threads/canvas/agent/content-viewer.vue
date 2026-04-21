@@ -40,6 +40,7 @@ import JsonArtifact from './artifacts/types/json-artifact.vue';
 import ClaudeSessionArtifact from './artifacts/types/claude-session-artifact.vue';
 import DiffArtifact from './artifacts/types/diff-artifact.vue';
 import PlanArtifact from './artifacts/types/plan-artifact.vue';
+import MarkdownArtifact from './artifacts/types/markdown-artifact.vue';
 
 const props = defineProps<{
   artifacts: ArtifactItem[];
@@ -67,6 +68,7 @@ function getArtifactComponent(type: string) {
     'claude-session': ClaudeSessionArtifact,
     diff: DiffArtifact,
     plan: PlanArtifact,
+    markdown: MarkdownArtifact,
   };
   return components[type as keyof typeof components] || TextArtifact;
 }

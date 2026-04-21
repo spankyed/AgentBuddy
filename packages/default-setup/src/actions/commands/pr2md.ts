@@ -124,7 +124,7 @@ export async function action(
 
     if (threadId) {
       services.artifact.createAndNotify({
-        artifactType: 'text',
+        artifactType: 'markdown',
         title: `PR #${pr.number}: ${pr.title}`,
         content: markdown,
         threadId: threadId as any,
