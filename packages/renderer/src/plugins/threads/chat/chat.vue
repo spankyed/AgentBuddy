@@ -9,6 +9,15 @@
             <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
           </div>
           <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
+            <div v-if="hasOlderMessages" class="text-center py-3">
+              <button
+                @click="actor.send({ type: 'LOAD_OLDER_MESSAGES' })"
+                :disabled="loadingOlderMessages"
+                class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors disabled:opacity-50"
+              >
+                {{ loadingOlderMessages ? 'Loading...' : 'Load older messages' }}
+              </button>
+            </div>
             <ChatMessage
               v-for="message in visibleMessages"
               :key="message.id"
@@ -153,6 +162,8 @@ const isNearBottom = ref(true)
 const pendingScrollOnSend = ref(false)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
+const hasOlderMessages = useSelector(actor, (state) => state.context.hasOlderMessages)
+const loadingOlderMessages = useSelector(actor, (state) => state.context.loadingOlderMessages)
 const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
 const showRevertDialog = ref(false)
 const pendingRevertMessageId = ref<string | null>(null)
@@ -369,8 +380,25 @@ function handleToggleCompacted(markerId: string, compacted: boolean) {
 }
 
 const prevThreadId = ref(currentThread.value?.id)
+const pendingScrollPreserve = ref(false)
+
+// When older messages are about to load, capture scroll height for preservation
+watch(loadingOlderMessages, (loading) => {
+  if (loading) pendingScrollPreserve.value = true
+})
 
 watch(allMessages, async (newMsgs, oldMsgs) => {
+  const container = messagesContainer.value
+
+  // Older messages were prepended — preserve scroll position
+  if (pendingScrollPreserve.value && container) {
+    const prevHeight = container.scrollHeight
+    pendingScrollPreserve.value = false
+    await nextTick()
+    container.scrollTop += (container.scrollHeight - prevHeight)
+    return
+  }
+
   await nextTick()
   const threadChanged = currentThread.value?.id !== prevThreadId.value
   if (threadChanged) prevThreadId.value = currentThread.value?.id
