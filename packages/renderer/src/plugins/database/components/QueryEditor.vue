@@ -143,11 +143,13 @@ watch(successMessage, (msg) => {
   }
 });
 
-// Close prompt bar on outside click
+// Close prompt bar on outside click (ignore clicks on the wand toggle button)
 function handleOutsideClick(e: MouseEvent) {
-  if (showAiPrompt.value && aiPromptContainer.value && !aiPromptContainer.value.contains(e.target as Node)) {
-    showAiPrompt.value = false;
-  }
+  if (!showAiPrompt.value || !aiPromptContainer.value) return;
+  const target = e.target as HTMLElement;
+  if (aiPromptContainer.value.contains(target)) return;
+  if (target.closest('[title="Generate query with AI"]')) return;
+  showAiPrompt.value = false;
 }
 onMounted(() => document.addEventListener('mousedown', handleOutsideClick));
 onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick));
