@@ -398,7 +398,13 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
     messages: mostRecentThread.id
       ? ((qx(mostRecentThread.id)
           .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
-          .filter((m: any) => !m.deleted)) as Partial<MessageEntity>[]
+          .filter((m: any) => !m.deleted)
+          .sort((a: any, b: any) => {
+            // Safety net: queued messages always appear last
+            if (a.status === 'queued' && b.status !== 'queued') return 1;
+            if (b.status === 'queued' && a.status !== 'queued') return -1;
+            return 0;
+          })) as Partial<MessageEntity>[]
       : [],
     artifacts: mostRecentThread.id
       ? getThreadArtifacts(mostRecentThread.id) as any as ArtifactEntity[]
@@ -452,7 +458,14 @@ export const chatQueries = {
           EARS.RelKind.CONTAINS,
           ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status", "compacted"] as const,
           EARS.Entity.Message,
-        ) ?? []).filter((m: any) => !m.deleted) as Partial<MessageEntity>[],
+        ) ?? [])
+        .filter((m: any) => !m.deleted)
+        .sort((a: any, b: any) => {
+          // Safety net: queued messages always appear last
+          if (a.status === 'queued' && b.status !== 'queued') return 1;
+          if (b.status === 'queued' && a.status !== 'queued') return -1;
+          return 0;
+        }) as Partial<MessageEntity>[],
       artifacts: getThreadArtifacts(threadId) as any as ArtifactEntity[],
     };
   },
@@ -521,6 +534,17 @@ export const chatQueries = {
   }
 } as const;
 
+/**
+ * Move a message to the end of its thread's CONTAINS relation list.
+ * Used to keep queued messages at the bottom of the conversation.
+ */
+function relinkMessageToEnd(threadId: EARS.EntityId, messageId: EARS.EntityId): void {
+  tx(threadId).unlinkIf(EARS.RelKind.CONTAINS, messageId);
+  tx(messageId).unlinkIf(EARS.RelKind.CONTAINS, threadId);
+  tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
+  tx(messageId).link(EARS.RelKind.CONTAINS, threadId);
+}
+
 export const chatCommands = {
   addMessage: (params: {
     threadId: EARS.EntityId;
@@ -585,6 +609,18 @@ export const chatCommands = {
 
     tx(threadId).link(EARS.RelKind.CONTAINS, messageId);
     tx(threadId).update('lastMessageTimestamp', timestamp);
+
+    // Keep queued messages at the end of the relation list so they always
+    // render below the current agent turn — even after a thread reload.
+    const siblings = qx(threadId)
+      .linksPick(EARS.RelKind.CONTAINS, ['id', 'status'] as const, EARS.Entity.Message);
+    if (siblings) {
+      for (const sib of siblings) {
+        if ((sib as any).status === 'queued' && sib.id !== messageId) {
+          relinkMessageToEnd(threadId, sib.id!);
+        }
+      }
+    }
 
     return { id: messageId, threadId, text: text.trim(), sender, timestamp };
   },
@@ -675,6 +711,15 @@ export const chatCommands = {
     const now = Date.now();
     const updateData: Record<string, any> = { ...updates, updatedAt: now };
     tx(messageId).updateBatch(updateData);
+
+    // When a message becomes queued, move it to the end of its thread's
+    // CONTAINS relation so it always appears last — even after a reload.
+    if (updates.status === 'queued') {
+      const threadLinks = qx(messageId).links(EARS.RelKind.CONTAINS, EARS.Entity.Thread);
+      for (const { id: tid } of threadLinks) {
+        relinkMessageToEnd(tid, messageId);
+      }
+    }
 
     return { messageId, updatedAt: now, updates };
   },

@@ -989,33 +989,45 @@ const threadsState = setup({
 
       if (!context.currentThread?.messages) return {};
 
+      const updated = context.currentThread.messages.map(msg =>
+        msg.id === messageId
+          ? {
+            ...msg,
+            ...('text' in typedEvent && typedEvent.text !== undefined && { text: typedEvent.text }),
+            ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
+            ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
+            ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
+            ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
+            ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText }),
+            ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable }),
+            ...('compacted' in typedEvent && typedEvent.compacted !== undefined && { compacted: typedEvent.compacted }),
+            // Shallow-merge context so partial backend updates (e.g.
+            // the stream-consumer writing only `cliUuid`) don't wipe
+            // existing keys. Without this branch, `msg.context.cliUuid`
+            // only ever shows up after a full thread reload — which is
+            // why `chat.vue:doRevert` was reading `undefined` and the
+            // revert+rewind path was bailing with "no CLI UUID".
+            ...('context' in typedEvent && typedEvent.context !== undefined && {
+              context: { ...((msg as any).context ?? {}), ...typedEvent.context },
+            }),
+          }
+          : msg
+      );
+
+      // When a message becomes queued, move it to the end so it always
+      // appears below the current agent turn in the conversation.
+      if ('status' in typedEvent && typedEvent.status === 'queued') {
+        const idx = updated.findIndex(m => m.id === messageId);
+        if (idx !== -1 && idx < updated.length - 1) {
+          const [queued] = updated.splice(idx, 1);
+          updated.push(queued);
+        }
+      }
+
       return {
         currentThread: {
           ...context.currentThread,
-          messages: context.currentThread.messages.map(msg =>
-            msg.id === messageId
-              ? {
-                ...msg,
-                ...('text' in typedEvent && typedEvent.text !== undefined && { text: typedEvent.text }),
-                ...('blocks' in typedEvent && typedEvent.blocks !== undefined && { blocks: typedEvent.blocks }),
-                ...('responseTimestamp' in typedEvent && typedEvent.responseTimestamp !== undefined && { responseTimestamp: typedEvent.responseTimestamp }),
-                ...('blockResponse' in typedEvent && typedEvent.blockResponse !== undefined && { blockResponse: typedEvent.blockResponse }),
-                ...('status' in typedEvent && typedEvent.status !== undefined && { status: typedEvent.status }),
-                ...('asideText' in typedEvent && typedEvent.asideText !== undefined && { asideText: typedEvent.asideText }),
-                ...('forkable' in typedEvent && typedEvent.forkable !== undefined && { forkable: typedEvent.forkable }),
-                ...('compacted' in typedEvent && typedEvent.compacted !== undefined && { compacted: typedEvent.compacted }),
-                // Shallow-merge context so partial backend updates (e.g.
-                // the stream-consumer writing only `cliUuid`) don't wipe
-                // existing keys. Without this branch, `msg.context.cliUuid`
-                // only ever shows up after a full thread reload — which is
-                // why `chat.vue:doRevert` was reading `undefined` and the
-                // revert+rewind path was bailing with "no CLI UUID".
-                ...('context' in typedEvent && typedEvent.context !== undefined && {
-                  context: { ...((msg as any).context ?? {}), ...typedEvent.context },
-                }),
-              }
-              : msg
-          )
+          messages: updated,
         }
       };
     }),
@@ -1025,10 +1037,18 @@ const threadsState = setup({
 
       if (context.currentThread?.id !== threadId) return {};
 
+      const messages = context.currentThread.messages ?? [];
+      const firstQueuedIdx = messages.findIndex((m: any) => m.status === 'queued');
+
+      // Insert before queued messages so they always stay at the bottom
+      const updatedMessages = (firstQueuedIdx !== -1 && (message as any).status !== 'queued')
+        ? [...messages.slice(0, firstQueuedIdx), message, ...messages.slice(firstQueuedIdx)]
+        : [...messages, message];
+
       return {
         currentThread: {
           ...context.currentThread,
-          messages: [...(context.currentThread.messages ?? []), message]
+          messages: updatedMessages,
         }
       };
     }),
