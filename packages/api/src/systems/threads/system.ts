@@ -6,6 +6,7 @@ import { emit, getActor, safeEvents, sendParentSafe } from '@/core/helpers/actor
 import { EARS } from '@/core/types';
 import { z } from 'zod';
 import { repository } from '@/repository';
+import { getPaginatedMessages } from './repository/index';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData, CommandItem } from '@/types';
 import { ThreadRelations, type ThreadExtendedData, type BlockResponse } from './types';
@@ -139,6 +140,11 @@ export const IncomingThreadsEvents = [
     markerId: z.string(),
     compacted: z.boolean(),
   }),
+  busEvent('LOAD_OLDER_MESSAGES', {
+    threadId: z.string(),
+    beforeTimestamp: z.number(),
+    limit: z.number().optional(),
+  }),
 ] as const
 
 export type ThreadsInternalEvents =
@@ -178,6 +184,7 @@ export type OutgoingThreadsEvents =
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
+  | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasOlder: boolean }
 
 export interface ThreadsContext {}
 
@@ -503,6 +510,16 @@ export const threadsSystem = setup({
           error: err instanceof Error ? err.message : String(err),
         }));
       }
+    },
+    loadOlderMessages: ({ system, event }) => {
+      const { threadId, beforeTimestamp, limit } = typeOf('LOAD_OLDER_MESSAGES', event);
+      const { messages, hasOlder } = getPaginatedMessages(threadId as EARS.EntityId, limit ?? 50, beforeTimestamp);
+      system.get(bus).send(emit(threads, {
+        type: 'OLDER_MESSAGES_LOADED',
+        threadId,
+        messages,
+        hasOlder,
+      }));
     },
     forwardUserMessage: ({ system, event }) => {
       const { text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_MSG', event);
@@ -903,6 +920,9 @@ export const threadsSystem = setup({
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      LOAD_OLDER_MESSAGES: {
+        actions: 'loadOlderMessages',
       },
       THREAD_DELETED: {
         // Internal notification (e.g., refresh chat if active thread deleted)

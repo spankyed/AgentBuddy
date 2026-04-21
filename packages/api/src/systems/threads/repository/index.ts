@@ -384,7 +384,10 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
   }
 
   const mostRecentThread = threads[0];
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asideText", "asideContext", "status", "context", "compacted"] as const;
+
+  const { messages, hasOlder } = mostRecentThread.id
+    ? getPaginatedMessages(mostRecentThread.id, 50)
+    : { messages: [] as Partial<MessageEntity>[], hasOlder: false };
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -395,23 +398,48 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
     timestamp: mostRecentThread.timestamp || Date.now(),
     forcedMode: mostRecentThread.forcedMode,
     chatState: mostRecentThread.chatState,
-    messages: mostRecentThread.id
-      ? ((qx(mostRecentThread.id)
-          .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
-          .filter((m: any) => !m.deleted)
-          .sort((a: any, b: any) => {
-            // Safety net: queued messages always appear last
-            if (a.status === 'queued' && b.status !== 'queued') return 1;
-            if (b.status === 'queued' && a.status !== 'queued') return -1;
-            return 0;
-          })) as Partial<MessageEntity>[]
-      : [],
+    messages,
+    hasOlderMessages: hasOlder,
     artifacts: mostRecentThread.id
       ? getThreadArtifacts(mostRecentThread.id) as any as ArtifactEntity[]
       : [],
   };
 
   return { threads, currentThread };
+}
+
+const CHAT_MESSAGE_FIELDS = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status", "compacted"] as const;
+
+export function getPaginatedMessages(
+  threadId: EARS.EntityId,
+  limit: number = 50,
+  beforeTimestamp?: number
+): { messages: Partial<MessageEntity>[]; hasOlder: boolean } {
+  const all = (qx(threadId)
+    .linksPick(EARS.RelKind.CONTAINS, CHAT_MESSAGE_FIELDS, EARS.Entity.Message) ?? [])
+    .filter((m: any) => !m.deleted);
+
+  // Separate queued from non-queued, sort non-queued by timestamp asc
+  const queued = all.filter((m: any) => m.status === 'queued');
+  const nonQueued = all
+    .filter((m: any) => m.status !== 'queued')
+    .sort((a: any, b: any) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+
+  // If loading older messages, filter to before the given timestamp
+  const eligible = beforeTimestamp
+    ? nonQueued.filter((m: any) => (m.timestamp ?? 0) < beforeTimestamp)
+    : nonQueued;
+
+  // Take the LAST `limit` messages (most recent)
+  const sliced = eligible.slice(Math.max(0, eligible.length - limit));
+  const hasOlder = beforeTimestamp
+    ? eligible.length > limit
+    : nonQueued.length > sliced.length;
+
+  // On initial load, append queued; on "load older" requests, no queued
+  const messages = beforeTimestamp ? sliced : [...sliced, ...queued];
+
+  return { messages: messages as Partial<MessageEntity>[], hasOlder };
 }
 
 function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
@@ -451,21 +479,12 @@ export const chatQueries = {
       .limit(4)
       .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState"] as const);
 
+    const { messages, hasOlder } = getPaginatedMessages(threadId, 50);
+
     return {
       ...thread[0] as AgentThreadData,
-      messages: (qx(threadId)
-        .linksPick(
-          EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status", "compacted"] as const,
-          EARS.Entity.Message,
-        ) ?? [])
-        .filter((m: any) => !m.deleted)
-        .sort((a: any, b: any) => {
-          // Safety net: queued messages always appear last
-          if (a.status === 'queued' && b.status !== 'queued') return 1;
-          if (b.status === 'queued' && a.status !== 'queued') return -1;
-          return 0;
-        }) as Partial<MessageEntity>[],
+      messages,
+      hasOlderMessages: hasOlder,
       artifacts: getThreadArtifacts(threadId) as any as ArtifactEntity[],
     };
   },

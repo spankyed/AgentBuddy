@@ -1211,6 +1211,7 @@ type AgentThreadData = {
     forcedMode?: ThreadEntity['forcedMode'];
     pinned?: boolean;
     chatState?: string;
+    hasOlderMessages?: boolean;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -2367,6 +2368,24 @@ declare const events: {
         type: "TOGGLE_COMPACTED";
         systemId: "threads";
         markerId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"LOAD_OLDER_MESSAGES">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        beforeTimestamp: zod.ZodNumber;
+        limit: zod.ZodOptional<zod.ZodNumber>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "LOAD_OLDER_MESSAGES";
+        systemId: "threads";
+        threadId: string;
+        beforeTimestamp: number;
+        limit?: number | undefined;
+    }, {
+        type: "LOAD_OLDER_MESSAGES";
+        systemId: "threads";
+        threadId: string;
+        beforeTimestamp: number;
+        limit?: number | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -2647,14 +2666,14 @@ declare const events: {
         type: "GET_FLOW_EVENTS";
         systemId: "database";
         flowId: string;
-        offset?: number | undefined;
         limit?: number | undefined;
+        offset?: number | undefined;
     }, {
         type: "GET_FLOW_EVENTS";
         systemId: "database";
         flowId: string;
-        offset?: number | undefined;
         limit?: number | undefined;
+        offset?: number | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GET_NODE_DETAILS">;
         systemId: zod.ZodLiteral<"database">;
@@ -4819,6 +4838,12 @@ declare const events: {
         type: "THREAD_CHAT_ERROR";
         threadId: string;
         error: string;
+        pluginId: "threads";
+    } | {
+        type: "OLDER_MESSAGES_LOADED";
+        threadId: string;
+        messages: Partial<MessageEntity>[];
+        hasOlder: boolean;
         pluginId: "threads";
     } | {
         type: "FLOWS_CONNECTED";

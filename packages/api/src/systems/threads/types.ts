@@ -311,6 +311,7 @@ export type AgentThreadData = {
   forcedMode?: ThreadEntity['forcedMode'];
   pinned?: boolean;
   chatState?: string;
+  hasOlderMessages?: boolean;
 }
 
 export type RecentThreadRefreshData = {

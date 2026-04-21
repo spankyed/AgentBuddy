@@ -190,6 +190,7 @@ type UIEvent =
   | { type: 'UPDATE_CLAUDE_WORKTREE'; threadId: string; useWorktree: boolean }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
+  | { type: 'LOAD_OLDER_MESSAGES' }
 
 type ThreadEvents =
   | UIEvent
@@ -247,6 +248,8 @@ interface ThreadsContext {
   hasRequiredApiKeys: boolean;
   commands: CommandItem[];
   quickPromptCursor: { x: number; y: number } | null;
+  hasOlderMessages: boolean;
+  loadingOlderMessages: boolean;
 }
 
 // ---- State machine ----
@@ -731,17 +734,48 @@ const threadsState = setup({
           mode: thread.forcedMode,
           phase: newPhase,
           chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+          hasOlderMessages: thread.hasOlderMessages ?? false,
+          loadingOlderMessages: false,
         };
       }
 
       return {
         currentThread: thread,
         chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+        hasOlderMessages: thread.hasOlderMessages ?? false,
+        loadingOlderMessages: false,
       };
     }),
     setRefreshThreadsData: assign(({ event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
       return { recentThreads: typedEvent.data.recentThreads as ThreadEntity[] };
+    }),
+    requestOlderMessages: assign(({ context }) => {
+      if (!context.currentThread?.id || context.loadingOlderMessages) return {};
+      const msgs = (context.currentThread.messages ?? []).filter((m: any) => m.status !== 'queued');
+      const oldest = msgs[0]?.timestamp;
+      if (!oldest) return {};
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'LOAD_OLDER_MESSAGES',
+        threadId: context.currentThread.id,
+        beforeTimestamp: oldest,
+      });
+      return { loadingOlderMessages: true };
+    }),
+    prependOlderMessages: assign(({ context, event }) => {
+      const { threadId, messages, hasOlder } = typeOf('OLDER_MESSAGES_LOADED', event);
+      if (context.currentThread?.id !== threadId) return {};
+      const existingIds = new Set((context.currentThread.messages ?? []).map((m: any) => m.id));
+      const newMsgs = messages.filter((m: any) => !existingIds.has(m.id));
+      const existing = context.currentThread.messages ?? [];
+      const queued = existing.filter((m: any) => m.status === 'queued');
+      const nonQueued = existing.filter((m: any) => m.status !== 'queued');
+      return {
+        currentThread: { ...context.currentThread, messages: [...newMsgs, ...nonQueued, ...queued] },
+        hasOlderMessages: hasOlder,
+        loadingOlderMessages: false,
+      };
     }),
     setStartupData: enqueueActions(({ enqueue, context, event, self }) => {
       const typedEvent = typeOf('AGENT_CONNECTED', event);
@@ -790,6 +824,8 @@ const threadsState = setup({
         commands: typedEvent.data.commands || [],
         ...modeUpdate,
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
+        hasOlderMessages: (currentThread as any)?.hasOlderMessages ?? false,
+        loadingOlderMessages: false,
       }));
 
       // Re-open stored tabs not already provided by the backend.
@@ -1137,6 +1173,8 @@ const threadsState = setup({
     hasRequiredApiKeys: true,
     commands: [],
     quickPromptCursor: null,
+    hasOlderMessages: false,
+    loadingOlderMessages: false,
   }),
   on: {
     // Thread management events
@@ -1253,6 +1291,8 @@ const threadsState = setup({
     LOAD_CHAT_THREAD: { actions: 'setThreadChatData' },
     REFRESH_RECENT_THREADS: { actions: 'setRefreshThreadsData' },
     AGENT_CONNECTED: { actions: 'setStartupData' },
+    LOAD_OLDER_MESSAGES: { actions: 'requestOlderMessages' },
+    OLDER_MESSAGES_LOADED: { actions: 'prependOlderMessages' },
     AGENT_SETTINGS_UPDATED: { actions: 'handleChatSettingsUpdate' },
     NAVIGATE_TO_SECRETS: { actions: 'navigateToSecrets' },
     API_KEYS_STATUS: { actions: 'updateApiKeyStatus' },
