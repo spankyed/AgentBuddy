@@ -197,12 +197,6 @@
                   :side-offset="4"
                 >
                   <DropdownMenuItem
-                    @select="createFolder"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
-                  >
-                    <FolderPlus class="w-4 h-4" /> New Folder
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
                     @select="createSymlinkFolder"
                     class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
                   >
