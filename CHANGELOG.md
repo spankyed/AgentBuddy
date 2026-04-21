@@ -1,5 +1,31 @@
 -e # Changelog
 
+## v0.2.5 (2026-04-21)
+
+### Fixes
+- monaco): use sync-flush watcher to prevent diff race condition on file switch
+- editor): don't trigger inline code when backtick is followed by a space
+-  add missing sourceHash backfill migration for DSL entities
+
+### Other
+- Add vertical resize handle to code plugin panel terminal
+- restyling
+- Make context usage a collapsible section in session artifact
+- Close symlink folder form on outside click
+- Merge pull request #128 from spankyed/AS/context-window-dataview
+- Remove duplicate context row from session artifact grid
+- Fix context usage: skip /context on error results, remove timeout
+- Refactor context usage: query CLI inline instead of spawning subprocess
+- Fix context window usage by querying CLI /context after each turn
+- Don't render backtick-space content as inline code
+- Add Ctrl+Shift+` hotkey to open new terminal in editor tab
+- Fix /cc-resume creating duplicate threads on empty threads
+- Fix /cc-resume to support session titles, not just UUIDs
+- Rename claude-session thread tag to claude-code
+- Move chatState from session artifact onto thread entity as canonical source
+
+-e # Changelog
+
 ## v0.2.4 (2026-04-20)
 
 ### Fixes
