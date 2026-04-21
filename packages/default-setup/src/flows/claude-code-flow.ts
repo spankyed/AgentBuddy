@@ -172,6 +172,7 @@ export default {
             hadErrors: "$.event.data.payload.hadErrors",
             error: "$.event.data.payload.error",
             userText: "$.event.data.payload.userText",
+            contextUsage: "$.event.data.payload.contextUsage",
           },
         }),
       ]],

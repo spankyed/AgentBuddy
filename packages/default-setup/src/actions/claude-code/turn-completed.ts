@@ -11,10 +11,9 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact, updateChatState, readSessionChatState, readSessionCwd } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionChatState } from './_helpers/session-artifact';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
-import { parseContextMarkdown } from './_helpers/context-parser';
 import type { ContextUsageData } from './_helpers/context-parser';
 
 export const meta: ActionMeta = {
@@ -32,6 +31,7 @@ export const meta: ActionMeta = {
     hadErrors: { type: 'boolean', description: 'Whether errors occurred', required: false },
     error: { type: 'string', description: 'Error message if failed', required: false },
     userText: { type: 'string', description: 'Original user message', required: false },
+    contextUsage: { type: 'object', description: 'Context window usage from CLI /context query', required: false },
   },
 };
 
@@ -46,6 +46,7 @@ export async function action(
     hadErrors,
     error: errorMsg,
     mutatedPaths,
+    contextUsage,
   } = params as {
     threadId: string;
     sessionId?: string;
@@ -57,6 +58,7 @@ export async function action(
     hadErrors?: boolean;
     error?: string;
     userText?: string;
+    contextUsage?: ContextUsageData;
   };
 
   const log = services.logger;
@@ -126,53 +128,33 @@ export async function action(
     log.warn('diff artifact assembly failed', { message: diffErr?.message });
   }
 
-  // ─── Context usage refresh + threshold alerts ─────────────────────
-  // Query the CLI with `/context` to get the full context window breakdown
-  // (same mechanism as /cc-context). Best-effort — don't fail the turn.
-  try {
-    const sessionId = getClaudeState(services, threadId)?.sessionId;
-    const sessionCwd = readSessionCwd(services, threadId as EntityId);
-    if (sessionId) {
-      const handle = await services.cli.claudeCode.query({
-        ...(sessionCwd && { cwd: sessionCwd }),
-        prompt: '/context',
-        resume: sessionId,
-        maxTurns: 1,
-        permissionMode: 'plan',
-        noSessionPersistence: true,
+  // ─── Context usage + threshold alerts ─────────────────────────────
+  // contextUsage is provided by the stream consumer, which sends /context
+  // through the existing CLI handle (no subprocess spawn).
+  if (contextUsage) {
+    const newAlerts = checkContextThresholds(services, threadId as EntityId, contextUsage);
+
+    updateSessionArtifact(services, threadId as EntityId, (prev) => ({
+      contextUsage,
+      ...(newAlerts.length > 0
+        ? { alertedThresholds: [...(prev.alertedThresholds ?? []), ...newAlerts] }
+        : {}),
+    }));
+
+    if (newAlerts.length > 0) {
+      const highest = Math.max(...newAlerts);
+      const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
+      const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
+      let message = `Context window is ${contextUsage.percentage}% full (${fmtTokens(contextUsage.totalTokens)} / ${fmtTokens(contextUsage.maxTokens)} tokens).`;
+      if (highest >= 90) message += ' Consider starting a new session soon.';
+
+      services.chat.sendBlockMessage({
+        threadId: threadId as any,
+        text: message,
+        blocks: [{ type: 'note', props: { content: message, variant, label } }],
+        forkable: false,
       });
-      const ctxResult = await handle.result;
-      const contextUsage = parseContextMarkdown(ctxResult.text || '');
-      if (contextUsage) {
-        // Check for newly crossed thresholds before writing to artifact
-        const newAlerts = checkContextThresholds(services, threadId as EntityId, contextUsage);
-
-        updateSessionArtifact(services, threadId as EntityId, (prev) => ({
-          contextUsage,
-          ...(newAlerts.length > 0
-            ? { alertedThresholds: [...(prev.alertedThresholds ?? []), ...newAlerts] }
-            : {}),
-        }));
-
-        // Send threshold alert messages
-        if (newAlerts.length > 0) {
-          const highest = Math.max(...newAlerts);
-          const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
-          const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
-          let message = `Context window is ${contextUsage.percentage}% full (${fmtTokens(contextUsage.totalTokens)} / ${fmtTokens(contextUsage.maxTokens)} tokens).`;
-          if (highest >= 90) message += ' Consider starting a new session soon.';
-
-          services.chat.sendBlockMessage({
-            threadId: threadId as any,
-            text: message,
-            blocks: [{ type: 'note', props: { content: message, variant, label } }],
-            forkable: false,
-          });
-        }
-      }
     }
-  } catch {
-    log.debug('context usage refresh failed (best-effort)');
   }
 
   return {

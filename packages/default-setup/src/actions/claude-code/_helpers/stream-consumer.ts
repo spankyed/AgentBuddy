@@ -28,6 +28,7 @@ import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approva
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId } from './thread-context';
 import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken } from './session-artifact';
+import { parseContextMarkdown } from './context-parser';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
 const FILE_MUTATION_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit']);
@@ -102,6 +103,11 @@ export async function consumeStream(
   // rejects (error subtypes like error_during_execution).
   let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; errors?: string[] } | undefined;
 
+  // After the main turn completes, we send `/context` through the existing
+  // handle to get context window usage without spawning a new subprocess.
+  let contextQueryPending = false;
+  let contextUsageParsed: any;
+
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
     writer.finalize(writer.text);
@@ -124,6 +130,10 @@ export async function consumeStream(
     for await (const ev of handle.events) {
       const line = ev as any;
       eventCount++;
+
+      // While waiting for the /context result, skip all normal event handlers.
+      if (contextQueryPending && line.type !== 'result') continue;
+
       if (eventCount <= 5 || eventCount % 20 === 0) {
         log.debug('stream event', { n: eventCount, type: line?.type });
       }
@@ -467,6 +477,13 @@ export async function consumeStream(
       // The `result` event is the CLI's terminal signal. Extract cost/duration
       // directly — handle.result may reject for error subtypes, losing this data.
       if (line.type === 'result') {
+        // Second result: /context response — parse and break
+        if (contextQueryPending) {
+          contextUsageParsed = parseContextMarkdown((line as any).result ?? '');
+          break;
+        }
+
+        // First result: main turn completed
         log.debug('result line received', {
           subtype: (line as any).subtype,
           total_cost_usd: (line as any).total_cost_usd,
@@ -484,7 +501,13 @@ export async function consumeStream(
           subtype: (line as any).subtype,
           errors: (line as any).errors,
         };
-        break;
+
+        // Send /context through the existing handle to get context usage
+        // without spawning a new subprocess. Best-effort — if it fails,
+        // we just break and skip context data.
+        contextQueryPending = true;
+        try { handle.send('/context'); } catch { break; }
+        continue;
       }
     }
 
@@ -603,6 +626,7 @@ export async function consumeStream(
         mutatedPaths,
         hadErrors: !!hadToolErrors || !!isErrorResult,
         userText: text,
+        contextUsage: contextUsageParsed,
       },
     });
 
