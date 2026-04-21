@@ -132,6 +132,8 @@ export async function consumeStream(
       eventCount++;
 
       // While waiting for the /context result, skip all normal event handlers.
+      // No timeout needed: /context is a local-jsx command (synchronous), and
+      // the loop terminates naturally when the child exits (eventQueue.close).
       if (contextQueryPending && line.type !== 'result') continue;
 
       if (eventCount <= 5 || eventCount % 20 === 0) {
@@ -502,12 +504,15 @@ export async function consumeStream(
           errors: (line as any).errors,
         };
 
-        // Send /context through the existing handle to get context usage
-        // without spawning a new subprocess. Best-effort — if it fails,
-        // we just break and skip context data.
-        contextQueryPending = true;
-        try { handle.send('/context'); } catch { break; }
-        continue;
+        // Only query /context on successful turns — error results mean the
+        // CLI may be exiting or in a bad state.
+        const isSuccess = (line as any).subtype == null || (line as any).subtype === 'success';
+        if (isSuccess) {
+          contextQueryPending = true;
+          try { handle.send('/context'); } catch { break; }
+          continue;
+        }
+        break;
       }
     }
 
