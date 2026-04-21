@@ -1,43 +1,5 @@
 -e # Changelog
 
-## v0.2.6 (2026-04-21)
-
-### Features
-- commit): improve loading state visual feedback to commit message generation
-
-### Fixes
-- code): filter gitignored files from Quick Open file search
-- database): prevent AI prompt bar from closing when clicking wand toggled
-
-### Refactors
-- commit): move commit message generation to brain system action
-
-### Other
-- Restyle query/examples tabs as segmented control
-- style(database): widen JSON hover popup from w-96 to w-[36rem]
-- Restyle AI query input as inline prompt bar
-- Add repo/branch context and post-processing to commit messages
-- Improve UX for stashes in commit panel
-- Add search input to filter stashes in commit panel
-- Fix CLI invocation and strip markdown fences from AI output
-- use tmp dir, remove --bare flag
-- Reset isAiQueryLoading
-- Defer WebGL addon loading to first in-DOM attach
-- Add transaction mode support to AI query generation
-- Fix prompt gaps, topology perf, and phantom entity references
-- Defer initial fitAddon.fit() to requestAnimationFrame on terminal attach
-- Move query prompt building to service + DSL prompt template
-- Fix terminal scrollbar desync on re-attach after content changes
-- Rewrite AI query prompt with dynamic schema sampling
-- Redesign buildQueryPrompt for better AI query generation
-- Move AI_QUERY_LOADING from database system to flow action
-- Replace Copilot CLI with Claude CLI for AI query generation
-- Fix backend crash from stale localStorage tabs after db:reset
-- Fix chatState resetting to idle when switching threads mid-turn
-- Add copy logs button to logs panel
-
--e # Changelog
-
 ## v0.2.5 (2026-04-21)
 
 ### Fixes
