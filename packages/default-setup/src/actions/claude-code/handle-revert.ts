@@ -43,6 +43,15 @@ export async function action(
   const log = services.logger;
   const state = getClaudeState(services, threadId);
 
+  log.debug('[revert] state BEFORE revert', {
+    threadId,
+    messageId,
+    sessionId: state?.sessionId ?? 'NONE',
+    isRunning: state?.isRunning ?? false,
+    hasForkFrom: !!state?.forkFrom,
+    hasRevertTo: !!state?.revertTo,
+  });
+
   // Kill the active CLI process if one is running.
   const handle = services.cli.claudeCode.getHandle(threadId);
   if (handle) {
@@ -89,10 +98,12 @@ export async function action(
   // Flip the session artifact to idle.
   updateChatState(services, threadId as EntityId, 'idle');
 
-  log.debug('revert handled', {
+  log.debug('[revert] state AFTER revert', {
     threadId,
     messageId,
-    cliUuid: cliUuid ?? 'none (fresh session)',
+    cliUuid: cliUuid ?? 'NONE (will start fresh)',
+    sessionIdPreserved: !!cliUuid,
+    hadActiveHandle: !!handle,
   });
 
   return { success: true, hadActiveHandle: !!handle, cliUuid };

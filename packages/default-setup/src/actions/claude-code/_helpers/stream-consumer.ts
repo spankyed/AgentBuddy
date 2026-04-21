@@ -153,6 +153,9 @@ export async function consumeStream(
       // First `system/init` event carries sessionId/model/cwd.
       if (line.type === 'system' && line.subtype === 'init') {
         if (line.session_id) {
+          log.debug('[stream] persisting sessionId from system/init', {
+            threadId, sessionId: line.session_id, cwd: line.cwd || 'NONE',
+          });
           persistClaudeState(services, threadId, {
             sessionId: line.session_id,
             lastTurnAt: Date.now(),

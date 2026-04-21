@@ -107,8 +107,29 @@ export async function action(
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
   const resumeSessionId = prior?.sessionId;
-  const forkFrom = prior?.forkFrom;
-  const revertTo = prior?.revertTo;
+  let forkFrom = prior?.forkFrom;
+  let revertTo = prior?.revertTo;
+
+  // Guard: fork/revert requires a valid sessionId to resume from.
+  // If sessionId is missing (race with stream-consumer), drop the
+  // fork/revert intent and start a fresh session instead.
+  if ((forkFrom || revertTo) && !resumeSessionId) {
+    log.warn('[revert-guard] fork/revert requested but no sessionId — starting fresh', {
+      threadId,
+      hadForkFrom: !!forkFrom,
+      hadRevertTo: !!revertTo,
+      revertCliUuid: revertTo?.cliUuid ?? null,
+      forkCliUuid: forkFrom?.cliUuid ?? null,
+      fullPriorState: JSON.stringify(prior ?? {}),
+    });
+    persistClaudeState(services, threadId, {
+      revertTo: undefined,
+      forkFrom: undefined,
+    });
+    forkFrom = undefined;
+    revertTo = undefined;
+  }
+
   log.debug('resume state resolved', {
     resumeSessionId: resumeSessionId ?? null,
     fork: !!forkFrom,
@@ -235,6 +256,7 @@ export async function action(
   }
 
   // ─── Fire the query ─────────────────────────────────────────────────
+  let sessionCwd: string | undefined; // TODO: remove — hoisted for debug logging in catch block
   try {
     // Resolve references inside try/catch so a failure doesn't permanently
     // lock the thread in isRunning=true.
@@ -254,17 +276,23 @@ export async function action(
     log.debug('invoking claudeCode.query', {
       model,
       resumeSessionId: resumeSessionId ?? null,
+      revertTo: revertTo?.cliUuid ?? null,
+      forkFrom: forkFrom?.cliUuid ?? null,
+      forkSession: !!(forkFrom || revertTo),
       permissionMode: effectivePermissionMode,
-      allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       hasSystemPrompt: !!composedSystemPrompt,
-      fork: !!forkFrom,
       imageCount: resolved.imageBlocks.filter((b: any) => b.type === 'image').length,
       fileCount: references?.files?.length ?? 0,
       contextCount: references?.context?.length ?? 0,
     });
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
-    const sessionCwd = resumeSessionId ? readSessionCwd(services, threadId) : undefined;
+    sessionCwd = resumeSessionId ? readSessionCwd(services, threadId) : undefined;
+    if (resumeSessionId && !sessionCwd) {
+      log.warn('[resume] sessionId exists but sessionCwd is missing — CLI will use process.cwd()', {
+        threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,
+      });
+    }
 
     const handle = await services.cli.claudeCode.query({
       ...(sessionCwd && { cwd: sessionCwd }),
@@ -320,6 +348,15 @@ export async function action(
     // ─── Session-not-found: clear stale sessionId, mark artifact broken ──
     const staleId = extractStaleSessionId(message);
     if (staleId) {
+      log.error('[session-expired] stale session detected', {
+        threadId,
+        staleId,
+        resumeSessionId: resumeSessionId ?? null,
+        sessionCwd: sessionCwd ?? null,
+        hadRevertTo: !!revertTo,
+        hadForkFrom: !!forkFrom,
+        cliError: message,
+      });
       const userMessage = 'Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.';
       writer.finalize(`⚠️ ${userMessage}`);
       clearSessionId(services, threadId);
