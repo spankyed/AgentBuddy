@@ -226,9 +226,12 @@ const attachTerminal = (terminalId: string) => {
   term = entry.term
   fitAddon = entry.fitAddon
 
-  fitAddon.fit()
-  sendResize(terminalId)
-  terminalPool.syncViewport(terminalId)
+  // Defer fit to next frame so the browser has laid out the re-attached wrapper
+  requestAnimationFrame(() => {
+    fitAddon?.fit()
+    sendResize(terminalId)
+    terminalPool.syncViewport(terminalId)
+  })
 
   viewDisposables.push(term.onWriteParsed(() => {
     term?.scrollToBottom()

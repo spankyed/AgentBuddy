@@ -152,14 +152,13 @@ onMounted(() => {
   // Mirror pool-owned pin state into a local reactive ref for FOB visibility.
   isPinnedToBottom.value = entry.pinnedToBottom
 
-  fitAddon.fit()
-  sendResize()
-  // Force the native scrollbar to match either the pinned-bottom position
-  // or the pre-detach scrollTop. Needed on every mount because Chromium
-  // resets .xterm-viewport.scrollTop to 0 when the wrapper was document-
-  // removed during the previous unmount. syncViewport waits for any pending
-  // xterm writes to parse before it reads scrollHeight.
-  terminalPool.syncViewport(props.terminalInfo.id)
+  // Defer fit to next frame so the browser has laid out the re-attached wrapper
+  // and container dimensions are accurate for cols/rows calculation.
+  requestAnimationFrame(() => {
+    fitAddon?.fit()
+    sendResize()
+    terminalPool.syncViewport(props.terminalInfo.id)
+  })
 
   // Track user scroll to support "pin to bottom"
   const viewport = term.element?.querySelector('.xterm-viewport') as HTMLElement | null
