@@ -122,20 +122,21 @@ export async function action(
     const threads = await services.cli.gh.getReviewThreads(pr.number, repo);
     const markdown = formatPRMarkdown(pr, pr.comments || [], threads);
 
-    const workingDir = services.cli.git.getWorkingDir();
-    const fileName = `pr-${pr.number}.md`;
-    const filePath = workingDir + '/' + fileName;
-    await services.filesystem.writeFile(filePath, markdown);
-
     if (threadId) {
+      services.artifact.createAndNotify({
+        artifactType: 'text',
+        title: `PR #${pr.number}: ${pr.title}`,
+        content: markdown,
+        threadId: threadId as any,
+      });
       services.chat.sendBlockMessage({
         threadId,
-        text: `Wrote PR #${pr.number} to ${fileName}`,
+        text: `PR #${pr.number} exported to artifacts`,
         blocks: [],
       });
     }
 
-    return { success: true, prNumber: pr.number, filePath };
+    return { success: true, prNumber: pr.number };
   } catch (error: any) {
     const errorMsg = error?.message || 'Failed to fetch PR';
     if (threadId) {

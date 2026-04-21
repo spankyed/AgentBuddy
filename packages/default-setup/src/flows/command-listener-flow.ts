@@ -7,17 +7,6 @@ export default {
     on("user.command", [[
       branch([
         {
-          if: "$.event.data.payload.command == 'gcmsg'",
-          steps: [action("Git Commit Command", {
-            label: "commit",
-            map: {
-              text: "$.event.data.payload.text",
-              threadId: "$.event.data.payload.threadId",
-              references: "$.event.data.payload.references",
-            },
-          })],
-        },
-        {
           if: "$.event.data.payload.command == 'pr2md'",
           steps: [action("PR to Markdown", {
             label: "export PR",
