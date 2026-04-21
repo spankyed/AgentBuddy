@@ -41,7 +41,7 @@
     </div>
 
     <!-- Expanded content: terminal + list side-by-side -->
-    <div v-if="isExpanded" class="flex h-64 overflow-hidden">
+    <div v-if="isExpanded" class="flex overflow-hidden" :style="{ height: `${height}px` }">
       <!-- Terminal view (left) -->
       <div class="flex-1 min-w-0">
         <div v-if="activeTerminalInfo" ref="container" class="w-full h-full bg-[#1e1e1e]"></div>
@@ -165,6 +165,8 @@ import type { TerminalScript } from '@app/api'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
+
+const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
 const codeActor: CodeState = applicationState.system.get(codeId)
