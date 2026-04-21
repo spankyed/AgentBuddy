@@ -85,9 +85,6 @@
 
           <span class="text-neutral-500">Cost</span>
           <span class="text-neutral-200 tabular-nums">${{ (content.totalCostUsd ?? 0).toFixed(3) }}</span>
-
-          <span class="text-neutral-500">Context</span>
-          <span class="tabular-nums" :class="ctxPct.color">{{ ctxPct.pct }}%</span>
         </div>
 
         <!-- Context usage breakdown (from CLI /context query) -->
