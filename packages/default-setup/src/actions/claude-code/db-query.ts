@@ -34,6 +34,8 @@ export async function action(
     return { success: false, error: 'Empty prompt' };
   }
 
+  services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+
   try {
     const result = await services.cli.claudeCode.exec(
       ['--bare', '-p', prompt.trim()],

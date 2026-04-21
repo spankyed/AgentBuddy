@@ -165,8 +165,6 @@ export const databaseSystem = setup({
         return;
       }
 
-      system.get(bus).send(emit(database, { type: 'AI_QUERY_LOADING' }));
-
       const schema = generateSchemaInfo();
       const promptText = buildQueryPrompt(prompt.trim(), schema);
 
