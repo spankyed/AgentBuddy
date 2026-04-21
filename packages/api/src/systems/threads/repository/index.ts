@@ -394,6 +394,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
     status: mostRecentThread.status || 'backlog',
     timestamp: mostRecentThread.timestamp || Date.now(),
     forcedMode: mostRecentThread.forcedMode,
+    chatState: (mostRecentThread as any).chatState,
     messages: mostRecentThread.id
       ? ((qx(mostRecentThread.id)
           .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
@@ -442,7 +443,7 @@ export const chatQueries = {
     const thread = qx(threadId)
       .orderBy('timestamp', 'desc')
       .limit(4)
-      .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned"] as const);
+      .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState"] as const);
 
     return {
       ...thread[0] as AgentThreadData,

@@ -310,6 +310,7 @@ export type AgentThreadData = {
   artifacts: ArtifactEntity[];
   forcedMode?: ThreadEntity['forcedMode'];
   pinned?: boolean;
+  chatState?: string;
 }
 
 export type RecentThreadRefreshData = {
