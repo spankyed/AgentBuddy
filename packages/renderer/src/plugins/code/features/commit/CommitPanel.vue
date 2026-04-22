@@ -86,8 +86,11 @@
           <input
             v-model="branchInput"
             @input="updateBranchInput"
-            @keyup.enter="checkoutBranch"
-            @focus="showBranchDropdown = true"
+            @keydown.enter.prevent="handleBranchEnter"
+            @keydown.arrow-down.prevent="handleBranchArrowDown"
+            @keydown.arrow-up.prevent="handleBranchArrowUp"
+            @keydown.escape="handleBranchEscape"
+            @focus="showBranchDropdown = true; highlightedBranchIndex = -1"
             @blur="hideBranchDropdown"
             :disabled="isCheckingOutBranch"
             :placeholder="gitBranch || 'Select branch...'"
@@ -143,10 +146,14 @@
           class="absolute left-0 right-8 z-10 mt-1 top-full bg-neutral-900 border border-neutral-700 rounded shadow-lg max-h-48 overflow-y-auto"
         >
           <div
-            v-for="branch in filteredBranches"
+            v-for="(branch, index) in filteredBranches"
             :key="branch"
             @mousedown.prevent="selectBranch(branch)"
-            class="px-3 py-2 hover:bg-neutral-800 cursor-pointer flex items-center gap-2"
+            @mouseenter="highlightedBranchIndex = index"
+            :class="[
+              'px-3 py-2 cursor-pointer flex items-center gap-2',
+              index === highlightedBranchIndex ? 'bg-neutral-800' : 'hover:bg-neutral-800'
+            ]"
           >
             <GitBranch :size="12" class="text-neutral-400" />
             <span class="text-xs text-neutral-300">{{ branch }}</span>
@@ -563,6 +570,7 @@ const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirect
 // Local state
 const showDiscardAllDialog = ref(false)
 const showBranchDropdown = ref(false)
+const highlightedBranchIndex = ref(-1)
 const isCreatingBranch = ref(false)
 const newBranchName = ref('')
 const newBranchInput = ref<HTMLInputElement | null>(null)
@@ -800,6 +808,7 @@ const copyRelativePath = async (path: string) => {
 const updateBranchInput = (event: Event) => {
   const target = event.target as HTMLInputElement
   commitActor?.send({ type: 'commit.UPDATE_BRANCH_INPUT', input: target.value })
+  highlightedBranchIndex.value = -1
 }
 
 const checkoutBranch = () => {
@@ -911,7 +920,39 @@ const hideBranchDropdown = () => {
   // Small delay to allow click events to fire
   setTimeout(() => {
     showBranchDropdown.value = false
+    highlightedBranchIndex.value = -1
   }, 200)
+}
+
+const handleBranchArrowDown = () => {
+  if (!showBranchDropdown.value) {
+    showBranchDropdown.value = true
+    highlightedBranchIndex.value = 0
+    return
+  }
+  const max = filteredBranches.value.length - 1
+  highlightedBranchIndex.value = highlightedBranchIndex.value < max ? highlightedBranchIndex.value + 1 : 0
+}
+
+const handleBranchArrowUp = () => {
+  if (!showBranchDropdown.value) return
+  const max = filteredBranches.value.length - 1
+  highlightedBranchIndex.value = highlightedBranchIndex.value > 0 ? highlightedBranchIndex.value - 1 : max
+}
+
+const handleBranchEnter = () => {
+  if (showBranchDropdown.value && highlightedBranchIndex.value >= 0 && highlightedBranchIndex.value < filteredBranches.value.length) {
+    selectBranch(filteredBranches.value[highlightedBranchIndex.value])
+  } else {
+    checkoutBranch()
+  }
+}
+
+const handleBranchEscape = () => {
+  if (showBranchDropdown.value) {
+    showBranchDropdown.value = false
+    highlightedBranchIndex.value = -1
+  }
 }
 
 // Helper functions

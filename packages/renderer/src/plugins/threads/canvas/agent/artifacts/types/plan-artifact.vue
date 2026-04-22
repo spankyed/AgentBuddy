@@ -22,12 +22,21 @@
           buttons) and only caused confusion, so they were removed.
           The pill now passively reflects whatever the backend says.
         -->
-        <span
-          class="text-xs px-2 py-0.5 rounded"
-          :class="statusPillClass"
-        >
-          {{ statusLabel }}
-        </span>
+        <div class="flex items-center gap-2">
+          <button
+            @click="copyToClipboard"
+            class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
+            title="Copy to clipboard"
+          >
+            <component :is="copied ? Check : Copy" :size="14" />
+          </button>
+          <span
+            class="text-xs px-2 py-0.5 rounded"
+            :class="statusPillClass"
+          >
+            {{ statusLabel }}
+          </span>
+        </div>
       </div>
 
       <!-- Markdown notes body — scrollable for long plans -->
@@ -47,8 +56,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { ClipboardList } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { ClipboardList, Copy, Check } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 
@@ -86,6 +95,14 @@ const statusLabel = computed(() => {
     default: return status.value
   }
 })
+
+const copied = ref(false)
+
+function copyToClipboard() {
+  navigator.clipboard.writeText(notes.value)
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 2000)
+}
 
 const statusPillClass = computed(() => {
   switch (status.value) {
