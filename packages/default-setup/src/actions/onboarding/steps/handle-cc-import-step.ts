@@ -93,9 +93,37 @@ export function handleCcImportStep(
     });
   }
 
-  // Now run the full import of sessions in the background
-  importSessions(services, threadId);
+  // Ask if user wants to import threads
+  const { messageId } = services.chat.sendChoiceBlock({
+    threadId,
+    text: 'Would you like to import your existing Claude Code threads?',
+    prompt: 'Import threads',
+    choices: [
+      { id: 'yes', label: 'Yes, import threads', description: 'Import recent sessions as threads' },
+      { id: 'no', label: 'No, skip', description: "I'll start fresh" },
+    ],
+    allowCustom: false,
+    forkable: false,
+    autoHide: true,
+    asUser: true,
+  });
 
+  state.step = 'cc-import-threads';
+  state.pendingMessageId = messageId;
+}
+
+/**
+ * Handle thread import response — yes runs import, no skips.
+ */
+export function handleCcImportThreadsStep(
+  services: Services,
+  state: OnboardingState,
+  threadId: EntityId,
+  action: string,
+) {
+  if (action === 'yes') {
+    importSessions(services, threadId);
+  }
   finishOnboarding(services, state, threadId);
 }
 

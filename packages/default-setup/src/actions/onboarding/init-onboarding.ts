@@ -59,8 +59,8 @@ export async function action(
   // Send welcome message with "Let's go" button
   const { messageId } = services.chat.sendChoiceBlock({
     threadId,
-    text: "Welcome! Let's get you set up.",
-    prompt: 'Ready to get started?',
+    text: "Welcome! Ready to get started?",
+    prompt: '',
     choices: [{ id: 'continue', label: "Let's go", description: '' }],
     allowCustom: false,
     forkable: false,

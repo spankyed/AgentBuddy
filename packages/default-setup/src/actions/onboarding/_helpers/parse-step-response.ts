@@ -8,12 +8,13 @@
  *   cc-import    → sendChoiceBlock → raw `string | string[]` (multiSelect project dirs)
  */
 
-export type OnboardingStepId = 'welcome' | 'cli-test-ask' | 'cc-import';
+export type OnboardingStepId = 'welcome' | 'cli-test-ask' | 'cc-import' | 'cc-import-threads';
 
 export type ParsedStepResponse =
   | { step: 'welcome'; cancelled: boolean }
   | { step: 'cli-test-ask'; action: string; cancelled: boolean }
-  | { step: 'cc-import'; selected: string[]; cancelled: boolean };
+  | { step: 'cc-import'; selected: string[]; cancelled: boolean }
+  | { step: 'cc-import-threads'; action: string; cancelled: boolean };
 
 export function parseStepResponse(
   step: OnboardingStepId,
@@ -40,6 +41,11 @@ export function parseStepResponse(
           ? [response]
           : [];
       return { step: 'cc-import', selected, cancelled };
+    }
+
+    case 'cc-import-threads': {
+      const raw = typeof response === 'string' ? response : '';
+      return { step: 'cc-import-threads', action: raw, cancelled };
     }
   }
 }

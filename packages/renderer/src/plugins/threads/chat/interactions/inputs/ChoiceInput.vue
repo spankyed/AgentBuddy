@@ -14,7 +14,7 @@
     <!-- Input Controls (when not disabled/not responded) -->
     <template v-else>
       <!-- Choices -->
-    <div class="space-y-2" :class="compact ? 'max-h-60 overflow-y-auto' : ''">
+    <div class="space-y-2" :class="compact ? 'max-h-44 overflow-y-auto' : ''">
       <div
         v-for="choice in choices"
         :key="choice.id"

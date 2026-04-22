@@ -2,7 +2,7 @@ import type { ActionMeta, EntityId, Services, Z } from '../../types';
 import { getOnboardingState, persistOnboardingState, type OnboardingState } from './onboarding-helpers';
 import { handleWelcomeStep } from './steps/handle-welcome-step';
 import { handleCliTestStep } from './steps/handle-cli-test-step';
-import { handleCcImportStep } from './steps/handle-cc-import-step';
+import { handleCcImportStep, handleCcImportThreadsStep } from './steps/handle-cc-import-step';
 import {
   parseStepResponse,
   type OnboardingStepId,
@@ -74,6 +74,9 @@ async function dispatchStep(
       return;
     case 'cc-import':
       handleCcImportStep(services, state, threadId, parsed.selected);
+      return;
+    case 'cc-import-threads':
+      handleCcImportThreadsStep(services, state, threadId, parsed.action);
       return;
   }
 }
