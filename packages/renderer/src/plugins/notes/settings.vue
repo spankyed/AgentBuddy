@@ -74,7 +74,7 @@
     </CollapsibleSection>
 
     <!-- Export Notes Section -->
-    <CollapsibleSection label="Export Notes" :default-open="false" class="mb-8">
+    <CollapsibleSection label="Export Notes" :default-open="true" class="mb-8">
       <p class="text-sm text-neutral-500 mb-4">
         {{ exportFormat === 'markdown'
           ? 'Export notes as markdown files with frontmatter'
