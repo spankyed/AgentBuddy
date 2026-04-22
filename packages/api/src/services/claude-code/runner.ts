@@ -269,6 +269,17 @@ export async function spawnStream(
   const stderrChunks: Buffer[] = []
   child.stderr.on('data', c => stderrChunks.push(c))
 
+  // Swallow expected pipe errors that occur when the child is killed mid-write.
+  // Without this listener the error becomes an uncaughtException and crashes the server.
+  child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+    const expected = ['EPIPE', 'ECONNRESET', 'ERR_STREAM_DESTROYED'];
+    if (expected.includes(err.code ?? '')) {
+      logger.warn('stdin write error after child exit (expected during kill)', { code: err.code, pid: child.pid })
+    } else {
+      logger.error('unexpected stdin error', { err, pid: child.pid })
+    }
+  })
+
   // One-shot promise that resolves on exit. Cached so multiple `done()`
   // calls are idempotent.
   const exitPromise = new Promise<{ exitCode: number; signal: NodeJS.Signals | null; stderr: string }>(
