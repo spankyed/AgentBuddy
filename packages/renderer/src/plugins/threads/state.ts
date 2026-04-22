@@ -916,11 +916,7 @@ const threadsState = setup({
       const tabs = context.tabs.map(tab => {
         if (tab.id !== tabId) return tab;
         const artifacts = [artifact, ...tab.artifacts];
-        const selectedArtifactId =
-          tab.selectedArtifactId && artifacts.some(a => a.id === tab.selectedArtifactId)
-            ? tab.selectedArtifactId
-            : artifact.id;
-        return { ...tab, artifacts, selectedArtifactId };
+        return { ...tab, artifacts, selectedArtifactId: artifact.id };
       });
       return { tabs };
     }),

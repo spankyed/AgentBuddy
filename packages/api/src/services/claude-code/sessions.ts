@@ -18,6 +18,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import * as readline from 'readline'
 import { randomUUID } from 'crypto'
 
 import { createLogger } from '@/core/helpers/debug/logger'
@@ -229,19 +230,25 @@ export async function viewByFile(
   filePath: string,
   opts: { limit?: number; offset?: number } = {},
 ): Promise<SessionTranscriptEntry[]> {
-  const raw = await fs.promises.readFile(filePath, 'utf8')
-  const lines = raw.split('\n').filter(l => l.length > 0)
-  const offset = opts.offset ?? 0
-  const limit = opts.limit ?? lines.length
-  const slice = lines.slice(offset, offset + limit)
-
   const entries: SessionTranscriptEntry[] = []
-  for (const line of slice) {
+  const rl = readline.createInterface({
+    input: fs.createReadStream(filePath, { encoding: 'utf8' }),
+    crlfDelay: Infinity,
+  })
+  let lineNum = 0
+  const offset = opts.offset ?? 0
+  const limit = opts.limit
+
+  for await (const line of rl) {
+    if (!line) continue
+    if (lineNum < offset) { lineNum++; continue }
+    if (limit && entries.length >= limit) { rl.close(); break }
     try {
       entries.push(JSON.parse(line))
     } catch {
       entries.push({ type: '__parse_error', raw: line })
     }
+    lineNum++
   }
   return entries
 }

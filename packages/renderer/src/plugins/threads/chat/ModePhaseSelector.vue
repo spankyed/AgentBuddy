@@ -11,7 +11,7 @@
           <button
             type="button"
             :disabled="disabled"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-sm transition-all text-neutral-300"
+            class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300"
             :class="modeButtonClasses"
           >
             <span class="font-medium">{{ currentModeName }}</span>
@@ -62,7 +62,7 @@
           <button
             type="button"
             :disabled="disabled"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-sm transition-all text-neutral-300"
+            class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300"
             :class="phaseButtonClasses"
             :style="phaseButtonStyle"
           >
@@ -111,7 +111,7 @@
     <!-- Forced mode indicator (non-interactive) -->
     <div
       v-if="forcedMode"
-      class="px-3 py-1.5 text-sm font-medium rounded-lg bg-neutral-800 text-neutral-400"
+      class="px-3 py-2 h-7 flex items-center text-sm font-medium rounded-lg bg-neutral-800 text-neutral-400"
     >
       {{ forcedModeName }}
     </div>

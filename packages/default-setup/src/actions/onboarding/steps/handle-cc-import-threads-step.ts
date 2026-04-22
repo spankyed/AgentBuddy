@@ -22,7 +22,7 @@ export async function action(
 
   if (response === 'yes') {
     services.threads.updateChatState(threadId, 'working');
-    await importSessions(services, threadId);
+    await importSessions(services);
     services.threads.updateChatState(threadId, 'idle');
   }
 
@@ -31,7 +31,7 @@ export async function action(
   return { success: true, step: state.step };
 }
 
-async function importSessions(services: Services, threadId: EntityId) {
+async function importSessions(services: Services) {
   try {
     const sessions = await services.cli.claudeCode.listAllSessions({ limit: 50 });
     if (!sessions.length) return;
@@ -104,12 +104,10 @@ async function importSessions(services: Services, threadId: EntityId) {
       }
     }
 
-    const connectedData = services.repository.threadQueries.connectedData();
-    const threadsSettings = services.repository.settingsQueries.getPluginSettings('threads');
-    services.emitter.sendToPlugin('threads', {
-      type: 'THREAD_CONNECTED',
-      data: { ...connectedData, settings: threadsSettings || null },
-    });
+    // Lightweight refresh — don't send full connectedData (all threads + messages)
+    // which would crash with hundreds of imported threads. The full list loads
+    // when the user navigates to the thread manager.
+    services.chat.sendRecentThreadsRefresh();
   } catch {
     // Best-effort
   }
