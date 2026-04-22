@@ -6,6 +6,7 @@
 **cc-status**: Show version and auth info
 **cc-model**: Model name (optional, shows current if omitted)
 **cc-memory**: File name or add|remove <name>
+**cc-recap**: Summarize current conversation
 **cc-skills**: List installed skills
 **cc-compact**: Custom instructions (optional, summarize context)
 **cc-resume**: Session ID (optional, lists sessions if omitted)
