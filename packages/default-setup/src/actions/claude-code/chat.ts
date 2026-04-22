@@ -325,7 +325,14 @@ export async function action(
     // Fire-and-forget: the stream consumer runs in the background,
     // processing events until the CLI stream ends. The action returns
     // immediately so the brain's step actor is freed.
-    consumeStream(handle, { services, threadId, text, phase, userMessageId }, {
+    consumeStream(handle, {
+      services, threadId, text, phase, userMessageId,
+      resumeSessionId: resumeSessionId ?? undefined,
+      sessionCwd: sessionCwd ?? undefined,
+      isFork: !!(forkFrom || revertTo),
+      revertCliUuid: revertTo?.cliUuid,
+      forkCliUuid: forkFrom?.cliUuid,
+    }, {
       writer, toolActivity, messageId: currentMessageId as EntityId,
     }).catch((err) => {
       // Safety net — consumeStream has its own try/catch, but guard

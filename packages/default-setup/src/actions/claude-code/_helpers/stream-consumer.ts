@@ -54,6 +54,15 @@ export interface ConsumerContext {
   phase?: string;
   /** The app's user message entity ID — used to store the CLI's user message UUID. */
   userMessageId?: string;
+  // ── Resume diagnostics (for error logging) ──
+  resumeSessionId?: string;
+  sessionCwd?: string;
+  /** True when forkFrom or revertTo was set on this turn. */
+  isFork?: boolean;
+  /** The --resume-session-at value when reverting. */
+  revertCliUuid?: string;
+  /** The --resume-session-at value when forking. */
+  forkCliUuid?: string;
 }
 
 export interface ConsumerWriters {
@@ -557,7 +566,16 @@ export async function consumeStream(
 
     if (isErrorResult) {
       const errorText = Array.isArray(result.errors) ? result.errors.join('; ') : `CLI error: ${result.subtype}`;
-      log.error('CLI returned error result', { subtype: result.subtype, errors: result.errors, eventCount });
+      log.error('CLI returned error result', {
+        subtype: result.subtype,
+        errors: result.errors,
+        eventCount,
+        resumeSessionId: ctx.resumeSessionId ?? null,
+        sessionCwd: ctx.sessionCwd ?? null,
+        isFork: ctx.isFork ?? false,
+        revertCliUuid: ctx.revertCliUuid ?? null,
+        forkCliUuid: ctx.forkCliUuid ?? null,
+      });
 
       // Detect stale session and clear it so the next turn starts fresh.
       const staleId = extractStaleSessionId(errorText);
