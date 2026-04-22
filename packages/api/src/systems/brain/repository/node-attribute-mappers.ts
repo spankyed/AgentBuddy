@@ -1,7 +1,7 @@
 import type { NodeEntity, NodeKind } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, SourceResolver } from '@/systems/brain/types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
-import { truncateResult } from '../utils/result-truncator';
+import { truncateResult, isTruncated } from '../utils/result-truncator';
 
 /*─────────────────────────────────────────────────────────────
  * Field Mapping Utilities
@@ -164,7 +164,12 @@ export function prepareNodeAttributes(
   // Truncate individual values in the resolved attributes
   const truncatedAttributes: Record<string, any> = {};
   for (const [key, value] of Object.entries(resolvedAttributes)) {
-    truncatedAttributes[key] = truncateResult(value);
+    const truncated = truncateResult(value);
+    // Unwrap truncated strings so downstream consumers (actions) receive
+    // a plain string instead of a { value, _truncated, ... } wrapper.
+    truncatedAttributes[key] = (isTruncated(truncated) && truncated._type === 'string')
+      ? truncated.value
+      : truncated;
   }
 
   // brainInspect(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
