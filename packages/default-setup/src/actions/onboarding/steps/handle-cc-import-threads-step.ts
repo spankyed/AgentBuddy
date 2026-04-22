@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, finishOnboarding } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, finishOnboarding, flashSuccess } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle CC Import Threads Step',
@@ -20,10 +20,12 @@ export async function action(
   const state = getOnboardingState(services, threadId);
   if (!state) return { success: false, reason: 'no-state' };
 
+  flashSuccess(services, threadId, 'paused');
+
   if (response === 'yes') {
     services.threads.updateChatState(threadId, 'working');
     await importSessions(services);
-    services.threads.updateChatState(threadId, 'idle');
+    services.threads.updateChatState(threadId, 'paused');
   }
 
   // Show recent imported threads to continue, or finish

@@ -55,6 +55,8 @@ export async function action(
     asUser: true,
   });
 
+  services.threads.updateChatState(threadId, 'paused');
+
   // Persist onboarding state to thread context
   const onboardingState: OnboardingState = {
     step: 'welcome',

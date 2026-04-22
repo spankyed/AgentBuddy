@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, finishOnboarding, type OnboardingState } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, finishOnboarding, flashSuccess, type OnboardingState } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle Projects Step',
@@ -20,6 +20,7 @@ export async function action(
   const state = getOnboardingState(services, threadId);
   if (!state) return { success: false, reason: 'no-state' };
 
+  flashSuccess(services, threadId, 'paused');
   const selected = Array.isArray(response) ? response : typeof response === 'string' ? [response] : [];
 
   if (selected.length > 0 && selected[0] !== '') {
