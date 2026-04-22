@@ -349,17 +349,6 @@ export const settingsSystem = setup({
         input: { parentRef: settings }
       });
     }),
-    completeTour: () => {
-      // Show all plugins when tour completes
-      const allPlugins = ['threads', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
-      const visibilityUpdate: Record<string, boolean> = {};
-      allPlugins.forEach(plugin => {
-        visibilityUpdate[plugin] = true;
-      });
-
-      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
-    },
-
     testCliProvider: ({ system, event }) => {
       const ev = typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;

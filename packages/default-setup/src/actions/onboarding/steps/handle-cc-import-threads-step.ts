@@ -162,7 +162,7 @@ async function importSessions(services: Services) {
 
         const now = Date.now();
         services.repository.chatCommands.createArtifact({
-          artifactType: 'claude-session' as any,
+          artifactType: 'claude-session',
           title: 'Claude Code session',
           content: {
             sessionId: session.id, model: '', cwd,

@@ -26,14 +26,7 @@ export async function action(
     return { threadId: existingBirthThreadId, success: true, created: false };
   }
 
-  // Set birthdate if not already set
-  const assistantSettings = services.repository.settingsQueries.getAssistantSettings();
-  if (!assistantSettings.birthdate) {
-    const birthdate = new Date().toISOString();
-    services.repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
-  }
-
-  // Create the birth thread
+  // Create the birth thread (birthdate is set by startBirthFlow in threads system)
   const { id: threadId } = services.chat.createThreadAndNotify({
     topic: 'Getting Started',
     instructions: 'Onboarding flow — getting set up.',
@@ -75,7 +68,7 @@ export async function action(
 
   if (welcomeNote) {
     services.artifact.createAndNotify({
-      artifactType: 'note' as any,
+      artifactType: 'note',
       title: 'Welcome',
       content: welcomeNote.id,
       threadId,
