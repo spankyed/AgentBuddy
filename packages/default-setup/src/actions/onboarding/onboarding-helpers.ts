@@ -72,7 +72,9 @@ export function finishOnboarding(
     }
   }
 
-  services.chat.openThreadChatAndRefreshRecent(threadId);
+  if (!options?.skipCompletionMessage) {
+    services.chat.openThreadChatAndRefreshRecent(threadId);
+  }
 
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',

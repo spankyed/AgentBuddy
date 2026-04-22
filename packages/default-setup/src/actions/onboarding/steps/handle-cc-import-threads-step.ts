@@ -39,11 +39,16 @@ export async function action(
 
   if (recentThreads.length > 0) {
     const choices = [
-      ...recentThreads.map((t: any) => ({
-        id: t.id,
-        label: t.topic || 'Untitled',
-        description: '',
-      })),
+      ...recentThreads.map((t: any) => {
+        const msgs = services.repository.threadQueries.messages(t.id);
+        const firstUserMsg = msgs?.find((m: any) => m.sender === 'user');
+        const preview = firstUserMsg?.text?.slice(0, 80) || '';
+        return {
+          id: t.id,
+          label: t.topic || 'Untitled',
+          description: preview,
+        };
+      }),
       { id: 'skip', label: 'Skip', description: "Start fresh" },
     ];
 
@@ -53,6 +58,7 @@ export async function action(
       prompt: 'Pick a thread to continue',
       choices,
       allowCustom: false,
+      compact: true,
       forkable: false,
       autoHide: true,
       asUser: true,
