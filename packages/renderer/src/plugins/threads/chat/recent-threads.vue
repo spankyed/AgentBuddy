@@ -55,15 +55,33 @@
               <FileText :size="12" />
               Details
             </button>
-            <button
-              type="button"
-              class="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-neutral-400 hover:text-amber-400 hover:bg-amber-400/10 transition-colors"
-              title="Archive thread"
-              @click.stop="handleArchiveThread(thread.id)"
-            >
-              <Archive :size="12" />
-              Archive
-            </button>
+            <ContextMenuRoot>
+              <ContextMenuTrigger as-child>
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-neutral-400 hover:text-amber-400 hover:bg-amber-400/10 transition-colors"
+                  title="Archive thread (right-click to delete)"
+                  @click.stop="handleArchiveThread(thread.id)"
+                >
+                  <Archive :size="12" />
+                  Archive
+                </button>
+              </ContextMenuTrigger>
+              <ContextMenuPortal>
+                <ContextMenuContent
+                  class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[120px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
+                  :side-offset="2"
+                >
+                  <ContextMenuItem
+                    class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+                    @select="handleDeleteThread(thread.id)"
+                  >
+                    <Trash2 :size="14" />
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenuPortal>
+            </ContextMenuRoot>
           </div>
         </div>
       </div>
@@ -142,7 +160,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Archive, History, ChevronUp, Plus, PanelLeft, FileText } from 'lucide-vue-next'
+import { Archive, History, ChevronUp, Plus, PanelLeft, FileText, Trash2 } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
@@ -219,6 +237,16 @@ const handleArchiveThread = (id: string | undefined) => {
   const confirmed = confirm('Archive this thread? It will be hidden from all lists.')
   if (confirmed) {
     threadsActor.send({ type: 'ARCHIVE_THREAD', threadId: id })
+    isOpen.value = false
+  }
+}
+
+const handleDeleteThread = (id: string | undefined) => {
+  if (!id) return
+  const thread = recentThreads.value.find(t => t.id === id)
+  const confirmed = confirm(`Permanently delete thread "${thread?.topic || 'Untitled'}"? This cannot be undone.`)
+  if (confirmed) {
+    threadsActor.send({ type: 'DELETE_THREAD', threadId: id })
     isOpen.value = false
   }
 }

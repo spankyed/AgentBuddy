@@ -463,6 +463,18 @@ const threadsState = setup({
         value: true,
       });
     },
+    removeArchivedThread: assign(({ event, context }) => {
+      const { threadId } = typeOf('ARCHIVE_THREAD', event);
+      const tabs = context.tabs.filter(t => t.id !== threadId);
+      const activeTabId = context.activeTabId === threadId
+        ? (tabs[tabs.length - 1]?.id ?? '')
+        : context.activeTabId;
+      return {
+        threads: context.threads.filter(t => t.id !== threadId),
+        tabs,
+        activeTabId,
+      };
+    }),
     persistListView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'list'); } catch {} },
     persistKanbanView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'kanban'); } catch {} },
     persistDashboardView: () => { try { localStorage.setItem(THREADS_VIEW_KEY, 'dashboard'); } catch {} },
@@ -1181,7 +1193,7 @@ const threadsState = setup({
       actions: 'deleteThread',
     },
     ARCHIVE_THREAD: {
-      actions: 'archiveThread',
+      actions: ['archiveThread', 'removeArchivedThread', 'persistTabs'],
       target: '.list',
     },
     THREAD_DELETED: {
