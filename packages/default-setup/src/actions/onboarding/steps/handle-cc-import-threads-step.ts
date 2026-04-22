@@ -20,12 +20,12 @@ export async function action(
   const state = getOnboardingState(services, threadId);
   if (!state) return { success: false, reason: 'no-state' };
 
-  flashSuccess(services, threadId, 'paused');
-
   if (response === 'yes') {
     services.threads.updateChatState(threadId, 'working');
     await importSessions(services);
-    services.threads.updateChatState(threadId, 'paused');
+    flashSuccess(services, threadId, 'paused');
+  } else {
+    flashSuccess(services, threadId, 'paused');
   }
 
   // Show recent imported threads to continue, or finish
@@ -118,12 +118,16 @@ async function importSessions(services: Services) {
         const segments = cwd.split('/').filter(Boolean);
         const dirName = segments[segments.length - 1];
         const prefix = dirName ? `[${dirName}] ` : '';
-        // Title: session title > first user message (truncated) > session ID
+        // Title: session title > first user message with text (truncated) > session ID
         let sessionTitle = session.title;
         if (!sessionTitle) {
-          const firstUserEntry = transcript.find((e: any) => e.type === 'user' && e.message?.role === 'user');
-          const firstMsg = firstUserEntry ? extractText(firstUserEntry.message.content) : '';
-          sessionTitle = firstMsg ? firstMsg.slice(0, 60) : `Session ${session.id.slice(0, 8)}`;
+          for (const e of transcript) {
+            if ((e as any).type === 'user' && (e as any).message?.role === 'user') {
+              const text = extractText((e as any).message.content);
+              if (text) { sessionTitle = text.slice(0, 60); break; }
+            }
+          }
+          if (!sessionTitle) sessionTitle = `Session ${session.id.slice(0, 8)}`;
         }
 
         const { id: newThreadId } = services.repository.threadCommands.create({
