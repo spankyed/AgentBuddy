@@ -62,10 +62,9 @@ const DEFAULT_ALLOWED_TOOLS = [
   // to show question blocks and plan approval blocks.
 ];
 
-const PHASE_HINTS: Record<string, string> = {
-  plan: 'You are in the PLAN phase. Focus on strategy, task breakdown, and clarifying questions. Avoid making file changes unless explicitly asked.',
-  edit: 'You are in the EDIT phase. Implement the agreed-upon plan. Prefer small, focused edits.',
-  // review: 'You are in the REVIEW phase. Critically audit the recent changes. Point out bugs, regressions, and unhandled edge cases.',
+const PHASE_TIP_PROMPTS: Record<string, string> = {
+  plan: 'Plan Phase Tips',
+  edit: 'Edit Phase Tips',
 };
 
 export async function action(
@@ -242,8 +241,9 @@ export async function action(
   log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
 
   // Phase-aware system-prompt nudging (plan/edit/review).
-  const phaseHint = phase ? PHASE_HINTS[phase] : undefined;
-  const composedSystemPrompt = [phaseHint, systemPrompt].filter(Boolean).join('\n\n') || undefined;
+  const tipLabel = phase ? PHASE_TIP_PROMPTS[phase] : undefined;
+  const phaseTip = tipLabel ? services.prompt.usePrompt(tipLabel, {}) : undefined;
+  const composedSystemPrompt = [phaseTip, systemPrompt].filter(Boolean).join('\n\n') || undefined;
 
   // Clear one-shot flags before the query — their purpose is consumed the
   // moment we read them. If the query throws, we don't want the next turn
