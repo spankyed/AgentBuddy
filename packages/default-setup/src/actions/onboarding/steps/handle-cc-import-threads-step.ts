@@ -33,6 +33,11 @@ export async function action(
 
 async function importSessions(services: Services) {
   try {
+    // Only import sessions for user-selected project directories
+    const projects = services.repository.settingsQueries.getSettings().general.projects ?? [];
+    const selectedDirs = new Set((projects as any[]).flatMap((p: any) => p.directories ?? []));
+    if (!selectedDirs.size) return;
+
     const sessions = await services.cli.claudeCode.listAllSessions({ limit: 50 });
     if (!sessions.length) return;
 
@@ -42,7 +47,9 @@ async function importSessions(services: Services) {
       if (sid) existingSessionIds.add(sid);
     }
 
-    const toImport = sessions.filter((s: any) => !existingSessionIds.has(s.id));
+    const toImport = sessions
+      .filter((s: any) => s.cwd && selectedDirs.has(s.cwd))
+      .filter((s: any) => !existingSessionIds.has(s.id));
     if (!toImport.length) return;
 
     for (const session of toImport) {
