@@ -28,6 +28,7 @@ export interface BusContext {
 }
 
 export const bus = 'bus' as const;
+let birthFlowStarted = false;
 
 const typeOf = safeEvents<BackendEvents>();
 export const backendSystem = setup({
@@ -84,8 +85,9 @@ export const backendSystem = setup({
         }
       });
 
-      // Start onboarding flow immediately for first-time users
-      if (!internalSettings.hasOnboarded) {
+      // Start onboarding flow once per server session for first-time users
+      if (!internalSettings.hasOnboarded && !birthFlowStarted) {
+        birthFlowStarted = true;
         const threadsActor = system.get(threads);
         if (threadsActor) {
           threadsActor.send({ type: 'BIRTH_FLOW_START' });
