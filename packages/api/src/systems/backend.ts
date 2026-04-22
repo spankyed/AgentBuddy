@@ -8,6 +8,7 @@ import { createEntity } from '@/core/ears';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { settingsQueries } from '@/systems/settings/repository';
+import { threads } from '@/systems/threads/system';
 
 const logger = createLogger('backend');
 
@@ -83,6 +84,14 @@ export const backendSystem = setup({
           pluginId: 'application'
         }
       });
+
+      // Start onboarding flow immediately for first-time users
+      if (!internalSettings.tourComplete && !internalSettings.hasOnboarded) {
+        const threadsActor = system.get(threads);
+        if (threadsActor) {
+          threadsActor.send({ type: 'BIRTH_FLOW_START' });
+        }
+      }
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of entries(systems)) {

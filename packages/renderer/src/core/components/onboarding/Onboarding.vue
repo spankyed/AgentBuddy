@@ -2,125 +2,51 @@
   <div class="onboarding-container">
     <div class="onboarding-content">
       <div class="onboarding-header">
-        <h1 class="title">Welcome to AgentBuddy</h1>
-        <p class="subtitle">Your AI-powered assistant</p>
+        <h1 class="title">A Letter from the Dev</h1>
       </div>
 
-      <div class="onboarding-steps">
-        <div class="step" :class="{ completed: step >= 1 }">
-          <div class="step-number">1</div>
-          <div class="step-content">
-            <h3>Meet Your Assistant</h3>
-            <p>AgentBuddy helps you manage your work with AI-powered plugins and tools.</p>
-          </div>
-        </div>
-
-        <div class="step" :class="{ completed: step >= 2 }">
-          <div class="step-number">2</div>
-          <div class="step-content">
-            <h3>Start Building</h3>
-            <p>Plan, code, deploy, and manage your projects with your assistant.</p>
-          </div>
-        </div>
+      <div class="letter-body">
+        <p>
+          <!-- Placeholder: the user will provide the actual letter content -->
+          Welcome to AgentBuddy! I built this app to help developers like you
+          work more effectively with AI coding assistants. I hope you enjoy using it
+          as much as I enjoyed building it.
+        </p>
+        <p class="signature">— The Developer</p>
       </div>
 
       <div class="onboarding-actions">
         <button
-          v-if="step < 2"
-          @click="nextStep"
-          class="btn btn-secondary"
+          @click="completeOnboarding"
+          class="btn btn-primary"
         >
-          Next
+          Get Started
         </button>
-        <div v-if="step === 2" class="final-actions">
-          <button
-            @click="startGuidedTour"
-            class="btn btn-tour"
-          >
-            Take Guided Tour
-          </button>
-          <button
-            @click="completeOnboarding"
-            class="btn btn-primary"
-          >
-            Get Started
-          </button>
-        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
-
-const step = ref(1);
-const autoplayTimer = ref<NodeJS.Timeout | null>(null);
-const autoplayActive = ref(true);
-
-const AUTOPLAY_DELAY_SECONDS = 2.4;
-const setAutoplay = () => {
-  clearTimeout(autoplayTimer.value!);
-  if (autoplayActive.value && step.value < 2) {
-    const delay = step.value === 1 ? AUTOPLAY_DELAY_SECONDS * .7 : AUTOPLAY_DELAY_SECONDS;
-    autoplayTimer.value = setTimeout(() => step.value++, delay * 1000);
-  }
-};
-
-const nextStep = () => {
-  if (step.value < 2) {
-    step.value++;
-    setAutoplay();
-  }
-};
-
-const previousStep = () => {
-  if (step.value > 1) {
-    step.value--;
-    autoplayActive.value = false;
-    clearTimeout(autoplayTimer.value!);
-  }
-};
 
 const completeOnboarding = () => {
   applicationState.send({ type: 'COMPLETE_ONBOARDING' });
 };
 
-const startGuidedTour = () => {
-  applicationState.send({ type: 'START_GUIDED_TOUR' });
-};
-
-// Handle keyboard navigation
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'ArrowLeft' && step.value > 1) {
-    previousStep();
-  } else if (event.key === 'ArrowRight' && step.value < 2) {
-    nextStep();
-  } else if (event.key === 'Enter') {
-    if (step.value < 2) {
-      nextStep();
-    } else {
-      completeOnboarding();
-    }
+  if (event.key === 'Enter') {
+    completeOnboarding();
   }
 };
 
-// Watch for step changes to trigger autoplay
-watch(step, setAutoplay);
-
-// Setup and cleanup
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
-  setTimeout(() => {
-    autoplayActive.value = true;
-    setAutoplay();
-  }, 400); // Initial delay before starting autoplay
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
-  clearTimeout(autoplayTimer.value!);
 });
 </script>
 
@@ -150,76 +76,35 @@ onUnmounted(() => {
 
 .onboarding-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
 }
 
 .title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 0.5rem;
 }
 
-.subtitle {
-  font-size: 1.1rem;
+.letter-body {
+  margin-bottom: 2.5rem;
+  line-height: 1.7;
+  color: #ccc;
+  font-size: 1.05rem;
+}
+
+.letter-body p {
+  margin-bottom: 1rem;
+}
+
+.signature {
   color: #999;
-}
-
-.onboarding-steps {
-  margin-bottom: 3rem;
-}
-
-.step {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  opacity: 0.5;
-  transition: opacity 0.15s ease;
-}
-
-.step.completed {
-  opacity: 1;
-}
-
-.step-number {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #404040;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  margin-right: 1.5rem;
-  flex-shrink: 0;
-  transition: background-color 0.15s ease;
-}
-
-.step.completed .step-number {
-  background: #4a9eff;
-}
-
-.step-content h3 {
-  color: #fff;
-  margin-bottom: 0.5rem;
-  font-size: 1.2rem;
-}
-
-.step-content p {
-  color: #999;
-  line-height: 1.5;
+  font-style: italic;
+  margin-top: 1.5rem;
 }
 
 .onboarding-actions {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-}
-
-.final-actions {
-  display: flex;
-  gap: 1rem;
 }
 
 .btn {
@@ -240,26 +125,6 @@ onUnmounted(() => {
 
 .btn-primary:hover {
   background: #3a8eef;
-  transform: translateY(-2px);
-}
-
-.btn-tour {
-  background: #10b981;
-  color: white;
-}
-
-.btn-tour:hover {
-  background: #059669;
-  transform: translateY(-2px);
-}
-
-.btn-secondary {
-  background: #404040;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #505050;
   transform: translateY(-2px);
 }
 </style>

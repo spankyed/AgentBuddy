@@ -1,9 +1,8 @@
 import type { ActionMeta, EntityId, Services, Z } from '../../types';
-import { getOnboardingState, markTaskCompleted, type OnboardingState } from './onboarding-helpers';
-import { handleNameStep } from './steps/handle-name-step';
-import { handleTechLevelStep } from './steps/handle-tech-level-step';
-import { handleProjectsStep } from './steps/handle-projects-step';
-import { handleFinishStep } from './steps/handle-finish-step';
+import { getOnboardingState, type OnboardingState } from './onboarding-helpers';
+import { handleWelcomeStep } from './steps/handle-welcome-step';
+import { handleCliTestStep } from './steps/handle-cli-test-step';
+import { handleCcImportStep } from './steps/handle-cc-import-step';
 import {
   parseStepResponse,
   type OnboardingStepId,
@@ -52,21 +51,9 @@ export async function action(
     return { success: false, reason: 'message-id-mismatch' };
   }
 
-  // Parse the raw block response into a step-specific typed payload.
-  // Each step handler below takes a narrowed `ParsedStepResponse`
-  // variant, so the defensive `typeof === 'string'` checks that used
-  // to live in every handler are gone — TypeScript enforces the shape
-  // contract via the discriminated union. The stale
-  // `response?.value ?? response` line that was here before is
-  // redundant: no onboarding block has ever emitted a `{value}`
-  // shape. See `_helpers/parse-step-response.ts` for the full
-  // shape-contract comment and the accompanying unit test for the
-  // regression guard that pins that.
   const parsed = parseStepResponse(state.step as OnboardingStepId, response);
 
-  const currentStep = state.step;
-  dispatchStep(parsed, services, state, threadId);
-  markTaskCompleted(services, threadId, currentStep);
+  await dispatchStep(parsed, services, state, threadId);
 
   services.database.tx(stateArtifact.id, true).update('content', state);
 
@@ -74,32 +61,21 @@ export async function action(
   return { success: true, step: state.step };
 }
 
-/**
- * Discriminated dispatch — TypeScript ensures every case is handled
- * and each handler receives the correctly-typed parsed variant. The
- * old `stepHandlers` record was a string-keyed fanout that forced
- * every handler to take an `any`-typed parameter; replacing it with
- * a switch means the compiler narrows `parsed` to the right variant
- * for every branch.
- */
-function dispatchStep(
+async function dispatchStep(
   parsed: ParsedStepResponse,
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
-): void {
+): Promise<void> {
   switch (parsed.step) {
-    case 'name':
-      handleNameStep(services, state, threadId, parsed);
+    case 'welcome':
+      await handleWelcomeStep(services, state, threadId);
       return;
-    case 'tech-level':
-      handleTechLevelStep(services, state, threadId, parsed);
+    case 'cli-test-ask':
+      await handleCliTestStep(services, state, threadId, parsed.action);
       return;
-    case 'projects':
-      handleProjectsStep(services, state, threadId, parsed);
-      return;
-    case 'finish':
-      handleFinishStep(services, state, threadId);
+    case 'cc-import':
+      handleCcImportStep(services, state, threadId, parsed.selected);
       return;
   }
 }

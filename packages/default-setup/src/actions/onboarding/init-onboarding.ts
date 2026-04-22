@@ -1,9 +1,9 @@
 import type { ActionMeta, Services, Z } from '../../types';
-import { DEFAULT_NAME, type OnboardingState } from './onboarding-helpers';
+import type { OnboardingState } from './onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Init Onboarding',
-  description: 'Creates the birth thread and sends the first onboarding block message',
+  description: 'Creates the birth thread and sends the welcome artifact for onboarding',
   category: 'onboarding',
   input: {},
 };
@@ -35,7 +35,7 @@ export async function action(
 
   // Create the birth thread
   const { id: threadId } = services.chat.createThreadAndNotify({
-    topic: 'Assistant Birth',
+    topic: 'Getting Started',
     instructions: 'Onboarding flow — getting set up.',
     tags: [],
     role: ASSISTANT_BIRTH_ROLE,
@@ -43,43 +43,32 @@ export async function action(
     pinned: true,
   });
 
-  // Create todo artifact
-  services.artifact.createAndNotify({
-    artifactType: 'todo',
-    title: 'Getting Started Tasks',
-    content: {
-      tasks: [
-        { id: '1', description: 'Give your assistant a name', completed: false },
-        { id: '2', description: 'Share your technical skill level', completed: false },
-        { id: '3', description: 'Share projects you\'re working on', completed: false },
-      ],
-      status: 'active',
-    },
-    threadId,
-  });
+  // Create welcome artifact from the library welcome note
+  const notes = services.repository.noteQueries.allDTOs();
+  const welcomeNote = notes.find((n: any) => n.title === 'welcome');
 
-  // Send welcome text
-  services.chat.sendBlockMessage({
-    threadId,
-    text: "I'm alive! Let's get you set up.",
-    blocks: [],
-    forkable: false,
-  });
+  if (welcomeNote) {
+    services.artifact.createAndNotify({
+      artifactType: 'markdown',
+      title: 'Welcome',
+      content: welcomeNote.content,
+      threadId,
+    });
+  }
 
-  // Send name input block
-  const { messageId } = services.chat.sendTextInputBlock({
+  // Send welcome message with "Let's go" button
+  const { messageId } = services.chat.sendChoiceBlock({
     threadId,
-    text: 'First things first — what would you like to call me?',
-    prompt: 'Give me a name',
-    placeholder: 'Type a name...',
-    suggestions: [DEFAULT_NAME, 'Alex', 'Sam'],
-    displayText: 'Name:',
+    text: "Welcome! Let's get you set up.",
+    prompt: 'Ready to get started?',
+    choices: [{ id: 'continue', label: "Let's go", description: '' }],
+    allowCustom: false,
     forkable: false,
   });
 
   // Create onboarding-state artifact to track progress
   const onboardingState: OnboardingState = {
-    step: 'name',
+    step: 'welcome',
     threadId,
     pendingMessageId: messageId,
     data: {},

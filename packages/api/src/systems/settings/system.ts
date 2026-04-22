@@ -60,7 +60,7 @@ export const IncomingSettingsEvents = [
     value: z.any()
   }),
   busEvent('RESET_SETTINGS', {}),
-  busEvent('COMPLETE_ONBOARDING', {}),
+  busEvent('DISMISS_ONBOARDING_MODAL', {}),
   // Secret management events
   busEvent('SECRETS.CMD.CREATE_API_KEY', {
     provider: z.string(),
@@ -434,7 +434,7 @@ export const settingsSystem = setup({
       system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 
-    completeOnboarding: ({ system }) => {
+    dismissOnboardingModal: ({ system }) => {
       settingsCommands.updateSettings('internal', null, ['tourComplete'], true);
 
       const allPlugins = ['threads', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
@@ -450,12 +450,6 @@ export const settingsSystem = setup({
         type: 'SETTINGS_UPDATED',
         data
       }));
-
-      // Trigger the onboarding flow via threads → brain
-      const threadsActor = system.get(threads);
-      if (threadsActor) {
-        threadsActor.send({ type: 'BIRTH_FLOW_START' });
-      }
     }
   },
 }).createMachine({
@@ -484,8 +478,8 @@ export const settingsSystem = setup({
         RESET_SETTINGS: {
           actions: 'resetSettings',
         },
-        COMPLETE_ONBOARDING: {
-          actions: 'completeOnboarding',
+        DISMISS_ONBOARDING_MODAL: {
+          actions: 'dismissOnboardingModal',
         },
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',

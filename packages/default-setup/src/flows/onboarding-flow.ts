@@ -19,8 +19,11 @@ export default {
     ]], "Route Response"),
     on("user.message", [[
       action("Ignore Onboarding Message", {
-        label: "send unable message",
-        map: { threadId: "$.event.data.payload.threadId" },
+        label: "cancel onboarding message",
+        map: {
+          threadId: "$.event.data.payload.threadId",
+          messageId: "$.event.data.payload.messageId",
+        },
       }),
     ]], "Ignore Message"),
   ],

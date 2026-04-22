@@ -1486,13 +1486,13 @@ declare const events: {
         type: "RESET_SETTINGS";
         systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
+        type: zod.ZodLiteral<"DISMISS_ONBOARDING_MODAL">;
         systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "COMPLETE_ONBOARDING";
+        type: "DISMISS_ONBOARDING_MODAL";
         systemId: "settings";
     }, {
-        type: "COMPLETE_ONBOARDING";
+        type: "DISMISS_ONBOARDING_MODAL";
         systemId: "settings";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
