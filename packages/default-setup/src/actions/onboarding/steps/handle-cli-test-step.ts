@@ -18,10 +18,11 @@ The app looks for the Claude Code CLI in these locations:
 
 1. **Settings path** — Check Settings > General > CLI Paths > claude-code
 2. **Local install** — \`~/.claude/local/claude\`
-3. **Homebrew** — \`/opt/homebrew/bin/claude\`
-4. **Standard Unix** — \`/usr/local/bin/claude\`
-5. **NVM** — \`~/.nvm/versions/node/*/bin/claude\`
-6. **System PATH** — Bare \`claude\` command
+3. **User local** — \`~/.local/bin/claude\`
+4. **Homebrew** — \`/opt/homebrew/bin/claude\`
+5. **Standard Unix** — \`/usr/local/bin/claude\`
+6. **NVM** — \`~/.nvm/versions/node/*/bin/claude\`
+7. **System PATH** — Bare \`claude\` command
 
 ### Steps to fix
 

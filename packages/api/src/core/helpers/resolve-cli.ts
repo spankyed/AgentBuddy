@@ -16,6 +16,7 @@ const FALLBACK_PATHS: Record<CliName, string[]> = {
   ],
   'claude-code': [
     `${HOME}/.claude/local/claude`,
+    `${HOME}/.local/bin/claude`,
     '/opt/homebrew/bin/claude',
     '/usr/local/bin/claude',
     `${HOME}/.nvm/versions/node/*/bin/claude`,
