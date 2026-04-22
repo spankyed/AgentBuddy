@@ -17,7 +17,7 @@
 
       <div class="onboarding-actions">
         <button
-          @click="completeOnboarding"
+          @click="closeDevLetter"
           class="btn btn-primary"
         >
           Get Started
@@ -31,13 +31,13 @@
 import { onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
 
-const completeOnboarding = () => {
-  applicationState.send({ type: 'COMPLETE_ONBOARDING' });
+const closeDevLetter = () => {
+  applicationState.send({ type: 'CLOSE_DEV_LETTER' });
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter') {
-    completeOnboarding();
+    closeDevLetter();
   }
 };
 

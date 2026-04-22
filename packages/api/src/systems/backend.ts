@@ -74,19 +74,18 @@ export const backendSystem = setup({
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
 
-      // Query for tourComplete from internal settings and emit to application actor
       const internalSettings = settingsQueries.getInternalSettings();
       system.get(bus).send({
         type: 'OUTGOING',
         event: {
           type: 'CLIENT_CONNECTED',
-          tourComplete: internalSettings.tourComplete,
+          hasOnboarded: internalSettings.hasOnboarded,
           pluginId: 'application'
         }
       });
 
       // Start onboarding flow immediately for first-time users
-      if (!internalSettings.tourComplete && !internalSettings.hasOnboarded) {
+      if (!internalSettings.hasOnboarded) {
         const threadsActor = system.get(threads);
         if (threadsActor) {
           threadsActor.send({ type: 'BIRTH_FLOW_START' });

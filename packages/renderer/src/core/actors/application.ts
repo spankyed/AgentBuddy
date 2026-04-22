@@ -70,8 +70,8 @@ export type ApplicationEvent =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
   | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-  | { type: 'CLIENT_CONNECTED'; tourComplete: boolean }
-  | { type: 'COMPLETE_ONBOARDING' }
+  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
+  | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
@@ -557,18 +557,9 @@ export const createApplicationState = () => setup({
         panelSizes: newSizes
       };
     }),
-    completeOnboarding: ({ context, self }) => {
-      // Navigate to threads plugin where onboarding thread is already running
+    closeDevLetter: ({ context, self }) => {
       self.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
-
-      // Ensure chat panel is expanded to default height
       self.send({ type: 'RESET_CHAT_HEIGHT' });
-
-      // Dismiss the modal — onboarding flow is already running underneath
-      trpc.bus.send.mutate({
-        systemId: 'settings',
-        type: 'DISMISS_ONBOARDING_MODAL'
-      });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({
@@ -675,7 +666,7 @@ export const createApplicationState = () => setup({
           {
             actions: [],
             target: 'onboarding',
-            guard: ({ event }) => event.tourComplete === false
+            guard: ({ event }) => event.hasOnboarded === false
           },
           {
             actions: [],
@@ -687,8 +678,8 @@ export const createApplicationState = () => setup({
     'onboarding': {
       tags: ['onboarding'],
       on: {
-        COMPLETE_ONBOARDING: {
-          actions: 'completeOnboarding',
+        CLOSE_DEV_LETTER: {
+          actions: 'closeDevLetter',
           target: 'running',
         },
       }

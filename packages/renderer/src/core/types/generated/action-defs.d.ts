@@ -1488,15 +1488,6 @@ declare const events: {
         type: "RESET_SETTINGS";
         systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DISMISS_ONBOARDING_MODAL">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "DISMISS_ONBOARDING_MODAL";
-        systemId: "settings";
-    }, {
-        type: "DISMISS_ONBOARDING_MODAL";
-        systemId: "settings";
-    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
         systemId: zod.ZodLiteral<"settings">;
         provider: zod.ZodString;
@@ -6070,7 +6061,6 @@ interface PluginSettings {
     [pluginId: string]: any;
 }
 interface InternalSettings {
-    tourComplete: boolean;
     hasOnboarded: boolean;
     lastInteractionTimestamp: number | null;
     version: string;
