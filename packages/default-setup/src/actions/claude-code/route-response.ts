@@ -54,11 +54,6 @@ export async function action(
     return { success: false, reason: 'no matching pending control request' };
   }
 
-  const handle = (services.cli as any).claudeCode.getHandle(threadId);
-  if (!handle) {
-    return { success: false, reason: 'no active CLI handle for thread' };
-  }
-
   const denied = response?.approved === false || response?.cancelled === true;
 
   // When denied, clear toolName for tools that have their own non-deny
@@ -70,6 +65,23 @@ export async function action(
     : pending.toolName;
 
   const clearContext = response?.clearContext === true;
+
+  // No CLI process exists (post-restart). Return staleApproval so the
+  // flow can route to a resume-or-deny handler instead of failing silently.
+  const handle = (services.cli as any).claudeCode.getHandle(threadId);
+  if (!handle) {
+    return {
+      success: true,
+      staleApproval: true,
+      denied,
+      clearContext,
+      toolName,
+      requestId: pending.requestId,
+      originalInput: pending.originalInput,
+      response,
+      threadId,
+    };
+  }
 
   return {
     success: true,

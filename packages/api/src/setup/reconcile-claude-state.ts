@@ -30,18 +30,31 @@ export function reconcileStaleClaudeState(): void {
   const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
   for (const thread of threads) {
     const cc = (thread.context as any)?.claudeCode;
+    const isPaused = (thread as any).chatState === 'paused';
+
+    // For paused threads, keep pendingControlRequest so the approval block
+    // remains functional after restart. Only clear process-level flags.
     const needsContextRepair = cc && (
       cc.isRunning === true ||
-      cc.pendingControlRequest !== undefined ||
-      cc.autoAcceptEdits !== undefined
+      (!isPaused && cc.pendingControlRequest !== undefined) ||
+      cc.autoAcceptEdits !== undefined ||
+      cc.autoApproveOnResume !== undefined
     );
-    const staleChatState = (thread as any).chatState === 'working' || (thread as any).chatState === 'paused';
+    // Only reset 'working' to 'idle'. Paused threads keep their state —
+    // the approval block is still visible and the user can respond to it.
+    const staleChatState = (thread as any).chatState === 'working';
 
     if (!needsContextRepair && !staleChatState) continue;
 
     const threadTx = tx(thread.id as any).put('updatedAt', Date.now());
     if (needsContextRepair) {
-      const nextCc = { ...cc, isRunning: false, autoAcceptEdits: undefined, pendingControlRequest: undefined };
+      const nextCc = {
+        ...cc,
+        isRunning: false,
+        autoAcceptEdits: undefined,
+        autoApproveOnResume: undefined,
+        ...(isPaused ? {} : { pendingControlRequest: undefined }),
+      };
       threadTx.put('context', { ...(thread.context as any || {}), claudeCode: nextCc });
     }
     if (staleChatState) {
@@ -56,7 +69,7 @@ export function reconcileStaleClaudeState(): void {
   for (const a of artifacts) {
     if (a.artifactType !== 'claude-session') continue;
     const content = a.content as any;
-    if (!content || (content.chatState !== 'working' && content.chatState !== 'paused')) continue;
+    if (!content || content.chatState !== 'working') continue;
     tx(a.id as any).put('content', { ...content, chatState: 'idle' }).put('updatedAt', Date.now()).id();
     artifactsFixed++;
   }

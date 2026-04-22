@@ -331,6 +331,17 @@ export async function consumeStream(
           continue;
         }
 
+        // Auto-approve a single tool on session resume (stale approval recovery).
+        // Set by CC: Handle Stale Approval when the user approves a post-restart
+        // approval block. The CLI re-reads the JSONL and re-attempts the tool.
+        const resumeState = getClaudeState(services, threadId);
+        if (resumeState?.autoApproveOnResume && req.tool_name === resumeState.autoApproveOnResume.toolName) {
+          log.debug('auto-approved on resume', { tool: req.tool_name });
+          handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
+          persistClaudeState(services, threadId, { autoApproveOnResume: undefined });
+          continue;
+        }
+
         // Auto-approve plan-file writes during plan phase.
         if (phase === 'plan' && req.subtype === 'can_use_tool' && isPlanFileWrite(req.tool_name, req.input)) {
           log.debug('auto-approved plan-file write', { tool: req.tool_name });
@@ -638,7 +649,7 @@ export async function consumeStream(
     // message could interleave between the two calls.
     (services.cli as any).claudeCode.clearHandle(threadId);
     const queued = dequeueMessage(services, threadId);
-    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined, autoApproveOnResume: undefined });
     if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:
@@ -731,7 +742,7 @@ export async function consumeStream(
     // Critical cleanup — dequeue before setRunning(false) to avoid race.
     (services.cli as any).claudeCode.clearHandle(threadId);
     const queued = dequeueMessage(services, threadId);
-    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined });
+    persistClaudeState(services, threadId, { isRunning: false, autoAcceptEdits: undefined, autoApproveOnResume: undefined });
     if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:

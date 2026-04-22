@@ -59,6 +59,23 @@ export default {
         }),
         branch([
           {
+            if: "$.lastStep.result.staleApproval == true",
+            steps: [
+              action("CC: Handle Stale Approval", {
+                label: "stale-approval",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  denied: "$.steps[label=route-response].result.denied",
+                  clearContext: "$.steps[label=route-response].result.clearContext",
+                  toolName: "$.steps[label=route-response].result.toolName",
+                  requestId: "$.steps[label=route-response].result.requestId",
+                  originalInput: "$.steps[label=route-response].result.originalInput",
+                  response: "$.steps[label=route-response].result.response",
+                },
+              }),
+            ],
+          },
+          {
             if: "$.lastStep.result.directorySelect == true",
             steps: [
               action("CC: Handle Directory Select", {

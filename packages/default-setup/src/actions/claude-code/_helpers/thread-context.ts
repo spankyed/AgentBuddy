@@ -70,6 +70,13 @@ export interface ClaudeCodeThreadState {
    */
   autoAcceptEdits?: boolean;
   /**
+   * One-shot: auto-approve the next control_request for this tool on session
+   * resume. Set by CC: Handle Stale Approval when the user approves a post-
+   * restart approval block. The stream consumer checks this flag and auto-
+   * approves the matching re-surfaced control_request.
+   */
+  autoApproveOnResume?: { toolName: string };
+  /**
    * One-shot flag set by CC: Handle Fork. When present, the next chat action
    * invocation passes `forkSession: true` to the CLI so it creates a new
    * session JSONL file instead of appending to the source session. Cleared
@@ -232,6 +239,7 @@ export function killTurn(services: Services, threadId: string): void {
     pendingControlRequest: undefined,
     pendingDirectorySelect: undefined,
     autoAcceptEdits: undefined,
+    autoApproveOnResume: undefined,
     isRunning: false,
   });
 }
