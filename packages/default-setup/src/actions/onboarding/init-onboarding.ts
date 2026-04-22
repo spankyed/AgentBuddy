@@ -43,19 +43,6 @@ export async function action(
     pinned: true,
   });
 
-  // Create note artifact pointing to the welcome note
-  const notes = services.repository.noteQueries.allDTOs();
-  const welcomeNote = notes.find((n: any) => n.title === 'welcome');
-
-  if (welcomeNote) {
-    services.artifact.createAndNotify({
-      artifactType: 'note' as any,
-      title: 'Welcome',
-      content: welcomeNote.id,
-      threadId,
-    });
-  }
-
   // Send welcome message with "Let's go" button
   const { messageId } = services.chat.sendChoiceBlock({
     threadId,
@@ -77,8 +64,21 @@ export async function action(
   };
   persistOnboardingState(services, threadId, onboardingState);
 
-  // Open the thread in chat — LOAD_CHAT_THREAD also switches canvas to dashboard
+  // Open the thread first so the frontend is listening for artifact events
   services.chat.openThreadChatAndRefreshRecent(threadId);
+
+  // Create note artifact pointing to the welcome note (after thread is open)
+  const notes = services.repository.noteQueries.allDTOs();
+  const welcomeNote = notes.find((n: any) => n.title === 'welcome');
+
+  if (welcomeNote) {
+    services.artifact.createAndNotify({
+      artifactType: 'note' as any,
+      title: 'Welcome',
+      content: welcomeNote.id,
+      threadId,
+    });
+  }
 
   await services.logger.info('Onboarding initialized', { threadId });
 

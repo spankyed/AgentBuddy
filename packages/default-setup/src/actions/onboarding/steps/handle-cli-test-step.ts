@@ -73,28 +73,30 @@ export async function action(
     return { success: true, step: state.step };
   }
 
-  // Initial response: "yes" or "no"
+  // Initial response: "yes" or "no" — create a markdown artifact for guidance
   const markdownContent = response === 'yes' ? DEBUGGING_MD : SETUP_GUIDE_MD;
-  const text = response === 'yes'
-    ? "Let's debug why the CLI isn't being detected."
-    : "Here's how to get set up with Claude Code.";
+  const artifactTitle = response === 'yes' ? 'Troubleshooting CLI' : 'Getting Started with Claude Code';
 
-  const { messageId } = services.chat.sendBlockMessage({
+  services.artifact.createAndNotify({
+    artifactType: 'markdown',
+    title: artifactTitle,
+    content: markdownContent,
+    threadId,
+  });
+
+  const text = response === 'yes'
+    ? "Check the troubleshooting guide in the artifact panel. When ready:"
+    : "Check the setup guide in the artifact panel. When ready:";
+
+  const { messageId } = services.chat.sendChoiceBlock({
     threadId,
     text,
-    blocks: [
-      { type: 'markdown', props: { content: markdownContent } },
-      {
-        type: 'choice',
-        props: {
-          prompt: 'What would you like to do?',
-          choices: [
-            { id: 'retest', label: 'Re-test CLI', description: 'Try detecting Claude Code again' },
-            { id: 'skip', label: 'Skip for now', description: "I'll set this up later" },
-          ],
-        },
-      },
+    prompt: 'What would you like to do?',
+    choices: [
+      { id: 'retest', label: 'Re-test CLI', description: 'Try detecting Claude Code again' },
+      { id: 'skip', label: 'Skip for now', description: "I'll set this up later" },
     ],
+    allowCustom: false,
     forkable: false,
     autoHide: true,
     asUser: true,
