@@ -149,7 +149,7 @@
             v-for="(branch, index) in filteredBranches"
             :key="branch"
             @mousedown.prevent="selectBranch(branch)"
-            @mouseenter="highlightedBranchIndex = index"
+            @mouseenter="highlightedBranchIndex = Number(index)"
             :class="[
               'px-3 py-2 cursor-pointer flex items-center gap-2',
               index === highlightedBranchIndex ? 'bg-neutral-800' : 'hover:bg-neutral-800'
