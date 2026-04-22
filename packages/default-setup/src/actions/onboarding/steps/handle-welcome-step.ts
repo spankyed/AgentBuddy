@@ -63,7 +63,7 @@ export async function testCliAndAdvance(
       allowCustom: false,
       forkable: false,
       autoHide: true,
-      asUser: false,
+      asUser: true,
     });
 
     state.step = 'cli-test-ask';
@@ -81,7 +81,7 @@ export async function testCliAndAdvance(
       allowCustom: false,
       forkable: false,
       autoHide: true,
-      asUser: false,
+      asUser: true,
     });
 
     state.step = 'cli-test-ask';

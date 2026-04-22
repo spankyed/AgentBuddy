@@ -65,7 +65,7 @@ export async function action(
     allowCustom: false,
     forkable: false,
     autoHide: true,
-    asUser: false,
+    asUser: true,
   });
 
   // Persist onboarding state to thread context

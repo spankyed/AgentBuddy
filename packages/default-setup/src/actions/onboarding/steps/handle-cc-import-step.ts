@@ -51,7 +51,7 @@ export async function startCcImportStep(
       allowCustom: false,
       forkable: false,
       autoHide: true,
-      asUser: false,
+      asUser: true,
     });
 
     state.step = 'cc-import';

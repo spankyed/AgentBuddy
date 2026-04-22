@@ -135,20 +135,6 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
-type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
-type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
-interface ActiveTokenInfo {
-    source: TokenSource;
-    kind: TokenKind;
-    prefix: string;
-}
-
-interface FileChangeInfo {
-    path: string;
-    modifiedAt: Date;
-    changeType: 'add' | 'change' | 'unlink';
-}
-
 interface SecretEntity {
     id: EARS.EntityId;
     entityType: EARS.Entity.Secret;
@@ -192,6 +178,20 @@ interface SeedResult {
     settings: SeedCounts;
 }
 
+type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
+type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
+interface ActiveTokenInfo {
+    source: TokenSource;
+    kind: TokenKind;
+    prefix: string;
+}
+
+interface FileChangeInfo {
+    path: string;
+    modifiedAt: Date;
+    changeType: 'add' | 'change' | 'unlink';
+}
+
 type Simplify<T> = {
     [K in keyof T]: T[K];
 } & {};
@@ -200,162 +200,6 @@ type Simplify<T> = {
 type EventsFromSchemas<S extends readonly z.ZodTypeAny[]> = {
     [K in keyof S]: z.infer<S[K]>;
 }[number];
-
-interface NoteEntity extends BaseEntity {
-    entityType: EARS.Entity.Note;
-    title: string;
-    content: string;
-    icon: string | null;
-    noteType: 'document' | 'tasklist' | 'task';
-    completed: boolean;
-    hideCompletedChildren: boolean;
-    displayOrder: number;
-    savedDisplayOrder?: number;
-    createdAt: number;
-    updatedAt: number;
-    lastSeen: number;
-    favorite?: boolean;
-    deleted?: boolean;
-    deletedAt?: number;
-}
-interface NoteDTO {
-    id: string;
-    title: string;
-    content: string;
-    icon: string | null;
-    noteType: 'document' | 'tasklist' | 'task';
-    completed: boolean;
-    hideCompletedChildren: boolean;
-    parentId: string | null;
-    displayOrder: number;
-    savedDisplayOrder: number | null;
-    childCount: number;
-    createdAt: number;
-    updatedAt: number;
-    lastSeen: number;
-    favorite: boolean;
-    deletedAt?: number;
-}
-interface NotesConnectedData {
-    notes: NoteDTO[];
-    settings?: NotesSettings;
-}
-
-/**
- * Prompt template types and definitions
- */
-
-/**
- * Defines an input parameter that a prompt template expects
- */
-interface TemplateInput {
-    name: string;
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    defaultValue?: any;
-    commonSources?: string[];
-    example?: any;
-}
-/**
- * Defines a prompt entity stored in the system
- */
-interface PromptEntity extends BaseEntity {
-    entityType: EARS.Entity.Prompt;
-    label: string;
-    description?: string;
-    category?: string;
-    inputs: Record<string, TemplateInput>;
-    templateFn: string;
-    outputSchema?: any;
-    /** SHA256 hash of DSL source at last seed. Absent on user-created prompts. */
-    sourceHash?: string;
-    createdAt: number;
-    updatedAt: number;
-}
-/**
- * Data sent on prompts system connection
- */
-interface PromptsConnectedData {
-    prompts: PromptEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
-
-declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
-type LogLevel = z.infer<typeof LogLevel>;
-declare const LogEntry: z.ZodObject<{
-    id: z.ZodString;
-    timestamp: z.ZodNumber;
-    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
-    message: z.ZodString;
-    source: z.ZodOptional<z.ZodString>;
-    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
-    stack: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
-    id: string;
-    timestamp: number;
-    message: string;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}, {
-    id: string;
-    timestamp: number;
-    message: string;
-    level: "debug" | "info" | "warn" | "error";
-    meta?: Record<string, any> | undefined;
-    source?: string | undefined;
-    stack?: string | undefined;
-}>;
-type LogEntry = z.infer<typeof LogEntry>;
-
-interface DatabaseSchemaInfo {
-    entities: Array<{
-        type: EARS.Entity;
-    }>;
-    attributes: Array<{
-        kind: string;
-    }>;
-    relations: Array<{
-        kind: EARS.RelKind;
-    }>;
-}
-interface DatabaseStartupData {
-    schema: DatabaseSchemaInfo;
-}
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
-    sourceHash?: string;
-    createdAt: number;
-    updatedAt: number;
-}
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
-}
 
 /**
  * Type definitions + Zod schemas for the Claude Code stream-json wire protocol.
@@ -1270,7 +1114,7 @@ interface Tab {
     selectedArtifactId?: string;
     pinned?: boolean;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan' | 'note';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
@@ -1281,6 +1125,162 @@ interface ArtifactItem {
         updatedAt?: number;
         [key: string]: any;
     };
+}
+
+interface NoteEntity extends BaseEntity {
+    entityType: EARS.Entity.Note;
+    title: string;
+    content: string;
+    icon: string | null;
+    noteType: 'document' | 'tasklist' | 'task';
+    completed: boolean;
+    hideCompletedChildren: boolean;
+    displayOrder: number;
+    savedDisplayOrder?: number;
+    createdAt: number;
+    updatedAt: number;
+    lastSeen: number;
+    favorite?: boolean;
+    deleted?: boolean;
+    deletedAt?: number;
+}
+interface NoteDTO {
+    id: string;
+    title: string;
+    content: string;
+    icon: string | null;
+    noteType: 'document' | 'tasklist' | 'task';
+    completed: boolean;
+    hideCompletedChildren: boolean;
+    parentId: string | null;
+    displayOrder: number;
+    savedDisplayOrder: number | null;
+    childCount: number;
+    createdAt: number;
+    updatedAt: number;
+    lastSeen: number;
+    favorite: boolean;
+    deletedAt?: number;
+}
+interface NotesConnectedData {
+    notes: NoteDTO[];
+    settings?: NotesSettings;
+}
+
+/**
+ * Prompt template types and definitions
+ */
+
+/**
+ * Defines an input parameter that a prompt template expects
+ */
+interface TemplateInput {
+    name: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    defaultValue?: any;
+    commonSources?: string[];
+    example?: any;
+}
+/**
+ * Defines a prompt entity stored in the system
+ */
+interface PromptEntity extends BaseEntity {
+    entityType: EARS.Entity.Prompt;
+    label: string;
+    description?: string;
+    category?: string;
+    inputs: Record<string, TemplateInput>;
+    templateFn: string;
+    outputSchema?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created prompts. */
+    sourceHash?: string;
+    createdAt: number;
+    updatedAt: number;
+}
+/**
+ * Data sent on prompts system connection
+ */
+interface PromptsConnectedData {
+    prompts: PromptEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
+declare const LogLevel: z.ZodEnum<["debug", "info", "warn", "error"]>;
+type LogLevel = z.infer<typeof LogLevel>;
+declare const LogEntry: z.ZodObject<{
+    id: z.ZodString;
+    timestamp: z.ZodNumber;
+    level: z.ZodEnum<["debug", "info", "warn", "error"]>;
+    message: z.ZodString;
+    source: z.ZodOptional<z.ZodString>;
+    meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    stack: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}, {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: "debug" | "info" | "warn" | "error";
+    meta?: Record<string, any> | undefined;
+    source?: string | undefined;
+    stack?: string | undefined;
+}>;
+type LogEntry = z.infer<typeof LogEntry>;
+
+interface DatabaseSchemaInfo {
+    entities: Array<{
+        type: EARS.Entity;
+    }>;
+    attributes: Array<{
+        kind: string;
+    }>;
+    relations: Array<{
+        kind: EARS.RelKind;
+    }>;
+}
+interface DatabaseStartupData {
+    schema: DatabaseSchemaInfo;
+}
+
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
+    sourceHash?: string;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
 }
 
 type DocumentShortCode = `DOC-${number}`;
@@ -1449,199 +1449,17 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
-    }, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
-        label: zod.ZodString;
-        path: zod.ZodArray<zod.ZodString, "many">;
-        value: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
-        value?: any;
-    }, {
-        label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
-        value?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-        value: zod.ZodString;
-        customName: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
-    }, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-        value: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
-    }, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
-    }, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PREVIEW_SETUP_PACK">;
-        systemId: zod.ZodLiteral<"settings">;
-        directory: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PREVIEW_SETUP_PACK";
-        systemId: "settings";
-        directory: string;
-    }, {
-        type: "PREVIEW_SETUP_PACK";
-        systemId: "settings";
-        directory: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
-        systemId: zod.ZodLiteral<"settings">;
-        directory: zod.ZodString;
-        include: zod.ZodOptional<zod.ZodObject<{
-            actions: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            prompts: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            flows: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            library: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            notes: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            settings: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-        }, "strip", zod.ZodTypeAny, {
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            flows: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        }, {
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            flows: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        }>>;
-        mode: zod.ZodOptional<zod.ZodEnum<["keep-existing", "replace-on-collision", "wipe-and-replace"]>>;
-        restartBrain: zod.ZodOptional<zod.ZodBoolean>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_SETUP_PACK";
-        systemId: "settings";
-        directory: string;
-        include?: {
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            flows: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        } | undefined;
-        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
-        restartBrain?: boolean | undefined;
-    }, {
-        type: "IMPORT_SETUP_PACK";
-        systemId: "settings";
-        directory: string;
-        include?: {
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            flows: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        } | undefined;
-        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
-        restartBrain?: boolean | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_APP">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_APP";
-        systemId: "settings";
-    }, {
-        type: "RESET_APP";
-        systemId: "settings";
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
         tNodeId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        tNodeId: string;
         type: "OPEN_TNODE";
         systemId: "brain";
-        tNodeId: string;
     }, {
+        tNodeId: string;
         type: "OPEN_TNODE";
         systemId: "brain";
-        tNodeId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"GO_BACK_TNODE">;
         systemId: zod.ZodLiteral<"brain">;
@@ -1671,13 +1489,13 @@ declare const events: {
         systemId: zod.ZodLiteral<"brain">;
         tNodeId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        tNodeId: string;
         type: "GET_TNODE_DETAILS";
         systemId: "brain";
-        tNodeId: string;
     }, {
+        tNodeId: string;
         type: "GET_TNODE_DETAILS";
         systemId: "brain";
-        tNodeId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"TOGGLE_INSPECT">;
         systemId: zod.ZodLiteral<"brain">;
@@ -1768,600 +1586,6 @@ declare const events: {
         systemId: "brain";
         payload?: any;
         targetFlowId?: string | undefined;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-            id: zod.ZodString;
-            relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
-        }, "strip", zod.ZodTypeAny, {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }, {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }>, "many">>;
-        parentThreadId: zod.ZodOptional<zod.ZodString>;
-        topic: zod.ZodString;
-        tags: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
-        instructions: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        topic: string;
-        instructions: string;
-        type: "CREATE_THREAD";
-        systemId: "threads";
-        tags?: string[] | undefined;
-        linkedThreads?: {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }[] | undefined;
-        parentThreadId?: string | undefined;
-    }, {
-        topic: string;
-        instructions: string;
-        type: "CREATE_THREAD";
-        systemId: "threads";
-        tags?: string[] | undefined;
-        linkedThreads?: {
-            id: string;
-            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
-        }[] | undefined;
-        parentThreadId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"VIEW_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "VIEW_THREAD";
-        systemId: "threads";
-        threadId: string;
-    }, {
-        type: "VIEW_THREAD";
-        systemId: "threads";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        status: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        status: string;
-        type: "UPDATE_THREAD_STATUS";
-        systemId: "threads";
-        threadId: string;
-    }, {
-        status: string;
-        type: "UPDATE_THREAD_STATUS";
-        systemId: "threads";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        key: zod.ZodString;
-        value: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_THREAD_FIELD";
-        systemId: "threads";
-        threadId: string;
-        key: string;
-        value?: any;
-    }, {
-        type: "UPDATE_THREAD_FIELD";
-        systemId: "threads";
-        threadId: string;
-        key: string;
-        value?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "DELETE_THREAD";
-        systemId: "threads";
-        threadId: string;
-    }, {
-        type: "DELETE_THREAD";
-        systemId: "threads";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SET_THREAD_PARENT">;
-        systemId: zod.ZodLiteral<"threads">;
-        childIds: zod.ZodArray<zod.ZodString, "many">;
-        parentId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SET_THREAD_PARENT";
-        systemId: "threads";
-        childIds: string[];
-        parentId: string;
-    }, {
-        type: "SET_THREAD_PARENT";
-        systemId: "threads";
-        childIds: string[];
-        parentId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"EXPORT_THREADS">;
-        systemId: zod.ZodLiteral<"threads">;
-        directory: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "EXPORT_THREADS";
-        systemId: "threads";
-        directory: string;
-    }, {
-        type: "EXPORT_THREADS";
-        systemId: "threads";
-        directory: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_THREADS">;
-        systemId: zod.ZodLiteral<"threads">;
-        directory: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_THREADS";
-        systemId: "threads";
-        directory: string;
-    }, {
-        type: "IMPORT_THREADS";
-        systemId: "threads";
-        directory: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"USER_MSG">;
-        systemId: zod.ZodLiteral<"threads">;
-        text: zod.ZodString;
-        mode: zod.ZodOptional<zod.ZodString>;
-        phase: zod.ZodOptional<zod.ZodString>;
-        threadId: zod.ZodOptional<zod.ZodString>;
-        references: zod.ZodOptional<zod.ZodObject<{
-            images: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                url: zod.ZodString;
-                name: zod.ZodString;
-            }, "strip", zod.ZodTypeAny, {
-                url: string;
-                name: string;
-            }, {
-                url: string;
-                name: string;
-            }>, "many">>;
-            files: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                name: zod.ZodString;
-                path: zod.ZodString;
-                typeLabel: zod.ZodString;
-                isImage: zod.ZodBoolean;
-            }, "strip", zod.ZodTypeAny, {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }, {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }>, "many">>;
-            context: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                refType: zod.ZodEnum<["thread", "document", "note", "task", "tasklist", "folder"]>;
-                refId: zod.ZodString;
-                shortCode: zod.ZodString;
-                label: zod.ZodString;
-            }, "strip", zod.ZodTypeAny, {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }, {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }>, "many">>;
-        }, "strip", zod.ZodTypeAny, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        }, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        }>>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "threads";
-        references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        } | undefined;
-        mode?: string | undefined;
-        threadId?: string | undefined;
-        phase?: string | undefined;
-    }, {
-        text: string;
-        type: "USER_MSG";
-        systemId: "threads";
-        references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        } | undefined;
-        mode?: string | undefined;
-        threadId?: string | undefined;
-        phase?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "OPEN_THREAD_CHAT";
-        systemId: "threads";
-        threadId: string;
-    }, {
-        type: "OPEN_THREAD_CHAT";
-        systemId: "threads";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        label: zod.ZodString;
-        pinned: zod.ZodOptional<zod.ZodBoolean>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "threads";
-        threadId: string;
-        pinned?: boolean | undefined;
-    }, {
-        label: string;
-        type: "OPEN_THREAD_TAB";
-        systemId: "threads";
-        threadId: string;
-        pinned?: boolean | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PAUSE_TURN">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PAUSE_TURN";
-        systemId: "threads";
-        threadId: string;
-    }, {
-        type: "PAUSE_TURN";
-        systemId: "threads";
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
-        systemId: zod.ZodLiteral<"threads">;
-        artifactId: zod.ZodString;
-        tasks: zod.ZodArray<zod.ZodAny, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "threads";
-        artifactId: string;
-        tasks: any[];
-    }, {
-        type: "APPROVE_TODO_LIST";
-        systemId: "threads";
-        artifactId: string;
-        tasks: any[];
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
-        systemId: zod.ZodLiteral<"threads">;
-        artifactId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REJECT_TODO_LIST";
-        systemId: "threads";
-        artifactId: string;
-    }, {
-        type: "REJECT_TODO_LIST";
-        systemId: "threads";
-        artifactId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"INTERACTIVE_MSG_RESPONSE">;
-        systemId: zod.ZodLiteral<"threads">;
-        messageId: zod.ZodString;
-        threadId: zod.ZodString;
-        response: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "INTERACTIVE_MSG_RESPONSE";
-        systemId: "threads";
-        threadId: string;
-        messageId: string;
-        response?: any;
-    }, {
-        type: "INTERACTIVE_MSG_RESPONSE";
-        systemId: "threads";
-        threadId: string;
-        messageId: string;
-        response?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"FORK_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        messageId: zod.ZodString;
-        threadId: zod.ZodOptional<zod.ZodString>;
-        threadTopic: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "FORK_THREAD";
-        systemId: "threads";
-        messageId: string;
-        threadId?: string | undefined;
-        threadTopic?: string | undefined;
-    }, {
-        type: "FORK_THREAD";
-        systemId: "threads";
-        messageId: string;
-        threadId?: string | undefined;
-        threadTopic?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REVERT_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        messageId: zod.ZodString;
-        threadId: zod.ZodString;
-        restoreFiles: zod.ZodOptional<zod.ZodBoolean>;
-        userCliUuid: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REVERT_THREAD";
-        systemId: "threads";
-        threadId: string;
-        messageId: string;
-        restoreFiles?: boolean | undefined;
-        userCliUuid?: string | undefined;
-    }, {
-        type: "REVERT_THREAD";
-        systemId: "threads";
-        threadId: string;
-        messageId: string;
-        restoreFiles?: boolean | undefined;
-        userCliUuid?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SUMMARIZE_THREAD">;
-        systemId: zod.ZodLiteral<"threads">;
-        messageId: zod.ZodString;
-        threadId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SUMMARIZE_THREAD";
-        systemId: "threads";
-        threadId: string;
-        messageId: string;
-    }, {
-        type: "SUMMARIZE_THREAD";
-        systemId: "threads";
-        threadId: string;
-        messageId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"USER_COMMAND">;
-        systemId: zod.ZodLiteral<"threads">;
-        command: zod.ZodString;
-        text: zod.ZodString;
-        mode: zod.ZodOptional<zod.ZodString>;
-        phase: zod.ZodOptional<zod.ZodString>;
-        threadId: zod.ZodOptional<zod.ZodString>;
-        references: zod.ZodOptional<zod.ZodObject<{
-            images: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                url: zod.ZodString;
-                name: zod.ZodString;
-            }, "strip", zod.ZodTypeAny, {
-                url: string;
-                name: string;
-            }, {
-                url: string;
-                name: string;
-            }>, "many">>;
-            files: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                name: zod.ZodString;
-                path: zod.ZodString;
-                typeLabel: zod.ZodString;
-                isImage: zod.ZodBoolean;
-            }, "strip", zod.ZodTypeAny, {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }, {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }>, "many">>;
-            context: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
-                refType: zod.ZodEnum<["thread", "document", "note", "task", "tasklist", "folder"]>;
-                refId: zod.ZodString;
-                shortCode: zod.ZodString;
-                label: zod.ZodString;
-            }, "strip", zod.ZodTypeAny, {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }, {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }>, "many">>;
-        }, "strip", zod.ZodTypeAny, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        }, {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        }>>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        text: string;
-        command: string;
-        type: "USER_COMMAND";
-        systemId: "threads";
-        references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        } | undefined;
-        mode?: string | undefined;
-        threadId?: string | undefined;
-        phase?: string | undefined;
-    }, {
-        text: string;
-        command: string;
-        type: "USER_COMMAND";
-        systemId: "threads";
-        references?: {
-            context?: {
-                label: string;
-                shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
-                refId: string;
-            }[] | undefined;
-            images?: {
-                url: string;
-                name: string;
-            }[] | undefined;
-            files?: {
-                path: string;
-                name: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[] | undefined;
-        } | undefined;
-        mode?: string | undefined;
-        threadId?: string | undefined;
-        phase?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_CLAUDE_PERMISSION_MODE">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        mode: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_CLAUDE_PERMISSION_MODE";
-        systemId: "threads";
-        mode: string;
-        threadId: string;
-    }, {
-        type: "UPDATE_CLAUDE_PERMISSION_MODE";
-        systemId: "threads";
-        mode: string;
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_CLAUDE_WORKTREE">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        useWorktree: zod.ZodBoolean;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_CLAUDE_WORKTREE";
-        systemId: "threads";
-        threadId: string;
-        useWorktree: boolean;
-    }, {
-        type: "UPDATE_CLAUDE_WORKTREE";
-        systemId: "threads";
-        threadId: string;
-        useWorktree: boolean;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_COMPACTED">;
-        systemId: zod.ZodLiteral<"threads">;
-        markerId: zod.ZodString;
-        compacted: zod.ZodBoolean;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        compacted: boolean;
-        type: "TOGGLE_COMPACTED";
-        systemId: "threads";
-        markerId: string;
-    }, {
-        compacted: boolean;
-        type: "TOGGLE_COMPACTED";
-        systemId: "threads";
-        markerId: string;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -2744,6 +1968,111 @@ declare const events: {
         type: "REQUEST_LOGS_UPDATE";
         systemId: "logs";
     }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"ACTION_SELECT">;
+        systemId: zod.ZodLiteral<"actions">;
+        actionId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "ACTION_SELECT";
+        systemId: "actions";
+        actionId: string;
+    }, {
+        type: "ACTION_SELECT";
+        systemId: "actions";
+        actionId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_ACTION">;
+        systemId: zod.ZodLiteral<"actions">;
+        label: zod.ZodString;
+        input: zod.ZodRecord<zod.ZodString, zod.ZodAny>;
+        actionFn: zod.ZodString;
+        output: zod.ZodOptional<zod.ZodAny>;
+        description: zod.ZodOptional<zod.ZodString>;
+        category: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        type: "CREATE_ACTION";
+        systemId: "actions";
+        input: Record<string, any>;
+        actionFn: string;
+        category?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+    }, {
+        label: string;
+        type: "CREATE_ACTION";
+        systemId: "actions";
+        input: Record<string, any>;
+        actionFn: string;
+        category?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_ACTION">;
+        systemId: zod.ZodLiteral<"actions">;
+        actionId: zod.ZodString;
+        label: zod.ZodOptional<zod.ZodString>;
+        input: zod.ZodOptional<zod.ZodRecord<zod.ZodString, zod.ZodAny>>;
+        actionFn: zod.ZodOptional<zod.ZodString>;
+        output: zod.ZodOptional<zod.ZodAny>;
+        description: zod.ZodOptional<zod.ZodString>;
+        category: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_ACTION";
+        systemId: "actions";
+        actionId: string;
+        category?: string | undefined;
+        label?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+        input?: Record<string, any> | undefined;
+        actionFn?: string | undefined;
+    }, {
+        type: "UPDATE_ACTION";
+        systemId: "actions";
+        actionId: string;
+        category?: string | undefined;
+        label?: string | undefined;
+        description?: string | undefined;
+        output?: any;
+        input?: Record<string, any> | undefined;
+        actionFn?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_ACTION">;
+        systemId: zod.ZodLiteral<"actions">;
+        actionId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_ACTION";
+        systemId: "actions";
+        actionId: string;
+    }, {
+        type: "DELETE_ACTION";
+        systemId: "actions";
+        actionId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_ACTIONS">;
+        systemId: zod.ZodLiteral<"actions">;
+        actions: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_ACTIONS";
+        systemId: "actions";
+        actions?: any;
+    }, {
+        type: "IMPORT_ACTIONS";
+        systemId: "actions";
+        actions?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_ACTIONS">;
+        systemId: zod.ZodLiteral<"actions">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_ACTIONS";
+        systemId: "actions";
+        directory: string;
+    }, {
+        type: "EXPORT_ACTIONS";
+        systemId: "actions";
+        directory: string;
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"PROMPT_SELECT">;
         systemId: zod.ZodLiteral<"prompts">;
         promptId: zod.ZodString;
@@ -2861,595 +2190,6 @@ declare const events: {
         systemId: "prompts";
         directory: string;
     }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"ACTION_SELECT">;
-        systemId: zod.ZodLiteral<"actions">;
-        actionId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "ACTION_SELECT";
-        systemId: "actions";
-        actionId: string;
-    }, {
-        type: "ACTION_SELECT";
-        systemId: "actions";
-        actionId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_ACTION">;
-        systemId: zod.ZodLiteral<"actions">;
-        label: zod.ZodString;
-        input: zod.ZodRecord<zod.ZodString, zod.ZodAny>;
-        actionFn: zod.ZodString;
-        output: zod.ZodOptional<zod.ZodAny>;
-        description: zod.ZodOptional<zod.ZodString>;
-        category: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        label: string;
-        type: "CREATE_ACTION";
-        systemId: "actions";
-        input: Record<string, any>;
-        actionFn: string;
-        category?: string | undefined;
-        description?: string | undefined;
-        output?: any;
-    }, {
-        label: string;
-        type: "CREATE_ACTION";
-        systemId: "actions";
-        input: Record<string, any>;
-        actionFn: string;
-        category?: string | undefined;
-        description?: string | undefined;
-        output?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_ACTION">;
-        systemId: zod.ZodLiteral<"actions">;
-        actionId: zod.ZodString;
-        label: zod.ZodOptional<zod.ZodString>;
-        input: zod.ZodOptional<zod.ZodRecord<zod.ZodString, zod.ZodAny>>;
-        actionFn: zod.ZodOptional<zod.ZodString>;
-        output: zod.ZodOptional<zod.ZodAny>;
-        description: zod.ZodOptional<zod.ZodString>;
-        category: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_ACTION";
-        systemId: "actions";
-        actionId: string;
-        category?: string | undefined;
-        label?: string | undefined;
-        description?: string | undefined;
-        input?: Record<string, any> | undefined;
-        actionFn?: string | undefined;
-        output?: any;
-    }, {
-        type: "UPDATE_ACTION";
-        systemId: "actions";
-        actionId: string;
-        category?: string | undefined;
-        label?: string | undefined;
-        description?: string | undefined;
-        input?: Record<string, any> | undefined;
-        actionFn?: string | undefined;
-        output?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_ACTION">;
-        systemId: zod.ZodLiteral<"actions">;
-        actionId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "DELETE_ACTION";
-        systemId: "actions";
-        actionId: string;
-    }, {
-        type: "DELETE_ACTION";
-        systemId: "actions";
-        actionId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_ACTIONS">;
-        systemId: zod.ZodLiteral<"actions">;
-        actions: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_ACTIONS";
-        systemId: "actions";
-        actions?: any;
-    }, {
-        type: "IMPORT_ACTIONS";
-        systemId: "actions";
-        actions?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"EXPORT_ACTIONS">;
-        systemId: zod.ZodLiteral<"actions">;
-        directory: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "EXPORT_ACTIONS";
-        systemId: "actions";
-        directory: string;
-    }, {
-        type: "EXPORT_ACTIONS";
-        systemId: "actions";
-        directory: string;
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"LIST_DOCUMENTS">;
-        systemId: zod.ZodLiteral<"library">;
-        collectionId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "LIST_DOCUMENTS";
-        systemId: "library";
-        collectionId?: string | undefined;
-    }, {
-        type: "LIST_DOCUMENTS";
-        systemId: "library";
-        collectionId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_DOCUMENT">;
-        systemId: zod.ZodLiteral<"library">;
-        name: zod.ZodString;
-        content: zod.ZodArray<zod.ZodUnion<[zod.ZodObject<{
-            type: zod.ZodLiteral<"field">;
-            fields: zod.ZodArray<zod.ZodObject<{
-                key: zod.ZodString;
-                value: zod.ZodString;
-            }, "strip", zod.ZodTypeAny, {
-                value: string;
-                key: string;
-            }, {
-                value: string;
-                key: string;
-            }>, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        }, {
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"list">;
-            items: zod.ZodArray<zod.ZodString, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            type: "list";
-            items: string[];
-        }, {
-            type: "list";
-            items: string[];
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"markdown">;
-            text: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            text: string;
-            type: "markdown";
-        }, {
-            text: string;
-            type: "markdown";
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"text">;
-            text: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            text: string;
-            type: "text";
-        }, {
-            text: string;
-            type: "text";
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"code">;
-            text: zod.ZodString;
-            language: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            text: string;
-            type: "code";
-            language: string;
-        }, {
-            text: string;
-            type: "code";
-            language: string;
-        }>]>, "many">;
-        tags: zod.ZodArray<zod.ZodString, "many">;
-        collectionId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tags: string[];
-        content: ({
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        } | {
-            type: "list";
-            items: string[];
-        } | {
-            text: string;
-            type: "markdown";
-        } | {
-            text: string;
-            type: "text";
-        } | {
-            text: string;
-            type: "code";
-            language: string;
-        })[];
-        type: "CREATE_DOCUMENT";
-        systemId: "library";
-        name: string;
-        collectionId?: string | undefined;
-    }, {
-        tags: string[];
-        content: ({
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        } | {
-            type: "list";
-            items: string[];
-        } | {
-            text: string;
-            type: "markdown";
-        } | {
-            text: string;
-            type: "text";
-        } | {
-            text: string;
-            type: "code";
-            language: string;
-        })[];
-        type: "CREATE_DOCUMENT";
-        systemId: "library";
-        name: string;
-        collectionId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_DOCUMENT">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-        name: zod.ZodString;
-        content: zod.ZodArray<zod.ZodUnion<[zod.ZodObject<{
-            type: zod.ZodLiteral<"field">;
-            fields: zod.ZodArray<zod.ZodObject<{
-                key: zod.ZodString;
-                value: zod.ZodString;
-            }, "strip", zod.ZodTypeAny, {
-                value: string;
-                key: string;
-            }, {
-                value: string;
-                key: string;
-            }>, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        }, {
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"list">;
-            items: zod.ZodArray<zod.ZodString, "many">;
-        }, "strip", zod.ZodTypeAny, {
-            type: "list";
-            items: string[];
-        }, {
-            type: "list";
-            items: string[];
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"markdown">;
-            text: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            text: string;
-            type: "markdown";
-        }, {
-            text: string;
-            type: "markdown";
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"text">;
-            text: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            text: string;
-            type: "text";
-        }, {
-            text: string;
-            type: "text";
-        }>, zod.ZodObject<{
-            type: zod.ZodLiteral<"code">;
-            text: zod.ZodString;
-            language: zod.ZodString;
-        }, "strip", zod.ZodTypeAny, {
-            text: string;
-            type: "code";
-            language: string;
-        }, {
-            text: string;
-            type: "code";
-            language: string;
-        }>]>, "many">;
-        tags: zod.ZodArray<zod.ZodString, "many">;
-        collectionId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        tags: string[];
-        id: string;
-        content: ({
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        } | {
-            type: "list";
-            items: string[];
-        } | {
-            text: string;
-            type: "markdown";
-        } | {
-            text: string;
-            type: "text";
-        } | {
-            text: string;
-            type: "code";
-            language: string;
-        })[];
-        type: "UPDATE_DOCUMENT";
-        systemId: "library";
-        name: string;
-        collectionId?: string | undefined;
-    }, {
-        tags: string[];
-        id: string;
-        content: ({
-            type: "field";
-            fields: {
-                value: string;
-                key: string;
-            }[];
-        } | {
-            type: "list";
-            items: string[];
-        } | {
-            text: string;
-            type: "markdown";
-        } | {
-            text: string;
-            type: "text";
-        } | {
-            text: string;
-            type: "code";
-            language: string;
-        })[];
-        type: "UPDATE_DOCUMENT";
-        systemId: "library";
-        name: string;
-        collectionId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_DOCUMENT">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "DELETE_DOCUMENT";
-        systemId: "library";
-    }, {
-        id: string;
-        type: "DELETE_DOCUMENT";
-        systemId: "library";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_DOCUMENT">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "GET_DOCUMENT";
-        systemId: "library";
-    }, {
-        id: string;
-        type: "GET_DOCUMENT";
-        systemId: "library";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"LIST_COLLECTIONS">;
-        systemId: zod.ZodLiteral<"library">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "LIST_COLLECTIONS";
-        systemId: "library";
-    }, {
-        type: "LIST_COLLECTIONS";
-        systemId: "library";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_COLLECTION">;
-        systemId: zod.ZodLiteral<"library">;
-        name: zod.ZodString;
-        description: zod.ZodOptional<zod.ZodString>;
-        parentId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CREATE_COLLECTION";
-        systemId: "library";
-        name: string;
-        description?: string | undefined;
-        parentId?: string | undefined;
-    }, {
-        type: "CREATE_COLLECTION";
-        systemId: "library";
-        name: string;
-        description?: string | undefined;
-        parentId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_COLLECTION">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-        name: zod.ZodString;
-        description: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "UPDATE_COLLECTION";
-        systemId: "library";
-        name: string;
-        description?: string | undefined;
-    }, {
-        id: string;
-        type: "UPDATE_COLLECTION";
-        systemId: "library";
-        name: string;
-        description?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_COLLECTION">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "DELETE_COLLECTION";
-        systemId: "library";
-    }, {
-        id: string;
-        type: "DELETE_COLLECTION";
-        systemId: "library";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"MOVE_DOCUMENT">;
-        systemId: zod.ZodLiteral<"library">;
-        documentId: zod.ZodString;
-        collectionId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "MOVE_DOCUMENT";
-        systemId: "library";
-        documentId: string;
-        collectionId?: string | undefined;
-    }, {
-        type: "MOVE_DOCUMENT";
-        systemId: "library";
-        documentId: string;
-        collectionId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_FOLDER_CONTENTS">;
-        systemId: zod.ZodLiteral<"library">;
-        folderId: zod.ZodNullable<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_FOLDER_CONTENTS";
-        systemId: "library";
-        folderId: string | null;
-    }, {
-        type: "GET_FOLDER_CONTENTS";
-        systemId: "library";
-        folderId: string | null;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"NAVIGATE_TO_FOLDER">;
-        systemId: zod.ZodLiteral<"library">;
-        folderId: zod.ZodNullable<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "NAVIGATE_TO_FOLDER";
-        systemId: "library";
-        folderId: string | null;
-    }, {
-        type: "NAVIGATE_TO_FOLDER";
-        systemId: "library";
-        folderId: string | null;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RENAME_ITEM">;
-        systemId: zod.ZodLiteral<"library">;
-        id: zod.ZodString;
-        name: zod.ZodString;
-        itemType: zod.ZodEnum<["document", "folder"]>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "RENAME_ITEM";
-        systemId: "library";
-        name: string;
-        itemType: "document" | "folder";
-    }, {
-        id: string;
-        type: "RENAME_ITEM";
-        systemId: "library";
-        name: string;
-        itemType: "document" | "folder";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_ITEMS">;
-        systemId: zod.ZodLiteral<"library">;
-        ids: zod.ZodArray<zod.ZodString, "many">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "DELETE_ITEMS";
-        systemId: "library";
-        ids: string[];
-    }, {
-        type: "DELETE_ITEMS";
-        systemId: "library";
-        ids: string[];
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"MOVE_ITEMS">;
-        systemId: zod.ZodLiteral<"library">;
-        ids: zod.ZodArray<zod.ZodString, "many">;
-        targetFolderId: zod.ZodNullable<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "MOVE_ITEMS";
-        systemId: "library";
-        ids: string[];
-        targetFolderId: string | null;
-    }, {
-        type: "MOVE_ITEMS";
-        systemId: "library";
-        ids: string[];
-        targetFolderId: string | null;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_SYMLINK_COLLECTION">;
-        systemId: zod.ZodLiteral<"library">;
-        name: zod.ZodString;
-        symlinkPath: zod.ZodString;
-        parentId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CREATE_SYMLINK_COLLECTION";
-        systemId: "library";
-        name: string;
-        symlinkPath: string;
-        parentId?: string | undefined;
-    }, {
-        type: "CREATE_SYMLINK_COLLECTION";
-        systemId: "library";
-        name: string;
-        symlinkPath: string;
-        parentId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SYMLINK_PATH">;
-        systemId: zod.ZodLiteral<"library">;
-        collectionId: zod.ZodString;
-        newPath: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_SYMLINK_PATH";
-        systemId: "library";
-        collectionId: string;
-        newPath: string;
-    }, {
-        type: "UPDATE_SYMLINK_PATH";
-        systemId: "library";
-        collectionId: string;
-        newPath: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_LIBRARY">;
-        systemId: zod.ZodLiteral<"library">;
-        directory: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_LIBRARY";
-        systemId: "library";
-        directory: string;
-    }, {
-        type: "IMPORT_LIBRARY";
-        systemId: "library";
-        directory: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"EXPORT_LIBRARY">;
-        systemId: zod.ZodLiteral<"library">;
-        directory: zod.ZodString;
-        format: zod.ZodEnum<["markdown", "json"]>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "EXPORT_LIBRARY";
-        systemId: "library";
-        directory: string;
-        format: "json" | "markdown";
-    }, {
-        type: "EXPORT_LIBRARY";
-        systemId: "library";
-        directory: string;
-        format: "json" | "markdown";
-    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.LIST_FILES">;
         systemId: zod.ZodLiteral<"code">;
         path: zod.ZodString;
@@ -3523,13 +2263,13 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "explorer.RENAME_FILE";
         systemId: "code";
-        newPath: string;
         oldPath: string;
+        newPath: string;
     }, {
         type: "explorer.RENAME_FILE";
         systemId: "code";
-        newPath: string;
         oldPath: string;
+        newPath: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"explorer.CREATE_DIRECTORY">;
         systemId: zod.ZodLiteral<"code">;
@@ -4350,6 +3090,490 @@ declare const events: {
         path: string;
         fromUserNavigation?: boolean | undefined;
     }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"LIST_DOCUMENTS">;
+        systemId: zod.ZodLiteral<"library">;
+        collectionId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "LIST_DOCUMENTS";
+        systemId: "library";
+        collectionId?: string | undefined;
+    }, {
+        type: "LIST_DOCUMENTS";
+        systemId: "library";
+        collectionId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_DOCUMENT">;
+        systemId: zod.ZodLiteral<"library">;
+        name: zod.ZodString;
+        content: zod.ZodArray<zod.ZodUnion<[zod.ZodObject<{
+            type: zod.ZodLiteral<"field">;
+            fields: zod.ZodArray<zod.ZodObject<{
+                key: zod.ZodString;
+                value: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                value: string;
+                key: string;
+            }, {
+                value: string;
+                key: string;
+            }>, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        }, {
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"list">;
+            items: zod.ZodArray<zod.ZodString, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            type: "list";
+            items: string[];
+        }, {
+            type: "list";
+            items: string[];
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"markdown">;
+            text: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "markdown";
+        }, {
+            text: string;
+            type: "markdown";
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"text">;
+            text: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "text";
+        }, {
+            text: string;
+            type: "text";
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"code">;
+            text: zod.ZodString;
+            language: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "code";
+            language: string;
+        }, {
+            text: string;
+            type: "code";
+            language: string;
+        }>]>, "many">;
+        tags: zod.ZodArray<zod.ZodString, "many">;
+        collectionId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        tags: string[];
+        content: ({
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        } | {
+            type: "list";
+            items: string[];
+        } | {
+            text: string;
+            type: "markdown";
+        } | {
+            text: string;
+            type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
+        })[];
+        type: "CREATE_DOCUMENT";
+        systemId: "library";
+        name: string;
+        collectionId?: string | undefined;
+    }, {
+        tags: string[];
+        content: ({
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        } | {
+            type: "list";
+            items: string[];
+        } | {
+            text: string;
+            type: "markdown";
+        } | {
+            text: string;
+            type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
+        })[];
+        type: "CREATE_DOCUMENT";
+        systemId: "library";
+        name: string;
+        collectionId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_DOCUMENT">;
+        systemId: zod.ZodLiteral<"library">;
+        id: zod.ZodString;
+        name: zod.ZodString;
+        content: zod.ZodArray<zod.ZodUnion<[zod.ZodObject<{
+            type: zod.ZodLiteral<"field">;
+            fields: zod.ZodArray<zod.ZodObject<{
+                key: zod.ZodString;
+                value: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                value: string;
+                key: string;
+            }, {
+                value: string;
+                key: string;
+            }>, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        }, {
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"list">;
+            items: zod.ZodArray<zod.ZodString, "many">;
+        }, "strip", zod.ZodTypeAny, {
+            type: "list";
+            items: string[];
+        }, {
+            type: "list";
+            items: string[];
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"markdown">;
+            text: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "markdown";
+        }, {
+            text: string;
+            type: "markdown";
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"text">;
+            text: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "text";
+        }, {
+            text: string;
+            type: "text";
+        }>, zod.ZodObject<{
+            type: zod.ZodLiteral<"code">;
+            text: zod.ZodString;
+            language: zod.ZodString;
+        }, "strip", zod.ZodTypeAny, {
+            text: string;
+            type: "code";
+            language: string;
+        }, {
+            text: string;
+            type: "code";
+            language: string;
+        }>]>, "many">;
+        tags: zod.ZodArray<zod.ZodString, "many">;
+        collectionId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        tags: string[];
+        id: string;
+        content: ({
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        } | {
+            type: "list";
+            items: string[];
+        } | {
+            text: string;
+            type: "markdown";
+        } | {
+            text: string;
+            type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
+        })[];
+        type: "UPDATE_DOCUMENT";
+        systemId: "library";
+        name: string;
+        collectionId?: string | undefined;
+    }, {
+        tags: string[];
+        id: string;
+        content: ({
+            type: "field";
+            fields: {
+                value: string;
+                key: string;
+            }[];
+        } | {
+            type: "list";
+            items: string[];
+        } | {
+            text: string;
+            type: "markdown";
+        } | {
+            text: string;
+            type: "text";
+        } | {
+            text: string;
+            type: "code";
+            language: string;
+        })[];
+        type: "UPDATE_DOCUMENT";
+        systemId: "library";
+        name: string;
+        collectionId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_DOCUMENT">;
+        systemId: zod.ZodLiteral<"library">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "DELETE_DOCUMENT";
+        systemId: "library";
+    }, {
+        id: string;
+        type: "DELETE_DOCUMENT";
+        systemId: "library";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_DOCUMENT">;
+        systemId: zod.ZodLiteral<"library">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "GET_DOCUMENT";
+        systemId: "library";
+    }, {
+        id: string;
+        type: "GET_DOCUMENT";
+        systemId: "library";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"LIST_COLLECTIONS">;
+        systemId: zod.ZodLiteral<"library">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "LIST_COLLECTIONS";
+        systemId: "library";
+    }, {
+        type: "LIST_COLLECTIONS";
+        systemId: "library";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_COLLECTION">;
+        systemId: zod.ZodLiteral<"library">;
+        name: zod.ZodString;
+        description: zod.ZodOptional<zod.ZodString>;
+        parentId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CREATE_COLLECTION";
+        systemId: "library";
+        name: string;
+        description?: string | undefined;
+        parentId?: string | undefined;
+    }, {
+        type: "CREATE_COLLECTION";
+        systemId: "library";
+        name: string;
+        description?: string | undefined;
+        parentId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_COLLECTION">;
+        systemId: zod.ZodLiteral<"library">;
+        id: zod.ZodString;
+        name: zod.ZodString;
+        description: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "UPDATE_COLLECTION";
+        systemId: "library";
+        name: string;
+        description?: string | undefined;
+    }, {
+        id: string;
+        type: "UPDATE_COLLECTION";
+        systemId: "library";
+        name: string;
+        description?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_COLLECTION">;
+        systemId: zod.ZodLiteral<"library">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "DELETE_COLLECTION";
+        systemId: "library";
+    }, {
+        id: string;
+        type: "DELETE_COLLECTION";
+        systemId: "library";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"MOVE_DOCUMENT">;
+        systemId: zod.ZodLiteral<"library">;
+        documentId: zod.ZodString;
+        collectionId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "MOVE_DOCUMENT";
+        systemId: "library";
+        documentId: string;
+        collectionId?: string | undefined;
+    }, {
+        type: "MOVE_DOCUMENT";
+        systemId: "library";
+        documentId: string;
+        collectionId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_FOLDER_CONTENTS">;
+        systemId: zod.ZodLiteral<"library">;
+        folderId: zod.ZodNullable<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_FOLDER_CONTENTS";
+        systemId: "library";
+        folderId: string | null;
+    }, {
+        type: "GET_FOLDER_CONTENTS";
+        systemId: "library";
+        folderId: string | null;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"NAVIGATE_TO_FOLDER">;
+        systemId: zod.ZodLiteral<"library">;
+        folderId: zod.ZodNullable<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "NAVIGATE_TO_FOLDER";
+        systemId: "library";
+        folderId: string | null;
+    }, {
+        type: "NAVIGATE_TO_FOLDER";
+        systemId: "library";
+        folderId: string | null;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RENAME_ITEM">;
+        systemId: zod.ZodLiteral<"library">;
+        id: zod.ZodString;
+        name: zod.ZodString;
+        itemType: zod.ZodEnum<["document", "folder"]>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "RENAME_ITEM";
+        systemId: "library";
+        name: string;
+        itemType: "document" | "folder";
+    }, {
+        id: string;
+        type: "RENAME_ITEM";
+        systemId: "library";
+        name: string;
+        itemType: "document" | "folder";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_ITEMS">;
+        systemId: zod.ZodLiteral<"library">;
+        ids: zod.ZodArray<zod.ZodString, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_ITEMS";
+        systemId: "library";
+        ids: string[];
+    }, {
+        type: "DELETE_ITEMS";
+        systemId: "library";
+        ids: string[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"MOVE_ITEMS">;
+        systemId: zod.ZodLiteral<"library">;
+        ids: zod.ZodArray<zod.ZodString, "many">;
+        targetFolderId: zod.ZodNullable<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "MOVE_ITEMS";
+        systemId: "library";
+        ids: string[];
+        targetFolderId: string | null;
+    }, {
+        type: "MOVE_ITEMS";
+        systemId: "library";
+        ids: string[];
+        targetFolderId: string | null;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_SYMLINK_COLLECTION">;
+        systemId: zod.ZodLiteral<"library">;
+        name: zod.ZodString;
+        symlinkPath: zod.ZodString;
+        parentId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CREATE_SYMLINK_COLLECTION";
+        systemId: "library";
+        name: string;
+        symlinkPath: string;
+        parentId?: string | undefined;
+    }, {
+        type: "CREATE_SYMLINK_COLLECTION";
+        systemId: "library";
+        name: string;
+        symlinkPath: string;
+        parentId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_SYMLINK_PATH">;
+        systemId: zod.ZodLiteral<"library">;
+        collectionId: zod.ZodString;
+        newPath: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_SYMLINK_PATH";
+        systemId: "library";
+        newPath: string;
+        collectionId: string;
+    }, {
+        type: "UPDATE_SYMLINK_PATH";
+        systemId: "library";
+        newPath: string;
+        collectionId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_LIBRARY">;
+        systemId: zod.ZodLiteral<"library">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_LIBRARY";
+        systemId: "library";
+        directory: string;
+    }, {
+        type: "IMPORT_LIBRARY";
+        systemId: "library";
+        directory: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_LIBRARY">;
+        systemId: zod.ZodLiteral<"library">;
+        directory: zod.ZodString;
+        format: zod.ZodEnum<["markdown", "json"]>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_LIBRARY";
+        systemId: "library";
+        directory: string;
+        format: "json" | "markdown";
+    }, {
+        type: "EXPORT_LIBRARY";
+        systemId: "library";
+        directory: string;
+        format: "json" | "markdown";
+    }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_NOTE">;
         systemId: zod.ZodLiteral<"notes">;
         title: zod.ZodString;
@@ -4559,82 +3783,784 @@ declare const events: {
         systemId: "notes";
         directory: string;
         format: "json" | "markdown";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "GET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
+        label: zod.ZodString;
+        path: zod.ZodArray<zod.ZodString, "many">;
+        value: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        path: string[];
+        value?: any;
+    }, {
+        label: string;
+        entityType: "general" | "plugin" | "internal";
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        path: string[];
+        value?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }, {
+        type: "RESET_SETTINGS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+        value: zod.ZodString;
+        customName: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        value: string;
+        provider: string;
+        customName?: string | undefined;
+    }, {
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        value: string;
+        provider: string;
+        customName?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+        value: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+        value: string;
+    }, {
+        id: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+        value: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }, {
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }, {
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
+    }, {
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PREVIEW_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }, {
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
+        directory: zod.ZodString;
+        include: zod.ZodOptional<zod.ZodObject<{
+            actions: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            prompts: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            flows: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            library: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            notes: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            settings: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            settings: string[] | null;
+            actions: string[] | null;
+            flows: string[] | null;
+            prompts: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }, {
+            settings: string[] | null;
+            actions: string[] | null;
+            flows: string[] | null;
+            prompts: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }>>;
+        mode: zod.ZodOptional<zod.ZodEnum<["keep-existing", "replace-on-collision", "wipe-and-replace"]>>;
+        restartBrain: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+        restartBrain?: boolean | undefined;
+        include?: {
+            settings: string[] | null;
+            actions: string[] | null;
+            flows: string[] | null;
+            prompts: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
+        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
+    }, {
+        type: "IMPORT_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+        restartBrain?: boolean | undefined;
+        include?: {
+            settings: string[] | null;
+            actions: string[] | null;
+            flows: string[] | null;
+            prompts: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
+        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_APP">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_APP";
+        systemId: "settings";
+    }, {
+        type: "RESET_APP";
+        systemId: "settings";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"CREATE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        linkedThreads: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            relation: zod.ZodUnion<[zod.ZodLiteral<"parent_of">, zod.ZodLiteral<"blocks">, zod.ZodLiteral<"blocked_by">, zod.ZodLiteral<"duplicates">]>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }, {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }>, "many">>;
+        parentThreadId: zod.ZodOptional<zod.ZodString>;
+        topic: zod.ZodString;
+        tags: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        instructions: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        topic: string;
+        instructions: string;
+        type: "CREATE_THREAD";
+        systemId: "threads";
+        tags?: string[] | undefined;
+        linkedThreads?: {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }[] | undefined;
+        parentThreadId?: string | undefined;
+    }, {
+        topic: string;
+        instructions: string;
+        type: "CREATE_THREAD";
+        systemId: "threads";
+        tags?: string[] | undefined;
+        linkedThreads?: {
+            id: string;
+            relation: "blocks" | "parent_of" | "duplicates" | "blocked_by";
+        }[] | undefined;
+        parentThreadId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"VIEW_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "VIEW_THREAD";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        type: "VIEW_THREAD";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_THREAD_STATUS">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        status: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        status: string;
+        type: "UPDATE_THREAD_STATUS";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        status: string;
+        type: "UPDATE_THREAD_STATUS";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_THREAD_FIELD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        key: zod.ZodString;
+        value: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_THREAD_FIELD";
+        systemId: "threads";
+        threadId: string;
+        key: string;
+        value?: any;
+    }, {
+        type: "UPDATE_THREAD_FIELD";
+        systemId: "threads";
+        threadId: string;
+        key: string;
+        value?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_THREAD";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        type: "DELETE_THREAD";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SET_THREAD_PARENT">;
+        systemId: zod.ZodLiteral<"threads">;
+        childIds: zod.ZodArray<zod.ZodString, "many">;
+        parentId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SET_THREAD_PARENT";
+        systemId: "threads";
+        parentId: string;
+        childIds: string[];
+    }, {
+        type: "SET_THREAD_PARENT";
+        systemId: "threads";
+        parentId: string;
+        childIds: string[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_THREADS">;
+        systemId: zod.ZodLiteral<"threads">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "EXPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }, {
+        type: "EXPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"IMPORT_THREADS">;
+        systemId: zod.ZodLiteral<"threads">;
+        directory: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }, {
+        type: "IMPORT_THREADS";
+        systemId: "threads";
+        directory: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"USER_MSG">;
+        systemId: zod.ZodLiteral<"threads">;
+        text: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodString>;
+        phase: zod.ZodOptional<zod.ZodString>;
+        threadId: zod.ZodOptional<zod.ZodString>;
+        references: zod.ZodOptional<zod.ZodObject<{
+            images: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                url: zod.ZodString;
+                name: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                name: string;
+                url: string;
+            }, {
+                name: string;
+                url: string;
+            }>, "many">>;
+            files: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                name: zod.ZodString;
+                path: zod.ZodString;
+                typeLabel: zod.ZodString;
+                isImage: zod.ZodBoolean;
+            }, "strip", zod.ZodTypeAny, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }>, "many">>;
+            context: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                refType: zod.ZodEnum<["thread", "document", "note", "task", "tasklist", "folder"]>;
+                refId: zod.ZodString;
+                shortCode: zod.ZodString;
+                label: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }, {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }>, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        text: string;
+        type: "USER_MSG";
+        systemId: "threads";
+        references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
+        mode?: string | undefined;
+        threadId?: string | undefined;
+        phase?: string | undefined;
+    }, {
+        text: string;
+        type: "USER_MSG";
+        systemId: "threads";
+        references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
+        mode?: string | undefined;
+        threadId?: string | undefined;
+        phase?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_THREAD_CHAT";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        type: "OPEN_THREAD_CHAT";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_THREAD_TAB">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        label: zod.ZodString;
+        pinned: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        label: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "threads";
+        threadId: string;
+        pinned?: boolean | undefined;
+    }, {
+        label: string;
+        type: "OPEN_THREAD_TAB";
+        systemId: "threads";
+        threadId: string;
+        pinned?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PAUSE_TURN">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PAUSE_TURN";
+        systemId: "threads";
+        threadId: string;
+    }, {
+        type: "PAUSE_TURN";
+        systemId: "threads";
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"APPROVE_TODO_LIST">;
+        systemId: zod.ZodLiteral<"threads">;
+        artifactId: zod.ZodString;
+        tasks: zod.ZodArray<zod.ZodAny, "many">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "threads";
+        artifactId: string;
+        tasks: any[];
+    }, {
+        type: "APPROVE_TODO_LIST";
+        systemId: "threads";
+        artifactId: string;
+        tasks: any[];
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REJECT_TODO_LIST">;
+        systemId: zod.ZodLiteral<"threads">;
+        artifactId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REJECT_TODO_LIST";
+        systemId: "threads";
+        artifactId: string;
+    }, {
+        type: "REJECT_TODO_LIST";
+        systemId: "threads";
+        artifactId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"INTERACTIVE_MSG_RESPONSE">;
+        systemId: zod.ZodLiteral<"threads">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodString;
+        response: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "INTERACTIVE_MSG_RESPONSE";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+        response?: any;
+    }, {
+        type: "INTERACTIVE_MSG_RESPONSE";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+        response?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"FORK_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodOptional<zod.ZodString>;
+        threadTopic: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "FORK_THREAD";
+        systemId: "threads";
+        messageId: string;
+        threadId?: string | undefined;
+        threadTopic?: string | undefined;
+    }, {
+        type: "FORK_THREAD";
+        systemId: "threads";
+        messageId: string;
+        threadId?: string | undefined;
+        threadTopic?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REVERT_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodString;
+        restoreFiles: zod.ZodOptional<zod.ZodBoolean>;
+        userCliUuid: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REVERT_THREAD";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
+    }, {
+        type: "REVERT_THREAD";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+        restoreFiles?: boolean | undefined;
+        userCliUuid?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"SUMMARIZE_THREAD">;
+        systemId: zod.ZodLiteral<"threads">;
+        messageId: zod.ZodString;
+        threadId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "SUMMARIZE_THREAD";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+    }, {
+        type: "SUMMARIZE_THREAD";
+        systemId: "threads";
+        threadId: string;
+        messageId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"USER_COMMAND">;
+        systemId: zod.ZodLiteral<"threads">;
+        command: zod.ZodString;
+        text: zod.ZodString;
+        mode: zod.ZodOptional<zod.ZodString>;
+        phase: zod.ZodOptional<zod.ZodString>;
+        threadId: zod.ZodOptional<zod.ZodString>;
+        references: zod.ZodOptional<zod.ZodObject<{
+            images: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                url: zod.ZodString;
+                name: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                name: string;
+                url: string;
+            }, {
+                name: string;
+                url: string;
+            }>, "many">>;
+            files: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                name: zod.ZodString;
+                path: zod.ZodString;
+                typeLabel: zod.ZodString;
+                isImage: zod.ZodBoolean;
+            }, "strip", zod.ZodTypeAny, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }, {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }>, "many">>;
+            context: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+                refType: zod.ZodEnum<["thread", "document", "note", "task", "tasklist", "folder"]>;
+                refId: zod.ZodString;
+                shortCode: zod.ZodString;
+                label: zod.ZodString;
+            }, "strip", zod.ZodTypeAny, {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }, {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }>, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }, {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        }>>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        text: string;
+        command: string;
+        type: "USER_COMMAND";
+        systemId: "threads";
+        references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
+        mode?: string | undefined;
+        threadId?: string | undefined;
+        phase?: string | undefined;
+    }, {
+        text: string;
+        command: string;
+        type: "USER_COMMAND";
+        systemId: "threads";
+        references?: {
+            context?: {
+                label: string;
+                shortCode: string;
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
+                refId: string;
+            }[] | undefined;
+            images?: {
+                name: string;
+                url: string;
+            }[] | undefined;
+            files?: {
+                path: string;
+                name: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[] | undefined;
+        } | undefined;
+        mode?: string | undefined;
+        threadId?: string | undefined;
+        phase?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_CLAUDE_PERMISSION_MODE">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        mode: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_CLAUDE_PERMISSION_MODE";
+        systemId: "threads";
+        mode: string;
+        threadId: string;
+    }, {
+        type: "UPDATE_CLAUDE_PERMISSION_MODE";
+        systemId: "threads";
+        mode: string;
+        threadId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_CLAUDE_WORKTREE">;
+        systemId: zod.ZodLiteral<"threads">;
+        threadId: zod.ZodString;
+        useWorktree: zod.ZodBoolean;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "UPDATE_CLAUDE_WORKTREE";
+        systemId: "threads";
+        threadId: string;
+        useWorktree: boolean;
+    }, {
+        type: "UPDATE_CLAUDE_WORKTREE";
+        systemId: "threads";
+        threadId: string;
+        useWorktree: boolean;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_COMPACTED">;
+        systemId: zod.ZodLiteral<"threads">;
+        markerId: zod.ZodString;
+        compacted: zod.ZodBoolean;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        compacted: boolean;
+        type: "TOGGLE_COMPACTED";
+        systemId: "threads";
+        markerId: string;
+    }, {
+        compacted: boolean;
+        type: "TOGGLE_COMPACTED";
+        systemId: "threads";
+        markerId: string;
     }>];
     readonly outgoing: {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        faqs: FAQItem[];
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
-    } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["application"]["hotkeys"];
-        pluginId: "settings";
-    } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        resolvedPath?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_IMPORTED";
-        result: SeedResult;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_IMPORT_FAILED";
-        error: string;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_PREVIEW";
-        preview: SetupPackPreview;
-        pluginId: "settings";
-    } | {
-        type: "SETUP_PACK_PREVIEW_FAILED";
-        error: string;
-        pluginId: "settings";
-    } | {
-        type: "APP_RESET_COMPLETE";
-        pluginId: "settings";
-    } | {
-        type: "APP_RESET_FAILED";
-        error: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
         type: "RECEIVE_PLUGIN_DATA";
         data: FlowTNodeData;
         pluginId: "brain";
@@ -4679,142 +4605,6 @@ declare const events: {
     } | {
         type: "BRAIN_RESUMED";
         pluginId: "brain";
-    } | {
-        type: "THREAD_CONNECTED";
-        data: ThreadConnectedData;
-        pluginId: "threads";
-    } | {
-        type: "SET_VIEW_DATA";
-        id: EARS.EntityId;
-        data: ThreadExtendedData;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_CREATED";
-        id: EARS.EntityId;
-        shortCode: string;
-        entityType: EARS.Entity;
-        timestamp: number;
-        topic?: string | undefined;
-        instructions?: string | undefined;
-        status?: string | undefined;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_UPDATED";
-        threadId: string;
-        updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_DELETED";
-        threadId: string;
-        pluginId: "threads";
-    } | {
-        type: "THREADS_EXPORTED";
-        filePath: string;
-        threadCount: number;
-        pluginId: "threads";
-    } | {
-        type: "THREADS_EXPORT_FAILED";
-        errors: string[];
-        pluginId: "threads";
-    } | {
-        type: "THREADS_IMPORTED";
-        count: number;
-        errors?: string[] | undefined;
-        pluginId: "threads";
-    } | {
-        type: "THREADS_IMPORT_FAILED";
-        errors: string[];
-        pluginId: "threads";
-    } | {
-        type: "AGENT_CONNECTED";
-        data: AgentConnectedData;
-        pluginId: "threads";
-    } | {
-        type: "LOAD_CHAT_THREAD";
-        data: AgentThreadData;
-        pluginId: "threads";
-    } | {
-        type: "REFRESH_RECENT_THREADS";
-        data: RecentThreadRefreshData;
-        pluginId: "threads";
-    } | {
-        type: "ARTIFACT_ADDED";
-        tabId: string;
-        artifact: any;
-        pluginId: "threads";
-    } | {
-        type: "ARTIFACT_UPDATED";
-        tabId: string;
-        artifact: any;
-        pluginId: "threads";
-    } | {
-        type: "THREAD_TAB_REQUESTED";
-        threadId: string;
-        topic: string;
-        artifacts: any[];
-        pinned?: boolean | undefined;
-        pluginId: "threads";
-    } | {
-        type: "AGENT_SETTINGS_UPDATED";
-        settings: AgentSettings;
-        pluginId: "threads";
-    } | {
-        type: "API_KEYS_STATUS";
-        hasRequiredApiKeys: boolean;
-        pluginId: "threads";
-    } | {
-        type: "UPDATE_MESSAGE_STATE";
-        messageId: string;
-        text?: string | undefined;
-        blocks?: BlockConfig[] | undefined;
-        responseTimestamp?: number | undefined;
-        blockResponse?: BlockResponse | undefined;
-        forkable?: boolean | undefined;
-        status?: "queued" | "cancelled" | null | undefined;
-        context?: Record<string, unknown> | undefined;
-        asideText?: string | undefined;
-        asideContext?: string | undefined;
-        compacted?: boolean | undefined;
-        pluginId: "threads";
-    } | {
-        type: "MESSAGE_ADDED";
-        threadId: string;
-        message: MessageEntity;
-        pluginId: "threads";
-    } | {
-        type: "UPDATE_TODO_TASK";
-        artifactId: string;
-        taskId: string;
-        completed: boolean;
-        pluginId: "threads";
-    } | {
-        type: "SET_MODE";
-        mode: string;
-        pluginId: "threads";
-    } | {
-        type: "SET_PHASE";
-        phase: string;
-        pluginId: "threads";
-    } | {
-        type: "SET_CHAT_STATE";
-        threadId: string;
-        chatState: string;
-        pluginId: "threads";
-    } | {
-        type: "FLASH_CHAT_STATE";
-        threadId: string;
-        stateId: string;
-        durationMs?: number | undefined;
-        pluginId: "threads";
-    } | {
-        type: "COMMANDS_UPDATED";
-        commands: CommandItem[];
-        pluginId: "threads";
-    } | {
-        type: "THREAD_CHAT_ERROR";
-        threadId: string;
-        error: string;
-        pluginId: "threads";
     } | {
         type: "FLOWS_CONNECTED";
         data: FlowsConnectedData;
@@ -5010,6 +4800,47 @@ declare const events: {
         settings: LogsSettings;
         pluginId: "logs";
     } | {
+        type: "ACTIONS_LISTED";
+        data: ActionsStartupData;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_SELECTED";
+        actionId: EARS.EntityId;
+        data: ActionEntity;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_CREATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_UPDATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "actions";
+    } | {
+        type: "ACTION_DELETED";
+        actionId: EARS.EntityId;
+        pluginId: "actions";
+    } | {
+        type: "ACTIONS_IMPORTED";
+        count: number;
+        errors?: string[] | undefined;
+        pluginId: "actions";
+    } | {
+        type: "ACTIONS_IMPORT_FAILED";
+        errors: string[];
+        pluginId: "actions";
+    } | {
+        type: "ACTIONS_EXPORTED";
+        filePath: string;
+        actionCount: number;
+        pluginId: "actions";
+    } | {
+        type: "ACTIONS_EXPORT_FAILED";
+        errors: string[];
+        pluginId: "actions";
+    } | {
         type: "PROMPTS_CONNECTED";
         data: PromptsConnectedData;
         pluginId: "prompts";
@@ -5058,169 +4889,6 @@ declare const events: {
         type: "PROMPTS_EXPORT_FAILED";
         errors: string[];
         pluginId: "prompts";
-    } | {
-        type: "ACTIONS_LISTED";
-        data: ActionsStartupData;
-        pluginId: "actions";
-    } | {
-        type: "ACTION_SELECTED";
-        actionId: EARS.EntityId;
-        data: ActionEntity;
-        pluginId: "actions";
-    } | {
-        type: "ACTION_CREATED";
-        action: ActionEntity;
-        actionId: EARS.EntityId;
-        pluginId: "actions";
-    } | {
-        type: "ACTION_UPDATED";
-        action: ActionEntity;
-        actionId: EARS.EntityId;
-        pluginId: "actions";
-    } | {
-        type: "ACTION_DELETED";
-        actionId: EARS.EntityId;
-        pluginId: "actions";
-    } | {
-        type: "ACTIONS_IMPORTED";
-        count: number;
-        errors?: string[] | undefined;
-        pluginId: "actions";
-    } | {
-        type: "ACTIONS_IMPORT_FAILED";
-        errors: string[];
-        pluginId: "actions";
-    } | {
-        type: "ACTIONS_EXPORTED";
-        filePath: string;
-        actionCount: number;
-        pluginId: "actions";
-    } | {
-        type: "ACTIONS_EXPORT_FAILED";
-        errors: string[];
-        pluginId: "actions";
-    } | {
-        type: "LIBRARY_CONNECTED";
-        data: {
-            documents: DocumentDTO[];
-            collections: CollectionDTO[];
-            settings: any;
-        };
-        pluginId: "library";
-    } | {
-        type: "DOCUMENTS_LOADED";
-        data: {
-            documents: DocumentDTO[];
-        };
-        pluginId: "library";
-    } | {
-        type: "DOCUMENT_CREATED";
-        data: {
-            document: DocumentDTO;
-        };
-        pluginId: "library";
-    } | {
-        type: "DOCUMENT_UPDATED";
-        data: {
-            document: DocumentDTO;
-        };
-        pluginId: "library";
-    } | {
-        type: "DOCUMENT_DELETED";
-        data: {
-            documentId: string;
-        };
-        pluginId: "library";
-    } | {
-        type: "DOCUMENT_LOADED";
-        data: {
-            document: DocumentDTO;
-        };
-        pluginId: "library";
-    } | {
-        type: "COLLECTIONS_LOADED";
-        data: {
-            collections: CollectionDTO[];
-        };
-        pluginId: "library";
-    } | {
-        type: "COLLECTION_CREATED";
-        data: {
-            collection: CollectionDTO;
-        };
-        pluginId: "library";
-    } | {
-        type: "COLLECTION_UPDATED";
-        data: {
-            collection: CollectionDTO;
-        };
-        pluginId: "library";
-    } | {
-        type: "COLLECTION_DELETED";
-        data: {
-            collectionId: string;
-        };
-        pluginId: "library";
-    } | {
-        type: "LIBRARY_ERROR";
-        data: {
-            error: string;
-        };
-        pluginId: "library";
-    } | {
-        type: "SYMLINK_UPDATED";
-        data: {
-            collection: CollectionDTO;
-        };
-        pluginId: "library";
-    } | {
-        type: "FOLDER_CONTENTS_LOADED";
-        data: FolderContents;
-        pluginId: "library";
-    } | {
-        type: "NAVIGATION_CHANGED";
-        data: {
-            folderId: string | null;
-            path: string[];
-        };
-        pluginId: "library";
-    } | {
-        type: "ITEM_RENAMED";
-        data: {
-            item: LibraryItem;
-        };
-        pluginId: "library";
-    } | {
-        type: "ITEMS_DELETED";
-        data: {
-            ids: string[];
-        };
-        pluginId: "library";
-    } | {
-        type: "ITEMS_MOVED";
-        data: {
-            ids: string[];
-            targetFolderId: string | null;
-        };
-        pluginId: "library";
-    } | {
-        type: "LIBRARY_IMPORTED";
-        count: number;
-        errors?: string[] | undefined;
-        pluginId: "library";
-    } | {
-        type: "LIBRARY_IMPORT_FAILED";
-        errors: string[];
-        pluginId: "library";
-    } | {
-        type: "LIBRARY_EXPORTED";
-        filePath: string;
-        itemCount: number;
-        pluginId: "library";
-    } | {
-        type: "LIBRARY_EXPORT_FAILED";
-        errors: string[];
-        pluginId: "library";
     } | {
         type: "explorer.FILES_LISTED";
         data: DirectoryContent;
@@ -5660,6 +5328,128 @@ declare const events: {
         settings: CodeSettings;
         pluginId: "code";
     } | {
+        type: "LIBRARY_CONNECTED";
+        data: {
+            documents: DocumentDTO[];
+            collections: CollectionDTO[];
+            settings: any;
+        };
+        pluginId: "library";
+    } | {
+        type: "DOCUMENTS_LOADED";
+        data: {
+            documents: DocumentDTO[];
+        };
+        pluginId: "library";
+    } | {
+        type: "DOCUMENT_CREATED";
+        data: {
+            document: DocumentDTO;
+        };
+        pluginId: "library";
+    } | {
+        type: "DOCUMENT_UPDATED";
+        data: {
+            document: DocumentDTO;
+        };
+        pluginId: "library";
+    } | {
+        type: "DOCUMENT_DELETED";
+        data: {
+            documentId: string;
+        };
+        pluginId: "library";
+    } | {
+        type: "DOCUMENT_LOADED";
+        data: {
+            document: DocumentDTO;
+        };
+        pluginId: "library";
+    } | {
+        type: "COLLECTIONS_LOADED";
+        data: {
+            collections: CollectionDTO[];
+        };
+        pluginId: "library";
+    } | {
+        type: "COLLECTION_CREATED";
+        data: {
+            collection: CollectionDTO;
+        };
+        pluginId: "library";
+    } | {
+        type: "COLLECTION_UPDATED";
+        data: {
+            collection: CollectionDTO;
+        };
+        pluginId: "library";
+    } | {
+        type: "COLLECTION_DELETED";
+        data: {
+            collectionId: string;
+        };
+        pluginId: "library";
+    } | {
+        type: "LIBRARY_ERROR";
+        data: {
+            error: string;
+        };
+        pluginId: "library";
+    } | {
+        type: "SYMLINK_UPDATED";
+        data: {
+            collection: CollectionDTO;
+        };
+        pluginId: "library";
+    } | {
+        type: "FOLDER_CONTENTS_LOADED";
+        data: FolderContents;
+        pluginId: "library";
+    } | {
+        type: "NAVIGATION_CHANGED";
+        data: {
+            folderId: string | null;
+            path: string[];
+        };
+        pluginId: "library";
+    } | {
+        type: "ITEM_RENAMED";
+        data: {
+            item: LibraryItem;
+        };
+        pluginId: "library";
+    } | {
+        type: "ITEMS_DELETED";
+        data: {
+            ids: string[];
+        };
+        pluginId: "library";
+    } | {
+        type: "ITEMS_MOVED";
+        data: {
+            ids: string[];
+            targetFolderId: string | null;
+        };
+        pluginId: "library";
+    } | {
+        type: "LIBRARY_IMPORTED";
+        count: number;
+        errors?: string[] | undefined;
+        pluginId: "library";
+    } | {
+        type: "LIBRARY_IMPORT_FAILED";
+        errors: string[];
+        pluginId: "library";
+    } | {
+        type: "LIBRARY_EXPORTED";
+        filePath: string;
+        itemCount: number;
+        pluginId: "library";
+    } | {
+        type: "LIBRARY_EXPORT_FAILED";
+        errors: string[];
+        pluginId: "library";
+    } | {
         type: "NOTES_CONNECTED";
         data: NotesConnectedData;
         pluginId: "notes";
@@ -5705,6 +5495,216 @@ declare const events: {
         type: "NOTES_EXPORT_FAILED";
         errors: string[];
         pluginId: "notes";
+    } | {
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        faqs: FAQItem[];
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
+    } | {
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["application"]["hotkeys"];
+        pluginId: "settings";
+    } | {
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        resolvedPath?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORTED";
+        result: SeedResult;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_IMPORT_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_PREVIEW";
+        preview: SetupPackPreview;
+        pluginId: "settings";
+    } | {
+        type: "SETUP_PACK_PREVIEW_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
+        type: "APP_RESET_COMPLETE";
+        pluginId: "settings";
+    } | {
+        type: "APP_RESET_FAILED";
+        error: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
+        type: "THREAD_CONNECTED";
+        data: ThreadConnectedData;
+        pluginId: "threads";
+    } | {
+        type: "SET_VIEW_DATA";
+        id: EARS.EntityId;
+        data: ThreadExtendedData;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_CREATED";
+        id: EARS.EntityId;
+        shortCode: string;
+        entityType: EARS.Entity;
+        timestamp: number;
+        topic?: string | undefined;
+        instructions?: string | undefined;
+        status?: string | undefined;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_UPDATED";
+        threadId: string;
+        updates: Partial<Pick<ThreadEntity, "status" | "tags">>;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_DELETED";
+        threadId: string;
+        pluginId: "threads";
+    } | {
+        type: "THREADS_EXPORTED";
+        filePath: string;
+        threadCount: number;
+        pluginId: "threads";
+    } | {
+        type: "THREADS_EXPORT_FAILED";
+        errors: string[];
+        pluginId: "threads";
+    } | {
+        type: "THREADS_IMPORTED";
+        count: number;
+        errors?: string[] | undefined;
+        pluginId: "threads";
+    } | {
+        type: "THREADS_IMPORT_FAILED";
+        errors: string[];
+        pluginId: "threads";
+    } | {
+        type: "AGENT_CONNECTED";
+        data: AgentConnectedData;
+        pluginId: "threads";
+    } | {
+        type: "LOAD_CHAT_THREAD";
+        data: AgentThreadData;
+        pluginId: "threads";
+    } | {
+        type: "REFRESH_RECENT_THREADS";
+        data: RecentThreadRefreshData;
+        pluginId: "threads";
+    } | {
+        type: "ARTIFACT_ADDED";
+        tabId: string;
+        artifact: any;
+        pluginId: "threads";
+    } | {
+        type: "ARTIFACT_UPDATED";
+        tabId: string;
+        artifact: any;
+        pluginId: "threads";
+    } | {
+        type: "THREAD_TAB_REQUESTED";
+        threadId: string;
+        topic: string;
+        artifacts: any[];
+        pinned?: boolean | undefined;
+        pluginId: "threads";
+    } | {
+        type: "AGENT_SETTINGS_UPDATED";
+        settings: AgentSettings;
+        pluginId: "threads";
+    } | {
+        type: "API_KEYS_STATUS";
+        hasRequiredApiKeys: boolean;
+        pluginId: "threads";
+    } | {
+        type: "UPDATE_MESSAGE_STATE";
+        messageId: string;
+        text?: string | undefined;
+        blocks?: BlockConfig[] | undefined;
+        responseTimestamp?: number | undefined;
+        blockResponse?: BlockResponse | undefined;
+        forkable?: boolean | undefined;
+        status?: "queued" | "cancelled" | null | undefined;
+        context?: Record<string, unknown> | undefined;
+        asideText?: string | undefined;
+        asideContext?: string | undefined;
+        compacted?: boolean | undefined;
+        pluginId: "threads";
+    } | {
+        type: "MESSAGE_ADDED";
+        threadId: string;
+        message: MessageEntity;
+        pluginId: "threads";
+    } | {
+        type: "UPDATE_TODO_TASK";
+        artifactId: string;
+        taskId: string;
+        completed: boolean;
+        pluginId: "threads";
+    } | {
+        type: "SET_MODE";
+        mode: string;
+        pluginId: "threads";
+    } | {
+        type: "SET_PHASE";
+        phase: string;
+        pluginId: "threads";
+    } | {
+        type: "SET_CHAT_STATE";
+        threadId: string;
+        chatState: string;
+        pluginId: "threads";
+    } | {
+        type: "FLASH_CHAT_STATE";
+        threadId: string;
+        stateId: string;
+        durationMs?: number | undefined;
+        pluginId: "threads";
+    } | {
+        type: "COMMANDS_UPDATED";
+        commands: CommandItem[];
+        pluginId: "threads";
+    } | {
+        type: "THREAD_CHAT_ERROR";
+        threadId: string;
+        error: string;
+        pluginId: "threads";
     };
 };
 
@@ -6384,7 +6384,11 @@ interface SessionViewOptions {
 /** Shape of `claude auth status --json` — passthrough, CLI may add fields. */
 interface AuthStatus {
     authenticated?: boolean;
+    /** Claude Max / claude.ai subscriptions return `loggedIn` instead of `authenticated`. */
+    loggedIn?: boolean;
     source?: 'user' | 'project' | 'org' | 'temporary' | 'oauth';
+    authMethod?: string;
+    apiProvider?: string;
     account?: Record<string, unknown>;
     [key: string]: unknown;
 }
