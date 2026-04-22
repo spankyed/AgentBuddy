@@ -32,6 +32,7 @@
       v-if="panelTerminalExpanded"
       orientation="vertical"
       @resize="onTerminalResize"
+      @click="actor.send({ type: 'TOGGLE_PANEL_TERMINAL' })"
     />
 
     <!-- Terminal section — always visible at bottom -->
