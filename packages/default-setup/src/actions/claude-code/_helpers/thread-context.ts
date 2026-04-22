@@ -185,7 +185,16 @@ export function dequeueMessage(services: Services, threadId: string): QueuedMess
  * and the stale-turn cleanup in chat.ts.
  */
 export function killTurn(services: Services, threadId: string): void {
+  const log = services.logger;
   const prior = getClaudeState(services, threadId);
+
+  log.info('[killTurn] entered', {
+    threadId,
+    hasPrior: !!prior,
+    isRunning: prior?.isRunning ?? null,
+    pendingToolName: prior?.pendingControlRequest?.toolName ?? null,
+    approvalMessageId: prior?.pendingControlRequest?.approvalMessageId ?? null,
+  });
 
   // Kill CLI process.
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
@@ -196,11 +205,16 @@ export function killTurn(services: Services, threadId: string): void {
 
   // Reject plan draft if killed during ExitPlanMode approval.
   if (prior?.pendingControlRequest?.toolName === 'ExitPlanMode') {
+    log.info('[killTurn] rejecting plan draft for ExitPlanMode', { threadId });
     resolvePlanDraft(services, threadId as EntityId, 'rejected');
   }
 
   // Invalidate the stale interactive block so it's greyed out in the UI.
   if (prior?.pendingControlRequest) {
+    log.info('[killTurn] invalidating approval block', {
+      threadId,
+      approvalMessageId: prior.pendingControlRequest.approvalMessageId,
+    });
     services.chat.updateMessageState(prior.pendingControlRequest.approvalMessageId as any, {
       responseTimestamp: Date.now(),
       blockResponse: { cancelled: true },

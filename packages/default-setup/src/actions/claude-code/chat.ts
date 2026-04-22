@@ -136,6 +136,13 @@ export async function action(
   });
 
   // ─── Concurrency guard ──────────────────────────────────────────────
+  log.info('[concurrency-guard] state snapshot', {
+    threadId,
+    isRunning: prior?.isRunning ?? null,
+    hasPendingControlRequest: !!prior?.pendingControlRequest,
+    pendingToolName: prior?.pendingControlRequest?.toolName ?? null,
+  });
+
   if (prior?.isRunning) {
     log.debug('action already running — queuing message', { threadId });
     enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
@@ -149,7 +156,11 @@ export async function action(
   // pendingControlRequest exists), kill the old CLI process so the old
   // consumer exits cleanly, then proceed with this message as a new turn.
   if (prior?.pendingControlRequest) {
-    log.debug('killing paused turn to start new one', { threadId });
+    log.info('[concurrency-guard] killing paused turn — will invalidate approval block', {
+      threadId,
+      toolName: prior.pendingControlRequest.toolName,
+      approvalMessageId: prior.pendingControlRequest.approvalMessageId,
+    });
     killTurn(services, threadId);
   }
 
