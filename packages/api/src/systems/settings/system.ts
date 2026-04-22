@@ -60,7 +60,6 @@ export const IncomingSettingsEvents = [
     value: z.any()
   }),
   busEvent('RESET_SETTINGS', {}),
-  busEvent('COMPLETE_ONBOARDING', {}),
   // Secret management events
   busEvent('SECRETS.CMD.CREATE_API_KEY', {
     provider: z.string(),
@@ -350,17 +349,6 @@ export const settingsSystem = setup({
         input: { parentRef: settings }
       });
     }),
-    completeTour: () => {
-      // Show all plugins when tour completes
-      const allPlugins = ['threads', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
-      const visibilityUpdate: Record<string, boolean> = {};
-      allPlugins.forEach(plugin => {
-        visibilityUpdate[plugin] = true;
-      });
-
-      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
-    },
-
     testCliProvider: ({ system, event }) => {
       const ev = typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
@@ -434,29 +422,6 @@ export const settingsSystem = setup({
       system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 
-    completeOnboarding: ({ system }) => {
-      settingsCommands.updateSettings('internal', null, ['tourComplete'], true);
-
-      const allPlugins = ['threads', 'code', 'library', 'actions', 'prompts', 'flows', 'brain', 'database', 'logs', 'blank', 'settings'];
-      const visibilityUpdate: Record<string, boolean> = {};
-      allPlugins.forEach(plugin => {
-        visibilityUpdate[plugin] = true;
-      });
-
-      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], visibilityUpdate);
-
-      const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
-        type: 'SETTINGS_UPDATED',
-        data
-      }));
-
-      // Trigger the onboarding flow via threads → brain
-      const threadsActor = system.get(threads);
-      if (threadsActor) {
-        threadsActor.send({ type: 'BIRTH_FLOW_START' });
-      }
-    }
   },
 }).createMachine({
   id: settings,
@@ -483,9 +448,6 @@ export const settingsSystem = setup({
         ],
         RESET_SETTINGS: {
           actions: 'resetSettings',
-        },
-        COMPLETE_ONBOARDING: {
-          actions: 'completeOnboarding',
         },
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',

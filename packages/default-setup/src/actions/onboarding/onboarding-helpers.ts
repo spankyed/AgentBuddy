@@ -1,62 +1,34 @@
 import type { EntityId, Services } from '../../types';
 
-export const DEFAULT_NAME = 'Kathy';
-
-export const TECH_LEVELS = [
-  { id: 'beginner', label: 'Beginner', description: 'New to programming' },
-  { id: 'comfortable', label: 'Comfortable reading code', description: 'Can read and understand code' },
-  { id: 'intermediate', label: 'Intermediate', description: 'Write code regularly' },
-  { id: 'advanced', label: 'Advanced', description: 'Professional developer' },
-];
-
 export interface OnboardingState {
-  step: 'name' | 'tech-level' | 'projects' | 'finish' | 'complete';
+  step: 'welcome' | 'cli-test-ask' | 'projects' | 'import-threads' | 'pick-thread' | 'complete';
   threadId: EntityId;
   pendingMessageId: EntityId;
-  data: { name?: string; techLevel?: string; projects?: string[] };
+  data: { cliFound?: boolean; authenticated?: boolean };
 }
 
-export function getOnboardingState(services: Services, threadId: EntityId) {
-  const artifacts = services.database.qx()
-    .relatedTo(threadId)
-    .ofType(services.database.EARS.Entity.Artifact)
-    .pick(['id', 'title', 'content', 'artifactType'] as const);
-
-  return artifacts.find((a) => a.artifactType === 'json') ?? null;
+export function getOnboardingState(services: Services, threadId: EntityId): OnboardingState | null {
+  const thread = services.repository.threadQueries.byId(threadId) as any;
+  return thread?.context?.onboarding ?? null;
 }
 
-export function getTodoArtifact(services: Services, threadId: EntityId) {
-  const artifacts = services.database.qx()
-    .relatedTo(threadId)
-    .ofType(services.database.EARS.Entity.Artifact)
-    .pick(['id', 'title', 'content', 'artifactType'] as const);
-  return artifacts.find((a) => a.artifactType === 'todo') ?? null;
+export function persistOnboardingState(services: Services, threadId: EntityId, state: OnboardingState) {
+  const thread = services.repository.threadQueries.byId(threadId) as any;
+  services.repository.threadCommands.update(threadId, {
+    context: { ...(thread?.context || {}), onboarding: state },
+  });
 }
 
-const STEP_TO_TASK_ID: Record<string, string> = {
-  'name': '1',
-  'tech-level': '2',
-  'projects': '3',
-};
-
-export function markTaskCompleted(services: Services, threadId: EntityId, step: string) {
-  const taskId = STEP_TO_TASK_ID[step];
-  if (!taskId) return;
-
-  const todoArtifact = getTodoArtifact(services, threadId);
-  if (!todoArtifact) return;
-
-  const content = todoArtifact.content as { tasks: any[] };
-  const tasks = content.tasks.map((t: any) =>
-    t.id === taskId ? { ...t, completed: true } : t
-  );
-  services.database.tx(todoArtifact.id, true).update('content', { ...content, tasks });
-
+/**
+ * Flash success then set the next chat state (paused if more steps, idle if finishing).
+ */
+export function flashSuccess(services: Services, threadId: EntityId, nextState: 'paused' | 'idle' = 'paused') {
+  services.threads.updateChatState(threadId, nextState);
   services.emitter.sendToPlugin('threads', {
-    type: 'UPDATE_TODO_TASK',
-    artifactId: todoArtifact.id,
-    taskId,
-    completed: true,
+    type: 'FLASH_CHAT_STATE',
+    threadId: threadId as string,
+    stateId: 'success',
+    durationMs: 800,
   });
 }
 
@@ -64,6 +36,7 @@ export function finishOnboarding(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
+  options?: { skipCompletionMessage?: boolean },
 ) {
   state.step = 'complete';
 
@@ -75,14 +48,46 @@ export function finishOnboarding(
     forcedMode: null,
   });
 
-  services.chat.sendBlockMessage({
-    threadId,
-    text: "All set! Let's get started!",
-    blocks: [],
-    forkable: false,
-  });
+  if (!options?.skipCompletionMessage) {
+    // Find recent claude-code threads to suggest
+    const allThreads = services.repository.threadQueries.all();
+    const ccThreads = allThreads
+      .filter((t: any) => t.tags?.includes('claude-code') && t.id !== threadId)
+      .sort((a: any, b: any) => {
+        const aTime = a.lastMessageTimestamp || a.timestamp;
+        const bTime = b.lastMessageTimestamp || b.timestamp;
+        return bTime - aTime;
+      })
+      .slice(0, 7);
 
-  services.chat.openThreadChatAndRefreshRecent(threadId);
+    if (ccThreads.length > 0) {
+      const choices = ccThreads.map((t: any) => ({
+        id: t.id,
+        label: t.topic || 'Untitled',
+        description: t.tags?.join(', ') || '',
+      }));
+
+      services.chat.sendChoiceBlock({
+        threadId,
+        text: "You're all setup! Here are some of your previous threads. Or click `+ New thread` below the chat to get to work on something new!",
+        prompt: 'Continue a previous thread',
+        choices,
+        allowCustom: false,
+        forkable: false,
+      });
+    } else {
+      services.chat.sendBlockMessage({
+        threadId,
+        text: "You're all setup! Click `+ New thread` below the chat to get to work!",
+        blocks: [],
+        forkable: false,
+      });
+    }
+  }
+
+  if (!options?.skipCompletionMessage) {
+    services.chat.openThreadChatAndRefreshRecent(threadId);
+  }
 
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',

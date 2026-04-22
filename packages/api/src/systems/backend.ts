@@ -8,6 +8,7 @@ import { createEntity } from '@/core/ears';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { settingsQueries } from '@/systems/settings/repository';
+import { threads } from '@/systems/threads/system';
 
 const logger = createLogger('backend');
 
@@ -27,6 +28,7 @@ export interface BusContext {
 }
 
 export const bus = 'bus' as const;
+let birthFlowStarted = false;
 
 const typeOf = safeEvents<BackendEvents>();
 export const backendSystem = setup({
@@ -73,16 +75,24 @@ export const backendSystem = setup({
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
 
-      // Query for tourComplete from internal settings and emit to application actor
       const internalSettings = settingsQueries.getInternalSettings();
       system.get(bus).send({
         type: 'OUTGOING',
         event: {
           type: 'CLIENT_CONNECTED',
-          tourComplete: internalSettings.tourComplete,
+          hasOnboarded: internalSettings.hasOnboarded,
           pluginId: 'application'
         }
       });
+
+      // Start onboarding flow once per server session for first-time users
+      if (!internalSettings.hasOnboarded && !birthFlowStarted) {
+        birthFlowStarted = true;
+        const threadsActor = system.get(threads);
+        if (threadsActor) {
+          threadsActor.send({ type: 'BIRTH_FLOW_START' });
+        }
+      }
     }),
     spawnActors: enqueueActions(({ enqueue }) => {
       for (const [id, state] of entries(systems)) {

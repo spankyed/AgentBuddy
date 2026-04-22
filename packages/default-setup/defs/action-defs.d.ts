@@ -1268,7 +1268,7 @@ interface Tab {
     selectedArtifactId?: string;
     pinned?: boolean;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan' | 'note';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;
@@ -1484,15 +1484,6 @@ declare const events: {
         systemId: "settings";
     }, {
         type: "RESET_SETTINGS";
-        systemId: "settings";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"COMPLETE_ONBOARDING">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "COMPLETE_ONBOARDING";
-        systemId: "settings";
-    }, {
-        type: "COMPLETE_ONBOARDING";
         systemId: "settings";
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
@@ -1952,19 +1943,19 @@ declare const events: {
             }, "strip", zod.ZodTypeAny, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -1981,7 +1972,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -2003,7 +1994,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -2028,7 +2019,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -2229,19 +2220,19 @@ declare const events: {
             }, "strip", zod.ZodTypeAny, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }, {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }>, "many">>;
         }, "strip", zod.ZodTypeAny, {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -2258,7 +2249,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -2281,7 +2272,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -2307,7 +2298,7 @@ declare const events: {
             context?: {
                 label: string;
                 shortCode: string;
-                refType: "document" | "folder" | "tasklist" | "task" | "thread" | "note";
+                refType: "note" | "document" | "folder" | "tasklist" | "task" | "thread";
                 refId: string;
             }[] | undefined;
             images?: {
@@ -6068,7 +6059,6 @@ interface PluginSettings {
     [pluginId: string]: any;
 }
 interface InternalSettings {
-    tourComplete: boolean;
     hasOnboarded: boolean;
     lastInteractionTimestamp: number | null;
     version: string;
@@ -6392,7 +6382,11 @@ interface SessionViewOptions {
 /** Shape of `claude auth status --json` — passthrough, CLI may add fields. */
 interface AuthStatus {
     authenticated?: boolean;
+    /** Claude Max / claude.ai subscriptions return `loggedIn` instead of `authenticated`. */
+    loggedIn?: boolean;
     source?: 'user' | 'project' | 'org' | 'temporary' | 'oauth';
+    authMethod?: string;
+    apiProvider?: string;
     account?: Record<string, unknown>;
     [key: string]: unknown;
 }
@@ -6429,6 +6423,14 @@ interface CliServiceType {
      * plugins, skills, …) is available via `import { claudeCode } from
      * '@/services/claude-code'`.
      */
+    /** Clear-cache resolve + exec test — same path as the Settings test button. */
+    testCli(provider: string): Promise<{
+        success: true;
+        resolvedPath: string;
+    } | {
+        success: false;
+        error: string;
+    }>;
     claudeCode: {
         query(opts: Omit<QueryOptions, 'cwd'> & {
             cwd?: string;
@@ -7087,6 +7089,7 @@ declare function sendChoiceBlock(options: {
     }>;
     multiSelect?: boolean;
     allowCustom?: boolean;
+    compact?: boolean;
     displayText?: string;
     forkable?: boolean;
 } & AutoHideOptions): {

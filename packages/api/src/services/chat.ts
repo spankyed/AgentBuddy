@@ -122,10 +122,11 @@ export function sendChoiceBlock(options: {
   choices: Array<{ id: string; label: string; description?: string }>;
   multiSelect?: boolean;
   allowCustom?: boolean;
+  compact?: boolean;
   displayText?: string;
   forkable?: boolean;
 } & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, displayText, forkable, autoHide, asUser, asideContext } = options;
+  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, compact, displayText, forkable, autoHide, asUser, asideContext } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -134,7 +135,7 @@ export function sendChoiceBlock(options: {
     },
     {
       type: 'choice',
-      props: { choices, multiSelect, allowCustom, displayText }
+      props: { choices, multiSelect, allowCustom, compact, displayText }
     }
   ];
 
@@ -461,6 +462,7 @@ export function addMessagesToThread(params: {
     repository.chatCommands.addMessage({
       threadId: params.threadId,
       ...msg,
+      skipRelink: true,
     });
   }
 }

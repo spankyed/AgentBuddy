@@ -916,11 +916,7 @@ const threadsState = setup({
       const tabs = context.tabs.map(tab => {
         if (tab.id !== tabId) return tab;
         const artifacts = [artifact, ...tab.artifacts];
-        const selectedArtifactId =
-          tab.selectedArtifactId && artifacts.some(a => a.id === tab.selectedArtifactId)
-            ? tab.selectedArtifactId
-            : artifact.id;
-        return { ...tab, artifacts, selectedArtifactId };
+        return { ...tab, artifacts, selectedArtifactId: artifact.id };
       });
       return { tabs };
     }),
@@ -1262,7 +1258,7 @@ const threadsState = setup({
       { actions: 'openQuickPromptsAtCursor' },
     ],
     VIEW_THREAD: { actions: 'sendOpenThreadView' },
-    LOAD_CHAT_THREAD: { actions: 'setThreadChatData' },
+    LOAD_CHAT_THREAD: { target: '.dashboard', actions: 'setThreadChatData' },
     REFRESH_RECENT_THREADS: { actions: 'setRefreshThreadsData' },
     AGENT_CONNECTED: { actions: 'setStartupData' },
     AGENT_SETTINGS_UPDATED: { actions: 'handleChatSettingsUpdate' },

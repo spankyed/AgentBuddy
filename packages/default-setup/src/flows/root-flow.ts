@@ -16,7 +16,7 @@ export default {
         [keepAlive()],
       ),
       on(
-        "tour.complete",
+        "onboarding.start",
         [[subflow("Onboarding Flow", { label: "run onboarding" })]],
         "Start Onboarding",
       ),

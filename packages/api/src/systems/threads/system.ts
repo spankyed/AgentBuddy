@@ -446,7 +446,7 @@ export const threadsSystem = setup({
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'tour.complete',
+        eventType: 'onboarding.start',
         payload: {},
       });
     },

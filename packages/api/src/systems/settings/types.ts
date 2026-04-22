@@ -176,7 +176,6 @@ export interface PluginSettings {
 }
 
 export interface InternalSettings {
-  tourComplete: boolean;
   hasOnboarded: boolean;
   lastInteractionTimestamp: number | null;
   version: string;

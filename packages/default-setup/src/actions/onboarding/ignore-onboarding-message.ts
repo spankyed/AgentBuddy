@@ -2,10 +2,11 @@ import type { ActionMeta, Services, Z } from '../../types';
 
 export const meta: ActionMeta = {
   label: 'Ignore Onboarding Message',
-  description: 'Sends a system note when the user tries to send free text during onboarding',
+  description: 'Marks a user message as cancelled when sent during onboarding',
   category: 'onboarding',
   input: {
     threadId: { type: 'string', description: 'The thread ID', required: true },
+    messageId: { type: 'string', description: 'The message ID to cancel', required: true },
   },
 };
 
@@ -21,13 +22,11 @@ export async function action(
     return { success: true, skipped: true };
   }
 
-  const { threadId } = params;
+  const { messageId } = params;
 
-  services.chat.sendBlockMessage({
-    threadId,
-    text: "I'm still setting up! Please complete the onboarding steps above.",
-    blocks: [],
-  });
+  if (messageId) {
+    services.chat.updateMessageState(messageId, { status: 'cancelled' });
+  }
 
   return { success: true };
 }

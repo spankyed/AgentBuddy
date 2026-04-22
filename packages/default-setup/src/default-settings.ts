@@ -41,16 +41,16 @@ const settings: SettingsData = {
     _meta: {
       visibility: {
         threads: true,
-        code: false,
-        library: false,
-        flows: false,
-        actions: false,
-        prompts: false,
-        brain: false,
-        database: false,
-        logs: false,
+        code: true,
+        library: true,
+        flows: true,
+        actions: true,
+        prompts: true,
+        brain: true,
+        database: true,
+        logs: true,
         settings: true,
-        blank: false,
+        blank: true,
       }
     },
     code: {
@@ -98,7 +98,7 @@ const settings: SettingsData = {
             name: 'Work',
             description: 'Implementation and coding mode',
             phases: [
-              { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown', color: '#F97316' },
+              { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown', color: '#84CC16' },
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
@@ -195,7 +195,6 @@ const settings: SettingsData = {
   },
   internal: {
     hasOnboarded: false,
-    tourComplete: false,
     lastInteractionTimestamp: null,
     // version is overridden with APP_VERSION at load time in packages/api/src/systems/settings/defaults.ts
     version: '',
