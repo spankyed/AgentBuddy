@@ -303,7 +303,7 @@ export async function action(
       permissionMode: effectivePermissionMode,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       disallowedTools,
-      systemPrompt: composedSystemPrompt,
+      appendSystemPrompt: composedSystemPrompt,
       surfaceControlRequests: true,
       env: { CLAUDE_CODE_COORDINATOR_MODE: '1' },
       ...(useWorktree && { worktree: true }),
