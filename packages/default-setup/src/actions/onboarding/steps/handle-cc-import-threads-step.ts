@@ -122,7 +122,13 @@ async function importSessions(services: Services) {
         const segments = cwd.split('/').filter(Boolean);
         const dirName = segments[segments.length - 1];
         const prefix = dirName ? `[${dirName}] ` : '';
-        const sessionTitle = session.title || `Session ${session.id.slice(0, 8)}`;
+        // Title: session title > first user message (truncated) > session ID
+        let sessionTitle = session.title;
+        if (!sessionTitle) {
+          const firstUserEntry = transcript.find((e: any) => e.type === 'user' && e.message?.role === 'user');
+          const firstMsg = firstUserEntry ? extractText(firstUserEntry.message.content) : '';
+          sessionTitle = firstMsg ? firstMsg.slice(0, 60) : `Session ${session.id.slice(0, 8)}`;
+        }
 
         const { id: newThreadId } = services.repository.threadCommands.create({
           topic: `${prefix}${sessionTitle}`,
