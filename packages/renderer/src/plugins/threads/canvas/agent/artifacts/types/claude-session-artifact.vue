@@ -361,6 +361,8 @@ function openTerminalTab() {
       command: `claude --resume ${content.value.sessionId}`,
       cwd: content.value.cwd || undefined,
     })
+    // Switch to code plugin so the user can see the terminal tab
+    applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
   }
 }
 
