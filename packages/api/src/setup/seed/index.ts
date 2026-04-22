@@ -610,7 +610,10 @@ export function runBootSeed(options?: { verbose?: boolean }): SeedResult | null 
   // All included types use per-item sourceHash to distinguish DSL-sourced
   // from user-created items. Only DSL items with changed hashes are updated.
   // ────────────────────────────────────────────────────────────────────
-  const result = seedData({ compiledDir, include: { settings: new Set(), notes: new Set() }, verbose: options?.verbose });
+  const hasOnboarded = settingsQueries.getInternalSettings().hasOnboarded;
+  const include: SeedInclude = { settings: new Set() };
+  if (hasOnboarded) include.notes = new Set();
+  const result = seedData({ compiledDir, include, verbose: options?.verbose });
   settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   return result;
 }
