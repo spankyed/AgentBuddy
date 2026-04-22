@@ -42,7 +42,7 @@ export async function action(
   // Ask if user wants to import threads
   const { messageId } = services.chat.sendChoiceBlock({
     threadId,
-    text: 'Would you like to import your existing Claude Code threads?',
+    text: 'Would you like to import your existing Claude Code threads? This may take a minute.',
     prompt: 'Import threads',
     choices: [
       { id: 'yes', label: 'Yes, import threads', description: 'Import recent sessions as threads' },
