@@ -384,7 +384,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
   }
 
   const mostRecentThread = threads[0];
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asideText", "asideContext", "status", "context", "compacted"] as const;
+  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asUser", "asideText", "asideContext", "status", "context", "compacted"] as const;
 
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
@@ -456,7 +456,7 @@ export const chatQueries = {
       messages: (qx(threadId)
         .linksPick(
           EARS.RelKind.CONTAINS,
-          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asideText", "asideContext", "status", "compacted"] as const,
+          ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "deleted", "context", "autoHide", "asUser", "asideText", "asideContext", "status", "compacted"] as const,
           EARS.Entity.Message,
         ) ?? [])
         .filter((m: any) => !m.deleted)
@@ -524,7 +524,7 @@ export const chatQueries = {
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
     const message = qx(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',
-      'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asideText', 'asideContext',
+      'responseTimestamp', 'createdAt', 'updatedAt', 'autoHide', 'asUser', 'asideText', 'asideContext',
       'forkable', 'references', 'isCommand', 'command', 'status', 'context', 'compacted'
     ] as const);
 
@@ -556,6 +556,7 @@ export const chatCommands = {
     isCommand?: boolean;
     command?: string;
     autoHide?: boolean;
+    asUser?: boolean;
     asideContext?: string;
     blockResponse?: any;
     responseTimestamp?: number;
@@ -569,7 +570,7 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asideContext, blockResponse, responseTimestamp, asideText, compacted, context } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asUser, asideContext, blockResponse, responseTimestamp, asideText, compacted, context } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
@@ -598,6 +599,7 @@ export const chatCommands = {
     if (isCommand) messageTx.put('isCommand', isCommand);
     if (command) messageTx.put('command', command);
     if (autoHide) messageTx.put('autoHide', autoHide);
+    if (asUser) messageTx.put('asUser', asUser);
     if (asideContext) messageTx.put('asideContext', asideContext);
     if (blockResponse) messageTx.put('blockResponse', blockResponse);
     if (responseTimestamp) messageTx.put('responseTimestamp', responseTimestamp);
@@ -798,7 +800,7 @@ export const chatCommands = {
     const sourceData = chatQueries.threadData(sourceThreadId);
     const sourceMessages = sourceData.messages || [];
 
-    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context', 'compacted'] as const;
+    const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asUser', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context', 'compacted'] as const;
 
     for (const msg of sourceMessages) {
       const optional: Record<string, any> = {};

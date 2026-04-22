@@ -193,6 +193,8 @@ export interface MessageEntity extends BaseEntity {
   context?: Record<string, unknown>;
   /** When true, collapse to a compact aside after the user responds. */
   autoHide?: boolean;
+  /** When true, the collapsed aside aligns to the user (right) side. */
+  asUser?: boolean;
   /** Backend-computed summary text shown when collapsed (e.g. "✓ Approved"). */
   asideText?: string;
   /** Caller-supplied context label for the collapsed aside (overrides auto-derived context). */

@@ -190,6 +190,7 @@ export async function action(
       blocks,
       forkable: false,
       autoHide: true,
+      asUser: true,
       asideContext: 'Project',
     });
     persistClaudeState(services, threadId, {

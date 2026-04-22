@@ -2,7 +2,7 @@
   <div
     :class="[
       'flex pb-3 animate-fade-in w-full',
-      isMarker ? 'justify-center' : isUser ? 'justify-end' : 'justify-start'
+      isMarker ? 'justify-center' : (isUser || isCollapsedAsideAsUser) ? 'justify-end' : 'justify-start'
     ]"
   >
     <!-- Marker message: compact divider with toggle -->
@@ -219,6 +219,9 @@ const revertMenu = useContextMenu()
 
 const isUser = computed(() => props.message.sender === 'user')
 const isMarker = computed(() => props.message.sender === 'marker')
+const isCollapsedAsideAsUser = computed(() =>
+  props.message.autoHide && props.message.asideText && !expanded.value && props.message.asUser
+)
 const markerExpanded = ref(false)
 const isCommand = computed(() => props.message.isCommand ?? false)
 

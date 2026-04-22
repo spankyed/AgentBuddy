@@ -133,6 +133,7 @@ export async function action(
     sender: 'user',
     forkable: false,
     autoHide: true,
+    asUser: true,
     asideText: 'Summarize from here',
   });
 

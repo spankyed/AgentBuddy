@@ -391,6 +391,7 @@ export async function consumeStream(
             ],
             forkable: false,
             autoHide: true,
+            asUser: true,
           });
           approvalMessageId = approval.messageId;
         } else if (req.tool_name === 'AskUserQuestion') {
@@ -411,6 +412,7 @@ export async function consumeStream(
               })),
               forkable: false,
               autoHide: true,
+              asUser: true,
             });
             approvalMessageId = questionMsg.messageId;
           } else {
@@ -428,6 +430,7 @@ export async function consumeStream(
             ],
             forkable: false,
             autoHide: true,
+            asUser: true,
           });
           approvalMessageId = approval.messageId;
         }
