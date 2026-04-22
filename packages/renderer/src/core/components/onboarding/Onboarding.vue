@@ -6,13 +6,7 @@
       </div>
 
       <div class="letter-body">
-        <p>
-          <!-- Placeholder: the user will provide the actual letter content -->
-          Welcome to AgentBuddy! I built this app to help developers like you
-          work more effectively with AI coding assistants. I hope you enjoy using it
-          as much as I enjoyed building it.
-        </p>
-        <p class="signature">— The Developer</p>
+        <TiptapEditor mode="viewer" variant="chat" :model-value="letterContent" />
       </div>
 
       <div class="onboarding-actions">
@@ -30,6 +24,33 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
+import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue';
+
+const letterContent = `Hello Testers,
+
+Welcome to AgentBuddy! First off, thank you for being here early. Your feedback is invaluable as I work to make AgentBuddy the best AI-powered tool for developers.
+
+AgentBuddy wasn't started last month—it's an idea I've been iterating on, in different forms, since 2017.
+
+In recent years, I've watched a pattern emerge: as AI systems become more powerful, they also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive. You're expected to adapt to the system instead of helping shape it.
+
+AgentBuddy is my attempt to flip that on its head.
+
+It's built to be **local-first**, transparent, and adaptable—something that works *with* you, not behind a curtain. I believe you should be able to understand what your tools are doing, customize them, and trust them.
+
+That said, this is still early. You'll run into rough edges, missing pieces, and things that don't quite click yet.
+
+That's where you come in.
+
+What feels powerful?
+What feels frustrating?
+What would make this actually useful in your daily flow?
+
+Your feedback directly shapes what I build next.
+
+Thanks for taking a chance on this.
+
+*— The Developer*`;
 
 const closeDevLetter = () => {
   applicationState.send({ type: 'CLOSE_DEV_LETTER' });
@@ -69,7 +90,7 @@ onUnmounted(() => {
   background: #262626;
   border-radius: 16px;
   padding: 3rem;
-  max-width: 600px;
+  max-width: 800px;
   width: 100%;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -90,16 +111,6 @@ onUnmounted(() => {
   line-height: 1.7;
   color: #ccc;
   font-size: 1.05rem;
-}
-
-.letter-body p {
-  margin-bottom: 1rem;
-}
-
-.signature {
-  color: #999;
-  font-style: italic;
-  margin-top: 1.5rem;
 }
 
 .onboarding-actions {
