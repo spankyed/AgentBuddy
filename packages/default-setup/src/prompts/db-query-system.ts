@@ -1,21 +1,19 @@
 import type { PromptMeta } from '../types';
 
 export const meta: PromptMeta = {
-  label: 'DB Query',
+  label: 'DB Query System',
   description: 'Generate a read-only EARS database query from a natural language request',
   category: 'database',
   inputs: {
-    userPrompt: { name: 'userPrompt', type: 'string', description: 'Natural language query request', required: true },
     schema: { name: 'schema', type: 'string', description: 'Entity types with fields and sample data', required: true },
     topology: { name: 'topology', type: 'string', description: 'Relationship graph between entity types', required: true },
   },
 };
 
 export function template(params: Record<string, any>) {
-  const { userPrompt, schema, topology } = params;
+  const { schema, topology } = params;
 
-  return `Generate a read-only TypeScript query for EARS, an in-memory entity-attribute-relation database.
-Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
+  return `You are an EARS database query generator. Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
 MUST include a return statement. qx() is synchronous — never use await.
 
 SCHEMA:
@@ -117,9 +115,5 @@ return qx(EARS.Entity.Flow).map(id => ({
   id,
   ...getAll(id),
   nodeCount: qx(id).linksTo('contains', EARS.Entity.Node).count()
-}));
-
-USER REQUEST:
-
-${userPrompt}`;
+}));`;
 }

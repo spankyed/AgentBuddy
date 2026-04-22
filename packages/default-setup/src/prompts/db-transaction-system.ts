@@ -1,21 +1,19 @@
 import type { PromptMeta } from '../types';
 
 export const meta: PromptMeta = {
-  label: 'DB Transaction',
+  label: 'DB Transaction System',
   description: 'Generate an EARS database transaction from a natural language request',
   category: 'database',
   inputs: {
-    userPrompt: { name: 'userPrompt', type: 'string', description: 'Natural language transaction request', required: true },
     schema: { name: 'schema', type: 'string', description: 'Entity types with fields and sample data', required: true },
     topology: { name: 'topology', type: 'string', description: 'Relationship graph between entity types', required: true },
   },
 };
 
 export function template(params: Record<string, any>) {
-  const { userPrompt, schema, topology } = params;
+  const { schema, topology } = params;
 
-  return `Generate a TypeScript transaction for EARS, an in-memory entity-attribute-relation database.
-Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
+  return `You are an EARS database transaction generator. Output ONLY executable TypeScript code. No markdown, no explanations, no comments.
 MUST include a return statement. Both qx() and tx() are synchronous — never use await.
 
 SCHEMA:
@@ -125,9 +123,5 @@ return { deleted: ids.length };
 // Grant/revoke roles
 const agentId = qx(EARS.Entity.Agent).first();
 tx(agentId).grant('primary').revoke('inactive');
-return { agentId, roles: getRoles(agentId) };
-
-USER REQUEST:
-
-${userPrompt}`;
+return { agentId, roles: getRoles(agentId) };`;
 }

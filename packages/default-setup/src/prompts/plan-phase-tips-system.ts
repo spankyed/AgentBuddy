@@ -1,7 +1,7 @@
 import type { PromptMeta } from '../types';
 
 export const meta: PromptMeta = {
-  label: 'Plan Phase Tips',
+  label: 'Plan Phase Tips System',
   description: 'Behavioral tips injected during plan mode to supplement the CLI system prompt',
   category: 'claude-code',
   inputs: {},

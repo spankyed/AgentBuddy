@@ -95,7 +95,7 @@ async function generateRecap(
   }
 
   const serialized = serializeMessages(messages);
-  const recapSystemPrompt = services.prompt.usePrompt('Recap', {});
+  const recapSystemPrompt = services.prompt.usePrompt('Recap System', {});
 
   if (!recapSystemPrompt) {
     return 'Recap prompt not found. Please ensure the "Recap" prompt template is seeded.';

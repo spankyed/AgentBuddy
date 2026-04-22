@@ -1,7 +1,7 @@
 import type { PromptMeta } from '../types';
 
 export const meta: PromptMeta = {
-  label: 'Recap',
+  label: 'Recap System',
   description: 'System prompt for conversation recap — instructs the model how to summarize',
   category: 'claude-code',
   inputs: {},

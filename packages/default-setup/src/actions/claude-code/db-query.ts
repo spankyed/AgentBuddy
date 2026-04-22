@@ -36,13 +36,9 @@ export async function action(
   try {
     const { schema, topology } = services.database.buildQueryContext();
 
-    const fullPrompt = services.prompt.usePrompt('DB Query', {
-      userPrompt: userPrompt.trim(),
-      schema,
-      topology,
-    });
+    const systemPrompt = services.prompt.usePrompt('DB Query System', { schema, topology });
 
-    if (!fullPrompt) {
+    if (!systemPrompt) {
       services.emitter.sendToPlugin('database', {
         type: 'QUERY_ERROR',
         error: 'DB Query prompt template not found. Import the setup pack.',
@@ -51,7 +47,7 @@ export async function action(
     }
 
     const result = await services.cli.claudeCode.exec(
-      ['-p', fullPrompt],
+      ['-p', userPrompt.trim(), '--system-prompt', systemPrompt],
       { timeoutMs: 60_000, cwd: '/tmp' },
     );
 

@@ -63,8 +63,8 @@ const DEFAULT_ALLOWED_TOOLS = [
 ];
 
 const PHASE_TIP_PROMPTS: Record<string, string> = {
-  plan: 'Plan Phase Tips',
-  edit: 'Edit Phase Tips',
+  plan: 'Plan Phase Tips System',
+  edit: 'Edit Phase Tips System',
 };
 
 export async function action(

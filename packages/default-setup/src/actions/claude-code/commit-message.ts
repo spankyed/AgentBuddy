@@ -78,7 +78,7 @@ export async function action(
     }
 
     const result = await services.cli.claudeCode.exec(
-      ['-p', fullPrompt],
+      ['-p', fullPrompt, '--system-prompt', 'Output ONLY the commit message. No preamble, no markdown, no backticks, no quotes.'],
       { timeoutMs: 60_000, cwd: '/tmp' },
     );
 
