@@ -8,5 +8,5 @@ export const meta: PromptMeta = {
 };
 
 export function template() {
-  return `Make minimal, targeted changes — avoid refactoring beyond scope. Prefer reusing existing utilities over introducing new abstractions.`;
+  return `Implement only what the plan specifies. If something unexpected comes up, flag it instead of working around it.`;
 }
