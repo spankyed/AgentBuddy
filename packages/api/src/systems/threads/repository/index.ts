@@ -563,6 +563,7 @@ export const chatCommands = {
     asideText?: string;
     compacted?: boolean;
     context?: Record<string, unknown>;
+    skipRelink?: boolean;
   }): {
     id: EARS.EntityId;
     threadId: EARS.EntityId;
@@ -570,7 +571,7 @@ export const chatCommands = {
     sender: string;
     timestamp: number;
   } => {
-    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asUser, asideContext, blockResponse, responseTimestamp, asideText, compacted, context } = params;
+    const { threadId, text, sender, blocks, forkable, references, isCommand, command, autoHide, asUser, asideContext, blockResponse, responseTimestamp, asideText, compacted, context, skipRelink } = params;
 
     const thread = qx(threadId).id();
     if (!thread) {
@@ -614,12 +615,15 @@ export const chatCommands = {
 
     // Keep queued messages at the end of the relation list so they always
     // render below the current agent turn — even after a thread reload.
-    const siblings = qx(threadId)
-      .linksPick(EARS.RelKind.CONTAINS, ['id', 'status'] as const, EARS.Entity.Message);
-    if (siblings) {
-      for (const sib of siblings) {
-        if ((sib as any).status === 'queued' && sib.id !== messageId) {
-          relinkMessageToEnd(threadId, sib.id!);
+    // Skipped during bulk import (no queued messages in imported data).
+    if (!skipRelink) {
+      const siblings = qx(threadId)
+        .linksPick(EARS.RelKind.CONTAINS, ['id', 'status'] as const, EARS.Entity.Message);
+      if (siblings) {
+        for (const sib of siblings) {
+          if ((sib as any).status === 'queued' && sib.id !== messageId) {
+            relinkMessageToEnd(threadId, sib.id!);
+          }
         }
       }
     }

@@ -462,6 +462,7 @@ export function addMessagesToThread(params: {
     repository.chatCommands.addMessage({
       threadId: params.threadId,
       ...msg,
+      skipRelink: true,
     });
   }
 }

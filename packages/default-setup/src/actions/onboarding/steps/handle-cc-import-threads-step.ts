@@ -26,7 +26,44 @@ export async function action(
     services.threads.updateChatState(threadId, 'idle');
   }
 
-  finishOnboarding(services, state, threadId);
+  // Show recent imported threads to continue, or finish
+  const allThreads = services.repository.threadQueries.all();
+  const recentThreads = allThreads
+    .filter((t: any) => t.tags?.includes('claude-code') && t.id !== threadId)
+    .sort((a: any, b: any) => {
+      const aTime = a.lastMessageTimestamp || a.timestamp;
+      const bTime = b.lastMessageTimestamp || b.timestamp;
+      return bTime - aTime;
+    })
+    .slice(0, 7);
+
+  if (recentThreads.length > 0) {
+    const choices = [
+      ...recentThreads.map((t: any) => ({
+        id: t.id,
+        label: t.topic || 'Untitled',
+        description: '',
+      })),
+      { id: 'skip', label: 'Skip', description: "Start fresh" },
+    ];
+
+    const { messageId } = services.chat.sendChoiceBlock({
+      threadId,
+      text: "Here are your most recent threads. Want to continue where you left off?",
+      prompt: 'Pick a thread to continue',
+      choices,
+      allowCustom: false,
+      forkable: false,
+      autoHide: true,
+      asUser: true,
+    });
+
+    state.step = 'pick-thread';
+    state.pendingMessageId = messageId;
+  } else {
+    finishOnboarding(services, state, threadId);
+  }
+
   persistOnboardingState(services, threadId, state);
   return { success: true, step: state.step };
 }
@@ -52,17 +89,34 @@ async function importSessions(services: Services) {
       .filter((s: any) => !existingSessionIds.has(s.id));
     if (!toImport.length) return;
 
-    for (const session of toImport) {
-      try {
-        const transcript = (session as any).file
-          ? await services.cli.claudeCode.viewSessionByFile((session as any).file)
-          : await services.cli.claudeCode.viewSession(session.id, { cwd: (session as any).cwd });
+    // Read all transcripts in parallel (bounded concurrency to avoid fd exhaustion)
+    const CONCURRENCY = 8;
+    const loaded: Array<{ session: any; transcript: any[] }> = [];
+    for (let i = 0; i < toImport.length; i += CONCURRENCY) {
+      const batch = toImport.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map(async (session: any) => {
+          try {
+            const transcript = session.file
+              ? await services.cli.claudeCode.viewSessionByFile(session.file)
+              : await services.cli.claudeCode.viewSession(session.id, { cwd: session.cwd });
+            return { session, transcript };
+          } catch {
+            return null;
+          }
+        })
+      );
+      for (const r of results) { if (r) loaded.push(r); }
+    }
 
-        const cwd = (session as any).cwd || '';
+    // Write threads sequentially (LMDB writes are synchronous)
+    for (const { session, transcript } of loaded) {
+      try {
+        const cwd = session.cwd || '';
         const segments = cwd.split('/').filter(Boolean);
         const dirName = segments[segments.length - 1];
         const prefix = dirName ? `[${dirName}] ` : '';
-        const sessionTitle = (session as any).title || `Session ${session.id.slice(0, 8)}`;
+        const sessionTitle = session.title || `Session ${session.id.slice(0, 8)}`;
 
         const { id: newThreadId } = services.repository.threadCommands.create({
           topic: `${prefix}${sessionTitle}`,
@@ -107,7 +161,7 @@ async function importSessions(services: Services) {
           threadId: newThreadId,
         });
       } catch {
-        // Skip individual session failures
+        // Skip individual write failures
       }
     }
 

@@ -65,6 +65,18 @@ export default {
             }),
           ],
         },
+        {
+          if: "$.lastStep.result.step == 'pick-thread'",
+          steps: [
+            action("Handle Pick Thread Step", {
+              label: "pick-thread",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
       ]),
     ]], "Route Response"),
     on("user.message", [[
