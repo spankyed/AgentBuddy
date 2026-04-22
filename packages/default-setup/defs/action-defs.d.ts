@@ -7089,6 +7089,7 @@ declare function sendChoiceBlock(options: {
     }>;
     multiSelect?: boolean;
     allowCustom?: boolean;
+    compact?: boolean;
     displayText?: string;
     forkable?: boolean;
 } & AutoHideOptions): {

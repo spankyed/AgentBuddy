@@ -14,7 +14,7 @@
     <!-- Input Controls (when not disabled/not responded) -->
     <template v-else>
       <!-- Choices -->
-    <div class="space-y-2">
+    <div class="space-y-2" :class="compact ? 'max-h-60 overflow-y-auto' : ''">
       <div
         v-for="choice in choices"
         :key="choice.id"
@@ -51,11 +51,11 @@
           </div>
 
           <!-- Choice Content -->
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-neutral-200">
+          <div class="flex-1 min-w-0" :class="compact ? 'flex items-center gap-2' : ''">
+            <div class="text-sm font-medium text-neutral-200 shrink-0">
               {{ choice.label }}
             </div>
-            <div v-if="choice.description" class="text-xs text-neutral-400 mt-1">
+            <div v-if="choice.description" :class="compact ? 'text-xs text-neutral-500 truncate' : 'text-xs text-neutral-400 mt-1'">
               {{ choice.description }}
             </div>
           </div>
@@ -108,6 +108,7 @@ interface Props {
   choices: Choice[]
   multiSelect?: boolean
   allowCustom?: boolean
+  compact?: boolean
   modelValue?: string | string[]
   disabled?: boolean
   response?: any
@@ -123,6 +124,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   multiSelect: false,
   allowCustom: false,
+  compact: false,
   disabled: false,
 })
 

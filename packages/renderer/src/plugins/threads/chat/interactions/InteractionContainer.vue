@@ -41,6 +41,7 @@
         :choices="(block.props as any).choices"
         :multi-select="(block.props as any).multiSelect"
         :allow-custom="(block.props as any).allowCustom"
+        :compact="(block.props as any).compact"
         :model-value="(block.props as any).modelValue"
         :disabled="isDisabled"
         :response="responseForBlock('choice')"

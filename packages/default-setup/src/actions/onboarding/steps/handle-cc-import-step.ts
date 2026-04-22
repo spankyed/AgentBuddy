@@ -49,6 +49,7 @@ export async function startCcImportStep(
       choices,
       multiSelect: true,
       allowCustom: false,
+      compact: true,
       forkable: false,
       autoHide: true,
       asUser: true,
