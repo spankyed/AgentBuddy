@@ -83,12 +83,10 @@
       <div class="flex-grow min-w-0 px-2 @md:px-12 pb-2 text-sm text-center text-neutral-500 cursor-pointer">
         <span
           v-if="currentThread?.topic"
-          class="group inline-flex items-center justify-center gap-2 max-w-full cursor-pointer"
-          title="Thread Artifacts"
-          @click.stop="handleViewDashboard"
+          class="group inline-flex items-center justify-center gap-2 max-w-full"
         >
-          <PanelLeft :size="14" class="shrink-0 transition-colors group-hover:text-neutral-300" />
-          <span class="hidden @md:inline truncate transition-colors group-hover:text-neutral-200 group-hover:underline underline-offset-4 decoration-neutral-600">{{ currentThread?.topic }}</span>
+          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle inline dashboard" @click.stop="handleToggleInlineDashboard" />
+          <span class="hidden @md:inline truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard">{{ currentThread?.topic }}</span>
         </span>
       </div>
 
@@ -210,6 +208,7 @@ const emit = defineEmits<{
   (e: 'view-thread', threadId: string): void
   (e: 'open-thread-chat', threadId: string): void
   (e: 'view-dashboard'): void
+  (e: 'toggle-inline-dashboard'): void
   (e: 'view-artifacts', threadId: string): void
   (e: 'new-thread'): void
   (e: 'new-thread-as-child', parentThreadId: string): void
@@ -240,6 +239,11 @@ const handleViewDashboard = () => {
   if (!props.currentThread?.id) return
   emit('view-dashboard')
   isOpen.value = false
+}
+
+const handleToggleInlineDashboard = () => {
+  if (!props.currentThread?.id) return
+  emit('toggle-inline-dashboard')
 }
 
 const handleSelectThread = (id: string | undefined) => {

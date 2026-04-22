@@ -1,12 +1,13 @@
 <template>
-  <div class="p-2">
+  <div :class="compact ? 'p-1' : 'p-2'">
     <!-- <h3 class="mb-3 text-sm font-semibold text-neutral-300">Artifacts</h3> -->
-    <div class="space-y-1">
+    <div :class="compact ? 'space-y-0.5' : 'space-y-1'">
       <ArtifactItem
         v-for="artifact in sortedArtifacts"
         :key="artifact.id"
         :artifact="artifact"
         :isSelected="artifact.id === selectedArtifactId"
+        :compact="compact"
         @select="$emit('select-artifact', artifact.id)"
       />
       <div
@@ -27,6 +28,7 @@ import type { ArtifactItem as ArtifactType } from '@app/api';
 const props = defineProps<{
   artifacts: ArtifactType[];
   selectedArtifactId?: string;
+  compact?: boolean;
 }>();
 
 defineEmits<{

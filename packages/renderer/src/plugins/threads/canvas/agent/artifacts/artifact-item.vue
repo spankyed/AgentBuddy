@@ -1,16 +1,15 @@
 <template>
   <div
-    class="px-2.5 py-1.5 rounded-md cursor-pointer transition-colors"
+    class="rounded-md cursor-pointer transition-colors"
     :class="[
-      isSelected 
-        ? 'bg-blue-600 text-white' 
-        : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+      compact ? 'px-1.5 py-1' : 'px-2.5 py-1.5',
+      isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
     ]"
     @click="$emit('select')"
   >
-    <div class="flex items-center space-x-2">
-      <component :is="getIcon(artifact.type)" :size="16" class="shrink-0 w-4 h-4" />
-      <span class="text-sm font-medium truncate">{{ artifact.title }}</span>
+    <div class="flex items-center gap-1.5" :class="{ 'gap-2': !compact }">
+      <component :is="getIcon(artifact.type)" :size="compact ? 13 : 16" class="shrink-0" />
+      <span class="font-medium truncate" :class="compact ? 'text-xs' : 'text-sm'">{{ artifact.title }}</span>
     </div>
   </div>
 </template>
@@ -22,6 +21,7 @@ import type { ArtifactItem, ArtifactType } from '@app/api';
 defineProps<{
   artifact: ArtifactItem;
   isSelected: boolean;
+  compact?: boolean;
 }>();
 
 defineEmits<{
