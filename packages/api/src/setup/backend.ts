@@ -11,6 +11,9 @@ import { runMigrations } from '@/setup/migrations';
 import { reconcileStaleClaudeState } from '@/setup/reconcile-claude-state';
 import { APP_VERSION } from '@/version';
 
+// Exported for graceful shutdown (SIGTERM handler stops the actor system)
+export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
+
 export async function setupBackend(): Promise<void> {
   // Initialize log capture first to catch all logs
   initializeLogCapture();
@@ -40,7 +43,7 @@ export async function setupBackend(): Promise<void> {
   reconcileStaleClaudeState();
 
   // Start backend actor
-  const backendActor = createActor(backendSystem, {
+  backendActor = createActor(backendSystem, {
     systemId: bus,
   }).start();
 

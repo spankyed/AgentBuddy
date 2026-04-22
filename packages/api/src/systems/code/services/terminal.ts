@@ -188,6 +188,8 @@ class TerminalService {
       terminal.dataDisposable?.dispose()
       terminal.dataDisposable = undefined
 
+      // Kill the entire process group (shell + children) before killing the pty
+      try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {}
       terminal.pty.kill()
 
       // If onExit already fired synchronously during pty.kill(), terminal is cleaned up
@@ -215,6 +217,8 @@ class TerminalService {
       try {
         terminal.dataDisposable?.dispose()
         terminal.exitDisposable?.dispose()
+        // Kill the entire process group (shell + children) before killing the pty
+        try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {}
         terminal.pty.kill()
       } catch (error) {
         console.error(`Error killing terminal ${id}:`, error)

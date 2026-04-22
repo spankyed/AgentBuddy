@@ -4,6 +4,8 @@ import { appRouter } from '@/core/router';
 import { createContext } from '@/core/router/context';
 import { logger } from '@/core/helpers/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
+import { backendActor } from '@/setup/backend';
+import { terminalService } from '@/systems/code/services/terminal';
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
@@ -25,10 +27,19 @@ export function createWebSocketServer() {
     createContext 
   });
 
+  // Safety net: always kill terminal processes before the API process exits
+  process.on('exit', () => {
+    terminalService.killAll();
+  });
+
   // Setup graceful shutdown
   process.on('SIGTERM', () => {
+    // Stop XState actor system first (triggers exit actions like terminal cleanup)
+    backendActor?.stop();
     handler.broadcastReconnectNotification();
     wss.close();
+    // Exit explicitly so the 'exit' handler fires before Electron force-kills us
+    process.exit(0);
   });
 
   return { wss, handler, port };
