@@ -68,7 +68,7 @@ export async function action(
       blocks: [],
       forkable: false,
     });
-    finishOnboarding(services, state, threadId);
+    finishOnboarding(services, state, threadId, { skipCompletionMessage: true });
     persistOnboardingState(services, threadId, state);
     return { success: true, step: state.step };
   }
