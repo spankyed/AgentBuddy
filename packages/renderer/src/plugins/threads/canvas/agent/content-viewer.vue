@@ -1,10 +1,11 @@
 <template>
   <div class="flex h-full bg-neutral-900" data-onboarding-id="agent-artifacts">
     <!-- Artifact List (left side, integrated in tab) -->
-    <div class="w-64 h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
+    <div :class="compact ? 'w-44' : 'w-64'" class="h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
       <ArtifactList
         :artifacts="artifacts"
         :selectedArtifactId="selectedArtifactId"
+        :compact="compact"
         @select-artifact="$emit('select-artifact', $event)"
       />
     </div>
@@ -45,6 +46,7 @@ import MarkdownArtifact from './artifacts/types/markdown-artifact.vue';
 const props = defineProps<{
   artifacts: ArtifactItem[];
   selectedArtifactId?: string;
+  compact?: boolean;
 }>();
 
 defineEmits<{

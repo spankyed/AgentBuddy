@@ -1,17 +1,19 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900">
-    <ThreadsHeader />
-    <!-- Tab Bar -->
-    <div class="flex items-center min-h-[37px] border-b border-neutral-800 bg-neutral-900 overflow-hidden" data-onboarding-id="agent-thread-tabs">
-      <TabBar
-        :tabs="tabs"
-        :activeTabId="activeTabId"
-        @select-tab="selectTab"
-        @close-tab="closeTab"
-        @open-in-chat="openInChat"
-        @delete-thread="deleteThread"
-      />
-    </div>
+    <template v-if="!inline">
+      <ThreadsHeader />
+      <!-- Tab Bar -->
+      <div class="flex items-center min-h-[37px] border-b border-neutral-800 bg-neutral-900 overflow-hidden" data-onboarding-id="agent-thread-tabs">
+        <TabBar
+          :tabs="tabs"
+          :activeTabId="activeTabId"
+          @select-tab="selectTab"
+          @close-tab="closeTab"
+          @open-in-chat="openInChat"
+          @delete-thread="deleteThread"
+        />
+      </div>
+    </template>
 
     <!-- Content Viewer (includes artifact list) — min-h-0 constrains flex
          child so inner overflow-auto scrolls instead of the outer canvas. -->
@@ -19,6 +21,7 @@
       class="flex-1 min-h-0"
       :artifacts="currentTab?.artifacts || []"
       :selectedArtifactId="currentTab?.selectedArtifactId"
+      :compact="inline"
       @select-artifact="selectArtifact"
     />
   </div>
@@ -32,6 +35,10 @@ import { id, type ThreadsState } from '@/plugins/threads/state';
 import TabBar from '@/plugins/threads/canvas/agent/tabs/tab-bar.vue';
 import ContentViewer from '@/plugins/threads/canvas/agent/content-viewer.vue';
 import ThreadsHeader from '@/plugins/threads/canvas/components/ThreadsHeader.vue';
+
+defineProps<{
+  inline?: boolean;
+}>();
 
 const actor: ThreadsState = applicationState.system.get(id);
 

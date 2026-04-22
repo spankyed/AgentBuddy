@@ -1,69 +1,80 @@
 <template>
   <div class="flex flex-col h-full">
-    <!-- Shrinkable content area -->
-    <div class="flex flex-col flex-grow overflow-hidden min-h-0">
-      <!-- Agent Chat Content -->
-      <div class="relative flex-grow w-full overflow-hidden min-h-0">
-        <div class="h-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer" @scroll="onScroll">
-          <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
-            <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
+    <!-- Main content: optional inline dashboard + chat -->
+    <div class="flex flex-grow overflow-hidden min-h-0">
+      <!-- Inline Dashboard (left) -->
+      <div v-if="showInlineDashboard" class="flex-1 min-w-0 border-r border-neutral-800 overflow-hidden">
+        <AgentCanvas :inline="true" />
+      </div>
+      <!-- Chat column (right, or full width when dashboard hidden) -->
+      <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <!-- Shrinkable content area -->
+        <div class="flex flex-col flex-grow overflow-hidden min-h-0">
+          <!-- Agent Chat Content -->
+          <div class="relative flex-grow w-full overflow-hidden min-h-0">
+            <div class="h-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer" @scroll="onScroll">
+              <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
+                <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
+              </div>
+              <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
+                <ChatMessage
+                  v-for="message in visibleMessages"
+                  :key="message.id"
+                  :message="message"
+                  @open-lightbox="openLightbox"
+                  @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
+                  @revert="(messageId: string) => handleRevert(messageId)"
+                  @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
+                  @toggle-compacted="handleToggleCompacted"
+                />
+              </div>
+            </div>
+            <ScrollToBottomFob :visible="!isNearBottom && allMessages.length > 0" @click="scrollToBottom('smooth')" />
           </div>
-          <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
-            <ChatMessage
-              v-for="message in visibleMessages"
-              :key="message.id"
-              :message="message"
+          <!-- Input -->
+          <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
+            <ChatInput
+              :current-thread="currentThread"
+              :current-mode="currentMode"
+              :current-phase="currentPhase"
+              :prefill-text="prefillText"
+              :prefill-references="prefillReferences"
+              :is-busy="isBusy"
+              :modes="modes"
+              :hotkeys="hotkeys"
+              :quick-prompts="quickPrompts"
+              :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
+              :quick-prompt-cursor="quickPromptCursor"
+              :recording-limit-minutes="recordingLimitMinutes"
+              @send-message="handleSendMessage"
+              @send-command="handleSendCommand"
+              @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
+              @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
+              @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
               @open-lightbox="openLightbox"
-              @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
-              @revert="(messageId: string) => handleRevert(messageId)"
-              @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
-              @toggle-compacted="handleToggleCompacted"
+              @update-quick-prompts="updateQuickPrompts"
+              @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
+              @revert="(messageId: string) => handleRevert(messageId, false, true)"
+              @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
+              @summarize-from-here="(messageId: string) => handleSummarize(messageId, true)"
             />
           </div>
         </div>
-        <ScrollToBottomFob :visible="!isNearBottom && allMessages.length > 0" @click="scrollToBottom('smooth')" />
+        <!-- Thread bar — stays within chat column -->
+        <div class="flex-shrink-0 w-full">
+          <RecentThreads
+            :current-thread="currentThread"
+            :recent-threads="recentThreads"
+            @view-thread="(threadId: string) => handleViewDetails(threadId)"
+            @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
+            @view-dashboard="handleViewDashboard"
+            @toggle-inline-dashboard="showInlineDashboard = !showInlineDashboard"
+            @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
+            @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
+            @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
+          />
+        </div>
       </div>
-      <!-- Input -->
-      <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
-        <ChatInput
-          :current-thread="currentThread"
-          :current-mode="currentMode"
-          :current-phase="currentPhase"
-          :prefill-text="prefillText"
-          :prefill-references="prefillReferences"
-          :is-busy="isBusy"
-          :modes="modes"
-          :hotkeys="hotkeys"
-          :quick-prompts="quickPrompts"
-          :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
-          :quick-prompt-cursor="quickPromptCursor"
-          :recording-limit-minutes="recordingLimitMinutes"
-          @send-message="handleSendMessage"
-          @send-command="handleSendCommand"
-          @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
-          @phase-change="(phase: string) => actor.send({ type: 'SET_PHASE', phase })"
-          @pause="actor.send({ type: 'PAUSE_TURN', threadId: currentThread?.id ?? '' })"
-          @open-lightbox="openLightbox"
-          @update-quick-prompts="updateQuickPrompts"
-          @close-quick-prompts="actor.send({ type: 'CLOSE_QUICK_PROMPTS' })"
-          @revert="(messageId: string) => handleRevert(messageId, false, true)"
-          @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
-          @summarize-from-here="(messageId: string) => handleSummarize(messageId, true)"
-        />
-      </div>
-    </div>
-    <!-- Thread bar — always visible at bottom -->
-    <div class="flex-shrink-0 w-full">
-      <RecentThreads
-        :current-thread="currentThread"
-        :recent-threads="recentThreads"
-        @view-thread="(threadId: string) => handleViewDetails(threadId)"
-        @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
-        @view-dashboard="handleViewDashboard"
-        @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
-        @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
-        @new-thread-as-child="(parentThreadId: string) => actor.send({ type: 'CREATE_CHILD_THREAD', parentThreadId })"
-      />
     </div>
 
     <ConfirmationDialog
@@ -115,6 +126,7 @@ function rotateQuote() {
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
+import AgentCanvas from '@/plugins/threads/canvas/agent/canvas.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
@@ -147,6 +159,7 @@ const isBusy = useSelector(actor, ({ context }) => {
   const threadId = context.currentThread?.id
   return !!busyId && !!threadId && context.chatStates[threadId] === busyId
 })
+const showInlineDashboard = ref(false)
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)
@@ -373,7 +386,10 @@ const prevThreadId = ref(currentThread.value?.id)
 watch(allMessages, async (newMsgs, oldMsgs) => {
   await nextTick()
   const threadChanged = currentThread.value?.id !== prevThreadId.value
-  if (threadChanged) prevThreadId.value = currentThread.value?.id
+  if (threadChanged) {
+    prevThreadId.value = currentThread.value?.id
+    showInlineDashboard.value = false
+  }
 
   const isThreadLoad = threadChanged || !oldMsgs?.length || Math.abs(newMsgs.length - oldMsgs.length) > 1
   if (isThreadLoad || pendingScrollOnSend.value) {
