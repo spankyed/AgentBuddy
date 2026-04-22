@@ -1,5 +1,56 @@
 -e # Changelog
 
+## v0.2.8 (2026-04-22)
+
+### Features
+- onboarding): add flash success feedback and pause chat state between steps
+- onboarding): derive thread title from first user message when session title is missing
+- onboarding): add message previews to thread import and skip chat open option
+- onboarding): add thread picker after import
+- seed): when hasOnboarded is false (first install), notes is not added to the include exclusion set, so notes get seeded
+- onboarding): update chat state during CC thread import
+- onboarding): add thread import step   - Add cc-import-threads step between project selection and finish so     users can opt in to importing existing sessions
+-  add compact mode to ChoiceInput and InteractionContainer
+- onboarding): add autoHide and asUser options to onboarding prompts and fix authentication error false negative
+- cli): add testCli method and reorder brain event definitions
+- claude-code): add resume diagnostics to killTurn and concurrency guard
+- claude-code): add resume diagnostics to stream consumer error logs
+
+### Fixes
+- onboarding): delay flash until after import and find first user message with text
+- onboarding): skip completion message when CLI not found
+- onboarding): optimize session import and scope to selected projects
+- onboarding): move artifact creation after thread open and use artifact panel for CLI guides
+- claude-code): skip routing responses for onboarding birth threads
+- onboarding): log CLI detection errors and separate auth failure UX
+- threads): show thread dashboard when loading chat data
+- onboarding): guard BIRTH_FLOW_START against duplicate spawns
+- claude-session): switch to code plugin after opening terminal tab
+- default-setup): add cc-recap entry to commands.md
+
+### Refactors
+- onboarding): simplify thread choice mapping by removing message preview lookup
+- onboarding): stream session file reads and lighten post-import refresh
+- onboarding): simplify response handler to return step data instead of dispatching
+- default-setup): reorder event definitions and add note artifact type
+- onboarding): move onboarding state to thread context and add note artifact type
+- onboarding): remove tourComplete, rename to closeDevLetter
+- brain): remove unnecessary truncation of resolved node attributes
+
+### Other
+- Merge pull request #132 from spankyed/AS/onboarding-rework
+- chore(onboarding): cleanup from PR review
+- ux(onboarding): add "this may take a minute" to thread import prompt
+- style(notes): add emoji icons to welcome page section headings
+- docs(notes): rewrite welcome note with comprehensive onboarding content
+- Improve dev letter copy
+- update defs
+- style(onboarding): render dev letter with TiptapEditor markdown viewer and restyle
+- rework onboarding: replace tour with letter modal, add CLI detection + cc-import steps
+- docs(issues): document revert flow session expiry bug and broken recovery UX
+
+-e # Changelog
+
 ## v0.2.7 (2026-04-22)
 
 ### Features
