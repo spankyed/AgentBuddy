@@ -35,6 +35,12 @@ export async function action(
     return { success: false, reason: 'missing messageId or threadId' };
   }
 
+  // Skip threads that aren't Claude Code threads (e.g. onboarding birth thread)
+  const thread = services.repository.threadQueries.byId(threadId as any);
+  if (thread?.forcedMode === 'birth') {
+    return { success: false, reason: 'birth thread — not a claude-code response' };
+  }
+
   const state = getClaudeState(services, threadId);
 
   // Directory-picker response: no CLI handle needed, just re-invoke chat.
