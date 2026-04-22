@@ -29,7 +29,7 @@ export async function testCliAndAdvance(
   if (cliFound) {
     try {
       const auth = await services.cli.claudeCode.authStatus();
-      authenticated = auth.authenticated === true;
+      authenticated = auth.authenticated === true || auth.loggedIn === true;
       if (!authenticated) {
         authErrorMsg = 'Claude Code reports it is not authenticated.';
       }
@@ -62,6 +62,8 @@ export async function testCliAndAdvance(
       ],
       allowCustom: false,
       forkable: false,
+      autoHide: true,
+      asUser: false,
     });
 
     state.step = 'cli-test-ask';
@@ -78,6 +80,8 @@ export async function testCliAndAdvance(
       ],
       allowCustom: false,
       forkable: false,
+      autoHide: true,
+      asUser: false,
     });
 
     state.step = 'cli-test-ask';

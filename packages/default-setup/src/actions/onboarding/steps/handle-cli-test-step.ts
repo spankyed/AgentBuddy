@@ -90,6 +90,8 @@ export async function handleCliTestStep(
       },
     ],
     forkable: false,
+    autoHide: true,
+    asUser: false,
   });
 
   // Stay on the same step but update pendingMessageId

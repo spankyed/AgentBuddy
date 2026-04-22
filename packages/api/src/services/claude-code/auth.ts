@@ -36,7 +36,11 @@ export async function logout(opts?: SubcommandOptions): Promise<string> {
 /** Shape of `claude auth status --json` — passthrough, CLI may add fields. */
 export interface AuthStatus {
   authenticated?: boolean
+  /** Claude Max / claude.ai subscriptions return `loggedIn` instead of `authenticated`. */
+  loggedIn?: boolean
   source?: 'user' | 'project' | 'org' | 'temporary' | 'oauth'
+  authMethod?: string
+  apiProvider?: string
   account?: Record<string, unknown>
   [key: string]: unknown
 }

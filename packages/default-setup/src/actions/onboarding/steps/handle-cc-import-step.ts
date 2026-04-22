@@ -50,6 +50,8 @@ export async function startCcImportStep(
       multiSelect: true,
       allowCustom: false,
       forkable: false,
+      autoHide: true,
+      asUser: false,
     });
 
     state.step = 'cc-import';

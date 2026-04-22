@@ -64,6 +64,8 @@ export async function action(
     choices: [{ id: 'continue', label: "Let's go", description: '' }],
     allowCustom: false,
     forkable: false,
+    autoHide: true,
+    asUser: false,
   });
 
   // Persist onboarding state to thread context
