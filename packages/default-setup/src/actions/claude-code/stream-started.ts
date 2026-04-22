@@ -42,7 +42,11 @@ export async function action(
     return {
       sessionId: sessionId || '',
       model: model || '',
-      cwd: cwd || '',
+      // Preserve the existing CWD when this turn's system/init doesn't
+      // include one — overwriting with '' breaks resume/fork on subsequent
+      // turns because readSessionCwd() returns undefined and the CLI looks
+      // in process.cwd() instead of the project directory.
+      ...(cwd ? { cwd } : {}),
       // Reset context tracking when starting a fresh CLI session.
       ...(isNewSession ? { alertedThresholds: [], contextUsage: undefined } : {}),
     };
