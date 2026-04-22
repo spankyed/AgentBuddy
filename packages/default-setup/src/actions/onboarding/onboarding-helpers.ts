@@ -1,7 +1,7 @@
 import type { EntityId, Services } from '../../types';
 
 export interface OnboardingState {
-  step: 'welcome' | 'cli-test' | 'cli-test-ask' | 'cc-import' | 'cc-import-threads' | 'complete';
+  step: 'welcome' | 'cli-test' | 'cli-test-ask' | 'projects' | 'import-threads' | 'complete';
   threadId: EntityId;
   pendingMessageId: EntityId;
   data: { cliFound?: boolean; authenticated?: boolean };

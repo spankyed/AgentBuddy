@@ -1,18 +1,29 @@
-import type { EntityId, Services } from '../../../types';
-import type { OnboardingState } from '../onboarding-helpers';
-import { startCcImportStep } from './handle-cc-import-step';
+import type { ActionMeta, EntityId, Services, Z } from '../../../types';
+import { getOnboardingState, persistOnboardingState, type OnboardingState } from '../onboarding-helpers';
+import { startCcImportStep } from './handle-projects-step';
 
-/**
- * Welcome step — user clicked "Let's go".
- * Tests CLI availability and either auto-advances to cc-import
- * or asks the user about their CLI setup.
- */
-export async function handleWelcomeStep(
+export const meta: ActionMeta = {
+  label: 'Handle Welcome Step',
+  description: 'Tests CLI availability and advances to cc-import or asks about CLI setup',
+  category: 'onboarding',
+  input: {
+    threadId: { type: 'string', required: true },
+    response: { type: 'any', required: false },
+  },
+};
+
+export async function action(
+  params: Record<string, any>,
   services: Services,
-  state: OnboardingState,
-  threadId: EntityId,
 ) {
+  const threadId = params.threadId as EntityId;
+  const state = getOnboardingState(services, threadId);
+  if (!state) return { success: false, reason: 'no-state' };
+
   await testCliAndAdvance(services, state, threadId);
+  persistOnboardingState(services, threadId, state);
+
+  return { success: true, step: state.step };
 }
 
 export async function testCliAndAdvance(
@@ -20,7 +31,6 @@ export async function testCliAndAdvance(
   state: OnboardingState,
   threadId: EntityId,
 ) {
-  // Use testCli() — same code path as the Settings test button (clears cache, fresh resolve)
   const cliResult = await services.cli.testCli('claude-code');
   const cliFound = cliResult.success;
 
@@ -69,7 +79,6 @@ export async function testCliAndAdvance(
     state.step = 'cli-test-ask';
     state.pendingMessageId = messageId;
   } else {
-    // CLI not found
     const { messageId } = services.chat.sendChoiceBlock({
       threadId,
       text: "I wasn't able to detect the Claude Code CLI. Do you already have Claude Code CLI installed with an active subscription?",

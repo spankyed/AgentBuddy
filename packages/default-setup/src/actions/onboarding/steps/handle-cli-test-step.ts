@@ -1,6 +1,16 @@
-import type { EntityId, Services } from '../../../types';
-import { finishOnboarding, type OnboardingState } from '../onboarding-helpers';
+import type { ActionMeta, EntityId, Services } from '../../../types';
+import { getOnboardingState, persistOnboardingState, finishOnboarding } from '../onboarding-helpers';
 import { testCliAndAdvance } from './handle-welcome-step';
+
+export const meta: ActionMeta = {
+  label: 'Handle CLI Test Step',
+  description: 'Handles CLI test ask response — shows debug/setup guidance or re-tests',
+  category: 'onboarding',
+  input: {
+    threadId: { type: 'string', required: true },
+    response: { type: 'any', required: true },
+  },
+};
 
 const DEBUGGING_MD = `## Troubleshooting Claude Code CLI
 
@@ -36,24 +46,22 @@ Claude Code is an AI coding assistant that runs in your terminal.
 
 Once installed, come back here and click **Re-test CLI** to continue setup.`;
 
-/**
- * CLI test ask step — user answered whether they have CC installed.
- * Shows debugging or setup guidance, with Re-test and Skip buttons.
- */
-export async function handleCliTestStep(
+export async function action(
+  params: Record<string, any>,
   services: Services,
-  state: OnboardingState,
-  threadId: EntityId,
-  response: string,
 ) {
+  const threadId = params.threadId as EntityId;
+  const response = typeof params.response === 'string' ? params.response : '';
+  const state = getOnboardingState(services, threadId);
+  if (!state) return { success: false, reason: 'no-state' };
+
   if (response === 'retest') {
-    // Re-test the CLI
     await testCliAndAdvance(services, state, threadId);
-    return;
+    persistOnboardingState(services, threadId, state);
+    return { success: true, step: state.step };
   }
 
   if (response === 'skip') {
-    // Skip — finish onboarding without cc-import
     services.chat.sendBlockMessage({
       threadId,
       text: "No problem! Currently we only support Claude Code. You can come back later once you've installed it and test through Settings.",
@@ -61,7 +69,8 @@ export async function handleCliTestStep(
       forkable: false,
     });
     finishOnboarding(services, state, threadId);
-    return;
+    persistOnboardingState(services, threadId, state);
+    return { success: true, step: state.step };
   }
 
   // Initial response: "yes" or "no"
@@ -74,10 +83,7 @@ export async function handleCliTestStep(
     threadId,
     text,
     blocks: [
-      {
-        type: 'markdown',
-        props: { content: markdownContent },
-      },
+      { type: 'markdown', props: { content: markdownContent } },
       {
         type: 'choice',
         props: {
@@ -94,7 +100,8 @@ export async function handleCliTestStep(
     asUser: true,
   });
 
-  // Stay on the same step but update pendingMessageId
   state.step = 'cli-test-ask';
   state.pendingMessageId = messageId;
+  persistOnboardingState(services, threadId, state);
+  return { success: true, step: state.step };
 }
