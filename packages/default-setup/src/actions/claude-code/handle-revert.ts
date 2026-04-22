@@ -17,7 +17,7 @@
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { persistClaudeState, getClaudeState } from './_helpers/thread-context';
-import { updateChatState, readSessionCwd } from './_helpers/session-artifact';
+import { updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Revert',
@@ -66,8 +66,7 @@ export async function action(
   // messages before the revert point. The last assistant message with a
   // cliUuid is our truncation target.
   let cliUuid: string | undefined;
-  const sessionId = state?.sessionId;
-  if (sessionId) {
+  if (state?.sessionId) {
     const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
     const messages = (threadData?.messages ?? []) as Array<{
       id?: string;
@@ -78,46 +77,6 @@ export async function action(
       m => m.sender === 'assistant' && m.context?.cliUuid,
     );
     cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
-
-    // Pre-flight validation: verify the session JSONL actually exists on
-    // disk before committing to a fork/revert. If the file is missing
-    // (cleaned up, CWD mismatch, etc.), fall back to a fresh start instead
-    // of letting the next chat turn error with "Session expired."
-    if (cliUuid) {
-      const sessionCwd = readSessionCwd(services, threadId as EntityId);
-      // Also try the project directory as fallback if sessionCwd is missing.
-      const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
-      const effectiveCwd = sessionCwd || codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened;
-
-      // Quick probe: read just 1 line from the session JSONL. If it throws,
-      // the file is missing or unreadable.
-      const probe = effectiveCwd
-        ? await services.cli.claudeCode.viewSession(sessionId, { cwd: effectiveCwd, limit: 1 }).catch(() => null)
-        : null;
-
-      if (!probe) {
-        log.warn('[revert] session JSONL not found on disk — falling back to fresh start', {
-          threadId,
-          sessionId,
-          cliUuid,
-          sessionCwd: sessionCwd ?? 'NONE',
-          effectiveCwd: effectiveCwd ?? 'NONE',
-        });
-        cliUuid = undefined; // Will trigger fresh-start path below
-      } else {
-        log.debug('[revert] session JSONL validated', {
-          sessionId,
-          cliUuid,
-          cwd: effectiveCwd,
-        });
-      }
-    }
-
-    log.debug('[revert] message scan', {
-      totalRemaining: messages.length,
-      assistantsWithUuid: messages.filter(m => m.sender === 'assistant' && m.context?.cliUuid).length,
-      cliUuid: cliUuid ?? 'NONE',
-    });
   }
 
   // Clear turn-level state and set revert flag.
@@ -126,8 +85,10 @@ export async function action(
     pendingControlRequest: undefined,
     queuedMessage: undefined,
     ...(cliUuid ? { revertTo: { cliUuid } } : {
-      // No CLI UUID found, or session JSONL missing — clear sessionId and
-      // any stale one-shot flags so the next turn starts fresh.
+      // No CLI UUID found (reverting to first message or no prior assistant).
+      // Clear sessionId and any stale one-shot flags so the next turn starts
+      // fresh. Without this, a leftover forkFrom or revertTo would cause
+      // --resume-session-at to be passed without --resume.
       sessionId: undefined,
       forkFrom: undefined,
       revertTo: undefined,

@@ -17,7 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { ensureSessionArtifact, updateSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, readSessionCwd } from './_helpers/session-artifact';
+import { ensureSessionArtifact, updateSessionArtifact, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken, readSessionCwd } from './_helpers/session-artifact';
 import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
@@ -290,20 +290,9 @@ export async function action(
     // the CLI can locate the session JSONL in the correct project bucket.
     sessionCwd = resumeSessionId ? readSessionCwd(services, threadId) : undefined;
     if (resumeSessionId && !sessionCwd) {
-      // Fallback: use the configured project directory so the CLI looks in
-      // the right bucket instead of process.cwd() (API server root).
-      const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
-      const fallbackCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened;
-      if (fallbackCwd) {
-        sessionCwd = fallbackCwd;
-        log.warn('[resume] sessionCwd missing from artifact — falling back to project directory', {
-          threadId, resumeSessionId, fallbackCwd, revertTo: revertTo?.cliUuid ?? null,
-        });
-      } else {
-        log.warn('[resume] sessionId exists but sessionCwd is missing and no fallback — CLI will use process.cwd()', {
-          threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,
-        });
-      }
+      log.warn('[resume] sessionId exists but sessionCwd is missing — CLI will use process.cwd()', {
+        threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,
+      });
     }
 
     const handle = await services.cli.claudeCode.query({
@@ -357,7 +346,7 @@ export async function action(
     toolActivity.finalise('error');
     setRunning(services, threadId, false);
 
-    // ─── Session-not-found: clear stale sessionId, recover gracefully ──
+    // ─── Session-not-found: clear stale sessionId, mark artifact broken ──
     const staleId = extractStaleSessionId(message);
     if (staleId) {
       log.error('[session-expired] stale session detected', {
@@ -369,14 +358,10 @@ export async function action(
         hadForkFrom: !!forkFrom,
         cliError: message,
       });
-      // Clear the broken session so the next turn starts fresh.
-      clearSessionId(services, threadId);
-      // Set chat state to idle (not error) so the thread remains usable —
-      // the user can immediately send another message which will create a
-      // new CLI session.
-      const userMessage = "Session couldn't be resumed — your next message will start a fresh session.";
+      const userMessage = 'Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.';
       writer.finalize(`⚠️ ${userMessage}`);
-      updateChatState(services, threadId, 'idle');
+      clearSessionId(services, threadId);
+      markSessionBroken(services, threadId, `Session ${staleId} not found`);
       return { success: false, error: userMessage, messageId: currentMessageId };
     }
 
