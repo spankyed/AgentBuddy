@@ -69,7 +69,7 @@
       </div>
     </div>
 
-    <div class="flex items-center content-between" @click="isOpen = !isOpen">
+    <div class="-mt-4 pt-4 flex items-center content-between cursor-pointer" @click="isOpen = !isOpen">
       <button
         type="button"
         class="flex items-center px-5 pb-2 text-sm transition-colors text-neutral-500 hover:text-neutral-200"
