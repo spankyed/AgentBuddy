@@ -9,7 +9,7 @@ AgentBuddy is an AI-development environment and work platform. It features persi
 
 ---
 
-## What You Can Do
+## ⚡ What You Can Do
 
 - **Chat with Claude Code** in threaded conversations that persist across sessions
   - **Import existing sessions** from your Claude Code CLI history
@@ -22,7 +22,7 @@ AgentBuddy is an AI-development environment and work platform. It features persi
 
 ---
 
-## How It Works
+## 🧭 How It Works
 
 The interface has four areas:
 
@@ -34,7 +34,7 @@ The interface has four areas:
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 1. **Send your first message** — click `+ New thread` at the bottom of the chat, type a request, and hit Send
 2. **Set a project directory** — you'll be prompted to select a working directory
@@ -44,7 +44,7 @@ The interface has four areas:
 
 ---
 
-## Key Concepts
+## 🧠 Key Concepts
 
 - **Thread** — a conversation container. Each thread carries its own artifacts, tags, and status.
 - **Artifact** — rich content attached to a thread: code diffs, plans, session stats, notes, and more.
@@ -54,7 +54,7 @@ The interface has four areas:
 
 ---
 
-## Tips
+## 💡 Tips
 
 - **Resize the chat** by dragging the divider between canvas and chat. Right-click the divider to maximize chat.
 - **Use commands** like `/cc-resume`, `/cc-fork`, `/cc-compact`, and `/cc-context` directly in chat.
