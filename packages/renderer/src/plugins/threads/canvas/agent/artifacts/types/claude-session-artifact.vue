@@ -7,12 +7,11 @@
         <h3 class="text-sm font-medium text-neutral-200 flex-1">Claude Code session</h3>
         <button
           v-if="content.sessionId"
-          @click="copyResumeCommand"
+          @click="openTerminalTab"
           class="text-neutral-500 hover:text-neutral-300 transition-colors p-1"
-          :title="resumeCopied ? 'Copied!' : 'Copy resume command'"
+          title="Open in terminal"
         >
-          <Check v-if="resumeCopied" :size="12" class="text-green-500" />
-          <Terminal v-else :size="12" />
+          <Terminal :size="12" />
         </button>
         <span class="flex items-center gap-1.5">
           <span
@@ -353,13 +352,16 @@ async function copySessionId() {
   } catch { /* clipboard denied */ }
 }
 
-const resumeCopied = ref(false)
-async function copyResumeCommand() {
-  try {
-    await navigator.clipboard.writeText(`claude --resume ${content.value.sessionId}`)
-    resumeCopied.value = true
-    setTimeout(() => { resumeCopied.value = false }, 1500)
-  } catch { /* clipboard denied */ }
+function openTerminalTab() {
+  const terminalActor = applicationState.system.get('code')?.system.get('terminal') as any
+  if (terminalActor) {
+    terminalActor.send({
+      type: 'terminal.CREATE',
+      target: 'tab',
+      command: `claude --resume ${content.value.sessionId}`,
+      cwd: content.value.cwd || undefined,
+    })
+  }
 }
 
 // ─── Permission mode segmented control ─────────────────────────────────
