@@ -20,29 +20,21 @@ export async function testCliAndAdvance(
   state: OnboardingState,
   threadId: EntityId,
 ) {
-  let cliFound = false;
+  // Use testCli() — same code path as the Settings test button (clears cache, fresh resolve)
+  const cliResult = await services.cli.testCli('claude-code');
+  const cliFound = cliResult.success;
+
   let authenticated = false;
-  let versionError: string | undefined;
-  let authError: string | undefined;
-
-  try {
-    await services.cli.claudeCode.version();
-    cliFound = true;
-  } catch (err: any) {
-    versionError = err?.message || String(err);
-    await services.logger.warn('Onboarding CLI version check failed', { error: versionError });
-  }
-
+  let authErrorMsg = '';
   if (cliFound) {
     try {
       const auth = await services.cli.claudeCode.authStatus();
       authenticated = auth.authenticated === true;
       if (!authenticated) {
-        authError = 'Not authenticated';
+        authErrorMsg = 'Claude Code reports it is not authenticated.';
       }
     } catch (err: any) {
-      authError = err?.message || String(err);
-      await services.logger.warn('Onboarding CLI auth check failed', { error: authError });
+      authErrorMsg = err?.message || 'Auth status check failed.';
     }
   }
 
@@ -59,10 +51,10 @@ export async function testCliAndAdvance(
 
     startCcImportStep(services, state, threadId);
   } else if (cliFound && !authenticated) {
-    // CLI found but not authenticated — specific message
+    const detail = authErrorMsg ? ` (${authErrorMsg})` : '';
     const { messageId } = services.chat.sendChoiceBlock({
       threadId,
-      text: "Claude Code CLI found, but it doesn't appear to be authenticated. Please run `claude` in your terminal to sign in, then come back and re-test.",
+      text: `Claude Code CLI found, but authentication failed${detail}. Please run \`claude\` in your terminal to sign in, then come back and re-test.`,
       prompt: 'What would you like to do?',
       choices: [
         { id: 'retest', label: 'Re-test CLI', description: 'Try detecting Claude Code again' },

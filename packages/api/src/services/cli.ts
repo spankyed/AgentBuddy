@@ -6,6 +6,7 @@ import { claudeCode } from '@/services/claude-code'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from '@/services/claude-code'
 import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/runner'
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
+import { testCli, isCliName } from '@/core/helpers/resolve-cli'
 import { configDir } from '@/services/claude-code/sessions'
 import fs from 'fs'
 import path from 'path'
@@ -40,6 +41,8 @@ export interface CliServiceType {
    * plugins, skills, …) is available via `import { claudeCode } from
    * '@/services/claude-code'`.
    */
+  /** Clear-cache resolve + exec test — same path as the Settings test button. */
+  testCli(provider: string): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }>
   claudeCode: {
     query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
     version(): Promise<string>
@@ -108,6 +111,13 @@ function createCliService(): CliServiceType {
   }
 
   return {
+    testCli(provider: string) {
+      if (!isCliName(provider)) {
+        return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
+      }
+      const storedPath = repository.settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
+      return testCli(provider, storedPath);
+    },
     git: {
       async commit(message: string): Promise<void> {
         await getGitRepo().commit(message)

@@ -6421,19 +6421,19 @@ interface CliServiceType {
      * plugins, skills, …) is available via `import { claudeCode } from
      * '@/services/claude-code'`.
      */
+    /** Clear-cache resolve + exec test — same path as the Settings test button. */
+    testCli(provider: string): Promise<{
+        success: true;
+        resolvedPath: string;
+    } | {
+        success: false;
+        error: string;
+    }>;
     claudeCode: {
         query(opts: Omit<QueryOptions, 'cwd'> & {
             cwd?: string;
         }): Promise<QueryHandle>;
         version(): Promise<string>;
-        /** Clear-cache resolve + exec test — same path as the Settings test button. */
-        testCli(): Promise<{
-            success: true;
-            resolvedPath: string;
-        } | {
-            success: false;
-            error: string;
-        }>;
         authStatus(): Promise<AuthStatus>;
         listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>;
         /** List sessions across ALL project directories (not just the configured cwd). */
