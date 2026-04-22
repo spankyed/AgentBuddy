@@ -81,7 +81,7 @@ export async function action(
     threadId,
   });
 
-  // Open the thread in chat
+  // Open the thread in chat — LOAD_CHAT_THREAD also switches canvas to dashboard
   services.chat.openThreadChatAndRefreshRecent(threadId);
 
   await services.logger.info('Onboarding initialized', { threadId });

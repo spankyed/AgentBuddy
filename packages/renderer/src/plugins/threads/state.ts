@@ -1262,7 +1262,7 @@ const threadsState = setup({
       { actions: 'openQuickPromptsAtCursor' },
     ],
     VIEW_THREAD: { actions: 'sendOpenThreadView' },
-    LOAD_CHAT_THREAD: { actions: 'setThreadChatData' },
+    LOAD_CHAT_THREAD: { target: '.dashboard', actions: 'setThreadChatData' },
     REFRESH_RECENT_THREADS: { actions: 'setRefreshThreadsData' },
     AGENT_CONNECTED: { actions: 'setStartupData' },
     AGENT_SETTINGS_UPDATED: { actions: 'handleChatSettingsUpdate' },
