@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services, Z } from '../../types';
-import { getOnboardingState, type OnboardingState } from './onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, type OnboardingState } from './onboarding-helpers';
 import { handleWelcomeStep } from './steps/handle-welcome-step';
 import { handleCliTestStep } from './steps/handle-cli-test-step';
 import { handleCcImportStep } from './steps/handle-cc-import-step';
@@ -29,14 +29,12 @@ export async function action(
   const { response } = params;
   const threadId = params.threadId as EntityId;
 
-  const stateArtifact = getOnboardingState(services, threadId);
+  const state = getOnboardingState(services, threadId);
 
-  if (!stateArtifact) {
-    await services.logger.warn('No onboarding-state artifact found', { threadId });
+  if (!state) {
+    await services.logger.warn('No onboarding state found on thread context', { threadId });
     return { success: false, reason: 'no-state' };
   }
-
-  const state = stateArtifact.content as OnboardingState;
 
   if (state.step === 'complete') {
     return { success: false, reason: 'already-complete' };
@@ -55,7 +53,7 @@ export async function action(
 
   await dispatchStep(parsed, services, state, threadId);
 
-  services.database.tx(stateArtifact.id, true).update('content', state);
+  persistOnboardingState(services, threadId, state);
 
   await services.logger.info('Onboarding step completed', { step: state.step, threadId });
   return { success: true, step: state.step };

@@ -7,13 +7,16 @@ export interface OnboardingState {
   data: { cliFound?: boolean; authenticated?: boolean };
 }
 
-export function getOnboardingState(services: Services, threadId: EntityId) {
-  const artifacts = services.database.qx()
-    .relatedTo(threadId)
-    .ofType(services.database.EARS.Entity.Artifact)
-    .pick(['id', 'title', 'content', 'artifactType'] as const);
+export function getOnboardingState(services: Services, threadId: EntityId): OnboardingState | null {
+  const thread = services.repository.threadQueries.byId(threadId) as any;
+  return thread?.context?.onboarding ?? null;
+}
 
-  return artifacts.find((a) => a.artifactType === 'json') ?? null;
+export function persistOnboardingState(services: Services, threadId: EntityId, state: OnboardingState) {
+  const thread = services.repository.threadQueries.byId(threadId) as any;
+  services.repository.threadCommands.update(threadId, {
+    context: { ...(thread?.context || {}), onboarding: state },
+  });
 }
 
 export function finishOnboarding(

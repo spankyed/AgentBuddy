@@ -1,5 +1,5 @@
 import type { ActionMeta, Services, Z } from '../../types';
-import type { OnboardingState } from './onboarding-helpers';
+import { persistOnboardingState, type OnboardingState } from './onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Init Onboarding',
@@ -43,15 +43,15 @@ export async function action(
     pinned: true,
   });
 
-  // Create welcome artifact from the library welcome note
+  // Create note artifact pointing to the welcome note
   const notes = services.repository.noteQueries.allDTOs();
   const welcomeNote = notes.find((n: any) => n.title === 'welcome');
 
   if (welcomeNote) {
     services.artifact.createAndNotify({
-      artifactType: 'markdown',
+      artifactType: 'note' as any,
       title: 'Welcome',
-      content: welcomeNote.content,
+      content: welcomeNote.id,
       threadId,
     });
   }
@@ -66,20 +66,14 @@ export async function action(
     forkable: false,
   });
 
-  // Create onboarding-state artifact to track progress
+  // Persist onboarding state to thread context
   const onboardingState: OnboardingState = {
     step: 'welcome',
     threadId,
     pendingMessageId: messageId,
     data: {},
   };
-
-  services.artifact.createAndNotify({
-    artifactType: 'json',
-    title: 'Onboarding State',
-    content: onboardingState,
-    threadId,
-  });
+  persistOnboardingState(services, threadId, onboardingState);
 
   // Open the thread in chat — LOAD_CHAT_THREAD also switches canvas to dashboard
   services.chat.openThreadChatAndRefreshRecent(threadId);

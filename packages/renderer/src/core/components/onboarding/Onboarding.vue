@@ -30,7 +30,7 @@ const letterContent = `Hello Testers,
 
 Welcome to AgentBuddy! First off, thank you for being here early. Your feedback is invaluable as I work to make AgentBuddy the best AI-powered tool for developers.
 
-AgentBuddy wasn't started last month—it's an idea I've been iterating on, in different forms, since [2017](https://github.com/spankyed/vishva). In recent years, I've watched a pattern emerge: as AI systems become more powerful, they also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive. You're expected to adapt to the system instead of helping shape it.
+AgentBuddy isn't a project I started last month—it's an idea I've been iterating on, in different forms, since 2017. In recent years, I've watched a pattern emerge: as AI systems become more powerful, they also become more opaque. Access gets gated. Integrating with them becomes clunky and restrictive. You're expected to adapt to the system instead of helping shape it.
 
 AgentBuddy is my attempt to flip that on its head.
 

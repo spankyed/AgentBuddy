@@ -392,7 +392,8 @@ export type ArtifactType =
   // Claude Code artifacts (see packages/default-setup/src/actions/claude-code/ROADMAP.md)
   | 'claude-session'
   | 'diff'
-  | 'plan';
+  | 'plan'
+  | 'note';
 
 // ─── Claude Code artifact content shapes ─────────────────────────────────────
 // Documentation types — `ArtifactEntity.content` is `any` at the storage
