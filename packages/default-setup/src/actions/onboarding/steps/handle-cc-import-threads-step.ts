@@ -21,7 +21,9 @@ export async function action(
   if (!state) return { success: false, reason: 'no-state' };
 
   if (response === 'yes') {
+    services.threads.updateChatState(threadId, 'working');
     await importSessions(services, threadId);
+    services.threads.updateChatState(threadId, 'idle');
   }
 
   finishOnboarding(services, state, threadId);
