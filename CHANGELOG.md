@@ -1,5 +1,45 @@
 -e # Changelog
 
+## v0.2.7 (2026-04-22)
+
+### Features
+- migrations): change default recentThreadsSortOrder from created to visited
+- code): add click handler to toggle panel terminal on splitter
+- Merge pull request #130 from spankyed/AS/inline-dashboard-chat-panel
+- chat): add inline thread dashboard panel alongside chat
+- threads): add asUser prop to auto-hide messages for right-aligned collapsed asides
+- default-setup): add /cc-recap command for conversation summaries
+- threads): replace copy resume command with direct terminal tab opening
+
+### Fixes
+- commit): cast branch index to Number for highlight comparison
+- brain): unwrap truncated strings in node attributes to pass plain values downstream
+- default-setup): use appendSystemPrompt instead of systemPrompt
+- threads): improve click target styling for recent threads toggle
+- default-setup): change recent threads sort order from created to visited
+- threads): ensure queued messages always render at end of conversation
+
+### Refactors
+- default-setup): split system prompts from user messages in CLI calls
+- prompts): update edit-phase tip to emphasize plan adherence over minimal changes
+- default-setup): extract phase tips into configurable prompt templates
+
+### Other
+- Fix terminal processes not killed on app quit
+- Fix archive to remove dashboard tab and add delete option to recent threads menu
+- Merge pull request #130 from spankyed/AS/inline-dashboard-chat-panel
+- Add keyboard navigation to branch dropdown and copy button to plan artifacts
+- Fix EPIPE crash when pausing a Claude Code turn
+- Expand export notes section by default in notes settings
+- Fix thread not being replaced when resuming after /cc-resume listing
+- Fix PR number alignment with action buttons in PR panel view
+- Fix context alert thresholds firing on every turn
+- output /pr2md as markdown artifact
+- Remove /gcmsg command and make /pr2md output an artifact
+- ci: auto-delete old artifacts before upload and set 1-day retention
+
+-e # Changelog
+
 ## v0.2.6 (2026-04-21)
 
 ### Features
