@@ -156,7 +156,7 @@ async function importSessions(services: Services) {
 
         const thread = services.repository.threadQueries.byId(newThreadId) as any;
         services.repository.threadCommands.update(newThreadId, {
-          context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id } },
+          context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id, cwd: cwd || undefined } },
           tags: [...(thread?.tags || ['imported']), 'claude-code'],
         });
 

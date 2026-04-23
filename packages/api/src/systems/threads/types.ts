@@ -214,6 +214,7 @@ export interface ThreadContext {
   claudeCode?: {
     sessionId?: string;
     lastTurnAt?: number;
+    cwd?: string;
   };
   [featureKey: string]: unknown;
 }
@@ -313,6 +314,7 @@ export type AgentThreadData = {
   forcedMode?: ThreadEntity['forcedMode'];
   pinned?: boolean;
   chatState?: string;
+  context?: ThreadContext;
 }
 
 export type RecentThreadRefreshData = {

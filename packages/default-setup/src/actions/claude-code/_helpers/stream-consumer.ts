@@ -168,6 +168,7 @@ export async function consumeStream(
           persistClaudeState(services, threadId, {
             sessionId: line.session_id,
             lastTurnAt: Date.now(),
+            cwd: line.cwd || undefined,
           });
         }
         services.emitter.sendToBrainSystem({

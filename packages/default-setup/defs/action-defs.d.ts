@@ -1142,6 +1142,7 @@ interface ThreadContext {
     claudeCode?: {
         sessionId?: string;
         lastTurnAt?: number;
+        cwd?: string;
     };
     [featureKey: string]: unknown;
 }
@@ -1213,6 +1214,7 @@ type AgentThreadData = {
     forcedMode?: ThreadEntity['forcedMode'];
     pinned?: boolean;
     chatState?: string;
+    context?: ThreadContext;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -7646,6 +7648,7 @@ declare const services: {
                 asideText?: string;
                 compacted?: boolean;
                 context?: Record<string, unknown>;
+                skipRelink?: boolean;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

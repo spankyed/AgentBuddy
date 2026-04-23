@@ -360,7 +360,7 @@ function getSortTimestamp(thread: Partial<ThreadEntity>, sortOrder: 'created' | 
 function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Partial<ThreadEntity>[] {
   const threadFields = [
     "shortCode", "topic", "instructions", "status", "timestamp",
-    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState",
+    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState", "context",
   ] as const;
 
   const allThreads = (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
@@ -395,6 +395,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
     timestamp: mostRecentThread.timestamp || Date.now(),
     forcedMode: mostRecentThread.forcedMode,
     chatState: mostRecentThread.chatState,
+    context: mostRecentThread.context,
     messages: mostRecentThread.id
       ? ((qx(mostRecentThread.id)
           .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
@@ -449,7 +450,7 @@ export const chatQueries = {
     const thread = qx(threadId)
       .orderBy('timestamp', 'desc')
       .limit(4)
-      .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState"] as const);
+      .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState", "context"] as const);
 
     return {
       ...thread[0] as AgentThreadData,

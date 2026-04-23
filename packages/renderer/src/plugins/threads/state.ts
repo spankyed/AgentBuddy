@@ -110,7 +110,7 @@ type ChatState = 'idle' | 'working' | 'paused';
 
 type SystemEvent =
   | OutgoingThreadsEvents
-  | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
+  | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context'>> }
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
   | { type: 'THREAD_DELETED'; threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
@@ -423,7 +423,10 @@ const threadsState = setup({
         ),
         view: context.view.id === threadId
           ? { ...context.view, ...updates }
-          : context.view
+          : context.view,
+        currentThread: context.currentThread?.id === threadId
+          ? { ...context.currentThread, ...updates }
+          : context.currentThread,
       };
     }),
     sendUpdateThreadField: ({ event, context }) => {

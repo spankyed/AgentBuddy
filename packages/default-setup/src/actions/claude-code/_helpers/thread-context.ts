@@ -35,6 +35,8 @@ export interface PendingControlRequest {
 export interface ClaudeCodeThreadState {
   sessionId?: string;
   lastTurnAt?: number;
+  /** Working directory for the Claude Code session. */
+  cwd?: string;
   /** True while a chat action invocation is actively running on this thread. */
   isRunning?: boolean;
   /** Message waiting to be processed after the current turn ends. */
@@ -129,12 +131,15 @@ export function persistClaudeState(
     tags: nextTags,
   });
 
-  // Notify frontend so tag filters update without a page refresh
-  if (tagAdded) {
+  // Notify frontend so tag filters and context update without a page refresh
+  if (tagAdded || state.cwd !== undefined) {
     services.emitter.sendToPlugin('threads', {
       type: 'THREAD_UPDATED',
       threadId,
-      updates: { tags: nextTags },
+      updates: {
+        ...(tagAdded ? { tags: nextTags } : {}),
+        context: nextContext,
+      },
     });
   }
 }

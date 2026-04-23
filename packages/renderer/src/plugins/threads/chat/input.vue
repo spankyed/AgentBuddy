@@ -171,6 +171,15 @@
 
           </div>
         </div>
+
+        <!-- Status line — teleported to body to escape overflow:hidden -->
+        <Teleport to="body">
+          <span v-if="statusLine && statusLinePos"
+            class="px-2 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-[11px] text-neutral-500 font-mono truncate pointer-events-none select-none"
+            :style="statusLinePos">
+            {{ statusLine }}
+          </span>
+        </Teleport>
       </div>
     </form>
   </div>
@@ -230,6 +239,8 @@ const props = defineProps<{
   isBusy?: boolean
   /** Max duration (in minutes) for a single voice-input session. */
   recordingLimitMinutes?: number
+  /** Optional status text shown at the bottom-right corner of the input card. */
+  statusLine?: string
 }>()
 
 // Define emits including new button actions
@@ -260,6 +271,28 @@ interface ActionButton {
 
 const tiptapRef = ref<InstanceType<typeof TiptapEditor> | null>(null)
 const inputCardRef = ref<HTMLElement | null>(null)
+
+// Status line position — teleported to <body> with position:fixed, tracked via rAF
+// (same pattern as StatusIndicator) to escape overflow:hidden on the input container.
+const statusLinePos = ref<Record<string, string> | null>(null)
+let statusLineRafId: number | null = null
+function updateStatusLinePos() {
+  const el = inputCardRef.value
+  if (!el || !props.statusLine) { statusLinePos.value = null; return }
+  const r = el.getBoundingClientRect()
+  statusLinePos.value = {
+    position: 'fixed',
+    top: `${r.top - 10}px`,
+    right: `${window.innerWidth - r.right + 4}px`,
+    maxWidth: `${r.width * 0.6}px`,
+    zIndex: '40',
+  }
+}
+function statusLineTick() {
+  updateStatusLinePos()
+  statusLineRafId = requestAnimationFrame(statusLineTick)
+}
+
 const messageContent = ref('')
 const hasTextContent = ref(false)
 const popoverOpen = ref(false)
@@ -493,11 +526,13 @@ onMounted(() => {
   window.addEventListener('keydown', handleVoiceKeydown)
   window.addEventListener('keyup', handleVoiceKeyup)
   document.addEventListener('keydown', handleGlobalEsc)
+  statusLineTick()
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', handleVoiceKeydown)
   window.removeEventListener('keyup', handleVoiceKeyup)
   document.removeEventListener('keydown', handleGlobalEsc)
+  if (statusLineRafId != null) cancelAnimationFrame(statusLineRafId)
 })
 
 const leftButtons = computed<ActionButton[]>(() => {

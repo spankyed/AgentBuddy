@@ -328,6 +328,35 @@ interface DatabaseStartupData {
     schema: DatabaseSchemaInfo;
 }
 
+interface ActionParameter {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+    description?: string;
+    required?: boolean;
+    default?: any;
+    placeholder?: string;
+}
+interface ActionEntity {
+    id: EARS.EntityId;
+    entityType: EARS.Entity.Action;
+    label: string;
+    description?: string;
+    category?: string;
+    input: Record<string, ActionParameter>;
+    actionFn: string;
+    output?: any;
+    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
+    sourceHash?: string;
+    createdAt: number;
+    updatedAt: number;
+}
+interface ActionsStartupData {
+    actions: ActionEntity[];
+    page: number;
+    totalPages: number;
+    totalCount: number;
+    categories?: Category[];
+}
+
 /**
  * Type definitions + Zod schemas for the Claude Code stream-json wire protocol.
  *
@@ -1115,6 +1144,7 @@ interface ThreadContext {
     claudeCode?: {
         sessionId?: string;
         lastTurnAt?: number;
+        cwd?: string;
     };
     [featureKey: string]: unknown;
 }
@@ -1186,6 +1216,7 @@ type AgentThreadData = {
     forcedMode?: ThreadEntity['forcedMode'];
     pinned?: boolean;
     chatState?: string;
+    context?: ThreadContext;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -1252,35 +1283,6 @@ interface ArtifactItem {
         updatedAt?: number;
         [key: string]: any;
     };
-}
-
-interface ActionParameter {
-    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    description?: string;
-    required?: boolean;
-    default?: any;
-    placeholder?: string;
-}
-interface ActionEntity {
-    id: EARS.EntityId;
-    entityType: EARS.Entity.Action;
-    label: string;
-    description?: string;
-    category?: string;
-    input: Record<string, ActionParameter>;
-    actionFn: string;
-    output?: any;
-    /** SHA256 hash of DSL source at last seed. Absent on user-created actions. */
-    sourceHash?: string;
-    createdAt: number;
-    updatedAt: number;
-}
-interface ActionsStartupData {
-    actions: ActionEntity[];
-    page: number;
-    totalPages: number;
-    totalCount: number;
-    categories?: Category[];
 }
 
 type DocumentShortCode = `DOC-${number}`;
@@ -1449,218 +1451,325 @@ interface ExecutionContext {
 
 declare const events: {
     readonly incoming: readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"FLOW_SELECT">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
+        type: zod.ZodLiteral<"GET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "FLOW_SELECT";
-        systemId: "flows";
+        type: "GET_SETTINGS";
+        systemId: "settings";
     }, {
-        flowId: string;
-        type: "FLOW_SELECT";
-        systemId: "flows";
+        type: "GET_SETTINGS";
+        systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_FLOW">;
-        systemId: zod.ZodLiteral<"flows">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "CREATE_FLOW";
-        systemId: "flows";
-    }, {
-        type: "CREATE_FLOW";
-        systemId: "flows";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_FLOW">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "DELETE_FLOW";
-        systemId: "flows";
-    }, {
-        flowId: string;
-        type: "DELETE_FLOW";
-        systemId: "flows";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_FLOW_LABEL">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
+        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
+        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
         label: zod.ZodString;
+        path: zod.ZodArray<zod.ZodString, "many">;
+        value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
-        flowId: string;
-        type: "UPDATE_FLOW_LABEL";
-        systemId: "flows";
+        entityType: "general" | "plugin" | "internal";
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        path: string[];
+        value?: any;
     }, {
         label: string;
-        flowId: string;
-        type: "UPDATE_FLOW_LABEL";
-        systemId: "flows";
+        entityType: "general" | "plugin" | "internal";
+        type: "UPDATE_SETTINGS";
+        systemId: "settings";
+        path: string[];
+        value?: any;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_NODE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        tempId: zod.ZodString;
-        nodeData: zod.ZodAny;
+        type: zod.ZodLiteral<"RESET_SETTINGS">;
+        systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "CREATE_NODE";
-        systemId: "flows";
-        tempId: string;
-        nodeData?: any;
+        type: "RESET_SETTINGS";
+        systemId: "settings";
     }, {
-        flowId: string;
-        type: "CREATE_NODE";
-        systemId: "flows";
-        tempId: string;
-        nodeData?: any;
+        type: "RESET_SETTINGS";
+        systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_NODE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        nodeId: zod.ZodString;
-        nodeData: zod.ZodAny;
+        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
+        value: zod.ZodString;
+        customName: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "UPDATE_NODE";
-        systemId: "flows";
-        nodeId: string;
-        nodeData?: any;
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        value: string;
+        provider: string;
+        customName?: string | undefined;
     }, {
-        flowId: string;
-        type: "UPDATE_NODE";
-        systemId: "flows";
-        nodeId: string;
-        nodeData?: any;
+        type: "SECRETS.CMD.CREATE_API_KEY";
+        systemId: "settings";
+        value: string;
+        provider: string;
+        customName?: string | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_NODE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        nodeId: zod.ZodString;
+        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
+        value: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "DELETE_NODE";
-        systemId: "flows";
-        nodeId: string;
+        id: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+        value: string;
     }, {
-        flowId: string;
-        type: "DELETE_NODE";
-        systemId: "flows";
-        nodeId: string;
+        id: string;
+        type: "SECRETS.CMD.UPDATE_API_KEY";
+        systemId: "settings";
+        value: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"CREATE_EDGE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        sourceId: zod.ZodString;
-        targetId: zod.ZodString;
-        sourceHandle: zod.ZodOptional<zod.ZodString>;
-        targetHandle: zod.ZodOptional<zod.ZodString>;
+        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
+        systemId: zod.ZodLiteral<"settings">;
+        id: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "CREATE_EDGE";
-        systemId: "flows";
-        sourceId: string;
-        targetId: string;
-        sourceHandle?: string | undefined;
-        targetHandle?: string | undefined;
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
     }, {
-        flowId: string;
-        type: "CREATE_EDGE";
-        systemId: "flows";
-        sourceId: string;
-        targetId: string;
-        sourceHandle?: string | undefined;
-        targetHandle?: string | undefined;
+        id: string;
+        type: "SECRETS.CMD.DELETE_API_KEY";
+        systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"DELETE_EDGE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        edgeId: zod.ZodString;
+        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
+        systemId: zod.ZodLiteral<"settings">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "DELETE_EDGE";
-        systemId: "flows";
-        edgeId: string;
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
     }, {
-        flowId: string;
-        type: "DELETE_EDGE";
-        systemId: "flows";
-        edgeId: string;
+        type: "SECRETS.CMD.GET_API_KEYS";
+        systemId: "settings";
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_EDGE">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        edgeId: zod.ZodString;
-        oldSource: zod.ZodString;
-        oldTarget: zod.ZodString;
-        newSource: zod.ZodString;
-        newTarget: zod.ZodString;
+        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
+        systemId: zod.ZodLiteral<"settings">;
+        provider: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "UPDATE_EDGE";
-        systemId: "flows";
-        edgeId: string;
-        oldSource: string;
-        oldTarget: string;
-        newSource: string;
-        newTarget: string;
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
     }, {
-        flowId: string;
-        type: "UPDATE_EDGE";
-        systemId: "flows";
-        edgeId: string;
-        oldSource: string;
-        oldTarget: string;
-        newSource: string;
-        newTarget: string;
+        type: "TEST_CLI_PROVIDER";
+        systemId: "settings";
+        provider: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_DSL">;
-        systemId: zod.ZodLiteral<"flows">;
-        dsl: zod.ZodAny;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_DSL";
-        systemId: "flows";
-        dsl?: any;
-    }, {
-        type: "IMPORT_DSL";
-        systemId: "flows";
-        dsl?: any;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"EXPORT_DSL">;
-        systemId: zod.ZodLiteral<"flows">;
+        type: zod.ZodLiteral<"PREVIEW_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
         directory: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "EXPORT_DSL";
-        systemId: "flows";
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
         directory: string;
     }, {
-        type: "EXPORT_DSL";
-        systemId: "flows";
+        type: "PREVIEW_SETUP_PACK";
+        systemId: "settings";
         directory: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REINDEX_HANDLES">;
-        systemId: zod.ZodLiteral<"flows">;
-        flowId: zod.ZodString;
-        nodeId: zod.ZodString;
-        prefix: zod.ZodString;
-        index: zod.ZodNumber;
-        direction: zod.ZodUnion<[zod.ZodLiteral<1>, zod.ZodLiteral<-1>]>;
+        type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
+        systemId: zod.ZodLiteral<"settings">;
+        directory: zod.ZodString;
+        include: zod.ZodOptional<zod.ZodObject<{
+            actions: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            prompts: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            flows: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            library: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            notes: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+            settings: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
+        }, "strip", zod.ZodTypeAny, {
+            settings: string[] | null;
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }, {
+            settings: string[] | null;
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        }>>;
+        mode: zod.ZodOptional<zod.ZodEnum<["keep-existing", "replace-on-collision", "wipe-and-replace"]>>;
+        restartBrain: zod.ZodOptional<zod.ZodBoolean>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
-        type: "REINDEX_HANDLES";
-        systemId: "flows";
-        nodeId: string;
-        prefix: string;
-        index: number;
-        direction: 1 | -1;
+        type: "IMPORT_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+        include?: {
+            settings: string[] | null;
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
+        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
+        restartBrain?: boolean | undefined;
     }, {
-        flowId: string;
-        type: "REINDEX_HANDLES";
-        systemId: "flows";
-        nodeId: string;
-        prefix: string;
-        index: number;
-        direction: 1 | -1;
+        type: "IMPORT_SETUP_PACK";
+        systemId: "settings";
+        directory: string;
+        include?: {
+            settings: string[] | null;
+            actions: string[] | null;
+            prompts: string[] | null;
+            flows: string[] | null;
+            library: string[] | null;
+            notes: string[] | null;
+        } | undefined;
+        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
+        restartBrain?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESET_APP">;
+        systemId: zod.ZodLiteral<"settings">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESET_APP";
+        systemId: "settings";
+    }, {
+        type: "RESET_APP";
+        systemId: "settings";
+    }>] | readonly [zod.ZodObject<{
+        type: zod.ZodLiteral<"OPEN_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "OPEN_TNODE";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GO_BACK_TNODE">;
+        systemId: zod.ZodLiteral<"brain">;
+        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }, {
+        type: "GO_BACK_TNODE";
+        systemId: "brain";
+        currentFlowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
+        systemId: zod.ZodLiteral<"brain">;
+        flowTNodeId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }, {
+        type: "REQUEST_PLUGIN_DATA";
+        systemId: "brain";
+        flowTNodeId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
+        systemId: zod.ZodLiteral<"brain">;
+        tNodeId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }, {
+        type: "GET_TNODE_DETAILS";
+        systemId: "brain";
+        tNodeId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }, {
+        type: "TOGGLE_INSPECT";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"START_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "START_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"KILL_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "KILL_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESTART_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESTART_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"PAUSE_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "PAUSE_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"RESUME_BRAIN">;
+        systemId: zod.ZodLiteral<"brain">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }, {
+        type: "RESUME_BRAIN";
+        systemId: "brain";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "HANDLE_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"brain">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+        targetFlowId: zod.ZodOptional<zod.ZodString>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
+    }, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "brain";
+        payload?: any;
+        targetFlowId?: string | undefined;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"CREATE_THREAD">;
         systemId: zod.ZodLiteral<"threads">;
@@ -1903,8 +2012,8 @@ declare const events: {
                 isImage: boolean;
             }[] | undefined;
         } | undefined;
-        threadId?: string | undefined;
         mode?: string | undefined;
+        threadId?: string | undefined;
         phase?: string | undefined;
     }, {
         text: string;
@@ -1928,8 +2037,8 @@ declare const events: {
                 isImage: boolean;
             }[] | undefined;
         } | undefined;
-        threadId?: string | undefined;
         mode?: string | undefined;
+        threadId?: string | undefined;
         phase?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"OPEN_THREAD_CHAT">;
@@ -2181,8 +2290,8 @@ declare const events: {
                 isImage: boolean;
             }[] | undefined;
         } | undefined;
-        threadId?: string | undefined;
         mode?: string | undefined;
+        threadId?: string | undefined;
         phase?: string | undefined;
     }, {
         text: string;
@@ -2207,8 +2316,8 @@ declare const events: {
                 isImage: boolean;
             }[] | undefined;
         } | undefined;
-        threadId?: string | undefined;
         mode?: string | undefined;
+        threadId?: string | undefined;
         phase?: string | undefined;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_CLAUDE_PERMISSION_MODE">;
@@ -2218,13 +2327,13 @@ declare const events: {
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         type: "UPDATE_CLAUDE_PERMISSION_MODE";
         systemId: "threads";
-        threadId: string;
         mode: string;
+        threadId: string;
     }, {
         type: "UPDATE_CLAUDE_PERMISSION_MODE";
         systemId: "threads";
-        threadId: string;
         mode: string;
+        threadId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"UPDATE_CLAUDE_WORKTREE">;
         systemId: zod.ZodLiteral<"threads">;
@@ -2256,325 +2365,218 @@ declare const events: {
         systemId: "threads";
         markerId: string;
     }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
+        type: zod.ZodLiteral<"FLOW_SELECT">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
+        type: "FLOW_SELECT";
+        systemId: "flows";
+        flowId: string;
     }, {
-        type: "GET_SETTINGS";
-        systemId: "settings";
+        type: "FLOW_SELECT";
+        systemId: "flows";
+        flowId: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
-        entityType: zod.ZodEnum<["general", "plugin", "internal"]>;
+        type: zod.ZodLiteral<"CREATE_FLOW">;
+        systemId: zod.ZodLiteral<"flows">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "CREATE_FLOW";
+        systemId: "flows";
+    }, {
+        type: "CREATE_FLOW";
+        systemId: "flows";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_FLOW">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_FLOW";
+        systemId: "flows";
+        flowId: string;
+    }, {
+        type: "DELETE_FLOW";
+        systemId: "flows";
+        flowId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"UPDATE_FLOW_LABEL">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
         label: zod.ZodString;
-        path: zod.ZodArray<zod.ZodString, "many">;
-        value: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
-        value?: any;
+        type: "UPDATE_FLOW_LABEL";
+        systemId: "flows";
+        flowId: string;
     }, {
         label: string;
-        entityType: "general" | "plugin" | "internal";
-        type: "UPDATE_SETTINGS";
-        systemId: "settings";
-        path: string[];
-        value?: any;
+        type: "UPDATE_FLOW_LABEL";
+        systemId: "flows";
+        flowId: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_SETTINGS">;
-        systemId: zod.ZodLiteral<"settings">;
+        type: zod.ZodLiteral<"CREATE_NODE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        tempId: zod.ZodString;
+        nodeData: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
+        type: "CREATE_NODE";
+        systemId: "flows";
+        flowId: string;
+        tempId: string;
+        nodeData?: any;
     }, {
-        type: "RESET_SETTINGS";
-        systemId: "settings";
+        type: "CREATE_NODE";
+        systemId: "flows";
+        flowId: string;
+        tempId: string;
+        nodeData?: any;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.CREATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
-        value: zod.ZodString;
-        customName: zod.ZodOptional<zod.ZodString>;
+        type: zod.ZodLiteral<"UPDATE_NODE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        nodeId: zod.ZodString;
+        nodeData: zod.ZodAny;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
+        type: "UPDATE_NODE";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        nodeData?: any;
     }, {
-        type: "SECRETS.CMD.CREATE_API_KEY";
-        systemId: "settings";
-        value: string;
-        provider: string;
-        customName?: string | undefined;
+        type: "UPDATE_NODE";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        nodeData?: any;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.UPDATE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
-        value: zod.ZodString;
+        type: zod.ZodLiteral<"DELETE_NODE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        nodeId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
+        type: "DELETE_NODE";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
     }, {
-        id: string;
-        type: "SECRETS.CMD.UPDATE_API_KEY";
-        systemId: "settings";
-        value: string;
+        type: "DELETE_NODE";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.DELETE_API_KEY">;
-        systemId: zod.ZodLiteral<"settings">;
-        id: zod.ZodString;
+        type: zod.ZodLiteral<"CREATE_EDGE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        sourceId: zod.ZodString;
+        targetId: zod.ZodString;
+        sourceHandle: zod.ZodOptional<zod.ZodString>;
+        targetHandle: zod.ZodOptional<zod.ZodString>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
+        type: "CREATE_EDGE";
+        systemId: "flows";
+        flowId: string;
+        sourceId: string;
+        targetId: string;
+        sourceHandle?: string | undefined;
+        targetHandle?: string | undefined;
     }, {
-        id: string;
-        type: "SECRETS.CMD.DELETE_API_KEY";
-        systemId: "settings";
+        type: "CREATE_EDGE";
+        systemId: "flows";
+        flowId: string;
+        sourceId: string;
+        targetId: string;
+        sourceHandle?: string | undefined;
+        targetHandle?: string | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"SECRETS.CMD.GET_API_KEYS">;
-        systemId: zod.ZodLiteral<"settings">;
+        type: zod.ZodLiteral<"DELETE_EDGE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        edgeId: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
+        type: "DELETE_EDGE";
+        systemId: "flows";
+        flowId: string;
+        edgeId: string;
     }, {
-        type: "SECRETS.CMD.GET_API_KEYS";
-        systemId: "settings";
+        type: "DELETE_EDGE";
+        systemId: "flows";
+        flowId: string;
+        edgeId: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TEST_CLI_PROVIDER">;
-        systemId: zod.ZodLiteral<"settings">;
-        provider: zod.ZodString;
+        type: zod.ZodLiteral<"UPDATE_EDGE">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        edgeId: zod.ZodString;
+        oldSource: zod.ZodString;
+        oldTarget: zod.ZodString;
+        newSource: zod.ZodString;
+        newTarget: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
+        type: "UPDATE_EDGE";
+        systemId: "flows";
+        flowId: string;
+        edgeId: string;
+        oldSource: string;
+        oldTarget: string;
+        newSource: string;
+        newTarget: string;
     }, {
-        type: "TEST_CLI_PROVIDER";
-        systemId: "settings";
-        provider: string;
+        type: "UPDATE_EDGE";
+        systemId: "flows";
+        flowId: string;
+        edgeId: string;
+        oldSource: string;
+        oldTarget: string;
+        newSource: string;
+        newTarget: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PREVIEW_SETUP_PACK">;
-        systemId: zod.ZodLiteral<"settings">;
+        type: zod.ZodLiteral<"IMPORT_DSL">;
+        systemId: zod.ZodLiteral<"flows">;
+        dsl: zod.ZodAny;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "IMPORT_DSL";
+        systemId: "flows";
+        dsl?: any;
+    }, {
+        type: "IMPORT_DSL";
+        systemId: "flows";
+        dsl?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"EXPORT_DSL">;
+        systemId: zod.ZodLiteral<"flows">;
         directory: zod.ZodString;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PREVIEW_SETUP_PACK";
-        systemId: "settings";
+        type: "EXPORT_DSL";
+        systemId: "flows";
         directory: string;
     }, {
-        type: "PREVIEW_SETUP_PACK";
-        systemId: "settings";
+        type: "EXPORT_DSL";
+        systemId: "flows";
         directory: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"IMPORT_SETUP_PACK">;
-        systemId: zod.ZodLiteral<"settings">;
-        directory: zod.ZodString;
-        include: zod.ZodOptional<zod.ZodObject<{
-            actions: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            prompts: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            flows: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            library: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            notes: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-            settings: zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>;
-        }, "strip", zod.ZodTypeAny, {
-            flows: string[] | null;
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        }, {
-            flows: string[] | null;
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        }>>;
-        mode: zod.ZodOptional<zod.ZodEnum<["keep-existing", "replace-on-collision", "wipe-and-replace"]>>;
-        restartBrain: zod.ZodOptional<zod.ZodBoolean>;
+        type: zod.ZodLiteral<"REINDEX_HANDLES">;
+        systemId: zod.ZodLiteral<"flows">;
+        flowId: zod.ZodString;
+        nodeId: zod.ZodString;
+        prefix: zod.ZodString;
+        index: zod.ZodNumber;
+        direction: zod.ZodUnion<[zod.ZodLiteral<1>, zod.ZodLiteral<-1>]>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "IMPORT_SETUP_PACK";
-        systemId: "settings";
-        directory: string;
-        include?: {
-            flows: string[] | null;
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        } | undefined;
-        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
-        restartBrain?: boolean | undefined;
+        type: "REINDEX_HANDLES";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        prefix: string;
+        index: number;
+        direction: 1 | -1;
     }, {
-        type: "IMPORT_SETUP_PACK";
-        systemId: "settings";
-        directory: string;
-        include?: {
-            flows: string[] | null;
-            settings: string[] | null;
-            actions: string[] | null;
-            prompts: string[] | null;
-            library: string[] | null;
-            notes: string[] | null;
-        } | undefined;
-        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace" | undefined;
-        restartBrain?: boolean | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESET_APP">;
-        systemId: zod.ZodLiteral<"settings">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESET_APP";
-        systemId: "settings";
-    }, {
-        type: "RESET_APP";
-        systemId: "settings";
-    }>] | readonly [zod.ZodObject<{
-        type: zod.ZodLiteral<"OPEN_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "OPEN_TNODE";
-        systemId: "brain";
-        tNodeId: string;
-    }, {
-        type: "OPEN_TNODE";
-        systemId: "brain";
-        tNodeId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GO_BACK_TNODE">;
-        systemId: zod.ZodLiteral<"brain">;
-        currentFlowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }, {
-        type: "GO_BACK_TNODE";
-        systemId: "brain";
-        currentFlowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"REQUEST_PLUGIN_DATA">;
-        systemId: zod.ZodLiteral<"brain">;
-        flowTNodeId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }, {
-        type: "REQUEST_PLUGIN_DATA";
-        systemId: "brain";
-        flowTNodeId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"GET_TNODE_DETAILS">;
-        systemId: zod.ZodLiteral<"brain">;
-        tNodeId: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-        tNodeId: string;
-    }, {
-        type: "GET_TNODE_DETAILS";
-        systemId: "brain";
-        tNodeId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TOGGLE_INSPECT">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }, {
-        type: "TOGGLE_INSPECT";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"START_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "START_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"KILL_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "KILL_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESTART_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESTART_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"PAUSE_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "PAUSE_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"RESUME_BRAIN">;
-        systemId: zod.ZodLiteral<"brain">;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }, {
-        type: "RESUME_BRAIN";
-        systemId: "brain";
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"HANDLE_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "HANDLE_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
-        systemId: zod.ZodLiteral<"brain">;
-        eventType: zod.ZodString;
-        payload: zod.ZodOptional<zod.ZodAny>;
-        targetFlowId: zod.ZodOptional<zod.ZodString>;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
-    }, {
-        eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
-        systemId: "brain";
-        payload?: any;
-        targetFlowId?: string | undefined;
+        type: "REINDEX_HANDLES";
+        systemId: "flows";
+        flowId: string;
+        nodeId: string;
+        prefix: string;
+        index: number;
+        direction: 1 | -1;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"EXECUTE_QUERY">;
         systemId: zod.ZodLiteral<"database">;
@@ -2639,15 +2641,15 @@ declare const events: {
         offset: zod.ZodOptional<zod.ZodNumber>;
         limit: zod.ZodOptional<zod.ZodNumber>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        flowId: string;
         type: "GET_FLOW_EVENTS";
         systemId: "database";
+        flowId: string;
         offset?: number | undefined;
         limit?: number | undefined;
     }, {
-        flowId: string;
         type: "GET_FLOW_EVENTS";
         systemId: "database";
+        flowId: string;
         offset?: number | undefined;
         limit?: number | undefined;
     }>, zod.ZodObject<{
@@ -2916,9 +2918,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }, {
         type: "UPDATE_ACTION";
         systemId: "actions";
@@ -2926,9 +2928,9 @@ declare const events: {
         category?: string | undefined;
         label?: string | undefined;
         description?: string | undefined;
-        output?: any;
         input?: Record<string, any> | undefined;
         actionFn?: string | undefined;
+        output?: any;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"DELETE_ACTION">;
         systemId: zod.ZodLiteral<"actions">;
@@ -4561,102 +4563,124 @@ declare const events: {
         format: "json" | "markdown";
     }>];
     readonly outgoing: {
-        type: "FLOWS_CONNECTED";
-        data: FlowsConnectedData;
-        pluginId: "flows";
+        type: "SETTINGS_LOADED";
+        data: SettingsData;
+        faqs: FAQItem[];
+        pluginId: "settings";
     } | {
-        type: "FLOW_SELECTED";
-        flowId: EARS.EntityId;
-        data: {
-            nodes: any[];
-            edges: any[];
-        };
-        pluginId: "flows";
+        type: "SETTINGS_UPDATED";
+        data: SettingsData;
+        pluginId: "settings";
     } | {
-        type: "FLOW_CREATED";
-        flow: FlowEntity;
-        flowId: EARS.EntityId;
-        data: {
-            nodes: any[];
-            edges: any[];
-        };
-        pluginId: "flows";
+        type: "SETTINGS_RESET";
+        data: SettingsData;
+        pluginId: "settings";
     } | {
-        type: "FLOW_DELETED";
-        flowId: EARS.EntityId;
-        pluginId: "flows";
+        type: "APPLICATION_HOTKEYS";
+        hotkeys: SettingsData["general"]["application"]["hotkeys"];
+        pluginId: "settings";
     } | {
-        type: "NODE_CREATED";
-        tempId: string;
-        nodeId: EARS.EntityId;
-        node: any;
-        pluginId: "flows";
+        type: "CLI_TEST_RESULT";
+        provider: string;
+        success: boolean;
+        error?: string | undefined;
+        resolvedPath?: string | undefined;
+        pluginId: "settings";
     } | {
-        type: "NODE_UPDATED";
-        nodeId: EARS.EntityId;
-        node: any;
-        pluginId: "flows";
+        type: "SETUP_PACK_IMPORTED";
+        result: SeedResult;
+        pluginId: "settings";
     } | {
-        type: "NODE_DELETED";
-        nodeId: string;
-        pluginId: "flows";
-    } | {
-        type: "EDGE_CREATED";
-        sourceId: EARS.EntityId;
-        targetId: EARS.EntityId;
-        relId: EARS.EntityId;
-        sourceHandle?: string | undefined;
-        targetHandle?: string | undefined;
-        pluginId: "flows";
-    } | {
-        type: "EDGE_CREATE_FAILED";
-        sourceId: string;
-        targetId: string;
+        type: "SETUP_PACK_IMPORT_FAILED";
         error: string;
-        pluginId: "flows";
+        pluginId: "settings";
     } | {
-        type: "EDGE_DELETED";
-        edgeId: string;
-        pluginId: "flows";
+        type: "SETUP_PACK_PREVIEW";
+        preview: SetupPackPreview;
+        pluginId: "settings";
     } | {
-        type: "EDGE_UPDATED";
-        oldEdgeId: EARS.EntityId;
-        newEdgeId: EARS.EntityId;
-        newSource: EARS.EntityId;
-        newTarget: EARS.EntityId;
-        pluginId: "flows";
+        type: "SETUP_PACK_PREVIEW_FAILED";
+        error: string;
+        pluginId: "settings";
     } | {
-        type: "ACTION_CREATED";
-        action: ActionEntity;
-        actionId: EARS.EntityId;
-        pluginId: "flows";
+        type: "APP_RESET_COMPLETE";
+        pluginId: "settings";
     } | {
-        type: "ACTION_UPDATED";
-        action: ActionEntity;
-        actionId: EARS.EntityId;
-        pluginId: "flows";
+        type: "APP_RESET_FAILED";
+        error: string;
+        pluginId: "settings";
     } | {
-        type: "ACTION_DELETED";
-        actionId: EARS.EntityId;
-        pluginId: "flows";
+        type: "SECRETS.EVENT.LOADED";
+        data: SecretData[];
+        pluginId: "settings";
     } | {
-        type: "DSL_IMPORTED";
-        flowIds: EARS.EntityId[];
-        errors?: string[] | undefined;
-        pluginId: "flows";
+        type: "SECRETS.EVENT.CREATED";
+        id: EARS.EntityId;
+        provider: SecretProvider;
+        customName?: string | undefined;
+        pluginId: "settings";
     } | {
-        type: "DSL_IMPORT_FAILED";
-        errors: string[];
-        pluginId: "flows";
+        type: "SECRETS.EVENT.UPDATED";
+        id: EARS.EntityId;
+        pluginId: "settings";
     } | {
-        type: "DSL_EXPORTED";
-        filePath: string;
-        flowCount: number;
-        pluginId: "flows";
+        type: "SECRETS.EVENT.DELETED";
+        id: EARS.EntityId;
+        pluginId: "settings";
     } | {
-        type: "DSL_EXPORT_FAILED";
-        errors: string[];
-        pluginId: "flows";
+        type: "SECRETS.EVENT.VALUE";
+        id: EARS.EntityId;
+        value: string;
+        pluginId: "settings";
+    } | {
+        type: "SECRETS.EVENT.ERROR";
+        message: string;
+        pluginId: "settings";
+    } | {
+        type: "RECEIVE_PLUGIN_DATA";
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_OPENED";
+        tNodeId: EARS.EntityId;
+        data: FlowTNodeData;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_SPAWNED";
+        tNode: TNodeEntity;
+        parentId?: EARS.EntityId | undefined;
+        eventTNodeId?: EARS.EntityId | undefined;
+        flowTNodeId: EARS.EntityId;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_UPDATED";
+        data: TNodeUpdate;
+        pluginId: "brain";
+    } | {
+        type: "EVENT_PULSE";
+        eventType: string;
+        pluginId: "brain";
+    } | {
+        type: "TNODE_DETAILS";
+        tNodeId: EARS.EntityId;
+        details: TNodeEntity | null;
+        pluginId: "brain";
+    } | {
+        type: "INSPECT_TOGGLED";
+        enabled: boolean;
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_KILLED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_STARTED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_PAUSED";
+        pluginId: "brain";
+    } | {
+        type: "BRAIN_RESUMED";
+        pluginId: "brain";
     } | {
         type: "THREAD_CONNECTED";
         data: ThreadConnectedData;
@@ -4794,124 +4818,102 @@ declare const events: {
         error: string;
         pluginId: "threads";
     } | {
-        type: "SETTINGS_LOADED";
-        data: SettingsData;
-        faqs: FAQItem[];
-        pluginId: "settings";
+        type: "FLOWS_CONNECTED";
+        data: FlowsConnectedData;
+        pluginId: "flows";
     } | {
-        type: "SETTINGS_UPDATED";
-        data: SettingsData;
-        pluginId: "settings";
+        type: "FLOW_SELECTED";
+        flowId: EARS.EntityId;
+        data: {
+            nodes: any[];
+            edges: any[];
+        };
+        pluginId: "flows";
     } | {
-        type: "SETTINGS_RESET";
-        data: SettingsData;
-        pluginId: "settings";
+        type: "FLOW_CREATED";
+        flow: FlowEntity;
+        flowId: EARS.EntityId;
+        data: {
+            nodes: any[];
+            edges: any[];
+        };
+        pluginId: "flows";
     } | {
-        type: "APPLICATION_HOTKEYS";
-        hotkeys: SettingsData["general"]["application"]["hotkeys"];
-        pluginId: "settings";
+        type: "FLOW_DELETED";
+        flowId: EARS.EntityId;
+        pluginId: "flows";
     } | {
-        type: "CLI_TEST_RESULT";
-        provider: string;
-        success: boolean;
-        error?: string | undefined;
-        resolvedPath?: string | undefined;
-        pluginId: "settings";
+        type: "NODE_CREATED";
+        tempId: string;
+        nodeId: EARS.EntityId;
+        node: any;
+        pluginId: "flows";
     } | {
-        type: "SETUP_PACK_IMPORTED";
-        result: SeedResult;
-        pluginId: "settings";
+        type: "NODE_UPDATED";
+        nodeId: EARS.EntityId;
+        node: any;
+        pluginId: "flows";
     } | {
-        type: "SETUP_PACK_IMPORT_FAILED";
+        type: "NODE_DELETED";
+        nodeId: string;
+        pluginId: "flows";
+    } | {
+        type: "EDGE_CREATED";
+        sourceId: EARS.EntityId;
+        targetId: EARS.EntityId;
+        relId: EARS.EntityId;
+        sourceHandle?: string | undefined;
+        targetHandle?: string | undefined;
+        pluginId: "flows";
+    } | {
+        type: "EDGE_CREATE_FAILED";
+        sourceId: string;
+        targetId: string;
         error: string;
-        pluginId: "settings";
+        pluginId: "flows";
     } | {
-        type: "SETUP_PACK_PREVIEW";
-        preview: SetupPackPreview;
-        pluginId: "settings";
+        type: "EDGE_DELETED";
+        edgeId: string;
+        pluginId: "flows";
     } | {
-        type: "SETUP_PACK_PREVIEW_FAILED";
-        error: string;
-        pluginId: "settings";
+        type: "EDGE_UPDATED";
+        oldEdgeId: EARS.EntityId;
+        newEdgeId: EARS.EntityId;
+        newSource: EARS.EntityId;
+        newTarget: EARS.EntityId;
+        pluginId: "flows";
     } | {
-        type: "APP_RESET_COMPLETE";
-        pluginId: "settings";
+        type: "ACTION_CREATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "flows";
     } | {
-        type: "APP_RESET_FAILED";
-        error: string;
-        pluginId: "settings";
+        type: "ACTION_UPDATED";
+        action: ActionEntity;
+        actionId: EARS.EntityId;
+        pluginId: "flows";
     } | {
-        type: "SECRETS.EVENT.LOADED";
-        data: SecretData[];
-        pluginId: "settings";
+        type: "ACTION_DELETED";
+        actionId: EARS.EntityId;
+        pluginId: "flows";
     } | {
-        type: "SECRETS.EVENT.CREATED";
-        id: EARS.EntityId;
-        provider: SecretProvider;
-        customName?: string | undefined;
-        pluginId: "settings";
+        type: "DSL_IMPORTED";
+        flowIds: EARS.EntityId[];
+        errors?: string[] | undefined;
+        pluginId: "flows";
     } | {
-        type: "SECRETS.EVENT.UPDATED";
-        id: EARS.EntityId;
-        pluginId: "settings";
+        type: "DSL_IMPORT_FAILED";
+        errors: string[];
+        pluginId: "flows";
     } | {
-        type: "SECRETS.EVENT.DELETED";
-        id: EARS.EntityId;
-        pluginId: "settings";
+        type: "DSL_EXPORTED";
+        filePath: string;
+        flowCount: number;
+        pluginId: "flows";
     } | {
-        type: "SECRETS.EVENT.VALUE";
-        id: EARS.EntityId;
-        value: string;
-        pluginId: "settings";
-    } | {
-        type: "SECRETS.EVENT.ERROR";
-        message: string;
-        pluginId: "settings";
-    } | {
-        type: "RECEIVE_PLUGIN_DATA";
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_OPENED";
-        tNodeId: EARS.EntityId;
-        data: FlowTNodeData;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_SPAWNED";
-        tNode: TNodeEntity;
-        parentId?: EARS.EntityId | undefined;
-        eventTNodeId?: EARS.EntityId | undefined;
-        flowTNodeId: EARS.EntityId;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_UPDATED";
-        data: TNodeUpdate;
-        pluginId: "brain";
-    } | {
-        type: "EVENT_PULSE";
-        eventType: string;
-        pluginId: "brain";
-    } | {
-        type: "TNODE_DETAILS";
-        tNodeId: EARS.EntityId;
-        details: TNodeEntity | null;
-        pluginId: "brain";
-    } | {
-        type: "INSPECT_TOGGLED";
-        enabled: boolean;
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_KILLED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_STARTED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_PAUSED";
-        pluginId: "brain";
-    } | {
-        type: "BRAIN_RESUMED";
-        pluginId: "brain";
+        type: "DSL_EXPORT_FAILED";
+        errors: string[];
+        pluginId: "flows";
     } | {
         type: "DATABASE_REFRESH";
         data: DatabaseStartupData;
@@ -7632,6 +7634,7 @@ declare const services: {
                 asideText?: string;
                 compacted?: boolean;
                 context?: Record<string, unknown>;
+                skipRelink?: boolean;
             }) => {
                 id: EARS.EntityId;
                 threadId: EARS.EntityId;

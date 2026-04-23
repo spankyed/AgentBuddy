@@ -46,6 +46,7 @@
               :quick-prompt-number-key-inserts="quickPromptNumberKeyInserts"
               :quick-prompt-cursor="quickPromptCursor"
               :recording-limit-minutes="recordingLimitMinutes"
+              :status-line="statusLine"
               @send-message="handleSendMessage"
               @send-command="handleSendCommand"
               @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
@@ -159,6 +160,15 @@ const isBusy = useSelector(actor, ({ context }) => {
   const threadId = context.currentThread?.id
   return !!busyId && !!threadId && context.chatStates[threadId] === busyId
 })
+const statusLine = computed(() => {
+  if (currentMode.value !== 'work') return undefined
+  const cwd = currentThread.value?.context?.claudeCode?.cwd
+  if (!cwd) return undefined
+  const segments = cwd.split('/').filter(Boolean)
+  if (segments.length <= 3) return cwd
+  return `…/${segments.slice(-3).join('/')}`
+})
+
 const showInlineDashboard = ref(false)
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)

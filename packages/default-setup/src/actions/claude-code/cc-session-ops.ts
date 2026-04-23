@@ -308,7 +308,7 @@ async function handleImport(
       // + ARTIFACT_ADDED per thread, causing an event storm that crashes the frontend.
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
       services.repository.threadCommands.update(newThreadId, {
-        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id } },
+        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id, cwd: (session as any).cwd || undefined } },
         tags: [...(thread?.tags || ['imported']), 'claude-code'],
       });
 
