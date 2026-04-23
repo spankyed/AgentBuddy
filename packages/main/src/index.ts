@@ -49,6 +49,7 @@ export async function initApp(initConfig: AppInitConfig) {
             'https://www.typescriptlang.org',
             'https://vuejs.org',
             'https://www.postandcourier.com',
+            'https://discord.gg',
             // API provider URLs
             'https://console.anthropic.com',
             'https://platform.openai.com',

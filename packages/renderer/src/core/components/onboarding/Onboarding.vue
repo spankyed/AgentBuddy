@@ -25,6 +25,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import { applicationState } from '@/main';
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue';
+import { DISCORD_URL } from '@/core/constants';
 
 const letterContent = `Hello Testers,
 
@@ -42,7 +43,7 @@ That's where you come in.
 
 What feels powerful? What feels frustrating? What would make this actually useful in your daily flow?
 
-Your feedback directly shapes what I build next.
+Your [feedback](${DISCORD_URL}) directly shapes what I build next.
 
 Thanks for taking a chance on this.
 

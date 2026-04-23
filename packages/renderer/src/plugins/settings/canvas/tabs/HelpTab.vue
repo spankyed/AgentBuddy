@@ -25,9 +25,18 @@
       </div>
     </div>
 
-    <!-- Attribution pinned to bottom -->
+    <!-- Footer pinned to bottom -->
     <div class="shrink-0 bg-neutral-900 py-4">
-      <div class="text-center">
+      <div class="text-center space-y-2">
+        <p class="text-xs text-neutral-500">
+          <a
+            href="#"
+            @click.prevent="openDiscordLink"
+            class="text-neutral-400 hover:text-neutral-300 underline transition-colors"
+          >
+            Join our Discord community
+          </a>
+        </p>
         <p class="text-xs text-neutral-500">
           Developed in memory of
           <a
@@ -50,8 +59,12 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { FAQItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-
+import { DISCORD_URL } from '@/core/constants'
 const MEMORIAL_URL = 'https://www.postandcourier.com/northaugusta/archive/news/profile-kathie-ulrich/article_d1f14448-0fc8-54df-a1b0-3c404c99cfcc.html'
+
+function openDiscordLink() {
+  window.electronAPI?.shell?.openExternal(DISCORD_URL)
+}
 
 function openMemorialLink() {
   window.electronAPI?.shell?.openExternal(MEMORIAL_URL)
