@@ -112,9 +112,7 @@ export async function consumeStream(
   // rejects (error subtypes like error_during_execution).
   let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; errors?: string[] } | undefined;
 
-  // After the main turn completes, we send `/context` through the existing
-  // handle to get context window usage without spawning a new subprocess.
-  let contextQueryPending = false;
+  // Context window usage parsed from a separate /context one-shot query.
   let contextUsageParsed: any;
 
   /** Finalize the current message and create a new "Thinking…" placeholder. */
@@ -139,11 +137,6 @@ export async function consumeStream(
     for await (const ev of handle.events) {
       const line = ev as any;
       eventCount++;
-
-      // While waiting for the /context result, skip all normal event handlers.
-      // No timeout needed: /context is a local-jsx command (synchronous), and
-      // the loop terminates naturally when the child exits (eventQueue.close).
-      if (contextQueryPending && line.type !== 'result') continue;
 
       if (eventCount <= 5 || eventCount % 20 === 0) {
         log.debug('stream event', { n: eventCount, type: line?.type });
@@ -495,13 +488,6 @@ export async function consumeStream(
       // The `result` event is the CLI's terminal signal. Extract cost/duration
       // directly — handle.result may reject for error subtypes, losing this data.
       if (line.type === 'result') {
-        // Second result: /context response — parse and break
-        if (contextQueryPending) {
-          contextUsageParsed = parseContextMarkdown((line as any).result ?? '');
-          break;
-        }
-
-        // First result: main turn completed
         log.debug('result line received', {
           subtype: (line as any).subtype,
           total_cost_usd: (line as any).total_cost_usd,
@@ -519,15 +505,6 @@ export async function consumeStream(
           subtype: (line as any).subtype,
           errors: (line as any).errors,
         };
-
-        // Only query /context on successful turns — error results mean the
-        // CLI may be exiting or in a bad state.
-        const isSuccess = (line as any).subtype == null || (line as any).subtype === 'success';
-        if (isSuccess) {
-          contextQueryPending = true;
-          try { handle.send('/context'); } catch { break; }
-          continue;
-        }
         break;
       }
     }
@@ -623,6 +600,29 @@ export async function consumeStream(
     // Close stdin so the CLI process exits cleanly (prevents child leak).
     try { await handle.close(); } catch (closeErr: any) {
       log.debug('handle.close failed', { message: closeErr?.message });
+    }
+
+    // Query /context via a separate one-shot process with --no-session-persistence
+    // to get context window usage WITHOUT polluting the session JSONL.
+    // Previously this was done inline by sending '/context' through the same
+    // CLI process, which persisted /context as user messages in the JSONL and
+    // caused b2b user messages when resuming from the terminal CLI.
+    if (!isErrorResult && result.sessionId) {
+      try {
+        const ctxCwd = ctx.sessionCwd;
+        const ctxHandle = await services.cli.claudeCode.query({
+          ...(ctxCwd && { cwd: ctxCwd }),
+          prompt: '/context',
+          resume: result.sessionId,
+          maxTurns: 1,
+          permissionMode: 'plan',
+          noSessionPersistence: true,
+        });
+        const ctxResult = await ctxHandle.result;
+        contextUsageParsed = parseContextMarkdown(ctxResult.text || '');
+      } catch (ctxErr: any) {
+        log.debug('/context query failed (non-critical)', { message: (ctxErr as any)?.message });
+      }
     }
 
     // Superseded by killTurn() + a new turn (e.g. user sent a new message
