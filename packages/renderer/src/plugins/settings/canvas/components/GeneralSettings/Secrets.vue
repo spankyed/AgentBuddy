@@ -247,6 +247,7 @@
 import { ref, computed, reactive } from 'vue'
 import { Edit2, Trash2, Eye, EyeOff, Plus, Check, X, ExternalLink } from 'lucide-vue-next'
 import { useDebounce } from '@/core/composables/useDebounce'
+import { API_KEY_URLS } from '@/core/constants'
 import CliProviders from './CliProviders.vue'
 
 interface Props {
@@ -282,12 +283,12 @@ const emit = defineEmits<{
 }>()
 
 const standardProviders = [
-  { key: 'anthropic', label: 'Anthropic', description: 'Claude 3, Claude 2', url: 'https://console.anthropic.com/settings/keys', priority: 'required', placeholder: 'Enter Anthropic API key' },
-  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E', url: 'https://platform.openai.com/api-keys', priority: 'required', placeholder: 'Enter OpenAI API key' },
-  { key: 'google', label: 'Google AI', description: 'Gemini, PaLM', url: 'https://aistudio.google.com/apikey', priority: 'recommended', placeholder: 'Enter Google AI API key' },
-  { key: 'groq', label: 'Groq', description: 'Fast inference API', url: 'https://console.groq.com/keys', placeholder: 'Enter Groq API key' },
-  { key: 'mistral', label: 'Mistral AI', description: 'Mistral models', url: 'https://console.mistral.ai/api-keys', placeholder: 'Enter Mistral AI API key' },
-  { key: 'cohere', label: 'Cohere', description: 'Command, Embed, Rerank', url: 'https://dashboard.cohere.com/api-keys', placeholder: 'Enter Cohere API key' },
+  { key: 'anthropic', label: 'Anthropic', description: 'Claude 3, Claude 2', url: API_KEY_URLS.anthropic, priority: 'required', placeholder: 'Enter Anthropic API key' },
+  { key: 'openai', label: 'OpenAI', description: 'GPT-4, GPT-3.5, DALL-E', url: API_KEY_URLS.openai, priority: 'required', placeholder: 'Enter OpenAI API key' },
+  { key: 'google', label: 'Google AI', description: 'Gemini, PaLM', url: API_KEY_URLS.google, priority: 'recommended', placeholder: 'Enter Google AI API key' },
+  { key: 'groq', label: 'Groq', description: 'Fast inference API', url: API_KEY_URLS.groq, placeholder: 'Enter Groq API key' },
+  { key: 'mistral', label: 'Mistral AI', description: 'Mistral models', url: API_KEY_URLS.mistral, placeholder: 'Enter Mistral AI API key' },
+  { key: 'cohere', label: 'Cohere', description: 'Command, Embed, Rerank', url: API_KEY_URLS.cohere, placeholder: 'Enter Cohere API key' },
 ]
 
 // State for inline editing

@@ -59,8 +59,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { FAQItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
-import { DISCORD_URL } from '@/core/constants'
-const MEMORIAL_URL = 'https://www.postandcourier.com/northaugusta/archive/news/profile-kathie-ulrich/article_d1f14448-0fc8-54df-a1b0-3c404c99cfcc.html'
+import { DISCORD_URL, MEMORIAL_URL } from '@/core/constants'
 
 function openDiscordLink() {
   window.electronAPI?.shell?.openExternal(DISCORD_URL)
