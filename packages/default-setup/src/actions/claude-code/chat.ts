@@ -17,7 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId, ensureSessionMarker, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId, ensureSessionMarker, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -237,7 +237,7 @@ export async function action(
 
   // Upsert the thread's claude-session artifact (type marker only).
   ensureSessionMarker(services, threadId);
-  updateClaudeState(services, threadId, { chatState: 'working', startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined });
+  persistClaudeState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined });
   updateChatState(services, threadId, 'working');
 
   // Read the user's current permission-mode and worktree choices.

@@ -20,7 +20,7 @@
  */
 
 import type { Services, EntityId } from '../../../types';
-import { isPlanFileWrite } from './auto-approve';
+import { isPlanFileWrite, DONT_BYPASS } from './auto-approve';
 import { createStreamWriter } from './stream-writer';
 import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
@@ -222,7 +222,7 @@ export async function consumeStream(
                 mutatedPaths.push(p);
               }
             }
-            // Update the session artifact's recent-tools list (last 3).
+            // Update the thread's recent-tools list (last 3).
             updateClaudeState(services, threadId, (prev) => {
               const recent = (prev.recentTools ?? []).slice(-2);
               recent.push({ name: block.name, summary, at: Date.now() });
@@ -329,7 +329,6 @@ export async function consumeStream(
         }
 
         // Read permission state once for all auto-approve checks below.
-        const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
         const ccState = getClaudeState(services, threadId as string);
         const permMode = ccState?.permissionMode ?? 'acceptEdits';
 
@@ -653,7 +652,7 @@ export async function consumeStream(
         } as any);
       }
 
-      // Emit cc.stream.completed so Turn Completed updates the session artifact
+      // Emit cc.stream.completed so Turn Completed updates the thread context
       // (turn count, tool call count, cost). Cost is best-effort: resultFromLine
       // is only set if the CLI's terminal `result` event arrived before the kill
       // signal took effect — typically it hasn't, so cost will be 0.
@@ -814,7 +813,7 @@ const CONTEXT_THRESHOLDS = [25, 50, 75, 90];
 
 /**
  * Query /context in a separate non-persisted CLI process and update the
- * session artifact directly when done. Fire-and-forget — never blocks
+ * thread context directly when done. Fire-and-forget — never blocks
  * the turn completion flow.
  */
 function queryContextInBackground(

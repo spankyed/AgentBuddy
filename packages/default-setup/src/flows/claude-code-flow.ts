@@ -191,6 +191,33 @@ export default {
       ]],
       "Turn paused by user",
     ),
+    // ─── User setting toggles ───────────────────────────────────────
+    on(
+      "user.update.permissionMode",
+      [[
+        action("CC: Update Permission Mode", {
+          label: "update-permission-mode",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            mode: "$.event.data.payload.mode",
+          },
+        }),
+      ]],
+      "Permission mode updated",
+    ),
+    on(
+      "user.update.worktree",
+      [[
+        action("CC: Update Worktree", {
+          label: "update-worktree",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            useWorktree: "$.event.data.payload.useWorktree",
+          },
+        }),
+      ]],
+      "Worktree toggle updated",
+    ),
     // ─── Thread lifecycle ────────────────────────────────────────────
     // Clean up Claude Code state when threads are reverted or forked.
     // Unified revert-family route — the `kind` discriminator routes to

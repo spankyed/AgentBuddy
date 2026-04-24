@@ -17,7 +17,6 @@ import { brain } from '../brain/system';
 import services from '@/services';
 import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { getHandle } from '@/services/claude-code/handle-store';
 import type { FieldContent } from '@/systems/library/types';
 
 const logger = createLogger('threads');
@@ -802,72 +801,22 @@ export const threadsSystem = setup({
       }));
     },
     updateClaudePermissionMode: ({ system, event }) => {
-      // User clicked Ask / Auto / Bypass on the claude-session artifact's
-      // segmented control. Write to thread context (source of truth), then
-      // sync the artifact projection for the frontend.
       const { threadId, mode } = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event);
-      const thread = repository.threadQueries.byId(threadId as EARS.EntityId) as any;
-      if (!thread) {
-        logger.warn('UPDATE_CLAUDE_PERMISSION_MODE: thread not found', { threadId });
-        return;
-      }
-
-      const ctx = thread.context ?? {};
-      const ccState = ctx.claudeCode ?? {};
-      const updates: Record<string, unknown> = { permissionMode: mode };
-
-      // If switching to bypass and there's a paused control request, auto-approve it
-      // (skip interaction-point tools that aren't permission prompts).
-      const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
-      if (mode === 'bypassPermissions') {
-        const pending = ccState.pendingControlRequest;
-        if (pending?.requestId && !DONT_BYPASS.has(pending.toolName)) {
-          const cliHandle = getHandle(threadId);
-          if (cliHandle) {
-            cliHandle.respond(pending.requestId, { behavior: 'allow', updatedInput: pending.originalInput ?? {} });
-            services.chat.updateMessageState(pending.approvalMessageId as EARS.EntityId, {
-              responseTimestamp: Date.now(),
-              blockResponse: { approved: true },
-            } as any);
-            updates.pendingControlRequest = undefined;
-            updates.isRunning = true;
-            updates.chatState = 'working';
-          }
-        }
-      }
-
-      // Write to thread context (source of truth).
-      const nextContext = { ...ctx, claudeCode: { ...ccState, ...updates } };
-      repository.threadCommands.update(threadId as EARS.EntityId, {
-        context: nextContext,
-      } as any);
-
-      // Notify frontend so thread context is in sync.
-      system.get(bus).send(emit(threads, {
-        type: 'THREAD_UPDATED',
-        threadId,
-        updates: { context: nextContext },
-      }));
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'user.update.permissionMode',
+        payload: { threadId, mode },
+      });
     },
     updateClaudeWorktree: ({ system, event }) => {
       const { threadId, useWorktree } = typeOf('UPDATE_CLAUDE_WORKTREE', event);
-      const thread = repository.threadQueries.byId(threadId as EARS.EntityId) as any;
-      if (!thread) return;
-
-      // Write to thread context (source of truth).
-      const ctx = thread.context ?? {};
-      const ccState = ctx.claudeCode ?? {};
-      const nextContext = { ...ctx, claudeCode: { ...ccState, useWorktree } };
-      repository.threadCommands.update(threadId as EARS.EntityId, {
-        context: nextContext,
-      } as any);
-
-      // Notify frontend so thread context is in sync.
-      system.get(bus).send(emit(threads, {
-        type: 'THREAD_UPDATED',
-        threadId,
-        updates: { context: nextContext },
-      }));
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'user.update.worktree',
+        payload: { threadId, useWorktree },
+      });
     },
     toggleCompacted: ({ system, event }) => {
       const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
