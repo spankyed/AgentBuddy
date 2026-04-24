@@ -232,7 +232,7 @@ export const pullRequestSystem = setup({
       withRepo(context,
         async repo => {
           const cwd = repo.getWorkingDir()
-          const details = await ghCli.getPRDetails(cwd, ev.number)
+          const details = await ghCli.fetchPRDetailsSettled(cwd, ev.number)
           const { comments = [], ...pr } = details
           // Resolve GitHub asset URLs to signed S3 URLs so images load in Electron
           pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
