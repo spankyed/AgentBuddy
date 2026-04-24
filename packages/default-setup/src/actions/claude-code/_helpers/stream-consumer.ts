@@ -599,13 +599,6 @@ export async function consumeStream(
       log.debug('handle.close failed', { message: closeErr?.message });
     }
 
-    // Fire-and-forget: query /context in the background so it doesn't block
-    // the green success flash. Context usage updates the session artifact
-    // directly when the query resolves.
-    if (!isErrorResult && result.sessionId) {
-      queryContextInBackground(services, threadId, result.sessionId, ctx.sessionCwd, log);
-    }
-
     // Superseded by killTurn() + a new turn (e.g. user sent a new message
     // while awaiting permission). Writer finalization above applied to our
     // own message; do NOT touch thread-scoped state (clearHandle / isRunning)
@@ -639,6 +632,14 @@ export async function consumeStream(
         userText: text,
       },
     });
+
+    // Fire-and-forget: query /context in the background AFTER all turn
+    // cleanup (clearHandle, setRunning, queued replay, cc.stream.completed)
+    // so a concurrent new turn doesn't race with this process for the
+    // same session JSONL.
+    if (!isErrorResult && result.sessionId) {
+      queryContextInBackground(services, threadId, result.sessionId, ctx.sessionCwd, log);
+    }
 
   } catch (err: any) {
     const message = err?.message || 'Claude Code request failed';
