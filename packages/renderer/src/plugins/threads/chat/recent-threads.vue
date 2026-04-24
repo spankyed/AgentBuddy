@@ -122,24 +122,14 @@
 
         <ContextMenuPortal>
           <ContextMenuContent
-            class="min-w-[220px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+            class="w-fit bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
           >
-            <ContextMenuItem
-              @select="handleNewThread"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <Plus class="w-4 h-4" />
-              Create New Thread
-            </ContextMenuItem>
-
-            <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
-
             <ContextMenuSub>
               <ContextMenuSubTrigger
                 class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none data-[state=open]:bg-neutral-800"
               >
                 <FolderOpen class="w-4 h-4" />
-                <span class="flex-1">New Thread in Project</span>
+                <span class="flex-1">In Project</span>
                 <ChevronRight class="w-3 h-3 text-neutral-500" />
               </ContextMenuSubTrigger>
               <ContextMenuSubContent
@@ -174,7 +164,8 @@
               <ContextMenuSubTrigger
                 class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none data-[state=open]:bg-neutral-800"
               >
-                <span class="flex-1">Create as Child of</span>
+                <GitBranchPlus class="w-4 h-4" />
+                <span class="flex-1">As Child of</span>
                 <ChevronRight class="w-3 h-3 text-neutral-500" />
               </ContextMenuSubTrigger>
               <ContextMenuSubContent
@@ -206,7 +197,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Trash2, FolderOpen } from 'lucide-vue-next'
+import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
