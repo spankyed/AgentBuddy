@@ -69,7 +69,7 @@
         class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded border border-neutral-700 text-neutral-300 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <FileEdit :size="12" />
-        <span>Draft</span>
+        <span>Create Draft</span>
       </button>
     </div>
   </div>
