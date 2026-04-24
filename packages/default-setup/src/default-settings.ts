@@ -102,7 +102,7 @@ const settings: SettingsData = {
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
-          { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents' },
+          { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents', hidden: true },
         ],
         hotkeys: {
           textToSpeech: { key: 'r', modifiers: ['cmd'], global: true },

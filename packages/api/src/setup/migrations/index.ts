@@ -14,8 +14,9 @@ import { migration as m023 } from './0.2.3';
 import { migration as m024 } from './0.2.4';
 import { migration as m025 } from './0.2.5';
 import { migration as m027 } from './0.2.7';
+import { migration as m029 } from './0.2.9';
 
-const migrations: Migration[] = [m010, m020, m023, m024, m025, m027];
+const migrations: Migration[] = [m010, m020, m023, m024, m025, m027, m029];
 
 /** Compare dot-separated numeric versions. Returns <0, 0, >0. */
 function compareVersions(a: string, b: string): number {
