@@ -33,6 +33,24 @@
           <span class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
             {{ thread.topic || 'Untitled' }}
           </span>
+          <button
+            v-if="thread.pinned"
+            type="button"
+            class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors"
+            title="Unpin thread"
+            @click.stop="handleUnpinThread(thread.id)"
+          >
+            <Pin :size="12" />
+          </button>
+          <button
+            v-if="!thread.pinned"
+            type="button"
+            class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors opacity-0 group-hover:opacity-100"
+            title="Pin thread"
+            @click.stop="handlePinThread(thread.id)"
+          >
+            <Pin :size="12" />
+          </button>
           <span class="shrink-0 text-xs tabular-nums text-neutral-600">
             {{ formatTime(thread.timestamp) }}
           </span>
@@ -54,24 +72,6 @@
             >
               <FileText :size="12" />
               Details
-            </button>
-            <button
-              v-if="thread.pinned"
-              type="button"
-              class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors"
-              title="Unpin thread"
-              @click.stop="handleUnpinThread(thread.id)"
-            >
-              <Pin :size="12" />
-            </button>
-            <button
-              v-if="!thread.pinned"
-              type="button"
-              class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors opacity-0 group-hover:opacity-100"
-              title="Pin thread"
-              @click.stop="handlePinThread(thread.id)"
-            >
-              <Pin :size="12" />
             </button>
             <ContextMenuRoot v-if="!thread.pinned">
               <ContextMenuTrigger as-child>
