@@ -76,18 +76,19 @@
     <!-- Custom Input (if allowed) -->
     <div v-if="allowCustom" class="space-y-2">
       <div class="text-xs text-neutral-400">Or enter custom response:</div>
-      <input
+      <textarea
         v-model="customInput"
-        type="text"
+        rows="1"
         :disabled="disabled"
         placeholder="Type your custom response..."
         :class="[
-          'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent',
+          'w-full px-3 py-2 border rounded-lg text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent resize-none max-h-32 overflow-y-auto',
           disabled
             ? 'bg-neutral-700/50 border-neutral-700 text-neutral-500 cursor-not-allowed'
             : 'bg-neutral-700 border-neutral-600 text-neutral-200'
         ]"
-        @keyup.enter="!disabled && submitResponse()"
+        @keydown="onCustomKeydown"
+        @input="autoResize"
       />
     </div>
 
@@ -205,6 +206,19 @@ const submitResponse = () => {
   }
 
   emit('submit', response)
+}
+
+const onCustomKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    if (!props.disabled) submitResponse()
+  }
+}
+
+const autoResize = (e: Event) => {
+  const el = e.target as HTMLTextAreaElement
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
 }
 
 const handleSkip = () => {
