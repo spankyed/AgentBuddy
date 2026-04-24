@@ -16,9 +16,8 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState } from './_helpers/thread-context';
+import { getClaudeState, readSessionCwd } from './_helpers/thread-context';
 import { backfillUserCliUuids } from './_helpers/jsonl-backfill';
-import { readSessionCwd } from './_helpers/session-artifact';
 
 /** Claude prints this on a successful `--rewind-files` run. See
  * `claude-code/src/cli/print.ts:766-768` — any other exit-0 path (notably

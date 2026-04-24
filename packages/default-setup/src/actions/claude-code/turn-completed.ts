@@ -11,8 +11,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact, updateChatState, readSessionChatState } from './_helpers/session-artifact';
-import { getClaudeState } from './_helpers/thread-context';
+import { getClaudeState, updateClaudeState, updateChatState, readSessionChatState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 
 export const meta: ActionMeta = {
@@ -64,7 +63,7 @@ export async function action(
   // ─── Update session artifact ──────────────────────────────────────
   const { toolCallCount } = params as { toolCallCount?: number };
 
-  updateSessionArtifact(services, threadId as EntityId, (prev) => ({
+  updateClaudeState(services, threadId as EntityId, (prev) => ({
     turns: (prev.turns ?? 0) + 1,
     totalCostUsd: (prev.totalCostUsd ?? 0) + (costUsd ?? 0),
     toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),

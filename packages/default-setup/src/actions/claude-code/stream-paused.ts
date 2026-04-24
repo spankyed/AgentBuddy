@@ -9,7 +9,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateChatState } from './_helpers/session-artifact';
+import { updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Stream Paused',

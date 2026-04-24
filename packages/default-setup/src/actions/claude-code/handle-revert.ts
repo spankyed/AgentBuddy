@@ -16,8 +16,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, getClaudeState } from './_helpers/thread-context';
-import { updateChatState } from './_helpers/session-artifact';
+import { persistClaudeState, getClaudeState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Revert',

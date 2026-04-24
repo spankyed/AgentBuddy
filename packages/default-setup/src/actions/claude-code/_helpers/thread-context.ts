@@ -1,15 +1,38 @@
 /**
- * Thin helpers for reading/writing `thread.context.claudeCode` and
- * toggling the `claude-code` tag.
+ * Helpers for reading/writing `thread.context.claudeCode` and toggling
+ * the `claude-code` tag.
  *
- * The Thread entity now carries a free-form `context` field (see
+ * The Thread entity carries a free-form `context` field (see
  * `packages/api/src/systems/threads/types.ts` → `ThreadContext`). Claude
  * Code parks its per-thread session state under `context.claudeCode` so the
  * chat action can resume the right conversation on subsequent turns.
+ *
+ * The `claude-session` artifact is a **type marker only** — it exists so the
+ * artifact list shows a session card, but its content is empty. All session
+ * data lives here on thread context; the frontend reads it via
+ * `THREAD_UPDATED` events.
  */
 
 import type { Services, EntityId } from '../../../types';
 import { resolvePlanDraft } from './plan-artifact';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/**
+ * Local mirror of `PermissionMode` (from `@/services/claude-code/types` on
+ * the backend). Duplicated here so helper files in this folder can typecheck
+ * without reaching across package boundaries.
+ */
+export type PermissionMode =
+  | 'default'
+  | 'acceptEdits'
+  | 'plan'
+  | 'bypassPermissions'
+  | 'dontAsk'
+  | 'auto';
+
+/** Unified chat state used in backend events and on the frontend. */
+export type ChatState = 'idle' | 'working' | 'paused' | 'error';
 
 export interface QueuedMessage {
   text: string;
@@ -37,6 +60,36 @@ export interface ClaudeCodeThreadState {
   lastTurnAt?: number;
   /** Working directory for the Claude Code session. */
   cwd?: string;
+
+  // ─── Persistent session data (single source of truth) ──────────────
+  /** Model name reported by the CLI ("claude-sonnet-4-6" etc.). */
+  model?: string;
+  /** Epoch ms when the session was first created. */
+  startedAt?: number;
+  /** Number of turns executed in this session. */
+  turns?: number;
+  /** Running cost total in USD across all turns. */
+  totalCostUsd?: number;
+  /** High-level chat state. Drives the status indicator and pause button. */
+  chatState?: ChatState;
+  /** Total tool calls across all turns in this session. */
+  toolCallCount?: number;
+  /** The most recent tool the agent used (for the sidebar summary line). */
+  lastTool?: { name: string; summary: string; at: number };
+  /** Last 3 tools executed (rolling window, most recent last). */
+  recentTools?: Array<{ name: string; summary: string; at: number }>;
+  /** Permission policy for the next turn. */
+  permissionMode?: PermissionMode;
+  /** Whether to run in a git worktree for isolated file mutations. */
+  useWorktree?: boolean;
+  /** Human-readable error when the session is broken (e.g. JSONL deleted). */
+  sessionError?: string;
+  /** Threshold percentages that have already fired an alert (avoids re-alerting). */
+  alertedThresholds?: number[];
+  /** Full context usage breakdown from CLI `/context` query. */
+  contextUsage?: any;
+
+  // ─── Ephemeral coordination state ──────────────────────────────────
   /** True while a chat action invocation is actively running on this thread. */
   isRunning?: boolean;
   /** Message waiting to be processed after the current turn ends. */
@@ -91,6 +144,8 @@ export interface ClaudeCodeThreadState {
 
 export const CLAUDE_CODE_TAG = 'claude-code';
 
+// ─── Core read/write ─────────────────────────────────────────────────────────
+
 /** Set the global project directory used by Claude Code sessions. */
 export function setProjectDirectory(services: Services, directory: string): void {
   services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], directory);
@@ -131,17 +186,154 @@ export function persistClaudeState(
     tags: nextTags,
   });
 
-  // Notify frontend so tag filters and context update without a page refresh
-  if (tagAdded || state.cwd !== undefined) {
-    services.emitter.sendToPlugin('threads', {
-      type: 'THREAD_UPDATED',
-      threadId,
-      updates: {
-        ...(tagAdded ? { tags: nextTags } : {}),
-        context: nextContext,
-      },
-    });
+  // Notify frontend so thread context is always in sync.
+  services.emitter.sendToPlugin('threads', {
+    type: 'THREAD_UPDATED',
+    threadId,
+    updates: {
+      ...(tagAdded ? { tags: nextTags } : {}),
+      context: nextContext,
+    },
+  });
+}
+
+// ─── Readers ─────────────────────────────────────────────────────────────────
+
+/** Read the current chatState from the thread context. */
+export function readSessionChatState(
+  services: Services,
+  threadId: EntityId,
+): ChatState | undefined {
+  return getClaudeState(services, threadId as string)?.chatState;
+}
+
+/**
+ * Read the permission mode from thread context. Returns the user's current
+ * choice from the right-panel segmented control, or `'acceptEdits'` if none
+ * is stored yet.
+ */
+export function readSessionPermissionMode(
+  services: Services,
+  threadId: EntityId,
+): PermissionMode {
+  return getClaudeState(services, threadId as string)?.permissionMode ?? 'acceptEdits';
+}
+
+/** Read whether worktree mode is enabled for this thread's session. */
+export function readWorktreeMode(
+  services: Services,
+  threadId: EntityId,
+): boolean {
+  return getClaudeState(services, threadId as string)?.useWorktree ?? false;
+}
+
+/**
+ * Read the cwd from thread context. Used by `--rewind-files` and JSONL
+ * backfill to locate the session's transcript on disk. Returns undefined if
+ * no state exists yet — the caller should fall back to `process.cwd()`.
+ */
+export function readSessionCwd(
+  services: Services,
+  threadId: EntityId,
+): string | undefined {
+  return getClaudeState(services, threadId as string)?.cwd || undefined;
+}
+
+// ─── Writers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Merge a patch into the thread's Claude Code state. The frontend receives
+ * the update via `THREAD_UPDATED` (emitted by `persistClaudeState`).
+ *
+ * The patch can be a plain object or a function that receives the current
+ * state and returns the delta (useful for counters that need read-modify-write).
+ */
+export function updateClaudeState(
+  services: Services,
+  threadId: EntityId,
+  patch: Partial<ClaudeCodeThreadState> | ((prev: ClaudeCodeThreadState) => Partial<ClaudeCodeThreadState>),
+): boolean {
+  const state = getClaudeState(services, threadId as string);
+  if (!state) return false;
+
+  const prev = state as ClaudeCodeThreadState;
+  const delta = typeof patch === 'function' ? patch(prev) : patch;
+
+  persistClaudeState(services, threadId as string, delta as any);
+  return true;
+}
+
+/**
+ * Ensure a claude-session artifact exists for the thread (marker only).
+ * On first creation, seeds thread context with `initial` fields.
+ * On subsequent calls, returns the existing artifact id.
+ */
+export function ensureSessionArtifact(
+  services: Services,
+  threadId: EntityId,
+  initial: Partial<ClaudeCodeThreadState> = {},
+): EntityId {
+  const { artifactId, created } = services.artifact.findOrCreateByType(
+    threadId,
+    'claude-session',
+    { title: 'Claude Code session', content: {} },
+  );
+
+  // Seed thread context with initial values on first creation.
+  if (created && Object.keys(initial).length > 0) {
+    persistClaudeState(services, threadId as string, initial as any);
   }
+
+  return artifactId;
+}
+
+/**
+ * Update the chat state on the thread AND push a real-time event to the
+ * frontend threads plugin. This is the single call site for chat state
+ * transitions.
+ */
+export function updateChatState(
+  services: Services,
+  threadId: EntityId,
+  chatState: ChatState,
+): void {
+  persistClaudeState(services, threadId as string, { chatState });
+  services.threads.updateChatState(threadId, chatState);
+}
+
+/**
+ * Detect "No conversation found with session ID" from a CLI error message.
+ * Returns the extracted session ID or undefined.
+ */
+export function extractStaleSessionId(errorMessage: string): string | undefined {
+  // Direct "session not found" message from the CLI
+  const match = errorMessage.match(/No conversation found with session ID:?\s*(\S+)/i);
+  if (match) return match[1];
+  // Message UUID not found during --resume-session-at (fork/revert)
+  const uuidNotFound = errorMessage.match(/No message found with message\.uuid of:?\s*(\S+)/i);
+  if (uuidNotFound) return uuidNotFound[1];
+  // Generic resume failure (corrupt JSONL, OOM, etc.) — try to extract a UUID
+  if (/Failed to resume session/i.test(errorMessage)) {
+    const uuidMatch = errorMessage.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    return uuidMatch?.[1];
+  }
+  return undefined;
+}
+
+/**
+ * Mark the session as broken: set chatState to 'error', store the error
+ * message, and clear the sessionId so the next turn starts fresh.
+ */
+export function markSessionBroken(
+  services: Services,
+  threadId: EntityId,
+  errorMessage: string,
+): void {
+  persistClaudeState(services, threadId as string, {
+    sessionError: errorMessage,
+    sessionId: '',
+  });
+  updateChatState(services, threadId, 'error');
 }
 
 // ─── Concurrency helpers ─────────────────────────────────────────────────────

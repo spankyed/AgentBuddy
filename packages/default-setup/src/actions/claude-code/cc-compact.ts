@@ -3,8 +3,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState } from './_helpers/thread-context';
-import { updateChatState, readSessionCwd } from './_helpers/session-artifact';
+import { getClaudeState, updateChatState, readSessionCwd } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Compact',

@@ -11,7 +11,7 @@
  * flow actions (async-safe UI/artifact updates):
  * - Consumer: persistClaudeState, setRunning, writer/toolActivity, clearHandle,
  *   dequeueMessage → replayQueuedMessage (dequeue before setRunning to avoid race)
- * - Flow actions: updateSessionArtifact, diff artifact
+ * - Flow actions: updateClaudeState, diff artifact
  *   (triggered via cc.stream.* brain events → on() listeners in the flow)
  *
  * Error boundary: the entire body is wrapped in try/catch. Errors never
@@ -26,8 +26,7 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId } from './thread-context';
-import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken, findSessionArtifact } from './session-artifact';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId, updateClaudeState, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken } from './thread-context';
 import { parseContextMarkdown } from './context-parser';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
@@ -224,7 +223,7 @@ export async function consumeStream(
               }
             }
             // Update the session artifact's recent-tools list (last 3).
-            updateSessionArtifact(services, threadId, (prev) => {
+            updateClaudeState(services, threadId, (prev) => {
               const recent = (prev.recentTools ?? []).slice(-2);
               recent.push({ name: block.name, summary, at: Date.now() });
               return { recentTools: recent };
@@ -617,7 +616,7 @@ export async function consumeStream(
     if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:
-    //   updateSessionArtifact, diff artifact
+    //   updateClaudeState, diff artifact
     services.emitter.sendToBrainSystem({
       eventType: 'cc.stream.completed',
       payload: {
@@ -834,12 +833,12 @@ function queryContextInBackground(
     if (!contextUsage) return;
 
     // Check which thresholds are newly crossed.
-    const prev = findSessionArtifact(services, threadId);
-    const alerted: number[] = (prev?.content as any)?.alertedThresholds ?? [];
+    const prev = getClaudeState(services, threadId as string);
+    const alerted: number[] = prev?.alertedThresholds ?? [];
     const pct = contextUsage.percentage;
     const newAlerts = CONTEXT_THRESHOLDS.filter(t => pct >= t && !alerted.includes(t));
 
-    updateSessionArtifact(services, threadId, (prevContent) => ({
+    updateClaudeState(services, threadId, (prevContent) => ({
       contextUsage,
       ...(newAlerts.length > 0
         ? { alertedThresholds: [...(prevContent.alertedThresholds ?? []), ...newAlerts] }

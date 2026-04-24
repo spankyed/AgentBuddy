@@ -15,8 +15,7 @@
  */
 
 import type { Services, EntityId } from '../../../types';
-import { getClaudeState } from './thread-context';
-import { readSessionCwd } from './session-artifact';
+import { getClaudeState, readSessionCwd } from './thread-context';
 
 export async function backfillUserCliUuids(
   services: Services,

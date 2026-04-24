@@ -3,8 +3,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState } from './_helpers/thread-context';
-import { readSessionCwd } from './_helpers/session-artifact';
+import { getClaudeState, readSessionCwd } from './_helpers/thread-context';
 import { parseContextMarkdown } from './_helpers/context-parser';
 
 export const meta: ActionMeta = {

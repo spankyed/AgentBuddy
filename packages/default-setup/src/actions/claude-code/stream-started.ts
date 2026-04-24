@@ -10,7 +10,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { updateClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Stream Started',
@@ -37,7 +37,7 @@ export async function action(
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  updateSessionArtifact(services, threadId as EntityId, (prev) => {
+  updateClaudeState(services, threadId as EntityId, (prev) => {
     const isNewSession = !!sessionId && sessionId !== prev.sessionId;
     return {
       sessionId: sessionId || '',

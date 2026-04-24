@@ -255,7 +255,9 @@ interface SessionContent {
   chatState: 'idle' | 'working' | 'paused' | 'error'
   toolCallCount: number
   lastTool?: { name: string; summary: string; at: number }
+  recentTools?: Array<{ name: string; summary: string; at: number }>
   permissionMode?: PermissionMode
+  useWorktree?: boolean
   sessionError?: string
   contextUsage?: ContextUsageData
   additionalDirs?: string[]
@@ -265,11 +267,17 @@ const props = defineProps<{
   artifact: ArtifactItem & { content: SessionContent }
 }>()
 
-const content = computed(() => props.artifact.content)
 const threadsActor = applicationState.system.get(threadsId)
-const currentThreadId = useSelector(
+const currentThread = useSelector(
   threadsActor,
-  (state: any) => state.context.currentThread?.id as string | undefined,
+  (state: any) => state.context.currentThread,
+)
+const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
+
+// Read session data from thread context (source of truth).
+// Falls back to artifact content for backward compat during migration.
+const content = computed<SessionContent>(() =>
+  currentThread.value?.context?.claudeCode ?? ({} as SessionContent)
 )
 
 // Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.

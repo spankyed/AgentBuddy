@@ -9,9 +9,8 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState } from './_helpers/thread-context';
+import { persistClaudeState, ensureSessionArtifact, updateChatState } from './_helpers/thread-context';
 import { resolvePlanDraft, type PlanArtifactContent } from './_helpers/plan-artifact';
-import { ensureSessionArtifact, updateChatState } from './_helpers/session-artifact';
 
 export const meta: ActionMeta = {
   label: 'CC: Approve Plan Clear Context',
