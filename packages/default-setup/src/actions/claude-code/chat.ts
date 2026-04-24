@@ -181,7 +181,7 @@ export async function action(
   const forceDirectoryPicker = params.forceDirectoryPicker as boolean | undefined;
 
   const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
-  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened;
+  const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || prior?.cwd;
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
     const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
     const blocks: any[] = [
