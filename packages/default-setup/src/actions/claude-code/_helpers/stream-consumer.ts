@@ -99,11 +99,6 @@ export async function consumeStream(
   // The next `message_start` will split into a new message.
   let splitOnNextMessageStart = false;
 
-  // Track the buffer offset of the last inter-block separator so we can
-  // retroactively replace it with '\n' at finalization (makes the last
-  // segment visually distinct).
-  let lastSeparatorOffset = -1;
-
   // Track file-mutation paths across all messages for the diff artifact.
   const mutatedPathsSet = new Set<string>();
   const mutatedPaths: string[] = [];
@@ -182,13 +177,9 @@ export async function consumeStream(
 
         // New text content block starting after prior text → inject separator
         // so successive assistant segments don't concatenate without whitespace.
-        // Use a space after sentence-ending punctuation; paragraph break otherwise
-        // (e.g. lists, code blocks, headings).
         if (evt?.type === 'content_block_start' && evt?.content_block?.type === 'text') {
           if (writer.text) {
-            lastSeparatorOffset = writer.text.length;
-            const lastChar = writer.text[writer.text.length - 1];
-            writer.push(lastChar === '.' ? ' ' : '\n\n');
+            writer.push('\n');
           }
         }
 
@@ -578,12 +569,7 @@ export async function consumeStream(
       // arrived on a non-streaming code path would clobber the "Thinking…"
       // placeholder with an empty string.
       if (writer.text || result.text) {
-        // Put the last text segment on its own line so it's visually distinct.
-        let finalText = writer.text || result.text;
-        if (lastSeparatorOffset >= 0 && finalText[lastSeparatorOffset] === ' ') {
-          finalText = finalText.slice(0, lastSeparatorOffset) + '\n' + finalText.slice(lastSeparatorOffset + 1);
-        }
-        writer.finalize(finalText);
+        writer.finalize(writer.text || result.text);
         services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
       } else {
         services.chat.updateMessageState(currentMessageId as any, {
