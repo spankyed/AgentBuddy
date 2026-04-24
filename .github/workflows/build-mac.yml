@@ -69,26 +69,6 @@ jobs:
           codesign --verify --deep --strict dist/mac-arm64/AgentBuddy.app
           xcrun stapler validate dist/mac-arm64/AgentBuddy.app
 
-      - name: Delete old artifacts
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq '.artifacts[].id' | while read id; do
-            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id || true
-          done
-
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: AgentBuddy-mac-arm64
-          retention-days: 1
-          path: |
-            dist/AgentBuddy-*.dmg
-            dist/AgentBuddy-*.zip
-
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         env:
