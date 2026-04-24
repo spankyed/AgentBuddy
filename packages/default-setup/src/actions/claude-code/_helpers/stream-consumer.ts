@@ -27,7 +27,7 @@ import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
 import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId } from './thread-context';
-import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken } from './session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken, findSessionArtifact } from './session-artifact';
 import { parseContextMarkdown } from './context-parser';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
@@ -111,9 +111,6 @@ export async function consumeStream(
   // Extracted from the `result` line directly — survives even if handle.result
   // rejects (error subtypes like error_during_execution).
   let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; errors?: string[] } | undefined;
-
-  // Context window usage parsed from a separate /context one-shot query.
-  let contextUsageParsed: any;
 
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
@@ -602,27 +599,11 @@ export async function consumeStream(
       log.debug('handle.close failed', { message: closeErr?.message });
     }
 
-    // Query /context via a separate one-shot process with --no-session-persistence
-    // to get context window usage WITHOUT polluting the session JSONL.
-    // Previously this was done inline by sending '/context' through the same
-    // CLI process, which persisted /context as user messages in the JSONL and
-    // caused b2b user messages when resuming from the terminal CLI.
+    // Fire-and-forget: query /context in the background so it doesn't block
+    // the green success flash. Context usage updates the session artifact
+    // directly when the query resolves.
     if (!isErrorResult && result.sessionId) {
-      try {
-        const ctxCwd = ctx.sessionCwd;
-        const ctxHandle = await services.cli.claudeCode.query({
-          ...(ctxCwd && { cwd: ctxCwd }),
-          prompt: '/context',
-          resume: result.sessionId,
-          maxTurns: 1,
-          permissionMode: 'plan',
-          noSessionPersistence: true,
-        });
-        const ctxResult = await ctxHandle.result;
-        contextUsageParsed = parseContextMarkdown(ctxResult.text || '');
-      } catch (ctxErr: any) {
-        log.debug('/context query failed (non-critical)', { message: (ctxErr as any)?.message });
-      }
+      queryContextInBackground(services, threadId, result.sessionId, ctx.sessionCwd, log);
     }
 
     // Superseded by killTurn() + a new turn (e.g. user sent a new message
@@ -656,7 +637,6 @@ export async function consumeStream(
         mutatedPaths,
         hadErrors: !!hadToolErrors || !!isErrorResult,
         userText: text,
-        contextUsage: contextUsageParsed,
       },
     });
 
@@ -821,4 +801,71 @@ function extractToolResultText(content: unknown): string {
 function stripToolUseErrorEnvelope(raw: string): string {
   const m = raw.match(/^\s*<tool_use_error>([\s\S]*?)<\/tool_use_error>\s*$/);
   return m ? m[1].trim() : raw.trim();
+}
+
+// ─── Background /context query ──────────────────────────────────────────────
+
+const CONTEXT_THRESHOLDS = [25, 50, 75, 90];
+
+/**
+ * Query /context in a separate non-persisted CLI process and update the
+ * session artifact directly when done. Fire-and-forget — never blocks
+ * the turn completion flow.
+ */
+function queryContextInBackground(
+  services: Services,
+  threadId: EntityId,
+  sessionId: string,
+  sessionCwd: string | undefined,
+  log: any,
+): void {
+  (async () => {
+    const ctxHandle = await services.cli.claudeCode.query({
+      ...(sessionCwd && { cwd: sessionCwd }),
+      prompt: '/context',
+      resume: sessionId,
+      maxTurns: 1,
+      permissionMode: 'plan',
+      noSessionPersistence: true,
+    });
+    const ctxResult = await ctxHandle.result;
+    const contextUsage = parseContextMarkdown(ctxResult.text || '');
+    if (!contextUsage) return;
+
+    // Check which thresholds are newly crossed.
+    const prev = findSessionArtifact(services, threadId);
+    const alerted: number[] = (prev?.content as any)?.alertedThresholds ?? [];
+    const pct = contextUsage.percentage;
+    const newAlerts = CONTEXT_THRESHOLDS.filter(t => pct >= t && !alerted.includes(t));
+
+    updateSessionArtifact(services, threadId, (prevContent) => ({
+      contextUsage,
+      ...(newAlerts.length > 0
+        ? { alertedThresholds: [...(prevContent.alertedThresholds ?? []), ...newAlerts] }
+        : {}),
+    }));
+
+    if (newAlerts.length > 0) {
+      const highest = Math.max(...newAlerts);
+      const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
+      const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
+      let message = `Context window is ${contextUsage.percentage}% full (${fmtTokens(contextUsage.totalTokens)} / ${fmtTokens(contextUsage.maxTokens)} tokens).`;
+      if (highest >= 90) message += ' Consider starting a new session soon.';
+
+      services.chat.sendBlockMessage({
+        threadId: threadId as any,
+        text: message,
+        blocks: [{ type: 'note', props: { content: message, variant, label } }],
+        forkable: false,
+      });
+    }
+  })().catch(err => {
+    log.debug('/context background query failed (non-critical)', { message: err?.message });
+  });
+}
+
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
 }

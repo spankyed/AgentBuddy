@@ -11,10 +11,9 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { updateSessionArtifact, updateChatState, readSessionChatState, findSessionArtifact } from './_helpers/session-artifact';
+import { updateSessionArtifact, updateChatState, readSessionChatState } from './_helpers/session-artifact';
 import { getClaudeState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
-import type { ContextUsageData } from './_helpers/context-parser';
 
 export const meta: ActionMeta = {
   label: 'CC: Turn Completed',
@@ -31,7 +30,6 @@ export const meta: ActionMeta = {
     hadErrors: { type: 'boolean', description: 'Whether errors occurred', required: false },
     error: { type: 'string', description: 'Error message if failed', required: false },
     userText: { type: 'string', description: 'Original user message', required: false },
-    contextUsage: { type: 'object', description: 'Context window usage from CLI /context query', required: false },
   },
 };
 
@@ -46,7 +44,6 @@ export async function action(
     hadErrors,
     error: errorMsg,
     mutatedPaths,
-    contextUsage,
   } = params as {
     threadId: string;
     sessionId?: string;
@@ -58,7 +55,6 @@ export async function action(
     hadErrors?: boolean;
     error?: string;
     userText?: string;
-    contextUsage?: ContextUsageData;
   };
 
   const log = services.logger;
@@ -128,35 +124,6 @@ export async function action(
     log.warn('diff artifact assembly failed', { message: diffErr?.message });
   }
 
-  // ─── Context usage + threshold alerts ─────────────────────────────
-  // contextUsage is provided by the stream consumer, which sends /context
-  // through the existing CLI handle (no subprocess spawn).
-  if (contextUsage) {
-    const newAlerts = checkContextThresholds(services, threadId as EntityId, contextUsage);
-
-    updateSessionArtifact(services, threadId as EntityId, (prev) => ({
-      contextUsage,
-      ...(newAlerts.length > 0
-        ? { alertedThresholds: [...(prev.alertedThresholds ?? []), ...newAlerts] }
-        : {}),
-    }));
-
-    if (newAlerts.length > 0) {
-      const highest = Math.max(...newAlerts);
-      const variant = highest >= 90 ? 'error' : highest >= 75 ? 'warning' : 'info';
-      const label = highest >= 90 ? 'Context Critical' : 'Context Usage';
-      let message = `Context window is ${contextUsage.percentage}% full (${fmtTokens(contextUsage.totalTokens)} / ${fmtTokens(contextUsage.maxTokens)} tokens).`;
-      if (highest >= 90) message += ' Consider starting a new session soon.';
-
-      services.chat.sendBlockMessage({
-        threadId: threadId as any,
-        text: message,
-        blocks: [{ type: 'note', props: { content: message, variant, label } }],
-        forkable: false,
-      });
-    }
-  }
-
   return {
     success: true,
     hadErrors: !!hadErrors,
@@ -168,26 +135,6 @@ export async function action(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-
-const THRESHOLDS = [25, 50, 75, 90];
-
-/** Check which thresholds are newly crossed based on accurate contextUsage data. */
-function checkContextThresholds(
-  services: Services,
-  threadId: EntityId,
-  contextUsage: ContextUsageData,
-): number[] {
-  const prev = findSessionArtifact(services, threadId);
-  const alerted: number[] = (prev?.content as any)?.alertedThresholds ?? [];
-  const pct = contextUsage.percentage;
-  return THRESHOLDS.filter(t => pct >= t && !alerted.includes(t));
-}
-
-function fmtTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
-}
 
 function deriveDiffTitle(files: { path: string }[]): string {
   if (files.length === 0) return '[Diff] No changes';
