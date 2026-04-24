@@ -502,7 +502,7 @@ onUnmounted(() => {
 
 // Expose methods for external use
 defineExpose({
-  getEditor: () => editorInstance.value,
+  getEditor: () => editorInstance.value || diffEditorInstance.value?.getModifiedEditor(),
   switchToFile,
   getValue: () => currentValue.value,
   setValue: (value: string) => {
