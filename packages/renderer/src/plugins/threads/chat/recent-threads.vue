@@ -160,16 +160,21 @@
                 >
                   No project (ask me)
                 </ContextMenuItem>
-                <ContextMenuSeparator v-if="projects.length > 0" class="h-[1px] bg-neutral-700 my-1" />
-                <ContextMenuItem
-                  v-for="project in projects"
-                  :key="project.name"
-                  @select="$emit('new-thread-in-project', project.directories[0])"
-                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-                >
-                  <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: project.color }" />
-                  <span class="truncate">{{ project.name }}</span>
-                </ContextMenuItem>
+                <template v-for="project in projects" :key="project.name">
+                  <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
+                  <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-500 select-none">
+                    <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: project.color }" />
+                    <span class="truncate">{{ project.name }}</span>
+                  </div>
+                  <ContextMenuItem
+                    v-for="dir in project.directories"
+                    :key="dir"
+                    @select="$emit('new-thread-in-project', dir)"
+                    class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                  >
+                    <span class="truncate">{{ dirName(dir) }}</span>
+                  </ContextMenuItem>
+                </template>
                 <div v-if="projects.length === 0" class="px-3 py-2 text-xs text-neutral-500 italic">
                   No projects configured
                 </div>
@@ -297,6 +302,8 @@ const settingsActor = applicationState.system.get('settings')
 const projects = useSelector(settingsActor, (state: any) =>
   (state.context.settings?.general?.projects || []) as Array<{ name: string; directories: string[]; color: string }>
 )
+
+const dirName = (dir: string) => dir.split('/').filter(Boolean).pop() || dir
 
 const handleArchiveThread = (id: string | undefined) => {
   if (!id) return
