@@ -219,6 +219,7 @@ import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
+import { trpc } from '@/core/trpc'
 
 type PermissionMode =
   | 'default'
@@ -419,10 +420,11 @@ function selectPermissionMode(mode: PermissionMode) {
     console.warn('[claude-session-artifact] no current thread; cannot update permission mode')
     return
   }
-  threadsActor.send({
-    type: 'UPDATE_CLAUDE_PERMISSION_MODE',
-    threadId,
-    mode,
+  trpc.bus.send.mutate({
+    systemId: 'brain',
+    type: 'TRIGGER_BRAIN_EVENT',
+    eventType: 'user.update.permissionMode',
+    payload: { threadId, mode },
   })
 }
 
@@ -432,10 +434,11 @@ function selectWorktree(value: boolean) {
   if (value === useWorktree.value) return
   const threadId = currentThreadId.value
   if (!threadId) return
-  threadsActor.send({
-    type: 'UPDATE_CLAUDE_WORKTREE',
-    threadId,
-    useWorktree: value,
-  } as any)
+  trpc.bus.send.mutate({
+    systemId: 'brain',
+    type: 'TRIGGER_BRAIN_EVENT',
+    eventType: 'user.update.worktree',
+    payload: { threadId, useWorktree: value },
+  })
 }
 </script>

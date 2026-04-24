@@ -122,18 +122,7 @@ export const IncomingThreadsEvents = [
     threadId: z.string().optional(),
     references: referencesSchema,
   }),
-  // User toggled the permission mode on the claude-session artifact's
-  // segmented control. Persists to `thread.context.claudeCode.permissionMode`;
-  // the next work-mode turn reads it via `getClaudeState` in chat.ts.
-  busEvent('UPDATE_CLAUDE_PERMISSION_MODE', {
-    threadId: z.string(),
-    mode: z.string(),
-  }),
-  busEvent('UPDATE_CLAUDE_WORKTREE', {
-    threadId: z.string(),
-    useWorktree: z.boolean(),
-  }),
-  busEvent('TOGGLE_COMPACTED', {
+busEvent('TOGGLE_COMPACTED', {
     markerId: z.string(),
     compacted: z.boolean(),
   }),
@@ -800,25 +789,7 @@ export const threadsSystem = setup({
         ...(asideText && { asideText })
       }));
     },
-    updateClaudePermissionMode: ({ system, event }) => {
-      const { threadId, mode } = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event);
-      const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'user.update.permissionMode',
-        payload: { threadId, mode },
-      });
-    },
-    updateClaudeWorktree: ({ system, event }) => {
-      const { threadId, useWorktree } = typeOf('UPDATE_CLAUDE_WORKTREE', event);
-      const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'user.update.worktree',
-        payload: { threadId, useWorktree },
-      });
-    },
-    toggleCompacted: ({ system, event }) => {
+toggleCompacted: ({ system, event }) => {
       const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
       const messageIds = repository.chatCommands.toggleMarkerCompacted(
         markerId as EARS.EntityId,
@@ -900,13 +871,7 @@ export const threadsSystem = setup({
           USER_COMMAND: {
             actions: 'forwardUserCommand',
           },
-          UPDATE_CLAUDE_PERMISSION_MODE: {
-            actions: 'updateClaudePermissionMode',
-          },
-          UPDATE_CLAUDE_WORKTREE: {
-            actions: 'updateClaudeWorktree',
-          },
-          FORK_THREAD: {
+FORK_THREAD: {
             actions: 'forkThread',
           },
           REVERT_THREAD: {
