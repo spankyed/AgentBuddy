@@ -89,6 +89,8 @@ export function finishOnboarding(
     services.chat.openThreadChatAndRefreshRecent(threadId);
   }
 
+  services.threads.updateChatState(threadId, 'idle');
+
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
     mode: 'work',
