@@ -291,8 +291,12 @@ export const threadCommands = {
   },
 
   delete: (id: EARS.EntityId): void => {
-    if (!threadQueries.byId(id)) {
+    const thread = threadQueries.byId(id);
+    if (!thread) {
       throw new RepositoryError(`Thread ${id} not found`, RepositoryErrorCode.NOT_FOUND);
+    }
+    if (thread.pinned) {
+      throw new RepositoryError(`Cannot delete pinned thread ${id}`, RepositoryErrorCode.VALIDATION_ERROR);
     }
 
     // 1. Delete all messages linked to this thread

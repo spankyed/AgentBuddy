@@ -55,7 +55,7 @@
               <FileText :size="12" />
               Details
             </button>
-            <ContextMenuRoot>
+            <ContextMenuRoot v-if="!thread.pinned">
               <ContextMenuTrigger as-child>
                 <button
                   type="button"
