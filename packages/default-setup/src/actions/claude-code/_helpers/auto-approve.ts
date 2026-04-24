@@ -12,6 +12,9 @@
  * consuming action at compile time (see packages/default-setup/CLAUDE.md).
  */
 
+/** Tools that represent user interaction points — never auto-approve these. */
+export const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
+
 /**
  * True when the tool-use is a `Write` targeting an `.md` file anywhere
  * under a project's `.claude/plans/` directory. The path is matched

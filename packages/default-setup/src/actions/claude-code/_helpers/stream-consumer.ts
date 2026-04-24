@@ -11,7 +11,7 @@
  * flow actions (async-safe UI/artifact updates):
  * - Consumer: persistClaudeState, setRunning, writer/toolActivity, clearHandle,
  *   dequeueMessage → replayQueuedMessage (dequeue before setRunning to avoid race)
- * - Flow actions: updateSessionArtifact, diff artifact
+ * - Flow actions: updateClaudeState, diff artifact
  *   (triggered via cc.stream.* brain events → on() listeners in the flow)
  *
  * Error boundary: the entire body is wrapped in try/catch. Errors never
@@ -20,14 +20,13 @@
  */
 
 import type { Services, EntityId } from '../../../types';
-import { isPlanFileWrite } from './auto-approve';
+import { isPlanFileWrite, DONT_BYPASS } from './auto-approve';
 import { createStreamWriter } from './stream-writer';
 import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId } from './thread-context';
-import { updateSessionArtifact, updateChatState, readSessionPermissionMode, extractStaleSessionId, markSessionBroken, findSessionArtifact } from './session-artifact';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './thread-context';
 import { parseContextMarkdown } from './context-parser';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
@@ -223,8 +222,8 @@ export async function consumeStream(
                 mutatedPaths.push(p);
               }
             }
-            // Update the session artifact's recent-tools list (last 3).
-            updateSessionArtifact(services, threadId, (prev) => {
+            // Update the thread's recent-tools list (last 3).
+            updateClaudeState(services, threadId, (prev) => {
               const recent = (prev.recentTools ?? []).slice(-2);
               recent.push({ name: block.name, summary, at: Date.now() });
               return { recentTools: recent };
@@ -329,25 +328,23 @@ export async function consumeStream(
           continue;
         }
 
+        // Read permission state once for all auto-approve checks below.
+        const ccState = getClaudeState(services, threadId as string);
+        const permMode = ccState?.permissionMode ?? 'acceptEdits';
+
         // Auto-approve tool requests when bypass mode is active (mid-turn aware).
         // Exclude interaction-point tools that aren't permission prompts.
-        const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
-        if (req.subtype === 'can_use_tool' && !DONT_BYPASS.has(req.tool_name)) {
-          const artifactMode = readSessionPermissionMode(services, threadId);
-          if (artifactMode === 'bypassPermissions') {
-            log.debug('bypass: auto-approved tool', { tool: req.tool_name });
-            handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
-            continue;
-          }
+        if (req.subtype === 'can_use_tool' && !DONT_BYPASS.has(req.tool_name) && permMode === 'bypassPermissions') {
+          log.debug('bypass: auto-approved tool', { tool: req.tool_name });
+          handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
+          continue;
         }
 
-        // Auto-approve file edits when the artifact's permission mode is
-        // 'acceptEdits' (the "Auto" toggle) OR the user opted in mid-turn.
+        // Auto-approve file edits when permission mode is 'acceptEdits'
+        // (the "Auto" toggle) OR the user opted in mid-turn.
         if (req.subtype === 'can_use_tool' && FILE_MUTATION_TOOLS.has(req.tool_name)) {
-          const ccState = getClaudeState(services, threadId);
-          const artifactMode = readSessionPermissionMode(services, threadId);
-          if (ccState?.autoAcceptEdits || artifactMode === 'acceptEdits') {
-            log.debug('auto-approved file edit', { tool: req.tool_name, source: ccState?.autoAcceptEdits ? 'mid-turn' : 'artifact' });
+          if (ccState?.autoAcceptEdits || permMode === 'acceptEdits') {
+            log.debug('auto-approved file edit', { tool: req.tool_name, source: ccState?.autoAcceptEdits ? 'mid-turn' : 'setting' });
             handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
             continue;
           }
@@ -552,15 +549,7 @@ export async function consumeStream(
         forkCliUuid: ctx.forkCliUuid ?? null,
       });
 
-      // Detect stale session and clear it so the next turn starts fresh.
-      const staleId = extractStaleSessionId(errorText);
-      if (staleId) {
-        writer.finalize('⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.');
-      } else {
-        writer.finalize(`⚠️ ${errorText}`);
-      }
-      clearSessionId(services, threadId);
-      markSessionBroken(services, threadId, staleId ? `Session ${staleId} not found` : errorText);
+      finalizeSessionError(services, threadId, writer, errorText);
 
       toolActivity.finalise('error');
       services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
@@ -617,7 +606,7 @@ export async function consumeStream(
     if (queued) await replayQueuedMessage(services, threadId, queued, log);
 
     // Emit to flow → CC: Turn Completed action handles:
-    //   updateSessionArtifact, diff artifact
+    //   updateClaudeState, diff artifact
     services.emitter.sendToBrainSystem({
       eventType: 'cc.stream.completed',
       payload: {
@@ -663,7 +652,7 @@ export async function consumeStream(
         } as any);
       }
 
-      // Emit cc.stream.completed so Turn Completed updates the session artifact
+      // Emit cc.stream.completed so Turn Completed updates the thread context
       // (turn count, tool call count, cost). Cost is best-effort: resultFromLine
       // is only set if the CLI's terminal `result` event arrived before the kill
       // signal took effect — typically it hasn't, so cost will be 0.
@@ -689,15 +678,8 @@ export async function consumeStream(
     log.error('stream consumer failed', { message, stack: err?.stack });
     toolActivity.finalise('error');
 
-    // Session-not-found mid-stream: clear stale session and mark artifact.
-    const staleId = extractStaleSessionId(message);
-    if (staleId) {
-      writer.finalize(`${writer.text}\n\n⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.`.trim());
-      clearSessionId(services, threadId);
-      markSessionBroken(services, threadId, `Session ${staleId} not found`);
-    } else {
-      writer.finalize(`${writer.text}\n\n⚠️ ${message}`.trim());
-    }
+    // Session-not-found mid-stream: clear stale session and mark broken.
+    finalizeSessionError(services, threadId, writer, message, writer.text);
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
 
     // Kill the CLI process on error (it may be in a bad state).
@@ -726,6 +708,27 @@ export async function consumeStream(
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Finalize a session error: detect stale sessions, display warning, and mark
+ * the session broken. Shared by the success-path error-result handler and the
+ * catch-path error handler.
+ */
+function finalizeSessionError(
+  services: Services,
+  threadId: EntityId,
+  writer: ReturnType<typeof createStreamWriter>,
+  errorText: string,
+  prefix?: string,
+): void {
+  const staleId = extractStaleSessionId(errorText);
+  const warning = staleId
+    ? '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.'
+    : `⚠️ ${errorText}`;
+  writer.finalize(prefix ? `${prefix}\n\n${warning}`.trim() : warning);
+  clearSessionId(services, threadId);
+  markSessionBroken(services, threadId, staleId ? `Session ${staleId} not found` : errorText);
+}
 
 /**
  * Replay a previously-dequeued message by re-invoking the chat action.
@@ -810,7 +813,7 @@ const CONTEXT_THRESHOLDS = [25, 50, 75, 90];
 
 /**
  * Query /context in a separate non-persisted CLI process and update the
- * session artifact directly when done. Fire-and-forget — never blocks
+ * thread context directly when done. Fire-and-forget — never blocks
  * the turn completion flow.
  */
 function queryContextInBackground(
@@ -834,12 +837,12 @@ function queryContextInBackground(
     if (!contextUsage) return;
 
     // Check which thresholds are newly crossed.
-    const prev = findSessionArtifact(services, threadId);
-    const alerted: number[] = (prev?.content as any)?.alertedThresholds ?? [];
+    const prev = getClaudeState(services, threadId as string);
+    const alerted: number[] = prev?.alertedThresholds ?? [];
     const pct = contextUsage.percentage;
     const newAlerts = CONTEXT_THRESHOLDS.filter(t => pct >= t && !alerted.includes(t));
 
-    updateSessionArtifact(services, threadId, (prevContent) => ({
+    updateClaudeState(services, threadId, (prevContent) => ({
       contextUsage,
       ...(newAlerts.length > 0
         ? { alertedThresholds: [...(prevContent.alertedThresholds ?? []), ...newAlerts] }

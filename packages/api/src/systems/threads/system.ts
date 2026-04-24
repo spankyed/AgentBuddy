@@ -17,7 +17,6 @@ import { brain } from '../brain/system';
 import services from '@/services';
 import { generateAsideText } from '@/services/chat';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { getHandle } from '@/services/claude-code/handle-store';
 import type { FieldContent } from '@/systems/library/types';
 
 const logger = createLogger('threads');
@@ -123,18 +122,6 @@ export const IncomingThreadsEvents = [
     threadId: z.string().optional(),
     references: referencesSchema,
   }),
-  // User toggled the permission mode on the claude-session artifact's
-  // segmented control. Mutates `content.permissionMode` on the session
-  // artifact in place; the next work-mode turn reads it via
-  // `readSessionPermissionMode` in chat.ts.
-  busEvent('UPDATE_CLAUDE_PERMISSION_MODE', {
-    threadId: z.string(),
-    mode: z.string(),
-  }),
-  busEvent('UPDATE_CLAUDE_WORKTREE', {
-    threadId: z.string(),
-    useWorktree: z.boolean(),
-  }),
   busEvent('TOGGLE_COMPACTED', {
     markerId: z.string(),
     compacted: z.boolean(),
@@ -154,7 +141,7 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, instructions?: string, status?: string }
-  | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags'>> }
+  | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context'>> }
   | { type: 'THREAD_DELETED', threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
@@ -802,68 +789,6 @@ export const threadsSystem = setup({
         ...(asideText && { asideText })
       }));
     },
-    updateClaudePermissionMode: ({ event }) => {
-      // User clicked Ask / Auto / Bypass on the claude-session artifact's
-      // segmented control. Mutate `content.permissionMode` on the session
-      // artifact in place and notify the frontend. For most modes the next
-      // turn reads it via `readSessionPermissionMode` in chat.ts; bypass
-      // mode also takes effect mid-turn (see below).
-      const { threadId, mode } = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event);
-      const existing = repository.chatCommands.findArtifactByType(
-        threadId as EARS.EntityId,
-        'claude-session',
-      );
-      if (!existing?.id) {
-        logger.warn('UPDATE_CLAUDE_PERMISSION_MODE: no claude-session artifact for thread', { threadId });
-        return;
-      }
-      const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
-      const nextContent = { ...prevContent, permissionMode: mode };
-
-      // If switching to bypass and there's a paused control request, auto-approve it
-      // (skip interaction-point tools that aren't permission prompts).
-      const DONT_BYPASS = new Set(['ExitPlanMode', 'AskUserQuestion']);
-      if (mode === 'bypassPermissions') {
-        const thread = repository.threadQueries.byId(threadId as EARS.EntityId) as any;
-        const pending = thread?.context?.claudeCode?.pendingControlRequest;
-        if (pending?.requestId && !DONT_BYPASS.has(pending.toolName)) {
-          const cliHandle = getHandle(threadId);
-          if (cliHandle) {
-            cliHandle.respond(pending.requestId, { behavior: 'allow', updatedInput: pending.originalInput ?? {} });
-            // Invalidate the approval block so it's greyed out in the UI.
-            services.chat.updateMessageState(pending.approvalMessageId as EARS.EntityId, {
-              responseTimestamp: Date.now(),
-              blockResponse: { approved: true },
-            } as any);
-            // Clear pending state and resume.
-            const ctx = thread.context ?? {};
-            repository.threadCommands.update(threadId as EARS.EntityId, {
-              context: { ...ctx, claudeCode: { ...ctx.claudeCode, pendingControlRequest: undefined, isRunning: true } },
-            } as any);
-            // Update artifact chat state to 'working'.
-            (nextContent as any).chatState = 'working';
-          }
-        }
-      }
-
-      services.artifact.updateAndNotify(existing.id, {
-        content: nextContent,
-        threadId: threadId as EARS.EntityId,
-      });
-    },
-    updateClaudeWorktree: ({ event }) => {
-      const { threadId, useWorktree } = typeOf('UPDATE_CLAUDE_WORKTREE', event);
-      const existing = repository.chatCommands.findArtifactByType(
-        threadId as EARS.EntityId,
-        'claude-session',
-      );
-      if (!existing?.id) return;
-      const prevContent = (existing.content as Record<string, unknown> | null) ?? {};
-      services.artifact.updateAndNotify(existing.id, {
-        content: { ...prevContent, useWorktree },
-        threadId: threadId as EARS.EntityId,
-      });
-    },
     toggleCompacted: ({ system, event }) => {
       const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
       const messageIds = repository.chatCommands.toggleMarkerCompacted(
@@ -945,12 +870,6 @@ export const threadsSystem = setup({
           },
           USER_COMMAND: {
             actions: 'forwardUserCommand',
-          },
-          UPDATE_CLAUDE_PERMISSION_MODE: {
-            actions: 'updateClaudePermissionMode',
-          },
-          UPDATE_CLAUDE_WORKTREE: {
-            actions: 'updateClaudeWorktree',
           },
           FORK_THREAD: {
             actions: 'forkThread',

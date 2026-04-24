@@ -6,8 +6,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { persistClaudeState } from './_helpers/thread-context';
-import { ensureSessionArtifact, updateChatState } from './_helpers/session-artifact';
+import { persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Session Ops',
@@ -196,11 +195,11 @@ async function handleResume(
   const importedCount = importSessionMessages(services, targetThreadId, transcript);
 
   // Set up session state — persistClaudeState adds 'claude-code' tag
-  persistClaudeState(services, targetThreadId, { sessionId });
-  ensureSessionArtifact(services, targetThreadId as any, {
+  persistClaudeState(services, targetThreadId, {
     sessionId,
     cwd: (session as any).cwd || '',
   });
+  ensureSessionMarker(services, targetThreadId as any);
   updateChatState(services, targetThreadId as any, 'idle');
 
   // Build confirmation text
@@ -304,30 +303,34 @@ async function handleImport(
       importSessionMessages(services, newThreadId as string, transcript);
 
       // Write session state directly — no frontend events during bulk import.
-      // Using persistClaudeState + ensureSessionArtifact would emit THREAD_UPDATED
+      // Using persistClaudeState + ensureSessionMarker would emit THREAD_UPDATED
       // + ARTIFACT_ADDED per thread, causing an event storm that crashes the frontend.
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
+      const now = Date.now();
+      const ccState = {
+        sessionId: session.id,
+        cwd: (session as any).cwd || undefined,
+        chatState: 'idle',
+        model: '',
+        startedAt: now,
+        lastTurnAt: now,
+        turns: 0,
+        totalCostUsd: 0,
+        toolCallCount: 0,
+        permissionMode: 'default',
+      };
+
+      // Write full session state to thread context (source of truth).
       services.repository.threadCommands.update(newThreadId, {
-        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id, cwd: (session as any).cwd || undefined } },
+        context: { ...(thread?.context || {}), claudeCode: ccState },
         tags: [...(thread?.tags || ['imported']), 'claude-code'],
       });
 
-      const now = Date.now();
+      // Create artifact as a type marker (content lives on thread context).
       services.repository.chatCommands.createArtifact({
         artifactType: 'claude-session' as any,
         title: 'Claude Code session',
-        content: {
-          sessionId: session.id,
-          model: '',
-          cwd: (session as any).cwd || '',
-          startedAt: now,
-          lastTurnAt: now,
-          turns: 0,
-          totalCostUsd: 0,
-          chatState: 'idle',
-          toolCallCount: 0,
-          permissionMode: 'default',
-        },
+        content: {},
         threadId: newThreadId,
       });
 

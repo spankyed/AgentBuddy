@@ -4,8 +4,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState, killTurn } from './_helpers/thread-context';
-import { updateChatState } from './_helpers/session-artifact';
+import { getClaudeState, killTurn, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Pause Turn',

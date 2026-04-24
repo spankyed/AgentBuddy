@@ -215,6 +215,17 @@ export interface ThreadContext {
     sessionId?: string;
     lastTurnAt?: number;
     cwd?: string;
+    // Persistent session data (single source of truth — artifact is derived)
+    model?: string;
+    startedAt?: number;
+    turns?: number;
+    totalCostUsd?: number;
+    chatState?: string;
+    toolCallCount?: number;
+    permissionMode?: string;
+    useWorktree?: boolean;
+    sessionError?: string;
+    [key: string]: unknown;
   };
   [featureKey: string]: unknown;
 }

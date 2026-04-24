@@ -3,8 +3,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState } from './_helpers/thread-context';
-import { updateChatState, readSessionCwd } from './_helpers/session-artifact';
+import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Compact',
@@ -49,12 +48,13 @@ async function handleCompact(
 ): Promise<{ text: string; data?: any; skipMessage?: boolean }> {
   if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
-  const sessionId = getClaudeState(services, threadId)?.sessionId;
+  const ccState = getClaudeState(services, threadId);
+  const sessionId = ccState?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
   updateChatState(services, threadId as any, 'working');
   try {
-    const sessionCwd = readSessionCwd(services, threadId as any);
+    const sessionCwd = ccState?.cwd;
     const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
     const handle = await services.cli.claudeCode.query({
       ...(sessionCwd && { cwd: sessionCwd }),
@@ -64,6 +64,13 @@ async function handleCompact(
     });
 
     const result = await handle.result;
+
+    // The CLI forks the session during /compact — persist the new ID
+    // so subsequent turns resume the compacted session, not the stale one.
+    if (result.sessionId && result.sessionId !== sessionId) {
+      persistClaudeState(services, threadId, { sessionId: result.sessionId });
+    }
+
     const summaryText = result.text || 'Session compacted.';
 
     const { compactedMessageIds } = services.chat.createMarkerMessage({

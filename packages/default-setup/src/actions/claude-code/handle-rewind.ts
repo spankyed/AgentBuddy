@@ -18,7 +18,6 @@
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
 import { backfillUserCliUuids } from './_helpers/jsonl-backfill';
-import { readSessionCwd } from './_helpers/session-artifact';
 
 /** Claude prints this on a successful `--rewind-files` run. See
  * `claude-code/src/cli/print.ts:766-768` — any other exit-0 path (notably
@@ -133,10 +132,10 @@ export async function action(
   // `~/.claude/projects/<sanitize(cwd)>/<sessionId>.jsonl`, so spawning
   // from the default repo cwd when the session was recorded in a worktree
   // path causes `loadConversationForResume()` to return null and the CLI
-  // exits 0 with no output and no work done. `readSessionCwd` returns the
-  // cwd reported by the CLI's own `system/init` event on turn 1 —
+  // exits 0 with no output and no work done. The cwd on thread context is
+  // reported by the CLI's own `system/init` event on turn 1 —
   // authoritative regardless of whether the thread uses a worktree.
-  const sessionCwd = readSessionCwd(services, threadId as EntityId);
+  const sessionCwd = getClaudeState(services, threadId as string)?.cwd;
   log.debug('restoring files via --rewind-files', { threadId, userCliUuid, cwd: sessionCwd ?? '(default)' });
   let filesRestored = false;
   let failureDetail: string | undefined;

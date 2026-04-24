@@ -4,8 +4,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, setRunning } from './_helpers/thread-context';
-import { updateChatState } from './_helpers/session-artifact';
+import { persistClaudeState, setRunning, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Answer Question',

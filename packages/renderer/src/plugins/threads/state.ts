@@ -186,8 +186,6 @@ type UIEvent =
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
   | { type: 'PAUSE_TURN'; threadId: string }
-  | { type: 'UPDATE_CLAUDE_PERMISSION_MODE'; threadId: string; mode: string }
-  | { type: 'UPDATE_CLAUDE_WORKTREE'; threadId: string; useWorktree: boolean }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -1067,24 +1065,6 @@ const threadsState = setup({
       const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
     },
-    updateClaudePermissionMode: ({ event }) => {
-      const typedEvent = typeOf('UPDATE_CLAUDE_PERMISSION_MODE', event) as any;
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_CLAUDE_PERMISSION_MODE',
-        threadId: typedEvent.threadId,
-        mode: typedEvent.mode,
-      });
-    },
-    updateClaudeWorktree: ({ event }) => {
-      const typedEvent = typeOf('UPDATE_CLAUDE_WORKTREE', event) as any;
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_CLAUDE_WORKTREE',
-        threadId: typedEvent.threadId,
-        useWorktree: typedEvent.useWorktree,
-      });
-    },
     revertThread: ({ event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({
@@ -1313,8 +1293,6 @@ const threadsState = setup({
     PAUSE_TURN: {
       actions: 'pauseTurn',
     },
-    UPDATE_CLAUDE_PERMISSION_MODE: { actions: 'updateClaudePermissionMode' },
-    UPDATE_CLAUDE_WORKTREE: { actions: 'updateClaudeWorktree' },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: 'finishStream',

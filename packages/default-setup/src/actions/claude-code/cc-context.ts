@@ -4,7 +4,6 @@
 
 import type { ActionMeta, Services, Z } from '../../types';
 import { getClaudeState } from './_helpers/thread-context';
-import { readSessionCwd } from './_helpers/session-artifact';
 import { parseContextMarkdown } from './_helpers/context-parser';
 
 export const meta: ActionMeta = {
@@ -54,10 +53,11 @@ async function handleContext(
 ): Promise<{ text: string; data?: any; blocks?: any[] }> {
   if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
-  const sessionId = getClaudeState(services, threadId)?.sessionId;
+  const ccState = getClaudeState(services, threadId);
+  const sessionId = ccState?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
-  const sessionCwd = readSessionCwd(services, threadId as any);
+  const sessionCwd = ccState?.cwd;
 
   const handle = await services.cli.claudeCode.query({
     ...(sessionCwd && { cwd: sessionCwd }),

@@ -5,8 +5,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, setProjectDirectory } from './_helpers/thread-context';
-import { updateSessionArtifact } from './_helpers/session-artifact';
+import { persistClaudeState, setProjectDirectory, updateClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Directory Select',
@@ -62,7 +61,7 @@ export async function action(
 
   // Persist worktree preference on the session artifact so chat.ts reads it.
   if (useWorktree) {
-    updateSessionArtifact(services, threadId as EntityId, { useWorktree: true });
+    updateClaudeState(services, threadId as EntityId, { useWorktree: true });
   }
 
   // Clear pending state.

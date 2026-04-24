@@ -219,6 +219,7 @@ import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
+import { trpc } from '@/core/trpc'
 
 type PermissionMode =
   | 'default'
@@ -255,7 +256,9 @@ interface SessionContent {
   chatState: 'idle' | 'working' | 'paused' | 'error'
   toolCallCount: number
   lastTool?: { name: string; summary: string; at: number }
+  recentTools?: Array<{ name: string; summary: string; at: number }>
   permissionMode?: PermissionMode
+  useWorktree?: boolean
   sessionError?: string
   contextUsage?: ContextUsageData
   additionalDirs?: string[]
@@ -265,11 +268,17 @@ const props = defineProps<{
   artifact: ArtifactItem & { content: SessionContent }
 }>()
 
-const content = computed(() => props.artifact.content)
 const threadsActor = applicationState.system.get(threadsId)
-const currentThreadId = useSelector(
+const currentThread = useSelector(
   threadsActor,
-  (state: any) => state.context.currentThread?.id as string | undefined,
+  (state: any) => state.context.currentThread,
+)
+const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
+
+// Read session data from thread context (source of truth).
+// Falls back to artifact content for backward compat during migration.
+const content = computed<SessionContent>(() =>
+  currentThread.value?.context?.claudeCode ?? ({} as SessionContent)
 )
 
 // Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
@@ -411,10 +420,11 @@ function selectPermissionMode(mode: PermissionMode) {
     console.warn('[claude-session-artifact] no current thread; cannot update permission mode')
     return
   }
-  threadsActor.send({
-    type: 'UPDATE_CLAUDE_PERMISSION_MODE',
-    threadId,
-    mode,
+  trpc.bus.send.mutate({
+    systemId: 'brain',
+    type: 'TRIGGER_BRAIN_EVENT',
+    eventType: 'user.update.permissionMode',
+    payload: { threadId, mode },
   })
 }
 
@@ -424,10 +434,11 @@ function selectWorktree(value: boolean) {
   if (value === useWorktree.value) return
   const threadId = currentThreadId.value
   if (!threadId) return
-  threadsActor.send({
-    type: 'UPDATE_CLAUDE_WORKTREE',
-    threadId,
-    useWorktree: value,
-  } as any)
+  trpc.bus.send.mutate({
+    systemId: 'brain',
+    type: 'TRIGGER_BRAIN_EVENT',
+    eventType: 'user.update.worktree',
+    payload: { threadId, useWorktree: value },
+  })
 }
 </script>
