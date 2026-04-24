@@ -10,6 +10,8 @@
       @close="$emit('close-tab', tab.id)"
       @open-in-chat="$emit('open-in-chat', tab.id)"
       @delete-thread="$emit('delete-thread', tab.id)"
+      @unpin-thread="$emit('unpin-thread', tab.id)"
+      @pin-thread="$emit('pin-thread', tab.id)"
     />
   </div>
 </template>
@@ -28,6 +30,8 @@ defineEmits<{
   'close-tab': [tabId: string];
   'open-in-chat': [tabId: string];
   'delete-thread': [tabId: string];
+  'unpin-thread': [tabId: string];
+  'pin-thread': [tabId: string];
 }>();
 </script>
 

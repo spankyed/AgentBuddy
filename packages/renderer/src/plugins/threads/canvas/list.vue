@@ -31,6 +31,8 @@
               @chat-click="(threadId) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
               @archive-click="handleArchiveThread"
               @delete-click="handleDeleteThread"
+              @unpin-click="handleUnpinThread"
+              @pin-click="handlePinThread"
               @drag-start="handleDragStart"
               @drag-over="handleDragOver"
               @drag-leave="handleDragLeave"
@@ -198,6 +200,14 @@ const handleArchiveThread = (threadId: string) => {
   if (confirmed) {
     actor.send({ type: 'ARCHIVE_THREAD', threadId });
   }
+};
+
+const handleUnpinThread = (threadId: string) => {
+  actor.send({ type: 'UNPIN_THREAD', threadId });
+};
+
+const handlePinThread = (threadId: string) => {
+  actor.send({ type: 'PIN_THREAD', threadId });
 };
 
 const handleDeleteThread = (threadId: string) => {

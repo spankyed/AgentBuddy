@@ -55,6 +55,24 @@
               <FileText :size="12" />
               Details
             </button>
+            <button
+              v-if="thread.pinned"
+              type="button"
+              class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors"
+              title="Unpin thread"
+              @click.stop="handleUnpinThread(thread.id)"
+            >
+              <Pin :size="12" />
+            </button>
+            <button
+              v-if="!thread.pinned"
+              type="button"
+              class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors opacity-0 group-hover:opacity-100"
+              title="Pin thread"
+              @click.stop="handlePinThread(thread.id)"
+            >
+              <Pin :size="12" />
+            </button>
             <ContextMenuRoot v-if="!thread.pinned">
               <ContextMenuTrigger as-child>
                 <button
@@ -197,7 +215,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
+import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
@@ -287,6 +305,16 @@ const handleArchiveThread = (id: string | undefined) => {
     threadsActor.send({ type: 'ARCHIVE_THREAD', threadId: id })
     isOpen.value = false
   }
+}
+
+const handleUnpinThread = (id: string | undefined) => {
+  if (!id) return
+  threadsActor.send({ type: 'UNPIN_THREAD', threadId: id })
+}
+
+const handlePinThread = (id: string | undefined) => {
+  if (!id) return
+  threadsActor.send({ type: 'PIN_THREAD', threadId: id })
 }
 
 const handleDeleteThread = (id: string | undefined) => {

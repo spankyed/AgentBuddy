@@ -11,6 +11,8 @@
           @close-tab="closeTab"
           @open-in-chat="openInChat"
           @delete-thread="deleteThread"
+          @unpin-thread="unpinThread"
+          @pin-thread="pinThread"
         />
       </div>
     </template>
@@ -62,6 +64,14 @@ function openInChat(tabId: string) {
 
 function deleteThread(tabId: string) {
   actor.send({ type: 'DELETE_THREAD', threadId: tabId });
+}
+
+function unpinThread(tabId: string) {
+  actor.send({ type: 'UNPIN_THREAD', threadId: tabId });
+}
+
+function pinThread(tabId: string) {
+  actor.send({ type: 'PIN_THREAD', threadId: tabId });
 }
 
 function selectArtifact(artifactId: string) {

@@ -69,9 +69,28 @@
           Close Tab
         </ContextMenuItem>
 
-        <ContextMenuSeparator class="h-px bg-neutral-700" />
+        <ContextMenuItem
+          v-if="isPinned"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          @select="$emit('unpin-thread')"
+        >
+          <Pin class="w-4 h-4" />
+          Unpin Thread
+        </ContextMenuItem>
 
         <ContextMenuItem
+          v-if="!isPinned"
+          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+          @select="$emit('pin-thread')"
+        >
+          <Pin class="w-4 h-4" />
+          Pin Thread
+        </ContextMenuItem>
+
+        <ContextMenuSeparator v-if="!isPinned" class="h-px bg-neutral-700" />
+
+        <ContextMenuItem
+          v-if="!isPinned"
           class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
           @select="$emit('delete-thread')"
         >
@@ -84,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { X, MessageSquare, Trash2 } from 'lucide-vue-next';
+import { X, MessageSquare, Pin, Trash2 } from 'lucide-vue-next';
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -109,6 +128,8 @@ defineEmits<{
   close: [];
   'open-in-chat': [];
   'delete-thread': [];
+  'unpin-thread': [];
+  'pin-thread': [];
 }>();
 
 const threadsActor: ThreadsState = applicationState.system.get(threadsId);

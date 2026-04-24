@@ -10,7 +10,7 @@ import type {
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@app/api';
 import { trpc } from '@/core/trpc';
-import { Archive, Trash2 } from 'lucide-vue-next';
+import { Archive, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
@@ -132,6 +132,8 @@ type UIEvent =
   | { type: 'CANCEL_CREATE' }
   | { type: 'DELETE_THREAD'; threadId: string }
   | { type: 'ARCHIVE_THREAD'; threadId: string }
+  | { type: 'UNPIN_THREAD'; threadId: string }
+  | { type: 'PIN_THREAD'; threadId: string }
   | {
     type: 'UPDATE_THREAD_FIELD';
     key: keyof ThreadEditFields;
@@ -465,6 +467,26 @@ const threadsState = setup({
         type: 'UPDATE_THREAD_FIELD',
         threadId,
         key: 'archived',
+        value: true,
+      });
+    },
+    unpinThread: ({ event }) => {
+      const { threadId } = typeOf('UNPIN_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_FIELD',
+        threadId,
+        key: 'pinned',
+        value: false,
+      });
+    },
+    pinThread: ({ event }) => {
+      const { threadId } = typeOf('PIN_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_FIELD',
+        threadId,
+        key: 'pinned',
         value: true,
       });
     },
@@ -1213,6 +1235,12 @@ const threadsState = setup({
       actions: ['archiveThread', 'removeArchivedThread', 'persistTabs'],
       target: '.list',
     },
+    UNPIN_THREAD: {
+      actions: 'unpinThread',
+    },
+    PIN_THREAD: {
+      actions: 'pinThread',
+    },
     THREAD_DELETED: {
       actions: ['removeThreadFromList', 'persistTabs'],
       target: '.list',
@@ -1426,6 +1454,15 @@ const threadsState = setup({
         ...contextMenuFn<ThreadsContext>((ctx) => {
           if (!ctx.view?.id) return []
           return [
+            ...(ctx.view.pinned ? [{
+              label: 'Unpin Thread',
+              icon: Pin,
+              event: { type: 'UNPIN_THREAD' as const, threadId: ctx.view.id },
+            }] : [{
+              label: 'Pin Thread',
+              icon: Pin,
+              event: { type: 'PIN_THREAD' as const, threadId: ctx.view.id },
+            }]),
             ...(!ctx.view.pinned ? [{
               label: 'Archive Thread',
               icon: Archive,

@@ -46,6 +46,26 @@
               >
                 <MessageCircleMore class="w-4 h-4"/>
               </button>
+              <button
+                v-if="thread.pinned"
+                @click.stop="$emit('unpin-click', thread.id)"
+                type="button"
+                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+                aria-label="Unpin thread"
+                title="Unpin thread"
+              >
+                <Pin class="w-4 h-4"/>
+              </button>
+              <button
+                v-if="!thread.pinned"
+                @click.stop="$emit('pin-click', thread.id)"
+                type="button"
+                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95 opacity-0 group-hover:opacity-100"
+                aria-label="Pin thread"
+                title="Pin thread"
+              >
+                <Pin class="w-4 h-4"/>
+              </button>
               <ContextMenuRoot v-if="!thread.pinned">
                 <ContextMenuTrigger as-child>
                   <button
@@ -114,8 +134,25 @@
           <Copy :size="14" class="text-neutral-400" />
           Copy Id
         </ContextMenuItem>
+        <template v-if="thread.pinned">
+          <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+          <ContextMenuItem
+            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+            @select="$emit('unpin-click', thread.id)"
+          >
+            <Pin :size="14" class="text-neutral-400" />
+            Unpin
+          </ContextMenuItem>
+        </template>
         <template v-if="!thread.pinned">
           <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+          <ContextMenuItem
+            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+            @select="$emit('pin-click', thread.id)"
+          >
+            <Pin :size="14" class="text-neutral-400" />
+            Pin
+          </ContextMenuItem>
           <ContextMenuItem
             class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
             @select="$emit('archive-click', thread.id)"
@@ -137,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { Archive, Copy, MessageCircleMore, PanelLeft, SquarePen, Trash2 } from 'lucide-vue-next'
+import { Archive, Copy, MessageCircleMore, PanelLeft, Pin, SquarePen, Trash2 } from 'lucide-vue-next'
 import {
   ContextMenuContent, ContextMenuItem, ContextMenuPortal,
   ContextMenuRoot, ContextMenuSeparator, ContextMenuTrigger,
@@ -163,6 +200,8 @@ const emit = defineEmits<{
   'chat-click': [id: string]
   'archive-click': [id: string]
   'delete-click': [id: string]
+  'unpin-click': [id: string]
+  'pin-click': [id: string]
   'drag-start': [e: DragEvent, id: string]
   'drag-over': [e: DragEvent, id: string]
   'drag-leave': [e: DragEvent]
