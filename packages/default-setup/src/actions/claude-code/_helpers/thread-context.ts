@@ -57,6 +57,8 @@ export interface PendingControlRequest {
 
 export interface ClaudeCodeThreadState {
   sessionId?: string;
+  /** History of previous sessionIds (oldest first), populated when compaction/fork/revert replaces the active session. */
+  previousSessionIds?: string[];
   lastTurnAt?: number;
   /** Working directory for the Claude Code session. */
   cwd?: string;
@@ -169,9 +171,19 @@ export function persistClaudeState(
   const thread = services.repository.threadQueries.byId(threadId as any) as any;
   if (!thread) return;
 
+  const existing = (thread.context?.claudeCode || {}) as ClaudeCodeThreadState;
+
+  // Auto-track session history when sessionId changes (compact/fork/revert).
+  if (state.sessionId && existing.sessionId && state.sessionId !== existing.sessionId) {
+    const prev = existing.previousSessionIds ?? [];
+    if (!prev.includes(existing.sessionId)) {
+      state = { ...state, previousSessionIds: [...prev, existing.sessionId] };
+    }
+  }
+
   const nextContext = {
     ...(thread.context || {}),
-    claudeCode: { ...(thread.context?.claudeCode || {}), ...state },
+    claudeCode: { ...existing, ...state },
   };
 
   const existingTags: string[] = Array.isArray(thread.tags) ? thread.tags : [];
