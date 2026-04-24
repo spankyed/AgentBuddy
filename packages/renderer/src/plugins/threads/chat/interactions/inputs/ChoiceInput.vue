@@ -63,6 +63,16 @@
       </div>
     </div>
 
+    <!-- Skip Button (separate from choices) -->
+    <div v-if="skipOption && !disabled" class="pt-1">
+      <button
+        @click="handleSkip"
+        class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors duration-200"
+      >
+        {{ skipOption.label }}
+      </button>
+    </div>
+
     <!-- Custom Input (if allowed) -->
     <div v-if="allowCustom" class="space-y-2">
       <div class="text-xs text-neutral-400">Or enter custom response:</div>
@@ -109,6 +119,7 @@ interface Props {
   multiSelect?: boolean
   allowCustom?: boolean
   compact?: boolean
+  skipOption?: { id: string; label: string }
   modelValue?: string | string[]
   disabled?: boolean
   response?: any
@@ -194,6 +205,12 @@ const submitResponse = () => {
   }
 
   emit('submit', response)
+}
+
+const handleSkip = () => {
+  if (props.skipOption) {
+    emit('submit', props.skipOption.id)
+  }
 }
 
 const emitUpdate = () => {

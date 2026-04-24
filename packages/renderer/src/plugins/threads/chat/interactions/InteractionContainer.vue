@@ -43,6 +43,7 @@
         :allow-custom="(block.props as any).allowCustom"
         :compact="(block.props as any).compact"
         :model-value="(block.props as any).modelValue"
+        :skip-option="(block.props as any).skipOption"
         :disabled="isDisabled"
         :response="responseForBlock('choice')"
         :display-text="(block.props as any).displayText"

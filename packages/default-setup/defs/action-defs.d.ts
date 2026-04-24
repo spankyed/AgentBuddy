@@ -2328,36 +2328,6 @@ declare const events: {
         threadId?: string | undefined;
         phase?: string | undefined;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_CLAUDE_PERMISSION_MODE">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        mode: zod.ZodString;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_CLAUDE_PERMISSION_MODE";
-        systemId: "threads";
-        mode: string;
-        threadId: string;
-    }, {
-        type: "UPDATE_CLAUDE_PERMISSION_MODE";
-        systemId: "threads";
-        mode: string;
-        threadId: string;
-    }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"UPDATE_CLAUDE_WORKTREE">;
-        systemId: zod.ZodLiteral<"threads">;
-        threadId: zod.ZodString;
-        useWorktree: zod.ZodBoolean;
-    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
-        type: "UPDATE_CLAUDE_WORKTREE";
-        systemId: "threads";
-        threadId: string;
-        useWorktree: boolean;
-    }, {
-        type: "UPDATE_CLAUDE_WORKTREE";
-        systemId: "threads";
-        threadId: string;
-        useWorktree: boolean;
-    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"TOGGLE_COMPACTED">;
         systemId: zod.ZodLiteral<"threads">;
         markerId: zod.ZodString;
@@ -7103,6 +7073,10 @@ declare function sendChoiceBlock(options: {
     allowCustom?: boolean;
     compact?: boolean;
     displayText?: string;
+    skipOption?: {
+        id: string;
+        label: string;
+    };
     forkable?: boolean;
 } & AutoHideOptions): {
     messageId: EARS.EntityId;
@@ -7564,7 +7538,7 @@ declare namespace media {
  * Update a thread's chatState and notify the frontend.
  *
  * This is the canonical service-level write for chatState. The DSL helper
- * `updateChatState()` in session-artifact.ts handles the artifact side,
+ * `updateChatState()` in thread-context.ts handles the thread context side,
  * then delegates here for the thread write + emit.
  */
 declare function updateChatState(threadId: EARS.EntityId, chatState: string): void;

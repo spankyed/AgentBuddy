@@ -40,19 +40,17 @@ export async function action(
     .slice(0, 7);
 
   if (recentThreads.length > 0) {
-    const choices = [
-      ...recentThreads.map((t: any) => ({
-        id: t.id,
-        label: t.topic || 'Untitled',
-      })),
-      { id: 'skip', label: 'Skip', description: "Start fresh" },
-    ];
+    const choices = recentThreads.map((t: any) => ({
+      id: t.id,
+      label: t.topic || 'Untitled',
+    }));
 
     const { messageId } = services.chat.sendChoiceBlock({
       threadId,
       text: "Here are your most recent threads. Want to continue where you left off?",
       prompt: 'Pick a thread to continue',
       choices,
+      skipOption: { id: 'skip', label: 'Skip' },
       allowCustom: false,
       compact: true,
       forkable: false,

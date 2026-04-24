@@ -124,9 +124,10 @@ export function sendChoiceBlock(options: {
   allowCustom?: boolean;
   compact?: boolean;
   displayText?: string;
+  skipOption?: { id: string; label: string };
   forkable?: boolean;
 } & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, compact, displayText, forkable, autoHide, asUser, asideContext } = options;
+  const { threadId, text, prompt, choices, multiSelect = false, allowCustom = false, compact, displayText, skipOption, forkable, autoHide, asUser, asideContext } = options;
 
   const blocks: BlockConfig[] = [
     {
@@ -135,7 +136,7 @@ export function sendChoiceBlock(options: {
     },
     {
       type: 'choice',
-      props: { choices, multiSelect, allowCustom, compact, displayText }
+      props: { choices, multiSelect, allowCustom, compact, displayText, skipOption }
     }
   ];
 
