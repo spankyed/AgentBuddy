@@ -5,6 +5,7 @@ import { sendToPlugin } from './event-emitter';
 import * as media from './media';
 import { libraryService } from './library';
 import * as symlink from '@/systems/library/repository/symlink';
+import * as threadsService from './threads';
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -519,6 +520,12 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId) {
   // Mark thread as visited when opening chat
   repository.threadCommands.markAsVisited(threadId);
 
+  // Reset 'success' state when the user revisits the thread
+  const thread = repository.threadQueries.byId(threadId);
+  if (thread?.chatState === 'success') {
+    threadsService.updateChatState(threadId, 'idle');
+  }
+
   // Send thread data to load in chat
   sendToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
@@ -544,6 +551,11 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
   // Query thread data and artifacts from repository
   const thread = repository.threadQueries.byId(threadId);
   const artifacts = repository.chatQueries.threadArtifacts(threadId);
+
+  // Reset 'success' state when the user revisits the thread
+  if (thread?.chatState === 'success') {
+    threadsService.updateChatState(threadId, 'idle');
+  }
 
   // Send thread tab data
   sendToPlugin('threads', {

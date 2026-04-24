@@ -32,7 +32,7 @@ export type PermissionMode =
   | 'auto';
 
 /** Unified chat state used in backend events and on the frontend. */
-export type ChatState = 'idle' | 'working' | 'paused' | 'error';
+export type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 
 export interface QueuedMessage {
   text: string;
