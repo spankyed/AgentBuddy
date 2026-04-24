@@ -175,8 +175,9 @@
         <!-- Status line — teleported to body to escape overflow:hidden -->
         <Teleport to="body">
           <span v-if="statusLine && statusLinePos"
-            class="px-2 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-[11px] text-neutral-500 font-mono truncate pointer-events-none select-none"
-            :style="statusLinePos">
+            class="px-2 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-[11px] text-neutral-500 font-mono truncate select-none cursor-pointer hover:text-neutral-300 hover:border-neutral-500 transition-colors"
+            :style="statusLinePos"
+            @click="emit('statusline-click')">
             {{ statusLine }}
           </span>
         </Teleport>
@@ -241,6 +242,8 @@ const props = defineProps<{
   recordingLimitMinutes?: number
   /** Optional status text shown at the bottom-right corner of the input card. */
   statusLine?: string
+  /** Full CWD path for the statusline click handler. */
+  statusLineCwd?: string
 }>()
 
 // Define emits including new button actions
@@ -259,6 +262,7 @@ const emit = defineEmits<{
   (e: 'revert', messageId: string): void
   (e: 'revert-with-files', messageId: string): void
   (e: 'summarize-from-here', messageId: string): void
+  (e: 'statusline-click'): void
 }>()
 
 

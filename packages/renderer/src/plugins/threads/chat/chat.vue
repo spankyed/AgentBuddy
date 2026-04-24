@@ -47,6 +47,7 @@
               :quick-prompt-cursor="quickPromptCursor"
               :recording-limit-minutes="recordingLimitMinutes"
               :status-line="statusLine"
+              :status-line-cwd="statusLineCwd"
               @send-message="handleSendMessage"
               @send-command="handleSendCommand"
               @mode-change="(mode: string) => actor.send({ type: 'SET_MODE', mode: mode as any })"
@@ -58,6 +59,7 @@
               @revert="(messageId: string) => handleRevert(messageId, false, true)"
               @revert-with-files="(messageId: string) => handleRevert(messageId, true, true)"
               @summarize-from-here="(messageId: string) => handleSummarize(messageId, true)"
+              @statusline-click="handleStatuslineClick"
             />
           </div>
         </div>
@@ -162,9 +164,12 @@ const isBusy = useSelector(actor, ({ context }) => {
   const threadId = context.currentThread?.id
   return !!busyId && !!threadId && context.chatStates[threadId] === busyId
 })
-const statusLine = computed(() => {
+const statusLineCwd = computed(() => {
   if (currentMode.value !== 'work') return undefined
-  const cwd = currentThread.value?.context?.claudeCode?.cwd
+  return currentThread.value?.context?.claudeCode?.cwd
+})
+const statusLine = computed(() => {
+  const cwd = statusLineCwd.value
   if (!cwd) return undefined
   const segments = cwd.split('/').filter(Boolean)
   if (segments.length <= 3) return cwd
@@ -196,6 +201,13 @@ function forceScrollToBottom() {
     scrollToBottom('instant')
     requestAnimationFrame(() => scrollToBottom('instant'))
   })
+}
+
+function handleStatuslineClick() {
+  const cwd = statusLineCwd.value
+  if (!cwd) return
+  applicationState.system.get('application').send({ type: 'SELECT_PLUGIN', pluginId: 'code' })
+  applicationState.system.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
 function handleSendMessage(text: string, references?: MessageReferences) {
