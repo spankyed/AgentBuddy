@@ -24,7 +24,7 @@ window.addEventListener('unhandledrejection', (event) => {
       :original="diffOriginal || ''"
       :modified="diffModified || modelValue"
       :language="resolvedLanguage"
-      :options="{ ...resolvedOptions, ...diffOptions }"
+      :options="{ ignoreTrimWhitespace: false, ...resolvedOptions, ...diffOptions }"
       @mount="handleDiffMount"
       class="h-full"
     />
