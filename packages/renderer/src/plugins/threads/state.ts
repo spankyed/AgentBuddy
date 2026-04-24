@@ -186,7 +186,7 @@ type UIEvent =
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
   | { type: 'PAUSE_TURN'; threadId: string }
-| { type: 'TOKEN_STREAM'; token: string }
+  | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
 type ThreadEvents =
@@ -1065,7 +1065,7 @@ const threadsState = setup({
       const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
       trpc.bus.send.mutate({ systemId: id, type: 'FORK_THREAD', messageId, threadId, threadTopic });
     },
-revertThread: ({ event }) => {
+    revertThread: ({ event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
       trpc.bus.send.mutate({
         systemId: id,
@@ -1293,7 +1293,7 @@ revertThread: ({ event }) => {
     PAUSE_TURN: {
       actions: 'pauseTurn',
     },
-TOKEN_STREAM: { actions: 'handleTokenStream' },
+    TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: 'finishStream',
     },

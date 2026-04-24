@@ -122,7 +122,7 @@ export const IncomingThreadsEvents = [
     threadId: z.string().optional(),
     references: referencesSchema,
   }),
-busEvent('TOGGLE_COMPACTED', {
+  busEvent('TOGGLE_COMPACTED', {
     markerId: z.string(),
     compacted: z.boolean(),
   }),
@@ -789,7 +789,7 @@ export const threadsSystem = setup({
         ...(asideText && { asideText })
       }));
     },
-toggleCompacted: ({ system, event }) => {
+    toggleCompacted: ({ system, event }) => {
       const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
       const messageIds = repository.chatCommands.toggleMarkerCompacted(
         markerId as EARS.EntityId,
@@ -871,7 +871,7 @@ toggleCompacted: ({ system, event }) => {
           USER_COMMAND: {
             actions: 'forwardUserCommand',
           },
-FORK_THREAD: {
+          FORK_THREAD: {
             actions: 'forkThread',
           },
           REVERT_THREAD: {
