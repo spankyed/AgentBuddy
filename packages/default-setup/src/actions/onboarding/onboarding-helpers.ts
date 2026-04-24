@@ -89,7 +89,7 @@ export function finishOnboarding(
     services.chat.openThreadChatAndRefreshRecent(threadId);
   }
 
-  services.threads.updateChatState(threadId, 'idle');
+  flashSuccess(services, threadId, 'idle');
 
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
