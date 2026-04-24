@@ -257,6 +257,10 @@ export const threadsSystem = setup({
         }));
         services.chat.sendRecentThreadsRefresh();
       }
+
+      if (key === 'pinned') {
+        services.chat.sendRecentThreadsRefresh();
+      }
     },
     updateThreadStatus: ({ system, event }) => {
       const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
