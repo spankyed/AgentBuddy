@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services, Z } from '../../../types';
-import { getOnboardingState, persistOnboardingState, flashSuccess, type OnboardingState } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, flashState, type OnboardingState } from '../onboarding-helpers';
 import { startCcImportStep } from './handle-projects-step';
 
 export const meta: ActionMeta = {
@@ -20,7 +20,7 @@ export async function action(
   const state = getOnboardingState(services, threadId);
   if (!state) return { success: false, reason: 'no-state' };
 
-  flashSuccess(services, threadId, 'paused');
+  flashState(services, threadId);
   await testCliAndAdvance(services, state, threadId);
   persistOnboardingState(services, threadId, state);
 

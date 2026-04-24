@@ -1,5 +1,5 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, finishOnboarding, flashSuccess } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, finishOnboarding } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle Pick Thread Step',
@@ -19,8 +19,6 @@ export async function action(
   const response = typeof params.response === 'string' ? params.response : '';
   const state = getOnboardingState(services, threadId);
   if (!state) return { success: false, reason: 'no-state' };
-
-  flashSuccess(services, threadId, 'idle');
 
   if (response === 'skip' || !response) {
     finishOnboarding(services, state, threadId);

@@ -20,14 +20,14 @@ export function persistOnboardingState(services: Services, threadId: EntityId, s
 }
 
 /**
- * Flash success then set the next chat state (paused if more steps, idle if finishing).
+ * Flash a chat state indicator then set the next persistent state (paused if more steps, idle if finishing).
  */
-export function flashSuccess(services: Services, threadId: EntityId, nextState: 'paused' | 'idle' = 'paused') {
+export function flashState(services: Services, threadId: EntityId, stateId: string = 'working', nextState: 'paused' | 'idle' = 'paused') {
   services.threads.updateChatState(threadId, nextState);
   services.emitter.sendToPlugin('threads', {
     type: 'FLASH_CHAT_STATE',
     threadId: threadId as string,
-    stateId: 'success',
+    stateId,
     durationMs: 800,
   });
 }
@@ -89,7 +89,7 @@ export function finishOnboarding(
     services.chat.openThreadChatAndRefreshRecent(threadId);
   }
 
-  flashSuccess(services, threadId, 'idle');
+  flashState(services, threadId, 'success', 'idle');
 
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
