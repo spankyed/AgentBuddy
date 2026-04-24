@@ -3,13 +3,15 @@ import { ref, type Ref } from 'vue'
 interface DragDropOptions {
   selectedPaths: Ref<string[]>
   onMove: (sourcePaths: string[], targetDir: string) => void
+  onCopyFiles?: (sourcePaths: string[], targetDir: string) => void
 }
 
-export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) {
+export function useExplorerDragDrop({ selectedPaths, onMove, onCopyFiles }: DragDropOptions) {
   const draggedPaths = ref<string[]>([])
   const draggedOverPath = ref<string | null>(null)
   const dropPosition = ref<'before' | 'after' | 'inside' | null>(null)
   const isDragging = ref(false)
+  const isExternalFileDrag = ref(false)
 
   /** Remove paths whose parent/ancestor is also in the list */
   function deduplicateNestedPaths(paths: string[]): string[] {
@@ -49,6 +51,13 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
     return true
   }
 
+  function isExternalFileEvent(dt: DataTransfer | null): boolean {
+    if (!dt || !dt.types.includes('Files')) return false
+    // If we initiated an internal drag, ignore Files type
+    if (draggedPaths.value.length > 0) return false
+    return true
+  }
+
   function handleDragStart(e: DragEvent, path: string) {
     if (!e.dataTransfer) return
 
@@ -79,6 +88,24 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
   function handleDragOver(e: DragEvent, path: string, isDirectory: boolean) {
     e.preventDefault()
     if (!e.dataTransfer) return
+
+    const externalFile = isExternalFileEvent(e.dataTransfer)
+
+    if (externalFile) {
+      isExternalFileDrag.value = true
+      isDragging.value = true
+      // External files can only drop into directories
+      const newPosition: 'before' | 'after' | 'inside' = isDirectory ? 'inside' : 'before'
+      e.dataTransfer.dropEffect = isDirectory ? 'copy' : 'none'
+      if (isDirectory) {
+        dropPosition.value = newPosition
+        draggedOverPath.value = path
+      } else {
+        dropPosition.value = null
+        draggedOverPath.value = null
+      }
+      return
+    }
 
     if (!isValidDrop(draggedPaths.value, path)) {
       e.dataTransfer.dropEffect = 'none'
@@ -119,12 +146,43 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
     if (!related || !related.closest('[data-explorer-item]')) {
       draggedOverPath.value = null
       dropPosition.value = null
+      if (isExternalFileDrag.value) {
+        isExternalFileDrag.value = false
+        isDragging.value = false
+      }
     }
+  }
+
+  function getExternalFilePaths(e: DragEvent): string[] {
+    const files = e.dataTransfer?.files
+    if (!files) return []
+
+    const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+    if (!getPath) return []
+
+    const paths: string[] = []
+    for (const file of files) {
+      const filePath: string = getPath(file)
+      if (filePath) paths.push(filePath)
+    }
+    return paths
   }
 
   function handleDrop(e: DragEvent, targetPath: string, isDirectory: boolean) {
     e.preventDefault()
     e.stopPropagation()
+
+    // Handle external file drops
+    if (isExternalFileDrag.value) {
+      if (isDirectory && onCopyFiles) {
+        const paths = getExternalFilePaths(e)
+        if (paths.length > 0) {
+          onCopyFiles(paths, targetPath)
+        }
+      }
+      handleDragEnd()
+      return
+    }
 
     if (!draggedPaths.value.length) return
 
@@ -142,6 +200,18 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
     e.preventDefault()
     e.stopPropagation()
 
+    // Handle external file drops
+    if (isExternalFileDrag.value) {
+      if (onCopyFiles) {
+        const paths = getExternalFilePaths(e)
+        if (paths.length > 0) {
+          onCopyFiles(paths, baseDirectory)
+        }
+      }
+      handleDragEnd()
+      return
+    }
+
     if (!draggedPaths.value.length) return
 
     // Move to base directory
@@ -157,6 +227,7 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
     draggedOverPath.value = null
     dropPosition.value = null
     isDragging.value = false
+    isExternalFileDrag.value = false
   }
 
   function getItemDragClass(path: string): string {
@@ -167,7 +238,9 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
     }
 
     if (draggedOverPath.value === path && dropPosition.value === 'inside') {
-      classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
+      if (isExternalFileDrag.value || isValidDrop(draggedPaths.value, path)) {
+        classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
+      }
     }
 
     return classes.join(' ')
@@ -191,6 +264,7 @@ export function useExplorerDragDrop({ selectedPaths, onMove }: DragDropOptions) 
 
   return {
     isDragging,
+    isExternalFileDrag,
     draggedPaths,
     draggedOverPath,
     dropPosition,

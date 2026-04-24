@@ -261,6 +261,42 @@ export class FileSystemRepository {
     }
   }
 
+  async copyFileInto(sourcePath: string, targetDir: string): Promise<string> {
+    try {
+      const validTarget = this.validatePath(targetDir)
+      const fileName = path.basename(sourcePath)
+      let destPath = path.join(validTarget, fileName)
+
+      // Handle name conflicts by appending (1), (2), etc.
+      const ext = path.extname(fileName)
+      const baseName = path.basename(fileName, ext)
+      let counter = 1
+      while (true) {
+        try {
+          await fs.access(destPath)
+          destPath = path.join(validTarget, `${baseName} (${counter})${ext}`)
+          counter++
+        } catch {
+          break // File doesn't exist, safe to use
+        }
+      }
+
+      await fs.copyFile(sourcePath, destPath)
+      return destPath
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        throw this.createError('NOT_FOUND', 'File not found', sourcePath)
+      }
+      if (error.code === 'EACCES') {
+        throw this.createError('PERMISSION_DENIED', 'Permission denied', sourcePath)
+      }
+      if (error.code === 'INVALID_PATH') {
+        throw error
+      }
+      throw this.createError('IO_ERROR', error.message, sourcePath)
+    }
+  }
+
   async getFileInfo(filePath: string): Promise<FileInfo> {
     try {
       const validPath = this.validatePath(filePath)

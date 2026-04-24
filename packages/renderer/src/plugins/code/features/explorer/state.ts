@@ -97,8 +97,10 @@ export type Event =
   // Quick open events
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
-  // Move result from backend
+  // Move/copy results from backend
   | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
+  | { type: 'explorer.FILES_COPIED'; data: { targetDir: string; copiedPaths: string[] } }
+  | { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
   // Reveal in tree
   | { type: 'explorer.REVEAL_IN_TREE'; path: string }
   | { type: 'explorer.CLEAR_REVEAL' }
@@ -366,6 +368,17 @@ export const explorerState = setup({
       sendToBackend('explorer.MOVE_FILES', { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir })
     },
 
+    copyFiles: ({ event }) => {
+      const ev = event as { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
+      sendToBackend('explorer.COPY_FILES', { sourcePaths: ev.sourcePaths, targetDir: ev.targetDir })
+    },
+
+    handleFilesCopied: assign(({ event }) => {
+      const ev = event as { type: 'explorer.FILES_COPIED'; data: { targetDir: string; copiedPaths: string[] } }
+      sendToBackend('explorer.LIST_FILES', { path: ev.data.targetDir })
+      return { selectedPaths: [] as string[] }
+    }),
+
     handleFilesMoved: assign(({ event, context }) => {
       const ev = event as { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
 
@@ -567,6 +580,12 @@ export const explorerState = setup({
         },
         'explorer.FILES_MOVED': {
           actions: 'handleFilesMoved'
+        },
+        'explorer.COPY_FILES': {
+          actions: 'copyFiles'
+        },
+        'explorer.FILES_COPIED': {
+          actions: 'handleFilesCopied'
         },
         'explorer.FILE_DELETED': {
           actions: 'handleFileDeleted'

@@ -40,6 +40,7 @@ export const IncomingExplorerEvents = [
   busEvent('explorer.CLOSE_FILE', { path: z.string() }),
   busEvent('explorer.QUICK_OPEN_SEARCH', { baseDirectory: z.string() }),
   busEvent('explorer.MOVE_FILES', { sourcePaths: z.array(z.string()), targetDir: z.string() }),
+  busEvent('explorer.COPY_FILES', { sourcePaths: z.array(z.string()), targetDir: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -56,6 +57,7 @@ export type OutgoingExplorerEvents =
   | { type: 'explorer.FILE_CHANGED_EXTERNALLY'; data: FileChangeInfo }
   | { type: 'explorer.QUICK_OPEN_RESULTS'; data: QuickOpenResult[] }
   | { type: 'explorer.FILES_MOVED'; data: { sourcePaths: string[]; targetDir: string; movedPaths: string[] } }
+  | { type: 'explorer.FILES_COPIED'; data: { targetDir: string; copiedPaths: string[] } }
 
 export interface Context {
   baseDirectory: string | null
@@ -76,6 +78,7 @@ export type Event =
   | { type: 'explorer.UPDATE_BASE_DIRECTORY'; path: string; gitWatcher: GitWatcherService | null }
   | { type: 'explorer.CLOSE_FILE'; path: string }
   | { type: 'explorer.MOVE_FILES'; sourcePaths: string[]; targetDir: string }
+  | { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
   | { type: 'explorer.FILE_CHANGE_CALLBACK'; change: FileChangeInfo }
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'CODE_CONNECTED' };
@@ -426,6 +429,36 @@ export const explorerSystem = setup({
       }
     },
 
+    copyFiles: async ({ event, context }) => {
+      const ev = event as { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
+
+      if (!requireRepository(context, ev.targetDir)) return
+
+      try {
+        const copiedPaths: string[] = []
+        for (const sourcePath of ev.sourcePaths) {
+          const destPath = await context.repository.copyFileInto(sourcePath, ev.targetDir)
+          copiedPaths.push(destPath)
+        }
+
+        const wrapped = emit(pluginId, {
+          type: 'explorer.FILES_COPIED',
+          data: { targetDir: ev.targetDir, copiedPaths },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'explorer.CODE_ERROR',
+          data: {
+            code: error.code || 'IO_ERROR',
+            message: error.message,
+            path: error.path,
+          },
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
     listBaseFiles: async ({ context }) => {
       if (!requireRepository(context, context.baseDirectory || '')) return
 
@@ -497,6 +530,9 @@ export const explorerSystem = setup({
         },
         'explorer.MOVE_FILES': {
           actions: 'moveFiles'
+        },
+        'explorer.COPY_FILES': {
+          actions: 'copyFiles'
         },
         'explorer.UPDATE_BASE_DIRECTORY': {
           actions: ['updateBaseDirectory', 'setupFileWatcher', 'listBaseFiles']

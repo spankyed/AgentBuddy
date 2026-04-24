@@ -153,6 +153,7 @@ const { selectItem, clearSelection, toggleSelectAll } = useExplorerSelection({
 // Drag-drop composable
 const {
   isDragging,
+  isExternalFileDrag,
   handleDragStart,
   handleDragOver,
   handleDragLeave,
@@ -165,6 +166,9 @@ const {
   selectedPaths,
   onMove: (sourcePaths, targetDir) => {
     explorerActor?.send({ type: 'explorer.MOVE_ITEMS', sourcePaths, targetDir })
+  },
+  onCopyFiles: (sourcePaths, targetDir) => {
+    explorerActor?.send({ type: 'explorer.COPY_FILES', sourcePaths, targetDir })
   }
 })
 
@@ -328,13 +332,34 @@ const handleEmptySpaceClick = (e: MouseEvent) => {
 
 const onEmptySpaceDragOver = (e: DragEvent) => {
   if (isDragging.value) {
-    e.dataTransfer!.dropEffect = 'move'
+    e.dataTransfer!.dropEffect = isExternalFileDrag.value ? 'copy' : 'move'
+  } else if (e.dataTransfer?.types.includes('Files')) {
+    // Accept external file drags even when not yet tracked as dragging
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
   }
 }
 
 const onEmptySpaceDrop = (e: DragEvent) => {
   const target = e.target as HTMLElement
   if (!target.closest('[data-explorer-item]') && baseDirectory.value) {
+    // For external file drags that weren't tracked via tree item dragover
+    if (!isDragging.value && e.dataTransfer?.types.includes('Files')) {
+      e.preventDefault()
+      e.stopPropagation()
+      const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+      if (getPath && e.dataTransfer.files.length > 0) {
+        const paths: string[] = []
+        for (const file of e.dataTransfer.files) {
+          const filePath: string = getPath(file)
+          if (filePath) paths.push(filePath)
+        }
+        if (paths.length > 0) {
+          explorerActor?.send({ type: 'explorer.COPY_FILES', sourcePaths: paths, targetDir: baseDirectory.value })
+        }
+      }
+      return
+    }
     handleDropOnEmptySpace(e, baseDirectory.value)
   }
 }
