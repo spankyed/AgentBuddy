@@ -197,48 +197,6 @@ export function persistClaudeState(
   });
 }
 
-// ─── Readers ─────────────────────────────────────────────────────────────────
-
-/** Read the current chatState from the thread context. */
-export function readSessionChatState(
-  services: Services,
-  threadId: EntityId,
-): ChatState | undefined {
-  return getClaudeState(services, threadId as string)?.chatState;
-}
-
-/**
- * Read the permission mode from thread context. Returns the user's current
- * choice from the right-panel segmented control, or `'acceptEdits'` if none
- * is stored yet.
- */
-export function readSessionPermissionMode(
-  services: Services,
-  threadId: EntityId,
-): PermissionMode {
-  return getClaudeState(services, threadId as string)?.permissionMode ?? 'acceptEdits';
-}
-
-/** Read whether worktree mode is enabled for this thread's session. */
-export function readWorktreeMode(
-  services: Services,
-  threadId: EntityId,
-): boolean {
-  return getClaudeState(services, threadId as string)?.useWorktree ?? false;
-}
-
-/**
- * Read the cwd from thread context. Used by `--rewind-files` and JSONL
- * backfill to locate the session's transcript on disk. Returns undefined if
- * no state exists yet — the caller should fall back to `process.cwd()`.
- */
-export function readSessionCwd(
-  services: Services,
-  threadId: EntityId,
-): string | undefined {
-  return getClaudeState(services, threadId as string)?.cwd || undefined;
-}
-
 // ─── Writers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -264,26 +222,16 @@ export function updateClaudeState(
 }
 
 /**
- * Ensure a claude-session artifact exists for the thread (marker only).
- * On first creation, seeds thread context with `initial` fields.
- * On subsequent calls, returns the existing artifact id.
+ * Ensure a claude-session artifact exists for the thread (type marker only).
+ * The artifact has empty content — all session data lives on thread context.
+ * This marker makes the artifact list show a session card in the UI.
  */
-export function ensureSessionArtifact(
-  services: Services,
-  threadId: EntityId,
-  initial: Partial<ClaudeCodeThreadState> = {},
-): EntityId {
-  const { artifactId, created } = services.artifact.findOrCreateByType(
+export function ensureSessionMarker(services: Services, threadId: EntityId): EntityId {
+  const { artifactId } = services.artifact.findOrCreateByType(
     threadId,
     'claude-session',
     { title: 'Claude Code session', content: {} },
   );
-
-  // Seed thread context with initial values on first creation.
-  if (created && Object.keys(initial).length > 0) {
-    persistClaudeState(services, threadId as string, initial as any);
-  }
-
   return artifactId;
 }
 

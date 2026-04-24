@@ -9,7 +9,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, ensureSessionArtifact, updateChatState } from './_helpers/thread-context';
+import { persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 import { resolvePlanDraft, type PlanArtifactContent } from './_helpers/plan-artifact';
 
 export const meta: ActionMeta = {
@@ -74,10 +74,9 @@ export async function action(
     forkable: false,
   });
 
-  // 6. Set permission mode on new thread's session artifact
-  ensureSessionArtifact(services, newThreadId as EntityId, {
-    permissionMode: 'acceptEdits',
-  });
+  // 6. Set permission mode and create session marker on new thread
+  ensureSessionMarker(services, newThreadId as EntityId);
+  persistClaudeState(services, newThreadId as string, { permissionMode: 'acceptEdits' });
 
   // 7. Switch frontend to new thread and set edit phase
   services.chat.openThreadChatAndRefreshRecent(newThreadId);

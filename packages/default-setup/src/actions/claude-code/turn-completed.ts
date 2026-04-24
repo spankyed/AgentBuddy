@@ -11,7 +11,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getClaudeState, updateClaudeState, updateChatState, readSessionChatState } from './_helpers/thread-context';
+import { getClaudeState, updateClaudeState, updateChatState } from './_helpers/thread-context';
 import { parseUnifiedDiff } from './_helpers/parse-diff';
 
 export const meta: ActionMeta = {
@@ -84,7 +84,7 @@ export async function action(
   if (!running) {
     // Don't overwrite a persistent 'error' state (e.g. session-not-found) —
     // markSessionBroken already set it and the user needs to see it.
-    const currentChatState = readSessionChatState(services, threadId as EntityId);
+    const currentChatState = getClaudeState(services, threadId)?.chatState;
     if (currentChatState !== 'error') {
       // If chatState is already 'idle', the turn was paused/cancelled by the
       // user (pause-turn sets 'idle' before this action fires). Skip the

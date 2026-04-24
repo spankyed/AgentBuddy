@@ -6,7 +6,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { persistClaudeState, ensureSessionArtifact, updateChatState } from './_helpers/thread-context';
+import { persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Session Ops',
@@ -195,11 +195,11 @@ async function handleResume(
   const importedCount = importSessionMessages(services, targetThreadId, transcript);
 
   // Set up session state — persistClaudeState adds 'claude-code' tag
-  persistClaudeState(services, targetThreadId, { sessionId });
-  ensureSessionArtifact(services, targetThreadId as any, {
+  persistClaudeState(services, targetThreadId, {
     sessionId,
     cwd: (session as any).cwd || '',
   });
+  ensureSessionMarker(services, targetThreadId as any);
   updateChatState(services, targetThreadId as any, 'idle');
 
   // Build confirmation text
@@ -303,7 +303,7 @@ async function handleImport(
       importSessionMessages(services, newThreadId as string, transcript);
 
       // Write session state directly — no frontend events during bulk import.
-      // Using persistClaudeState + ensureSessionArtifact would emit THREAD_UPDATED
+      // Using persistClaudeState + ensureSessionMarker would emit THREAD_UPDATED
       // + ARTIFACT_ADDED per thread, causing an event storm that crashes the frontend.
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
       const now = Date.now();

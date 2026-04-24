@@ -124,9 +124,8 @@ export const IncomingThreadsEvents = [
     references: referencesSchema,
   }),
   // User toggled the permission mode on the claude-session artifact's
-  // segmented control. Mutates `content.permissionMode` on the session
-  // artifact in place; the next work-mode turn reads it via
-  // `readSessionPermissionMode` in chat.ts.
+  // segmented control. Persists to `thread.context.claudeCode.permissionMode`;
+  // the next work-mode turn reads it via `getClaudeState` in chat.ts.
   busEvent('UPDATE_CLAUDE_PERMISSION_MODE', {
     threadId: z.string(),
     mode: z.string(),

@@ -13,7 +13,7 @@ import { repository } from '@/repository';
  * Update a thread's chatState and notify the frontend.
  *
  * This is the canonical service-level write for chatState. The DSL helper
- * `updateChatState()` in session-artifact.ts handles the artifact side,
+ * `updateChatState()` in thread-context.ts handles the thread context side,
  * then delegates here for the thread write + emit.
  */
 export function updateChatState(

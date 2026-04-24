@@ -17,7 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId, ensureSessionArtifact, updateClaudeState, updateChatState, readSessionPermissionMode, readWorktreeMode, extractStaleSessionId, markSessionBroken, readSessionCwd } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId, ensureSessionMarker, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
 import { consumeStream } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -235,20 +235,15 @@ export async function action(
   const writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
   const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250, phase });
 
-  // Upsert the thread's claude-session artifact.
-  ensureSessionArtifact(services, threadId, {
-    chatState: 'working',
-    startedAt: Date.now(),
-  });
-  // Clear any prior session error (ensureSessionArtifact only applies
-  // initial content on creation, not on existing artifacts).
-  updateClaudeState(services, threadId, { sessionError: undefined });
+  // Upsert the thread's claude-session artifact (type marker only).
+  ensureSessionMarker(services, threadId);
+  updateClaudeState(services, threadId, { chatState: 'working', startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined });
   updateChatState(services, threadId, 'working');
 
   // Read the user's current permission-mode and worktree choices.
-  const activePermissionMode = readSessionPermissionMode(services, threadId);
+  const activePermissionMode = prior?.permissionMode ?? 'acceptEdits';
   const effectivePermissionMode = phase === 'plan' ? 'plan' : activePermissionMode;
-  const useWorktree = readWorktreeMode(services, threadId);
+  const useWorktree = prior?.useWorktree ?? false;
   log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
 
   // Phase-aware system-prompt nudging (plan/edit/review).
@@ -298,7 +293,7 @@ export async function action(
     });
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
-    sessionCwd = resumeSessionId ? readSessionCwd(services, threadId) : undefined;
+    sessionCwd = resumeSessionId ? prior?.cwd : undefined;
     if (resumeSessionId && !sessionCwd) {
       log.warn('[resume] sessionId exists but sessionCwd is missing — CLI will use process.cwd()', {
         threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,

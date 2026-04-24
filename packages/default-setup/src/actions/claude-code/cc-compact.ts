@@ -3,7 +3,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getClaudeState, updateChatState, readSessionCwd } from './_helpers/thread-context';
+import { getClaudeState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Compact',
@@ -48,12 +48,13 @@ async function handleCompact(
 ): Promise<{ text: string; data?: any; skipMessage?: boolean }> {
   if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
-  const sessionId = getClaudeState(services, threadId)?.sessionId;
+  const ccState = getClaudeState(services, threadId);
+  const sessionId = ccState?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
   updateChatState(services, threadId as any, 'working');
   try {
-    const sessionCwd = readSessionCwd(services, threadId as any);
+    const sessionCwd = ccState?.cwd;
     const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
     const handle = await services.cli.claudeCode.query({
       ...(sessionCwd && { cwd: sessionCwd }),
