@@ -1,5 +1,56 @@
 -e # Changelog
 
+## v0.2.9 (2026-04-24)
+
+### Features
+- threads): add pin and unpin thread actions to canvas, list, and chat views
+- threads): replace custom input fields with auto-resizing textareas
+- threads): prevent deletion of pinned threads
+- threads): persist error state to ChatState type
+- threads): persist success chat state until thread is revisited
+- threads): persist success chat state until thread is revisited
+- notes): support explicit displayOrder on note creation
+- chat): make statusline clickable to switch to project directory
+- threads): add "New Thread in Project" context menu for project-scoped thread creation
+- pull-request): rename Draft button to Create Draft
+- chat): add skipOption support to choice blocks
+- claude-code): track previous session IDs in thread context
+- threads): display Claude Code working directory as status line in chat input
+-  add Discord community link to onboarding and help tab
+- assets): add discord banner image
+
+### Fixes
+- tiptap): auto-scroll selected item into view in reference suggestion popup
+- editor): show whitespace-only changes in Monaco diff viewer
+- editor): fall back to diff editor instance in getEditor expose
+- claude-code): include prior cwd when determining working directory availability
+- code): resolve PR merge status stuck on "checking" after push
+- onboarding): set chat state to idle when finishing onboarding
+- notes): delete selected task instead of entire tasklist from breadcrumb menu
+- claude-code): persist new sessionId after /compact to prevent stale session resume
+- cli): add ~/.local/bin/claude to fallback detection paths
+
+### Refactors
+- threads): simplify context menu by removing redundant new thread option
+- onboarding): generalize flashSuccess into configurable flashState helper
+- onboarding): use flashSuccess helper to update chat state to success after onboarding
+- threads): migrate permission mode and worktree updates to brain events
+- claude-code): simplify thread context by removing redundant reader functions
+
+### Other
+- Merge pull request #133 from spankyed/AS/migrate-session-context-to-thread
+- indentation
+- efactor(threads): migrate permission mode and worktree updates to brain events
+- Move Claude Code session data from artifacts to thread context
+- Move /context background query after turn cleanup to avoid session race
+- Hide manager mode from mode selector and default onboarding to work mode
+- Make /context query non-blocking to eliminate turn completion delay
+- Fix session JSONL pollution: move /context query to separate non-persisted process
+- Centralize external URLs into core constants file
+- Add min-width to main left area to prevent layout collapse
+
+-e # Changelog
+
 ## v0.2.8 (2026-04-22)
 
 ### Features
