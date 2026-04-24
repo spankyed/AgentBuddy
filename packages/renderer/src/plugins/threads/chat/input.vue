@@ -284,12 +284,11 @@ function updateStatusLinePos() {
   const el = inputCardRef.value
   if (!el || !props.statusLine) { statusLinePos.value = null; return }
   const r = el.getBoundingClientRect()
-  const rightMargin = 16
   statusLinePos.value = {
     position: 'fixed',
     top: `${r.top - 10}px`,
-    right: `${rightMargin}px`,
-    maxWidth: `${window.innerWidth - r.left - r.width * 0.4 - rightMargin}px`,
+    right: `${window.innerWidth - r.right - 16}px`,
+    maxWidth: `${r.width * 0.6 + 16}px`,
     zIndex: '40',
   }
 }
