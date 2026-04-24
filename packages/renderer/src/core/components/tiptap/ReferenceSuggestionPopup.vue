@@ -195,6 +195,13 @@ watch(isActive, (active) => {
   }
 })
 
+function scrollSelectedIntoView() {
+  nextTick(() => {
+    const el = popupEl.value?.querySelector('.is-selected') as HTMLElement | null
+    el?.scrollIntoView({ block: 'nearest' })
+  })
+}
+
 // Keyboard navigation
 function handleKeyDown(event: KeyboardEvent) {
   if (!isActive.value) return
@@ -207,12 +214,14 @@ function handleKeyDown(event: KeyboardEvent) {
       event.preventDefault()
       event.stopPropagation()
       selectedIndex.value = Math.min(selectedIndex.value + 1, maxIndex)
+      scrollSelectedIntoView()
       break
 
     case 'ArrowUp':
       event.preventDefault()
       event.stopPropagation()
       selectedIndex.value = Math.max(selectedIndex.value - 1, 0)
+      scrollSelectedIntoView()
       break
 
     case 'Enter':
