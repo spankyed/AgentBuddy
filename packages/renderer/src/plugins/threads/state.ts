@@ -158,6 +158,8 @@ type UIEvent =
   | { type: 'SEND_MESSAGE'; text: string; references?: MessageReferences }
   | { type: 'SEND_COMMAND'; command: string; text: string; references?: MessageReferences }
   | { type: 'CLEAR_THREAD' }
+  | { type: 'NEW_THREAD_IN_PROJECT'; directory: string }
+  | { type: 'NEW_THREAD_NO_PROJECT' }
   | { type: 'CREATE_CHILD_THREAD'; parentThreadId: string }
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'CLEAR_CHAT_STATE_OVERRIDE'; threadId: string }
@@ -245,6 +247,8 @@ interface ThreadsContext {
   hasRequiredApiKeys: boolean;
   commands: CommandItem[];
   quickPromptCursor: { x: number; y: number } | null;
+  pendingThreadCwd?: string;
+  pendingForceDirectoryPicker?: boolean;
 }
 
 // ---- State machine ----
@@ -648,7 +652,7 @@ const threadsState = setup({
     updateApiKeyStatus: assign(({ event }) => ({
       hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
     })),
-    sendMessage: ({ context, event }) => {
+    sendMessage: enqueueActions(({ enqueue, context, event }) => {
       const { text, references } = typeOf('SEND_MESSAGE', event);
       trpc.bus.send.mutate({
         systemId: id,
@@ -658,8 +662,13 @@ const threadsState = setup({
         phase: context.phase,
         threadId: context.currentThread?.id,
         ...(references && { references }),
+        ...(context.pendingThreadCwd && { cwdOverride: context.pendingThreadCwd }),
+        ...(context.pendingForceDirectoryPicker && { forceDirectoryPicker: true }),
       });
-    },
+      if (context.pendingThreadCwd || context.pendingForceDirectoryPicker) {
+        enqueue.assign({ pendingThreadCwd: undefined, pendingForceDirectoryPicker: undefined });
+      }
+    }),
     sendCommand: ({ context, event }) => {
       const { command, text, references } = typeOf('SEND_COMMAND', event);
       trpc.bus.send.mutate({
@@ -682,6 +691,35 @@ const threadsState = setup({
         mode,
         phase: phase ?? '',
         phaseByMode: { ...context.phaseByMode, [mode]: phase },
+        pendingThreadCwd: undefined,
+        pendingForceDirectoryPicker: undefined,
+      };
+    }),
+    newThreadInProject: assign(({ context, event }) => {
+      const { directory } = typeOf('NEW_THREAD_IN_PROJECT', event);
+      const { mode, phase } = resolveDefaultModePhase(
+        context.chatSettings, context.modes, context.mode, context.phase,
+      );
+      return {
+        currentThread: { ...defaultChatThread, messages: [] },
+        mode,
+        phase: phase ?? '',
+        phaseByMode: { ...context.phaseByMode, [mode]: phase },
+        pendingThreadCwd: directory,
+        pendingForceDirectoryPicker: undefined,
+      };
+    }),
+    newThreadNoProject: assign(({ context }) => {
+      const { mode, phase } = resolveDefaultModePhase(
+        context.chatSettings, context.modes, context.mode, context.phase,
+      );
+      return {
+        currentThread: { ...defaultChatThread, messages: [] },
+        mode,
+        phase: phase ?? '',
+        phaseByMode: { ...context.phaseByMode, [mode]: phase },
+        pendingThreadCwd: undefined,
+        pendingForceDirectoryPicker: true,
       };
     }),
     handleTokenStream: assign(({ context, event }) => {
@@ -1286,6 +1324,8 @@ const threadsState = setup({
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },
     CLEAR_THREAD: { actions: 'clearThread' },
+    NEW_THREAD_IN_PROJECT: { actions: 'newThreadInProject' },
+    NEW_THREAD_NO_PROJECT: { actions: 'newThreadNoProject' },
     CREATE_CHILD_THREAD: { actions: 'createChildThread' },
     FORK_THREAD: { actions: 'forkThread' },
     REVERT_THREAD: { actions: 'revertThread' },

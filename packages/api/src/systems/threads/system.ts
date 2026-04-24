@@ -88,6 +88,8 @@ export const IncomingThreadsEvents = [
     phase: z.string().optional(),
     threadId: z.string().optional(),
     references: referencesSchema,
+    cwdOverride: z.string().optional(),
+    forceDirectoryPicker: z.boolean().optional(),
   }),
   busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
   busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
@@ -492,7 +494,7 @@ export const threadsSystem = setup({
       }
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_MSG', event);
+      const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = typeOf('USER_MSG', event);
 
       const sanitizedRefs = references ? {
         ...references,
@@ -576,6 +578,8 @@ export const threadsSystem = setup({
           threadId,
           messageId: messageResult.id,
           ...(sanitizedRefs && { references: sanitizedRefs }),
+          ...(cwdOverride && { cwdOverride }),
+          ...(forceDirectoryPicker && { forceDirectoryPicker }),
         },
       });
     },

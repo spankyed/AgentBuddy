@@ -134,23 +134,69 @@
 
             <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
 
-            <div class="px-3 py-1 text-xs font-medium text-neutral-500 uppercase">Create as child of</div>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none data-[state=open]:bg-neutral-800"
+              >
+                <FolderOpen class="w-4 h-4" />
+                <span class="flex-1">New Thread in Project</span>
+                <ChevronRight class="w-3 h-3 text-neutral-500" />
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent
+                class="min-w-[200px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+                :side-offset="4"
+              >
+                <ContextMenuItem
+                  @select="$emit('new-thread-no-project')"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 focus:bg-neutral-800 focus:outline-none"
+                >
+                  No project (ask me)
+                </ContextMenuItem>
+                <ContextMenuSeparator v-if="projects.length > 0" class="h-[1px] bg-neutral-700 my-1" />
+                <ContextMenuItem
+                  v-for="project in projects"
+                  :key="project.name"
+                  @select="$emit('new-thread-in-project', project.directories[0])"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: project.color }" />
+                  <span class="truncate">{{ project.name }}</span>
+                </ContextMenuItem>
+                <div v-if="projects.length === 0" class="px-3 py-2 text-xs text-neutral-500 italic">
+                  No projects configured
+                </div>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
 
-            <ContextMenuItem
-              v-for="projectThread in recentThreads"
-              :key="projectThread.id"
-              @select="$emit('new-thread-as-child', projectThread.id)"
-              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-            >
-              <div class="flex items-center gap-2 flex-1 min-w-0">
-                <span class="text-xs font-medium text-neutral-500">{{ projectThread.shortCode }}</span>
-                <span class="truncate">{{ projectThread.topic || 'Untitled' }}</span>
-              </div>
-            </ContextMenuItem>
+            <ContextMenuSeparator class="h-[1px] bg-neutral-700 my-1" />
 
-            <div v-if="recentThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
-              No project threads available
-            </div>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger
+                class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none data-[state=open]:bg-neutral-800"
+              >
+                <span class="flex-1">Create as Child of</span>
+                <ChevronRight class="w-3 h-3 text-neutral-500" />
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent
+                class="min-w-[200px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50"
+                :side-offset="4"
+              >
+                <ContextMenuItem
+                  v-for="projectThread in recentThreads"
+                  :key="projectThread.id"
+                  @select="$emit('new-thread-as-child', projectThread.id)"
+                  class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                >
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="text-xs font-medium text-neutral-500">{{ projectThread.shortCode }}</span>
+                    <span class="truncate">{{ projectThread.topic || 'Untitled' }}</span>
+                  </div>
+                </ContextMenuItem>
+                <div v-if="recentThreads.length === 0" class="px-3 py-2 text-sm text-neutral-500 italic">
+                  No threads available
+                </div>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
           </ContextMenuContent>
         </ContextMenuPortal>
       </ContextMenuRoot>
@@ -160,7 +206,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Archive, History, ChevronUp, Plus, PanelLeft, FileText, Trash2 } from 'lucide-vue-next'
+import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Trash2, FolderOpen } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
@@ -170,6 +216,9 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from 'reka-ui'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -230,7 +279,15 @@ const emit = defineEmits<{
   (e: 'view-artifacts', threadId: string): void
   (e: 'new-thread'): void
   (e: 'new-thread-as-child', parentThreadId: string): void
+  (e: 'new-thread-in-project', directory: string): void
+  (e: 'new-thread-no-project'): void
 }>()
+
+// Read projects from settings for the "New Thread in Project" submenu
+const settingsActor = applicationState.system.get('settings')
+const projects = useSelector(settingsActor, (state: any) =>
+  (state.context.settings?.general?.projects || []) as Array<{ name: string; directories: string[]; color: string }>
+)
 
 const handleArchiveThread = (id: string | undefined) => {
   if (!id) return

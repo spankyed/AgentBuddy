@@ -177,9 +177,12 @@ export async function action(
 
   // ─── CWD check — prompt for directory if none configured ────────────
   // Runs before the placeholder message so the empty bubble never appears.
+  const cwdOverride = params.cwdOverride as string | undefined;
+  const forceDirectoryPicker = params.forceDirectoryPicker as boolean | undefined;
+
   const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened;
-  if (!hasCwd) {
+  if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
     const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
     const blocks: any[] = [
       { type: 'prompt', props: { content: 'Select a project directory' } },
@@ -293,7 +296,8 @@ export async function action(
     });
     // When resuming, use the CWD where the session was originally created so
     // the CLI can locate the session JSONL in the correct project bucket.
-    sessionCwd = resumeSessionId ? prior?.cwd : undefined;
+    // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
+    sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || undefined);
     if (resumeSessionId && !sessionCwd) {
       log.warn('[resume] sessionId exists but sessionCwd is missing — CLI will use process.cwd()', {
         threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,

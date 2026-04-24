@@ -142,6 +142,10 @@ export interface ClaudeCodeThreadState {
   revertTo?: { cliUuid: string };
   /** Additional working directories added via /cc-add-dir. Passed as --add-dir on every query. */
   additionalDirs?: string[];
+  /** Pre-set CWD from "new thread in project" menu. Consumed on first message, then cleared. */
+  cwdOverride?: string;
+  /** When true, force the directory picker on first message regardless of global defaultBaseDirectory. */
+  forceDirectoryPicker?: boolean;
 }
 
 export const CLAUDE_CODE_TAG = 'claude-code';

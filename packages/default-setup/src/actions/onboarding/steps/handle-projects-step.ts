@@ -32,6 +32,12 @@ export async function action(
 
     services.repository.settingsCommands.updateSettings('general', 'projects', [], projectEntries);
 
+    // Broadcast to frontend so the settings plugin picks up the new projects immediately
+    services.emitter.sendToPlugin('settings', {
+      type: 'SETTINGS_UPDATED',
+      data: services.repository.settingsQueries.getSettings(),
+    });
+
     services.chat.sendBlockMessage({
       threadId,
       text: `Added ${projectEntries.length} project${projectEntries.length === 1 ? '' : 's'} to your settings.`,
