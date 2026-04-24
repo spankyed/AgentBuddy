@@ -257,6 +257,11 @@ const {
   onReorder: (noteId, newParentId, newIndex) => {
     actor.send({ type: 'NOTE.REORDER', noteId, newParentId, newIndex })
   },
+  onFileDrop: (files, parentId, index) => {
+    for (const [i, file] of files.entries()) {
+      actor.send({ type: 'NOTE.CREATE', title: file.title, content: file.content, parentId: parentId ?? undefined, displayOrder: index + i })
+    }
+  },
 })
 
 const visibleNodeIds = computed(() => {
@@ -368,7 +373,14 @@ function handleOutsideClick(e: MouseEvent) {
 
 function handleRootDragOver(e: DragEvent) {
   cancelDragLeave()
-  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  if (e.dataTransfer) {
+    // Accept external file drags at root level too
+    if (e.dataTransfer.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy'
+    } else {
+      e.dataTransfer.dropEffect = 'move'
+    }
+  }
 }
 
 function handleRootDrop(e: DragEvent) {

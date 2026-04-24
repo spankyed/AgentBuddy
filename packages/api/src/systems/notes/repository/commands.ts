@@ -77,6 +77,21 @@ export const noteCommands = {
         }).length;
         displayOrder = rootCount;
       }
+    } else {
+      // Explicit displayOrder: shift existing siblings at/after this index up by 1
+      const siblingIds = input.parentId
+        ? qx(input.parentId as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids()
+        : qx(EARS.Entity.Note).ids().filter(nid => {
+            const parents = qx(nid as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+            return parents.length === 0;
+          });
+
+      for (const sid of siblingIds) {
+        const sib = findById<NoteEntity>(sid as EARS.EntityId);
+        if (sib && sib.displayOrder >= displayOrder) {
+          updateEntity(sib.id, { displayOrder: sib.displayOrder + 1 });
+        }
+      }
     }
 
     const note = createEntityWithDefaults<NoteEntity>(

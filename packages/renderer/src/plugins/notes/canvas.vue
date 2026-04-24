@@ -1,5 +1,20 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div
+    class="flex flex-col h-full relative"
+    @dragenter="handleDragEnter"
+    @dragleave="handleDragLeave"
+    @dragover.prevent
+    @drop.capture="handleFileDrop"
+  >
+    <!-- Drop overlay -->
+    <div
+      v-if="isDraggingFile"
+      class="absolute inset-0 z-50 flex items-center justify-center bg-blue-500/10 border-2 border-dashed border-blue-500/50 pointer-events-none"
+    >
+      <div class="px-6 py-3 text-sm font-medium rounded-lg bg-neutral-800/90 text-blue-400">
+        Drop file to create note
+      </div>
+    </div>
     <!-- Welcome State -->
     <div v-if="state.hasTag('welcome')" class="flex flex-col h-full overflow-y-auto">
       <!-- Empty state: no notes at all -->
@@ -479,6 +494,57 @@ function handleSelectNote(noteId: string) {
 
 function handleCreateNote(parentId?: string) {
   actor.send({ type: 'NOTE.CREATE', parentId })
+}
+
+// File drag-and-drop
+const ALLOWED_EXTENSIONS = ['.md', '.txt']
+const isDraggingFile = ref(false)
+let dragCounter = 0
+
+function hasValidFiles(dt: DataTransfer | null): boolean {
+  if (!dt) return false
+  // Only check for Files type — MIME types are unreliable during dragenter/dragover on macOS.
+  // Extension filtering happens at drop time in handleFileDrop.
+  return dt.types.includes('Files')
+}
+
+function handleDragEnter(e: DragEvent) {
+  e.preventDefault()
+  dragCounter++
+  if (dragCounter === 1 && hasValidFiles(e.dataTransfer)) {
+    isDraggingFile.value = true
+  }
+}
+
+function handleDragLeave() {
+  dragCounter--
+  if (dragCounter <= 0) {
+    dragCounter = 0
+    isDraggingFile.value = false
+  }
+}
+
+function handleFileDrop(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  dragCounter = 0
+  isDraggingFile.value = false
+
+  const files = event.dataTransfer?.files
+  if (!files) return
+
+  for (const file of Array.from(files)) {
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(ext)) continue
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = reader.result as string
+      const title = file.name.replace(/\.(md|txt)$/i, '')
+      actor.send({ type: 'NOTE.CREATE', title, content })
+    }
+    reader.readAsText(file)
+  }
 }
 
 const isSyncingSubDocumentLinks = ref(false)

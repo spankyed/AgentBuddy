@@ -45,7 +45,7 @@ type SystemEvent = OutgoingNotesEvents
 type UIEvent =
   | { type: 'NOTE.SELECT'; noteId: string }
   | { type: 'NOTE.OPEN'; noteId: string }
-  | { type: 'NOTE.CREATE'; parentId?: string }
+  | { type: 'NOTE.CREATE'; parentId?: string; title?: string; content?: string; displayOrder?: number }
   | { type: 'NOTE.CREATE_TASKLIST'; parentId?: string }
   | { type: 'NOTE.DELETE'; noteId: string }
   | { type: 'NOTE.SOFT_DELETE'; noteId: string }
@@ -197,8 +197,10 @@ const notesState = setup({
       trpc.bus.send.mutate({
         systemId: id,
         type: 'CREATE_NOTE',
-        title: 'Untitled',
+        title: ev.title ?? 'Untitled',
+        content: ev.content,
         parentId: ev.parentId,
+        displayOrder: ev.displayOrder,
       })
     },
 

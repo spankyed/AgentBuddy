@@ -8,12 +8,18 @@ interface DropTarget {
   position: DropPosition
 }
 
+interface FileDropData {
+  title: string
+  content: string
+}
+
 interface NoteTreeDragDropOptions {
   notes: Ref<NoteDTO[]>
   selectedNoteIds: Ref<string[]>
   currentNoteId: Ref<string | null>
   onMove: (noteIds: string[], newParentId: string | null) => void
   onReorder?: (noteId: string, newParentId: string | null, newIndex: number) => void
+  onFileDrop?: (files: FileDropData[], parentId: string | null, index: number) => void
   expandedNodeIds?: Ref<string[]>
 }
 
@@ -23,12 +29,23 @@ export function useNoteTreeDragDrop({
   currentNoteId,
   onMove,
   onReorder,
+  onFileDrop,
   expandedNodeIds,
 }: NoteTreeDragDropOptions) {
   const draggedNoteIds = ref<string[]>([])
   const dropTarget = ref<DropTarget | null>(null)
   const isDragging = ref(false)
+  const isExternalFileDrag = ref(false)
   let dragLeaveTimer: ReturnType<typeof setTimeout> | null = null
+
+  const ALLOWED_EXTENSIONS = ['.md', '.txt']
+
+  function isExternalFileEvent(dt: DataTransfer | null): boolean {
+    if (!dt || !dt.types.includes('Files')) return false
+    // If we initiated an internal drag, ignore Files type
+    if (draggedNoteIds.value.length > 0) return false
+    return true
+  }
 
   function getDraggedItems(noteId: string): string[] {
     const effective = new Set(selectedNoteIds.value)
@@ -148,6 +165,24 @@ export function useNoteTreeDragDrop({
     }
   }
 
+  function computeDropPosition(e: DragEvent, noteId: string): DropPosition {
+    const target = e.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const relativeY = (e.clientY - rect.top) / rect.height
+    const currentPosition = dropTarget.value?.noteId === noteId ? dropTarget.value.position : null
+
+    if (isExpandedWithChildren(noteId)) {
+      if (currentPosition === 'before') return relativeY < 0.60 ? 'before' : 'on'
+      if (currentPosition === 'on') return relativeY < 0.40 ? 'before' : 'on'
+      return relativeY < 0.50 ? 'before' : 'on'
+    }
+
+    if (currentPosition === 'before') return relativeY < 0.40 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+    if (currentPosition === 'after') return relativeY > 0.60 ? 'after' : relativeY < 0.30 ? 'before' : 'on'
+    if (currentPosition === 'on') return relativeY < 0.20 ? 'before' : relativeY > 0.80 ? 'after' : 'on'
+    return relativeY < 0.30 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
+  }
+
   function handleDragOver(e: DragEvent, noteId: string) {
     e.preventDefault()
     if (!e.dataTransfer) return
@@ -158,40 +193,27 @@ export function useNoteTreeDragDrop({
       dragLeaveTimer = null
     }
 
-    const target = e.currentTarget as HTMLElement
-    const rect = target.getBoundingClientRect()
-    const relativeY = (e.clientY - rect.top) / rect.height
+    const externalFile = isExternalFileEvent(e.dataTransfer)
 
-    // Hysteresis: use biased thresholds based on current position to prevent flickering
-    const currentPosition = dropTarget.value?.noteId === noteId ? dropTarget.value.position : null
-
-    let position: DropPosition
-    if (isExpandedWithChildren(noteId)) {
-      // 2-zone: no 'after' for expanded parents (children are rendered below)
-      if (currentPosition === 'before') {
-        position = relativeY < 0.60 ? 'before' : 'on'
-      } else if (currentPosition === 'on') {
-        position = relativeY < 0.40 ? 'before' : 'on'
-      } else {
-        position = relativeY < 0.50 ? 'before' : 'on'
-      }
-    } else {
-      // Original 3-zone logic (unchanged)
-      if (currentPosition === 'before') {
-        position = relativeY < 0.40 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
-      } else if (currentPosition === 'after') {
-        position = relativeY > 0.60 ? 'after' : relativeY < 0.30 ? 'before' : 'on'
-      } else if (currentPosition === 'on') {
-        position = relativeY < 0.20 ? 'before' : relativeY > 0.80 ? 'after' : 'on'
-      } else {
-        position = relativeY < 0.30 ? 'before' : relativeY > 0.70 ? 'after' : 'on'
-      }
+    // For external file drags, compute position and show indicators without validation
+    if (externalFile) {
+      isExternalFileDrag.value = true
+      isDragging.value = true
+      const position = computeDropPosition(e, noteId)
+      if (dropTarget.value?.noteId === noteId && dropTarget.value?.position === position) return
+      e.dataTransfer.dropEffect = 'copy'
+      dropTarget.value = { noteId, position }
+      return
     }
+
+    const position = computeDropPosition(e, noteId)
 
     if (!isValidDrop(noteId, position)) {
       // Try falling back to 'on' if before/after isn't valid
       if (position !== 'on' && isValidDrop(noteId, 'on')) {
-        position = 'on'
+        dropTarget.value = { noteId, position: 'on' }
+        e.dataTransfer.dropEffect = 'move'
+        return
       } else {
         e.dataTransfer.dropEffect = 'none'
         dropTarget.value = null
@@ -231,9 +253,72 @@ export function useNoteTreeDragDrop({
     return newIndex
   }
 
+  function getDropLocation(targetId: string | null): { parentId: string | null; index: number } {
+    const currentDT = dropTarget.value
+    const isEmptySpaceDrop = !currentDT || currentDT.noteId !== targetId
+    const position = isEmptySpaceDrop ? 'on' : currentDT.position
+
+    if (!targetId || position === 'on') {
+      const parentId = (currentDT && currentDT.position === 'on') ? (targetId ?? currentDT.noteId ?? null) : null
+      const siblings = notes.value
+        .filter(n => (n.parentId ?? null) === (parentId ?? null))
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+      return { parentId, index: siblings.length }
+    }
+
+    // before/after
+    const targetNote = notes.value.find(n => n.id === targetId)
+    if (!targetNote) return { parentId: null, index: 0 }
+
+    const parentId = targetNote.parentId ?? null
+    const siblings = notes.value
+      .filter(n => (n.parentId ?? null) === (parentId ?? null))
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+    const targetIndex = siblings.findIndex(s => s.id === targetId)
+    const newIndex = position === 'before' ? targetIndex : targetIndex + 1
+    return { parentId, index: newIndex }
+  }
+
+  function handleFileDrop(e: DragEvent, targetId: string | null) {
+    const files = e.dataTransfer?.files
+    if (!files || !onFileDrop) return
+
+    const { parentId, index } = getDropLocation(targetId)
+
+    const validFiles: FileDropData[] = []
+    let pending = 0
+
+    for (const file of Array.from(files)) {
+      const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+      if (!ALLOWED_EXTENSIONS.includes(ext)) continue
+      pending++
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        validFiles.push({
+          title: file.name.replace(/\.(md|txt)$/i, ''),
+          content: reader.result as string,
+        })
+        pending--
+        if (pending === 0) {
+          onFileDrop(validFiles, parentId, index)
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+
   function handleDrop(e: DragEvent, targetId: string | null) {
     e.preventDefault()
     e.stopPropagation()
+
+    // Handle external file drops
+    if (isExternalFileDrag.value) {
+      handleFileDrop(e, targetId)
+      handleDragEnd()
+      return
+    }
+
     if (!draggedNoteIds.value.length) return
 
     const currentTarget = dropTarget.value
@@ -330,6 +415,7 @@ export function useNoteTreeDragDrop({
     draggedNoteIds.value = []
     dropTarget.value = null
     isDragging.value = false
+    isExternalFileDrag.value = false
   }
 
   function getItemClass(noteId: string): string {
@@ -337,8 +423,10 @@ export function useNoteTreeDragDrop({
     if (isDragging.value && draggedNoteIds.value.includes(noteId)) {
       classes.push('opacity-50')
     }
-    if (dropTarget.value?.noteId === noteId && dropTarget.value.position === 'on' && isValidDrop(noteId, 'on')) {
-      classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
+    if (dropTarget.value?.noteId === noteId && dropTarget.value.position === 'on') {
+      if (isExternalFileDrag.value || isValidDrop(noteId, 'on')) {
+        classes.push('!bg-blue-500/20 ring-2 ring-blue-500')
+      }
     }
     if (selectedNoteIds.value.includes(noteId) && noteId !== currentNoteId.value) {
       classes.push('!bg-neutral-700/20')
@@ -357,6 +445,7 @@ export function useNoteTreeDragDrop({
 
   return {
     isDragging,
+    isExternalFileDrag,
     draggedNoteIds,
     dropTarget,
     dropIndicator,

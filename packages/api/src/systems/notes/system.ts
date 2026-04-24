@@ -37,6 +37,7 @@ export const IncomingNoteEvents = [
     skipContentSync: z.boolean().optional(),
     noteType: z.enum(['document', 'tasklist', 'task']).optional(),
     completed: z.boolean().optional(),
+    displayOrder: z.number().optional(),
   }),
   busEvent('UPDATE_NOTE', {
     id: z.string(),
@@ -122,6 +123,7 @@ export const notesSystem = setup({
         parentId: ev.parentId,
         noteType: ev.noteType,
         completed: ev.completed,
+        displayOrder: ev.displayOrder,
       });
 
       const noteDTO = repository.noteQueries.byIdDTO(note.id as EARS.EntityId);
