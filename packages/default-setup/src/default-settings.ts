@@ -98,7 +98,7 @@ const settings: SettingsData = {
             name: 'Work',
             description: 'Implementation and coding mode',
             phases: [
-              { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown', color: '#84CC16' },
+              { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown', color: '#3B82F6' },
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
