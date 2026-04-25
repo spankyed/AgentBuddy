@@ -725,15 +725,10 @@ export const threadsSystem = setup({
     revertThread: ({ system, event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
 
-      repository.chatCommands.softDeleteMessagesAfter({
-        threadId: threadId as EARS.EntityId,
-        messageId: messageId as EARS.EntityId,
-      });
-
-      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
-
-      // Unified `thread.revert` brain event — the `kind` discriminator
-      // tells the claude-code flow which variant to run.
+      // Soft-deletion and UI refresh are deferred to the action handler
+      // (CC: Handle Revert / CC: Handle Rewind) so the active CLI turn is
+      // killed first — otherwise the stream consumer races against the
+      // soft-delete and writes to already-deleted messages.
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
@@ -749,16 +744,8 @@ export const threadsSystem = setup({
     summarizeThread: ({ system, event }) => {
       const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
 
-      // Matches Claude Code's native `direction: 'from'` — the pivot and
-      // everything after it disappear from the visible transcript, then a
-      // synthetic `/compact` turn runs against the truncated session.
-      repository.chatCommands.softDeleteMessagesAfter({
-        threadId: threadId as EARS.EntityId,
-        messageId: messageId as EARS.EntityId,
-      });
-
-      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
-
+      // Soft-deletion and UI refresh are deferred to CC: Handle Summarize
+      // so the active CLI turn is killed first (same rationale as revert).
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',

@@ -28,7 +28,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, getClaudeState, updateChatState } from './_helpers/thread-context';
+import { persistClaudeState, getClaudeState, killTurn, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Summarize',
@@ -54,28 +54,11 @@ export async function action(
   const log = services.logger;
   const state = getClaudeState(services, threadId);
 
-  // Kill the active CLI process if one is running. Must happen before we
-  // persist cleanup state so the eventual stream-completed handlers don't
-  // race us and re-set `isRunning: true`.
-  const handle = services.cli.claudeCode.getHandle(threadId);
-  if (handle) {
-    log.debug('killing active CLI handle on summarize', { threadId });
-    handle.kill();
-    services.cli.claudeCode.clearHandle(threadId);
-  }
-
-  // Always clear turn-level state, whether we proceed or bail. Leaving
-  // `isRunning: true` here would desync the busy indicator for the next
-  // turn.
-  const baseCleanup = {
-    isRunning: false,
-    pendingControlRequest: undefined,
-    queuedMessage: undefined,
-  } as const;
+  // ── 1. Pause: kill the active turn properly ────────────────────────
+  killTurn(services, threadId);
 
   // Bail #1: no live session to compact.
   if (!state?.sessionId) {
-    persistClaudeState(services, threadId, baseCleanup);
     updateChatState(services, threadId as EntityId, 'idle');
     services.chat.sendBlockMessage({
       threadId: threadId as EntityId,
@@ -87,9 +70,15 @@ export async function action(
     return { success: false, reason: 'no active session' };
   }
 
+  // ── 2. Soft-delete messages ────────────────────────────────────────
+  // Now safe: the CLI is dead and the stream consumer won't race us.
+  services.repository.chatCommands.softDeleteMessagesAfter({
+    threadId: threadId as EntityId,
+    messageId: messageId as EntityId,
+  });
+
   // Find the truncation anchor — the last surviving assistant message's
-  // `cliUuid`. The threads system already soft-deleted X and later, so
-  // this scans only the pre-pivot messages.
+  // `cliUuid`. After soft-deletion, this scans only the pre-pivot messages.
   const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
   const messages = (threadData?.messages ?? []) as Array<{
     id?: string;
@@ -104,8 +93,8 @@ export async function action(
   // Bail #2: no prior assistant turn to anchor at. `/compact` needs a
   // non-empty transcript to summarize.
   if (!cliUuid) {
-    persistClaudeState(services, threadId, baseCleanup);
     updateChatState(services, threadId as EntityId, 'idle');
+    services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
     services.chat.sendBlockMessage({
       threadId: threadId as EntityId,
       text: '⚠️ Nothing to summarize — no prior assistant turn before this point.',
@@ -119,7 +108,6 @@ export async function action(
   // Arm the one-shot revert flag. The next chat action consumes this and
   // passes `--fork-session --resume-session-at <cliUuid>` to the CLI.
   persistClaudeState(services, threadId, {
-    ...baseCleanup,
     revertTo: { cliUuid },
   });
 
@@ -136,7 +124,7 @@ export async function action(
     asideText: 'Summarize from here',
   });
 
-  // Make sure the FE sees the new message + refreshed thread state.
+  // ── 3. Refresh UI ─────────────────────────────────────────────────
   services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
 
   // Hand off to the existing chat action. It reads `revertTo`, applies

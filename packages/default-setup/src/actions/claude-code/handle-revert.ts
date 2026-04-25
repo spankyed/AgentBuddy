@@ -16,7 +16,7 @@
  */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistClaudeState, getClaudeState, updateChatState } from './_helpers/thread-context';
+import { persistClaudeState, getClaudeState, killTurn, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Handle Revert',
@@ -51,19 +51,28 @@ export async function action(
     hasRevertTo: !!state?.revertTo,
   });
 
-  // Kill the active CLI process if one is running.
-  const handle = services.cli.claudeCode.getHandle(threadId);
-  if (handle) {
-    log.debug('killing active CLI handle on revert', { threadId });
-    handle.kill();
-    services.cli.claudeCode.clearHandle(threadId);
-  }
+  // ── 1. Pause: kill the active turn properly ────────────────────────
+  // Uses killTurn() instead of ad-hoc handle.kill() so plan drafts are
+  // rejected, approval blocks invalidated, queued messages cancelled,
+  // and all mid-turn flags cleared atomically.
+  const hadActiveHandle = !!services.cli.claudeCode.getHandle(threadId);
+  killTurn(services, threadId);
 
-  // Find the CLI UUID of the last remaining assistant message.
-  // The threads system already soft-deleted the target message and everything
-  // after it. By the time this action runs, threadData.messages only has
-  // messages before the revert point. The last assistant message with a
-  // cliUuid is our truncation target.
+  // ── 2. Soft-delete messages ────────────────────────────────────────
+  // Now safe: the CLI is dead and the stream consumer will see
+  // isRunning=false + handle cleared, so it won't race us.
+  services.repository.chatCommands.softDeleteMessagesAfter({
+    threadId: threadId as EntityId,
+    messageId: messageId as EntityId,
+  });
+
+  // ── 3. Refresh UI ─────────────────────────────────────────────────
+  services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
+
+  // ── 4. Find the CLI UUID of the last remaining assistant message ──
+  // After soft-deletion, threadData.messages only has messages before
+  // the revert point. The last assistant message with a cliUuid is our
+  // truncation target.
   let cliUuid: string | undefined;
   if (state?.sessionId) {
     const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
@@ -78,11 +87,8 @@ export async function action(
     cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
   }
 
-  // Clear turn-level state and set revert flag.
+  // ── 5. Set revert flag ────────────────────────────────────────────
   persistClaudeState(services, threadId, {
-    isRunning: false,
-    pendingControlRequest: undefined,
-    queuedMessage: undefined,
     ...(cliUuid ? { revertTo: { cliUuid } } : {
       // No CLI UUID found (reverting to first message or no prior assistant).
       // Clear sessionId and any stale one-shot flags so the next turn starts
@@ -102,8 +108,8 @@ export async function action(
     messageId,
     cliUuid: cliUuid ?? 'NONE (will start fresh)',
     sessionIdPreserved: !!cliUuid,
-    hadActiveHandle: !!handle,
+    hadActiveHandle,
   });
 
-  return { success: true, hadActiveHandle: !!handle, cliUuid };
+  return { success: true, hadActiveHandle, cliUuid };
 }

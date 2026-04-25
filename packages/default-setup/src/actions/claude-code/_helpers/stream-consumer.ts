@@ -635,6 +635,17 @@ export async function consumeStream(
     const state = getClaudeState(services, threadId);
     if (!state?.isRunning) {
       log.debug('stream consumer exiting — turn was paused');
+
+      // If the handle has been cleared by another operation (revert,
+      // summarize), this consumer has been superseded. The superseding
+      // operation already handled soft-deletion and state cleanup —
+      // writing to currentMessageId could target a deleted message.
+      // Exit immediately without touching messages or emitting events.
+      if (!stillCurrent()) {
+        log.debug('stream consumer superseded (paused path) — skipping writer finalization & emit');
+        return;
+      }
+
       const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
