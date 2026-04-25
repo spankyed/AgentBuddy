@@ -100,14 +100,18 @@
       </BaseThreadRow>
     </ContextMenuTrigger>
 
-    <ContextMenuPortal>
-      <ContextMenuContent
-        class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[160px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
-        :side-offset="2"
-      >
+    <ThreadContextMenu
+      :is-pinned="thread.pinned"
+      :copy-text="thread.shortCode || thread.id"
+      @pin="$emit('pin-click', thread.id)"
+      @unpin="$emit('unpin-click', thread.id)"
+      @archive="$emit('archive-click', thread.id)"
+      @delete="$emit('delete-click', thread.id)"
+    >
+      <template #before="{ itemClass }">
         <ContextMenuItem
           v-if="settings?.clickToChat"
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          :class="itemClass"
           @select="$emit('select', thread.id)"
         >
           <SquarePen :size="14" class="text-blue-400" />
@@ -115,74 +119,31 @@
         </ContextMenuItem>
         <ContextMenuItem
           v-else
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+          :class="itemClass"
           @select="$emit('chat-click', thread.id)"
         >
           <MessageCircleMore :size="14" class="text-blue-400" />
           Chat
         </ContextMenuItem>
-        <ContextMenuItem
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-          @select="$emit('chat-click', thread.id)"
-        >
+        <ContextMenuItem :class="itemClass" @select="$emit('chat-click', thread.id)">
           <PanelLeft :size="14" class="text-neutral-400" />
           Open in Dashboard
         </ContextMenuItem>
-        <ContextMenuItem
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-          @select="copyId"
-        >
-          <Copy :size="14" class="text-neutral-400" />
-          Copy Id
-        </ContextMenuItem>
-        <template v-if="thread.pinned">
-          <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-          <ContextMenuItem
-            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-            @select="$emit('unpin-click', thread.id)"
-          >
-            <Pin :size="14" class="text-neutral-400" />
-            Unpin
-          </ContextMenuItem>
-        </template>
-        <template v-if="!thread.pinned">
-          <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-          <ContextMenuItem
-            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-            @select="$emit('pin-click', thread.id)"
-          >
-            <Pin :size="14" class="text-neutral-400" />
-            Pin
-          </ContextMenuItem>
-          <ContextMenuItem
-            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-            @select="$emit('archive-click', thread.id)"
-          >
-            <Archive :size="14" class="text-amber-400" />
-            Archive
-          </ContextMenuItem>
-          <ContextMenuItem
-            class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
-            @select="$emit('delete-click', thread.id)"
-          >
-            <Trash2 :size="14" />
-            Delete
-          </ContextMenuItem>
-        </template>
-      </ContextMenuContent>
-    </ContextMenuPortal>
+      </template>
+    </ThreadContextMenu>
   </ContextMenuRoot>
 </template>
 
 <script setup lang="ts">
-import { Archive, Copy, MessageCircleMore, PanelLeft, Pin, SquarePen, Trash2 } from 'lucide-vue-next'
+import { Archive, MessageCircleMore, PanelLeft, Pin, SquarePen, Trash2 } from 'lucide-vue-next'
 import {
   ContextMenuContent, ContextMenuItem, ContextMenuPortal,
-  ContextMenuRoot, ContextMenuSeparator, ContextMenuTrigger,
+  ContextMenuRoot, ContextMenuTrigger,
 } from 'reka-ui'
 import type { ThreadListItem } from '@/plugins/threads/state';
 import type { ThreadTagOption, ThreadsSettings } from '@app/api';
 import BaseThreadRow from '../components/base-thread-row.vue';
+import ThreadContextMenu from '../components/thread-context-menu.vue';
 
 const props = defineProps<{
   thread: ThreadListItem;
@@ -223,9 +184,6 @@ function handleRowClick(event: MouseEvent) {
   }
 }
 
-function copyId() {
-  navigator.clipboard.writeText(props.thread.shortCode || props.thread.id)
-}
 </script>
 
 <style lang="scss">

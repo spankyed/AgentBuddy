@@ -50,74 +50,38 @@
       </div>
     </ContextMenuTrigger>
 
-    <ContextMenuPortal>
-      <ContextMenuContent class="min-w-[160px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg z-50">
-        <ContextMenuItem
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          @select="$emit('open-in-chat')"
-        >
-          <MessageSquare class="w-4 h-4" />
-          Open in Chat
-        </ContextMenuItem>
-
-        <ContextMenuItem
-          v-if="!isPinned"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          @select="$emit('close')"
-        >
-          <X class="w-4 h-4" />
+    <ThreadContextMenu
+      :is-pinned="isPinned"
+      :copy-text="tab.id"
+      @pin="$emit('pin-thread')"
+      @unpin="$emit('unpin-thread')"
+      @archive="$emit('archive-thread')"
+      @delete="$emit('delete-thread')"
+    >
+      <template #before="{ itemClass }">
+        <ContextMenuItem v-if="!isPinned" :class="itemClass" @select="$emit('close')">
+          <X :size="14" class="text-neutral-400" />
           Close Tab
         </ContextMenuItem>
-
-        <ContextMenuItem
-          v-if="isPinned"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          @select="$emit('unpin-thread')"
-        >
-          <Pin class="w-4 h-4" />
-          Unpin Thread
+        <ContextMenuItem :class="itemClass" @select="$emit('edit-details')">
+          <SquarePen :size="14" class="text-blue-400" />
+          Edit Details
         </ContextMenuItem>
-
-        <ContextMenuItem
-          v-if="!isPinned"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          @select="$emit('pin-thread')"
-        >
-          <Pin class="w-4 h-4" />
-          Pin Thread
-        </ContextMenuItem>
-
-        <ContextMenuSeparator v-if="!isPinned" class="h-px bg-neutral-700" />
-
-        <ContextMenuItem
-          v-if="!isPinned"
-          class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-red-400 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-          @select="$emit('delete-thread')"
-        >
-          <Trash2 class="w-4 h-4" />
-          Delete Thread
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenuPortal>
+      </template>
+    </ThreadContextMenu>
   </ContextMenuRoot>
 </template>
 
 <script setup lang="ts">
-import { X, MessageSquare, Pin, Trash2 } from 'lucide-vue-next';
-import {
-  ContextMenuRoot,
-  ContextMenuTrigger,
-  ContextMenuPortal,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from 'reka-ui';
+import { X, SquarePen } from 'lucide-vue-next';
+import { ContextMenuRoot, ContextMenuTrigger, ContextMenuItem } from 'reka-ui';
+import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue';
 import type { Tab } from '@app/api';
 import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
 import { id as threadsId, type ThreadsState } from '@/plugins/threads/state';
 
-defineProps<{
+const props = defineProps<{
   tab: Tab;
   isActive: boolean;
   isPinned: boolean;
@@ -126,10 +90,11 @@ defineProps<{
 defineEmits<{
   select: [];
   close: [];
-  'open-in-chat': [];
+  'edit-details': [];
   'delete-thread': [];
   'unpin-thread': [];
   'pin-thread': [];
+  'archive-thread': [];
 }>();
 
 const threadsActor: ThreadsState = applicationState.system.get(threadsId);

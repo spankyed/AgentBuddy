@@ -9,8 +9,9 @@
           :activeTabId="activeTabId"
           @select-tab="selectTab"
           @close-tab="closeTab"
-          @open-in-chat="openInChat"
+          @edit-details="editDetails"
           @delete-thread="deleteThread"
+          @archive-thread="archiveThread"
           @unpin-thread="unpinThread"
           @pin-thread="pinThread"
         />
@@ -58,8 +59,12 @@ function closeTab(tabId: string) {
   actor.send({ type: 'CLOSE_TAB', tabId });
 }
 
-function openInChat(tabId: string) {
-  actor.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId });
+function editDetails(tabId: string) {
+  actor.send({ type: 'SELECT_THREAD', id: tabId });
+}
+
+function archiveThread(tabId: string) {
+  actor.send({ type: 'ARCHIVE_THREAD', threadId: tabId });
 }
 
 function deleteThread(tabId: string) {

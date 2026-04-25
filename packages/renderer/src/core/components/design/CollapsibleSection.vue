@@ -17,7 +17,7 @@
         <slot name="header-actions" />
       </div>
     </div>
-    <div v-if="isOpen" class="mx-6 mt-2 mb-4">
+    <div v-if="isOpen" class="mx-6 mt-3 mb-4">
       <slot></slot>
     </div>
   </div>

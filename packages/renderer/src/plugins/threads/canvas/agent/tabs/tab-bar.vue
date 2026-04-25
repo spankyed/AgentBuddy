@@ -8,8 +8,9 @@
       :isPinned="tab.pinned === true"
       @select="$emit('select-tab', tab.id)"
       @close="$emit('close-tab', tab.id)"
-      @open-in-chat="$emit('open-in-chat', tab.id)"
+      @edit-details="$emit('edit-details', tab.id)"
       @delete-thread="$emit('delete-thread', tab.id)"
+      @archive-thread="$emit('archive-thread', tab.id)"
       @unpin-thread="$emit('unpin-thread', tab.id)"
       @pin-thread="$emit('pin-thread', tab.id)"
     />
@@ -28,8 +29,9 @@ defineProps<{
 defineEmits<{
   'select-tab': [tabId: string];
   'close-tab': [tabId: string];
-  'open-in-chat': [tabId: string];
+  'edit-details': [tabId: string];
   'delete-thread': [tabId: string];
+  'archive-thread': [tabId: string];
   'unpin-thread': [tabId: string];
   'pin-thread': [tabId: string];
 }>();
