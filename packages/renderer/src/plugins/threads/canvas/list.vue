@@ -63,6 +63,22 @@
         </div>
       </div>
 
+      <!-- Archive Empty State -->
+      <div
+        v-else-if="showArchived"
+        class="flex flex-col items-center pt-10 h-full"
+      >
+        <div class="flex flex-col items-center max-w-sm text-center">
+          <div class="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-neutral-800">
+            <Archive class="w-8 h-8 text-neutral-500" />
+          </div>
+          <h3 class="mb-2 text-lg font-semibold text-neutral-100">No archived threads</h3>
+          <p class="text-sm text-neutral-400">
+            Archived threads will appear here
+          </p>
+        </div>
+      </div>
+
       <!-- Empty State -->
       <div
         v-else
@@ -89,7 +105,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { MessageCircleMore, Plus, SearchX } from 'lucide-vue-next'
+import { Archive, MessageCircleMore, Plus, SearchX } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
