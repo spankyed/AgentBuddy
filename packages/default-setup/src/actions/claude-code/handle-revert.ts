@@ -51,28 +51,18 @@ export async function action(
     hasRevertTo: !!state?.revertTo,
   });
 
-  // ── 1. Pause: kill the active turn properly ────────────────────────
-  // Uses killTurn() instead of ad-hoc handle.kill() so plan drafts are
-  // rejected, approval blocks invalidated, queued messages cancelled,
-  // and all mid-turn flags cleared atomically.
+  // ── 1. Clean up turn state ──────────────────────────────────────────
+  // The flow's pause step (CC: Pause Turn) already ran before this
+  // action. killTurn() is idempotent — it serves as a safety net to
+  // clean up plan drafts, approval blocks, queued messages, and all
+  // mid-turn flags if the pause step was skipped or incomplete.
   const hadActiveHandle = !!services.cli.claudeCode.getHandle(threadId);
   killTurn(services, threadId);
 
-  // ── 2. Soft-delete messages ────────────────────────────────────────
-  // Now safe: the CLI is dead and the stream consumer will see
-  // isRunning=false + handle cleared, so it won't race us.
-  services.repository.chatCommands.softDeleteMessagesAfter({
-    threadId: threadId as EntityId,
-    messageId: messageId as EntityId,
-  });
-
-  // ── 3. Refresh UI ─────────────────────────────────────────────────
-  services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
-
-  // ── 4. Find the CLI UUID of the last remaining assistant message ──
-  // After soft-deletion, threadData.messages only has messages before
-  // the revert point. The last assistant message with a cliUuid is our
-  // truncation target.
+  // ── 2. Find the CLI UUID of the last remaining assistant message ──
+  // The threads system already soft-deleted the target message and
+  // everything after it. threadData.messages only has messages before
+  // the revert point.
   let cliUuid: string | undefined;
   if (state?.sessionId) {
     const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
@@ -87,7 +77,7 @@ export async function action(
     cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
   }
 
-  // ── 5. Set revert flag ────────────────────────────────────────────
+  // ── 3. Set revert flag ────────────────────────────────────────────
   persistClaudeState(services, threadId, {
     ...(cliUuid ? { revertTo: { cliUuid } } : {
       // No CLI UUID found (reverting to first message or no prior assistant).

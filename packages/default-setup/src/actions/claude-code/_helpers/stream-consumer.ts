@@ -630,22 +630,21 @@ export async function consumeStream(
   } catch (err: any) {
     const message = err?.message || 'Claude Code request failed';
 
+    // If the handle has been cleared by another operation (revert,
+    // summarize, or a new turn replacing this one), this consumer is
+    // superseded. The superseding operation already handled state cleanup
+    // and the placeholder message may have been soft-deleted — touching
+    // any shared state or emitting events could corrupt the session.
+    if (!stillCurrent()) {
+      log.debug('stream consumer superseded — skipping all cleanup');
+      return;
+    }
+
     // If pause-turn already ran (isRunning=false), the kill was intentional.
     // Finalize writers cleanly and skip cleanup — pause-turn handled it.
     const state = getClaudeState(services, threadId);
     if (!state?.isRunning) {
       log.debug('stream consumer exiting — turn was paused');
-
-      // If the handle has been cleared by another operation (revert,
-      // summarize), this consumer has been superseded. The superseding
-      // operation already handled soft-deletion and state cleanup —
-      // writing to currentMessageId could target a deleted message.
-      // Exit immediately without touching messages or emitting events.
-      if (!stillCurrent()) {
-        log.debug('stream consumer superseded (paused path) — skipping writer finalization & emit');
-        return;
-      }
-
       const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
@@ -692,13 +691,6 @@ export async function consumeStream(
 
     // Kill the CLI process on error (it may be in a bad state).
     try { handle.kill(); } catch { /* already gone */ }
-
-    // Superseded: the error likely came from killTurn()'s SIGTERM and the
-    // new turn already owns the thread slot. Skip shared cleanup & emit.
-    if (!stillCurrent()) {
-      log.debug('stream consumer superseded on error path — skipping thread cleanup & emit');
-      return;
-    }
 
     // Critical cleanup — dequeue before setRunning(false) to avoid race.
     (services.cli as any).claudeCode.clearHandle(threadId);

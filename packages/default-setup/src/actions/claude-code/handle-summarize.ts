@@ -54,7 +54,11 @@ export async function action(
   const log = services.logger;
   const state = getClaudeState(services, threadId);
 
-  // ── 1. Pause: kill the active turn properly ────────────────────────
+  // ── 1. Clean up turn state ──────────────────────────────────────────
+  // The flow's pause step (CC: Pause Turn) already ran before this
+  // action. killTurn() is idempotent — it serves as a safety net to
+  // clean up plan drafts, approval blocks, queued messages, and all
+  // mid-turn flags if the pause step was skipped or incomplete.
   killTurn(services, threadId);
 
   // Bail #1: no live session to compact.
@@ -70,15 +74,9 @@ export async function action(
     return { success: false, reason: 'no active session' };
   }
 
-  // ── 2. Soft-delete messages ────────────────────────────────────────
-  // Now safe: the CLI is dead and the stream consumer won't race us.
-  services.repository.chatCommands.softDeleteMessagesAfter({
-    threadId: threadId as EntityId,
-    messageId: messageId as EntityId,
-  });
-
   // Find the truncation anchor — the last surviving assistant message's
-  // `cliUuid`. After soft-deletion, this scans only the pre-pivot messages.
+  // `cliUuid`. The system already soft-deleted the pivot and everything
+  // after it, so this scans only the pre-pivot messages.
   const threadData = services.repository.chatQueries.threadData(threadId as EntityId);
   const messages = (threadData?.messages ?? []) as Array<{
     id?: string;
@@ -94,7 +92,6 @@ export async function action(
   // non-empty transcript to summarize.
   if (!cliUuid) {
     updateChatState(services, threadId as EntityId, 'idle');
-    services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
     services.chat.sendBlockMessage({
       threadId: threadId as EntityId,
       text: '⚠️ Nothing to summarize — no prior assistant turn before this point.',
@@ -124,7 +121,7 @@ export async function action(
     asideText: 'Summarize from here',
   });
 
-  // ── 3. Refresh UI ─────────────────────────────────────────────────
+  // Refresh UI so the FE sees the synthetic message.
   services.chat.openThreadChatAndRefreshRecent(threadId as EntityId);
 
   // Hand off to the existing chat action. It reads `revertTo`, applies
