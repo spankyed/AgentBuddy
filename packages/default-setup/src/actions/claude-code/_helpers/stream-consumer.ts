@@ -135,7 +135,7 @@ export async function consumeStream(
       eventCount++;
 
       if (eventCount <= 5 || eventCount % 20 === 0) {
-        log.debug('stream event', { n: eventCount, type: line?.type });
+        log.debug('stream event', { n: eventCount, type: line?.type, line });
       }
 
       // Split into a new message after approval/question answer — but only
