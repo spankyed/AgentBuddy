@@ -367,6 +367,9 @@ export const threadsSystem = setup({
     deleteThread: ({ system, event }) => {
       const { threadId } = typeOf('DELETE_THREAD', event);
 
+      // Stop active processes before hard-deleting the thread.
+      services.threads.runCleanup(threadId);
+
       repository.threadCommands.delete(threadId as EARS.EntityId);
 
       system.get(bus).send(emit(threads, {
@@ -725,6 +728,10 @@ export const threadsSystem = setup({
     revertThread: ({ system, event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
 
+      // Stop active processes before soft-deleting so nothing races
+      // against the deletion (e.g. a stream consumer writing to messages).
+      services.threads.runCleanup(threadId);
+
       repository.chatCommands.softDeleteMessagesAfter({
         threadId: threadId as EARS.EntityId,
         messageId: messageId as EARS.EntityId,
@@ -748,6 +755,9 @@ export const threadsSystem = setup({
     },
     summarizeThread: ({ system, event }) => {
       const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
+
+      // Stop active processes before soft-deleting (same as revert).
+      services.threads.runCleanup(threadId);
 
       // Matches Claude Code's native `direction: 'from'` — the pivot and
       // everything after it disappear from the visible transcript, then a
