@@ -25,6 +25,26 @@
           <td class="px-6 py-1.5">
             <div class="flex items-center justify-end gap-2">
               <button
+                v-if="thread.pinned"
+                @click.stop="$emit('unpin-click', thread.id)"
+                type="button"
+                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+                aria-label="Unpin thread"
+                title="Unpin thread"
+              >
+                <Pin class="w-4 h-4"/>
+              </button>
+              <button
+                v-if="!thread.pinned"
+                @click.stop="$emit('pin-click', thread.id)"
+                type="button"
+                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95 opacity-0 group-hover:opacity-100"
+                aria-label="Pin thread"
+                title="Pin thread"
+              >
+                <Pin class="w-4 h-4"/>
+              </button>
+              <button
                 v-if="settings?.clickToChat"
                 data-onboarding-id="thread-actions"
                 @click.stop="$emit('select', thread.id)"
@@ -45,26 +65,6 @@
                 title="View chat"
               >
                 <MessageCircleMore class="w-4 h-4"/>
-              </button>
-              <button
-                v-if="thread.pinned"
-                @click.stop="$emit('unpin-click', thread.id)"
-                type="button"
-                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
-                aria-label="Unpin thread"
-                title="Unpin thread"
-              >
-                <Pin class="w-4 h-4"/>
-              </button>
-              <button
-                v-if="!thread.pinned"
-                @click.stop="$emit('pin-click', thread.id)"
-                type="button"
-                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95 opacity-0 group-hover:opacity-100"
-                aria-label="Pin thread"
-                title="Pin thread"
-              >
-                <Pin class="w-4 h-4"/>
               </button>
               <ContextMenuRoot v-if="!thread.pinned">
                 <ContextMenuTrigger as-child>
