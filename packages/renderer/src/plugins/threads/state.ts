@@ -110,7 +110,7 @@ type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 
 type SystemEvent =
   | OutgoingThreadsEvents
-  | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context'>> }
+  | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned'>> }
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
   | { type: 'THREAD_DELETED'; threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }

@@ -147,7 +147,7 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
   | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, instructions?: string, status?: string }
-  | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context'>> }
+  | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned'>> }
   | { type: 'THREAD_DELETED', threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
@@ -263,6 +263,11 @@ export const threadsSystem = setup({
       }
 
       if (key === 'pinned') {
+        system.get(bus).send(emit(threads, {
+          type: 'THREAD_UPDATED',
+          threadId,
+          updates: { pinned: value as boolean },
+        }));
         services.chat.sendRecentThreadsRefresh();
       }
     },
