@@ -1,8 +1,11 @@
 <template>
   <div class="@container relative max-w-[80%] mx-auto pb-2" ref="containerRef">
+    <Teleport to="body">
     <div
       v-if="isOpen"
-      class="absolute bottom-full mb-2 left-0 right-0 p-1 border border-neutral-700 bg-neutral-900 rounded-lg shadow-xl max-h-80 overflow-y-auto animate-slide-down z-50"
+      ref="popupRef"
+      class="fixed p-1 border border-neutral-700 bg-neutral-900 rounded-lg shadow-xl max-h-80 overflow-y-auto animate-slide-down z-50"
+      :style="popupStyle"
     >
       <div v-if="recentThreads.length === 0" class="py-8 text-center">
         <div class="flex flex-col items-center gap-1.5">
@@ -108,6 +111,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <div class="-mt-4 pt-4 flex items-center content-between cursor-pointer" @click="isOpen = !isOpen">
       <button
@@ -223,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
@@ -250,6 +254,21 @@ export interface ThreadsProps {
 const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
+const popupRef = ref<HTMLDivElement | null>(null)
+
+// Position the teleported popup above the container using fixed coords
+const popupStyle = ref<CSSProperties>({})
+
+watch(isOpen, async (open) => {
+  if (!open || !containerRef.value) return
+  await nextTick()
+  const rect = containerRef.value.getBoundingClientRect()
+  popupStyle.value = {
+    bottom: `${window.innerHeight - rect.top + 8}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+  }
+})
 
 // Get threads from the threads plugin state
 const threadsActor: ThreadsState = applicationState.system.get(threadsId)
@@ -276,7 +295,8 @@ function isThreadBusy(threadId: string): boolean {
 const recentThreads = computed(() => props.recentThreads)
 
 const handleClickOutside = (event: MouseEvent) => {
-  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+  const target = event.target as Node
+  if (containerRef.value && !containerRef.value.contains(target) && (!popupRef.value || !popupRef.value.contains(target))) {
     isOpen.value = false
   }
 }
