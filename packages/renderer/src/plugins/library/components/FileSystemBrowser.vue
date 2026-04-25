@@ -210,9 +210,9 @@
             <FileText class="w-4 h-4" />
             <span class="hidden @lg:inline">{{ isInSymlinkContext ? 'New File' : 'New Document' }}</span>
           </Button>
+          <div v-if="symlinkInput.show" class="fixed inset-0 z-40" @click="symlinkInput.show = false"></div>
           <div
             v-if="symlinkInput.show"
-            ref="symlinkFormRef"
             class="absolute top-full right-0 mt-2 z-50 flex items-center gap-2 p-3 rounded-md border border-neutral-700 bg-neutral-800 shadow-lg"
           >
             <input
@@ -496,26 +496,7 @@ const deleteDialog = reactive({
 
 const folderMenuOpen = ref(false)
 const symlinkInput = reactive({ show: false, path: '' })
-const symlinkFormRef = ref<HTMLElement | null>(null)
 
-function onSymlinkClickOutside(event: MouseEvent) {
-  if (symlinkInput.show && symlinkFormRef.value && !symlinkFormRef.value.contains(event.target as Node)) {
-    symlinkInput.show = false
-  }
-}
-
-watch(() => symlinkInput.show, (show) => {
-  if (show) {
-    // Use nextTick + setTimeout to avoid the opening click from immediately closing the form
-    setTimeout(() => document.addEventListener('click', onSymlinkClickOutside), 0)
-  } else {
-    document.removeEventListener('click', onSymlinkClickOutside)
-  }
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', onSymlinkClickOutside)
-})
 
 // Breadcrumb inline editing (reuse composable)
 const {
