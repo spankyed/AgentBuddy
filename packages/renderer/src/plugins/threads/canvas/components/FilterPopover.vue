@@ -10,21 +10,6 @@
         align="start"
         class="w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden"
       >
-        <!-- Root-only toggle -->
-        <div class="flex items-center justify-between px-3 pt-3 pb-0">
-          <span class="text-xs text-neutral-300">Root threads only</span>
-          <button
-            type="button"
-            class="p-1 rounded-md transition-colors"
-            :class="showRootOnly
-              ? 'bg-neutral-700 text-neutral-100'
-              : 'text-neutral-500 hover:text-neutral-300'"
-            @click="emit('toggle-root-only')"
-          >
-            <Network :size="14" />
-          </button>
-        </div>
-
         <!-- Status section -->
         <div v-if="statuses.length > 0" class="px-3 pt-3 pb-2">
           <span class="text-[11px] font-medium uppercase tracking-wider text-neutral-500">Status</span>
@@ -91,18 +76,29 @@
           </div>
         </div>
 
-        <!-- View Archive toggle -->
-        <div class="flex items-center justify-between px-3 pt-2 pb-3 border-t border-neutral-800">
-          <span class="text-xs text-neutral-300">View Archive</span>
+        <!-- Bottom toggles -->
+        <div class="border-t border-neutral-800 px-3 pt-2 pb-3 flex flex-col gap-1">
           <button
             type="button"
-            class="p-1 rounded-md transition-colors"
+            class="flex items-center justify-between w-full px-2 py-1.5 rounded-md transition-colors cursor-pointer"
+            :class="showRootOnly
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'"
+            @click="emit('toggle-root-only')"
+          >
+            <span class="text-xs">Root threads only</span>
+            <Network :size="14" :class="showRootOnly ? 'text-neutral-100' : 'text-neutral-500'" />
+          </button>
+          <button
+            type="button"
+            class="flex items-center justify-between w-full px-2 py-1.5 rounded-md transition-colors cursor-pointer"
             :class="showArchived
-              ? 'bg-neutral-700 text-neutral-100'
-              : 'text-neutral-500 hover:text-neutral-300'"
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'"
             @click="emit('toggle-view-archive')"
           >
-            <Archive :size="14" />
+            <span class="text-xs">View Archive</span>
+            <Archive :size="14" :class="showArchived ? 'text-neutral-100' : 'text-neutral-500'" />
           </button>
         </div>
 
