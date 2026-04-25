@@ -2351,18 +2351,18 @@ declare const events: {
         systemId: "threads";
         markerId: string;
     }>, zod.ZodObject<{
-        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        type: zod.ZodLiteral<"FORWARD_BRAIN_EVENT">;
         systemId: zod.ZodLiteral<"threads">;
         eventType: zod.ZodString;
         payload: zod.ZodOptional<zod.ZodAny>;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
         eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
+        type: "FORWARD_BRAIN_EVENT";
         systemId: "threads";
         payload?: any;
     }, {
         eventType: string;
-        type: "TRIGGER_BRAIN_EVENT";
+        type: "FORWARD_BRAIN_EVENT";
         systemId: "threads";
         payload?: any;
     }>] | readonly [zod.ZodObject<{

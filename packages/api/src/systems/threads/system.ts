@@ -128,7 +128,7 @@ export const IncomingThreadsEvents = [
     markerId: z.string(),
     compacted: z.boolean(),
   }),
-  busEvent('TRIGGER_BRAIN_EVENT', {
+  busEvent('FORWARD_BRAIN_EVENT', {
     eventType: z.string(),
     payload: z.any().optional(),
   }),
@@ -771,7 +771,7 @@ export const threadsSystem = setup({
       });
     },
     forwardBrainEvent: ({ system, event }) => {
-      const { eventType, payload } = typeOf('TRIGGER_BRAIN_EVENT', event);
+      const { eventType, payload } = typeOf('FORWARD_BRAIN_EVENT', event);
       const brainActor = getActor(system, brain);
       brainActor.send({ type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
@@ -903,7 +903,7 @@ export const threadsSystem = setup({
           PAUSE_TURN: {
             actions: 'pauseTurn',
           },
-          TRIGGER_BRAIN_EVENT: {
+          FORWARD_BRAIN_EVENT: {
             actions: 'forwardBrainEvent',
           },
         },
