@@ -1,20 +1,46 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <CodePanelHeader
-      :icon="Sparkle"
-      title="Prompts"
-    >
-      <template #actions>
-        <button
-          @click="createPromptInline()"
-          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-          title="Create new prompt"
+    <CodePanelHeader :icon="Sparkle" title="Prompts" />
+
+    <!-- Search / New Prompt toolbar -->
+    <div class="flex-shrink-0 p-3 border-b border-neutral-800/50">
+      <div v-if="!isSearchMode" class="flex gap-2">
+        <Button
+          variant="transparent"
+          class="!p-2 !h-auto text-neutral-300 hover:text-white hover:bg-white/[0.03]"
+          @click="handleSearchClick"
+          title="Search prompts"
         >
-          <Plus :size="16" />
-        </button>
-      </template>
-    </CodePanelHeader>
+          <Search class="w-4 h-4" />
+        </Button>
+        <Button
+          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center justify-center"
+          @click="createPromptInline()"
+        >
+          <span>New Prompt</span>
+        </Button>
+      </div>
+      <div v-else class="flex justify-center">
+        <div class="relative w-full">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-3.5 h-3.5" />
+          <input
+            ref="searchInput"
+            v-model="searchQuery"
+            type="text"
+            class="w-full py-2 pr-8 text-xs transition-all duration-200 border rounded-md outline-none pl-9 bg-neutral-800/50 border-neutral-700/50 text-neutral-100 placeholder-neutral-500 focus:border-neutral-600 focus:bg-neutral-800/70"
+            placeholder="Search prompts..."
+            @keyup.escape="closeSearch"
+          />
+          <button
+            class="absolute p-1 transition-colors -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-700/50 text-neutral-500 hover:text-neutral-300"
+            @click="closeSearch"
+          >
+            <X class="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Loading State -->
     <div v-if="isLoading && prompts.length === 0" class="flex items-center justify-center flex-1">
@@ -32,10 +58,17 @@
         v-if="prompts.length === 0"
         :icon="Sparkle"
         title="No prompts found"
-        subtitle="Click + to create a new prompt"
+        subtitle="Create a new prompt to get started"
       />
 
-      <ContextMenuRoot v-for="prompt in prompts" :key="prompt.id">
+      <div v-else-if="isSearchMode && searchQuery.trim() && filteredPrompts.length === 0" class="flex flex-col items-center pt-10 h-full px-6 text-center">
+        <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/30">
+          <Search class="w-6 h-6 text-neutral-500" />
+        </div>
+        <p class="text-sm text-neutral-400">No prompts match "{{ searchQuery }}"</p>
+      </div>
+
+      <ContextMenuRoot v-for="prompt in filteredPrompts" :key="prompt.id">
         <ContextMenuTrigger as-child>
           <div
             @click="selectPrompt(prompt)"
@@ -201,12 +234,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as promptsPluginId } from '@/plugins/prompts/state'
-import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import type { PromptEntity } from '@app/api'
@@ -219,6 +252,8 @@ import {
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
 import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll'
+import Button from '@/core/components/design/button.vue'
+import uFuzzy from '@leeoniya/ufuzzy'
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -233,6 +268,43 @@ const loadingMore = useSelector(promptsPluginActor, (state: any) => state.contex
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+// Search state
+const isSearchMode = ref(false)
+const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
+const pendingRename = ref(false)
+
+const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, intraDel: 1, intraIns: 1 })
+
+const handleSearchClick = () => {
+  isSearchMode.value = true
+  nextTick(() => searchInput.value?.focus())
+}
+
+const closeSearch = () => {
+  isSearchMode.value = false
+  searchQuery.value = ''
+}
+
+const filteredPrompts = computed(() => {
+  if (!searchQuery.value.trim()) return prompts.value
+  const haystack = prompts.value.map((p: PromptEntity) => `${p.label} ${p.category || ''}`.toLowerCase())
+  const idxs = fuzzy.search(haystack, searchQuery.value.toLowerCase())
+  if (!idxs) return []
+  const [matchedIndexes, , order] = idxs
+  if (!order || !matchedIndexes) return []
+  return order.map(i => prompts.value[matchedIndexes[i]])
+})
+
+// Auto-rename after inline creation
+watch(prompts, (newVal, oldVal) => {
+  if (pendingRename.value && newVal.length > oldVal.length) {
+    pendingRename.value = false
+    const created = newVal[newVal.length - 1]
+    nextTick(() => startEditName(created))
+  }
+})
 
 // State for adding/editing parameters
 const addingParameterForPrompt = ref<string | null>(null)
@@ -409,7 +481,8 @@ const goToPrompt = (prompt: PromptEntity) => {
 }
 
 const createPromptInline = () => {
-  const defaultLabel = `New Prompt ${prompts.value.length + 1}`
+  const defaultLabel = `Prompt ${prompts.value.length + 1}`
+  pendingRename.value = true
   promptsPluginActor.send({
     type: 'PROMPT.CREATE_INLINE',
     label: defaultLabel,
@@ -417,16 +490,6 @@ const createPromptInline = () => {
     inputs: {},
   })
 }
-
-
-const refreshPrompts = () => {
-  // Prompts are already loaded by main prompts plugin on connection
-}
-
-// No need to load on mount - main prompts plugin loads on connection
-onMounted(() => {
-  // Prompts are managed by the main prompts plugin
-})
 </script>
 
 <style scoped>

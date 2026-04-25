@@ -1,20 +1,46 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <CodePanelHeader
-      :icon="Play"
-      title="Actions"
-    >
-      <template #actions>
-        <button
-          @click="createActionInline()"
-          class="p-0 transition-colors rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
-          title="Create new action"
+    <CodePanelHeader :icon="Play" title="Actions" />
+
+    <!-- Search / New Action toolbar -->
+    <div class="flex-shrink-0 p-3 border-b border-neutral-800/50">
+      <div v-if="!isSearchMode" class="flex gap-2">
+        <Button
+          variant="transparent"
+          class="!p-2 !h-auto text-neutral-300 hover:text-white hover:bg-white/[0.03]"
+          @click="handleSearchClick"
+          title="Search actions"
         >
-          <Plus :size="16" />
-        </button>
-      </template>
-    </CodePanelHeader>
+          <Search class="w-4 h-4" />
+        </Button>
+        <Button
+          class="flex-1 !text-[0.8125rem] !font-medium !py-2 !px-3 text-center flex items-center justify-center"
+          @click="createActionInline()"
+        >
+          <span>New Action</span>
+        </Button>
+      </div>
+      <div v-else class="flex justify-center">
+        <div class="relative w-full">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 w-3.5 h-3.5" />
+          <input
+            ref="searchInput"
+            v-model="searchQuery"
+            type="text"
+            class="w-full py-2 pr-8 text-xs transition-all duration-200 border rounded-md outline-none pl-9 bg-neutral-800/50 border-neutral-700/50 text-neutral-100 placeholder-neutral-500 focus:border-neutral-600 focus:bg-neutral-800/70"
+            placeholder="Search actions..."
+            @keyup.escape="closeSearch"
+          />
+          <button
+            class="absolute p-1 transition-colors -translate-y-1/2 rounded right-2 top-1/2 hover:bg-neutral-700/50 text-neutral-500 hover:text-neutral-300"
+            @click="closeSearch"
+          >
+            <X class="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Loading State -->
     <div v-if="isLoading && actions.length === 0" class="flex items-center justify-center flex-1">
@@ -32,10 +58,17 @@
         v-if="actions.length === 0"
         :icon="Play"
         title="No actions found"
-        subtitle="Click + to create a new action"
+        subtitle="Create a new action to get started"
       />
 
-      <ContextMenuRoot v-for="action in actions" :key="action.id">
+      <div v-else-if="isSearchMode && searchQuery.trim() && filteredActions.length === 0" class="flex flex-col items-center pt-10 h-full px-6 text-center">
+        <div class="flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-neutral-800/30">
+          <Search class="w-6 h-6 text-neutral-500" />
+        </div>
+        <p class="text-sm text-neutral-400">No actions match "{{ searchQuery }}"</p>
+      </div>
+
+      <ContextMenuRoot v-for="action in filteredActions" :key="action.id">
         <ContextMenuTrigger as-child>
           <div
             @click="selectAction(action)"
@@ -201,12 +234,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import { id as actionsPluginId } from '@/plugins/actions/state'
-import { ExternalLink, Plus, X, Pencil, Trash2, Play, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import type { ActionEntity } from '@app/api'
@@ -219,6 +252,8 @@ import {
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
 import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll'
+import Button from '@/core/components/design/button.vue'
+import uFuzzy from '@leeoniya/ufuzzy'
 
 // Get actors - use main actions plugin for state, codeActions for tab management
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -233,6 +268,43 @@ const loadingMore = useSelector(actionsPluginActor, (state: any) => state.contex
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+// Search state
+const isSearchMode = ref(false)
+const searchQuery = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
+const pendingRename = ref(false)
+
+const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, intraDel: 1, intraIns: 1 })
+
+const handleSearchClick = () => {
+  isSearchMode.value = true
+  nextTick(() => searchInput.value?.focus())
+}
+
+const closeSearch = () => {
+  isSearchMode.value = false
+  searchQuery.value = ''
+}
+
+const filteredActions = computed(() => {
+  if (!searchQuery.value.trim()) return actions.value
+  const haystack = actions.value.map((a: ActionEntity) => `${a.label} ${a.category || ''}`.toLowerCase())
+  const idxs = fuzzy.search(haystack, searchQuery.value.toLowerCase())
+  if (!idxs) return []
+  const [matchedIndexes, , order] = idxs
+  if (!order || !matchedIndexes) return []
+  return order.map(i => actions.value[matchedIndexes[i]])
+})
+
+// Auto-rename after inline creation
+watch(actions, (newVal, oldVal) => {
+  if (pendingRename.value && newVal.length > oldVal.length) {
+    pendingRename.value = false
+    const created = newVal[newVal.length - 1]
+    nextTick(() => startEditName(created))
+  }
+})
 
 // State for adding/editing parameters
 const addingParameterForAction = ref<string | null>(null)
@@ -402,7 +474,8 @@ const goToAction = (action: ActionEntity) => {
 }
 
 const createActionInline = () => {
-  const defaultLabel = `New Action ${actions.value.length + 1}`
+  const defaultLabel = `Action ${actions.value.length + 1}`
+  pendingRename.value = true
   actionsPluginActor.send({
     type: 'ACTION.CREATE_INLINE',
     label: defaultLabel,
@@ -410,16 +483,6 @@ const createActionInline = () => {
     input: {},
   })
 }
-
-
-const refreshActions = () => {
-  // Actions are already loaded by main actions plugin on connection
-}
-
-// No need to load on mount - main actions plugin loads on connection
-onMounted(() => {
-  // Actions are managed by the main actions plugin
-})
 </script>
 
 <style scoped>
