@@ -228,6 +228,15 @@ export default {
     on(
       "thread.revert",
       [[
+        // Stop the active turn first so the stream consumer exits cleanly
+        // before any revert/rewind/summarize handler mutates session state.
+        // Sequential within this track — pause completes before the branch.
+        action("CC: Pause Turn", {
+          label: "pause-before-revert",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+          },
+        }),
         branch([
           {
             if: "$.event.data.payload.kind == 'revert'",
