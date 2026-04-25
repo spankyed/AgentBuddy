@@ -2,8 +2,6 @@
   <div class="max-w-3xl">
     <!-- Chat (agent) Sections -->
     <div class="mb-8">
-      <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-4">Chat</h3>
-
       <!-- Conversation -->
       <CollapsibleSection label="Conversation" :default-open="true" class="mb-8">
         <div class="flex items-center justify-between">
