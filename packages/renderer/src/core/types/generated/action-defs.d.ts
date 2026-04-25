@@ -2945,6 +2945,18 @@ declare const events: {
         systemId: "actions";
         actionId: string;
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"FETCH_ACTIONS_PAGE">;
+        systemId: zod.ZodLiteral<"actions">;
+        page: zod.ZodOptional<zod.ZodNumber>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "FETCH_ACTIONS_PAGE";
+        systemId: "actions";
+        page?: number | undefined;
+    }, {
+        type: "FETCH_ACTIONS_PAGE";
+        systemId: "actions";
+        page?: number | undefined;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"IMPORT_ACTIONS">;
         systemId: zod.ZodLiteral<"actions">;
         actions: zod.ZodAny;
@@ -4722,7 +4734,7 @@ declare const events: {
     } | {
         type: "THREAD_UPDATED";
         threadId: string;
-        updates: Partial<Pick<ThreadEntity, "status" | "tags" | "context">>;
+        updates: Partial<Pick<ThreadEntity, "status" | "tags" | "context" | "pinned">>;
         pluginId: "threads";
     } | {
         type: "THREAD_DELETED";
@@ -5101,6 +5113,14 @@ declare const events: {
     } | {
         type: "ACTION_DELETED";
         actionId: EARS.EntityId;
+        pluginId: "actions";
+    } | {
+        type: "ACTIONS_PAGE_LOADED";
+        data: {
+            actions: ActionEntity[];
+            page: number;
+            totalPages: number;
+        };
         pluginId: "actions";
     } | {
         type: "ACTIONS_IMPORTED";

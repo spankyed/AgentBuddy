@@ -7,11 +7,14 @@
       :categories="categories"
       :selected-categories="selectedCategories"
       :has-actions="actions.length > 0"
+      :has-more="hasMore"
+      :loading-more="loadingMore"
       @select="handleSelectAction"
       @create="handleCreateAction"
       @delete="handleDeleteAction"
       @toggle-category="handleToggleCategory"
       @clear-filters="handleClearFilters"
+      @load-more="handleLoadMore"
     />
 
     <!-- Create/Edit View -->
@@ -48,6 +51,11 @@ const selectedAction = useSelector(actor, (state) => state.context.selectedActio
 const formData = useSelector(actor, (state) => state.context.formData);
 const categories = useSelector(actor, (state) => state.context.categories);
 const selectedCategories = useSelector(actor, (state) => state.context.selectedCategories);
+const page = useSelector(actor, (state) => state.context.page);
+const totalPages = useSelector(actor, (state) => state.context.totalPages);
+const loadingMore = useSelector(actor, (state) => state.context.loadingMore);
+
+const hasMore = computed(() => page.value < totalPages.value);
 
 // Filter actions based on selected categories
 const filteredActions = computed(() => {
@@ -75,6 +83,10 @@ function handleCreateAction() {
 
 function handleDeleteAction(actionId: EARS.EntityId) {
   actor.send({ type: 'ACTION.DELETE', actionId });
+}
+
+function handleLoadMore() {
+  actor.send({ type: 'ACTIONS.LOAD_MORE' });
 }
 
 // Form handlers

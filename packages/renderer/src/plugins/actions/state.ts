@@ -29,6 +29,9 @@ export interface ActionsContext {
   actions: ActionEntity[];
   selectedAction?: ActionEntity;
   totalCount: number;
+  page: number;
+  totalPages: number;
+  loadingMore: boolean;
   categories: Category[]; // Categories from settings
   selectedCategories: string[]; // Filter state
 
@@ -60,6 +63,7 @@ export interface ActionsContext {
 }
 
 type SystemEvent = OutgoingActionEvents
+  | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
   | { type: 'ACTIONS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'ACTIONS_IMPORT_FAILED'; errors: string[] }
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
@@ -84,6 +88,7 @@ type UIEvent =
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
+  | { type: 'ACTIONS.LOAD_MORE' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
   // Import/Export events
@@ -107,6 +112,8 @@ const actionsState = setup({
       return {
         actions: ev.data.actions,
         totalCount: ev.data.totalCount,
+        page: ev.data.page,
+        totalPages: ev.data.totalPages,
         categories: ev.data.categories || [],
       }
     }),
@@ -342,6 +349,26 @@ const actionsState = setup({
       };
     }),
 
+    /* ── pagination ────────────────────────────────────────── */
+    requestNextPage: assign(({ context }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FETCH_ACTIONS_PAGE',
+        page: context.page + 1,
+      });
+      return { loadingMore: true };
+    }),
+
+    appendPageData: assign(({ context, event }) => {
+      const ev = typeOf('ACTIONS_PAGE_LOADED', event);
+      return {
+        actions: [...context.actions, ...ev.data.actions],
+        page: ev.data.page,
+        totalPages: ev.data.totalPages,
+        loadingMore: false,
+      };
+    }),
+
     /* ── filter actions ──────────────────────────────────── */
     toggleCategoryFilter: assign(({ event, context }) => {
       const ev = typeOf('FILTER.TOGGLE_CATEGORY', event);
@@ -456,6 +483,9 @@ const actionsState = setup({
     actions: [],
     selectedAction: undefined,
     totalCount: 0,
+    page: 1,
+    totalPages: 1,
+    loadingMore: false,
     categories: [], // Will be populated from settings
     selectedCategories: [], // Filter state
     actionsImport: {
@@ -498,6 +528,8 @@ const actionsState = setup({
     TOGGLE_PARAMETERS_SECTION: { actions: 'toggleParametersSection' },
     TOGGLE_OUTPUT_SECTION: { actions: 'toggleOutputSection' },
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
+    'ACTIONS.LOAD_MORE': { actions: 'requestNextPage' },
+    ACTIONS_PAGE_LOADED: { actions: 'appendPageData' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
     // Import events

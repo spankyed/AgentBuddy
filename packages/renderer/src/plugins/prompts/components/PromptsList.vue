@@ -13,7 +13,7 @@
 
     <!-- Prompts Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="hasPrompts" class="h-full overflow-y-auto custom-scrollbar">
+      <div v-if="hasPrompts" class="h-full overflow-y-auto custom-scrollbar" @scroll="onScroll">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
@@ -92,6 +92,9 @@
             </tr>
           </tbody>
         </table>
+        <div v-if="loadingMore" class="flex justify-center py-4">
+          <span class="text-sm text-neutral-500">Loading more prompts...</span>
+        </div>
       </div>
 
       <!-- Empty State (only when no prompts exist at all) -->
@@ -123,12 +126,15 @@ import { Trash2, Sparkle, Plus } from 'lucide-vue-next';
 import Button from '@/core/components/design/button.vue';
 import CategoryFilter from '@/core/components/design/CategoryFilter.vue';
 import type { PromptEntity, EARS, Category } from '@app/api';
+import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll';
 
 const props = defineProps<{
   prompts: PromptEntity[];
   categories: Category[];
   selectedCategories: string[];
   hasPrompts: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
 }>();
 const emit = defineEmits<{
   select: [promptId: EARS.EntityId];
@@ -137,7 +143,14 @@ const emit = defineEmits<{
   delete: [promptId: EARS.EntityId];
   'toggle-category': [categoryName: string];
   'clear-filters': [];
+  'load-more': [];
 }>();
+
+const { onScroll } = useInfiniteScroll({
+  hasMore: () => props.hasMore,
+  loading: () => props.loadingMore,
+  onLoadMore: () => emit('load-more'),
+})
 
 function confirmDelete(prompt: PromptEntity) {
   if (confirm(`Are you sure you want to delete "${prompt.label}"?`)) {

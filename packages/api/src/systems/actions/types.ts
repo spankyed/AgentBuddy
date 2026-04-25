@@ -38,6 +38,7 @@ export type OutgoingActionEvents =
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
+  | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
   | { type: 'ACTIONS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'ACTIONS_IMPORT_FAILED'; errors: string[] }
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }

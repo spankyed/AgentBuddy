@@ -27,7 +27,7 @@
     </div>
 
     <!-- Prompts List -->
-    <div v-else class="flex-1 overflow-auto">
+    <div v-else class="flex-1 overflow-auto" @scroll="onScroll">
       <EmptyState
         v-if="prompts.length === 0"
         :icon="Sparkle"
@@ -192,13 +192,16 @@
           </ContextMenuContent>
         </ContextMenuPortal>
       </ContextMenuRoot>
+      <div v-if="loadingMore" class="flex justify-center py-3">
+        <span class="text-xs text-neutral-500">Loading more prompts...</span>
+      </div>
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
@@ -215,6 +218,7 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
+import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll'
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -223,6 +227,10 @@ const promptsPluginActor = applicationState.system.get(promptsPluginId)!
 
 // State selectors - read from main prompts plugin (single source of truth)
 const prompts = useSelector(promptsPluginActor, (state: any) => state.context.prompts)
+const page = useSelector(promptsPluginActor, (state: any) => state.context.page)
+const totalPages = useSelector(promptsPluginActor, (state: any) => state.context.totalPages)
+const loadingMore = useSelector(promptsPluginActor, (state: any) => state.context.loadingMore)
+const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -377,6 +385,12 @@ function deletePrompt(prompt: PromptEntity) {
     promptId: prompt.id
   })
 }
+
+const { onScroll } = useInfiniteScroll({
+  hasMore,
+  loading: loadingMore,
+  onLoadMore: () => promptsPluginActor.send({ type: 'PROMPTS.LOAD_MORE' }),
+})
 
 // Event handlers
 const selectPrompt = (prompt: PromptEntity) => {

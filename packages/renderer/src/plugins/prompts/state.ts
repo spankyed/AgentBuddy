@@ -29,6 +29,9 @@ export interface PromptsContext {
   prompts: PromptEntity[];
   selectedPrompt?: PromptEntity;
   totalCount: number;
+  page: number;
+  totalPages: number;
+  loadingMore: boolean;
   categories: Category[]; // Categories from settings
   selectedCategories: string[]; // Filter state
 
@@ -60,6 +63,7 @@ export interface PromptsContext {
 }
 
 type SystemEvent = OutgoingPromptEvents
+  | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
   | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
@@ -84,6 +88,7 @@ type UIEvent =
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
+  | { type: 'PROMPTS.LOAD_MORE' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
   // Import/Export events
@@ -107,6 +112,8 @@ const promptsState = setup({
       return {
         prompts: ev.data.prompts,
         totalCount: ev.data.totalCount,
+        page: ev.data.page,
+        totalPages: ev.data.totalPages,
         categories: ev.data.categories || [],
       }
     }),
@@ -430,6 +437,26 @@ const promptsState = setup({
       promptsExport: { status: 'idle' as const, errors: [], filePath: '', promptCount: 0 },
     }),
 
+    /* ── pagination ────────────────────────────────────────── */
+    requestNextPage: assign(({ context }) => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FETCH_PROMPTS_PAGE',
+        page: context.page + 1,
+      });
+      return { loadingMore: true };
+    }),
+
+    appendPageData: assign(({ context, event }) => {
+      const ev = typeOf('PROMPTS_PAGE_LOADED', event);
+      return {
+        prompts: [...context.prompts, ...ev.data.prompts],
+        page: ev.data.page,
+        totalPages: ev.data.totalPages,
+        loadingMore: false,
+      };
+    }),
+
     /* ── filter actions ──────────────────────────────────── */
     toggleCategoryFilter: assign(({ event, context }) => {
       const ev = typeOf('FILTER.TOGGLE_CATEGORY', event);
@@ -456,6 +483,9 @@ const promptsState = setup({
     prompts: [],
     selectedPrompt: undefined,
     totalCount: 0,
+    page: 1,
+    totalPages: 1,
+    loadingMore: false,
     categories: [], // Will be populated from settings
     selectedCategories: [], // Filter state
     promptsImport: {
@@ -498,6 +528,8 @@ const promptsState = setup({
     TOGGLE_INPUTS_SECTION: { actions: 'toggleInputsSection' },
     TOGGLE_OUTPUT_SECTION: { actions: 'toggleOutputSection' },
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
+    'PROMPTS.LOAD_MORE': { actions: 'requestNextPage' },
+    PROMPTS_PAGE_LOADED: { actions: 'appendPageData' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
     // Import events

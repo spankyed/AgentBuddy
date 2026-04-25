@@ -13,7 +13,7 @@
 
     <!-- Actions Table -->
     <div class="flex-1 overflow-hidden">
-      <div v-if="hasActions" class="h-full overflow-y-auto custom-scrollbar">
+      <div v-if="hasActions" class="h-full overflow-y-auto custom-scrollbar" @scroll="onScroll">
         <table class="w-full">
           <thead class="sticky top-0 z-10 bg-neutral-900">
             <tr class="text-xs font-medium tracking-wider text-left uppercase border-b text-neutral-400 border-neutral-800">
@@ -93,6 +93,9 @@
             </tr>
           </tbody>
         </table>
+        <div v-if="loadingMore" class="flex justify-center py-4">
+          <span class="text-sm text-neutral-500">Loading more actions...</span>
+        </div>
       </div>
       <!-- Empty State (only when no actions exist at all) -->
       <div v-if="!hasActions" class="flex flex-col items-center pt-10 h-full">
@@ -115,12 +118,15 @@ import type { ActionEntity, EARS, Category } from '@app/api'
 import { Play, Trash2, Plus } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import CategoryFilter from '@/core/components/design/CategoryFilter.vue'
+import { useInfiniteScroll } from '@/core/composables/useInfiniteScroll'
 
 interface Props {
   actions: ActionEntity[]
   categories: Category[]
   selectedCategories: string[]
   hasActions: boolean
+  hasMore: boolean
+  loadingMore: boolean
 }
 
 const props = defineProps<Props>()
@@ -131,7 +137,14 @@ const emit = defineEmits<{
   'delete': [actionId: EARS.EntityId]
   'toggle-category': [categoryName: string]
   'clear-filters': []
+  'load-more': []
 }>()
+
+const { onScroll } = useInfiniteScroll({
+  hasMore: () => props.hasMore,
+  loading: () => props.loadingMore,
+  onLoadMore: () => emit('load-more'),
+})
 
 function handleDelete(actionId: EARS.EntityId) {
   if (confirm('Are you sure you want to delete this action?')) {

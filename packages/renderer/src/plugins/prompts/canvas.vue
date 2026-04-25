@@ -7,12 +7,15 @@
       :categories="categories"
       :selected-categories="selectedCategories"
       :has-prompts="prompts.length > 0"
+      :has-more="hasMore"
+      :loading-more="loadingMore"
       @select="handleSelectPrompt"
       @create="handleCreatePrompt"
       @edit="handleEditPrompt"
       @delete="handleDeletePrompt"
       @toggle-category="handleToggleCategory"
       @clear-filters="handleClearFilters"
+      @load-more="handleLoadMore"
     />
 
     <!-- Create/Edit View -->
@@ -49,6 +52,11 @@ const selectedPrompt = useSelector(actor, (state) => state.context.selectedPromp
 const formData = useSelector(actor, (state) => state.context.formData);
 const categories = useSelector(actor, (state) => state.context.categories);
 const selectedCategories = useSelector(actor, (state) => state.context.selectedCategories);
+const page = useSelector(actor, (state) => state.context.page);
+const totalPages = useSelector(actor, (state) => state.context.totalPages);
+const loadingMore = useSelector(actor, (state) => state.context.loadingMore);
+
+const hasMore = computed(() => page.value < totalPages.value);
 
 // Filter prompts based on selected categories
 const filteredPrompts = computed(() => {
@@ -82,6 +90,10 @@ function handleEditPrompt(promptId: EARS.EntityId) {
 
 function handleDeletePrompt(promptId: EARS.EntityId) {
   actor.send({ type: 'PROMPT.DELETE', promptId });
+}
+
+function handleLoadMore() {
+  actor.send({ type: 'PROMPTS.LOAD_MORE' });
 }
 
 // Form handlers

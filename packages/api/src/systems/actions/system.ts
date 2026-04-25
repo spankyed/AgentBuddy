@@ -39,6 +39,7 @@ export const IncomingActionEvents = [
     category: z.string().optional()
   }),
   busEvent('DELETE_ACTION', { actionId: z.string() }),
+  busEvent('FETCH_ACTIONS_PAGE', { page: z.number().optional() }),
   busEvent('IMPORT_ACTIONS', { actions: z.any() }),
   busEvent('EXPORT_ACTIONS', { directory: z.string() }),
 ] as const
@@ -53,6 +54,7 @@ export type OutgoingActionEvents =
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
+  | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
   | { type: 'ACTIONS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'ACTIONS_IMPORT_FAILED'; errors: string[] }
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
@@ -83,6 +85,19 @@ export const actionsSystem = setup({
         data: {
           ...connectedData,
           categories: actionsSettings?.categories || []
+        }
+      }));
+    },
+    fetchActionsPage: ({ system, event }) => {
+      const ev = typeOf('FETCH_ACTIONS_PAGE', event);
+      const data = repository.actionQueries.connectedData(ev.page || 1);
+
+      system.get(bus).send(emit(actions, {
+        type: 'ACTIONS_PAGE_LOADED',
+        data: {
+          actions: data.actions,
+          page: data.page,
+          totalPages: data.totalPages
         }
       }));
     },
@@ -297,6 +312,9 @@ export const actionsSystem = setup({
       },
       DELETE_ACTION: {
         actions: 'deleteAction',
+      },
+      FETCH_ACTIONS_PAGE: {
+        actions: 'fetchActionsPage',
       },
       ACTIONS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
