@@ -28,7 +28,7 @@
                 v-if="thread.pinned"
                 @click.stop="$emit('unpin-click', thread.id)"
                 type="button"
-                class="p-1.5 text-neutral-400 transition-all duration-200 rounded-md hover:text-blue-400 hover:bg-blue-400/10 active:scale-95"
+                class="p-1.5 text-blue-400 transition-all duration-200 rounded-md hover:text-blue-300 hover:bg-blue-400/10 active:scale-95"
                 aria-label="Unpin thread"
                 title="Unpin thread"
               >
@@ -66,7 +66,8 @@
               >
                 <MessageCircleMore class="w-4 h-4"/>
               </button>
-              <ContextMenuRoot v-if="!thread.pinned">
+              <div v-if="thread.pinned" class="w-[28px]" />
+              <ContextMenuRoot v-else>
                 <ContextMenuTrigger as-child>
                   <button
                     @click.stop="$emit('archive-click', thread.id)"
