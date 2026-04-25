@@ -1,7 +1,7 @@
 <template>
   <div class="flex overflow-x-auto scrollbar-hide">
     <TabItem
-      v-for="tab in tabs"
+      v-for="tab in sortedTabs"
       :key="tab.id"
       :tab="tab"
       :isActive="tab.id === activeTabId"
@@ -18,13 +18,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import TabItem from './tab-item.vue';
 import type { Tab } from '@app/api';
 
-defineProps<{
+const props = defineProps<{
   tabs: Tab[];
   activeTabId: string;
 }>();
+
+const sortedTabs = computed(() =>
+  [...props.tabs].sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false))
+);
 
 defineEmits<{
   'select-tab': [tabId: string];
