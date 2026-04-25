@@ -53,10 +53,12 @@
           :selected-tags="filters.tags"
           :selected-chat-states="filters.chatStates"
           :show-root-only="filters.showRootOnly"
+          :show-archived="showArchived"
           @toggle-status="(s) => actor.send({ type: 'TOGGLE_FILTER_STATUS', status: s })"
           @toggle-tag="(t) => actor.send({ type: 'TOGGLE_FILTER_TAG', tag: t })"
           @toggle-chat-state="(s) => actor.send({ type: 'TOGGLE_FILTER_CHAT_STATE', chatState: s })"
           @toggle-root-only="actor.send({ type: 'TOGGLE_ROOT_ONLY_FILTER' })"
+          @toggle-view-archive="actor.send({ type: 'TOGGLE_VIEW_ARCHIVE' })"
         >
           <Button
             type="button"
@@ -128,6 +130,7 @@ const isKanbanView = computed(() => currentState.value === 'kanban')
 
 const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
+const showArchived = useSelector(actor, s => s.context.showArchived)
 const availableTags = useSelector(actor, s => s.context.availableTags)
 
 const statuses = computed(() => settings.value?.statuses || [])

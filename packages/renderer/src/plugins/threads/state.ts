@@ -117,6 +117,7 @@ type SystemEvent =
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
   | { type: 'THREADS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'THREADS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'ARCHIVED_THREADS_DATA'; threads: any[] }
 
 type UIEvent =
   // Thread management events
@@ -132,6 +133,8 @@ type UIEvent =
   | { type: 'CANCEL_CREATE' }
   | { type: 'DELETE_THREAD'; threadId: string }
   | { type: 'ARCHIVE_THREAD'; threadId: string }
+  | { type: 'UNARCHIVE_THREAD'; threadId: string }
+  | { type: 'TOGGLE_VIEW_ARCHIVE' }
   | { type: 'UNPIN_THREAD'; threadId: string }
   | { type: 'PIN_THREAD'; threadId: string }
   | {
@@ -222,6 +225,7 @@ interface ThreadsContext {
   };
   availableTags: ThreadTagOption[];
   settings: ThreadsSettings | null;
+  showArchived: boolean;
   filters: {
     statuses: string[];
     tags: string[];
@@ -490,6 +494,37 @@ const threadsState = setup({
         value: true,
       });
     },
+    toggleViewArchive: assign(({ context }) => {
+      const newShowArchived = !context.showArchived;
+      if (newShowArchived) {
+        trpc.bus.send.mutate({ systemId: id, type: 'GET_ARCHIVED_THREADS' });
+      } else {
+        trpc.bus.send.mutate({ systemId: id, type: 'REFRESH_THREADS' });
+      }
+      return {
+        showArchived: newShowArchived,
+        threads: [] as ThreadListItem[],
+      };
+    }),
+    setArchivedThreads: assign(({ event }) => ({
+      threads: typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[],
+    })),
+    unarchiveThread: ({ event }) => {
+      const { threadId } = typeOf('UNARCHIVE_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_FIELD',
+        threadId,
+        key: 'archived',
+        value: false,
+      });
+    },
+    removeUnarchivedThread: assign(({ event, context }) => {
+      const { threadId } = typeOf('UNARCHIVE_THREAD', event);
+      return {
+        threads: context.threads.filter(t => t.id !== threadId),
+      };
+    }),
     removeArchivedThread: assign(({ event, context }) => {
       const { threadId } = typeOf('ARCHIVE_THREAD', event);
       const tabs = context.tabs.filter(t => t.id !== threadId);
@@ -1167,6 +1202,7 @@ const threadsState = setup({
     create: { ...defaultThread },
     availableTags: [],
     settings: null,
+    showArchived: false,
     filters: { statuses: [], tags: [], chatStates: [], search: '', showRootOnly: true },
     threadsImport: { status: 'idle' as const, errors: [], importedCount: 0 },
     threadsExport: { status: 'idle' as const, errors: [], filePath: '', threadCount: 0 },
@@ -1217,6 +1253,7 @@ const threadsState = setup({
       ]
     },
     THREAD_CONNECTED: {
+      guard: ({ context }) => !context.showArchived,
       actions: ['setPluginData', 'refreshViewIfActive']
     },
     SET_VIEW_DATA: {
@@ -1231,9 +1268,19 @@ const threadsState = setup({
     DELETE_THREAD: {
       actions: 'deleteThread',
     },
+    TOGGLE_VIEW_ARCHIVE: {
+      actions: 'toggleViewArchive',
+      target: '.list',
+    },
+    ARCHIVED_THREADS_DATA: {
+      actions: 'setArchivedThreads',
+    },
     ARCHIVE_THREAD: {
       actions: ['archiveThread', 'removeArchivedThread', 'persistTabs'],
       target: '.list',
+    },
+    UNARCHIVE_THREAD: {
+      actions: ['unarchiveThread', 'removeUnarchivedThread'],
     },
     UNPIN_THREAD: {
       actions: 'unpinThread',

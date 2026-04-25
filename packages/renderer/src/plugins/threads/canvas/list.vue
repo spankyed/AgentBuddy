@@ -25,11 +25,13 @@
               :chat-state-overrides="chatStateOverrides"
               :is-selected="selectedThreadIds.includes(thread.id)"
               :drag-class="getRowClass(thread.id)"
+              :show-archived="showArchived"
               @select="actor.send({ type: 'SELECT_THREAD', id: $event })"
               @multi-select="(id, event) => selectItem(thread, filteredThreads, event)"
               @status-change="(id, status) => actor.send({ type: 'UPDATE_THREAD_STATUS', id, status })"
               @chat-click="(threadId) => actor.send({ type: 'OPEN_THREAD_CHAT', threadId })"
               @archive-click="handleArchiveThread"
+              @unarchive-click="(threadId) => actor.send({ type: 'UNARCHIVE_THREAD', threadId })"
               @delete-click="handleDeleteThread"
               @unpin-click="handleUnpinThread"
               @pin-click="handlePinThread"
@@ -101,6 +103,7 @@ const actor: ThreadsState = applicationState.system.get(id)
 const threads = useSelector(actor, s => s.context.threads)
 const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
+const showArchived = useSelector(actor, s => s.context.showArchived)
 const availableTags = useSelector(actor, s => s.context.availableTags)
 const selectedThreadIds = useSelector(actor, s => s.context.selectedThreadIds)
 const chatStates = useSelector(actor, s => s.context.chatStates)

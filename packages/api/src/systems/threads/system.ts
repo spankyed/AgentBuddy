@@ -132,6 +132,8 @@ export const IncomingThreadsEvents = [
     eventType: z.string(),
     payload: z.any().optional(),
   }),
+  busEvent('GET_ARCHIVED_THREADS', {}),
+  busEvent('REFRESH_THREADS', {}),
 ] as const
 
 export type ThreadsInternalEvents =
@@ -153,6 +155,7 @@ export type OutgoingThreadsEvents =
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
   | { type: 'THREADS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'THREADS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'ARCHIVED_THREADS_DATA'; threads: Partial<ThreadEntity>[] }
   // Chat/agent events (merged from agent system)
   | { type: 'AGENT_CONNECTED'; data: AgentConnectedData }
   | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData }
@@ -195,6 +198,12 @@ export const threadsSystem = setup({
           ...connectedData,
           settings: threadsSettings || null
         }
+      }));
+    },
+    sendArchivedThreads: ({ system }) => {
+      system.get(bus).send(emit(threads, {
+        type: 'ARCHIVED_THREADS_DATA',
+        threads: repository.threadQueries.archivedThreads(),
       }));
     },
     createThread: ({ system, event }) => {
@@ -920,6 +929,12 @@ export const threadsSystem = setup({
           },
           FORWARD_BRAIN_EVENT: {
             actions: 'forwardBrainEvent',
+          },
+          GET_ARCHIVED_THREADS: {
+            actions: 'sendArchivedThreads',
+          },
+          REFRESH_THREADS: {
+            actions: 'sendThreadsConnectedData',
           },
         },
       },

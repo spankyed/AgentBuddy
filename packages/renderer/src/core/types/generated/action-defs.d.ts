@@ -2365,6 +2365,24 @@ declare const events: {
         type: "FORWARD_BRAIN_EVENT";
         systemId: "threads";
         payload?: any;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"GET_ARCHIVED_THREADS">;
+        systemId: zod.ZodLiteral<"threads">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "GET_ARCHIVED_THREADS";
+        systemId: "threads";
+    }, {
+        type: "GET_ARCHIVED_THREADS";
+        systemId: "threads";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"REFRESH_THREADS">;
+        systemId: zod.ZodLiteral<"threads">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "REFRESH_THREADS";
+        systemId: "threads";
+    }, {
+        type: "REFRESH_THREADS";
+        systemId: "threads";
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -4757,6 +4775,10 @@ declare const events: {
     } | {
         type: "THREADS_IMPORT_FAILED";
         errors: string[];
+        pluginId: "threads";
+    } | {
+        type: "ARCHIVED_THREADS_DATA";
+        threads: Partial<ThreadEntity>[];
         pluginId: "threads";
     } | {
         type: "AGENT_CONNECTED";
@@ -7586,8 +7608,24 @@ const media = /*#__PURE__*/Object.freeze({
  *
  * Provides primitives for updating thread-level state with automatic
  * frontend notification, following the same pattern as artifact service.
+ *
+ * Also provides a generic cleanup hook registry so services can register
+ * callbacks that run before destructive thread operations (e.g. message
+ * soft-deletion on revert). This lets the threads system stop active
+ * processes without knowing about specific services like Claude Code.
  */
 
+/**
+ * Register a named cleanup callback invoked before message soft-deletion.
+ * Returns an unsubscribe function.
+ */
+declare function registerCleanup(id: string, fn: (threadId: string) => void): () => void;
+/**
+ * Run all registered cleanup callbacks for a thread. Synchronous — each
+ * callback is expected to be synchronous (LMDB ops, handle kills, etc.).
+ * Errors are caught and logged so one failing callback doesn't block others.
+ */
+declare function runCleanup(threadId: string): void;
 /**
  * Update a thread's chatState and notify the frontend.
  *
@@ -7599,6 +7637,8 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
 
 const threads = /*#__PURE__*/Object.freeze({
   __proto__: null,
+  registerCleanup: registerCleanup,
+  runCleanup: runCleanup,
   updateChatState: updateChatState
 });
 
@@ -7939,6 +7979,7 @@ declare const services: {
             readonly messages: (threadId: EARS.EntityId) => Partial<MessageEntity>[];
             readonly linkedThreads: (threadId: EARS.EntityId) => any[];
             readonly extendedData: (threadId: EARS.EntityId, include?: keyof ThreadExtendedData | (keyof ThreadExtendedData)[]) => ThreadExtendedData;
+            readonly archivedThreads: () => Partial<ThreadEntity>[];
             readonly kanbanItems: () => {
                 content: {
                     workItems: {

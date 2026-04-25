@@ -91,6 +91,21 @@
           </div>
         </div>
 
+        <!-- View Archive toggle -->
+        <div class="flex items-center justify-between px-3 pt-2 pb-3 border-t border-neutral-800">
+          <span class="text-xs text-neutral-300">View Archive</span>
+          <button
+            type="button"
+            class="p-1 rounded-md transition-colors"
+            :class="showArchived
+              ? 'bg-neutral-700 text-neutral-100'
+              : 'text-neutral-500 hover:text-neutral-300'"
+            @click="emit('toggle-view-archive')"
+          >
+            <Archive :size="14" />
+          </button>
+        </div>
+
         <!-- Empty state -->
         <div v-if="statuses.length === 0 && chatStateConfigs.length === 0 && tags.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
           No filter options available
@@ -102,7 +117,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Network } from 'lucide-vue-next'
+import { Archive, Network } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { ThreadStatusOption, ThreadTagOption, ChatStateConfig } from '@app/api'
 
@@ -114,6 +129,7 @@ defineProps<{
   selectedTags: string[]
   selectedChatStates: string[]
   showRootOnly: boolean
+  showArchived: boolean
 }>()
 
 const emit = defineEmits<{
@@ -121,6 +137,7 @@ const emit = defineEmits<{
   (e: 'toggle-tag', tag: string): void
   (e: 'toggle-chat-state', chatState: string): void
   (e: 'toggle-root-only'): void
+  (e: 'toggle-view-archive'): void
 }>()
 
 const open = ref(false)

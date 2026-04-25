@@ -73,6 +73,10 @@ export const threadQueries = {
     };
   },
 
+  archivedThreads: (): Partial<ThreadEntity>[] => {
+    return getArchivedThreads();
+  },
+
   kanbanItems: () => {
     // Get all threads and transform them into kanban work items
     const allThreads = (qx(EARS.Entity.Thread)
@@ -375,6 +379,17 @@ function getRecentThreads(limit: number = getConfiguredRecentThreadsLimit()): Pa
   return allThreads
     .sort((a, b) => getSortTimestamp(b, sortOrder) - getSortTimestamp(a, sortOrder))
     .slice(0, limit);
+}
+
+function getArchivedThreads(): Partial<ThreadEntity>[] {
+  const threadFields = [
+    "shortCode", "topic", "instructions", "status", "timestamp",
+    "lastMessageTimestamp", "lastVisitedTimestamp", "forcedMode", "pinned", "archived", "chatState", "context",
+  ] as const;
+
+  return (qx(EARS.Entity.Thread).pick(threadFields) as Partial<ThreadEntity>[])
+    .filter(t => t.archived)
+    .sort((a, b) => getSortTimestamp(b, getConfiguredSortOrder()) - getSortTimestamp(a, getConfiguredSortOrder()));
 }
 
 function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()): {
