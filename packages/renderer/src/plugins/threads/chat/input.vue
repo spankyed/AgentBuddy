@@ -287,7 +287,7 @@ function updateStatusLinePos() {
   statusLinePos.value = {
     position: 'fixed',
     top: `${r.top - 10}px`,
-    right: `${window.innerWidth - r.right - 16}px`,
+    right: `${window.innerWidth - r.right - 8}px`,
     maxWidth: `${r.width * 0.6 + 16}px`,
     zIndex: '40',
   }
