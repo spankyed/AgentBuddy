@@ -73,7 +73,11 @@
               <FileText :size="12" />
               Details
             </button>
-            <ContextMenuRoot v-if="!thread.pinned">
+            <span v-if="thread.pinned" class="invisible flex items-center gap-1.5 px-1.5 py-1 text-xs">
+              <Archive :size="12" />
+              Archive
+            </span>
+            <ContextMenuRoot v-else>
               <ContextMenuTrigger as-child>
                 <button
                   type="button"
