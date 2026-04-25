@@ -2350,6 +2350,21 @@ declare const events: {
         type: "TOGGLE_COMPACTED";
         systemId: "threads";
         markerId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"TRIGGER_BRAIN_EVENT">;
+        systemId: zod.ZodLiteral<"threads">;
+        eventType: zod.ZodString;
+        payload: zod.ZodOptional<zod.ZodAny>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "threads";
+        payload?: any;
+    }, {
+        eventType: string;
+        type: "TRIGGER_BRAIN_EVENT";
+        systemId: "threads";
+        payload?: any;
     }>] | readonly [zod.ZodObject<{
         type: zod.ZodLiteral<"FLOW_SELECT">;
         systemId: zod.ZodLiteral<"flows">;
@@ -3578,6 +3593,21 @@ declare const events: {
         targetDir: string;
     }, {
         type: "explorer.MOVE_FILES";
+        systemId: "code";
+        sourcePaths: string[];
+        targetDir: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"explorer.COPY_FILES">;
+        systemId: zod.ZodLiteral<"code">;
+        sourcePaths: zod.ZodArray<zod.ZodString, "many">;
+        targetDir: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "explorer.COPY_FILES";
+        systemId: "code";
+        sourcePaths: string[];
+        targetDir: string;
+    }, {
+        type: "explorer.COPY_FILES";
         systemId: "code";
         sourcePaths: string[];
         targetDir: string;
@@ -5273,6 +5303,13 @@ declare const events: {
             sourcePaths: string[];
             targetDir: string;
             movedPaths: string[];
+        };
+        pluginId: "code";
+    } | {
+        type: "explorer.FILES_COPIED";
+        data: {
+            targetDir: string;
+            copiedPaths: string[];
         };
         pluginId: "code";
     } | {

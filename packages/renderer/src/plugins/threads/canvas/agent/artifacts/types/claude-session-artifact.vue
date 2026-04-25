@@ -421,7 +421,7 @@ function selectPermissionMode(mode: PermissionMode) {
     return
   }
   trpc.bus.send.mutate({
-    systemId: 'brain',
+    systemId: 'threads',
     type: 'TRIGGER_BRAIN_EVENT',
     eventType: 'user.update.permissionMode',
     payload: { threadId, mode },
@@ -435,7 +435,7 @@ function selectWorktree(value: boolean) {
   const threadId = currentThreadId.value
   if (!threadId) return
   trpc.bus.send.mutate({
-    systemId: 'brain',
+    systemId: 'threads',
     type: 'TRIGGER_BRAIN_EVENT',
     eventType: 'user.update.worktree',
     payload: { threadId, useWorktree: value },
