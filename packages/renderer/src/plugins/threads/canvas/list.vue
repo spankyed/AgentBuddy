@@ -162,6 +162,8 @@ const filteredThreads = computed(() => {
     )
   }
 
+  result.sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false))
+
   return result
 })
 
