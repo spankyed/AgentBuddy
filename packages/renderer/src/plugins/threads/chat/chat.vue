@@ -177,6 +177,11 @@ const statusLine = computed(() => {
 })
 
 const showInlineDashboard = ref(false)
+const canvasHeight = useSelector(applicationState, (state) => state.context.panelSizes.canvasHeight)
+
+watch(canvasHeight, (height) => {
+  if (height >= 93) showInlineDashboard.value = false
+})
 const messagesContainer = ref<HTMLElement | null>(null)
 const messagesContent = ref<HTMLElement | null>(null)
 const isNearBottom = ref(true)

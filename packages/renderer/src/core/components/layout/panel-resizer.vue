@@ -43,6 +43,7 @@ let startY = 0
 let clickIntent = true
 
 const startDrag = (e: MouseEvent) => {
+  if (e.button !== 0) return
   e.preventDefault()
 
   if (props.collapsed) {
