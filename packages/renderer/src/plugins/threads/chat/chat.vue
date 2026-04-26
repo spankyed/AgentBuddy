@@ -16,7 +16,7 @@
         <!-- Shrinkable content area -->
         <div class="flex flex-col flex-grow overflow-hidden min-h-0">
           <!-- Agent Chat Content -->
-          <div class="relative flex-grow w-full overflow-hidden min-h-0">
+          <div class="relative flex-grow w-full overflow-hidden min-h-0" :class="$style.messagesWrapper">
             <div class="h-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer" @scroll="onScroll">
               <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
                 <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
@@ -495,6 +495,20 @@ watch(messagesContent, (el, _, onCleanup) => {
 </script>
 
 <style lang="scss" module>
+.messagesWrapper {
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 15px;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, rgb(23 23 23));
+    pointer-events: none;
+    z-index: 5;
+  }
+}
+
 .messagesContainer {
   display: flex;
   flex-direction: column;
