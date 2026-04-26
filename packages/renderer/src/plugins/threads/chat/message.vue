@@ -19,7 +19,7 @@
       <div class="flex-1 h-px bg-neutral-700/50"></div>
     </div>
 
-    <div v-else class="relative group max-w-full min-w-0">
+    <div v-else class="group max-w-full min-w-0">
       <!-- Aside: collapsed interactive message (click to expand) -->
       <div v-if="message.autoHide && message.asideText && !expanded"
            class="text-xs italic py-1 px-2 cursor-pointer hover:bg-neutral-800/50 rounded transition-colors"
@@ -30,6 +30,7 @@
 
       <!-- Normal message rendering -->
       <template v-else-if="!message.autoHide || !message.asideText || expanded">
+      <div class="relative">
       <!-- Floating hover UI -->
       <div
         class="absolute transition-opacity duration-200 opacity-0 pointer-events-none -bottom-3 -right-4 z-10 group-hover:opacity-100 group-hover:pointer-events-auto"
@@ -40,51 +41,74 @@
             {{ formatTime(new Date(message.createdAt)) }}
           </span>
 
-          <!-- Action buttons -->
+          <!-- Revert — shared across all user message states (hidden on stale cancelled) -->
           <button
-            v-if="isUser"
+            v-if="isUser && (isTail || !message.status)"
             @click="$emit('revert', message.id)"
-            @contextmenu.prevent="openRevertMenu"
+            @contextmenu.prevent="!message.status && openRevertMenu($event)"
             class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Revert (right-click for options)"
+            :title="message.status ? 'Revert to input' : 'Revert (right-click for options)'"
           >
             <Undo2 :size="16" />
           </button>
 
-          <button
-            v-if="message.forkable !== false"
-            @click="$emit('fork', message.id)"
-            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Fork conversation"
-          >
-            <GitFork :size="16" />
-          </button>
+          <!-- Status-specific actions -->
+          <template v-if="isUser && message.status === 'queued'">
+            <button
+              @click="$emit('unqueue', message.id)"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Cancel queued message"
+            >
+              <X :size="16" />
+            </button>
+          </template>
 
-          <button
-            v-if="message.autoHide && expanded"
-            @click="expanded = false"
-            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Collapse"
-          >
-            <ChevronsUpDown :size="16" />
-          </button>
+          <template v-else-if="isUser && message.status === 'cancelled' && isTail">
+            <button
+              @click="$emit('resend', message.id, message.text, message.references)"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Resend message"
+            >
+              <RotateCcw :size="16" />
+            </button>
+          </template>
 
-          <button
-            v-if="isUser && isTruncated && userExpanded"
-            @click="userExpanded = false"
-            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Collapse"
-          >
-            <ChevronsUpDown :size="16" />
-          </button>
+          <template v-else>
+            <button
+              v-if="message.forkable !== false"
+              @click="$emit('fork', message.id)"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Fork conversation"
+            >
+              <GitFork :size="16" />
+            </button>
 
-          <button
-            @click="copyMessageText"
-            class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
-            title="Copy message text"
-          >
-            <Copy :size="16" />
-          </button>
+            <button
+              v-if="message.autoHide && expanded"
+              @click="expanded = false"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Collapse"
+            >
+              <ChevronsUpDown :size="16" />
+            </button>
+
+            <button
+              v-if="isUser && isTruncated && userExpanded"
+              @click="userExpanded = false"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Collapse"
+            >
+              <ChevronsUpDown :size="16" />
+            </button>
+
+            <button
+              @click="copyMessageText"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Copy message text"
+            >
+              <Copy :size="16" />
+            </button>
+          </template>
         </div>
       </div>
 
@@ -97,7 +121,7 @@
             ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
             : ' text-neutral-100 border border-neutral-800',
           isUser && isCommand && 'command-bubble',
-          (message as any).status === 'cancelled' ? 'opacity-50' : 'hover:shadow-md',
+          message.status === 'cancelled' ? 'opacity-50' : 'hover:shadow-md',
           isUser && isTruncated && !userExpanded && 'max-h-[200px] cursor-pointer',
         ]"
         @click="isUser && isTruncated && !userExpanded && (userExpanded = true)"
@@ -154,26 +178,13 @@
           </span>
         </div>
       </div>
+      </div>
       </template>
 
-      <!-- Queued indicator — shown on user messages waiting behind an active turn -->
-      <button
-        v-if="isUser && (message as any).status === 'queued'"
-        @click="$emit('unqueue', message.id)"
-        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer group/unqueue"
-        title="Click to cancel"
-      >
-        <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-        <span class="group-hover/unqueue:hidden">Queued</span>
-        <span class="hidden group-hover/unqueue:inline">Cancel</span>
-      </button>
-      <!-- Cancelled indicator — queued message was dropped when turn was killed -->
-      <div
-        v-else-if="isUser && (message as any).status === 'cancelled'"
-        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-500"
-      >
-        <span class="inline-block w-1.5 h-1.5 bg-neutral-500 rounded-full" />
-        <span>Cancelled — resend</span>
+      <!-- Status indicator (queued / cancelled) -->
+      <div v-if="statusIndicator" :class="['flex items-center justify-end gap-1.5 mt-1 px-1 text-xs', statusIndicator.textClass]">
+        <span :class="['inline-block w-1.5 h-1.5 rounded-full', statusIndicator.dotClass]" />
+        <span>{{ statusIndicator.label }}</span>
       </div>
     </div>
 
@@ -190,7 +201,7 @@
 <script setup lang="ts">
 import { computed, ref, onUpdated, watch } from 'vue'
 import type { MessageEntity } from '@app/api'
-import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { Undo2, GitFork, Copy, FileCode2, ChevronsUpDown, ChevronDown, ChevronUp, X, RotateCcw } from 'lucide-vue-next'
 import InteractionContainer from './interactions/InteractionContainer.vue'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
@@ -201,6 +212,7 @@ import { useContextMenu } from '@/core/composables/useContextMenu'
 interface ChatMessageProps {
   message: MessageEntity
   isTyping?: boolean
+  isTail?: boolean
 }
 
 interface ChatMessageEmits {
@@ -209,11 +221,13 @@ interface ChatMessageEmits {
   (e: 'fork', messageId: string): void
   (e: 'open-lightbox', imageSrc: string): void
   (e: 'unqueue', messageId: string): void
+  (e: 'resend', messageId: string, text: string, references?: any): void
   (e: 'toggle-compacted', markerId: string, compacted: boolean): void
 }
 
 const props = withDefaults(defineProps<ChatMessageProps>(), {
-  isTyping: false
+  isTyping: false,
+  isTail: false,
 })
 
 const emit = defineEmits<ChatMessageEmits>()
@@ -222,6 +236,12 @@ const expanded = ref(false)
 const revertMenu = useContextMenu()
 
 const isUser = computed(() => props.message.sender === 'user')
+const statusIndicator = computed(() => {
+  if (!isUser.value || !props.message.status) return null
+  if (props.message.status === 'queued') return { label: 'Queued', dotClass: 'bg-amber-500 animate-pulse', textClass: 'text-neutral-400' }
+  if (props.message.status === 'cancelled') return { label: 'Cancelled', dotClass: 'bg-neutral-500', textClass: 'text-neutral-500' }
+  return null
+})
 const isMarker = computed(() => props.message.sender === 'marker')
 const isCollapsedAsideAsUser = computed(() =>
   props.message.autoHide && props.message.asideText && !expanded.value && props.message.asUser

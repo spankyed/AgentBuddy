@@ -21,9 +21,11 @@
                   v-for="message in visibleMessages"
                   :key="message.id"
                   :message="message"
+                  :is-tail="isTailMessage(message)"
                   @open-lightbox="openLightbox"
                   @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
-                  @unqueue="(messageId: string) => { if (currentThread?.id) actor.send({ type: 'UNQUEUE_MESSAGE', threadId: currentThread.id, messageId }) }"
+                  @unqueue="handleUnqueue"
+                  @resend="handleResend"
                   @revert="(messageId: string) => handleRevert(messageId)"
                   @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
                   @toggle-compacted="handleToggleCompacted"
@@ -145,6 +147,15 @@ import { trpc } from '@/core/trpc'
 const actor: ThreadsState = applicationState.system.get(id);
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
+
+/** True when no processed user messages follow this one — gates queued/cancelled actions. */
+function isTailMessage(msg: MessageEntity): boolean {
+  const msgs = visibleMessages.value
+  const idx = msgs.indexOf(msg)
+  if (idx === -1) return false
+  return !msgs.slice(idx + 1).some(m => m.sender === 'user' && !m.status)
+}
+
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
 const recentThreads = useSelector(actor, (state) => (state.context.recentThreads || []) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
@@ -219,6 +230,17 @@ function handleStatuslineClick() {
 function handleSendMessage(text: string, references?: MessageReferences) {
   actor.send({ type: 'SEND_MESSAGE', text, references })
   pendingScrollOnSend.value = true
+}
+
+function handleUnqueue(messageId: string) {
+  if (currentThread.value?.id) {
+    actor.send({ type: 'UNQUEUE_MESSAGE', threadId: currentThread.value.id, messageId })
+  }
+}
+
+function handleResend(messageId: string, text: string, references?: any) {
+  actor.send({ type: 'DISMISS_MESSAGE', messageId })
+  handleSendMessage(text, references)
 }
 
 function handleSendCommand(command: string, text: string, references?: MessageReferences) {
@@ -305,6 +327,17 @@ const revertDialogCopy = computed(() => pendingIsSummarize.value ? {
 })
 
 function handleRevert(messageId: string, restoreFiles = false, skipConfirm = false) {
+  // Queued/cancelled: lightweight dismiss — prefill input, remove from UI, no backend revert.
+  const msg = allMessages.value.find(m => m.id === messageId)
+  if (msg?.status === 'queued' || msg?.status === 'cancelled') {
+    prefillInput(msg)
+    if (msg.status === 'queued' && currentThread.value?.id) {
+      actor.send({ type: 'UNQUEUE_MESSAGE', threadId: currentThread.value.id, messageId })
+    }
+    actor.send({ type: 'DISMISS_MESSAGE', messageId })
+    return
+  }
+
   pendingRestoreFiles = restoreFiles
   pendingIsSummarize.value = false
   if (skipConfirm || settings.value?.skipRevertConfirm) {
@@ -350,12 +383,22 @@ function confirmRevert() {
 const prefillText = ref('')
 const prefillReferences = ref<MessageReferences | undefined>()
 
+function prefillInput(msg: MessageEntity | undefined) {
+  const text = msg?.text || ''
+  const refs = msg?.references as MessageReferences | undefined
+  prefillText.value = text
+  if (refs?.images?.length || refs?.files?.length) {
+    prefillReferences.value = refs
+  }
+  nextTick(() => {
+    prefillText.value = ''
+    prefillReferences.value = undefined
+  })
+}
+
 function doRevert(messageId: string) {
   if (!currentThread.value?.id) return
-  // Grab the message text + attachments before the revert deletes it.
   const msg = allMessages.value.find(m => m.id === messageId)
-  const revertedText = msg?.text || ''
-  const revertedRefs = (msg as any)?.references as MessageReferences | undefined
   actor.send({
     type: 'REVERT_THREAD',
     messageId,
@@ -366,40 +409,18 @@ function doRevert(messageId: string) {
     }),
   })
   pendingRestoreFiles = false
-  // Prefill the chat input so the user can re-send or edit.
-  // Clear after a tick so the watcher fires, then the value resets —
-  // this ensures identical consecutive reverts still retrigger the watcher.
-  prefillText.value = revertedText
-  if (revertedRefs?.images?.length || revertedRefs?.files?.length) {
-    prefillReferences.value = revertedRefs
-  }
-  nextTick(() => {
-    prefillText.value = ''
-    prefillReferences.value = undefined
-  })
+  prefillInput(msg)
 }
 
 function doSummarize(messageId: string) {
   if (!currentThread.value?.id) return
-  // Grab X's text + attachments before the soft-delete removes it — prefill mirrors
-  // Claude Code's `direction: 'from'` behavior (user resubmits against
-  // the freshly compacted session).
   const msg = allMessages.value.find(m => m.id === messageId)
-  const revertedText = msg?.text || ''
-  const revertedRefs = (msg as any)?.references as MessageReferences | undefined
   actor.send({
     type: 'SUMMARIZE_THREAD',
     messageId,
     threadId: currentThread.value.id,
   })
-  prefillText.value = revertedText
-  if (revertedRefs?.images?.length || revertedRefs?.files?.length) {
-    prefillReferences.value = revertedRefs
-  }
-  nextTick(() => {
-    prefillText.value = ''
-    prefillReferences.value = undefined
-  })
+  prefillInput(msg)
 }
 
 function handleToggleCompacted(markerId: string, compacted: boolean) {
