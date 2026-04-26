@@ -1,4 +1,4 @@
-import type { ActionMeta, EntityId, Services, Z } from '../../../types';
+import type { ActionMeta, EntityId, Services } from '../../../types';
 import { getOnboardingState, persistOnboardingState, flashState, type OnboardingState } from '../onboarding-helpers';
 import { startCcImportStep } from './handle-projects-step';
 
@@ -21,7 +21,24 @@ export async function action(
   if (!state) return { success: false, reason: 'no-state' };
 
   flashState(services, threadId);
-  await testCliAndAdvance(services, state, threadId);
+
+  // Show provider selection choice
+  const { messageId } = services.chat.sendChoiceBlock({
+    threadId,
+    text: 'Which coding assistant would you like to use?',
+    prompt: 'Choose your provider',
+    choices: [
+      { id: 'claude-code', label: 'Claude Code', description: 'Anthropic Claude — requires CLI installation' },
+      { id: 'codex', label: 'Codex', description: 'OpenAI Codex — authenticate via ChatGPT account' },
+    ],
+    allowCustom: false,
+    forkable: false,
+    autoHide: true,
+    asUser: true,
+  });
+
+  state.step = 'provider-select';
+  state.pendingMessageId = messageId;
   persistOnboardingState(services, threadId, state);
 
   return { success: true, step: state.step };

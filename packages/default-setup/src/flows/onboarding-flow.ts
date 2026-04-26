@@ -30,6 +30,42 @@ export default {
           ],
         },
         {
+          if: "$.lastStep.result.step == 'provider-select'",
+          steps: [
+            action("Handle Provider Select Step", {
+              label: "provider-select",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
+        {
+          if: "$.lastStep.result.step == 'codex-login'",
+          steps: [
+            action("Handle Codex Login Step", {
+              label: "codex-login",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
+        {
+          if: "$.lastStep.result.step == 'codex-projects'",
+          steps: [
+            action("Handle Codex Projects Step", {
+              label: "codex-projects",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
+        {
           if: "$.lastStep.result.step == 'cli-test-ask'",
           steps: [
             action("Handle CLI Test Step", {
