@@ -34,6 +34,7 @@
                 v-if="!chatMaximized"
                 orientation="vertical"
                 :collapsed="panelSizes.canvasHeight >= 93"
+                style="background-color: rgb(28 28 28)"
                 @resize="handleCanvasResize"
                 @click="handleCanvasClick"
                 @right-click="handleChatMaximize"

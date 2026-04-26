@@ -12,7 +12,7 @@
         @resize="handleDashboardResize"
       />
       <!-- Chat column (right, or full width when dashboard hidden) -->
-      <div class="flex flex-col flex-1 min-w-0 overflow-hidden pt-2">
+      <div class="flex flex-col flex-1 min-w-0 overflow-hidden pt-2" style="background-color: rgb(28 28 28)">
         <!-- Shrinkable content area -->
         <div class="flex flex-col flex-grow overflow-hidden min-h-0">
           <!-- Agent Chat Content -->
@@ -503,7 +503,7 @@ watch(messagesContent, (el, _, onCleanup) => {
     left: 0;
     right: 15px;
     height: 40px;
-    background: linear-gradient(to bottom, transparent, rgb(23 23 23));
+    background: linear-gradient(to bottom, transparent, rgb(28 28 28));
     pointer-events: none;
     z-index: 5;
   }

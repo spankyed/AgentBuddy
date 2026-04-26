@@ -118,8 +118,8 @@
         :class="[
           'rounded-xl px-4 py-3 transition-all duration-200 overflow-hidden relative',
           isUser
-            ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/30'
-            : ' text-neutral-100 border border-neutral-800',
+            ? 'bg-neutral-800/80 text-neutral-100 border border-neutral-700/50'
+            : ' text-neutral-100 border border-neutral-700/60',
           isUser && isCommand && 'command-bubble',
           message.status === 'cancelled' ? 'opacity-50' : 'hover:shadow-md',
           isUser && isTruncated && !userExpanded && 'max-h-[200px] cursor-pointer',
