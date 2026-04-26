@@ -23,6 +23,7 @@
                   :message="message"
                   @open-lightbox="openLightbox"
                   @fork="(messageId: string) => actor.send({ type: 'FORK_THREAD', messageId, threadId: currentThread?.id, threadTopic: currentThread?.topic })"
+                  @unqueue="(messageId: string) => { if (currentThread?.id) actor.send({ type: 'UNQUEUE_MESSAGE', threadId: currentThread.id, messageId }) }"
                   @revert="(messageId: string) => handleRevert(messageId)"
                   @revert-with-files="(messageId: string) => handleRevert(messageId, true)"
                   @toggle-compacted="handleToggleCompacted"

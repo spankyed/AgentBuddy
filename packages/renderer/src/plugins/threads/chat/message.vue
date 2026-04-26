@@ -157,13 +157,16 @@
       </template>
 
       <!-- Queued indicator — shown on user messages waiting behind an active turn -->
-      <div
+      <button
         v-if="isUser && (message as any).status === 'queued'"
-        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-400"
+        @click="$emit('unqueue', message.id)"
+        class="flex items-center justify-end gap-1.5 mt-1 px-1 text-xs text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer group/unqueue"
+        title="Click to cancel"
       >
         <span class="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-        <span>Queued</span>
-      </div>
+        <span class="group-hover/unqueue:hidden">Queued</span>
+        <span class="hidden group-hover/unqueue:inline">Cancel</span>
+      </button>
       <!-- Cancelled indicator — queued message was dropped when turn was killed -->
       <div
         v-else-if="isUser && (message as any).status === 'cancelled'"
@@ -205,6 +208,7 @@ interface ChatMessageEmits {
   (e: 'revert-with-files', messageId: string): void
   (e: 'fork', messageId: string): void
   (e: 'open-lightbox', imageSrc: string): void
+  (e: 'unqueue', messageId: string): void
   (e: 'toggle-compacted', markerId: string, compacted: boolean): void
 }
 

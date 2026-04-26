@@ -193,6 +193,20 @@ export default {
       ]],
       "Turn paused by user",
     ),
+    // ─── User-initiated unqueue ──────────────────────────────────────
+    on(
+      "user.thread.unqueue",
+      [[
+        action("CC: Unqueue Message", {
+          label: "unqueue-message",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            messageId: "$.event.data.payload.messageId",
+          },
+        }),
+      ]],
+      "Queued message cancelled by user",
+    ),
     // ─── User setting toggles ───────────────────────────────────────
     on(
       "user.update.permissionMode",

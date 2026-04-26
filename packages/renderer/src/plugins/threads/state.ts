@@ -193,6 +193,7 @@ type UIEvent =
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
   | { type: 'PAUSE_TURN'; threadId: string }
+  | { type: 'UNQUEUE_MESSAGE'; threadId: string; messageId: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -1179,6 +1180,10 @@ const threadsState = setup({
       const { threadId } = typeOf('PAUSE_TURN', event);
       trpc.bus.send.mutate({ systemId: id, type: 'PAUSE_TURN', threadId });
     },
+    unqueueMessage: ({ event }) => {
+      const { threadId, messageId } = typeOf('UNQUEUE_MESSAGE', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'FORWARD_BRAIN_EVENT', eventType: 'user.thread.unqueue', payload: { threadId, messageId } });
+    },
   },
   guards: {
     targetIs,
@@ -1407,6 +1412,9 @@ const threadsState = setup({
     SUMMARIZE_THREAD: { actions: 'summarizeThread' },
     PAUSE_TURN: {
       actions: 'pauseTurn',
+    },
+    UNQUEUE_MESSAGE: {
+      actions: 'unqueueMessage',
     },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
