@@ -102,6 +102,15 @@ const settings: SettingsData = {
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
+          {
+            id: 'codex',
+            name: 'Codex',
+            description: 'OpenAI Codex agentic coding mode',
+            phases: [
+              { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown', color: '#10B981' },
+              { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
+            ]
+          },
           { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents', hidden: true },
         ],
         hotkeys: {
