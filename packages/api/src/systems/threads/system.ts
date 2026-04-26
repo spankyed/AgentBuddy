@@ -128,6 +128,9 @@ export const IncomingThreadsEvents = [
     markerId: z.string(),
     compacted: z.boolean(),
   }),
+  busEvent('DELETE_MESSAGE', {
+    messageId: z.string(),
+  }),
   busEvent('FORWARD_BRAIN_EVENT', {
     eventType: z.string(),
     payload: z.any().optional(),
@@ -830,6 +833,10 @@ export const threadsSystem = setup({
         ...(asideText && { asideText })
       }));
     },
+    deleteMessage: ({ event }) => {
+      const { messageId } = typeOf('DELETE_MESSAGE', event);
+      tx(messageId as EARS.EntityId).destroy();
+    },
     toggleCompacted: ({ system, event }) => {
       const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
       const messageIds = repository.chatCommands.toggleMarkerCompacted(
@@ -923,6 +930,9 @@ export const threadsSystem = setup({
           },
           TOGGLE_COMPACTED: {
             actions: 'toggleCompacted',
+          },
+          DELETE_MESSAGE: {
+            actions: 'deleteMessage',
           },
           PAUSE_TURN: {
             actions: 'pauseTurn',

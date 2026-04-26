@@ -1195,6 +1195,10 @@ const threadsState = setup({
       const { threadId, messageId } = typeOf('UNQUEUE_MESSAGE', event);
       trpc.bus.send.mutate({ systemId: id, type: 'FORWARD_BRAIN_EVENT', eventType: 'user.thread.unqueue', payload: { threadId, messageId } });
     },
+    persistDismissMessage: ({ event }) => {
+      const { messageId } = typeOf('DISMISS_MESSAGE', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'DELETE_MESSAGE', messageId });
+    },
   },
   guards: {
     targetIs,
@@ -1427,7 +1431,7 @@ const threadsState = setup({
     UNQUEUE_MESSAGE: {
       actions: 'unqueueMessage',
     },
-    DISMISS_MESSAGE: { actions: 'dismissMessage' },
+    DISMISS_MESSAGE: { actions: ['dismissMessage', 'persistDismissMessage'] },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: 'finishStream',
