@@ -1,13 +1,18 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Main content: optional inline dashboard + chat -->
-    <div class="flex flex-grow overflow-hidden min-h-0">
+    <div class="flex flex-grow overflow-hidden min-h-0" ref="chatContainerRef">
       <!-- Inline Dashboard (left) -->
-      <div v-if="showInlineDashboard" class="flex-1 min-w-0 border-r border-neutral-800 overflow-hidden">
+      <div v-if="showInlineDashboard" class="min-w-0 overflow-hidden shrink-0 border-r border-neutral-800" :style="{ width: dashboardWidth + '%' }">
         <AgentCanvas :inline="true" />
       </div>
+      <PanelResizer
+        v-if="showInlineDashboard"
+        orientation="horizontal"
+        @resize="handleDashboardResize"
+      />
       <!-- Chat column (right, or full width when dashboard hidden) -->
-      <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div class="flex flex-col flex-1 min-w-0 overflow-hidden pt-2">
         <!-- Shrinkable content area -->
         <div class="flex flex-col flex-grow overflow-hidden min-h-0">
           <!-- Agent Chat Content -->
@@ -135,6 +140,7 @@ import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import AgentCanvas from '@/plugins/threads/canvas/agent/canvas.vue'
+import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
 import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
@@ -189,6 +195,23 @@ const statusLine = computed(() => {
 })
 
 const showInlineDashboard = ref(false)
+const chatContainerRef = ref<HTMLElement | null>(null)
+const dashboardWidth = ref(45)
+
+const MIN_PANEL_WIDTH = 400
+
+function handleDashboardResize(delta: number) {
+  const container = chatContainerRef.value
+  if (!container) return
+  const containerWidth = container.clientWidth
+  const deltaPercent = (delta / containerWidth) * 100
+  const newPercent = dashboardWidth.value + deltaPercent
+  const newPx = (newPercent / 100) * containerWidth
+  const chatPx = containerWidth - newPx
+  if (newPx < MIN_PANEL_WIDTH || chatPx < MIN_PANEL_WIDTH) return
+  dashboardWidth.value = newPercent
+}
+
 const canvasHeight = useSelector(applicationState, (state) => state.context.panelSizes.canvasHeight)
 
 watch(canvasHeight, (height) => {

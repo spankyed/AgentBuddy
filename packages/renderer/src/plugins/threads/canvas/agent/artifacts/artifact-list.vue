@@ -1,7 +1,7 @@
 <template>
-  <div :class="compact ? 'p-1' : 'p-2'">
+  <div :class="compact ? 'p-1 pb-2' : 'p-2'">
     <!-- <h3 class="mb-3 text-sm font-semibold text-neutral-300">Artifacts</h3> -->
-    <div :class="compact ? 'space-y-0.5' : 'space-y-1'">
+    <div :class="compact ? 'flex flex-nowrap gap-0.5' : 'space-y-1'">
       <ArtifactItem
         v-for="artifact in sortedArtifacts"
         :key="artifact.id"

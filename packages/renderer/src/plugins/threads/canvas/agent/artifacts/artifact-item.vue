@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded-md cursor-pointer transition-colors"
+    class="rounded-md cursor-pointer transition-colors shrink-0 whitespace-nowrap"
     :class="[
       compact ? 'px-1.5 py-1' : 'px-2.5 py-1.5',
       isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'

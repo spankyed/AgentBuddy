@@ -1,7 +1,11 @@
 <template>
-  <div class="flex h-full bg-neutral-900" data-onboarding-id="agent-artifacts">
-    <!-- Artifact List (left side, integrated in tab) -->
-    <div :class="compact ? 'w-44' : 'w-64'" class="h-full overflow-y-auto border-r border-neutral-800 bg-neutral-900">
+  <div :class="compact ? 'flex flex-col' : 'flex'" class="h-full bg-neutral-900" data-onboarding-id="agent-artifacts">
+    <!-- Artifact List: horizontal strip (inline) or vertical sidebar (canvas) -->
+    <div :class="compact
+      ? 'overflow-x-auto border-b border-neutral-800 shrink-0'
+      : 'w-64 h-full overflow-y-auto border-r border-neutral-800'"
+      class="bg-neutral-900"
+    >
       <ArtifactList
         :artifacts="artifacts"
         :selectedArtifactId="selectedArtifactId"
@@ -10,8 +14,8 @@
       />
     </div>
 
-    <!-- Artifact Content (right side) -->
-    <div class="flex-1 h-full p-6 overflow-auto bg-neutral-900">
+    <!-- Artifact Content -->
+    <div class="flex-1 h-full p-6 overflow-auto bg-neutral-900 min-h-0">
       <div v-if="!selectedArtifact" class="flex flex-col items-center justify-center h-full gap-3">
         <FileText :size="32" class="text-neutral-700" />
         <p class="text-neutral-600 text-sm">No artifact selected</p>

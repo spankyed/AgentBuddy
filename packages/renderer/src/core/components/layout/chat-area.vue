@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col pt-2 bg-neutral-900"
+    class="flex flex-col bg-neutral-900"
     :class="$style.component"
   >
     <slot />
