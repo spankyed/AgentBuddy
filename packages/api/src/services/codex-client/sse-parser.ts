@@ -16,6 +16,40 @@ export interface SseEvent {
  * Parse an SSE stream from a fetch Response body.
  * Yields SseEvent objects. Terminates on `[DONE]` or stream close.
  */
+/**
+ * Parse a single SSE event block into an SseEvent.
+ * Returns 'done' if [DONE] terminator is encountered, null if no data.
+ */
+function parseEventBlock(part: string): SseEvent | 'done' | null {
+  let data = ''
+  let event: string | undefined
+  let id: string | undefined
+
+  for (const line of part.split('\n')) {
+    if (line.startsWith('data: ')) {
+      const val = line.slice(6)
+      if (val === '[DONE]') return 'done'
+      data += (data ? '\n' : '') + val
+    } else if (line.startsWith('data:')) {
+      const val = line.slice(5)
+      if (val === '[DONE]') return 'done'
+      data += (data ? '\n' : '') + val
+    } else if (line.startsWith('event: ')) {
+      event = line.slice(7)
+    } else if (line.startsWith('event:')) {
+      event = line.slice(6)
+    } else if (line.startsWith('id: ')) {
+      id = line.slice(4)
+    } else if (line.startsWith('id:')) {
+      id = line.slice(3)
+    }
+    // Lines starting with ':' are comments — ignore
+  }
+
+  if (!data) return null
+  return { data, event, id }
+}
+
 export async function* parseSseStream(
   body: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
@@ -34,45 +68,34 @@ export async function* parseSseStream(
       buffer += decoder.decode(value, { stream: true })
 
       // SSE events are separated by double newlines
-      const parts = buffer.split('\n\n')
-      // Last part may be incomplete — keep it in the buffer
-      buffer = parts.pop() ?? ''
+      yield* drainBuffer()
+    }
 
-      for (const part of parts) {
-        if (!part.trim()) continue
+    // Flush any remaining bytes from the TextDecoder (incomplete multi-byte sequences)
+    buffer += decoder.decode()
 
-        let data = ''
-        let event: string | undefined
-        let id: string | undefined
-
-        for (const line of part.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const val = line.slice(6)
-            // [DONE] is the OpenAI stream terminator
-            if (val === '[DONE]') return
-            data += (data ? '\n' : '') + val
-          } else if (line.startsWith('data:')) {
-            const val = line.slice(5)
-            if (val === '[DONE]') return
-            data += (data ? '\n' : '') + val
-          } else if (line.startsWith('event: ')) {
-            event = line.slice(7)
-          } else if (line.startsWith('event:')) {
-            event = line.slice(6)
-          } else if (line.startsWith('id: ')) {
-            id = line.slice(4)
-          } else if (line.startsWith('id:')) {
-            id = line.slice(3)
-          }
-          // Lines starting with ':' are comments — ignore
-        }
-
-        if (data) {
-          yield { data, event, id }
-        }
+    // Process any remaining event in the buffer (stream may end without trailing \n\n)
+    if (buffer.trim()) {
+      yield* drainBuffer()
+      // Handle case where final event has no trailing \n\n
+      if (buffer.trim()) {
+        const ev = parseEventBlock(buffer)
+        if (ev && ev !== 'done') yield ev
       }
     }
   } finally {
     reader.releaseLock()
+  }
+
+  function* drainBuffer(): Generator<SseEvent> {
+    const parts = buffer.split('\n\n')
+    buffer = parts.pop() ?? ''
+
+    for (const part of parts) {
+      if (!part.trim()) continue
+      const ev = parseEventBlock(part)
+      if (ev === 'done') return
+      if (ev) yield ev
+    }
   }
 }

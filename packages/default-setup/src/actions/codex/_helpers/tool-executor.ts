@@ -71,26 +71,19 @@ async function execApplyPatch(
     return { output: 'No patch content provided', isError: true };
   }
 
+  // Write patch to a temp file to avoid shell injection via string interpolation.
+  const tmpPath = (cwd.endsWith('/') ? cwd : cwd + '/') + '.codex-patch-' + Date.now() + '.tmp';
   try {
-    // Use git apply to apply the patch
-    const escaped = patchContent.replace(/'/g, "'\\''");
+    await services.filesystem.writeFile(tmpPath, patchContent);
     const output = await (services.cli as any).shell(
-      `echo '${escaped}' | git apply --verbose -`,
+      `git apply --verbose "${tmpPath}"`,
       { cwd },
     );
     return { output: output || 'Patch applied successfully' };
   } catch (err: any) {
-    // Fallback: try without git
-    try {
-      const escaped = patchContent.replace(/'/g, "'\\''");
-      const output = await (services.cli as any).shell(
-        `echo '${escaped}' | patch -p1`,
-        { cwd },
-      );
-      return { output: output || 'Patch applied successfully' };
-    } catch (err2: any) {
-      return { output: `Failed to apply patch: ${err2.message}`, isError: true };
-    }
+    return { output: `Failed to apply patch: ${err.message}`, isError: true };
+  } finally {
+    try { await services.filesystem.remove(tmpPath); } catch { /* cleanup best-effort */ }
   }
 }
 

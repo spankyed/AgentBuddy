@@ -5,7 +5,7 @@
  * and resumes the agentic loop.
  */
 
-import type { ActionMeta, Services, Z, EntityId } from '../../types';
+import type { ActionMeta, Services, EntityId } from '../../types';
 import { createStreamWriter } from '../claude-code/_helpers/stream-writer';
 import { createToolActivityWriter } from '../claude-code/_helpers/tool-activity-writer';
 import {
@@ -37,6 +37,14 @@ export async function action(
 
   if (!state?.pendingToolCall) {
     return { success: false, error: 'No pending tool call' };
+  }
+
+  // Guard against stale approval: the messageId from the interactive response
+  // must match the approval block we sent. If a new turn superseded this one,
+  // pendingToolCall.approvalMessageId will differ (or be cleared entirely).
+  if (params.messageId && state.pendingToolCall.approvalMessageId !== params.messageId) {
+    log.info('stale approval — turn was superseded', { threadId, expected: state.pendingToolCall.approvalMessageId, got: params.messageId });
+    return { success: false, error: 'Stale approval — turn was superseded' };
   }
 
   const { toolCallId, toolName, args } = state.pendingToolCall;

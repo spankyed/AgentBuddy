@@ -56,6 +56,7 @@ export default {
                 label: "deny-tool",
                 map: {
                   threadId: "$.steps[label=route-response].result.threadId",
+                  messageId: "$.event.data.payload.messageId",
                 },
               }),
             ],
@@ -66,6 +67,7 @@ export default {
             map: {
               threadId: "$.steps[label=route-response].result.threadId",
               response: "$.steps[label=route-response].result.response",
+              messageId: "$.event.data.payload.messageId",
             },
           }),
         ]),

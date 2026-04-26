@@ -136,9 +136,10 @@ export async function consumeStream(
         history.push(assistantMsg);
       }
 
-      // Update token usage
+      // Update token usage — re-read state for fresh totalTokens
       if (result.usage) {
-        const existing = state?.totalTokens || 0;
+        const freshState = getCodexState(services, threadId);
+        const existing = freshState?.totalTokens || 0;
         persistCodexState(services, threadId, {
           totalTokens: existing + result.usage.totalTokens,
         });
@@ -208,7 +209,7 @@ export async function consumeStream(
               args,
               approvalMessageId: approvalMsg.messageId as string,
             },
-            turns: (state?.turns || 0) + turns,
+            turns: (getCodexState(services, threadId)?.turns || 0) + turns,
           });
 
           setRunning(services, threadId, false);
@@ -235,7 +236,7 @@ export async function consumeStream(
 
     persistCodexState(services, threadId, {
       conversationHistory: history,
-      turns: (state?.turns || 0) + turns,
+      turns: (getCodexState(services, threadId)?.turns || 0) + turns,
     });
 
     const queued = dequeueMessage(services, threadId);

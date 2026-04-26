@@ -280,9 +280,11 @@ export async function runOAuthLogin(
       })
     })
 
-    // Fallback: if the default port is taken, try a random one
+    // Fallback: if the default port is taken, try a random one (once)
+    let retried = false
     server.on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE' && !resolved) {
+      if (err.code === 'EADDRINUSE' && !retried && !resolved) {
+        retried = true
         server.listen(0, '127.0.0.1')
       } else if (!resolved) {
         resolved = true

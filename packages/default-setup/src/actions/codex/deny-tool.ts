@@ -36,6 +36,11 @@ export async function action(
     return { success: false, error: 'No pending tool call' };
   }
 
+  // Guard against stale denial — same logic as approve-tool.
+  if (params.messageId && state.pendingToolCall.approvalMessageId !== params.messageId) {
+    return { success: false, error: 'Stale denial — turn was superseded' };
+  }
+
   const { toolCallId } = state.pendingToolCall;
   const history = state.conversationHistory || [];
 
