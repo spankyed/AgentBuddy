@@ -1,5 +1,62 @@
 -e # Changelog
 
+## v0.2.10 (2026-04-25)
+
+### Features
+- threads): persist message dismissal with hard delete
+- threads): add dismiss, resend, and revert actions for queued/cancelled messages
+- threads): add unqueue action for queued messages
+- threads): sort tabs to display pinned tabs first
+- threads): add empty state for archived threads view
+- threads): add view archive toggle to filter popover
+- code-plugin): add search and new action/prompt buttons to code panels
+- claude-code): include full line object in stream event debug log
+- actions,prompts): add infinite scroll pagination to actions and prompts lists
+- threads): replace dashboard tab context menu with threads list menu
+- threads): add invisible archive placeholder for pinned threads
+
+### Fixes
+- artifacts): add max-width and title tooltip to compact artifact items
+- brain): separate config from user params in node handlers
+- threads): archive thread without disrupting chat view
+- threads): handle race between unqueue and delete message
+- Merge pull request #134 from spankyed/AS/revert-message-deletion-race-fix
+- threads): add thread lifecycle cleanup hooks to prevent revert race condition
+- threads): make revert act as pause + revert to prevent session corruption
+- threads): make revert act as pause + revert to prevent session corruption
+- library): close symlink form when clicking header row
+- threads): teleport recent threads menu to body to prevent overflow clipping
+- chat): close inline dashboard when chat is collapsed via resizer
+-  rename "Name" column header to "Label" in actions and prompts lists
+- threads): emit THREAD_UPDATED event when pinned field changes so UI reflects pin/unpin
+- threads): add spacer to keep action buttons aligned when archive is hidden    make pinned threads icon blue
+- threads): replace provider-specific events with generic brain event forwarder
+- threads): move pin action to first position in thread list actions
+- default-setup): change Work plan phase color from green to blue
+- threads): adjust status line right offset in chat input
+- chat): extend status line slightly past chat input to the right
+- chat): make project dirs selectable in "In Project" context menu
+- chat): extend status line beyond chat input to the right
+- threads): refresh recent threads when pin status changes
+
+### Refactors
+- threads): consolidate filter popover toggles into unified bottom section
+- threads): rename TRIGGER_BRAIN_EVENT to FORWARD_BRAIN_EVENT
+- stream): always use newline separator between agent text segments
+- stream): put last agent text segment on its own line for visual clarity
+- threads): move pin/unpin buttons inline next to thread title
+
+### Other
+- style(chat): reorder recent threads menu to show Details before Artifacts - and style pin blue when thread is pinned
+- style(chat): add gradient fade, resizable inline dashboard, and horizontal artifacts
+- style(chat): switch inline dashboard to resizable split layout
+- Merge pull request #135 from spankyed/AS/unqueue-messages
+- Merge pull request #134 from spankyed/AS/revert-message-deletion-race-fix
+- Fix: add spacing between collapsible section headers and content
+- pinned threads will now always appear at the top of the list
+
+-e # Changelog
+
 ## v0.2.9 (2026-04-24)
 
 ### Features
