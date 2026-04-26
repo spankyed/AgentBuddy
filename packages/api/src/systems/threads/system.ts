@@ -835,6 +835,7 @@ export const threadsSystem = setup({
     },
     deleteMessage: ({ event }) => {
       const { messageId } = typeOf('DELETE_MESSAGE', event);
+      if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
       tx(messageId as EARS.EntityId).destroy();
     },
     toggleCompacted: ({ system, event }) => {

@@ -36,9 +36,14 @@ export async function action(
   }
 
   // Pop from queue and mark the message as cancelled.
+  // The status update is best-effort — the message may have already been
+  // hard-deleted by DELETE_MESSAGE if the user clicked revert (which races
+  // with this multi-hop event).
   const queued = dequeueMessage(services, threadId);
   if (queued?.messageId) {
-    services.chat.updateMessageState(queued.messageId as any, { status: 'cancelled' } as any);
+    try {
+      services.chat.updateMessageState(queued.messageId as any, { status: 'cancelled' } as any);
+    } catch { /* entity already deleted */ }
   }
 
   return { success: true };
