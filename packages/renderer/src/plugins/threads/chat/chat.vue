@@ -79,7 +79,7 @@
             @view-thread="(threadId: string) => handleViewDetails(threadId)"
             @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
             @view-dashboard="handleViewDashboard"
-            @toggle-inline-dashboard="showInlineDashboard = !showInlineDashboard"
+            @toggle-inline-dashboard="handleToggleInlineDashboard"
             @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
             @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
             @new-thread-in-project="(dir: string) => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'NEW_THREAD_IN_PROJECT', directory: dir }) }"
@@ -299,6 +299,11 @@ function expandChatIfCollapsed() {
   if (snapshot.context.panelSizes.canvasHeight >= 93) {
     applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
+}
+
+function handleToggleInlineDashboard() {
+  if (!showInlineDashboard.value) expandChatIfCollapsed()
+  showInlineDashboard.value = !showInlineDashboard.value
 }
 
 function handleViewDashboard() {
