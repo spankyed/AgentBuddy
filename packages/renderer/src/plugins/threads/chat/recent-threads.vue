@@ -39,7 +39,7 @@
           <button
             v-if="thread.pinned"
             type="button"
-            class="flex items-center px-1.5 py-1 text-neutral-600 hover:text-neutral-300 transition-colors"
+            class="flex items-center px-1.5 py-1 text-blue-400 hover:text-blue-300 transition-colors"
             title="Unpin thread"
             @click.stop="handleUnpinThread(thread.id)"
           >
@@ -61,20 +61,20 @@
             <button
               type="button"
               class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
-              title="Open thread artifacts"
-              @click.stop="handleViewArtifacts(thread.id)"
-            >
-              <PanelLeft :size="12" />
-              Artifacts
-            </button>
-            <button
-              type="button"
-              class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
               title="Open thread details"
               @click.stop="handleViewThread(thread.id)"
             >
               <FileText :size="12" />
               Details
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+              title="Open thread artifacts"
+              @click.stop="handleViewArtifacts(thread.id)"
+            >
+              <PanelLeft :size="12" />
+              Artifacts
             </button>
             <span v-if="thread.pinned" class="invisible flex items-center gap-1.5 px-1.5 py-1 text-xs">
               <Archive :size="12" />
