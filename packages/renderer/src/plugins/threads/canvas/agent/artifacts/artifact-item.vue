@@ -2,9 +2,10 @@
   <div
     class="rounded-md cursor-pointer transition-colors shrink-0 whitespace-nowrap"
     :class="[
-      compact ? 'px-1.5 py-1' : 'px-2.5 py-1.5',
+      compact ? 'px-1.5 py-1 max-w-48' : 'px-2.5 py-1.5',
       isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
     ]"
+    :title="artifact.title"
     @click="$emit('select')"
   >
     <div class="flex items-center gap-1.5" :class="{ 'gap-2': !compact }">
