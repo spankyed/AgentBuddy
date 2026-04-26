@@ -193,6 +193,8 @@ type UIEvent =
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
   | { type: 'PAUSE_TURN'; threadId: string }
+  | { type: 'UNQUEUE_MESSAGE'; threadId: string; messageId: string }
+  | { type: 'DISMISS_MESSAGE'; messageId: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
 
@@ -1135,6 +1137,16 @@ const threadsState = setup({
         }
       };
     }),
+    dismissMessage: assign(({ context, event }) => {
+      const { messageId } = typeOf('DISMISS_MESSAGE', event);
+      if (!context.currentThread?.messages) return {};
+      return {
+        currentThread: {
+          ...context.currentThread,
+          messages: context.currentThread.messages.filter(m => m.id !== messageId),
+        }
+      };
+    }),
     addMessageToThread: assign(({ context, event }) => {
       const typedEvent = typeOf('MESSAGE_ADDED', event);
       const { threadId, message } = typedEvent;
@@ -1178,6 +1190,14 @@ const threadsState = setup({
     pauseTurn: ({ event }) => {
       const { threadId } = typeOf('PAUSE_TURN', event);
       trpc.bus.send.mutate({ systemId: id, type: 'PAUSE_TURN', threadId });
+    },
+    unqueueMessage: ({ event }) => {
+      const { threadId, messageId } = typeOf('UNQUEUE_MESSAGE', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'FORWARD_BRAIN_EVENT', eventType: 'user.thread.unqueue', payload: { threadId, messageId } });
+    },
+    persistDismissMessage: ({ event }) => {
+      const { messageId } = typeOf('DISMISS_MESSAGE', event);
+      trpc.bus.send.mutate({ systemId: id, type: 'DELETE_MESSAGE', messageId });
     },
   },
   guards: {
@@ -1408,6 +1428,10 @@ const threadsState = setup({
     PAUSE_TURN: {
       actions: 'pauseTurn',
     },
+    UNQUEUE_MESSAGE: {
+      actions: 'unqueueMessage',
+    },
+    DISMISS_MESSAGE: { actions: ['dismissMessage', 'persistDismissMessage'] },
     TOKEN_STREAM: { actions: 'handleTokenStream' },
     LLM_DONE: {
       actions: 'finishStream',
