@@ -22,9 +22,6 @@ interface ActionNodeConfig {
 
 type ActionNode = NodeEntity & ActionNodeConfig;
 
-// Config fields that should not leak into the params passed to action functions
-const ACTION_CONFIG_KEYS = new Set(['mode', 'actionFn', 'actionId']);
-
 /**
  * Execute an action function with provided services and parameters
  */
@@ -104,13 +101,9 @@ export async function actionNodeHandler(
       input: Object.keys(action.input || {}),
     });
     
-    // Extract action parameters from nodeAttributes
-    // All params (both direct and mapped) are already resolved in nodeAttributes
-    const params: Record<string, any> = {};
-    
-    for (const [key, value] of Object.entries(nodeData)) {
-      if (!ACTION_CONFIG_KEYS.has(key)) params[key] = value;
-    }
+    // User params are structurally separated during TNode creation —
+    // no need to filter config keys by name.
+    const params: Record<string, any> = (tNode.resolvedParams as Record<string, any>) || {};
     
     brainInspect(`Executing action with resolved params:`, params);
 

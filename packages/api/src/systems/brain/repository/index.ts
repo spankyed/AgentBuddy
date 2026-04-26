@@ -11,7 +11,7 @@ import type {
   ExecutionContext
 } from '../types';
 import type { ListenerNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
-import { prepareNodeAttributes } from './node-attribute-mappers';
+import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
 // Brain Repository - Manages execution traces and TNode trees
@@ -20,11 +20,11 @@ import { brainLogger } from '../utils/brain-inspect';
 function resolveNodeAttributes(
   node: Partial<NodeEntity>,
   executionContext?: ExecutionContext,
-): Record<string, any> | undefined {
+): PreparedAttributes | undefined {
   if (executionContext && node.nodeType) {
     return prepareNodeAttributes(node as NodeEntity, executionContext);
   }
-  
+
   return undefined;
 }
 
@@ -332,6 +332,8 @@ export const brainCommands = {
 
     const now = Date.now();
 
+    const flowPrepared = resolveNodeAttributes(flowStepNode, executionContext);
+
     const flowTNode: Partial<TNodeEntity> = {
       tNodeType: 'flow',
       label: flowStepNode.label || flow.label!,
@@ -339,14 +341,15 @@ export const brainCommands = {
       startedAt: now,
       stepNodeType: 'flow',
       nodeAttributes: {
-        ...resolveNodeAttributes(flowStepNode, executionContext),
+        ...(flowPrepared?.nodeAttributes || {}),
         ...(executionContext?.flowTNodeId && { _parentFlowTNodeId: executionContext.flowTNodeId })
       },
-      ...(parentFlowId && { 
-        blueprint: { 
-          nodeId: flowStepId, 
-          flowId: parentFlowId 
-        } 
+      ...(flowPrepared && { resolvedParams: flowPrepared.resolvedParams }),
+      ...(parentFlowId && {
+        blueprint: {
+          nodeId: flowStepId,
+          flowId: parentFlowId
+        }
       }),
       // Preserve the flow node's final status
       ...(flowStepNode.final && { final: true }),
@@ -408,8 +411,8 @@ export const brainCommands = {
 
     const now = Date.now();
 
-    // Prepare node attributes
-    const nodeAttributes = resolveNodeAttributes(step, executionContext);
+    // Prepare node attributes and resolved params
+    const prepared = resolveNodeAttributes(step, executionContext);
 
     const stepTNode: Partial<TNodeEntity> = {
       tNodeType: 'step',
@@ -417,14 +420,15 @@ export const brainCommands = {
       status: 'active',
       startedAt: now,
       stepNodeType: step.nodeType,
-      ...(flowId && { 
-        blueprint: { 
-          nodeId: stepId, 
-          flowId: flowId 
-        } 
+      ...(flowId && {
+        blueprint: {
+          nodeId: stepId,
+          flowId: flowId
+        }
       }),
       ...(step.final && { final: true }),
-      ...(nodeAttributes && { nodeAttributes }),
+      ...(prepared && { nodeAttributes: prepared.nodeAttributes }),
+      ...(prepared && { resolvedParams: prepared.resolvedParams }),
     };
 
     const tNodeId = tx(EARS.Entity.TNode)

@@ -28,6 +28,9 @@ export interface TNodeEntity extends BaseEntity {
   // Instantiated blueprint node attributes (resolved runtime data)
   nodeAttributes?: Record<string, unknown>;
 
+  // User-provided params only (direct + mapped) — used by handlers for execution
+  resolvedParams?: Record<string, unknown>;
+
   // Reference to the blueprint node and its containing flow
   blueprint?: {
     nodeId: EARS.EntityId;

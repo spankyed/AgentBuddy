@@ -1,4 +1,4 @@
-import type { NodeEntity, NodeKind } from '@/systems/flows/config/types';
+import type { NodeEntity } from '@/systems/flows/config/types';
 import type { ExecutionContext, FieldMapping, SourceResolver } from '@/systems/brain/types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '../utils/result-truncator';
@@ -146,37 +146,55 @@ function applyFieldMappingsIfSupported(
 }
 
 /*─────────────────────────────────────────────────────────────
- * Public API (unchanged behavior)
+ * Truncation helper
  *─────────────────────────────────────────────────────────────*/
+
+function truncateAll(obj: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const truncated = truncateResult(value);
+    // Unwrap truncated strings so downstream consumers (actions) receive
+    // a plain string instead of a { value, _truncated, ... } wrapper.
+    out[key] = (isTruncated(truncated) && truncated._type === 'string')
+      ? truncated.value
+      : truncated;
+  }
+  return out;
+}
+
+/*─────────────────────────────────────────────────────────────
+ * Public API
+ *─────────────────────────────────────────────────────────────*/
+
+export interface PreparedAttributes {
+  /** All attributes (config + user data) for UI display. */
+  nodeAttributes: Record<string, any>;
+  /** Only user-provided params (direct + mapped) for action/template execution. */
+  resolvedParams: Record<string, any>;
+}
 
 export function prepareNodeAttributes(
   node: NodeEntity,
   executionContext: ExecutionContext
-): Record<string, any> {
+): PreparedAttributes {
   const baseAttributes = extractAttributes(node);
   const mappedParams = applyFieldMappingsIfSupported(node as any, executionContext);
 
+  // nodeAttributes: everything merged (for UI display)
   const resolvedAttributes = {
     ...baseAttributes,
     ...(mappedParams && mappedParams)
   };
 
-  // Truncate individual values in the resolved attributes
-  const truncatedAttributes: Record<string, any> = {};
-  for (const [key, value] of Object.entries(resolvedAttributes)) {
-    const truncated = truncateResult(value);
-    // Unwrap truncated strings so downstream consumers (actions) receive
-    // a plain string instead of a { value, _truncated, ... } wrapper.
-    truncatedAttributes[key] = (isTruncated(truncated) && truncated._type === 'string')
-      ? truncated.value
-      : truncated;
-  }
+  // resolvedParams: only user-provided data (for execution)
+  // Sources: 1) direct params from DSL  2) resolved field mappings
+  const resolvedParams: Record<string, any> = {
+    ...((node as any).params || {}),
+    ...(mappedParams || {}),
+  };
 
-  // brainInspect(`Prepared TNode attributes for ${node.nodeType} node: ${node.label}`, {
-  //   baseAttributeKeys: Object.keys(baseAttributes),
-  //   mappedParamKeys: mappedParams ? Object.keys(mappedParams) : [],
-  //   finalAttributeKeys: Object.keys(truncatedAttributes)
-  // });
-
-  return truncatedAttributes;
+  return {
+    nodeAttributes: truncateAll(resolvedAttributes),
+    resolvedParams: truncateAll(resolvedParams),
+  };
 }

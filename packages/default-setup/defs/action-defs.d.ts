@@ -1408,6 +1408,7 @@ interface TNodeEntity extends BaseEntity {
     stepNodeType?: string;
     final?: boolean;
     nodeAttributes?: Record<string, unknown>;
+    resolvedParams?: Record<string, unknown>;
     blueprint?: {
         nodeId: EARS.EntityId;
         flowId: EARS.EntityId;
@@ -2348,6 +2349,18 @@ declare const events: {
         type: "TOGGLE_COMPACTED";
         systemId: "threads";
         markerId: string;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"DELETE_MESSAGE">;
+        systemId: zod.ZodLiteral<"threads">;
+        messageId: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "DELETE_MESSAGE";
+        systemId: "threads";
+        messageId: string;
+    }, {
+        type: "DELETE_MESSAGE";
+        systemId: "threads";
+        messageId: string;
     }>, zod.ZodObject<{
         type: zod.ZodLiteral<"FORWARD_BRAIN_EVENT">;
         systemId: zod.ZodLiteral<"threads">;

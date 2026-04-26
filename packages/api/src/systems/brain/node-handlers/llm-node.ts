@@ -47,18 +47,9 @@ function generatePrompt(
         return 'Error: Prompt template not found';
       }
 
-      // Extract template parameters from nodeAttributes
-      // These were already resolved during TNode creation via fieldMappings
-      const templateParams: Record<string, any> = {};
-      
-      // The resolved field mapping values are directly in nodeAttributes
-      // We need to separate them from the config fields
-      const configFields = ['model', 'temperature', 'maxTokens', 'systemPrompt', 'prompt', 'promptTemplateId'];
-      for (const [key, value] of Object.entries(nodeData)) {
-        if (!configFields.includes(key)) {
-          templateParams[key] = value;
-        }
-      }
+      // User params are structurally separated during TNode creation —
+      // no need to filter config keys by name.
+      const templateParams: Record<string, any> = (tNode.resolvedParams as Record<string, any>) || {};
       
       brainInspect(`Using resolved params for ${node.label}:`, templateParams);
       
