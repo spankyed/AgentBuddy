@@ -174,7 +174,7 @@
 
         <!-- Status line — teleported to body to escape overflow:hidden -->
         <Teleport to="body">
-          <span v-if="statusLine && statusLinePos"
+          <span v-if="statusLine && statusLinePos && isInputVisible"
             class="px-2 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-[11px] text-neutral-500 font-mono truncate select-none cursor-pointer hover:text-neutral-300 hover:border-neutral-500 transition-colors"
             :style="statusLinePos"
             @click="emit('statusline-click')">
@@ -280,6 +280,8 @@ const inputCardRef = ref<HTMLElement | null>(null)
 // (same pattern as StatusIndicator) to escape overflow:hidden on the input container.
 const statusLinePos = ref<Record<string, string> | null>(null)
 let statusLineRafId: number | null = null
+const isInputVisible = ref(false)
+let statusLineIo: IntersectionObserver | null = null
 function updateStatusLinePos() {
   const el = inputCardRef.value
   if (!el || !props.statusLine) { statusLinePos.value = null; return }
@@ -531,12 +533,20 @@ onMounted(() => {
   window.addEventListener('keyup', handleVoiceKeyup)
   document.addEventListener('keydown', handleGlobalEsc)
   statusLineTick()
+  if (inputCardRef.value) {
+    statusLineIo = new IntersectionObserver(
+      ([entry]) => { isInputVisible.value = entry.isIntersecting },
+      { threshold: 0 },
+    )
+    statusLineIo.observe(inputCardRef.value)
+  }
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', handleVoiceKeydown)
   window.removeEventListener('keyup', handleVoiceKeyup)
   document.removeEventListener('keydown', handleGlobalEsc)
   if (statusLineRafId != null) cancelAnimationFrame(statusLineRafId)
+  statusLineIo?.disconnect()
 })
 
 const leftButtons = computed<ActionButton[]>(() => {
