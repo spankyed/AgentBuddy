@@ -165,8 +165,9 @@ export const commitState = setup({
     }),
 
     commit: ({ context }) => {
-      if (context.commitMessage.trim()) {
-        sendToBackend('commit.COMMIT', { message: context.commitMessage })
+      const message = context.commitMessage.replace(/\n*Co-Authored-By:.*$/gim, '').trim()
+      if (message) {
+        sendToBackend('commit.COMMIT', { message })
       }
     },
 
