@@ -109,6 +109,9 @@ export interface WorktreeEntry {
   branch: string
   isBare: boolean
   isCurrent: boolean
+  isMain: boolean
+  isLocked: boolean
+  lockedReason?: string
 }
 
 // GitHub PR types

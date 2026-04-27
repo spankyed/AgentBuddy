@@ -434,14 +434,15 @@
           <ChevronRight v-if="!isWorktreesExpanded" class="w-3 h-3" />
           <ChevronDown v-else class="w-3 h-3" />
           WORKTREES ({{ worktreeList.length }})
+          <Loader2 v-if="isWorktreeLoading" class="w-3 h-3 animate-spin ml-1" />
         </div>
         <div class="flex items-center gap-1" @click.stop>
-          <button @click="startAddWorktree" class="p-1 hover:bg-neutral-700 rounded transition-colors" title="Add Worktree">
+          <button @click="startAddWorktree" :disabled="isWorktreeLoading" class="p-1 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50" title="Add Worktree">
             <Plus class="w-3.5 h-3.5 text-neutral-400" />
           </button>
         </div>
       </div>
-      <div v-if="isWorktreesExpanded" class="overflow-y-auto pb-3" style="max-height: 300px">
+      <div v-if="isWorktreesExpanded" class="overflow-y-auto pb-3" style="max-height: 300px" :class="{ 'opacity-50 pointer-events-none': isWorktreeLoading }">
         <!-- Add worktree form -->
         <div v-if="showWorktreeAddForm" class="px-5 pb-2 space-y-2">
           <input
@@ -453,7 +454,7 @@
           />
           <input
             v-model="newWorktreePath"
-            placeholder="Path (e.g. ../my-worktree)"
+            placeholder="Path"
             class="w-full px-2 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
             @keydown.enter="addWorktree"
             @keydown.escape="cancelAddWorktree"
@@ -463,7 +464,7 @@
             Create new branch
           </label>
           <div class="flex items-center gap-2">
-            <button @click="addWorktree" :disabled="!newWorktreeBranch.trim() || !newWorktreePath.trim()" class="px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-neutral-200 transition-colors">
+            <button @click="addWorktree" :disabled="!newWorktreeBranch.trim() || !newWorktreePath.trim() || isWorktreeLoading" class="px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-neutral-200 transition-colors">
               Create
             </button>
             <button @click="cancelAddWorktree" class="px-2 py-1 text-xs hover:bg-neutral-800 rounded text-neutral-400 transition-colors">
@@ -477,12 +478,13 @@
           <div
             v-for="wt in worktreeList"
             :key="wt.path"
-            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors cursor-pointer"
-            :class="{ 'bg-neutral-800/30': wt.isCurrent }"
-            @click="!wt.isCurrent && switchWorktree(wt.path)"
+            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors"
+            :class="{ 'bg-neutral-800/30': wt.isCurrent, 'cursor-pointer': !wt.isCurrent }"
+            @click="!wt.isCurrent && !isWorktreeLoading && switchWorktree(wt.path)"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <GitFork class="w-3 h-3 flex-shrink-0" :class="wt.isCurrent ? 'text-blue-400' : 'text-neutral-500'" />
+              <Lock v-if="wt.isLocked" class="w-3 h-3 flex-shrink-0 text-yellow-500" :title="wt.lockedReason ? `Locked: ${wt.lockedReason}` : 'Locked'" />
+              <GitFork v-else class="w-3 h-3 flex-shrink-0" :class="wt.isCurrent ? 'text-blue-400' : 'text-neutral-500'" />
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5">
                   <span class="text-xs truncate" :class="wt.isCurrent ? 'text-blue-300 font-medium' : 'text-neutral-200'">{{ wt.branch || '(detached)' }}</span>
@@ -494,7 +496,7 @@
                 <button v-if="!wt.isCurrent" @click.stop="switchWorktree(wt.path)" class="p-0.5 hover:bg-neutral-700 rounded" title="Switch to this worktree">
                   <FolderSync class="w-3 h-3 text-neutral-400" />
                 </button>
-                <button v-if="!wt.isCurrent && !wt.isBare" @click.stop="openRemoveWorktreeDialog(wt.path)" class="p-0.5 hover:bg-neutral-700 rounded" title="Remove worktree">
+                <button v-if="!wt.isCurrent && !wt.isBare && !wt.isMain && !wt.isLocked" @click.stop="openRemoveWorktreeDialog(wt.path)" class="p-0.5 hover:bg-neutral-700 rounded" title="Remove worktree">
                   <Trash2 class="w-3 h-3 text-red-400" />
                 </button>
               </div>
@@ -618,7 +620,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, GitFork, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, GitFork, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
@@ -1064,12 +1066,22 @@ const formatWorktreePath = (fullPath: string) => {
 const startAddWorktree = () => {
   showWorktreeAddForm.value = true
   newWorktreeBranch.value = ''
-  // Default path: sibling directory of base
-  const base = baseDirectory.value || ''
-  const parent = base.substring(0, base.lastIndexOf('/'))
-  newWorktreePath.value = parent ? parent + '/' : ''
+  newWorktreePath.value = ''
   createNewWorktreeBranch.value = true
 }
+
+// Auto-populate worktree path from branch name
+watch(newWorktreeBranch, (branch) => {
+  if (!showWorktreeAddForm.value) return
+  const base = baseDirectory.value || ''
+  const parent = base.substring(0, base.lastIndexOf('/'))
+  if (!branch.trim()) {
+    newWorktreePath.value = ''
+    return
+  }
+  const sanitized = branch.trim().replace(/[\/\\]/g, '-')
+  newWorktreePath.value = parent ? `${parent}/${sanitized}` : sanitized
+})
 
 const hideBranchDropdown = () => {
   // Small delay to allow click events to fire

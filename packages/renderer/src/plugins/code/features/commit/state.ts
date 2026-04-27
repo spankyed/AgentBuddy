@@ -66,6 +66,9 @@ export interface WorktreeEntry {
   branch: string
   isBare: boolean
   isCurrent: boolean
+  isMain: boolean
+  isLocked: boolean
+  lockedReason?: string
 }
 
 export type Event =
@@ -617,7 +620,7 @@ export const commitState = setup({
           actions: ['setWorktreeLoading', 'worktreeRemove']
         },
         'commit.WORKTREE_SWITCH': {
-          actions: 'worktreeSwitch'
+          actions: ['setWorktreeLoading', 'worktreeSwitch']
         },
         'commit.WORKTREE_ADDED': {
           actions: ['handleWorktreeAdded', 'requestWorktreeList']

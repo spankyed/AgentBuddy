@@ -1360,12 +1360,14 @@ export class GitRepository {
     const entries: import('../types').WorktreeEntry[] = []
     const blocks = result.output.trim().split('\n\n')
 
-    for (const block of blocks) {
-      const lines = block.trim().split('\n')
+    for (let i = 0; i < blocks.length; i++) {
+      const lines = blocks[i].trim().split('\n')
       let wtPath = ''
       let head = ''
       let branch = ''
       let isBare = false
+      let isLocked = false
+      let lockedReason: string | undefined
 
       for (const line of lines) {
         if (line.startsWith('worktree ')) {
@@ -1379,6 +1381,10 @@ export class GitRepository {
           isBare = true
         } else if (line === 'detached') {
           branch = ''
+        } else if (line.startsWith('locked')) {
+          isLocked = true
+          const reason = line.slice('locked'.length).trim()
+          if (reason) lockedReason = reason
         }
       }
 
@@ -1388,7 +1394,10 @@ export class GitRepository {
           head,
           branch,
           isBare,
-          isCurrent: path.resolve(wtPath) === path.resolve(this.workingDirectory)
+          isCurrent: path.resolve(wtPath) === path.resolve(this.workingDirectory),
+          isMain: i === 0,
+          isLocked,
+          lockedReason
         })
       }
     }
