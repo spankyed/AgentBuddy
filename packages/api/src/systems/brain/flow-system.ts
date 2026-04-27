@@ -268,27 +268,34 @@ export function createFlowNodeSystem(
             // );
 
             // Spawn ALL connected downstream steps in parallel
+            let spawnedCount = 0;
             for (const step of allSteps) {
-              const [machine, systemId, childTNode] = createChildNode(
-                step,
-                eventTNode.id,
-                eventTrackContext
-              );
+              try {
+                const [machine, systemId, childTNode] = createChildNode(
+                  step,
+                  eventTNode.id,
+                  eventTrackContext
+                );
 
-              // Spawn child (both flows and steps)
-              enqueue.spawnChild(machine, {
-                systemId,
-                input: {} // Add empty input to satisfy TypeScript
-              });
+                // Spawn child (both flows and steps)
+                enqueue.spawnChild(machine, {
+                  systemId,
+                  input: {} // Add empty input to satisfy TypeScript
+                });
 
-              // Emit TNODE_SPAWNED event for the UI to display child node
-              system.get(brain).send({
-                type: 'TNODE_SPAWNED',
-                tNode: childTNode,
-                parentId: eventTNode.id,
-                eventTNodeId: eventTNode.id,
-                flowTNodeId: flowTNodeId
-              });
+                // Emit TNODE_SPAWNED event for the UI to display child node
+                system.get(brain).send({
+                  type: 'TNODE_SPAWNED',
+                  tNode: childTNode,
+                  parentId: eventTNode.id,
+                  eventTNodeId: eventTNode.id,
+                  flowTNodeId: flowTNodeId
+                });
+
+                spawnedCount++;
+              } catch (err) {
+                brainLogger.error(`Failed to create child node for step ${step.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+              }
             }
 
             // Store the execution context and initial live-child count for this event track
@@ -299,7 +306,7 @@ export function createFlowNodeSystem(
               }),
               eventTrackChildCounts: ({ context }) => ({
                 ...context.eventTrackChildCounts,
-                [eventTNode.id]: allSteps.length,
+                [eventTNode.id]: spawnedCount,
               }),
             });
           }
@@ -405,27 +412,31 @@ export function createFlowNodeSystem(
             });
           } else if (nextNode) {
             // Spawn next node - already computed above, no duplicate query needed
-            const [nextMachine, nextSystemId, nextTNode] = createChildNode(
-              nextNode,
-              typedEv.eventTNodeId,
-              updatedContext,
-              typedEv.tNodeId
-            );
+            try {
+              const [nextMachine, nextSystemId, nextTNode] = createChildNode(
+                nextNode,
+                typedEv.eventTNodeId,
+                updatedContext,
+                typedEv.tNodeId
+              );
 
-            // Spawn next child (both flows and steps)
-            enqueue.spawnChild(nextMachine, {
-              systemId: nextSystemId,
-              input: {} // Add empty input to satisfy TypeScript
-            });
+              // Spawn next child (both flows and steps)
+              enqueue.spawnChild(nextMachine, {
+                systemId: nextSystemId,
+                input: {} // Add empty input to satisfy TypeScript
+              });
 
-            // Emit TNODE_SPAWNED event for the next node
-            system.get(brain).send({
-              type: 'TNODE_SPAWNED',
-              tNode: nextTNode,
-              parentId: typedEv.tNodeId,
-              eventTNodeId: typedEv.eventTNodeId,
-              flowTNodeId: flowTNodeId
-            });
+              // Emit TNODE_SPAWNED event for the next node
+              system.get(brain).send({
+                type: 'TNODE_SPAWNED',
+                tNode: nextTNode,
+                parentId: typedEv.tNodeId,
+                eventTNodeId: typedEv.eventTNodeId,
+                flowTNodeId: flowTNodeId
+              });
+            } catch (err) {
+              brainLogger.error(`Failed to create next child node ${nextNode.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+            }
           }
         }),
         markFlowCompleted: ({ system, context }) => {

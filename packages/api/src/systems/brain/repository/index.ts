@@ -296,17 +296,23 @@ export const brainCommands = {
     // Get the flow reference from the flow node (get all fields for attributes)
     const flowStepNode = qx(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
-    
+
     if (!flowStepNode || flowStepNode.nodeType !== 'flow') {
       throw new Error(
         `Cannot create flow TNode: Node ${flowStepId} is ${flowStepNode?.nodeType || 'missing'}, expected 'flow' type`
       );
     }
 
+    if (!flowStepNode.flowRef || typeof flowStepNode.flowRef !== 'string') {
+      throw new Error(
+        `Cannot create flow TNode: Node ${flowStepId} has invalid flowRef: ${JSON.stringify(flowStepNode.flowRef)}`
+      );
+    }
+
     // Get the referenced flow
     const flow = qx(flowStepNode.flowRef as EARS.EntityId)
       .pickOne(["id", "label"]) as Partial<FlowEntity> | undefined;
-    
+
     if (!flow) {
       throw new Error(
         `Cannot create flow TNode: Referenced flow ${flowStepNode.flowRef} not found in database`
