@@ -428,7 +428,7 @@
     </div>
 
     <!-- Worktrees Section -->
-    <div v-if="worktreeList.length > 1" class="flex-shrink-0 border-t border-neutral-800">
+    <div v-if="worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isWorktreesExpanded = !isWorktreesExpanded">
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isWorktreesExpanded" class="w-3 h-3" />
