@@ -14,12 +14,19 @@
           <Terminal :size="12" />
         </button>
         <span class="flex items-center gap-1.5">
-          <span
-            class="w-2 h-2 rounded-full"
-            :class="stateConfig?.busy ? 'animate-pulse' : ''"
-            :style="{ backgroundColor: stateConfig?.color ?? '#6B7280' }"
-            :title="content.chatState"
-          />
+          <span class="relative inline-block w-2 h-2" :title="content.chatState">
+            <span
+              :class="[
+                'block w-2 h-2 rounded-full transition-colors duration-300',
+                stateConfig?.busy ? 'mosaic-dot' : ''
+              ]"
+              :style="!stateConfig?.busy ? { backgroundColor: stateConfig?.color ?? '#6B7280' } : undefined"
+            />
+            <span
+              v-if="stateConfig?.busy"
+              class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
+            />
+          </span>
           <span class="text-xs text-neutral-400 capitalize">{{ stateConfig?.label ?? content.chatState }}</span>
         </span>
       </div>
