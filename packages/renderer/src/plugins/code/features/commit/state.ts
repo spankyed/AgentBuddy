@@ -49,6 +49,8 @@ export interface Context {
   isGeneratingMessage: boolean
   stashList: StashEntry[]
   isStashing: boolean
+  worktreeList: WorktreeEntry[]
+  isWorktreeLoading: boolean
 }
 
 export interface StashEntry {
@@ -56,6 +58,14 @@ export interface StashEntry {
   ref: string
   message: string
   date: string
+}
+
+export interface WorktreeEntry {
+  path: string
+  head: string
+  branch: string
+  isBare: boolean
+  isCurrent: boolean
 }
 
 export type Event =
@@ -100,6 +110,13 @@ export type Event =
   | { type: 'commit.STASH_CLEAR' }
   | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
   | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
+  | { type: 'commit.WORKTREE_LIST' }
+  | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
+  | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
+  | { type: 'commit.WORKTREE_SWITCH'; path: string }
+  | { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
+  | { type: 'commit.WORKTREE_ADDED'; data: { path: string; branch: string } }
+  | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
   | { type: 'CODE_STARTUP' };
 
 export const commitState = setup({
@@ -356,6 +373,7 @@ export const commitState = setup({
         // Refresh git status when directory is available
         self.send({ type: 'commit.REFRESH_STATUS' })
         sendToBackend('commit.STASH_LIST', {})
+        sendToBackend('commit.WORKTREE_LIST', {})
       }
     },
 
@@ -399,7 +417,40 @@ export const commitState = setup({
 
     stashClear: () => {
       sendToBackend('commit.STASH_CLEAR', {})
-    }
+    },
+
+    requestWorktreeList: () => {
+      sendToBackend('commit.WORKTREE_LIST', {})
+    },
+
+    handleWorktreeListReceived: assign({
+      worktreeList: ({ event }) => {
+        const ev = event as { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
+        return ev.data.worktrees
+      },
+      isWorktreeLoading: false
+    }),
+
+    worktreeAdd: ({ event }) => {
+      const ev = event as { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
+      sendToBackend('commit.WORKTREE_ADD', { path: ev.path, branch: ev.branch, createBranch: ev.createBranch })
+    },
+
+    worktreeRemove: ({ event }) => {
+      const ev = event as { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
+      sendToBackend('commit.WORKTREE_REMOVE', { path: ev.path, force: ev.force })
+    },
+
+    worktreeSwitch: ({ event }) => {
+      const ev = event as { type: 'commit.WORKTREE_SWITCH'; path: string }
+      sendToBackend('commit.WORKTREE_SWITCH', { path: ev.path })
+    },
+
+    setWorktreeLoading: assign({ isWorktreeLoading: true }),
+
+    handleWorktreeAdded: assign({ isWorktreeLoading: false }),
+
+    handleWorktreeRemoved: assign({ isWorktreeLoading: false })
   }
 }).createMachine({
   id: 'commit',
@@ -423,7 +474,9 @@ export const commitState = setup({
     isPulling: false,
     isGeneratingMessage: false,
     stashList: [],
-    isStashing: false
+    isStashing: false,
+    worktreeList: [],
+    isWorktreeLoading: false
   },
   states: {
     idle: {
@@ -550,6 +603,27 @@ export const commitState = setup({
         },
         'commit.STASH_CLEAR': {
           actions: 'stashClear'
+        },
+        'commit.WORKTREE_LIST': {
+          actions: 'requestWorktreeList'
+        },
+        'commit.WORKTREE_LIST_RECEIVED': {
+          actions: 'handleWorktreeListReceived'
+        },
+        'commit.WORKTREE_ADD': {
+          actions: ['setWorktreeLoading', 'worktreeAdd']
+        },
+        'commit.WORKTREE_REMOVE': {
+          actions: ['setWorktreeLoading', 'worktreeRemove']
+        },
+        'commit.WORKTREE_SWITCH': {
+          actions: 'worktreeSwitch'
+        },
+        'commit.WORKTREE_ADDED': {
+          actions: ['handleWorktreeAdded', 'requestWorktreeList']
+        },
+        'commit.WORKTREE_REMOVED': {
+          actions: ['handleWorktreeRemoved', 'requestWorktreeList']
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

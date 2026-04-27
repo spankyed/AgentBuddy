@@ -59,14 +59,28 @@ export class GitWatcherService {
       return
     }
 
-    const gitDir = path.join(this.workingDirectory, '.git')
+    let gitDir = path.join(this.workingDirectory, '.git')
 
-    // Check if .git directory exists
+    // Check if .git exists (may be a directory or a file in worktrees)
     try {
       await fs.access(gitDir)
     } catch {
-      console.log('No .git directory found, skipping git watch')
+      console.log('No .git found, skipping git watch')
       return
+    }
+
+    // In worktrees, .git is a file containing "gitdir: <path>" — resolve to actual git dir
+    try {
+      const stat = await fs.stat(gitDir)
+      if (stat.isFile()) {
+        const content = await fs.readFile(gitDir, 'utf8')
+        const match = content.match(/^gitdir:\s*(.+)$/m)
+        if (match) {
+          gitDir = path.resolve(this.workingDirectory, match[1].trim())
+        }
+      }
+    } catch {
+      // Fall through with original gitDir
     }
 
     // Watch specific git files that indicate status changes (staged/committed changes)
