@@ -1296,7 +1296,8 @@ const threadsState = setup({
       actions: 'setArchivedThreads',
     },
     ARCHIVE_THREAD: {
-      actions: 'archiveThread',
+      actions: ['archiveThread', 'removeArchivedThread', 'persistTabs'],
+      target: '.list',
     },
     UNARCHIVE_THREAD: {
       actions: ['unarchiveThread', 'removeUnarchivedThread'],
