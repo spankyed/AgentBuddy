@@ -135,7 +135,7 @@ export async function streamChatCompletions(opts: StreamRequestOptions): Promise
       let errorMsg = `HTTP ${status}`
       try {
         const parsed = JSON.parse(body)
-        errorMsg = parsed?.error?.message || errorMsg
+        errorMsg = parsed?.error?.message || parsed?.detail || errorMsg
       } catch { /* use status */ }
 
       throw new Error(errorMsg)
@@ -420,7 +420,7 @@ export async function streamResponses(opts: StreamRequestOptions): Promise<Strea
       let errorMsg = `HTTP ${status}`
       try {
         const parsed = JSON.parse(body)
-        errorMsg = parsed?.error?.message || errorMsg
+        errorMsg = parsed?.error?.message || parsed?.detail || errorMsg
       } catch { /* use status */ }
 
       throw new Error(errorMsg)

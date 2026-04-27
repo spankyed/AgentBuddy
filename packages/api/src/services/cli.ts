@@ -61,6 +61,8 @@ export interface CliServiceType {
     isChatGptAuth(): boolean
     /** Get the chatgpt_account_id from the id_token (needed as a header for ChatGPT auth). */
     getAccountId(): string | undefined
+    /** Test whether the authenticated account can use the Codex API. */
+    validate(): Promise<{ success: boolean; error?: string }>
     /** Start a streaming Chat Completions request to OpenAI. */
     stream(opts: StreamRequestOptions): Promise<StreamHandle>
     /** Start a streaming Responses API request (for ChatGPT OAuth). */
@@ -178,6 +180,9 @@ function createCliService(): CliServiceType {
       },
       getAccountId() {
         return codexAuth.getAccountId()
+      },
+      validate() {
+        return codexAuth.validate()
       },
       stream(opts: StreamRequestOptions) {
         return streamChatCompletions(opts)

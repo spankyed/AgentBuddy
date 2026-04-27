@@ -30,6 +30,7 @@ export async function action(
     choices: [
       { id: 'claude-code', label: 'Claude Code', description: 'Anthropic Claude — requires CLI installation' },
       { id: 'codex', label: 'Codex', description: 'OpenAI Codex — authenticate via ChatGPT account' },
+      { id: 'both', label: 'Both', description: 'Set up Codex first, then Claude Code' },
     ],
     allowCustom: false,
     forkable: false,

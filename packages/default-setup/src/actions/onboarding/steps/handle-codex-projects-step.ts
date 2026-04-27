@@ -1,5 +1,6 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
 import { getOnboardingState, persistOnboardingState, finishOnboarding, flashState } from '../onboarding-helpers';
+import { testCliAndAdvance } from './handle-welcome-step';
 
 export const meta: ActionMeta = {
   label: 'Handle Codex Projects Step',
@@ -50,6 +51,19 @@ export async function action(
       blocks: [],
       forkable: false,
     });
+  }
+
+  // If 'both' was selected, chain to Claude Code setup after Codex is done
+  if (state.data.provider === 'both') {
+    services.chat.sendBlockMessage({
+      threadId,
+      text: 'Codex setup complete. Now setting up Claude Code…',
+      blocks: [],
+      forkable: false,
+    });
+    await testCliAndAdvance(services, state, threadId);
+    persistOnboardingState(services, threadId, state);
+    return { success: true, step: state.step };
   }
 
   finishOnboarding(services, state, threadId);

@@ -66,6 +66,18 @@ export default {
           ],
         },
         {
+          if: "$.lastStep.result.step == 'codex-fallback'",
+          steps: [
+            action("Handle Codex Fallback Step", {
+              label: "codex-fallback",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
+        {
           if: "$.lastStep.result.step == 'cli-test-ask'",
           steps: [
             action("Handle CLI Test Step", {

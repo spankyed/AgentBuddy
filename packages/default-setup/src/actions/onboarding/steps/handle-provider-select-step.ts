@@ -30,8 +30,8 @@ export async function action(
     return { success: true, step: state.step };
   }
 
-  if (response === 'codex') {
-    state.data.provider = 'codex';
+  if (response === 'codex' || response === 'both') {
+    state.data.provider = response as 'codex' | 'both';
 
     // Check if already authenticated via ~/.codex/auth.json
     const authStatus = (services.cli as any).codex.getAuthStatus();
@@ -39,11 +39,34 @@ export async function action(
     if (authStatus.authenticated) {
       services.chat.sendBlockMessage({
         threadId,
-        text: `Codex authenticated as ${authStatus.email || 'unknown'}!`,
+        text: `Codex authenticated as ${authStatus.email || 'unknown'} (${authStatus.planType || 'unknown'} plan). Verifying API access…`,
         blocks: [],
         forkable: false,
       });
-      startCodexProjectsStep(services, state, threadId);
+
+      // Validate API access before advancing
+      const validation = await (services.cli as any).codex.validate();
+      if (validation.success) {
+        state.data.codexValidated = true;
+        services.chat.sendBlockMessage({
+          threadId, text: 'API access verified!', blocks: [], forkable: false,
+        });
+        startCodexProjectsStep(services, state, threadId);
+      } else {
+        state.data.codexValidated = false;
+        const { messageId } = services.chat.sendChoiceBlock({
+          threadId,
+          text: `Authenticated, but Codex API access is not available for your account.\n\n${validation.error}\n\nThis may be a temporary restriction from OpenAI.`,
+          prompt: 'What would you like to do?',
+          choices: [
+            { id: 'setup-cc', label: 'Set up Claude Code', description: 'Use Claude Code instead' },
+            { id: 'skip', label: 'Skip for now', description: "I'll come back later" },
+          ],
+          allowCustom: false, forkable: false, autoHide: true, asUser: true,
+        });
+        state.step = 'codex-fallback';
+        state.pendingMessageId = messageId;
+      }
     } else {
       const { messageId } = services.chat.sendChoiceBlock({
         threadId,

@@ -85,6 +85,47 @@ export function logout(): void {
 }
 
 /**
+ * Test whether the authenticated account can actually use the Codex API.
+ * Makes a minimal non-streaming request and checks for errors.
+ */
+export async function validate(): Promise<{ success: boolean; error?: string }> {
+  const apiKey = getStoredApiKey()
+  if (!apiKey) return { success: false, error: 'Not authenticated' }
+
+  const chatGpt = isChatGptAuth()
+  const baseUrl = chatGpt ? 'https://chatgpt.com/backend-api/codex' : 'https://api.openai.com/v1'
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    'OpenAI-Beta': 'responses=experimental',
+    'originator': 'codex_cli_rs',
+  }
+  if (chatGpt) {
+    const aid = getAccountId()
+    if (aid) headers['chatgpt-account-id'] = aid
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/responses`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'gpt-4.1',
+        instructions: 'ok',
+        input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'ok' }] }],
+        store: false,
+        stream: false,
+      }),
+    })
+    if (res.ok) return { success: true }
+    const body = await res.json().catch(() => ({})) as any
+    return { success: false, error: body?.detail || body?.error?.message || `HTTP ${res.status}` }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+/**
  * Refresh tokens and re-exchange for a fresh API key.
  */
 async function doRefresh(): Promise<void> {
