@@ -842,7 +842,7 @@ export const commitSystem = setup({
           actions: 'generateCommitMessage'
         },
         'commit.UPDATE_BASE_DIRECTORY': {
-          actions: ['updateBaseDirectory', 'selfRefreshGitStatus']
+          actions: ['updateBaseDirectory', 'selfRefreshGitStatus', 'worktreeList']
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
