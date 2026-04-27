@@ -334,7 +334,6 @@ const handleArchiveThread = (id: string | undefined) => {
   const confirmed = confirm('Archive this thread? It will be hidden from all lists.')
   if (confirmed) {
     threadsActor.send({ type: 'ARCHIVE_THREAD', threadId: id })
-    isOpen.value = false
   }
 }
 
@@ -354,7 +353,6 @@ const handleDeleteThread = (id: string | undefined) => {
   const confirmed = confirm(`Permanently delete thread "${thread?.topic || 'Untitled'}"? This cannot be undone.`)
   if (confirmed) {
     threadsActor.send({ type: 'DELETE_THREAD', threadId: id })
-    isOpen.value = false
   }
 }
 
