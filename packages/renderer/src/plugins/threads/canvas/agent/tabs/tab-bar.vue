@@ -1,5 +1,5 @@
 <template>
-  <div class="flex overflow-x-auto scrollbar-hide">
+  <div class="flex overflow-x-auto">
     <TabItem
       v-for="tab in sortedTabs"
       :key="tab.id"
@@ -41,13 +41,3 @@ defineEmits<{
   'pin-thread': [tabId: string];
 }>();
 </script>
-
-<style scoped>
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-</style>
