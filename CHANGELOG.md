@@ -1,5 +1,20 @@
 -e # Changelog
 
+## v0.2.12 (2026-04-27)
+
+### Fixes
+- renderer): show horizontal scrollbar when thread dashboard tabs overflow
+- renderer): keep recent threads menu open after archive or delete
+- threads): prevent chat input buttons from overflowing at narrow widths
+- threads): hide statusline when chat area is collapsed
+- renderer): strip Co-Authored-By trailers from commit messages on submit
+- renderer): prevent breadcrumb text wrapping in narrow canvas area
+
+### Other
+- Revert "fix(threads): archive thread without disrupting chat view"
+
+-e # Changelog
+
 ## v0.2.11 (2026-04-27)
 
 ### Features
