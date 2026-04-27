@@ -146,7 +146,7 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 // ─── Main login flow ────────────────────────────────────────────────────────
 
 export interface LoginResult {
-  apiKey: string
+  apiKey?: string
   email?: string
   planType?: string
 }
@@ -208,12 +208,19 @@ export async function runOAuthLogin(
           // Exchange code for tokens
           const tokens = await exchangeCodeForTokens(code, redirectUri, codeVerifier)
 
-          // Exchange id_token for API key
-          const apiKey = await exchangeTokenForApiKey(tokens.id_token)
+          // Exchange id_token for API key — non-fatal if it fails (matches Codex Rust behavior).
+          // Some accounts (e.g., without platform organization) fail with "missing organization_id".
+          // In that case, the access_token is used directly as the bearer token.
+          let apiKey: string | undefined
+          try {
+            apiKey = await exchangeTokenForApiKey(tokens.id_token)
+          } catch {
+            // API key exchange failed — not fatal, access_token will be used as fallback
+          }
 
           // Persist
           writeAuthFile({
-            OPENAI_API_KEY: apiKey,
+            ...(apiKey && { OPENAI_API_KEY: apiKey }),
             tokens: {
               id_token: tokens.id_token,
               access_token: tokens.access_token,
@@ -234,7 +241,7 @@ export async function runOAuthLogin(
           server.close()
 
           resolve({
-            apiKey,
+            ...(apiKey && { apiKey }),
             email: payload.email,
             planType: payload['https://api.openai.com/auth.chatgpt_plan_type'],
           })

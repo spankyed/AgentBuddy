@@ -77,7 +77,35 @@ export function deleteAuthFile(): void {
 
 export function getStoredApiKey(): string | null {
   const data = readAuthFile()
-  return data?.OPENAI_API_KEY ?? null
+  // Prefer the exchanged API key; fall back to the OAuth access_token
+  // (matches Codex Rust behavior — API key exchange is optional)
+  return data?.OPENAI_API_KEY ?? data?.tokens?.access_token ?? null
+}
+
+/**
+ * Returns true when authenticating via ChatGPT OAuth (no exchanged API key).
+ * ChatGPT tokens require a different base URL and extra headers.
+ */
+export function isChatGptAuth(): boolean {
+  const data = readAuthFile()
+  // If we have an exchanged API key, we use the standard API endpoint.
+  // If we only have the OAuth access_token, we're in ChatGPT mode.
+  return !data?.OPENAI_API_KEY && !!data?.tokens?.access_token
+}
+
+/**
+ * Get the chatgpt_account_id from the id_token claims (needed as a header).
+ */
+export function getAccountId(): string | undefined {
+  const tokens = getStoredTokens()
+  if (!tokens?.id_token) return undefined
+  const claims = decodeJwtPayload(tokens.id_token)
+  // Codex extracts from nested 'https://api.openai.com/auth' object
+  const authClaims = claims['https://api.openai.com/auth']
+  if (authClaims && typeof authClaims === 'object') {
+    return authClaims.chatgpt_account_id
+  }
+  return claims['https://api.openai.com/auth.chatgpt_account_id']
 }
 
 export function getStoredTokens(): TokenData | null {

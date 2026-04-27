@@ -8,7 +8,6 @@
 
 import { runOAuthLogin, refreshTokens } from './oauth-server'
 import {
-  readAuthFile,
   writeAuthFile,
   deleteAuthFile,
   getStoredApiKey,
@@ -93,29 +92,33 @@ async function doRefresh(): Promise<void> {
 
   const newTokens = await refreshTokens(tokens.refresh_token)
 
-  // Re-exchange for API key
-  const body = new URLSearchParams({
-    grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-    client_id: 'app_EMoamEEZ73f0CkXaXp7hrann',
-    requested_token: 'openai-api-key',
-    subject_token: newTokens.id_token,
-    subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
-  })
+  // Re-exchange for API key — non-fatal if it fails (matches Codex Rust behavior)
+  let apiKey: string | undefined
+  try {
+    const body = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      client_id: 'app_EMoamEEZ73f0CkXaXp7hrann',
+      requested_token: 'openai-api-key',
+      subject_token: newTokens.id_token,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
+    })
 
-  const res = await fetch('https://auth.openai.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  })
+    const res = await fetch('https://auth.openai.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    })
 
-  if (!res.ok) {
-    throw new Error(`API key re-exchange failed (${res.status})`)
+    if (res.ok) {
+      const data = await res.json() as { access_token: string }
+      apiKey = data.access_token
+    }
+  } catch {
+    // API key exchange failed — access_token will be used as fallback
   }
 
-  const data = await res.json() as { access_token: string }
-
   writeAuthFile({
-    OPENAI_API_KEY: data.access_token,
+    ...(apiKey && { OPENAI_API_KEY: apiKey }),
     tokens: {
       id_token: newTokens.id_token,
       access_token: newTokens.access_token,
