@@ -14,10 +14,13 @@ import {
   getStoredTokens,
   getUserInfo,
   needsRefresh,
+  isChatGptAuth,
+  getAccountId,
 } from './token-store'
 import type { UserInfo } from './token-store'
 
 export type { UserInfo }
+export { isChatGptAuth, getAccountId }
 
 export interface CodexAuthStatus {
   authenticated: boolean

@@ -10,7 +10,7 @@ import { testCli, isCliName } from '@/core/helpers/resolve-cli'
 import { configDir } from '@/services/claude-code/sessions'
 import * as codexAuth from '@/services/codex-auth'
 import type { CodexAuthStatus } from '@/services/codex-auth'
-import { streamChatCompletions, type StreamRequestOptions, type StreamHandle } from '@/services/codex-client'
+import { streamChatCompletions, streamResponses, type StreamRequestOptions, type StreamHandle } from '@/services/codex-client'
 import { exec as cpExec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
@@ -57,8 +57,14 @@ export interface CliServiceType {
     logout(): void
     getAuthStatus(): CodexAuthStatus
     getApiKey(): Promise<string | null>
+    /** True when using ChatGPT OAuth (no exchanged API key) — requires different base URL. */
+    isChatGptAuth(): boolean
+    /** Get the chatgpt_account_id from the id_token (needed as a header for ChatGPT auth). */
+    getAccountId(): string | undefined
     /** Start a streaming Chat Completions request to OpenAI. */
     stream(opts: StreamRequestOptions): Promise<StreamHandle>
+    /** Start a streaming Responses API request (for ChatGPT OAuth). */
+    streamResponses(opts: StreamRequestOptions): Promise<StreamHandle>
   }
   claudeCode: {
     query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
@@ -167,8 +173,17 @@ function createCliService(): CliServiceType {
       getApiKey() {
         return codexAuth.getApiKey()
       },
+      isChatGptAuth() {
+        return codexAuth.isChatGptAuth()
+      },
+      getAccountId() {
+        return codexAuth.getAccountId()
+      },
       stream(opts: StreamRequestOptions) {
         return streamChatCompletions(opts)
+      },
+      streamResponses(opts: StreamRequestOptions) {
+        return streamResponses(opts)
       },
     },
     git: {

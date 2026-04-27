@@ -1,10 +1,12 @@
 /**
- * Wire protocol types for the OpenAI Chat Completions API.
+ * Wire protocol types for the OpenAI Chat Completions & Responses APIs.
  *
  * Ported from Codex's Rust implementation:
  *   codex-rs/core/src/chat_completions.rs
+ *   codex-rs/core/src/client.rs
  *   codex-rs/core/src/client_common.rs
  *   codex-rs/core/src/openai_tools.rs
+ *   codex-rs/protocol/src/models.rs
  */
 
 // ─── Chat Completions message format ────────────────────────────────────────
@@ -100,4 +102,34 @@ export interface ChunkToolCall {
     name?: string
     arguments?: string
   }
+}
+
+// ─── Responses API types (chatgpt.com/backend-api/codex) ────────────────────
+
+/** Input item for the Responses API (codex-rs/protocol/src/models.rs) */
+export type ResponsesInputItem =
+  | { type: 'message'; role: string; content: ResponsesContentItem[] }
+  | { type: 'function_call'; name: string; arguments: string; call_id: string }
+  | { type: 'function_call_output'; call_id: string; output: string }
+
+export interface ResponsesContentItem {
+  type: 'input_text' | 'output_text'
+  text: string
+}
+
+/** Tool definition for the Responses API (flat format, NOT nested under "function") */
+export interface ResponsesToolDefinition {
+  type: 'function'
+  name: string
+  description: string
+  parameters: JsonSchema
+  strict: boolean
+}
+
+/** SSE event from the Responses API (codex-rs/core/src/client.rs:487-626) */
+export interface ResponsesSseEvent {
+  type: string
+  delta?: string
+  item?: any
+  response?: any
 }

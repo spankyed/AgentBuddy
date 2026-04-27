@@ -63,13 +63,23 @@ export async function consumeStream(
     // Build conversation history in Chat Completions format
     const history: SerializedMessage[] = state?.conversationHistory || [];
 
-    // Get API key
+    // Get API key and determine auth mode
     const apiKey = await (services.cli as any).codex.getApiKey();
     if (!apiKey) {
       writer.finalize('Not authenticated. Please log in with Codex first.');
       setRunning(services, threadId, false);
       updateChatState(services, threadId, 'error');
       return;
+    }
+
+    // ChatGPT OAuth tokens require a different base URL + account ID header
+    // (Codex Rust: model_provider_info.rs:146 — "https://chatgpt.com/backend-api/codex")
+    const isChatGpt = (services.cli as any).codex.isChatGptAuth();
+    const baseUrl = isChatGpt ? 'https://chatgpt.com/backend-api/codex' : undefined;
+    const extraHeaders: Record<string, string> = {};
+    if (isChatGpt) {
+      const accountId = (services.cli as any).codex.getAccountId();
+      if (accountId) extraHeaders['chatgpt-account-id'] = accountId;
     }
 
     // Get system prompt
@@ -95,13 +105,16 @@ export async function consumeStream(
     while (turns < MAX_TURNS) {
       turns++;
 
-      // Call the codex-client stream service
-      const handle = await (services.cli as any).codex.stream({
+      // ChatGPT auth → Responses API; API key auth → Chat Completions
+      const streamMethod = isChatGpt ? 'streamResponses' : 'stream';
+      const handle = await (services.cli as any).codex[streamMethod]({
         apiKey,
         model,
+        ...(baseUrl && { baseUrl }),
         instructions: systemPrompt,
         messages: history,
         tools: toolDefs,
+        ...(Object.keys(extraHeaders).length > 0 && { extraHeaders }),
       });
 
       // Stream text deltas to the UI

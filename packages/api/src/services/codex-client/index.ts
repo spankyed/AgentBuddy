@@ -6,7 +6,7 @@
  * fetch() + SSE parsing instead of any SDK wrapper.
  */
 
-export { streamChatCompletions } from './stream'
+export { streamChatCompletions, streamResponses } from './stream'
 export type { StreamRequestOptions, StreamHandle } from './stream'
 export type {
   ChatMessage,
