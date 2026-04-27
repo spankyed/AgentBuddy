@@ -3,7 +3,7 @@
     <!-- Conjoined container for both selectors -->
     <div
       v-if="!forcedMode"
-      class="inline-flex bg-neutral-800 border border-neutral-700/50 rounded-lg overflow-hidden transition-all"
+      class="inline-flex min-w-0 bg-neutral-800 border border-neutral-700/50 rounded-lg overflow-hidden transition-all"
     >
       <!-- Mode Selector (Left) -->
       <DropdownMenuRoot v-model:open="isModeOpen">
@@ -11,10 +11,10 @@
           <button
             type="button"
             :disabled="disabled"
-            class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300"
+            class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300 min-w-0"
             :class="modeButtonClasses"
           >
-            <span class="font-medium">{{ currentModeName }}</span>
+            <span class="font-medium truncate">{{ currentModeName }}</span>
             <ChevronDown
               :size="14"
               class="transition-transform"
@@ -62,11 +62,11 @@
           <button
             type="button"
             :disabled="disabled"
-            class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300"
+            class="flex items-center gap-1.5 px-3 py-2 h-7 text-sm transition-all text-neutral-300 min-w-0"
             :class="phaseButtonClasses"
             :style="phaseButtonStyle"
           >
-            <span class="font-medium">{{ currentPhaseName }}</span>
+            <span class="font-medium truncate">{{ currentPhaseName }}</span>
             <ChevronDown
               :size="14"
               class="transition-transform"
