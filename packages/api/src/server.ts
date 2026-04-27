@@ -23,7 +23,7 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-// Initialize backend systems
+// Initialize backend systems, then start WebSocket server
 (async () => {
   try {
     await setupBackend();
@@ -31,12 +31,11 @@ process.on('unhandledRejection', (reason) => {
     writeFatalError(error, 'setupBackend');
     process.exit(1);
   }
-})();
 
-// Start WebSocket server
-try {
-  createWebSocketServer();
-} catch (error) {
-  writeFatalError(error, 'createWebSocketServer');
-  process.exit(1);
-}
+  try {
+    createWebSocketServer();
+  } catch (error) {
+    writeFatalError(error, 'createWebSocketServer');
+    process.exit(1);
+  }
+})();
