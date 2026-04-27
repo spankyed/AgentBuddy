@@ -1,5 +1,29 @@
 -e # Changelog
 
+## v0.2.11 (2026-04-27)
+
+### Features
+- commit): add git worktree support
+- canvas): add mosaic animation effect to busy state indicator dot
+- chat): expand chat panel when opening inline dashboard
+
+### Fixes
+- brain): prevent invalid flowRef from crashing app on startup
+- brain): add error handling for child node spawning and validate flowRef
+- startup): await backend setup before starting WebSocket server
+- commit): improve worktree UX with loading guards, main/locked protection, and auto-path
+- commit): show worktrees section when at least one worktree exists
+- commit): refresh worktree list after switching worktrees
+- notes): wire up toggle-favorite event in tasklist panel
+
+### Other
+- Revert "chore(release): v0.2.11"
+- Merge pull request #137 from spankyed/AS/worktrees-support
+- add blue pinned icon
+- style(chat): adjust background color and border opacity in chat UI
+
+-e # Changelog
+
 ## v0.2.10 (2026-04-25)
 
 ### Features
