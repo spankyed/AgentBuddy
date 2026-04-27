@@ -34,18 +34,8 @@
             <X :size="14" />
           </button>
         </span>
-        <!-- Pinned tabs: dot only -->
-        <span v-else class="shrink-0 relative inline-block w-1.5 h-1.5 mr-1.5">
-          <span
-            class="block w-full h-full rounded-full transition-colors"
-            :class="isThreadBusy(tab.id) ? 'mosaic-dot' : ''"
-            :style="!isThreadBusy(tab.id) ? { backgroundColor: getThreadDotColor(tab.id) || '#525252' } : undefined"
-          />
-          <span
-            v-if="isThreadBusy(tab.id)"
-            class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
-          />
-        </span>
+        <!-- Pinned tabs: pin icon -->
+        <Pin v-else :size="12" class="shrink-0 mr-1.5 text-blue-400" />
         <span class="truncate">{{ tab.label }}</span>
       </div>
     </ContextMenuTrigger>
@@ -73,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { X, SquarePen } from 'lucide-vue-next';
+import { X, SquarePen, Pin } from 'lucide-vue-next';
 import { ContextMenuRoot, ContextMenuTrigger, ContextMenuItem } from 'reka-ui';
 import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue';
 import type { Tab } from '@app/api';

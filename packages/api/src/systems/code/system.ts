@@ -371,6 +371,13 @@ export const systemMachine = setup({
         SET_BASE_DIRECTORY: {
           actions: ['updateBaseDirectory', 'notifyChildSystemsOfBaseChange', 'restartGitWatcher']
         },
+        // Worktree switch is intercepted here to change baseDirectory
+        'commit.WORKTREE_SWITCH': {
+          actions: ({ event, self }) => {
+            const ev = event as { type: 'commit.WORKTREE_SWITCH'; path: string }
+            self.send({ type: 'SET_BASE_DIRECTORY', path: ev.path, fromUserNavigation: true })
+          }
+        },
         // All other events get routed to children
         '*': {
           actions: 'routeEvent'

@@ -427,6 +427,95 @@
       </div>
     </div>
 
+    <!-- Worktrees Section -->
+    <div v-if="worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+      <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isWorktreesExpanded = !isWorktreesExpanded">
+        <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
+          <ChevronRight v-if="!isWorktreesExpanded" class="w-3 h-3" />
+          <ChevronDown v-else class="w-3 h-3" />
+          WORKTREES ({{ worktreeList.length }})
+          <Loader2 v-if="isWorktreeLoading" class="w-3 h-3 animate-spin ml-1" />
+        </div>
+        <div class="flex items-center gap-1" @click.stop>
+          <button @click="startAddWorktree" :disabled="isWorktreeLoading" class="p-1 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50" title="Add Worktree">
+            <Plus class="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+        </div>
+      </div>
+      <div v-if="isWorktreesExpanded" class="overflow-y-auto pb-3" style="max-height: 300px" :class="{ 'opacity-50 pointer-events-none': isWorktreeLoading }">
+        <!-- Add worktree form -->
+        <div v-if="showWorktreeAddForm" class="px-5 pb-2 space-y-2">
+          <input
+            v-model="newWorktreeBranch"
+            placeholder="Branch name"
+            class="w-full px-2 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+            @keydown.enter="addWorktree"
+            @keydown.escape="cancelAddWorktree"
+          />
+          <input
+            v-model="newWorktreePath"
+            placeholder="Path"
+            class="w-full px-2 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+            @keydown.enter="addWorktree"
+            @keydown.escape="cancelAddWorktree"
+          />
+          <label class="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer">
+            <input type="checkbox" v-model="createNewWorktreeBranch" class="rounded border-neutral-600" />
+            Create new branch
+          </label>
+          <div class="flex items-center gap-2">
+            <button @click="addWorktree" :disabled="!newWorktreeBranch.trim() || !newWorktreePath.trim() || isWorktreeLoading" class="px-2 py-1 text-xs bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed rounded text-neutral-200 transition-colors">
+              Create
+            </button>
+            <button @click="cancelAddWorktree" class="px-2 py-1 text-xs hover:bg-neutral-800 rounded text-neutral-400 transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <!-- Worktree list -->
+        <div class="space-y-0.5 pl-3">
+          <div
+            v-for="wt in worktreeList"
+            :key="wt.path"
+            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors"
+            :class="{ 'bg-neutral-800/30': wt.isCurrent, 'cursor-pointer': !wt.isCurrent }"
+            @click="!wt.isCurrent && !isWorktreeLoading && switchWorktree(wt.path)"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <Lock v-if="wt.isLocked" class="w-3 h-3 flex-shrink-0 text-yellow-500" :title="wt.lockedReason ? `Locked: ${wt.lockedReason}` : 'Locked'" />
+              <GitFork v-else class="w-3 h-3 flex-shrink-0" :class="wt.isCurrent ? 'text-blue-400' : 'text-neutral-500'" />
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs truncate" :class="wt.isCurrent ? 'text-blue-300 font-medium' : 'text-neutral-200'">{{ wt.branch || '(detached)' }}</span>
+                  <span v-if="wt.isCurrent" class="text-[10px] px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 flex-shrink-0">current</span>
+                </div>
+                <div class="text-[11px] text-neutral-500 truncate" :title="wt.path">{{ formatWorktreePath(wt.path) }}</div>
+              </div>
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <button v-if="!wt.isCurrent" @click.stop="switchWorktree(wt.path)" class="p-0.5 hover:bg-neutral-700 rounded" title="Switch to this worktree">
+                  <FolderSync class="w-3 h-3 text-neutral-400" />
+                </button>
+                <button v-if="!wt.isCurrent && !wt.isBare && !wt.isMain && !wt.isLocked" @click.stop="openRemoveWorktreeDialog(wt.path)" class="p-0.5 hover:bg-neutral-700 rounded" title="Remove worktree">
+                  <Trash2 class="w-3 h-3 text-red-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remove Worktree Dialog -->
+    <RevertDialog
+      :show="showRemoveWorktreeDialog"
+      :file="null"
+      :customTitle="'Remove Worktree'"
+      :customMessage="'Are you sure you want to remove this worktree? Any uncommitted changes in the worktree will be lost.'"
+      @confirm="confirmRemoveWorktree"
+      @cancel="cancelRemoveWorktree"
+    />
+
     <!-- Stash resize handle -->
     <PanelResizer
       v-if="stashList.length > 0 && isStashesExpanded"
@@ -531,7 +620,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, GitFork, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
@@ -565,6 +654,8 @@ const isPulling = useSelector(commitActor, (state: any) => state.context.isPulli
 const isGeneratingMessage = useSelector(commitActor, (state: any) => state.context.isGeneratingMessage)
 const stashList = useSelector(commitActor, (state: any) => state.context.stashList)
 const isStashing = useSelector(commitActor, (state: any) => state.context.isStashing)
+const worktreeList = useSelector(commitActor, (state: any) => state.context.worktreeList)
+const isWorktreeLoading = useSelector(commitActor, (state: any) => state.context.isWorktreeLoading)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 // Local state
@@ -585,6 +676,13 @@ const stashSearchInput = ref<HTMLInputElement | null>(null)
 const showDropStashDialog = ref(false)
 const pendingDropIndex = ref<number | null>(null)
 const showClearStashesDialog = ref(false)
+const isWorktreesExpanded = ref(false)
+const showWorktreeAddForm = ref(false)
+const newWorktreeBranch = ref('')
+const newWorktreePath = ref('')
+const createNewWorktreeBranch = ref(true)
+const showRemoveWorktreeDialog = ref(false)
+const pendingRemoveWorktreePath = ref<string | null>(null)
 const isErrorExpanded = ref(false)
 const errorContentRef = ref<HTMLElement | null>(null)
 const isErrorOverflowing = ref(false)
@@ -916,6 +1014,75 @@ const cancelClearStashes = () => {
   showClearStashesDialog.value = false
 }
 
+// Worktree handlers
+const switchWorktree = (path: string) => {
+  commitActor?.send({ type: 'commit.WORKTREE_SWITCH', path })
+}
+
+const addWorktree = () => {
+  const branch = newWorktreeBranch.value.trim()
+  const wtPath = newWorktreePath.value.trim()
+  if (!branch || !wtPath) return
+  commitActor?.send({
+    type: 'commit.WORKTREE_ADD',
+    path: wtPath,
+    branch,
+    createBranch: createNewWorktreeBranch.value
+  })
+  showWorktreeAddForm.value = false
+  newWorktreeBranch.value = ''
+  newWorktreePath.value = ''
+}
+
+const cancelAddWorktree = () => {
+  showWorktreeAddForm.value = false
+  newWorktreeBranch.value = ''
+  newWorktreePath.value = ''
+}
+
+const openRemoveWorktreeDialog = (path: string) => {
+  pendingRemoveWorktreePath.value = path
+  showRemoveWorktreeDialog.value = true
+}
+
+const confirmRemoveWorktree = () => {
+  if (pendingRemoveWorktreePath.value) {
+    commitActor?.send({ type: 'commit.WORKTREE_REMOVE', path: pendingRemoveWorktreePath.value })
+  }
+  showRemoveWorktreeDialog.value = false
+  pendingRemoveWorktreePath.value = null
+}
+
+const cancelRemoveWorktree = () => {
+  showRemoveWorktreeDialog.value = false
+  pendingRemoveWorktreePath.value = null
+}
+
+const formatWorktreePath = (fullPath: string) => {
+  const parts = fullPath.split('/')
+  return parts.slice(-2).join('/')
+}
+
+const startAddWorktree = () => {
+  showWorktreeAddForm.value = true
+  newWorktreeBranch.value = ''
+  newWorktreePath.value = ''
+  createNewWorktreeBranch.value = true
+}
+
+// Auto-populate worktree path from branch name
+watch(newWorktreeBranch, (branch) => {
+  if (!showWorktreeAddForm.value) return
+  const base = baseDirectory.value || ''
+  const parent = base.substring(0, base.lastIndexOf('/'))
+  if (!branch.trim()) {
+    newWorktreePath.value = ''
+    return
+  }
+  const sanitized = branch.trim().replace(/[\/\\]/g, '-')
+  newWorktreePath.value = parent ? `${parent}/${sanitized}` : sanitized
+})
+
 const hideBranchDropdown = () => {
   // Small delay to allow click events to fire
   setTimeout(() => {
@@ -1038,6 +1205,7 @@ refreshStatus()
 // Also get available branches and stash list
 commitActor?.send({ type: 'commit.GET_ALL_BRANCHES' })
 commitActor?.send({ type: 'commit.STASH_LIST' })
+commitActor?.send({ type: 'commit.WORKTREE_LIST' })
 </script>
 
 <style scoped>

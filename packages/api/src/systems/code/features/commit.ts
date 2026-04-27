@@ -5,7 +5,7 @@ import { systemBus } from '@/core/helpers/event-helpers'
 import { z } from 'zod'
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
-import { GitStatusFile, GitDiff, StashEntry } from '../types'
+import { GitStatusFile, GitDiff, StashEntry, WorktreeEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
 import { sendToBrainSystem } from '@/services/event-emitter'
 
@@ -33,6 +33,10 @@ export const IncomingCommitEvents = [
   busEvent('commit.STASH_POP', { index: z.number() }),
   busEvent('commit.STASH_DROP', { index: z.number() }),
   busEvent('commit.STASH_CLEAR', {}),
+  busEvent('commit.WORKTREE_LIST', {}),
+  busEvent('commit.WORKTREE_ADD', { path: z.string(), branch: z.string().optional(), createBranch: z.boolean().optional() }),
+  busEvent('commit.WORKTREE_REMOVE', { path: z.string(), force: z.boolean().optional() }),
+  busEvent('commit.WORKTREE_SWITCH', { path: z.string() }),
 ] as const
 
 // Outgoing events to frontend
@@ -54,6 +58,9 @@ export type OutgoingCommitEvents =
   | { type: 'commit.MESSAGE_GENERATED'; data: { message: string } }
   | { type: 'commit.STASH_LIST_RECEIVED'; data: { stashes: StashEntry[] } }
   | { type: 'commit.STASH_SUCCESS'; data: { message: string } }
+  | { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
+  | { type: 'commit.WORKTREE_ADDED'; data: { path: string; branch: string } }
+  | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -81,6 +88,10 @@ export type Event =
   | { type: 'commit.STASH_POP'; index: number }
   | { type: 'commit.STASH_DROP'; index: number }
   | { type: 'commit.STASH_CLEAR' }
+  | { type: 'commit.WORKTREE_LIST' }
+  | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
+  | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
+  | { type: 'commit.WORKTREE_SWITCH'; path: string }
   | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
@@ -712,6 +723,67 @@ export const commitSystem = setup({
         })
         rootEvents.emitOutgoing(wrapped.event)
       }
+    },
+
+    worktreeList: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+
+      try {
+        const worktrees = await context.gitRepository.worktreeList()
+        const wrapped = emit(pluginId, {
+          type: 'commit.WORKTREE_LIST_RECEIVED',
+          data: { worktrees }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    worktreeAdd: async ({ event, context, self }) => {
+      if (!requireGitRepository(context)) return
+      const ev = event as { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
+
+      try {
+        await context.gitRepository.worktreeAdd(ev.path, ev.branch, ev.createBranch)
+        const wrapped = emit(pluginId, {
+          type: 'commit.WORKTREE_ADDED',
+          data: { path: ev.path, branch: ev.branch || '' }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.WORKTREE_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    worktreeRemove: async ({ event, context, self }) => {
+      if (!requireGitRepository(context)) return
+      const ev = event as { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
+
+      try {
+        await context.gitRepository.worktreeRemove(ev.path, ev.force)
+        const wrapped = emit(pluginId, {
+          type: 'commit.WORKTREE_REMOVED',
+          data: { path: ev.path }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.WORKTREE_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
     }
   }
 }).createMachine({
@@ -770,7 +842,7 @@ export const commitSystem = setup({
           actions: 'generateCommitMessage'
         },
         'commit.UPDATE_BASE_DIRECTORY': {
-          actions: ['updateBaseDirectory', 'selfRefreshGitStatus']
+          actions: ['updateBaseDirectory', 'selfRefreshGitStatus', 'worktreeList']
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
@@ -792,6 +864,15 @@ export const commitSystem = setup({
         },
         'commit.STASH_CLEAR': {
           actions: 'stashClear'
+        },
+        'commit.WORKTREE_LIST': {
+          actions: 'worktreeList'
+        },
+        'commit.WORKTREE_ADD': {
+          actions: 'worktreeAdd'
+        },
+        'commit.WORKTREE_REMOVE': {
+          actions: 'worktreeRemove'
         }
       }
     }

@@ -103,6 +103,17 @@ export interface StashEntry {
   date: string
 }
 
+export interface WorktreeEntry {
+  path: string
+  head: string
+  branch: string
+  isBare: boolean
+  isCurrent: boolean
+  isMain: boolean
+  isLocked: boolean
+  lockedReason?: string
+}
+
 // GitHub PR types
 export interface GhPullRequest {
   number: number

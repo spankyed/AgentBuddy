@@ -1351,6 +1351,92 @@ export class GitRepository {
     })
   }
 
+  // ── Worktree operations ──────────────────────────────────────────
+
+  async worktreeList(): Promise<import('../types').WorktreeEntry[]> {
+    const result = await this.executeGitCommand(['worktree', 'list', '--porcelain'])
+    if (!result.success || !result.output?.trim()) return []
+
+    const entries: import('../types').WorktreeEntry[] = []
+    const blocks = result.output.trim().split('\n\n')
+
+    for (let i = 0; i < blocks.length; i++) {
+      const lines = blocks[i].trim().split('\n')
+      let wtPath = ''
+      let head = ''
+      let branch = ''
+      let isBare = false
+      let isLocked = false
+      let lockedReason: string | undefined
+
+      for (const line of lines) {
+        if (line.startsWith('worktree ')) {
+          wtPath = line.slice('worktree '.length)
+        } else if (line.startsWith('HEAD ')) {
+          head = line.slice('HEAD '.length).substring(0, 7)
+        } else if (line.startsWith('branch ')) {
+          // branch refs/heads/main → main
+          branch = line.slice('branch '.length).replace('refs/heads/', '')
+        } else if (line === 'bare') {
+          isBare = true
+        } else if (line === 'detached') {
+          branch = ''
+        } else if (line.startsWith('locked')) {
+          isLocked = true
+          const reason = line.slice('locked'.length).trim()
+          if (reason) lockedReason = reason
+        }
+      }
+
+      if (wtPath) {
+        entries.push({
+          path: wtPath,
+          head,
+          branch,
+          isBare,
+          isCurrent: path.resolve(wtPath) === path.resolve(this.workingDirectory),
+          isMain: i === 0,
+          isLocked,
+          lockedReason
+        })
+      }
+    }
+
+    return entries
+  }
+
+  async worktreeAdd(wtPath: string, branch?: string, createBranch?: boolean): Promise<string> {
+    return this.withWriteFlag(async () => {
+      const args = ['worktree', 'add']
+      if (createBranch && branch) {
+        args.push('-b', branch, wtPath)
+      } else if (branch) {
+        args.push(wtPath, branch)
+      } else {
+        args.push(wtPath)
+      }
+
+      const result = await this.executeGitCommand(args)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to add worktree')
+      }
+      return wtPath
+    })
+  }
+
+  async worktreeRemove(wtPath: string, force?: boolean): Promise<void> {
+    return this.withWriteFlag(async () => {
+      const args = ['worktree', 'remove']
+      if (force) args.push('--force')
+      args.push(wtPath)
+
+      const result = await this.executeGitCommand(args)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove worktree')
+      }
+    })
+  }
+
   async getCommitsBetweenBranches(baseBranch: string, targetBranch = 'HEAD'): Promise<{ subject: string; body: string }[]> {
     const separator = '---COMMIT_SEP---'
     const result = await this.executeGitCommand([
