@@ -93,6 +93,7 @@
         @create="(parentId: string) => $emit('create-subnote', parentId)"
         @open="(noteId: string) => $emit('open-note', noteId)"
         @toggle-hide-completed="(nodeId: string) => $emit('toggle-hide-completed', nodeId)"
+        @toggle-favorite="(id: string) => $emit('toggle-favorite', id)"
         @drag-start="handleDragStart"
         @drag-over="handleDragOver"
         @drag-leave="handleDragLeave"
@@ -126,6 +127,7 @@
           @create="(parentId: string) => $emit('create-subnote', parentId)"
           @open="(noteId: string) => $emit('open-note', noteId)"
           @toggle-hide-completed="(nodeId: string) => $emit('toggle-hide-completed', nodeId)"
+          @toggle-favorite="(id: string) => $emit('toggle-favorite', id)"
           @drag-start="handleDragStart"
           @drag-over="handleDragOver"
           @drag-leave="handleDragLeave"
@@ -187,6 +189,7 @@ const emit = defineEmits<{
   (e: 'toggle-hide-completed', nodeId: string): void
   (e: 'update-icon', noteId: string, icon: string | null): void
   (e: 'delete-tasklist'): void
+  (e: 'toggle-favorite', noteId: string): void
 }>()
 
 const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd, cancelDragLeave, getItemClass, dropIndicator } =

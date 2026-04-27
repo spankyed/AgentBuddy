@@ -220,6 +220,7 @@
         @update-icon="(noteId: string, icon: string | null) => actor.send({ type: 'NOTE.UPDATE_ICON', noteId, icon })"
         @open-note="(noteId: string) => actor.send({ type: 'NOTE.OPEN', noteId })"
         @delete-tasklist="actor.send({ type: 'NOTE.DELETE', noteId: currentNote.id })"
+        @toggle-favorite="(noteId: string) => actor.send({ type: 'NOTE.TOGGLE_FAVORITE', noteId })"
       />
 
       <!-- Editor area -->
