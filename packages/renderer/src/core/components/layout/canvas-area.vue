@@ -9,7 +9,7 @@
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-sm text-neutral-500 no-drag"
+        class="flex items-center gap-1 ml-2 text-sm text-neutral-500 no-drag whitespace-nowrap"
         @contextmenu.prevent="menuItems.length > 0 && (menuOpen = true)"
       >
         <DropdownMenuRoot v-model:open="menuOpen">
