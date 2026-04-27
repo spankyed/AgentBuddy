@@ -5,7 +5,7 @@ import { getAttr } from '@/core/ears/attribute-storage';
 
 const entTypeOf = (id: string): EARS.Entity => {
   if (typeof id !== 'string' || id.length === 0) {
-    throw new Error('[Sharded] Invalid entity id for routing');
+    throw new Error(`[Sharded] Invalid entity id for routing: ${JSON.stringify(id)} (${typeof id})`);
   }
   const dash = id.indexOf('-');
   return (dash === -1 ? id : id.slice(0, dash)) as EARS.Entity;

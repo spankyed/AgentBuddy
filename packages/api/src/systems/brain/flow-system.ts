@@ -478,25 +478,29 @@ export function createFlowNodeSystem(
 
           // Resume deferred next-steps
           for (const pending of context.pendingNextSteps) {
-            const [machine, systemId, tNode] = createChildNode(
-              pending.nextNode,
-              pending.eventTNodeId,
-              pending.executionContext,
-              pending.parentTNodeId
-            );
+            try {
+              const [machine, systemId, tNode] = createChildNode(
+                pending.nextNode,
+                pending.eventTNodeId,
+                pending.executionContext,
+                pending.parentTNodeId
+              );
 
-            enqueue.spawnChild(machine, {
-              systemId,
-              input: {}
-            });
+              enqueue.spawnChild(machine, {
+                systemId,
+                input: {}
+              });
 
-            system.get(brain).send({
-              type: 'TNODE_SPAWNED',
-              tNode,
-              parentId: pending.parentTNodeId ?? pending.eventTNodeId,
-              eventTNodeId: pending.eventTNodeId,
-              flowTNodeId: flowTNodeId
-            });
+              system.get(brain).send({
+                type: 'TNODE_SPAWNED',
+                tNode,
+                parentId: pending.parentTNodeId ?? pending.eventTNodeId,
+                eventTNodeId: pending.eventTNodeId,
+                flowTNodeId: flowTNodeId
+              });
+            } catch (err) {
+              brainLogger.error(`Failed to resume child node ${pending.nextNode.id} in flow ${flowTNodeId}: ${err instanceof Error ? err.message : String(err)}`);
+            }
           }
 
           // Replay deferred events — handleTrackEvent processes them normally since brain is unpaused
