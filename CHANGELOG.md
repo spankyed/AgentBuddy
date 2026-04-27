@@ -1,26 +1,5 @@
 -e # Changelog
 
-## v0.2.11 (2026-04-26)
-
-### Features
-- commit): add git worktree support
-- canvas): add mosaic animation effect to busy state indicator dot
-- chat): expand chat panel when opening inline dashboard
-
-### Fixes
-- startup): await backend setup before starting WebSocket server
-- commit): improve worktree UX with loading guards, main/locked protection, and auto-path
-- commit): show worktrees section when at least one worktree exists
-- commit): refresh worktree list after switching worktrees
-- notes): wire up toggle-favorite event in tasklist panel
-
-### Other
-- Merge pull request #137 from spankyed/AS/worktrees-support
-- add blue pinned icon
-- style(chat): adjust background color and border opacity in chat UI
-
--e # Changelog
-
 ## v0.2.10 (2026-04-25)
 
 ### Features
