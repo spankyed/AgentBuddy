@@ -79,7 +79,7 @@
           </div>
           <div class="mt-4 pt-3 border-t border-neutral-700/30">
             <p class="text-sm text-neutral-500 mb-3">
-              Restart ends everything and starts fresh. Kill just stops what's currently running.
+              Caution: this will stop everything that's currently running.
             </p>
             <div class="flex gap-2">
               <button 
