@@ -290,6 +290,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
+import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '@app/api'
 import { id, type NotesState } from './state'
@@ -499,40 +500,10 @@ function handleCreateNote(parentId?: string) {
 
 // File drag-and-drop
 const ALLOWED_EXTENSIONS = ['.md', '.txt']
-const isDraggingFile = ref(false)
-let dragCounter = 0
 
-function hasValidFiles(dt: DataTransfer | null): boolean {
-  if (!dt) return false
-  // Only check for Files type — MIME types are unreliable during dragenter/dragover on macOS.
-  // Extension filtering happens at drop time in handleFileDrop.
-  return dt.types.includes('Files')
-}
-
-function handleDragEnter(e: DragEvent) {
-  e.preventDefault()
-  dragCounter++
-  if (dragCounter === 1 && hasValidFiles(e.dataTransfer)) {
-    isDraggingFile.value = true
-  }
-}
-
-function handleDragLeave() {
-  dragCounter--
-  if (dragCounter <= 0) {
-    dragCounter = 0
-    isDraggingFile.value = false
-  }
-}
-
-function handleFileDrop(event: DragEvent) {
-  // Only intercept external file drops — let internal note drags propagate to child handlers
-  if (!isDraggingFile.value) return
-
+function processDroppedFiles(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
-  dragCounter = 0
-  isDraggingFile.value = false
 
   const files = event.dataTransfer?.files
   if (!files) return
@@ -550,6 +521,10 @@ function handleFileDrop(event: DragEvent) {
     reader.readAsText(file)
   }
 }
+
+const { isDragging: isDraggingFile, onDragEnter: handleDragEnter, onDragLeave: handleDragLeave, onDrop: handleFileDrop } = useExternalFileDrag({
+  onDrop: processDroppedFiles,
+})
 
 const isSyncingSubDocumentLinks = ref(false)
 

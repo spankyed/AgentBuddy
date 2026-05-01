@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { applicationState } from '@/main'
+import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState, setEditorSelectionGetter } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
@@ -173,9 +174,6 @@ const binaryExtensions = new Set([
   'sqlite', 'db', 'mdb',
 ])
 
-const isDraggingOver = ref(false)
-let dragCounter = 0
-
 const hasOpenableFile = (dataTransfer: DataTransfer): boolean => {
   const items = dataTransfer.items
   if (!items?.length) return false
@@ -190,57 +188,38 @@ const hasOpenableFile = (dataTransfer: DataTransfer): boolean => {
   return false
 }
 
-const handleDragEnter = (e: DragEvent) => {
-  // Only react to external file drops with openable file types
-  if (e.dataTransfer?.types.includes('Files')) {
-    dragCounter++
-    if (dragCounter === 1 && hasOpenableFile(e.dataTransfer)) {
-      isDraggingOver.value = true
+const { isDragging: isDraggingOver, onDragEnter: handleDragEnter, onDragLeave: handleDragLeave, onDrop: handleDrop } = useExternalFileDrag({
+  accept: hasOpenableFile,
+  onDrop: (e) => {
+    const files = e.dataTransfer?.files
+    if (!files?.length) return
+
+    // Collect valid file paths using Electron's webUtils API (File.path was removed in Electron 32)
+    const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+    if (!getPath) return
+
+    const filePaths: string[] = []
+    for (const file of files) {
+      const filePath: string = getPath(file)
+      if (!filePath) continue
+
+      const ext = filePath.split('.').pop()?.toLowerCase()
+      if (ext && binaryExtensions.has(ext)) continue
+
+      filePaths.push(filePath)
     }
-  }
-}
 
-const handleDragLeave = () => {
-  dragCounter--
-  if (dragCounter <= 0) {
-    dragCounter = 0
-    isDraggingOver.value = false
-  }
-}
+    if (filePaths.length === 0) return
 
-const handleDrop = (e: DragEvent) => {
-  // Always reset overlay state on any drop
-  dragCounter = 0
-  isDraggingOver.value = false
+    // Prevent Monaco from also processing this drop
+    e.preventDefault()
+    e.stopPropagation()
 
-  const files = e.dataTransfer?.files
-  if (!files?.length) return
-
-  // Collect valid file paths using Electron's webUtils API (File.path was removed in Electron 32)
-  const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
-  if (!getPath) return
-
-  const filePaths: string[] = []
-  for (const file of files) {
-    const filePath: string = getPath(file)
-    if (!filePath) continue
-
-    const ext = filePath.split('.').pop()?.toLowerCase()
-    if (ext && binaryExtensions.has(ext)) continue
-
-    filePaths.push(filePath)
-  }
-
-  if (filePaths.length === 0) return
-
-  // Prevent Monaco from also processing this drop
-  e.preventDefault()
-  e.stopPropagation()
-
-  for (const filePath of filePaths) {
-    explorerActor?.send({ type: 'explorer.OPEN_FILE', path: filePath })
-  }
-}
+    for (const filePath of filePaths) {
+      explorerActor?.send({ type: 'explorer.OPEN_FILE', path: filePath })
+    }
+  },
+})
 
 // Notification state
 const refreshNotification = ref(false)

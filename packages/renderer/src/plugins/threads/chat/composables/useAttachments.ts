@@ -114,6 +114,31 @@ export function useAttachments() {
     pendingImages.value = pendingImages.value.filter((_, idx) => idx !== i)
   }
 
+  const handleFileDrop = async (e: DragEvent) => {
+    const files = e.dataTransfer?.files
+    if (!files?.length) return
+    const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+    if (!getPath) return
+    const newFiles = await Promise.all(Array.from(files).map(async (file) => {
+      const p = getPath(file) as string
+      if (!p) return null
+      const name = p.split('/').pop() || p
+      const isImg = isImageFile(name)
+      let previewUrl: string | undefined
+      if (isImg) {
+        try {
+          const ext = name.split('.').pop()?.toLowerCase() || 'png'
+          const mime = EXT_TO_MIME[ext] || 'image/png'
+          const base64 = await window.electronAPI?.fileUtils.readFileBase64(p)
+          if (base64) previewUrl = `data:${mime};base64,${base64}`
+        } catch { /* preview unavailable */ }
+      }
+      return { name, path: p, typeLabel: getFileTypeLabel(name), isImage: isImg, previewUrl }
+    }))
+    const valid: PendingFile[] = newFiles.filter((f) => f !== null)
+    if (valid.length) pendingFiles.value = [...pendingFiles.value, ...valid]
+  }
+
   const openFilePicker = async () => {
     const result = await window.electronAPI?.fileUtils.selectPath({
       type: 'file',
@@ -211,6 +236,7 @@ export function useAttachments() {
     pendingFiles,
     hasAttachments,
     handlePaste,
+    handleFileDrop,
     addImageFromUrl,
     removeImage,
     openFilePicker,

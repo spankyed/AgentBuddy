@@ -9,9 +9,13 @@
       <div
         ref="inputCardRef"
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
-        :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight }]"
+        :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight, [$style.inputDropActive]: isDraggingFile }]"
         data-onboarding-id="agent-chat-input"
-        @paste.capture="handlePaste">
+        @paste.capture="handlePaste"
+        @dragenter="onDragEnter"
+        @dragleave="onDragLeave"
+        @dragover.prevent
+        @drop.prevent="onDrop">
         <StatusIndicator :anchor="inputCardRef"/>
 
         <!-- Attachment strip: files then images, horizontal scroll -->
@@ -198,6 +202,7 @@ import { Plugin } from '@tiptap/pm/state'
 import { useSpeechRecognition } from './composables/useSpeechRecognition'
 import { DOUBLE_ESC_MS } from '@/core/components/tiptap/composables/createEditorKeyboard'
 import { useAttachments, extractImageSrcsFromClipboard } from './composables/useAttachments'
+import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -374,9 +379,13 @@ const commandHighlight = computed(() => {
 
 const {
   pendingImages, pendingFiles, hasAttachments,
-  handlePaste, addImageFromUrl, removeImage, openFilePicker, removeFile,
+  handlePaste, handleFileDrop, addImageFromUrl, removeImage, openFilePicker, removeFile,
   collectAttachments, clearAll, restoreFromReferences,
 } = useAttachments()
+
+const { isDragging: isDraggingFile, onDragEnter, onDragLeave, onDrop } = useExternalFileDrag({
+  onDrop: handleFileDrop,
+})
 
 // Handle image-URL paste (e.g. from notes) inside ProseMirror's pipeline
 const imagePastePlugin = new Plugin({
@@ -713,5 +722,9 @@ const handleSubmit = async () => {
 .inputCommandActive {
   border-color: rgba(180, 180, 255, 0.45);
   box-shadow: 0 0 0 1px rgba(180, 180, 255, 0.1), 0 0 12px -2px rgba(180, 180, 255, 0.15);
+}
+.inputDropActive {
+  border-color: rgba(100, 180, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(100, 180, 255, 0.15), 0 0 12px -2px rgba(100, 180, 255, 0.2);
 }
 </style>
