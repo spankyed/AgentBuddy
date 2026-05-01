@@ -391,22 +391,18 @@ export const createApplicationState = () => setup({
 
     forwardHotkeyToPlugin: ({ context, event, system }) => {
       const hotkeyEvent = typeOf('FORWARD_HOTKEY', event).event;
-      const notified = new Set<string>();
 
-      // Send to all plugins that have global hotkeys
+      // Non-active plugins only receive their global hotkeys
       for (const plugin of context.plugins) {
-        if (plugin.hotkeys?.some(h => h.global)) {
-          notified.add(plugin.id);
-          system.get(plugin.id).send(hotkeyEvent);
+        if (plugin.id === context.activePlugin.id) continue;
+        const globalActions = plugin.hotkeys?.filter(h => h.global).map(h => h.action);
+        if (globalActions?.length) {
+          system.get(plugin.id).send({ ...hotkeyEvent, allowedActions: new Set(globalActions) });
         }
       }
 
-      // Then send to active plugin for non-global hotkeys,
-      // unless it already received the event as a global-hotkey owner
-      // (otherwise its hotkey processor would fire twice).
-      if (!notified.has(context.activePlugin.id)) {
-        system.get(context.activePlugin.id).send(hotkeyEvent);
-      }
+      // Active plugin receives all hotkeys
+      system.get(context.activePlugin.id).send(hotkeyEvent);
     },
 
     setTargetView: assign(({ event, system }, params?: string) => ({

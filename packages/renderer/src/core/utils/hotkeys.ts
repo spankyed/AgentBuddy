@@ -8,6 +8,7 @@ export interface HotkeyEvent {
   ctrlKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
+  allowedActions?: Set<string>;
   preventDefault: () => void;
 }
 
@@ -43,6 +44,7 @@ export function processHotkeys<const T extends Record<string, string>, H = any>(
   if (!hotkeys) return undefined;
   
   for (const actionName of Object.keys(actionMap) as (keyof T)[]) {
+    if (event.allowedActions && !event.allowedActions.has(actionName as string)) continue;
     const hotkeyConfig = (hotkeys as any)[actionName as string];
     if (hotkeyConfig && matchesHotkey(event, hotkeyConfig as KeyboardShortcut)) {
       event.preventDefault();
@@ -66,7 +68,7 @@ export function createHotkeyProcessor<
     self: { send: (event: { type: TMap[keyof TMap] }) => void };
   }) => {
     const hotkeyEvent = event as HotkeyEvent;
-    
+
     const actionType = processHotkeys(
       hotkeyEvent,
       context.hotkeys,
