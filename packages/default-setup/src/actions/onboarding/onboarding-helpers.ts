@@ -1,10 +1,11 @@
 import type { EntityId, Services } from '../../types';
 
 export interface OnboardingState {
-  step: 'welcome' | 'cli-test-ask' | 'projects' | 'import-threads' | 'pick-thread' | 'complete';
+  step: 'welcome' | 'provider-select' | 'cli-test-ask' | 'projects' | 'import-threads' | 'pick-thread'
+       | 'codex-login' | 'codex-projects' | 'codex-fallback' | 'complete';
   threadId: EntityId;
   pendingMessageId: EntityId;
-  data: { cliFound?: boolean; authenticated?: boolean };
+  data: { cliFound?: boolean; authenticated?: boolean; provider?: 'claude-code' | 'codex' | 'both'; codexValidated?: boolean };
 }
 
 export function getOnboardingState(services: Services, threadId: EntityId): OnboardingState | null {
@@ -91,8 +92,12 @@ export function finishOnboarding(
 
   flashState(services, threadId, 'success', 'idle');
 
+  // Set default mode based on provider setup results
+  const mode = (state.data.provider === 'codex' || (state.data.provider === 'both' && state.data.codexValidated))
+    ? 'codex'
+    : 'work';
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
-    mode: 'work',
+    mode,
   });
 }

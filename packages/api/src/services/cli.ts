@@ -8,6 +8,10 @@ import type { ExecOnceOptions, ExecOnceResult } from '@/services/claude-code/run
 import { storeHandle, getHandle, clearHandle } from '@/services/claude-code/handle-store'
 import { testCli, isCliName } from '@/core/helpers/resolve-cli'
 import { configDir } from '@/services/claude-code/sessions'
+import * as codexAuth from '@/services/codex-auth'
+import type { CodexAuthStatus } from '@/services/codex-auth'
+import { streamChatCompletions, streamResponses, type StreamRequestOptions, type StreamHandle } from '@/services/codex-client'
+import { exec as cpExec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -41,8 +45,29 @@ export interface CliServiceType {
    * plugins, skills, …) is available via `import { claudeCode } from
    * '@/services/claude-code'`.
    */
+  /**
+   * Run an arbitrary shell command. Returns stdout. Throws on non-zero exit.
+   */
+  shell(command: string, opts?: { cwd?: string; timeout?: number }): Promise<string>
   /** Clear-cache resolve + exec test — same path as the Settings test button. */
   testCli(provider: string): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }>
+  /** Codex (OpenAI) authentication, API key management, and streaming client. */
+  codex: {
+    login(): Promise<CodexAuthStatus>
+    logout(): void
+    getAuthStatus(): CodexAuthStatus
+    getApiKey(): Promise<string | null>
+    /** True when using ChatGPT OAuth (no exchanged API key) — requires different base URL. */
+    isChatGptAuth(): boolean
+    /** Get the chatgpt_account_id from the id_token (needed as a header for ChatGPT auth). */
+    getAccountId(): string | undefined
+    /** Test whether the authenticated account can use the Codex API. */
+    validate(): Promise<{ success: boolean; error?: string }>
+    /** Start a streaming Chat Completions request to OpenAI. */
+    stream(opts: StreamRequestOptions): Promise<StreamHandle>
+    /** Start a streaming Responses API request (for ChatGPT OAuth). */
+    streamResponses(opts: StreamRequestOptions): Promise<StreamHandle>
+  }
   claudeCode: {
     query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
     version(): Promise<string>
@@ -111,12 +136,60 @@ function createCliService(): CliServiceType {
   }
 
   return {
+    shell(command: string, opts?: { cwd?: string; timeout?: number }): Promise<string> {
+      const cwd = opts?.cwd ?? resolveCwd()
+      const timeout = opts?.timeout ?? 30_000
+      return new Promise((resolve, reject) => {
+        cpExec(command, { cwd, timeout, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+          if (err) {
+            const msg = stderr?.trim() || err.message
+            reject(new Error(msg))
+          } else {
+            resolve(stdout)
+          }
+        })
+      })
+    },
     testCli(provider: string) {
       if (!isCliName(provider)) {
         return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
       }
       const storedPath = repository.settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
       return testCli(provider, storedPath);
+    },
+    codex: {
+      async login() {
+        const open = (url: string) => new Promise<void>((resolve, reject) => {
+          // macOS: open, Linux: xdg-open, Windows: start
+          const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
+          cpExec(`${cmd} "${url}"`, (err) => err ? reject(err) : resolve())
+        })
+        return codexAuth.login(open)
+      },
+      logout() {
+        codexAuth.logout()
+      },
+      getAuthStatus() {
+        return codexAuth.getAuthStatus()
+      },
+      getApiKey() {
+        return codexAuth.getApiKey()
+      },
+      isChatGptAuth() {
+        return codexAuth.isChatGptAuth()
+      },
+      getAccountId() {
+        return codexAuth.getAccountId()
+      },
+      validate() {
+        return codexAuth.validate()
+      },
+      stream(opts: StreamRequestOptions) {
+        return streamChatCompletions(opts)
+      },
+      streamResponses(opts: StreamRequestOptions) {
+        return streamResponses(opts)
+      },
     },
     git: {
       async commit(message: string): Promise<void> {
