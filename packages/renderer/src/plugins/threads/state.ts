@@ -121,7 +121,7 @@ type SystemEvent =
 
 type UIEvent =
   // Thread management events
-  | { type: 'OPEN_THREAD_CHAT'; threadId: string }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string; skipVisit?: boolean }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'VIEW_LIST' }
@@ -278,7 +278,7 @@ const threadsState = setup({
   actions: {
     // ---- Thread management actions ----
     openThreadChat: ({ self, event }) => {
-      const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId;
+      const { threadId, skipVisit } = typeOf('OPEN_THREAD_CHAT', event);
       // Navigate to dashboard view (replaces old agent canvas navigation)
       self.send({ type: 'VIEW_DASHBOARD' });
       // Request thread chat data from backend
@@ -286,6 +286,7 @@ const threadsState = setup({
         systemId: id,
         type: 'OPEN_THREAD_CHAT',
         threadId,
+        ...(skipVisit && { skipVisit }),
       });
     },
     setupParentThread: assign(({ event, context }) => {
@@ -934,7 +935,7 @@ const threadsState = setup({
         const activeIdx = missing.indexOf(stored.activeTabId);
         if (activeIdx > -1) missing.push(missing.splice(activeIdx, 1)[0]);
         for (const tabId of missing) {
-          enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId }));
+          enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId, skipVisit: true }));
         }
       }
 

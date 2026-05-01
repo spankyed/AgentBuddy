@@ -516,9 +516,11 @@ export function createThreadAndNotify(
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId) {
-  // Mark thread as visited when opening chat
-  repository.threadCommands.markAsVisited(threadId);
+export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, skipVisit?: boolean) {
+  if (!skipVisit) {
+    // Mark thread as visited when opening chat
+    repository.threadCommands.markAsVisited(threadId);
+  }
 
   // Reset 'success' state when the user revisits the thread
   const thread = repository.threadQueries.byId(threadId);
@@ -532,8 +534,10 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId) {
     data: repository.chatQueries.threadData(threadId),
   });
 
-  // Send updated recent threads list
-  sendRecentThreadsRefresh();
+  if (!skipVisit) {
+    // Send updated recent threads list
+    sendRecentThreadsRefresh();
+  }
 }
 
 /**
