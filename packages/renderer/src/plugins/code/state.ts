@@ -55,6 +55,11 @@ export interface OpenFile {
   isPreview?: boolean
 }
 
+/** Unstaged diff tabs are editable (right side = working tree). */
+export function isEditableDiff(file: OpenFile | { isDiff?: boolean; gitFile?: { staged: boolean } }): boolean {
+  return file.isDiff === true && file.gitFile?.staged === false
+}
+
 export type TabGroupColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'gray'
 
 const ALL_COLORS: TabGroupColor[] = ['blue', 'orange', 'purple', 'green', 'red', 'teal', 'yellow', 'pink', 'gray']
@@ -696,7 +701,14 @@ const codeState = setup({
 
     saveActiveFile: ({ context, system }) => {
       const activeFile = context.openFiles.find(f => f.path === context.activeFilePath)
-      if (!activeFile || activeFile.isDiff) return
+      if (!activeFile) return
+
+      if (activeFile.isDiff) {
+        const file = activeFile as OpenFile
+        if (!isEditableDiff(file)) return
+        system.get('explorer').send({ type: 'explorer.WRITE_FILE', path: file.gitFile!.path, content: file.content })
+        return
+      }
 
       if ('isAction' in activeFile && (activeFile as any).isAction) {
         const actionId = activeFile.path.replace('action:', '')

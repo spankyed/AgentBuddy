@@ -125,7 +125,7 @@
             :diff-mode="isDiffFile"
             :original-content="diffOriginalContent"
             :modified-content="diffModifiedContent"
-            :read-only="isDiffFile"
+            :read-only="isDiffReadOnly"
             :dsl-params="activeDslParams"
             class="h-full"
             @mount="emit('editorMount')"
@@ -145,7 +145,7 @@ import TerminalView from './TerminalView.vue'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
 import DeletedFileView from './DeletedFileView.vue'
 import Tabs from './Tabs.vue'
-import type { OpenFile, TerminalTab, TabGroup } from '@/plugins/code/state'
+import { isEditableDiff, type OpenFile, type TerminalTab, type TabGroup } from '@/plugins/code/state'
 import type { ActionTab } from '@/plugins/code/features/actions/state'
 import type { PromptTab } from '@/plugins/code/features/prompts/state'
 import type { GitDiff } from '@/plugins/code/features/commit/state'
@@ -209,6 +209,11 @@ const isDiffFile = computed(() => {
   return activeFile.value && 'isDiff' in activeFile.value && activeFile.value.isDiff === true
 })
 
+// Unstaged diffs are editable (right side = working tree); staged diffs stay read-only
+const isDiffReadOnly = computed(() => {
+  return !activeFile.value || !isEditableDiff(activeFile.value as OpenFile)
+})
+
 // Helper to check if file is an image diff (side-by-side comparison)
 const isImageDiff = computed(() => {
   if (!isDiffFile.value || !activeFile.value) return false
@@ -256,6 +261,10 @@ const diffOriginalContent = computed(() => {
 
 const diffModifiedContent = computed(() => {
   if (!isDiffFile.value || !activeFile.value) return undefined
+  // For editable (unstaged) diffs, don't pass modifiedContent as a prop —
+  // let modelValue (activeFile.content) drive the modified editor instead,
+  // so user edits aren't overwritten by the static gitDiff.modifiedContent.
+  if (isEditableDiff(activeFile.value as OpenFile)) return undefined
   const diff = getDiffContent(activeFile.value)
   return diff?.modifiedContent
 })

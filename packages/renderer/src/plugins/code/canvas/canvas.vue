@@ -63,10 +63,10 @@
           <component :is="getStatusIcon(activeFile)" class="w-3 h-3" />
           {{ getStatusText(activeFile) }}
         </span>
-        <span v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && !activeFile.isDiff" class="text-orange-400">
+        <span v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && (!activeFile.isDiff || isActiveEditableDiff)" class="text-orange-400">
           External changes detected
         </span>
-        <span v-else-if="activeFile && !isTerminal(activeFile) && activeFile.modified && !activeFile.isDiff" class="text-blue-400">
+        <span v-else-if="activeFile && !isTerminal(activeFile) && activeFile.modified && (!activeFile.isDiff || isActiveEditableDiff)" class="text-blue-400">
           Modified
         </span>
         <span v-if="refreshNotification" class="text-green-400 animate-pulse">
@@ -75,14 +75,14 @@
       </div>
       <div class="flex items-center gap-2">
         <button
-          v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && !activeFile.isDiff && !isAction(activeFile) && !isPrompt(activeFile)"
+          v-if="activeFile && !isTerminal(activeFile) && activeFile.pendingSaveConflict && (!activeFile.isDiff || isActiveEditableDiff) && !isAction(activeFile) && !isPrompt(activeFile)"
           @click="loadExternalChanges"
           class="px-2 py-0.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded transition-colors"
         >
           Load Changes
         </button>
         <button
-          v-if="activeFile && !isTerminal(activeFile) && activeFile.modified && !activeFile.isDiff"
+          v-if="activeFile && !isTerminal(activeFile) && activeFile.modified && (!activeFile.isDiff || isActiveEditableDiff)"
           @click="() => saveFile()"
           class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
         >
@@ -97,7 +97,7 @@
 import { applicationState } from '@/main'
 import { useExternalFileDrag } from '@/core/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
-import { id, type CodeState, setEditorSelectionGetter } from '../state'
+import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
 import { GitCompare, FileCode, Terminal } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/plugins/code/canvas/FileEditor.vue'
@@ -161,6 +161,9 @@ const tryRevealLine = async () => {
 // Computed
 const activeFile = computed(() =>
   openFiles.value.find(f => f.path === activeFilePath.value)
+)
+const isActiveEditableDiff = computed(() =>
+  !!activeFile.value && isEditableDiff(activeFile.value as OpenFile)
 )
 
 // External file drop

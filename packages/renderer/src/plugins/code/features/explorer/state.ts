@@ -173,18 +173,18 @@ export const explorerState = setup({
       const ev = event as { type: 'explorer.FILE_SAVED'; data: { path: string } }
       const parentContext = getParentContext(self)
 
-      const updatedFiles = (parentContext?.openFiles || []).map((f: any) =>
-        f.path === ev.data.path
-          ? {
-              ...f,
-              originalContent: f.content,
-              modified: false,
-              pendingSaveConflict: false,
-              externallyModified: false,
-              externalModificationTime: undefined
-            }
-          : f
-      )
+      const updatedFiles = (parentContext?.openFiles || []).map((f: any) => {
+        const matchesPath = f.path === ev.data.path || (f.isDiff && f.gitFile?.path === ev.data.path)
+        if (!matchesPath) return f
+        return {
+          ...f,
+          originalContent: f.content,
+          modified: false,
+          pendingSaveConflict: false,
+          externallyModified: false,
+          externalModificationTime: undefined
+        }
+      })
 
       updateParentState(self, { openFiles: updatedFiles })
     },

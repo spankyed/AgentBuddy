@@ -326,9 +326,11 @@ export const commitState = setup({
       enqueue(() => {
         if (context.selectedGitFile) {
           const diffTabId = `diff:${context.selectedGitFile.path}:${context.selectedGitFile.staged ? 'staged' : 'unstaged'}`;
+          const isUnstagedDiff = !context.selectedGitFile.staged
           const diffTab = {
             path: diffTabId,
-            content: '',
+            content: isUnstagedDiff ? ev.data.modifiedContent : '',
+            originalContent: isUnstagedDiff ? ev.data.modifiedContent : undefined,
             modified: false,
             isDiff: true,
             gitDiff: ev.data,
