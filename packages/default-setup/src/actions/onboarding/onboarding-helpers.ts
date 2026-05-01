@@ -91,6 +91,8 @@ export function finishOnboarding(
 
   flashState(services, threadId, 'success', 'idle');
 
+  services.emitter.sendToSystem('threads', { type: 'REFRESH_THREADS' });
+
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
     mode: 'work',
