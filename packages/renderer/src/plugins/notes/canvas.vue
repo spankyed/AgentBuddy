@@ -526,6 +526,9 @@ function handleDragLeave() {
 }
 
 function handleFileDrop(event: DragEvent) {
+  // Only intercept external file drops — let internal note drags propagate to child handlers
+  if (!isDraggingFile.value) return
+
   event.preventDefault()
   event.stopPropagation()
   dragCounter = 0
