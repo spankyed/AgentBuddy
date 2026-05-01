@@ -104,6 +104,7 @@
                 :class="[disabled ? 'cursor-not-allowed opacity-50' : (!btn.class && 'hover:text-neutral-200'), btn.class]"
                 :aria-label="btn.label"
                 :disabled="disabled"
+                :title="btn.label"
                 @click="handleButtonClick(btn.action)"
               >
                 <component :is="btn.icon" :size="20" />
