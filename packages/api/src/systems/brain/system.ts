@@ -48,15 +48,17 @@ export type OutgoingBrainEvents =
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
 
-export const brainDef = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, {
+
+interface BrainContext {
   brainActor?: any;
   eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
-}>();
-export const brain = brainDef.id;
-const logger = createLogger('brain');
+}
 
+export const brainDef = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
+export const brain = brainDef.id;
 export const brainRuntime = 'brain-runtime' as const;
 
+const logger = createLogger('brain');
 export const brainSystem = setup({
   types: brainDef.types,
   actions: {
