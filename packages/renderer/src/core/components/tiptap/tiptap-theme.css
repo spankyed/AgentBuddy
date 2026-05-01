@@ -593,6 +593,10 @@
 }
 
 /* Floating menu entrance animation */
+.bubble-menu {
+  z-index: 50;
+}
+
 .bubble-menu,
 .animation-bubble-in {
   animation: bubble-in 0.15s ease-out;
