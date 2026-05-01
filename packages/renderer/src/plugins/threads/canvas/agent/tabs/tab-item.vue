@@ -11,8 +11,8 @@
         :title="tab.label"
         @click="$emit('select')"
       >
-        <!-- Dot / Close button swap container (non-pinned tabs) -->
-        <span v-if="!isPinned" class="relative flex items-center justify-center w-[22px] h-[22px] mr-1 shrink-0">
+        <!-- Dot / Close button swap container -->
+        <span class="relative flex items-center justify-center w-[22px] h-[22px] mr-1 shrink-0">
           <!-- State dot (default, hides on hover) -->
           <span class="group-hover:opacity-0 transition-opacity relative inline-block w-1.5 h-1.5">
             <span
@@ -28,15 +28,15 @@
           </span>
           <!-- Close X (hidden, shows on hover) -->
           <button
+            v-if="!isPinned"
             class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-neutral-700"
             @click.stop="$emit('close')"
           >
             <X :size="14" />
           </button>
         </span>
-        <!-- Pinned tabs: pin icon -->
-        <Pin v-else :size="12" class="shrink-0 mr-1.5 text-blue-400" />
         <span class="truncate">{{ tab.label }}</span>
+        <Pin v-if="isPinned" :size="12" class="shrink-0 ml-1.5 text-blue-400" />
       </div>
     </ContextMenuTrigger>
 
