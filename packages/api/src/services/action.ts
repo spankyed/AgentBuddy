@@ -3,8 +3,10 @@ import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 
 // Lazy services getter to avoid circular dependency
-function getServices() {
-  return require('./index').default;
+let _services: any;
+async function getServices() {
+  if (!_services) _services = (await import('./index')).default;
+  return _services;
 }
 
 export class ActionService {
@@ -25,7 +27,7 @@ export class ActionService {
     try {
       const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
       const fn = new AsyncFunction('params', 'services', actionFn);
-      const services = getServices();
+      const services = await getServices();
       return await fn(params, services);
     } catch (error) {
       throw new Error(`Failed to execute action: ${error instanceof Error ? error.message : String(error)}`);
