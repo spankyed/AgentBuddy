@@ -10,4 +10,14 @@ export const BlockquotePipe = Blockquote.extend({
       }),
     ]
   },
+
+  addKeyboardShortcuts() {
+    return {
+      Enter: ({ editor }) => {
+        if (!editor.isActive('blockquote')) return false
+        if (editor.state.selection.$head.parent.textContent.length > 0) return false
+        return editor.commands.liftEmptyBlock()
+      },
+    }
+  },
 })

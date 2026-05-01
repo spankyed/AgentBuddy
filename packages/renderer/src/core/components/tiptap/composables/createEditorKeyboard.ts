@@ -22,7 +22,8 @@ function shouldDeferEnter(view: EditorView): boolean {
   if (/^```([a-z]+)?$/.test(text) || /^~~~([a-z]+)?$/.test(text)) return true
 
   for (let d = $head.depth; d > 0; d--) {
-    if ($head.node(d).type.name === 'listItem') return true
+    const name = $head.node(d).type.name
+    if (name === 'listItem' || name === 'blockquote') return true
   }
 
   return false
