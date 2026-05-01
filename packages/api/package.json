@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts --shims",
+    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts --shims --minify",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tsc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",
