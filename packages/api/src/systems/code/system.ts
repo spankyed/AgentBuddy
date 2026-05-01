@@ -17,7 +17,7 @@
 import { setup, enqueueActions, assign } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { defineSystem, type Receivable } from '@/core/framework/define-system'
+import { defineSystem } from '@/core/framework/define-system'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/repository'
@@ -59,9 +59,8 @@ import { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
 type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-export const codeDef = defineSystem('code')<IncomingCodeEvents, OutgoingCodeEvents, CodeInternalEvents>();
+export const codeDef = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
 const id = codeDef.id;
-const { typeOf } = codeDef;
 
 export interface Context {
   baseDirectory: string | null
@@ -98,10 +97,7 @@ function resolveInitialDirectory(
 }
 
 export const systemMachine = setup({
-  types: {
-    context: {} as Context,
-    events: {} as Receivable<typeof codeDef>,
-  },
+  types: codeDef.types,
   actors: {
     explorerSystem,
     searchSystem,
@@ -165,7 +161,7 @@ export const systemMachine = setup({
 
     updateBaseDirectory: assign({
       baseDirectory: ({ event }) => {
-        const ev = typeOf('SET_BASE_DIRECTORY', event)
+        const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
@@ -174,7 +170,7 @@ export const systemMachine = setup({
         return ev.path
       },
       gitRepository: ({ event, context }) => {
-        const ev = typeOf('SET_BASE_DIRECTORY', event)
+        const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
         // Clear the old repository's cache before creating new one
         if (context.gitRepository) {
           context.gitRepository.clearCache()
@@ -188,7 +184,7 @@ export const systemMachine = setup({
         return repo
       },
       gitWatcher: ({ event, context }) => {
-        const ev = typeOf('SET_BASE_DIRECTORY', event)
+        const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
         // Stop the old watcher before creating new one
         if (context.gitWatcher) {
           context.gitWatcher.stopWatching()
@@ -198,7 +194,7 @@ export const systemMachine = setup({
     }),
 
     notifyChildSystemsOfBaseChange: ({ event, system, context }) => {
-      const ev = typeOf('SET_BASE_DIRECTORY', event)
+      const ev = codeDef.typeOf('SET_BASE_DIRECTORY', event)
       const newPath = ev.path
 
       // Update child systems

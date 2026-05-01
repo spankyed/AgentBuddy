@@ -1,6 +1,6 @@
 // TODO: [SEARCH_INDEX_FF] Reinstall deps: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
 import { setup } from 'xstate'
-import { defineSystem, type Receivable } from '@/core/framework/define-system'
+import { defineSystem } from '@/core/framework/define-system'
 import type { EARS } from '@/core/types'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent, ContentSection } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
@@ -77,9 +77,8 @@ export type OutgoingLibraryEvents =
 type LibraryInternalEvents =
   | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
 
-export const libraryDef = defineSystem('library')<IncomingLibraryEvents, OutgoingLibraryEvents, LibraryInternalEvents>();
+export const libraryDef = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
 export const library = libraryDef.id;
-const { typeOf } = libraryDef;
 
 function resolveHomePath(inputPath: string): string {
   const trimmed = inputPath.trim()
@@ -89,10 +88,7 @@ function resolveHomePath(inputPath: string): string {
 }
 
 export const librarySystem = setup({
-  types: {
-    context: {} as LibrarySystemContext,
-    events: {} as Receivable<typeof libraryDef>,
-  },
+  types: libraryDef.types,
   actions: {
     loadDocuments: async ({ system, event }) => {
       const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
@@ -590,7 +586,7 @@ export const librarySystem = setup({
       }
     },
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = typeOf('LIBRARY_SETTINGS_UPDATED', event)
+      const { changes } = libraryDef.typeOf('LIBRARY_SETTINGS_UPDATED', event)
       // Handle nested changes format from detectAllArrayChanges
       const tagChanges = changes?.tags || changes
       

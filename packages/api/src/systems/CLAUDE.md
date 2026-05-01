@@ -11,37 +11,60 @@ The backend uses an event-driven, actor-based architecture built on XState state
 Every system follows this pattern:
 
 ```typescript
-// 1. System identifier
-export const newId = 'new' as const;
+import { setup } from 'xstate';
+import { defineSystem } from '@/core/framework/define-system';
+import { emit } from '@/core/helpers/actor-helpers';
 
-// 2. Incoming events (validated with Zod)
-export const IncomingSystemEvents = [
-  systemBus('INCOMING_EVENT_NAME', { param: z.string() }),
-] as const;
+// 1. Event types (plain TypeScript discriminated unions)
+type IncomingEvents =
+  | { type: 'DO_SOMETHING'; param: string }
+  | { type: 'DO_OTHER'; id: string };
 
-// 3. Internal events (not exposed through api bus)
-export type SystemInternalEvents = 
-  | { type: 'INTERNAL_EVENT' }
+type InternalEvents =
+  | { type: 'SETTINGS_UPDATED'; settings: any };
 
-// 4. Outgoing events (sent to frontend)
-export type OutgoingSystemEvents =
-  | { type: 'OUTGOING_EVENT_NAME'; data: any };
+export type OutgoingEvents =
+  | { type: 'DATA_CONNECTED'; data: any };
 
-// 5. Type inference for event actions
-type ReceivableEvents = MergeReceivable<typeof IncomingSystemEvents, SystemInternalEvents>;
+interface MyContext { /* ... */ }
 
-// 6. BE event bus registration helper
-export const NewSystemEvents = fromSystem(IncomingSystemEvents)<OutgoingSystemEvents, typeof newId>()
+// 2. System definition (merges incoming + internal as first generic, context as third)
+export const myDef = defineSystem('mySystem')<
+  IncomingEvents | InternalEvents,
+  OutgoingEvents,
+  MyContext
+>();
+export const mySystem = myDef.id;
 
-// 7. State machine
-export const newSystem = setup({
-  types: {
-    events: {} as ReceivableEvents,
-  },
-  actors: { /* ... */ },
-  actions: { /* ... */ }
-}).createMachine({ /* ... */ });
+// 3. State machine (types auto-provided by def.types)
+export const myMachine = setup({
+  types: myDef.types,
+  actions: { /* ... */ },
+}).createMachine({
+  id: myDef.id,
+  /* ... */
+});
 ```
+
+### `defineSystem()` generics
+
+```typescript
+defineSystem('id')<TEvents, TOutgoing, TContext?>()
+```
+
+- **1st**: All receivable events (incoming + internal merged with `|`)
+- **2nd**: Outgoing events (sent to frontend)
+- **3rd**: Context type (optional, defaults to `{}`)
+
+### What `defineSystem()` returns
+
+| Property | Purpose |
+|----------|---------|
+| `id`     | Literal string system identifier |
+| `types`  | `{ context, events }` — pass directly to `setup({ types: def.types })` |
+| `typeOf` | Pre-typed `safeEvents()` for narrowing events in actions |
+| `_incoming` | Phantom type for global event assembly (don't use directly) |
+| `_outgoing` | Phantom type for global event assembly (don't use directly) |
 
 ## Event Communication Patterns
 
@@ -64,6 +87,16 @@ actions: {
     const otherActor = system.get(otherSystemName);
     otherActor.send({ type: 'SOME_EVENT' });
   }
+}
+```
+
+### Type-safe event narrowing
+```typescript
+actions: {
+  createThread: ({ system, event }) => {
+    const thread = myDef.typeOf('CREATE_THREAD', event);
+    // thread is narrowed to { type: 'CREATE_THREAD'; ... }
+  },
 }
 ```
 
@@ -125,77 +158,40 @@ Current systems and their responsibilities:
 
 ## Adding a New System
 
-1. Create directory: `/apps/api/src/systems/[system-name]/`
+1. Create directory: `packages/api/src/systems/[system-name]/`
 2. Create required files:
    - `system.ts` - State machine definition
    - `types.ts` - Event and type definitions
    - `repository/` - Data access functions
-3. Register in `/apps/api/src/systems/index.ts`:
+3. Register in `packages/api/src/systems/index.ts`:
    ```typescript
-    import { newId, newSystem, NewSystemEvents } from '@/systems/new/system';
+    import { newDef, newMachine } from '@/systems/new/system';
+    const newId = newDef.id;
 
     // Add to default export
     export default {
       // ...
-      [newId]: newSystem,
+      [newId]: newMachine,
     } as const;
 
-    // Add to events export for api bus registration
-    export const events = mergeSystems(
-      // ...
-      NewSystemEvents,
-    );
+    // Add to allDefs array for phantom type assembly
+    const allDefs = [..., newDef] as const;
    ```
-
-## Development Tips
-
-### Event Definition
-```typescript
-// Use systemBus() for incoming events
-export const IncomingSystemEvents = [
-  systemBus('DO_SOMETHING', {
-    param1: z.string(),
-    param2: z.number().optional()
-  })
-] as const;
-```
-
-### Expose ID for other systems to reference
-```typescript
-export const otherSystemName = 'otherSystemName' as const;
-
-// in separate file
-import { otherSystemName } from '@/systems/other/system';
-const otherActor = system.get(otherSystemName);
-```
-
-### Type inference for event actions
-```typescript
-const typeOf = safeEvents<ReceivableEvents>();
-
-actions: {
-  createThread: ({ system, event }) => {
-    const thread = typeOf('CREATE_THREAD', event);
-
-    // ...
-  },
-}
-```
 
 ## Important Patterns
 
 1. **Handle CLIENT_CONNECTED** - Always send some initial data to a corresponding frontend plugin
-2. **Define events from FE (api) in IncomingSystemEvents** - Use systemBus() for incoming events
-3. **Use zod for validation** - Use zod for validation
-4. **Use emit() helper to send messages back to the FE (api)** - Ensures proper event structure
+2. **Define events as plain TS types** - No Zod; use discriminated unions
+3. **Use `defineSystem()` for system identity and types** - Provides `types`, `typeOf`, and phantom types
+4. **Use emit() helper to send messages back to the FE** - Ensures proper event structure
 5. **Use system.get() to access other BE systems** - Use system.get() to access other systems
-6. **Use safeEvents() to type events** - Use safeEvents() to type events
+6. **Use def.typeOf() to narrow events in actions** - Call directly on the def object
 7. **Use createLogger() to log events** - Use createLogger() to log events
 
 ## Debugging
 
 - Run `npm run build` to build the backend
-- Run `npm run dev:types` to run type check for the backend
+- Run `npm run typecheck:be` to run type check for the backend
 
 
 ## Performance Considerations

@@ -1,5 +1,5 @@
 import { setup } from 'xstate';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
@@ -53,13 +53,9 @@ export type OutgoingNotesEvents =
 
 export const notesDef = defineSystem('notes')<IncomingNoteEvents, OutgoingNotesEvents>();
 export const notes = notesDef.id;
-const { typeOf } = notesDef;
 
 export const notesSystem = setup({
-  types: {
-    context: {} as {},
-    events: {} as Receivable<typeof notesDef>,
-  },
+  types: notesDef.types,
   actions: {
     sendNotesConnectedData: ({ system }) => {
       const connectedData = repository.noteQueries.connectedData();
@@ -71,7 +67,7 @@ export const notesSystem = setup({
     },
 
     createNote: ({ system, event }) => {
-      const ev = typeOf('CREATE_NOTE', event);
+      const ev = notesDef.typeOf('CREATE_NOTE', event);
       const note = repository.noteCommands.create({
         title: ev.title,
         content: ev.content,
@@ -113,7 +109,7 @@ export const notesSystem = setup({
     },
 
     updateNote: ({ system, event }) => {
-      const ev = typeOf('UPDATE_NOTE', event);
+      const ev = notesDef.typeOf('UPDATE_NOTE', event);
       const noteId = ev.id as EARS.EntityId;
       const noteBeforeUpdate = repository.noteQueries.byId(noteId) as NoteEntity | undefined;
       if (!noteBeforeUpdate) return;
@@ -202,7 +198,7 @@ export const notesSystem = setup({
     },
 
     softDeleteNote: ({ system, event }) => {
-      const ev = typeOf('SOFT_DELETE_NOTE', event);
+      const ev = notesDef.typeOf('SOFT_DELETE_NOTE', event);
       const deletedIds = repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       for (const deletedId of deletedIds) {
@@ -230,7 +226,7 @@ export const notesSystem = setup({
     },
 
     restoreNote: ({ system, event }) => {
-      const ev = typeOf('RESTORE_NOTE', event);
+      const ev = notesDef.typeOf('RESTORE_NOTE', event);
       const restoredIds = repository.noteCommands.restore(ev.id as EARS.EntityId);
 
       for (const restoredId of restoredIds) {
@@ -270,7 +266,7 @@ export const notesSystem = setup({
     },
 
     moveNotes: ({ system, event }) => {
-      const ev = typeOf('MOVE_NOTE', event);
+      const ev = notesDef.typeOf('MOVE_NOTE', event);
       const newParentId = ev.newParentId as EARS.EntityId | null;
       const affectedParentIds = new Set<string>();
 
@@ -316,7 +312,7 @@ export const notesSystem = setup({
     },
 
     reorderNote: ({ system, event }) => {
-      const ev = typeOf('REORDER_NOTE', event);
+      const ev = notesDef.typeOf('REORDER_NOTE', event);
       const noteId = ev.id as EARS.EntityId;
       const newParentId = ev.newParentId as EARS.EntityId | null;
 
@@ -366,7 +362,7 @@ export const notesSystem = setup({
     },
 
     searchNotes: ({ system, event }) => {
-      const ev = typeOf('SEARCH_NOTES', event);
+      const ev = notesDef.typeOf('SEARCH_NOTES', event);
       const query = ev.query.trim().toLowerCase();
       if (!query) {
         system.get(bus).send(emit(notes, {
@@ -440,7 +436,7 @@ export const notesSystem = setup({
     },
 
     viewNote: ({ system, event }) => {
-      const ev = typeOf('VIEW_NOTE', event);
+      const ev = notesDef.typeOf('VIEW_NOTE', event);
       if (!repository.noteQueries.byId(ev.id as EARS.EntityId)) return;
       repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
@@ -453,7 +449,7 @@ export const notesSystem = setup({
     },
 
     deleteNote: ({ system, event }) => {
-      const ev = typeOf('DELETE_NOTE', event);
+      const ev = notesDef.typeOf('DELETE_NOTE', event);
 
       // Get parent before deletion for update
       const noteDTO = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
@@ -552,7 +548,7 @@ export const notesSystem = setup({
     },
 
     permanentlyDeleteNote: ({ system, event }) => {
-      const ev = typeOf('PERMANENTLY_DELETE_NOTE', event);
+      const ev = notesDef.typeOf('PERMANENTLY_DELETE_NOTE', event);
       try {
         repository.noteCommands.delete(ev.id as EARS.EntityId);
         system.get(bus).send(emit(notes, {

@@ -13,14 +13,15 @@ type WithPlugin<Id extends string, E extends { type: string }> =
 /** The definition object returned by `defineSystem()`. */
 export interface SystemDefinition<
   Id extends string,
-  TIncoming extends { type: string },
+  TEvents extends { type: string },
   TOutgoing extends { type: string },
-  TInternal extends { type: string } = never,
+  TContext = {},
 > {
   id: Id;
-  typeOf: ReturnType<typeof safeEvents<TIncoming | TInternal | SystemEvents>>;
+  types: { context: TContext; events: TEvents | SystemEvents };
+  typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
   /** Phantom — incoming events with `systemId` attached (wire format). */
-  _incoming: WithSystemId<Id, TIncoming>;
+  _incoming: WithSystemId<Id, TEvents>;
   /** Phantom — outgoing events with `pluginId` attached. */
   _outgoing: WithPlugin<Id, TOutgoing>;
 }
@@ -29,28 +30,26 @@ export interface SystemDefinition<
  * Define a backend system's identity and event types.
  *
  * ```ts
- * export const promptsDef = defineSystem('prompts')<
- *   IncomingPromptEvents,
- *   OutgoingPromptEvents,
- *   PromptsInternalEvents
+ * export const logsDef = defineSystem('logs')<
+ *   IncomingLogEvents | LogsInternalEvents,
+ *   OutgoingLogsEvents,
+ *   LogsContext
  * >();
  * ```
  */
 export function defineSystem<Id extends string>(id: Id) {
   return <
-    TIncoming extends { type: string },
+    TEvents extends { type: string },
     TOutgoing extends { type: string },
-    TInternal extends { type: string } = never,
-  >(): SystemDefinition<Id, TIncoming, TOutgoing, TInternal> => ({
+    TContext = {},
+  >(): SystemDefinition<Id, TEvents, TOutgoing, TContext> => ({
     id,
-    typeOf: safeEvents<TIncoming | TInternal | SystemEvents>(),
+    types: {
+      context: {} as TContext,
+      events: {} as TEvents | SystemEvents,
+    },
+    typeOf: safeEvents<TEvents | SystemEvents>(),
     _incoming: undefined as any,
     _outgoing: undefined as any,
   });
 }
-
-/** Extract the full receivable event union from a SystemDefinition. */
-export type Receivable<D> =
-  D extends SystemDefinition<any, infer I, any, infer Int>
-    ? I | Int | SystemEvents
-    : never;

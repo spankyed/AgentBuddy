@@ -1,5 +1,5 @@
 import { assign, setup, enqueueActions, raise } from 'xstate';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit, getActor } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
@@ -48,21 +48,17 @@ export type OutgoingBrainEvents =
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
 
-export const brainDef = defineSystem('brain')<IncomingBrainEvents, OutgoingBrainEvents, BrainInternalEvents>();
+export const brainDef = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, {
+  brainActor?: any;
+  eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
+}>();
 export const brain = brainDef.id;
-const { typeOf } = brainDef;
 const logger = createLogger('brain');
 
 export const brainBus = 'brain-bus' as const;
 
 export const brainSystem = setup({
-  types: {
-    context: {} as {
-      brainActor?: any; // Reference to the spawned brain flow actor
-      eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
-    },
-    events: {} as Receivable<typeof brainDef>,
-  },
+  types: brainDef.types,
   actions: {
     handleAppStartup: ({ system, self }) => {
       // Get initial data to check available flows
@@ -315,7 +311,7 @@ export const brainSystem = setup({
       system.get(bus).send(emit(brain, { type: 'INSPECT_TOGGLED', enabled: inspectEnabled }));
     },
     openTNode: ({ system, event, context }) => {
-      const ev = typeOf('OPEN_TNODE', event);
+      const ev = brainDef.typeOf('OPEN_TNODE', event);
       const tNodeId = ev.tNodeId as EARS.EntityId;
 
       // Check if this is a flow TNode before trying to get extended data
@@ -334,7 +330,7 @@ export const brainSystem = setup({
       }));
     },
     goBackTNode: ({ system, event }) => {
-      const currentFlowTNodeId = typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId | undefined;
+      const currentFlowTNodeId = brainDef.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId | undefined;
       const parentFlowTNodeId = currentFlowTNodeId
         ? repository.brainQueries.tNodeById(currentFlowTNodeId)?.nodeAttributes?._parentFlowTNodeId as EARS.EntityId | undefined
         : undefined;
@@ -350,7 +346,7 @@ export const brainSystem = setup({
       }));
     },
     getTNodeDetails: ({ system, event }) => {
-      const ev = typeOf('GET_TNODE_DETAILS', event);
+      const ev = brainDef.typeOf('GET_TNODE_DETAILS', event);
       const tNodeId = ev.tNodeId as EARS.EntityId;
       
       const tNode = repository.brainQueries.tNodeById(tNodeId);
@@ -376,7 +372,7 @@ export const brainSystem = setup({
       }));
     },
     queueBrainEvent: assign(({ context, event }) => {
-      const ev = typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
+      const ev = brainDef.typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
       return {
         eventQueue: [...context.eventQueue, { eventType: ev.eventType, payload: ev.payload, targetFlowId: ev.targetFlowId }]
       };
@@ -393,7 +389,7 @@ export const brainSystem = setup({
       enqueue.assign({ eventQueue: [] });
     }),
     triggerBrainEvent: ({ system, event, context }) => {
-      const ev = typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
+      const ev = brainDef.typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
       const { eventType, payload, targetFlowId } = ev;
 
       // Pulse the event in UI
@@ -524,7 +520,7 @@ export const brainSystem = setup({
             on: {
               TRIGGER_BRAIN_EVENT: {
                 actions: raise(({ event }) => ({
-                  ...typeOf('TRIGGER_BRAIN_EVENT', event),
+                  ...brainDef.typeOf('TRIGGER_BRAIN_EVENT', event),
                   type: 'HANDLE_BRAIN_EVENT',
                 }), { delay: 0 }),
               },

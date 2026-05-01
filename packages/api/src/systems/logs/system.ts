@@ -1,5 +1,5 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { emit, getActor } from '@/core/helpers/actor-helpers';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@/core/helpers/random-id';
@@ -40,15 +40,11 @@ export interface LogsContext {
   logs: LogEntry[];
 }
 
-export const logsDef = defineSystem('logs')<IncomingLogEvents, OutgoingLogsEvents, LogsInternalEvents>();
+export const logsDef = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
 export const logs = logsDef.id;
-const { typeOf } = logsDef;
 
 export const logsSystem = setup({
-  types: {
-    context: {} as LogsContext,
-    events: {} as Receivable<typeof logsDef>,
-  },
+  types: logsDef.types,
   actors: {
     setupEventListeners: fromCallback(({ sendBack }) => {
       const logHandler = (event: LogEvent) => {
@@ -85,7 +81,7 @@ export const logsSystem = setup({
     clearLogs: assign({ logs: () => [] }),
     addLog: assign({
       logs: ({ context, event }) => {
-        const { log } = event as Extract<Receivable<typeof logsDef>, { type: 'ADD_LOG' }>;
+        const { log } = logsDef.typeOf('ADD_LOG', event);
         
         const newLog: LogEntry = {
           ...log,

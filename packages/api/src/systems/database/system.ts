@@ -1,6 +1,6 @@
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { emit, getActor } from '@/core/helpers/actor-helpers';
 import { bus } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
@@ -55,15 +55,11 @@ export type OutgoingDatabaseEvents =
 
 export interface DatabaseContext { }
 
-export const databaseDef = defineSystem('database')<IncomingDatabaseEvents, OutgoingDatabaseEvents, DatabaseInternalEvents>();
+export const databaseDef = defineSystem('database')<IncomingDatabaseEvents | DatabaseInternalEvents, OutgoingDatabaseEvents>();
 export const database = databaseDef.id;
-const { typeOf } = databaseDef;
 
 export const databaseSystem = setup({
-  types: {
-    context: {} as DatabaseContext,
-    events: {} as Receivable<typeof databaseDef>,
-  },
+  types: databaseDef.types,
   actions: {
     sendDatabaseRefresh: ({ system }) => {
       const schema = generateSchemaInfo();
@@ -73,7 +69,7 @@ export const databaseSystem = setup({
       }));
     },
     executeQuery: async ({ system, event }) => {
-      const { code } = typeOf('EXECUTE_QUERY', event);
+      const { code } = databaseDef.typeOf('EXECUTE_QUERY', event);
       
       try {
         const startTime = performance.now();
@@ -95,7 +91,7 @@ export const databaseSystem = setup({
       }
     },
     executeTransaction: async ({ system, event }) => {
-      const { code } = typeOf('EXECUTE_TRANSACTION', event);
+      const { code } = databaseDef.typeOf('EXECUTE_TRANSACTION', event);
       
       try {
         const startTime = performance.now();
@@ -125,7 +121,7 @@ export const databaseSystem = setup({
       }
     },
     handleAiQuery: ({ system, event }) => {
-      const { prompt, mode } = typeOf('GENERATE_AI_QUERY', event);
+      const { prompt, mode } = databaseDef.typeOf('GENERATE_AI_QUERY', event);
 
       if (!prompt?.trim()) {
         logger.error('Invalid prompt provided for AI query generation');
@@ -160,7 +156,7 @@ export const databaseSystem = setup({
       }
     },
     getFlowEvents: ({ system, event }) => {
-      const { flowId, offset = 0, limit = 50 } = typeOf('GET_FLOW_EVENTS', event);
+      const { flowId, offset = 0, limit = 50 } = databaseDef.typeOf('GET_FLOW_EVENTS', event);
       
       try {
         const result = getFlowEvents(flowId, offset, limit);
@@ -183,7 +179,7 @@ export const databaseSystem = setup({
       }
     },
     getNodeDetails: ({ system, event }) => {
-      const { nodeId } = typeOf('GET_NODE_DETAILS', event);
+      const { nodeId } = databaseDef.typeOf('GET_NODE_DETAILS', event);
       
       try {
         const details = getNodeDetails(nodeId);
@@ -204,7 +200,7 @@ export const databaseSystem = setup({
       }
     },
     exportDatabase: ({ system, event }) => {
-      const { path, name, databases } = typeOf('EXPORT_DATABASE', event);
+      const { path, name, databases } = databaseDef.typeOf('EXPORT_DATABASE', event);
       
       exportDatabase(path, name, databases).then(
         (resultPath) => {
@@ -224,7 +220,7 @@ export const databaseSystem = setup({
       );
     },
     importDatabase: ({ system, event }) => {
-      const { path } = typeOf('IMPORT_DATABASE', event);
+      const { path } = databaseDef.typeOf('IMPORT_DATABASE', event);
       
       importDatabase(path).then(
         async (result) => {
@@ -263,7 +259,7 @@ export const databaseSystem = setup({
       );
     },
     getBackupInfo: async ({ system, event }) => {
-      const { path } = typeOf('GET_BACKUP_INFO', event);
+      const { path } = databaseDef.typeOf('GET_BACKUP_INFO', event);
 
       try {
         const info = await getBackupInfo(path);

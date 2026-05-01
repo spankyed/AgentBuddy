@@ -1,5 +1,5 @@
 import { assign, createMachine, setup } from 'xstate';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
@@ -36,9 +36,8 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
-export const actionsDef = defineSystem('actions')<IncomingActionEvents, OutgoingActionEvents, ActionsInternalEvents>();
+export const actionsDef = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
 export const actions = actionsDef.id;
-const { typeOf } = actionsDef;
 
 // Helper to broadcast action events to both actions and flows plugins
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
@@ -48,10 +47,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 };
 
 export const actionsSystem = setup({
-  types: {
-    context: {} as {},
-    events: {} as Receivable<typeof actionsDef>,
-  },
+  types: actionsDef.types,
   actions: {
     sendActionsStartupData: ({ system }) => {
       const connectedData = repository.actionQueries.connectedData();
@@ -66,7 +62,7 @@ export const actionsSystem = setup({
       }));
     },
     fetchActionsPage: ({ system, event }) => {
-      const ev = typeOf('FETCH_ACTIONS_PAGE', event);
+      const ev = actionsDef.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
       system.get(bus).send(emit(actions, {
@@ -79,7 +75,7 @@ export const actionsSystem = setup({
       }));
     },
     sendActionData: ({ system, event }) => {
-      const ev = typeOf('ACTION_SELECT', event);
+      const ev = actionsDef.typeOf('ACTION_SELECT', event);
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
@@ -91,7 +87,7 @@ export const actionsSystem = setup({
       }
     },
     createAction: ({ system, event }) => {
-      const ev = typeOf('CREATE_ACTION', event);
+      const ev = actionsDef.typeOf('CREATE_ACTION', event);
       const action = repository.actionCommands.create({
         label: ev.label,
         input: ev.input,
@@ -108,7 +104,7 @@ export const actionsSystem = setup({
       });
     },
     updateAction: ({ system, event }) => {
-      const ev = typeOf('UPDATE_ACTION', event);
+      const ev = actionsDef.typeOf('UPDATE_ACTION', event);
       repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
         input: ev.input,
@@ -128,7 +124,7 @@ export const actionsSystem = setup({
       }
     },
     deleteAction: ({ system, event }) => {
-      const ev = typeOf('DELETE_ACTION', event);
+      const ev = actionsDef.typeOf('DELETE_ACTION', event);
       repository.actionCommands.delete(ev.actionId as EARS.EntityId);
 
       broadcastActionEvent(system, {
@@ -137,7 +133,7 @@ export const actionsSystem = setup({
       });
     },
     importActions: ({ system, event }) => {
-      const { actions: importData } = typeOf('IMPORT_ACTIONS', event);
+      const { actions: importData } = actionsDef.typeOf('IMPORT_ACTIONS', event);
       const pluginId = actions;
 
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
@@ -212,7 +208,7 @@ export const actionsSystem = setup({
     },
 
     exportActionsToFile: ({ system, event }) => {
-      const { directory } = typeOf('EXPORT_ACTIONS', event);
+      const { directory } = actionsDef.typeOf('EXPORT_ACTIONS', event);
       const pluginId = actions;
 
       logger.info('Exporting actions', { directory });
@@ -239,7 +235,7 @@ export const actionsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      const { changes } = actionsDef.typeOf('ACTIONS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
       

@@ -1,5 +1,5 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit, getActor, sendParentSafe } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
@@ -86,15 +86,11 @@ export type OutgoingThreadsEvents =
 
 export interface ThreadsContext {}
 
-export const threadsDef = defineSystem('threads')<IncomingThreadsEvents, OutgoingThreadsEvents, ThreadsInternalEvents>();
+export const threadsDef = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsDef.id;
-const { typeOf } = threadsDef;
 
 export const threadsSystem = setup({
-  types: {
-    context: {} as ThreadsContext,
-    events: {} as Receivable<typeof threadsDef>,
-  },
+  types: threadsDef.types,
   actions: {
     // ---- Thread management actions ----
     sendThreadsConnectedData: ({ system }) => {
@@ -116,7 +112,7 @@ export const threadsSystem = setup({
       }));
     },
     createThread: ({ system, event }) => {
-      const thread = typeOf('CREATE_THREAD', event);
+      const thread = threadsDef.typeOf('CREATE_THREAD', event);
 
       const { id: newThreadId, ...rest } = repository.threadCommands.create({
         topic: thread.topic,
@@ -145,7 +141,7 @@ export const threadsSystem = setup({
       }));
     },
     sendViewData: ({ system, event }) => {
-      const threadId = typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
+      const threadId = threadsDef.typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
 
       repository.threadCommands.markAsVisited(threadId);
 
@@ -156,7 +152,7 @@ export const threadsSystem = setup({
       }));
     },
     updateThreadField: ({ system, event }) => {
-      const { key, value, threadId } = typeOf('UPDATE_THREAD_FIELD', event);
+      const { key, value, threadId } = threadsDef.typeOf('UPDATE_THREAD_FIELD', event);
       const updates = { [key]: value };
       repository.threadCommands.update(threadId as EARS.EntityId, updates);
 
@@ -190,7 +186,7 @@ export const threadsSystem = setup({
       }
     },
     updateThreadStatus: ({ system, event }) => {
-      const { threadId, status } = typeOf('UPDATE_THREAD_STATUS', event);
+      const { threadId, status } = threadsDef.typeOf('UPDATE_THREAD_STATUS', event);
       const updates = { status, updatedAt: Date.now() };
       repository.threadCommands.update(threadId as EARS.EntityId, updates);
 
@@ -204,7 +200,7 @@ export const threadsSystem = setup({
       const firstStatusLabel = (): string | undefined =>
         repository.settingsQueries.getPluginSettings('threads')?.statuses?.[0]?.label;
 
-      const { changes } = typeOf('THREADS_SETTINGS_UPDATED', event);
+      const { changes } = threadsDef.typeOf('THREADS_SETTINGS_UPDATED', event);
 
       const busSvc = system.get(bus);
 
@@ -266,7 +262,7 @@ export const threadsSystem = setup({
       services.chat.sendRecentThreadsRefresh();
     },
     setThreadParent: ({ system, event }) => {
-      const { childIds, parentId } = typeOf('SET_THREAD_PARENT', event);
+      const { childIds, parentId } = threadsDef.typeOf('SET_THREAD_PARENT', event);
 
       repository.threadCommands.setParent(
         parentId as EARS.EntityId,
@@ -283,7 +279,7 @@ export const threadsSystem = setup({
       }));
     },
     deleteThread: ({ system, event }) => {
-      const { threadId } = typeOf('DELETE_THREAD', event);
+      const { threadId } = threadsDef.typeOf('DELETE_THREAD', event);
 
       // Stop active processes before hard-deleting the thread.
       services.threads.runCleanup(threadId);
@@ -402,7 +398,7 @@ export const threadsSystem = setup({
       }));
     },
     sendThreadChatData: ({ system, event }) => {
-      const threadId = typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
+      const threadId = threadsDef.typeOf('OPEN_THREAD_CHAT', event).threadId as EARS.EntityId;
       try {
         services.chat.openThreadChatAndRefreshRecent(threadId);
       } catch (err) {
@@ -415,7 +411,7 @@ export const threadsSystem = setup({
       }
     },
     sendThreadTabData: ({ system, event }) => {
-      const { threadId } = typeOf('OPEN_THREAD_TAB', event);
+      const { threadId } = threadsDef.typeOf('OPEN_THREAD_TAB', event);
       try {
         services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
       } catch (err) {
@@ -428,7 +424,7 @@ export const threadsSystem = setup({
       }
     },
     forwardUserMessage: ({ system, event }) => {
-      const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = typeOf('USER_MSG', event);
+      const { text, mode, phase, threadId: providedThreadId, references, cwdOverride, forceDirectoryPicker } = threadsDef.typeOf('USER_MSG', event);
 
       const sanitizedRefs = references ? {
         ...references,
@@ -518,7 +514,7 @@ export const threadsSystem = setup({
       });
     },
     forwardUserCommand: ({ system, event }) => {
-      const { command, text, mode, phase, threadId: providedThreadId, references } = typeOf('USER_COMMAND', event);
+      const { command, text, mode, phase, threadId: providedThreadId, references } = threadsDef.typeOf('USER_COMMAND', event);
 
       const sanitizedRefs = references ? {
         ...references,
@@ -612,7 +608,7 @@ export const threadsSystem = setup({
       });
     },
     forkThread: ({ system, event }) => {
-      const { messageId, threadId, threadTopic } = typeOf('FORK_THREAD', event);
+      const { messageId, threadId, threadTopic } = threadsDef.typeOf('FORK_THREAD', event);
       const originalTopic = threadTopic || 'Untitled';
 
       const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
@@ -644,7 +640,7 @@ export const threadsSystem = setup({
       });
     },
     revertThread: ({ system, event }) => {
-      const { messageId, threadId, restoreFiles, userCliUuid } = typeOf('REVERT_THREAD', event);
+      const { messageId, threadId, restoreFiles, userCliUuid } = threadsDef.typeOf('REVERT_THREAD', event);
 
       // Stop active processes before soft-deleting so nothing races
       // against the deletion (e.g. a stream consumer writing to messages).
@@ -672,7 +668,7 @@ export const threadsSystem = setup({
       });
     },
     summarizeThread: ({ system, event }) => {
-      const { messageId, threadId } = typeOf('SUMMARIZE_THREAD', event);
+      const { messageId, threadId } = threadsDef.typeOf('SUMMARIZE_THREAD', event);
 
       // Stop active processes before soft-deleting (same as revert).
       services.threads.runCleanup(threadId);
@@ -695,7 +691,7 @@ export const threadsSystem = setup({
       });
     },
     pauseTurn: ({ system, event }) => {
-      const { threadId } = typeOf('PAUSE_TURN', event);
+      const { threadId } = threadsDef.typeOf('PAUSE_TURN', event);
       const brainActor = getActor(system, brain);
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
@@ -704,12 +700,12 @@ export const threadsSystem = setup({
       });
     },
     forwardBrainEvent: ({ system, event }) => {
-      const { eventType, payload } = typeOf('FORWARD_BRAIN_EVENT', event);
+      const { eventType, payload } = threadsDef.typeOf('FORWARD_BRAIN_EVENT', event);
       const brainActor = getActor(system, brain);
       brainActor.send({ type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
-      const { messageId, threadId, response } = typeOf('INTERACTIVE_MSG_RESPONSE', event);
+      const { messageId, threadId, response } = threadsDef.typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
       const result = repository.chatCommands.updateMessageBlockResponse({
         messageId: messageId as EARS.EntityId,
@@ -740,12 +736,12 @@ export const threadsSystem = setup({
       }));
     },
     deleteMessage: ({ event }) => {
-      const { messageId } = typeOf('DELETE_MESSAGE', event);
+      const { messageId } = threadsDef.typeOf('DELETE_MESSAGE', event);
       if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
       tx(messageId as EARS.EntityId).destroy();
     },
     toggleCompacted: ({ system, event }) => {
-      const { markerId, compacted } = typeOf('TOGGLE_COMPACTED', event);
+      const { markerId, compacted } = threadsDef.typeOf('TOGGLE_COMPACTED', event);
       const messageIds = repository.chatCommands.toggleMarkerCompacted(
         markerId as EARS.EntityId,
         compacted,

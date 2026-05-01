@@ -1,5 +1,5 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit } from '@/core/helpers/actor-helpers';
 import { SettingsData, type FAQItem } from './types';
@@ -73,15 +73,11 @@ export type OutgoingSettingsEvents =
   | { type: 'APP_RESET_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
-export const settingsDef = defineSystem('settings')<IncomingSettingsEvents, OutgoingSettingsEvents, SettingsInternalEvents>();
+export const settingsDef = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsDef.id;
-const { typeOf } = settingsDef;
 
 export const settingsSystem = setup({
-  types: {
-    context: {} as {},
-    events: {} as Receivable<typeof settingsDef>,
-  },
+  types: settingsDef.types,
   actors: {
     secretsActor,
     resetAppActor: fromPromise(async () => {
@@ -142,7 +138,7 @@ export const settingsSystem = setup({
     },
     
     handleSecretsOperation: ({ system, event }) => {
-      const ev = typeOf('UPDATE_SETTINGS', event);
+      const ev = settingsDef.typeOf('UPDATE_SETTINGS', event);
       const operation = ev.value;
       
       // Forward secrets operations to the secrets system
@@ -168,7 +164,7 @@ export const settingsSystem = setup({
     },
     
     updateSettings: ({ system, event }) => {
-      const ev = typeOf('UPDATE_SETTINGS', event);
+      const ev = settingsDef.typeOf('UPDATE_SETTINGS', event);
       
       // Get previous settings for comparison
       const previousSettings = ev.entityType === 'plugin' 
@@ -310,7 +306,7 @@ export const settingsSystem = setup({
       });
     }),
     testCliProvider: ({ system, event }) => {
-      const ev = typeOf('TEST_CLI_PROVIDER', event);
+      const ev = settingsDef.typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
 
       if (!isCliName(provider)) {
@@ -345,7 +341,7 @@ export const settingsSystem = setup({
     },
 
     previewSetupPack: ({ system, event }) => {
-      const ev = typeOf('PREVIEW_SETUP_PACK', event);
+      const ev = settingsDef.typeOf('PREVIEW_SETUP_PACK', event);
       try {
         const preview = readSetupPackPreview(ev.directory);
         system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW', preview }));
@@ -356,7 +352,7 @@ export const settingsSystem = setup({
     },
 
     importSetupPack: ({ system, event }) => {
-      const ev = typeOf('IMPORT_SETUP_PACK', event);
+      const ev = settingsDef.typeOf('IMPORT_SETUP_PACK', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
