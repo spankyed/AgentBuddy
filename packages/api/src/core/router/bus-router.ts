@@ -1,7 +1,8 @@
 import { observable } from '@trpc/server/observable';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
+import type { OutgoingSystemEvents } from '@/core/router/events';
+import type { IncomingSystemEvents } from '@/systems';
 import { eventValidationMap } from '@/systems';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/helpers/debug/logger';
@@ -11,7 +12,9 @@ const logger = createLogger('app-events');
 
 export const systemBusRouter = router({
   send: procedure
-    .input(z.object({ type: z.string(), systemId: z.string() }).passthrough())
+    .input(z.custom<IncomingSystemEvents>((val) =>
+      typeof val === 'object' && val !== null && 'type' in val && 'systemId' in val
+    ))
     .mutation(({ input }) => {
       const validTypes = eventValidationMap.get(input.systemId);
       if (!validTypes) {
@@ -22,7 +25,7 @@ export const systemBusRouter = router({
       }
 
       logger.info(`→ Incoming: "${input.type}"`, { event: input });
-      rootEvents.emitIncoming(input as IncomingSystemEvents);
+      rootEvents.emitIncoming(input);
     }),
   sub: procedure
     // .input(z.object({ sessionId: z.string() }))
