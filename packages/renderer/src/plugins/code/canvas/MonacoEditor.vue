@@ -10,6 +10,7 @@
     :diffOriginal="originalContent"
     :diffModified="modifiedContent"
     :actions="['insertConsoleLog']"
+    :diffOptions="{ wordWrap: 'off' }"
     :dslParams="dslParams"
     preset="auto"
     preserveViewState
