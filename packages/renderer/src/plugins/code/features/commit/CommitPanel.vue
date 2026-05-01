@@ -247,6 +247,7 @@
           </button>
         </div>
         <textarea
+          ref="commitTextarea"
           v-model="commitMessage"
           @input="updateCommitMessage"
           :placeholder="`Message (currently on ${gitBranch || 'unknown'})`"
@@ -683,6 +684,7 @@ const pendingRemoveWorktreePath = ref<string | null>(null)
 const isErrorExpanded = ref(false)
 const errorContentRef = ref<HTMLElement | null>(null)
 const isErrorOverflowing = ref(false)
+const commitTextarea = ref<HTMLTextAreaElement | null>(null)
 const toast = ref<InstanceType<typeof ToastNotification>>()
 const syncFeedback = ref<string | null>(null)
 let syncClearTimer: ReturnType<typeof setTimeout> | undefined
@@ -740,6 +742,12 @@ watch(gitError, () => {
 
 watchSyncOp(isPulling, () => commitsBehind.value, 'Pull', 'Already up to date')
 watchSyncOp(isPushing, () => commitsAhead.value, 'Push', 'Nothing to push')
+
+watch(commitMessage, (val) => {
+  if (!val && commitTextarea.value) {
+    commitTextarea.value.style.height = ''
+  }
+})
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
