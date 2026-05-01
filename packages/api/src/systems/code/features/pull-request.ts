@@ -253,11 +253,14 @@ export const pullRequestSystem = setup({
       )
     },
 
-    mergePR: ({ event, context }) => {
+    mergePR: ({ event, context, system }) => {
       const ev = event as { type: 'pr.MERGE_PR'; number: number; method?: 'merge' | 'squash' | 'rebase' }
       withRepo(context,
         repo => ghCli.mergePR(repo.getWorkingDir(), ev.number, ev.method),
-        () => emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } }),
+        () => {
+          emitToFrontend({ type: 'pr.PR_MERGED', data: { number: ev.number } })
+          system.get('commit')?.send({ type: 'commit.GET_ALL_BRANCHES' })
+        },
         async err => {
           // Merge was rejected server-side — refresh PR data so the UI reflects the
           // current check / review / mergeability state the user is actually facing,
