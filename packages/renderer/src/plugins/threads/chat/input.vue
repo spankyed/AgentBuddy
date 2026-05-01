@@ -33,7 +33,7 @@
         </div>
 
         <!-- Editor container -->
-        <div class="relative w-full min-h-12">
+        <div class="relative w-full min-h-12" :class="{ 'pointer-events-none': isDraggingFile }">
           <TiptapEditor
             ref="tiptapRef"
             mode="input"
