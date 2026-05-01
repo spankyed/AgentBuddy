@@ -5,7 +5,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tspc && tsc-alias -p tsconfig.json && tsup src/types.ts --dts-only",
+    "build": "tspc && tsc-alias -p tsconfig.json --resolve-full-paths && tsup src/types.ts --dts-only",
     "dev": "run-p dev:types dev:serve",
     "dev:types": "tspc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",
