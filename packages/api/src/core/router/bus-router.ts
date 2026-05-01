@@ -20,7 +20,7 @@ export const systemBusRouter = router({
       if (!validTypes) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown system: "${input.systemId}"` });
       }
-      if (!validTypes.has(input.type)) {
+      if (!validTypes.has('*') && !validTypes.has(input.type)) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown event "${input.type}" for system "${input.systemId}"` });
       }
 
