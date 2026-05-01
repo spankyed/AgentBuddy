@@ -54,7 +54,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { id as codeId } from '@/plugins/code/state'
+import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
 import { File, Copy } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
@@ -71,7 +71,7 @@ defineEmits<{
   openFile: [file: GitStatusFile]
 }>()
 
-const codeActor = applicationState.system.get(codeId)!
+const codeActor: CodeState = applicationState.system.get(codeId)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 const fileDisplay = computed(() => {
