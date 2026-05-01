@@ -30,10 +30,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/plugins/threads/state';
+import { useAnchorTracking } from './composables/useAnchorTracking'
 
 const props = defineProps<{
   anchor?: HTMLElement | null
@@ -57,10 +58,6 @@ const stateConfig = computed(() => {
 
 const isAnimated = computed(() => stateConfig.value?.busy ?? false);
 
-// Live position tracking — the indicator is teleported to <body> with
-// position: fixed so it can render outside the chat area's overflow tree.
-// A rAF loop keeps it pinned to the anchor's top-left on every layout change
-// (attachments, panel resize, window resize, etc.) — trivial cost for one node.
 const pos = ref<{ top: number; left: number } | null>(null)
 
 const positionStyle = computed(() => pos.value && ({
@@ -70,54 +67,14 @@ const positionStyle = computed(() => pos.value && ({
   zIndex: 40,
 }))
 
-function updatePos() {
-  const el = props.anchor
-  if (!el) { pos.value = null; return }
-  const r = el.getBoundingClientRect()
-  // Match the original -0.4rem (-6.4px) offsets so the dot keeps its
-  // exact on-screen placement above the input card's top-left corner.
-  pos.value = { top: r.top - 6.4, left: r.left - 6.4 }
-}
-
-let rafId: number | null = null
-function tick() {
-  updatePos()
-  rafId = requestAnimationFrame(tick)
-}
-
-// Gate rendering on the anchor's *effective* visibility — IntersectionObserver
-// walks every ancestor's clip/containing block, so when any overflow:hidden
-// parent clips the anchor out (e.g. chat panel minimized via double-click
-// resizer), we hide the teleported dot instead of leaving it stranded at the
-// anchor's now-invisible coordinates.
-//
-// TODO: revisit when a chat-MAXIMIZED state lands. If maximize introduces a
-// different DOM branch or animated transition for the chat area, re-verify
-// that the IntersectionObserver still fires correctly across the transition
-// (test: maximize → minimize → maximize; ensure no stuck/ghost dot), and that
-// the rAF position-tracking stays accurate at the new anchor position.
-const isAnchorVisible = ref(false)
-let io: IntersectionObserver | null = null
-
-function observeAnchor(el: HTMLElement | null | undefined) {
-  io?.disconnect()
-  io = null
-  isAnchorVisible.value = false
-  if (!el) return
-  io = new IntersectionObserver(
-    ([entry]) => { isAnchorVisible.value = entry.isIntersecting },
-    { threshold: 0 },
-  )
-  io.observe(el)
-}
-
-watch(() => props.anchor, (el) => observeAnchor(el ?? null), { immediate: true })
-
-onMounted(() => { tick() })
-onBeforeUnmount(() => {
-  io?.disconnect()
-  if (rafId != null) cancelAnimationFrame(rafId)
-})
+const { isVisible: isAnchorVisible } = useAnchorTracking(
+  () => props.anchor,
+  (el) => {
+    const r = el.getBoundingClientRect()
+    pos.value = { top: r.top - 6.4, left: r.left - 6.4 }
+  },
+  () => { pos.value = null },
+)
 </script>
 
 <style lang="scss" module>
