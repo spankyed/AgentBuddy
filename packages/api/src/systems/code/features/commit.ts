@@ -34,6 +34,9 @@ export type IncomingCommitEvents =
   | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
   | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
   | { type: 'commit.WORKTREE_SWITCH'; path: string }
+  | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
+  | { type: 'commit.MARK_RESOLVED'; path: string }
+  | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =
@@ -57,6 +60,8 @@ export type OutgoingCommitEvents =
   | { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
   | { type: 'commit.WORKTREE_ADDED'; data: { path: string; branch: string } }
   | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
+  | { type: 'commit.CONFLICT_RESOLVED'; data: { path: string } }
+  | { type: 'commit.ALL_CONFLICTS_RESOLVED' }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -88,6 +93,9 @@ export type Event =
   | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
   | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
   | { type: 'commit.WORKTREE_SWITCH'; path: string }
+  | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
+  | { type: 'commit.MARK_RESOLVED'; path: string }
+  | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
   | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
@@ -202,6 +210,10 @@ export const commitSystem = setup({
               originalContent = await getContent(ev.path!, 'index')
               modifiedContent = await getContent(ev.path!, 'working')
             }
+          } else if (fileStatus.status === 'unmerged') {
+            // For unmerged files: show HEAD as original, working tree (with conflict markers) as modified
+            originalContent = await getContent(ev.path!, 'HEAD') // returns '' if not in HEAD
+            modifiedContent = await getContent(ev.path!, 'working')
           } else {
             if (ev.staged) {
               originalContent = await getContent(ev.path!, 'HEAD')
@@ -348,6 +360,67 @@ export const commitSystem = setup({
           })
           rootEvents.emitOutgoing(fileChangeWrapped.event)
         }
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    resolveConflict: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
+      if (!requireGitRepository(context)) return
+      try {
+        await context.gitRepository.resolveConflict(ev.path, ev.strategy)
+        const wrapped = emit(pluginId, {
+          type: 'commit.CONFLICT_RESOLVED',
+          data: { path: ev.path }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    markResolved: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.MARK_RESOLVED'; path: string }
+      if (!requireGitRepository(context)) return
+      try {
+        await context.gitRepository.stageFiles([ev.path])
+        const wrapped = emit(pluginId, {
+          type: 'commit.CONFLICT_RESOLVED',
+          data: { path: ev.path }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    resolveAllConflicts: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
+      if (!requireGitRepository(context)) return
+      try {
+        const status = await context.gitRepository.getStatus()
+        const unmerged = status.filter(f => f.status === 'unmerged')
+        for (const f of unmerged) {
+          await context.gitRepository.resolveConflict(f.path, ev.strategy)
+        }
+        const wrapped = emit(pluginId, { type: 'commit.ALL_CONFLICTS_RESOLVED' })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
       } catch (error: any) {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -815,6 +888,15 @@ export const commitSystem = setup({
         },
         'commit.REVERT_FILES': {
           actions: 'revertFiles'
+        },
+        'commit.RESOLVE_CONFLICT': {
+          actions: 'resolveConflict'
+        },
+        'commit.MARK_RESOLVED': {
+          actions: 'markResolved'
+        },
+        'commit.RESOLVE_ALL_CONFLICTS': {
+          actions: 'resolveAllConflicts'
         },
         'commit.COMMIT': {
           actions: 'commit'

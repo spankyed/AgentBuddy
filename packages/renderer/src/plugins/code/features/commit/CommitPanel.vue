@@ -34,6 +34,17 @@
       @cancel="cancelDiscardAll"
     />
 
+    <!-- Discard All Merge Conflicts Dialog -->
+    <RevertDialog
+      :show="showDiscardAllMergeDialog"
+      :file="null"
+      :fileCount="mergeConflictFiles.length"
+      customTitle="Accept All Ours (HEAD)"
+      customMessage="Accept HEAD version for all conflicted files? This discards all incoming changes from the merge/stash."
+      @confirm="confirmDiscardAllMerge"
+      @cancel="showDiscardAllMergeDialog = false"
+    />
+
     <!-- Show friendly empty state if no git repository -->
     <EmptyState
       v-if="isNoGitRepoError"
@@ -295,58 +306,76 @@
             </button>
           </div>
           <div class="space-y-1">
-            <TrackedContextMenuRoot v-for="file in stagedFiles" :key="`staged-${file.path}`">
-              <ContextMenuTrigger as-child>
-                <div
-                  @click="selectFile(file)"
-                  :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
-                  :class="[
-                    'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
-                    selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
-                      ? 'bg-neutral-800'
-                      : 'hover:bg-neutral-800/50'
-                  ]"
-                >
-                  <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                    <span class="text-sm font-medium text-neutral-200 truncate min-w-0">{{ getFileDisplay(file.path, file).filename }}</span>
-                    <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate min-w-0 shrink-[9999]">
-                      {{ getFileDisplay(file.path, file).directory }}
-                    </span>
-                  </div>
-                  <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
-                    {{ getStatusIcon(file.status) }}
-                  </span>
-                  <button
-                    v-if="file.status !== 'deleted'"
-                    @click.stop="openFile(file)"
-                    class="p-0.5 hover:bg-neutral-700 rounded"
-                    title="Open file"
-                  >
-                    <File class="w-3 h-3 text-neutral-400" />
-                  </button>
-                  <button @click.stop="unstageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage">
-                    <Minus class="w-3 h-3 text-neutral-400" />
-                  </button>
-                </div>
-              </ContextMenuTrigger>
-              <ContextMenuPortal>
-                <ContextMenuContent :class="MENU_CONTENT_CLASS">
-                  <ContextMenuItem v-if="file.status !== 'deleted'" @select="openFile(file)" :class="MENU_ITEM_CLASS">
-                    <File class="w-4 h-4" /> Open File
-                  </ContextMenuItem>
-                  <ContextMenuItem @select="copyPath(file.path)" :class="MENU_ITEM_CLASS">
-                    <Copy class="w-4 h-4" /> Copy Path
-                  </ContextMenuItem>
-                  <ContextMenuItem @select="copyRelativePath(file.path)" :class="MENU_ITEM_CLASS">
-                    <Copy class="w-4 h-4" /> Copy Relative Path
-                  </ContextMenuItem>
-                  <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
-                  <ContextMenuItem @select="unstageFile(file)" :class="MENU_ITEM_CLASS">
-                    <Minus class="w-4 h-4" /> Unstage
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenuPortal>
-            </TrackedContextMenuRoot>
+            <GitFileItem
+              v-for="file in stagedFiles"
+              :key="`staged-${file.path}`"
+              :file="file"
+              :isSelected="selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged"
+              @select="selectFile"
+              @openFile="openFile"
+            >
+              <template #actions>
+                <button @click.stop="unstageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Unstage">
+                  <Minus class="w-3 h-3 text-neutral-400" />
+                </button>
+              </template>
+              <template #menuItems>
+                <ContextMenuItem @select="unstageFile(file)" :class="MENU_ITEM_CLASS">
+                  <Minus class="w-4 h-4" /> Unstage
+                </ContextMenuItem>
+              </template>
+            </GitFileItem>
+          </div>
+        </div>
+
+        <!-- Merge Conflicts -->
+        <div v-if="mergeConflictFiles.length > 0" class="p-3">
+          <div class="flex items-center justify-between mb-2 px-2">
+            <span class="text-xs font-medium text-orange-400">MERGE CHANGES</span>
+            <div class="flex items-center gap-2">
+              <button @click="showDiscardAllMergeDialog = true" class="p-0.5 hover:bg-neutral-700 rounded" title="Accept All Ours (HEAD)">
+                <RotateCcw class="w-3 h-3 text-red-400" />
+              </button>
+            </div>
+          </div>
+          <div class="space-y-1">
+            <GitFileItem
+              v-for="file in mergeConflictFiles"
+              :key="`merge-${file.path}`"
+              :file="file"
+              :isSelected="selectedGitFile?.path === file.path"
+              @select="selectFile"
+              @openFile="openFile"
+            >
+              <template #prefix>
+                <GitMerge :size="12" class="text-orange-400 flex-shrink-0" />
+              </template>
+              <template #statusBadge>
+                <span class="flex-shrink-0 w-4 text-xs font-medium text-orange-500">C</span>
+              </template>
+              <template #actions>
+                <button @click.stop="acceptOurs(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Accept Ours">
+                  <RotateCcw class="w-3 h-3 text-blue-400" />
+                </button>
+                <button @click.stop="acceptTheirs(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Accept Theirs">
+                  <Check class="w-3 h-3 text-green-400" />
+                </button>
+                <button @click.stop="markResolved(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Mark as Resolved (stage as-is)">
+                  <Plus class="w-3 h-3 text-neutral-400" />
+                </button>
+              </template>
+              <template #menuItems>
+                <ContextMenuItem @select="acceptOurs(file)" :class="MENU_ITEM_CLASS">
+                  <RotateCcw class="w-4 h-4" /> Accept Ours
+                </ContextMenuItem>
+                <ContextMenuItem @select="acceptTheirs(file)" :class="MENU_ITEM_CLASS">
+                  <Check class="w-4 h-4" /> Accept Theirs
+                </ContextMenuItem>
+                <ContextMenuItem @select="markResolved(file)" :class="MENU_ITEM_CLASS">
+                  <Plus class="w-4 h-4" /> Mark as Resolved
+                </ContextMenuItem>
+              </template>
+            </GitFileItem>
           </div>
         </div>
 
@@ -364,64 +393,31 @@
             </div>
           </div>
           <div class="space-y-1">
-            <TrackedContextMenuRoot v-for="file in unstagedFiles" :key="`unstaged-${file.path}`">
-              <ContextMenuTrigger as-child>
-                <div
-                  @click="selectFile(file)"
-                  :title="file.status === 'renamed' && file.originalPath ? `${file.originalPath} → ${file.path}` : file.path"
-                  :class="[
-                    'group flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors',
-                    selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged
-                      ? 'bg-neutral-800'
-                      : 'hover:bg-neutral-800/50'
-                  ]"
-                >
-                  <div class="flex-1 min-w-0 flex items-center gap-1.5">
-                    <span class="text-sm font-medium text-neutral-200 truncate min-w-0">{{ getFileDisplay(file.path, file).filename }}</span>
-                    <span v-if="getFileDisplay(file.path, file).directory" dir="rtl" class="text-xs text-neutral-500 truncate min-w-0 shrink-[9999]">
-                      {{ getFileDisplay(file.path, file).directory }}
-                    </span>
-                  </div>
-                  <span :class="getStatusColor(file.status)" class="flex-shrink-0 w-4 text-xs font-medium">
-                    {{ getStatusIcon(file.status) }}
-                  </span>
-                  <button
-                    v-if="file.status !== 'deleted'"
-                    @click.stop="openFile(file)"
-                    class="p-0.5 hover:bg-neutral-700 rounded"
-                    title="Open file"
-                  >
-                    <File class="w-3 h-3 text-neutral-400" />
-                  </button>
-                  <button @click.stop="openRevertDialog(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard changes">
-                    <RotateCcw class="w-3 h-3 text-red-400" />
-                  </button>
-                  <button @click.stop="stageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage">
-                    <Plus class="w-3 h-3 text-neutral-400" />
-                  </button>
-                </div>
-              </ContextMenuTrigger>
-              <ContextMenuPortal>
-                <ContextMenuContent :class="MENU_CONTENT_CLASS">
-                  <ContextMenuItem v-if="file.status !== 'deleted'" @select="openFile(file)" :class="MENU_ITEM_CLASS">
-                    <File class="w-4 h-4" /> Open File
-                  </ContextMenuItem>
-                  <ContextMenuItem @select="copyPath(file.path)" :class="MENU_ITEM_CLASS">
-                    <Copy class="w-4 h-4" /> Copy Path
-                  </ContextMenuItem>
-                  <ContextMenuItem @select="copyRelativePath(file.path)" :class="MENU_ITEM_CLASS">
-                    <Copy class="w-4 h-4" /> Copy Relative Path
-                  </ContextMenuItem>
-                  <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
-                  <ContextMenuItem @select="stageFile(file)" :class="MENU_ITEM_CLASS">
-                    <Plus class="w-4 h-4" /> Stage
-                  </ContextMenuItem>
-                  <ContextMenuItem @select="openRevertDialog(file)" :class="MENU_ITEM_DANGER_CLASS">
-                    <RotateCcw class="w-4 h-4" /> Discard Changes
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenuPortal>
-            </TrackedContextMenuRoot>
+            <GitFileItem
+              v-for="file in unstagedFiles"
+              :key="`unstaged-${file.path}`"
+              :file="file"
+              :isSelected="selectedGitFile?.path === file.path && selectedGitFile?.staged === file.staged"
+              @select="selectFile"
+              @openFile="openFile"
+            >
+              <template #actions>
+                <button @click.stop="openRevertDialog(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Discard changes">
+                  <RotateCcw class="w-3 h-3 text-red-400" />
+                </button>
+                <button @click.stop="stageFile(file)" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage">
+                  <Plus class="w-3 h-3 text-neutral-400" />
+                </button>
+              </template>
+              <template #menuItems>
+                <ContextMenuItem @select="stageFile(file)" :class="MENU_ITEM_CLASS">
+                  <Plus class="w-4 h-4" /> Stage
+                </ContextMenuItem>
+                <ContextMenuItem @select="openRevertDialog(file)" :class="MENU_ITEM_DANGER_CLASS">
+                  <RotateCcw class="w-4 h-4" /> Discard Changes
+                </ContextMenuItem>
+              </template>
+            </GitFileItem>
           </div>
         </div>
       </div>
@@ -620,10 +616,10 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, GitFork, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
-import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
-import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
-import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/plugins/code/features/explorer/constants'
+import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
+import { ContextMenuItem } from 'reka-ui'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS } from '@/plugins/code/features/explorer/constants'
+import GitFileItem from '@/plugins/code/features/commit/GitFileItem.vue'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
@@ -660,6 +656,7 @@ const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirect
 
 // Local state
 const showDiscardAllDialog = ref(false)
+const showDiscardAllMergeDialog = ref(false)
 const showBranchDropdown = ref(false)
 const highlightedBranchIndex = ref(-1)
 const isCreatingBranch = ref(false)
@@ -746,7 +743,8 @@ watchSyncOp(isPushing, () => commitsAhead.value, 'Push', 'Nothing to push')
 
 // Computed
 const stagedFiles = computed(() => gitStatus.value.filter((f: any) => f.staged))
-const unstagedFiles = computed(() => gitStatus.value.filter((f: any) => !f.staged))
+const mergeConflictFiles = computed(() => gitStatus.value.filter((f: any) => f.status === 'unmerged'))
+const unstagedFiles = computed(() => gitStatus.value.filter((f: any) => !f.staged && f.status !== 'unmerged'))
 const canCommit = computed(() => commitMessage.value.trim() && stagedFiles.value.length > 0)
 
 const isNoDirectoryError = computed(() => {
@@ -871,6 +869,23 @@ const cancelDiscardAll = () => {
   showDiscardAllDialog.value = false
 }
 
+const acceptOurs = (file: GitStatusFile) => {
+  commitActor?.send({ type: 'commit.RESOLVE_CONFLICT', path: file.path, strategy: 'ours' })
+}
+
+const acceptTheirs = (file: GitStatusFile) => {
+  commitActor?.send({ type: 'commit.RESOLVE_CONFLICT', path: file.path, strategy: 'theirs' })
+}
+
+const markResolved = (file: GitStatusFile) => {
+  commitActor?.send({ type: 'commit.MARK_RESOLVED', path: file.path })
+}
+
+const confirmDiscardAllMerge = () => {
+  commitActor?.send({ type: 'commit.RESOLVE_ALL_CONFLICTS', strategy: 'ours' })
+  showDiscardAllMergeDialog.value = false
+}
+
 const openRevertDialog = (file: GitStatusFile) => {
   commitActor?.send({ type: 'commit.TOGGLE_REVERT_DIALOG', file })
 }
@@ -885,22 +900,6 @@ const cancelRevert = () => {
 
 const openFile = (file: GitStatusFile) => {
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
-}
-
-const copyPath = async (path: string) => {
-  try { await navigator.clipboard.writeText(path) } catch (err) { console.error('Failed to copy path:', err) }
-}
-
-const copyRelativePath = async (path: string) => {
-  try {
-    const base = baseDirectory.value
-    let rel = path
-    if (base && rel.startsWith(base)) {
-      rel = rel.slice(base.length)
-      if (rel.startsWith('/')) rel = rel.slice(1)
-    }
-    await navigator.clipboard.writeText(rel)
-  } catch (err) { console.error('Failed to copy path:', err) }
 }
 
 const updateBranchInput = (event: Event) => {
@@ -1123,49 +1122,6 @@ const handleBranchEscape = () => {
 }
 
 // Helper functions
-const getFileDisplay = (filePath: string, file?: GitStatusFile) => {
-  const lastSlashIndex = filePath.lastIndexOf('/')
-  const filename = lastSlashIndex === -1 ? filePath : filePath.substring(lastSlashIndex + 1)
-  const directory = lastSlashIndex === -1 ? '' : filePath.substring(0, lastSlashIndex)
-
-  if (file?.status === 'renamed' && file.originalPath) {
-    const origLastSlash = file.originalPath.lastIndexOf('/')
-    const origFilename = origLastSlash === -1 ? file.originalPath : file.originalPath.substring(origLastSlash + 1)
-    return { filename: `${origFilename} → ${filename}`, directory }
-  }
-
-  return { filename, directory }
-}
-
-const getStatusIcon = (status: GitStatusFile['status']) => {
-  switch (status) {
-    case 'modified': return 'M'
-    case 'added': return 'A'
-    case 'deleted': return 'D'
-    case 'renamed': return 'R'
-    case 'untracked': return 'U'
-    case 'copied': return 'C'
-    case 'typechange': return 'T'
-    case 'unmerged': return 'U'
-    default: return '?'
-  }
-}
-
-const getStatusColor = (status: GitStatusFile['status']) => {
-  switch (status) {
-    case 'modified': return 'text-yellow-500'
-    case 'added': return 'text-green-500'
-    case 'deleted': return 'text-red-500'
-    case 'renamed': return 'text-blue-500'
-    case 'untracked': return 'text-neutral-500'
-    case 'copied': return 'text-purple-500'
-    case 'typechange': return 'text-orange-500'
-    case 'unmerged': return 'text-red-600'
-    default: return 'text-neutral-400'
-  }
-}
-
-
 const formatStashMessage = (stash: any) => {
   if (stash.message) {
     // Strip the "On branch: " or "WIP on branch:" prefix that git adds

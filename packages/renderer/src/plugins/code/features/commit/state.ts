@@ -120,6 +120,11 @@ export type Event =
   | { type: 'commit.WORKTREE_LIST_RECEIVED'; data: { worktrees: WorktreeEntry[] } }
   | { type: 'commit.WORKTREE_ADDED'; data: { path: string; branch: string } }
   | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
+  | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
+  | { type: 'commit.MARK_RESOLVED'; path: string }
+  | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
+  | { type: 'commit.CONFLICT_RESOLVED'; path: string }
+  | { type: 'commit.ALL_CONFLICTS_RESOLVED' }
   | { type: 'CODE_STARTUP' };
 
 export const commitState = setup({
@@ -193,6 +198,21 @@ export const commitState = setup({
     revertFiles: ({ event }) => {
       const ev = event as { type: 'commit.REVERT_FILES'; paths: string[] }
       sendToBackend('commit.REVERT_FILES', { paths: ev.paths })
+    },
+
+    resolveConflict: ({ event }) => {
+      const ev = event as { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
+      sendToBackend('commit.RESOLVE_CONFLICT', { path: ev.path, strategy: ev.strategy })
+    },
+
+    markResolved: ({ event }) => {
+      const ev = event as { type: 'commit.MARK_RESOLVED'; path: string }
+      sendToBackend('commit.MARK_RESOLVED', { path: ev.path })
+    },
+
+    resolveAllConflicts: ({ event }) => {
+      const ev = event as { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
+      sendToBackend('commit.RESOLVE_ALL_CONFLICTS', { strategy: ev.strategy })
     },
 
     handleFileReverted: assign({
@@ -540,6 +560,21 @@ export const commitState = setup({
           actions: ['handleFileReverted', 'refreshGitStatus']
         },
         'commit.FILES_REVERTED': {
+          actions: 'refreshGitStatus'
+        },
+        'commit.RESOLVE_CONFLICT': {
+          actions: 'resolveConflict'
+        },
+        'commit.MARK_RESOLVED': {
+          actions: 'markResolved'
+        },
+        'commit.RESOLVE_ALL_CONFLICTS': {
+          actions: 'resolveAllConflicts'
+        },
+        'commit.CONFLICT_RESOLVED': {
+          actions: 'refreshGitStatus'
+        },
+        'commit.ALL_CONFLICTS_RESOLVED': {
           actions: 'refreshGitStatus'
         },
         'commit.CLEAR_DIFF': {

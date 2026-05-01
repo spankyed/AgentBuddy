@@ -726,9 +726,17 @@ export class GitRepository {
       } else if (fileStatus?.status === 'unmerged') {
         // `git checkout --` refuses unmerged paths; explicit HEAD ref works
         // and clears the conflict state in both the index and worktree.
-        const result = await this.executeGitCommand(['checkout', 'HEAD', '--', filePath])
-        if (!result.success) {
-          throw new Error(result.error || `Failed to revert file: ${filePath}`)
+        const existsInHead = await this.fileExistsInHead(filePath)
+        if (existsInHead) {
+          const result = await this.executeGitCommand(['checkout', 'HEAD', '--', filePath])
+          if (!result.success) {
+            throw new Error(result.error || `Failed to revert file: ${filePath}`)
+          }
+        } else {
+          // File was added by stash/merge — delete it and clean the index entry
+          const fullPath = path.join(this.workingDirectory, filePath)
+          await fs.unlink(fullPath)
+          await this.executeGitCommand(['rm', '--cached', '--force', filePath])
         }
       } else {
         const result = await this.executeGitCommand(['checkout', '--', filePath])
@@ -759,11 +767,27 @@ export class GitRepository {
         await fs.unlink(fullPath)
       }
 
-      // Revert unmerged files via explicit HEAD ref (plain `checkout --` errors)
+      // Revert unmerged files — split by whether they exist in HEAD
       if (unmergedPaths.length > 0) {
-        const result = await this.executeGitCommand(['checkout', 'HEAD', '--', ...unmergedPaths])
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to revert unmerged files')
+        const existsInHead: string[] = []
+        const newFiles: string[] = []
+        for (const p of unmergedPaths) {
+          if (await this.fileExistsInHead(p)) {
+            existsInHead.push(p)
+          } else {
+            newFiles.push(p)
+          }
+        }
+        if (existsInHead.length > 0) {
+          const result = await this.executeGitCommand(['checkout', 'HEAD', '--', ...existsInHead])
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to revert unmerged files')
+          }
+        }
+        for (const p of newFiles) {
+          const fullPath = path.join(this.workingDirectory, p)
+          await fs.unlink(fullPath)
+          await this.executeGitCommand(['rm', '--cached', '--force', p])
         }
       }
 
@@ -775,6 +799,22 @@ export class GitRepository {
         }
       }
 
+      this.cache.delete('status')
+    })
+  }
+
+  async fileExistsInHead(filePath: string): Promise<boolean> {
+    const result = await this.executeGitCommand(['cat-file', '-e', `HEAD:${filePath}`])
+    return result.success
+  }
+
+  async resolveConflict(filePath: string, strategy: 'ours' | 'theirs'): Promise<void> {
+    return this.withWriteFlag(async () => {
+      const result = await this.executeGitCommand(['checkout', `--${strategy}`, '--', filePath])
+      if (!result.success) {
+        throw new Error(result.error || `Failed to resolve conflict with ${strategy}`)
+      }
+      await this.executeGitCommand(['add', filePath])
       this.cache.delete('status')
     })
   }
