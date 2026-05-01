@@ -1,21 +1,19 @@
 import { observable } from '@trpc/server/observable';
 import { z } from 'zod';
-import { IncomingEventSchema, type OutgoingSystemEvents } from '@/core/router/events';
+import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
-import type { AnyRouter } from '@trpc/server';
 
 const logger = createLogger('app-events');
 
 export const systemBusRouter = router({
   send: procedure
-    .input(IncomingEventSchema)
+    .input(z.object({ type: z.string(), systemId: z.string() }).passthrough())
     .mutation(({ ctx, input }) => {
-      // Emit to root event emitter
       logger.info(`→ Incoming: "${input.type}"`, { event: input });
 
-      rootEvents.emitIncoming(input);
+      rootEvents.emitIncoming(input as IncomingSystemEvents);
     }),
   sub: procedure
     // .input(z.object({ sessionId: z.string() }))

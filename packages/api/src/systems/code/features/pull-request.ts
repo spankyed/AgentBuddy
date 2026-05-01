@@ -1,9 +1,7 @@
 import { setup, assign } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
 import { createLogger } from '@/core/helpers/debug/logger'
-import { z } from 'zod'
 import { GitRepository } from '../services/git'
 import { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
 import * as ghCli from '../services/gh-cli'
@@ -12,36 +10,34 @@ import { type ActiveTokenInfo } from '../services/gh-cli'
 const logger = createLogger('pr')
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
-export const IncomingPullRequestEvents = [
-  busEvent('pr.GET_BASE_BRANCH', {}),
-  busEvent('pr.GET_BRANCH_DIFF', { baseBranch: z.string().optional(), headBranch: z.string().optional() }),
-  busEvent('pr.GET_BRANCH_FILE_DIFF', { path: z.string(), baseBranch: z.string(), headBranch: z.string().optional() }),
-  busEvent('pr.LIST_OPEN_PRS', {}),
-  busEvent('pr.SELECT_PR', { number: z.number() }),
-  busEvent('pr.CREATE_PR', { title: z.string(), body: z.string(), base: z.string().optional(), draft: z.boolean().optional() }),
-  busEvent('pr.MERGE_PR', { number: z.number(), method: z.enum(['merge', 'squash', 'rebase']).optional() }),
-  busEvent('pr.CLOSE_PR', { number: z.number() }),
-  busEvent('pr.TOGGLE_DRAFT', { number: z.number(), isDraft: z.boolean() }),
-  busEvent('pr.CHECK_BRANCH_PR', {}),
-  busEvent('pr.CHECK_GH_AUTH', {}),
-  busEvent('pr.GET_PR_AUTOFILL', {}),
-  busEvent('pr.GET_SMART_BASE_BRANCH', {}),
-  busEvent('pr.DELETE_BRANCH', { branch: z.string() }),
-  busEvent('pr.UPDATE_PR', { number: z.number(), title: z.string().optional(), body: z.string().optional(), base: z.string().optional() }),
-  busEvent('pr.CREATE_COMMENT', { number: z.number(), body: z.string() }),
-  busEvent('pr.EDIT_COMMENT', { commentId: z.number(), body: z.string() }),
-  busEvent('pr.DELETE_COMMENT', { commentId: z.number() }),
-  busEvent('pr.GET_COMMENTS', { number: z.number() }),
-  busEvent('pr.GET_REVIEW_THREADS', { number: z.number() }),
-  busEvent('pr.REPLY_TO_THREAD', { prNumber: z.number(), commentId: z.number(), body: z.string() }),
-  busEvent('pr.RESOLVE_THREAD', { threadId: z.string() }),
-  busEvent('pr.UNRESOLVE_THREAD', { threadId: z.string() }),
-  busEvent('pr.EDIT_REVIEW_COMMENT', { commentId: z.number(), body: z.string() }),
-  busEvent('pr.DELETE_REVIEW_COMMENT', { commentId: z.number() }),
-] as const
+export type IncomingPullRequestEvents =
+  | { type: 'pr.GET_BASE_BRANCH' }
+  | { type: 'pr.GET_BRANCH_DIFF'; baseBranch?: string; headBranch?: string }
+  | { type: 'pr.GET_BRANCH_FILE_DIFF'; path: string; baseBranch: string; headBranch?: string }
+  | { type: 'pr.LIST_OPEN_PRS' }
+  | { type: 'pr.SELECT_PR'; number: number }
+  | { type: 'pr.CREATE_PR'; title: string; body: string; base?: string; draft?: boolean }
+  | { type: 'pr.MERGE_PR'; number: number; method?: 'merge' | 'squash' | 'rebase' }
+  | { type: 'pr.CLOSE_PR'; number: number }
+  | { type: 'pr.TOGGLE_DRAFT'; number: number; isDraft: boolean }
+  | { type: 'pr.CHECK_BRANCH_PR' }
+  | { type: 'pr.CHECK_GH_AUTH' }
+  | { type: 'pr.GET_PR_AUTOFILL' }
+  | { type: 'pr.GET_SMART_BASE_BRANCH' }
+  | { type: 'pr.DELETE_BRANCH'; branch: string }
+  | { type: 'pr.UPDATE_PR'; number: number; title?: string; body?: string; base?: string }
+  | { type: 'pr.CREATE_COMMENT'; number: number; body: string }
+  | { type: 'pr.EDIT_COMMENT'; commentId: number; body: string }
+  | { type: 'pr.DELETE_COMMENT'; commentId: number }
+  | { type: 'pr.GET_COMMENTS'; number: number }
+  | { type: 'pr.GET_REVIEW_THREADS'; number: number }
+  | { type: 'pr.REPLY_TO_THREAD'; prNumber: number; commentId: number; body: string }
+  | { type: 'pr.RESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.UNRESOLVE_THREAD'; threadId: string }
+  | { type: 'pr.EDIT_REVIEW_COMMENT'; commentId: number; body: string }
+  | { type: 'pr.DELETE_REVIEW_COMMENT'; commentId: number }
 
 // Outgoing events to frontend
 export type OutgoingPullRequestEvents =

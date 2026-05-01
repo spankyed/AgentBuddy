@@ -1,10 +1,8 @@
 import { setup } from 'xstate';
-import { z } from 'zod';
 import { performance } from 'node:perf_hooks';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { emit, safeEvents, getActor } from '@/core/helpers/actor-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
+import { defineSystem } from '@/core/framework/define-system';
+import { emit, getActor } from '@/core/helpers/actor-helpers';
+import { bus } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
@@ -20,48 +18,21 @@ import { flowsCommands } from '@/systems/flows/repository';
 
 const logger = createLogger('database');
 
-export const database = 'database' as const;
+type IncomingDatabaseEvents =
+  | { type: 'EXECUTE_QUERY'; code: string }
+  | { type: 'EXECUTE_TRANSACTION'; code: string }
+  | { type: 'GENERATE_AI_QUERY'; prompt: string; mode?: 'query' | 'transaction' }
+  | { type: 'REFRESH_SCHEMA' }
+  | { type: 'GET_TRACE_FLOWS' }
+  | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
+  | { type: 'GET_NODE_DETAILS'; nodeId: string }
+  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb' | 'secretsLmdb')[] }
+  | { type: 'IMPORT_DATABASE'; path: string }
+  | { type: 'GET_BACKUP_INFO'; path: string }
+  | { type: 'RESET_DATABASE' };
 
-const busEvent = systemBus(database);
-
-export const IncomingDatabaseEvents = [
-  busEvent('EXECUTE_QUERY', {
-    code: z.string(),
-  }),
-  busEvent('EXECUTE_TRANSACTION', {
-    code: z.string(),
-  }),
-busEvent('GENERATE_AI_QUERY', {
-    prompt: z.string(),
-    mode: z.enum(['query', 'transaction']).optional(),
-  }),
-  busEvent('REFRESH_SCHEMA', {}),
-  busEvent('GET_TRACE_FLOWS', {}),
-  busEvent('GET_FLOW_EVENTS', { 
-    flowId: z.string(), 
-    offset: z.number().optional(),
-    limit: z.number().optional()
-  }),
-  busEvent('GET_NODE_DETAILS', { 
-    nodeId: z.string() 
-  }),
-  busEvent('EXPORT_DATABASE', {
-    path: z.string(),
-    name: z.string().optional(),
-    databases: z.array(z.enum(['lmdb', 'volatileLmdb', 'secretsLmdb'])), // 'searchIndices' removed [SEARCH_INDEX_FF]
-  }),
-  busEvent('IMPORT_DATABASE', {
-    path: z.string(),
-  }),
-  busEvent('GET_BACKUP_INFO', {
-    path: z.string(),
-  }),
-  busEvent('RESET_DATABASE', {}),
-] as const;
-
-export type DatabaseInternalEvents = 
-  | { type: 'CLIENT_CONNECTED' }
-  | SystemEvents;
+type DatabaseInternalEvents =
+  | { type: 'CLIENT_CONNECTED' };
 
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_REFRESH'; data: DatabaseStartupData }
@@ -84,15 +55,11 @@ export type OutgoingDatabaseEvents =
 
 export interface DatabaseContext { }
 
-export const DatabaseSystemEvents = fromSystem(IncomingDatabaseEvents)<OutgoingDatabaseEvents, typeof database>();
-type ReceivableEvents = MergeReceivable<typeof IncomingDatabaseEvents, DatabaseInternalEvents>;
-const typeOf = safeEvents<ReceivableEvents>();
+export const databaseDef = defineSystem('database')<IncomingDatabaseEvents | DatabaseInternalEvents, OutgoingDatabaseEvents>();
+export const database = databaseDef.id;
 
 export const databaseSystem = setup({
-  types: {
-    context: {} as DatabaseContext,
-    events: {} as ReceivableEvents,
-  },
+  types: databaseDef.types,
   actions: {
     sendDatabaseRefresh: ({ system }) => {
       const schema = generateSchemaInfo();
@@ -102,7 +69,7 @@ export const databaseSystem = setup({
       }));
     },
     executeQuery: async ({ system, event }) => {
-      const { code } = typeOf('EXECUTE_QUERY', event);
+      const { code } = databaseDef.typeOf('EXECUTE_QUERY', event);
       
       try {
         const startTime = performance.now();
@@ -124,7 +91,7 @@ export const databaseSystem = setup({
       }
     },
     executeTransaction: async ({ system, event }) => {
-      const { code } = typeOf('EXECUTE_TRANSACTION', event);
+      const { code } = databaseDef.typeOf('EXECUTE_TRANSACTION', event);
       
       try {
         const startTime = performance.now();
@@ -154,7 +121,7 @@ export const databaseSystem = setup({
       }
     },
     handleAiQuery: ({ system, event }) => {
-      const { prompt, mode } = typeOf('GENERATE_AI_QUERY', event);
+      const { prompt, mode } = databaseDef.typeOf('GENERATE_AI_QUERY', event);
 
       if (!prompt?.trim()) {
         logger.error('Invalid prompt provided for AI query generation');
@@ -189,7 +156,7 @@ export const databaseSystem = setup({
       }
     },
     getFlowEvents: ({ system, event }) => {
-      const { flowId, offset = 0, limit = 50 } = typeOf('GET_FLOW_EVENTS', event);
+      const { flowId, offset = 0, limit = 50 } = databaseDef.typeOf('GET_FLOW_EVENTS', event);
       
       try {
         const result = getFlowEvents(flowId, offset, limit);
@@ -212,7 +179,7 @@ export const databaseSystem = setup({
       }
     },
     getNodeDetails: ({ system, event }) => {
-      const { nodeId } = typeOf('GET_NODE_DETAILS', event);
+      const { nodeId } = databaseDef.typeOf('GET_NODE_DETAILS', event);
       
       try {
         const details = getNodeDetails(nodeId);
@@ -233,7 +200,7 @@ export const databaseSystem = setup({
       }
     },
     exportDatabase: ({ system, event }) => {
-      const { path, name, databases } = typeOf('EXPORT_DATABASE', event);
+      const { path, name, databases } = databaseDef.typeOf('EXPORT_DATABASE', event);
       
       exportDatabase(path, name, databases).then(
         (resultPath) => {
@@ -253,7 +220,7 @@ export const databaseSystem = setup({
       );
     },
     importDatabase: ({ system, event }) => {
-      const { path } = typeOf('IMPORT_DATABASE', event);
+      const { path } = databaseDef.typeOf('IMPORT_DATABASE', event);
       
       importDatabase(path).then(
         async (result) => {
@@ -292,7 +259,7 @@ export const databaseSystem = setup({
       );
     },
     getBackupInfo: async ({ system, event }) => {
-      const { path } = typeOf('GET_BACKUP_INFO', event);
+      const { path } = databaseDef.typeOf('GET_BACKUP_INFO', event);
 
       try {
         const info = await getBackupInfo(path);

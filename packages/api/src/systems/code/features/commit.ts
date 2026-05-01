@@ -1,8 +1,6 @@
 import { assign, setup } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import { GitStatusFile, GitDiff, StashEntry, WorktreeEntry } from '../types'
@@ -10,34 +8,32 @@ import { requireGitRepository } from '../utils/git-helpers'
 import { sendToBrainSystem } from '@/services/event-emitter'
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
-export const IncomingCommitEvents = [
-  busEvent('commit.GET_GIT_STATUS', {}),
-  busEvent('commit.GET_GIT_DIFF', { path: z.string().optional(), staged: z.boolean().optional() }),
-  busEvent('commit.STAGE_FILES', { paths: z.array(z.string()) }),
-  busEvent('commit.UNSTAGE_FILES', { paths: z.array(z.string()) }),
-  busEvent('commit.COMMIT', { message: z.string() }),
-  busEvent('commit.GET_CURRENT_BRANCH', {}),
-  busEvent('commit.REVERT_FILE', { path: z.string() }),
-  busEvent('commit.REVERT_FILES', { paths: z.array(z.string()) }),
-  busEvent('commit.GET_ALL_BRANCHES', {}),
-  busEvent('commit.CHECKOUT_BRANCH', { branchName: z.string() }),
-  busEvent('commit.PUBLISH_BRANCH', {}),
-  busEvent('commit.PULL_BRANCH', {}),
-  busEvent('commit.GENERATE_MESSAGE', {}),
-  busEvent('commit.STASH_PUSH', { message: z.string().optional(), stagedOnly: z.boolean().optional() }),
-  busEvent('commit.STASH_LIST', {}),
-  busEvent('commit.STASH_APPLY', { index: z.number() }),
-  busEvent('commit.STASH_POP', { index: z.number() }),
-  busEvent('commit.STASH_DROP', { index: z.number() }),
-  busEvent('commit.STASH_CLEAR', {}),
-  busEvent('commit.WORKTREE_LIST', {}),
-  busEvent('commit.WORKTREE_ADD', { path: z.string(), branch: z.string().optional(), createBranch: z.boolean().optional() }),
-  busEvent('commit.WORKTREE_REMOVE', { path: z.string(), force: z.boolean().optional() }),
-  busEvent('commit.WORKTREE_SWITCH', { path: z.string() }),
-] as const
+export type IncomingCommitEvents =
+  | { type: 'commit.GET_GIT_STATUS' }
+  | { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
+  | { type: 'commit.STAGE_FILES'; paths: string[] }
+  | { type: 'commit.UNSTAGE_FILES'; paths: string[] }
+  | { type: 'commit.COMMIT'; message: string }
+  | { type: 'commit.GET_CURRENT_BRANCH' }
+  | { type: 'commit.REVERT_FILE'; path: string }
+  | { type: 'commit.REVERT_FILES'; paths: string[] }
+  | { type: 'commit.GET_ALL_BRANCHES' }
+  | { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
+  | { type: 'commit.PUBLISH_BRANCH' }
+  | { type: 'commit.PULL_BRANCH' }
+  | { type: 'commit.GENERATE_MESSAGE' }
+  | { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
+  | { type: 'commit.STASH_LIST' }
+  | { type: 'commit.STASH_APPLY'; index: number }
+  | { type: 'commit.STASH_POP'; index: number }
+  | { type: 'commit.STASH_DROP'; index: number }
+  | { type: 'commit.STASH_CLEAR' }
+  | { type: 'commit.WORKTREE_LIST' }
+  | { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
+  | { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
+  | { type: 'commit.WORKTREE_SWITCH'; path: string }
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =

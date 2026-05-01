@@ -1,51 +1,26 @@
-import { assign, createMachine, setup } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/helpers/actor-helpers';
+import { setup } from 'xstate';
+import { defineSystem } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@/repository';
-import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { settings as settingsSystemId } from '@/systems/settings/system';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');
-const typeOf = safeEvents<ReceivableEvents>();
 
-export const prompts = 'prompts' as const;
+type IncomingPromptEvents =
+  | { type: 'PROMPT_SELECT'; promptId: string }
+  | { type: 'CREATE_PROMPT'; label: string; inputs: Record<string, any>; templateFn: string; outputSchema?: any; description?: string; category?: string }
+  | { type: 'UPDATE_PROMPT'; promptId: string; label?: string; inputs?: Record<string, any>; templateFn?: string; outputSchema?: any; description?: string; category?: string }
+  | { type: 'DELETE_PROMPT'; promptId: string }
+  | { type: 'FETCH_PROMPTS_PAGE'; page?: number }
+  | { type: 'IMPORT_PROMPTS'; prompts: any }
+  | { type: 'EXPORT_PROMPTS'; directory: string }
 
-const busEvent = systemBus(prompts);
-
-export const IncomingPromptEvents = [
-  busEvent('PROMPT_SELECT', { promptId: z.string() }),
-  busEvent('CREATE_PROMPT', { 
-    label: z.string(),
-    inputs: z.record(z.any()),
-    templateFn: z.string(),
-    outputSchema: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('UPDATE_PROMPT', { 
-    promptId: z.string(),
-    label: z.string().optional(),
-    inputs: z.record(z.any()).optional(),
-    templateFn: z.string().optional(),
-    outputSchema: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('DELETE_PROMPT', { promptId: z.string() }),
-  busEvent('FETCH_PROMPTS_PAGE', { page: z.number().optional() }),
-  busEvent('IMPORT_PROMPTS', { prompts: z.any() }),
-  busEvent('EXPORT_PROMPTS', { directory: z.string() }),
-] as const
-
-export type PromptsInternalEvents = 
-  | SystemEvents
+type PromptsInternalEvents =
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingPromptEvents =
@@ -60,14 +35,11 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
-export const PromptsSystemEvents = fromSystem(IncomingPromptEvents)<OutgoingPromptEvents, typeof prompts>()
-type ReceivableEvents = MergeReceivable<typeof IncomingPromptEvents, PromptsInternalEvents>;
+export const promptsDef = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
+export const prompts = promptsDef.id;
 
 export const promptsSystem = setup({
-  types: {
-    context: {} as {},
-    events: {} as ReceivableEvents,
-  },
+  types: promptsDef.types,
   actions: {
     sendPromptsConnectedData: ({ system }) => {
       const connectedData = repository.promptQueries.connectedData();
@@ -82,7 +54,7 @@ export const promptsSystem = setup({
       }));
     },
     sendPromptData: ({ system, event }) => {
-      const ev = typeOf('PROMPT_SELECT', event);
+      const ev = promptsDef.typeOf('PROMPT_SELECT', event);
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
@@ -94,7 +66,7 @@ export const promptsSystem = setup({
       }
     },
     createPrompt: ({ system, event }) => {
-      const ev = typeOf('CREATE_PROMPT', event);
+      const ev = promptsDef.typeOf('CREATE_PROMPT', event);
       const prompt = repository.promptCommands.create({
         label: ev.label,
         inputs: ev.inputs,
@@ -110,7 +82,7 @@ export const promptsSystem = setup({
       }));
     },
     updatePrompt: ({ system, event }) => {
-      const ev = typeOf('UPDATE_PROMPT', event);
+      const ev = promptsDef.typeOf('UPDATE_PROMPT', event);
       const updates: Record<string, any> = {};
       
       if (ev.label !== undefined) updates.label = ev.label;
@@ -131,7 +103,7 @@ export const promptsSystem = setup({
       }
     },
     deletePrompt: ({ system, event }) => {
-      const ev = typeOf('DELETE_PROMPT', event);
+      const ev = promptsDef.typeOf('DELETE_PROMPT', event);
       repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
       system.get(bus).send(emit(prompts, {
@@ -140,7 +112,7 @@ export const promptsSystem = setup({
       }));
     },
     fetchPromptsPage: ({ system, event }) => {
-      const ev = typeOf('FETCH_PROMPTS_PAGE', event);
+      const ev = promptsDef.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
       
       system.get(bus).send(emit(prompts, {
@@ -153,7 +125,7 @@ export const promptsSystem = setup({
       }));
     },
     importPrompts: ({ system, event }) => {
-      const { prompts: importData } = typeOf('IMPORT_PROMPTS', event);
+      const { prompts: importData } = promptsDef.typeOf('IMPORT_PROMPTS', event);
       const pluginId = prompts;
 
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
@@ -228,7 +200,7 @@ export const promptsSystem = setup({
     },
 
     exportPromptsToFile: ({ system, event }) => {
-      const { directory } = typeOf('EXPORT_PROMPTS', event);
+      const { directory } = promptsDef.typeOf('EXPORT_PROMPTS', event);
       const pluginId = prompts;
 
       logger.info('Exporting prompts', { directory });
@@ -255,7 +227,7 @@ export const promptsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = typeOf('PROMPTS_SETTINGS_UPDATED', event);
+      const { changes } = promptsDef.typeOf('PROMPTS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
       

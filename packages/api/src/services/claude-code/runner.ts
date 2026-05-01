@@ -116,6 +116,7 @@ export interface StreamHandle {
 export function buildChildEnv(override?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env, ...override }
   delete env.ANTHROPIC_API_KEY
+  delete env.NODE_ENV
 
   // Disable the CLI's tool-search / deferred-tool feature. Claude Code's
   // tool-search mode ships enabled by default — see leaked source at

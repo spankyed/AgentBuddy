@@ -1,11 +1,9 @@
 // TODO: [SEARCH_INDEX_FF] Reinstall deps: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
-import { assign, setup } from 'xstate'
-import { z } from 'zod'
-import { systemBus, fromSystem } from '@/core/helpers/event-helpers'
+import { setup } from 'xstate'
+import { defineSystem } from '@/core/framework/define-system'
 import type { EARS } from '@/core/types'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent, ContentSection } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { safeEvents } from '@/core/helpers/actor-helpers'
 import { bus } from '@/systems/backend'
 import { repository } from '@/repository'
 import * as path from 'path'
@@ -13,202 +11,35 @@ import * as os from 'os'
 import * as fs from 'fs/promises'
 import { libraryService } from '@/services/library'
 import * as symlink from './repository/symlink'
-import type { MergeReceivable } from '@/core/helpers/event-helpers'
 // [SEARCH_INDEX_FF] import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
 import { toMap, toIdentifierSet, mapArray } from '@/systems/settings/settings-changes'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 
-export const library = 'library' as const
-
-const busEvent = systemBus(library)
-
-// Content section schemas
-const FieldContentSchema = z.object({
-  type: z.literal('field'),
-  fields: z.array(z.object({
-    key: z.string(),
-    value: z.string()
-  }))
-})
-
-const ListContentSchema = z.object({
-  type: z.literal('list'),
-  items: z.array(z.string())
-})
-
-const MarkdownContentSchema = z.object({
-  type: z.literal('markdown'),
-  text: z.string()
-})
-
-const TextContentSchema = z.object({
-  type: z.literal('text'),
-  text: z.string()
-})
-
-const CodeContentSchema = z.object({
-  type: z.literal('code'),
-  text: z.string(),
-  language: z.string()
-})
-
-const ContentSectionSchema = z.union([
-  FieldContentSchema,
-  ListContentSchema,
-  MarkdownContentSchema,
-  TextContentSchema,
-  CodeContentSchema
-])
-
-const IncomingLibraryEvents = [
-  busEvent('LIST_DOCUMENTS', {
-    collectionId: z.string().optional(),
-  }),
-  busEvent('CREATE_DOCUMENT', {
-    name: z.string(),
-    content: z.array(ContentSectionSchema),
-    tags: z.array(z.string()),
-    collectionId: z.string().optional(),
-  }),
-  busEvent('UPDATE_DOCUMENT', {
-    id: z.string(),
-    name: z.string(),
-    content: z.array(ContentSectionSchema),
-    tags: z.array(z.string()),
-    collectionId: z.string().optional(),
-  }),
-  busEvent('DELETE_DOCUMENT', {
-    id: z.string(),
-  }),
-  busEvent('GET_DOCUMENT', {
-    id: z.string(),
-  }),
-  busEvent('LIST_COLLECTIONS'),
-  busEvent('CREATE_COLLECTION', {
-    name: z.string(),
-    description: z.string().optional(),
-    parentId: z.string().optional(),
-  }),
-  busEvent('UPDATE_COLLECTION', {
-    id: z.string(),
-    name: z.string(),
-    description: z.string().optional(),
-  }),
-  busEvent('DELETE_COLLECTION', {
-    id: z.string(),
-  }),
-  busEvent('MOVE_DOCUMENT', {
-    documentId: z.string(),
-    collectionId: z.string().optional(),
-  }),
+type IncomingLibraryEvents =
+  | { type: 'LIST_DOCUMENTS'; collectionId?: string }
+  | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
+  | { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
+  | { type: 'DELETE_DOCUMENT'; id: string }
+  | { type: 'GET_DOCUMENT'; id: string }
+  | { type: 'LIST_COLLECTIONS' }
+  | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
+  | { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
+  | { type: 'DELETE_COLLECTION'; id: string }
+  | { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
   // File browser events
-  busEvent('GET_FOLDER_CONTENTS', {
-    folderId: z.string().nullable(),
-  }),
-  busEvent('NAVIGATE_TO_FOLDER', {
-    folderId: z.string().nullable(),
-  }),
-  busEvent('RENAME_ITEM', {
-    id: z.string(),
-    name: z.string(),
-    itemType: z.enum(['document', 'folder']),
-  }),
-  busEvent('DELETE_ITEMS', {
-    ids: z.array(z.string()),
-  }),
-  busEvent('MOVE_ITEMS', {
-    ids: z.array(z.string()),
-    targetFolderId: z.string().nullable(),
-  }),
+  | { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
+  | { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
+  | { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
+  | { type: 'DELETE_ITEMS'; ids: string[] }
+  | { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
   // [SEARCH_INDEX_FF] Search index events — commented out
-  // busEvent('LIST_SEARCH_INDICES', {
-  //   folderId: z.string().nullable(),
-  // }),
-  // busEvent('CREATE_SEARCH_INDEX', {
-  //   config: z.object({
-  //     name: z.string(),
-  //     description: z.string(),
-  //     embeddingModel: z.enum([
-  //       EMBEDDING_MODELS.MINILM_L6_V2,
-  //       EMBEDDING_MODELS.BGE_SMALL_EN,
-  //       EMBEDDING_MODELS.BGE_SMALL_EN_V15,
-  //       EMBEDDING_MODELS.BGE_BASE_EN,
-  //       EMBEDDING_MODELS.BGE_BASE_EN_V15,
-  //       EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
-  //       EMBEDDING_MODELS.OPENAI_SMALL,
-  //       EMBEDDING_MODELS.OPENAI_LARGE,
-  //     ]),
-  //     indexMetric: z.enum(['cosine', 'dot_product']),
-  //     connectors: z.number(),
-  //     excludeAllSubfolders: z.boolean(),
-  //     excludedFolderIds: z.array(z.string()),
-  //     excludedDocumentIds: z.array(z.string()),
-  //     enableSectionIndexing: z.boolean(),
-  //     segmentRules: z.array(z.object({
-  //       id: z.string(),
-  //       type: z.enum(['text', 'list', 'field']),
-  //       occurrence: z.string(),
-  //       key: z.string().optional(),
-  //       indexMode: z.enum(['combined', 'separate']),
-  //     })),
-  //     constructTemplate: z.string(),
-  //   }),
-  //   folderId: z.string().nullable(),
-  // }),
-  // busEvent('UPDATE_SEARCH_INDEX', {
-  //   id: z.string(),
-  //   config: z.object({
-  //     name: z.string(),
-  //     description: z.string(),
-  //     embeddingModel: z.enum([
-  //       EMBEDDING_MODELS.MINILM_L6_V2,
-  //       EMBEDDING_MODELS.BGE_SMALL_EN,
-  //       EMBEDDING_MODELS.BGE_SMALL_EN_V15,
-  //       EMBEDDING_MODELS.BGE_BASE_EN,
-  //       EMBEDDING_MODELS.BGE_BASE_EN_V15,
-  //       EMBEDDING_MODELS.E5_LARGE_MULTILINGUAL,
-  //       EMBEDDING_MODELS.OPENAI_SMALL,
-  //       EMBEDDING_MODELS.OPENAI_LARGE,
-  //     ]),
-  //     indexMetric: z.enum(['cosine', 'dot_product']),
-  //     connectors: z.number(),
-  //     excludeAllSubfolders: z.boolean(),
-  //     excludedFolderIds: z.array(z.string()),
-  //     excludedDocumentIds: z.array(z.string()),
-  //     enableSectionIndexing: z.boolean(),
-  //     segmentRules: z.array(z.object({
-  //       id: z.string(),
-  //       type: z.enum(['text', 'list', 'field']),
-  //       occurrence: z.string(),
-  //       key: z.string().optional(),
-  //       indexMode: z.enum(['combined', 'separate']),
-  //     })),
-  //     constructTemplate: z.string(),
-  //   }),
-  // }),
-  // busEvent('DELETE_SEARCH_INDEX', {
-  //   id: z.string(),
-  // }),
-  // busEvent('SEARCH_IN_INDEX', {
-  //   indexId: z.string(),
-  //   query: z.string(),
-  //   limit: z.number().optional(),
-  // }),
   // Symlink events
-  busEvent('CREATE_SYMLINK_COLLECTION', {
-    name: z.string(),
-    symlinkPath: z.string(),
-    parentId: z.string().optional(),
-  }),
-  busEvent('UPDATE_SYMLINK_PATH', {
-    collectionId: z.string(),
-    newPath: z.string(),
-  }),
+  | { type: 'CREATE_SYMLINK_COLLECTION'; name: string; symlinkPath: string; parentId?: string }
+  | { type: 'UPDATE_SYMLINK_PATH'; collectionId: string; newPath: string }
   // Import/Export events
-  busEvent('IMPORT_LIBRARY', { directory: z.string() }),
-  busEvent('EXPORT_LIBRARY', { directory: z.string(), format: z.enum(['markdown', 'json']) }),
-] as const
+  | { type: 'IMPORT_LIBRARY'; directory: string }
+  | { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
 
 export type OutgoingLibraryEvents =
   | { type: 'LIBRARY_CONNECTED'; data: { documents: DocumentDTO[]; collections: CollectionDTO[]; settings: any } }
@@ -243,12 +74,11 @@ export type OutgoingLibraryEvents =
   | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
 
-export const LibrarySystemEvents = fromSystem(IncomingLibraryEvents)<OutgoingLibraryEvents, typeof library>()
-type LibraryInternalEvents = 
-  | { type: 'CLIENT_CONNECTED' }
+type LibraryInternalEvents =
   | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
-type ReceivableEvents = MergeReceivable<typeof IncomingLibraryEvents, LibraryInternalEvents>
-const typeOf = safeEvents<ReceivableEvents>()
+
+export const libraryDef = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
+export const library = libraryDef.id;
 
 function resolveHomePath(inputPath: string): string {
   const trimmed = inputPath.trim()
@@ -258,10 +88,7 @@ function resolveHomePath(inputPath: string): string {
 }
 
 export const librarySystem = setup({
-  types: {
-    context: {} as LibrarySystemContext,
-    events: {} as ReceivableEvents,
-  },
+  types: libraryDef.types,
   actions: {
     loadDocuments: async ({ system, event }) => {
       const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
@@ -759,7 +586,7 @@ export const librarySystem = setup({
       }
     },
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = typeOf('LIBRARY_SETTINGS_UPDATED', event)
+      const { changes } = libraryDef.typeOf('LIBRARY_SETTINGS_UPDATED', event)
       // Handle nested changes format from detectAllArrayChanges
       const tagChanges = changes?.tags || changes
       

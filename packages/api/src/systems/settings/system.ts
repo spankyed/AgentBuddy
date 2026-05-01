@@ -1,15 +1,13 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/helpers/actor-helpers';
+import { defineSystem } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit } from '@/core/helpers/actor-helpers';
 import { SettingsData, type FAQItem } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
-import { z } from 'zod';
 import { threads } from '@/systems/threads/system';
 import * as path from 'path';
 import { seedData, type SeedResult, type SeedInclude } from '@/setup/seed/index';
@@ -18,10 +16,6 @@ import { testCli, isCliName, clearCliPathCache } from '@/core/helpers/resolve-cl
 import { resetLmdbFiles } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@/setup/migrations';
-
-const typeOf = safeEvents<ReceivableEvents>();
-
-export const settings = 'settings' as const;
 
 /**
  * Convert the JSON-safe include shape from the frontend
@@ -49,55 +43,20 @@ function toSeedInclude(
   };
 }
 
-const busEvent = systemBus(settings);
+type IncomingSettingsEvents =
+  | { type: 'GET_SETTINGS' }
+  | { type: 'UPDATE_SETTINGS'; entityType: 'general' | 'plugin' | 'internal'; label: string; path: string[]; value: any }
+  | { type: 'RESET_SETTINGS' }
+  | { type: 'SECRETS.CMD.CREATE_API_KEY'; provider: string; value: string; customName?: string }
+  | { type: 'SECRETS.CMD.UPDATE_API_KEY'; id: string; value: string }
+  | { type: 'SECRETS.CMD.DELETE_API_KEY'; id: string }
+  | { type: 'SECRETS.CMD.GET_API_KEYS' }
+  | { type: 'TEST_CLI_PROVIDER'; provider: string }
+  | { type: 'PREVIEW_SETUP_PACK'; directory: string }
+  | { type: 'IMPORT_SETUP_PACK'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
+  | { type: 'RESET_APP' }
 
-export const IncomingSettingsEvents = [
-  busEvent('GET_SETTINGS', {}),
-  busEvent('UPDATE_SETTINGS', {
-    entityType: z.enum(['general', 'plugin', 'internal']),
-    label: z.string(),
-    path: z.array(z.string()),
-    value: z.any()
-  }),
-  busEvent('RESET_SETTINGS', {}),
-  // Secret management events
-  busEvent('SECRETS.CMD.CREATE_API_KEY', {
-    provider: z.string(),
-    value: z.string(),
-    customName: z.string().optional()
-  }),
-  busEvent('SECRETS.CMD.UPDATE_API_KEY', {
-    id: z.string(),
-    value: z.string()
-  }),
-  busEvent('SECRETS.CMD.DELETE_API_KEY', {
-    id: z.string()
-  }),
-  busEvent('SECRETS.CMD.GET_API_KEYS', {}),
-  busEvent('TEST_CLI_PROVIDER', {
-    provider: z.string(),
-  }),
-  busEvent('PREVIEW_SETUP_PACK', {
-    directory: z.string(),
-  }),
-  busEvent('IMPORT_SETUP_PACK', {
-    directory: z.string(),
-    include: z.object({
-      actions: z.array(z.string()).nullable(),
-      prompts: z.array(z.string()).nullable(),
-      flows: z.array(z.string()).nullable(),
-      library: z.array(z.string()).nullable(),
-      notes: z.array(z.string()).nullable(),
-      settings: z.array(z.string()).nullable(),
-    }).optional(),
-    mode: z.enum(['keep-existing', 'replace-on-collision', 'wipe-and-replace']).optional(),
-    restartBrain: z.boolean().optional(),
-  }),
-  busEvent('RESET_APP', {}),
-] as const
-
-export type SettingsInternalEvents = 
-  | SystemEvents
+type SettingsInternalEvents =
   | SecretsOutputEvents // Events from child secrets actor
 
 export type OutgoingSettingsEvents =
@@ -114,14 +73,11 @@ export type OutgoingSettingsEvents =
   | { type: 'APP_RESET_FAILED'; error: string }
   | SecretsOutputEvents // Forward secrets events to frontend
 
-export const SettingsSystemEvents = fromSystem(IncomingSettingsEvents)<OutgoingSettingsEvents, typeof settings>()
-type ReceivableEvents = MergeReceivable<typeof IncomingSettingsEvents, SettingsInternalEvents>;
+export const settingsDef = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
+export const settings = settingsDef.id;
 
 export const settingsSystem = setup({
-  types: {
-    context: {} as {},
-    events: {} as ReceivableEvents,
-  },
+  types: settingsDef.types,
   actors: {
     secretsActor,
     resetAppActor: fromPromise(async () => {
@@ -182,7 +138,7 @@ export const settingsSystem = setup({
     },
     
     handleSecretsOperation: ({ system, event }) => {
-      const ev = typeOf('UPDATE_SETTINGS', event);
+      const ev = settingsDef.typeOf('UPDATE_SETTINGS', event);
       const operation = ev.value;
       
       // Forward secrets operations to the secrets system
@@ -208,7 +164,7 @@ export const settingsSystem = setup({
     },
     
     updateSettings: ({ system, event }) => {
-      const ev = typeOf('UPDATE_SETTINGS', event);
+      const ev = settingsDef.typeOf('UPDATE_SETTINGS', event);
       
       // Get previous settings for comparison
       const previousSettings = ev.entityType === 'plugin' 
@@ -350,7 +306,7 @@ export const settingsSystem = setup({
       });
     }),
     testCliProvider: ({ system, event }) => {
-      const ev = typeOf('TEST_CLI_PROVIDER', event);
+      const ev = settingsDef.typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
 
       if (!isCliName(provider)) {
@@ -385,7 +341,7 @@ export const settingsSystem = setup({
     },
 
     previewSetupPack: ({ system, event }) => {
-      const ev = typeOf('PREVIEW_SETUP_PACK', event);
+      const ev = settingsDef.typeOf('PREVIEW_SETUP_PACK', event);
       try {
         const preview = readSetupPackPreview(ev.directory);
         system.get(bus).send(emit(settings, { type: 'SETUP_PACK_PREVIEW', preview }));
@@ -396,7 +352,7 @@ export const settingsSystem = setup({
     },
 
     importSetupPack: ({ system, event }) => {
-      const ev = typeOf('IMPORT_SETUP_PACK', event);
+      const ev = settingsDef.typeOf('IMPORT_SETUP_PACK', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });

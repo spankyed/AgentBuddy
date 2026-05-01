@@ -4,7 +4,7 @@ import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
 import { safeEvents } from '@/core/helpers/actor-helpers';
-import { brain, brainBus } from './system';
+import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
 
@@ -513,7 +513,7 @@ export function createFlowNodeSystem(
       },
       guards: {},
     }).createMachine({
-      id: isRootFlow ? brainBus : `tnode-${flowTNodeId}`,
+      id: isRootFlow ? brainRuntime : `tnode-${flowTNodeId}`,
       initial: 'active',
       context: ({ input }: any) => ({
         flowId: actualFlowId,

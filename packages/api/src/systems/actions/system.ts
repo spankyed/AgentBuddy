@@ -1,51 +1,27 @@
 import { assign, createMachine, setup } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/helpers/actor-helpers';
+import { defineSystem } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@/repository';
-import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 import { flows } from '@/systems/flows/system';
 import { exportActions } from './repository/export-actions';
 
 const logger = createLogger('actions');
-const typeOf = safeEvents<ReceivableEvents>();
 
-export const actions = 'actions' as const;
+type IncomingActionEvents =
+  | { type: 'ACTION_SELECT'; actionId: string }
+  | { type: 'CREATE_ACTION'; label: string; input: Record<string, any>; actionFn: string; output?: any; description?: string; category?: string }
+  | { type: 'UPDATE_ACTION'; actionId: string; label?: string; input?: Record<string, any>; actionFn?: string; output?: any; description?: string; category?: string }
+  | { type: 'DELETE_ACTION'; actionId: string }
+  | { type: 'FETCH_ACTIONS_PAGE'; page?: number }
+  | { type: 'IMPORT_ACTIONS'; actions: any }
+  | { type: 'EXPORT_ACTIONS'; directory: string }
 
-const busEvent = systemBus(actions);
-
-export const IncomingActionEvents = [
-  busEvent('ACTION_SELECT', { actionId: z.string() }),
-  busEvent('CREATE_ACTION', { 
-    label: z.string(),
-    input: z.record(z.any()),
-    actionFn: z.string(),
-    output: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('UPDATE_ACTION', { 
-    actionId: z.string(),
-    label: z.string().optional(),
-    input: z.record(z.any()).optional(),
-    actionFn: z.string().optional(),
-    output: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('DELETE_ACTION', { actionId: z.string() }),
-  busEvent('FETCH_ACTIONS_PAGE', { page: z.number().optional() }),
-  busEvent('IMPORT_ACTIONS', { actions: z.any() }),
-  busEvent('EXPORT_ACTIONS', { directory: z.string() }),
-] as const
-
-export type ActionsInternalEvents = 
-  | SystemEvents
+type ActionsInternalEvents =
   | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingActionEvents =
@@ -60,8 +36,8 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
-export const ActionsSystemEvents = fromSystem(IncomingActionEvents)<OutgoingActionEvents, typeof actions>()
-type ReceivableEvents = MergeReceivable<typeof IncomingActionEvents, ActionsInternalEvents>;
+export const actionsDef = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
+export const actions = actionsDef.id;
 
 // Helper to broadcast action events to both actions and flows plugins
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
@@ -71,10 +47,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 };
 
 export const actionsSystem = setup({
-  types: {
-    context: {} as {},
-    events: {} as ReceivableEvents,
-  },
+  types: actionsDef.types,
   actions: {
     sendActionsStartupData: ({ system }) => {
       const connectedData = repository.actionQueries.connectedData();
@@ -89,7 +62,7 @@ export const actionsSystem = setup({
       }));
     },
     fetchActionsPage: ({ system, event }) => {
-      const ev = typeOf('FETCH_ACTIONS_PAGE', event);
+      const ev = actionsDef.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
       system.get(bus).send(emit(actions, {
@@ -102,7 +75,7 @@ export const actionsSystem = setup({
       }));
     },
     sendActionData: ({ system, event }) => {
-      const ev = typeOf('ACTION_SELECT', event);
+      const ev = actionsDef.typeOf('ACTION_SELECT', event);
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
@@ -114,7 +87,7 @@ export const actionsSystem = setup({
       }
     },
     createAction: ({ system, event }) => {
-      const ev = typeOf('CREATE_ACTION', event);
+      const ev = actionsDef.typeOf('CREATE_ACTION', event);
       const action = repository.actionCommands.create({
         label: ev.label,
         input: ev.input,
@@ -131,7 +104,7 @@ export const actionsSystem = setup({
       });
     },
     updateAction: ({ system, event }) => {
-      const ev = typeOf('UPDATE_ACTION', event);
+      const ev = actionsDef.typeOf('UPDATE_ACTION', event);
       repository.actionCommands.update(ev.actionId as EARS.EntityId, {
         label: ev.label,
         input: ev.input,
@@ -151,7 +124,7 @@ export const actionsSystem = setup({
       }
     },
     deleteAction: ({ system, event }) => {
-      const ev = typeOf('DELETE_ACTION', event);
+      const ev = actionsDef.typeOf('DELETE_ACTION', event);
       repository.actionCommands.delete(ev.actionId as EARS.EntityId);
 
       broadcastActionEvent(system, {
@@ -160,7 +133,7 @@ export const actionsSystem = setup({
       });
     },
     importActions: ({ system, event }) => {
-      const { actions: importData } = typeOf('IMPORT_ACTIONS', event);
+      const { actions: importData } = actionsDef.typeOf('IMPORT_ACTIONS', event);
       const pluginId = actions;
 
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
@@ -235,7 +208,7 @@ export const actionsSystem = setup({
     },
 
     exportActionsToFile: ({ system, event }) => {
-      const { directory } = typeOf('EXPORT_ACTIONS', event);
+      const { directory } = actionsDef.typeOf('EXPORT_ACTIONS', event);
       const pluginId = actions;
 
       logger.info('Exporting actions', { directory });
@@ -262,7 +235,7 @@ export const actionsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      const { changes } = actionsDef.typeOf('ACTIONS_SETTINGS_UPDATED', event);
       // Handle nested changes format from detectAllArrayChanges
       const categoryChanges = changes?.categories || changes;
       
