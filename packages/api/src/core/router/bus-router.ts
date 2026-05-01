@@ -12,7 +12,7 @@ const logger = createLogger('app-events');
 export const systemBusRouter = router({
   send: procedure
     .input(z.object({ type: z.string(), systemId: z.string() }).passthrough())
-    .mutation(({ ctx, input }) => {
+    .mutation(({ input }) => {
       const validTypes = eventValidationMap.get(input.systemId);
       if (!validTypes) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown system: "${input.systemId}"` });
@@ -26,7 +26,7 @@ export const systemBusRouter = router({
     }),
   sub: procedure
     // .input(z.object({ sessionId: z.string() }))
-    .subscription(({ ctx }) =>
+    .subscription(() =>
       observable<OutgoingSystemEvents>((emit) => {
         // Subscribe to root event emitter for outgoing events
         const unsubscribe = rootEvents.onOutgoing((event) => {

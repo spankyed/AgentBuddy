@@ -1,5 +1,4 @@
 export { bus } from "@/systems/backend";
-import type { AnyStateMachine } from 'xstate';
 
 import { brain, brainSystem, brainDef } from '@/systems/brain/system';
 import { threads, threadsSystem, threadsDef } from '@/systems/threads/system';
@@ -44,11 +43,8 @@ export type IncomingSystemEvents = AllDefs['_incoming'];
 export type OutgoingSystemEvents = AllDefs['_outgoing'];
 
 // Derive valid event types from each machine's runtime config
-export const eventValidationMap = new Map(
-  Object.entries(systems).map(([id, machine]) => [
-    id,
-    new Set((machine as AnyStateMachine).events),
-  ])
+export const eventValidationMap: Map<string, Set<string>> = new Map(
+  Object.entries(systems).map(([id, machine]) => [id, new Set(machine.events)])
 );
 
 export { backendSystem } from "@/systems/backend";
