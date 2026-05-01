@@ -19,7 +19,10 @@
     },
     "moduleResolution": "node",
     "module": "commonjs",
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "plugins": [
+      { "transform": "typia/lib/transform" }
+    ]
   },
   "include": ["src"],
   // [SEARCH_INDEX_FF] search-index excluded because its deps (fastembed, usearch, openai) are uninstalled.

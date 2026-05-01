@@ -14,7 +14,7 @@ import { notes, notesSystem, notesDef } from '@/systems/notes/system';
 
 const code = codeDef.id;
 
-const systems = {
+export default {
   [settings]: settingsSystem,
   [brain]: brainSystem,
   [threads]: threadsSystem,
@@ -28,8 +28,6 @@ const systems = {
   // [logs]: logsSystem,
 } as const;
 
-export default systems;
-
 // Global event type assembly from all system definitions
 const allDefs = [
   settingsDef, brainDef, threadsDef, flowsDef,
@@ -41,10 +39,5 @@ type AllDefs = (typeof allDefs)[number];
 
 export type IncomingSystemEvents = AllDefs['_incoming'];
 export type OutgoingSystemEvents = AllDefs['_outgoing'];
-
-// Derive valid event types from each machine's runtime config
-export const eventValidationMap: Map<string, Set<string>> = new Map(
-  Object.entries(systems).map(([id, machine]) => [id, new Set(machine.events)])
-);
 
 export { backendSystem } from "@/systems/backend";
