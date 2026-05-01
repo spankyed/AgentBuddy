@@ -55,7 +55,7 @@ export const brainDef = defineSystem('brain')<IncomingBrainEvents | BrainInterna
 export const brain = brainDef.id;
 const logger = createLogger('brain');
 
-export const brainBus = 'brain-bus' as const;
+export const brainRuntime = 'brain-runtime' as const;
 
 export const brainSystem = setup({
   types: brainDef.types,
@@ -123,7 +123,7 @@ export const brainSystem = setup({
       enqueue.assign(({ spawn, system }) => {
         const { machine, tNodeId } = createFlowNodeSystem()
         const actor = spawn(machine, {
-          systemId: brainBus, // aka root flow
+          systemId: brainRuntime, // aka root flow
           input: {}
         });
         
@@ -241,7 +241,7 @@ export const brainSystem = setup({
       enqueue.assign(({ spawn, system }) => {
         const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined)
         const actor = spawn(machine, {
-          systemId: brainBus,
+          systemId: brainRuntime,
           input: {}
         });
         
