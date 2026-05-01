@@ -98,8 +98,6 @@ export type OutgoingFlowsEvents =
 export const flowsDef = defineSystem('flows')<IncomingFlowsEvents | FlowsInternalEvents, OutgoingFlowsEvents>();
 export const flows = flowsDef.id;
 
-// export type FlowEvent = EventFromLogic<typeof flowsSystem>;
-
 export const flowsSystem = setup({
   types: flowsDef.types,
   actors: {},
