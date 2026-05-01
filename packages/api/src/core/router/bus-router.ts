@@ -1,6 +1,8 @@
 import { observable } from '@trpc/server/observable';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
+import { eventValidationMap } from '@/systems';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
@@ -11,8 +13,15 @@ export const systemBusRouter = router({
   send: procedure
     .input(z.object({ type: z.string(), systemId: z.string() }).passthrough())
     .mutation(({ ctx, input }) => {
-      logger.info(`→ Incoming: "${input.type}"`, { event: input });
+      const validTypes = eventValidationMap.get(input.systemId);
+      if (!validTypes) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown system: "${input.systemId}"` });
+      }
+      if (!validTypes.has(input.type)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown event "${input.type}" for system "${input.systemId}"` });
+      }
 
+      logger.info(`→ Incoming: "${input.type}"`, { event: input });
       rootEvents.emitIncoming(input as IncomingSystemEvents);
     }),
   sub: procedure

@@ -49,7 +49,7 @@ export type OutgoingBrainEvents =
   | { type: 'BRAIN_RESUMED' }
 
 
-interface BrainContext {
+export interface BrainContext {
   brainActor?: any;
   eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
 }

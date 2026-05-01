@@ -1,4 +1,5 @@
 export { bus } from "@/systems/backend";
+import type { AnyStateMachine } from 'xstate';
 
 import { brain, brainSystem, brainDef } from '@/systems/brain/system';
 import { threads, threadsSystem, threadsDef } from '@/systems/threads/system';
@@ -14,7 +15,7 @@ import { notes, notesSystem, notesDef } from '@/systems/notes/system';
 
 const code = codeDef.id;
 
-export default {
+const systems = {
   [settings]: settingsSystem,
   [brain]: brainSystem,
   [threads]: threadsSystem,
@@ -28,6 +29,8 @@ export default {
   // [logs]: logsSystem,
 } as const;
 
+export default systems;
+
 // Global event type assembly from all system definitions
 const allDefs = [
   settingsDef, brainDef, threadsDef, flowsDef,
@@ -39,5 +42,13 @@ type AllDefs = (typeof allDefs)[number];
 
 export type IncomingSystemEvents = AllDefs['_incoming'];
 export type OutgoingSystemEvents = AllDefs['_outgoing'];
+
+// Derive valid event types from each machine's runtime config
+export const eventValidationMap = new Map(
+  Object.entries(systems).map(([id, machine]) => [
+    id,
+    new Set((machine as AnyStateMachine).events),
+  ])
+);
 
 export { backendSystem } from "@/systems/backend";
