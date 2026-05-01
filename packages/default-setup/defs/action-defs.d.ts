@@ -3905,6 +3905,60 @@ declare const events: {
         type: "commit.STASH_CLEAR";
         systemId: "code";
     }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.WORKTREE_LIST">;
+        systemId: zod.ZodLiteral<"code">;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.WORKTREE_LIST";
+        systemId: "code";
+    }, {
+        type: "commit.WORKTREE_LIST";
+        systemId: "code";
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.WORKTREE_ADD">;
+        systemId: zod.ZodLiteral<"code">;
+        path: zod.ZodString;
+        branch: zod.ZodOptional<zod.ZodString>;
+        createBranch: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.WORKTREE_ADD";
+        systemId: "code";
+        path: string;
+        branch?: string | undefined;
+        createBranch?: boolean | undefined;
+    }, {
+        type: "commit.WORKTREE_ADD";
+        systemId: "code";
+        path: string;
+        branch?: string | undefined;
+        createBranch?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.WORKTREE_REMOVE">;
+        systemId: zod.ZodLiteral<"code">;
+        path: zod.ZodString;
+        force: zod.ZodOptional<zod.ZodBoolean>;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.WORKTREE_REMOVE";
+        systemId: "code";
+        path: string;
+        force?: boolean | undefined;
+    }, {
+        type: "commit.WORKTREE_REMOVE";
+        systemId: "code";
+        path: string;
+        force?: boolean | undefined;
+    }>, zod.ZodObject<{
+        type: zod.ZodLiteral<"commit.WORKTREE_SWITCH">;
+        systemId: zod.ZodLiteral<"code">;
+        path: zod.ZodString;
+    }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+        type: "commit.WORKTREE_SWITCH";
+        systemId: "code";
+        path: string;
+    }, {
+        type: "commit.WORKTREE_SWITCH";
+        systemId: "code";
+        path: string;
+    }>, zod.ZodObject<{
         type: zod.ZodLiteral<"pr.GET_BASE_BRANCH">;
         systemId: zod.ZodLiteral<"code">;
     }, zod.UnknownKeysParam, zod.ZodTypeAny, {
@@ -5488,6 +5542,25 @@ declare const events: {
         };
         pluginId: "code";
     } | {
+        type: "commit.WORKTREE_LIST_RECEIVED";
+        data: {
+            worktrees: WorktreeEntry[];
+        };
+        pluginId: "code";
+    } | {
+        type: "commit.WORKTREE_ADDED";
+        data: {
+            path: string;
+            branch: string;
+        };
+        pluginId: "code";
+    } | {
+        type: "commit.WORKTREE_REMOVED";
+        data: {
+            path: string;
+        };
+        pluginId: "code";
+    } | {
         type: "pr.BASE_BRANCH_RECEIVED";
         data: {
             branch: string;
@@ -6220,6 +6293,16 @@ interface StashEntry {
     ref: string;
     message: string;
     date: string;
+}
+interface WorktreeEntry {
+    path: string;
+    head: string;
+    branch: string;
+    isBare: boolean;
+    isCurrent: boolean;
+    isMain: boolean;
+    isLocked: boolean;
+    lockedReason?: string;
 }
 interface GhPullRequest {
     number: number;
