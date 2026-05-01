@@ -244,6 +244,7 @@ const attachTerminal = (terminalId: string) => {
   resizeObserver = new ResizeObserver(() => {
     requestAnimationFrame(() => {
       fitAddon?.fit()
+      term?.refresh(0, (term?.rows ?? 1) - 1)
       if (attachedTerminalId) terminalPool.syncViewport(attachedTerminalId)
     })
   })
