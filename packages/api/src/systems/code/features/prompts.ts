@@ -1,23 +1,16 @@
 import { setup } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
 import type { PromptEntity } from '@/systems/prompts/types'
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
-export const IncomingPromptsEvents = [
-  busEvent('codePrompts.OPEN_PROMPT', { promptId: z.string() }),
-  busEvent('codePrompts.SAVE_PROMPT', {
-    promptId: z.string(),
-    templateFn: z.string()
-  }),
-] as const
+export type IncomingPromptsEvents =
+  | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
+  | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string }
 
 // Outgoing events to frontend
 export type OutgoingPromptsEvents =

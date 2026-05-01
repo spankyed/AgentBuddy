@@ -1,23 +1,16 @@
 import { setup } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
 import type { ActionEntity } from '@/systems/actions/types'
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
-export const IncomingActionsEvents = [
-  busEvent('codeActions.OPEN_ACTION', { actionId: z.string() }),
-  busEvent('codeActions.SAVE_ACTION', {
-    actionId: z.string(),
-    actionFn: z.string()
-  }),
-] as const
+export type IncomingActionsEvents =
+  | { type: 'codeActions.OPEN_ACTION'; actionId: string }
+  | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string }
 
 // Outgoing events to frontend
 export type OutgoingActionsEvents =

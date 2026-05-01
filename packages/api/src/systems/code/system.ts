@@ -15,41 +15,32 @@
  *   defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
  */
 import { setup, enqueueActions, assign } from 'xstate'
-import { systemBus, fromSystem } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
-import { safeEvents, emit } from '@/core/helpers/actor-helpers'
+import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { SystemEvents } from '@/systems/backend'
-import type { MergeReceivable } from '@/core/helpers/event-helpers'
+import { defineSystem, type Receivable } from '@/core/framework/define-system'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/repository'
 
 // child systems
-import { explorerSystem, IncomingExplorerEvents, OutgoingExplorerEvents } from './features/explorer'
-import { searchSystem, IncomingSearchEvents, OutgoingSearchEvents } from './features/search'
-import { commitSystem, IncomingCommitEvents, OutgoingCommitEvents } from './features/commit'
-import { pullRequestSystem, IncomingPullRequestEvents, OutgoingPullRequestEvents } from './features/pull-request'
-import { terminalSystem, IncomingTerminalEvents, OutgoingTerminalEvents } from './features/terminal'
-import { actionsSystem, IncomingActionsEvents, OutgoingActionsEvents } from './features/actions'
-import { promptsSystem, IncomingPromptsEvents, OutgoingPromptsEvents } from './features/prompts'
-
-export const id = 'code' as const
-
-const busEvent = systemBus(id)
+import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'
+import { searchSystem, type IncomingSearchEvents, type OutgoingSearchEvents } from './features/search'
+import { commitSystem, type IncomingCommitEvents, type OutgoingCommitEvents } from './features/commit'
+import { pullRequestSystem, type IncomingPullRequestEvents, type OutgoingPullRequestEvents } from './features/pull-request'
+import { terminalSystem, type IncomingTerminalEvents, type OutgoingTerminalEvents } from './features/terminal'
+import { actionsSystem, type IncomingActionsEvents, type OutgoingActionsEvents } from './features/actions'
+import { promptsSystem, type IncomingPromptsEvents, type OutgoingPromptsEvents } from './features/prompts'
 
 // Union all incoming events from child systems
-const IncomingCodeEvents = [
-  ...IncomingExplorerEvents,
-  ...IncomingSearchEvents,
-  ...IncomingCommitEvents,
-  ...IncomingPullRequestEvents,
-  ...IncomingTerminalEvents,
-  ...IncomingActionsEvents,
-  ...IncomingPromptsEvents,
-  // Special root-level events
-  busEvent('SET_BASE_DIRECTORY', { path: z.string(), fromUserNavigation: z.boolean().optional() }),
-] as const
+type IncomingCodeEvents =
+  | IncomingExplorerEvents
+  | IncomingSearchEvents
+  | IncomingCommitEvents
+  | IncomingPullRequestEvents
+  | IncomingTerminalEvents
+  | IncomingActionsEvents
+  | IncomingPromptsEvents
+  | { type: 'SET_BASE_DIRECTORY'; path: string; fromUserNavigation?: boolean }
 
 // Union all outgoing events from child systems  
 export type OutgoingCodeEvents =
@@ -66,18 +57,17 @@ export type OutgoingCodeEvents =
 // Import only the type needed for broadcast event
 import { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
-export const incomingSystemEvents = fromSystem(IncomingCodeEvents)<OutgoingCodeEvents, typeof id>()
+type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-type CodeInternalEvents = SystemEvents | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
-type ReceivableEvents = MergeReceivable<typeof IncomingCodeEvents, CodeInternalEvents>
+export const codeDef = defineSystem('code')<IncomingCodeEvents, OutgoingCodeEvents, CodeInternalEvents>();
+const id = codeDef.id;
+const { typeOf } = codeDef;
 
 export interface Context {
   baseDirectory: string | null
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
 }
-
-const typeOf = safeEvents<ReceivableEvents>()
 
 /**
  * Resolves the initial base directory on system startup.
@@ -110,7 +100,7 @@ function resolveInitialDirectory(
 export const systemMachine = setup({
   types: {
     context: {} as Context,
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof codeDef>,
   },
   actors: {
     explorerSystem,

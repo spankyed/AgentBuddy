@@ -1,51 +1,26 @@
-import { assign, createMachine, setup } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/helpers/actor-helpers';
+import { setup } from 'xstate';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@/repository';
-import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { settings as settingsSystemId } from '@/systems/settings/system';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');
-const typeOf = safeEvents<ReceivableEvents>();
 
-export const prompts = 'prompts' as const;
+type IncomingPromptEvents =
+  | { type: 'PROMPT_SELECT'; promptId: string }
+  | { type: 'CREATE_PROMPT'; label: string; inputs: Record<string, any>; templateFn: string; outputSchema?: any; description?: string; category?: string }
+  | { type: 'UPDATE_PROMPT'; promptId: string; label?: string; inputs?: Record<string, any>; templateFn?: string; outputSchema?: any; description?: string; category?: string }
+  | { type: 'DELETE_PROMPT'; promptId: string }
+  | { type: 'FETCH_PROMPTS_PAGE'; page?: number }
+  | { type: 'IMPORT_PROMPTS'; prompts: any }
+  | { type: 'EXPORT_PROMPTS'; directory: string }
 
-const busEvent = systemBus(prompts);
-
-export const IncomingPromptEvents = [
-  busEvent('PROMPT_SELECT', { promptId: z.string() }),
-  busEvent('CREATE_PROMPT', { 
-    label: z.string(),
-    inputs: z.record(z.any()),
-    templateFn: z.string(),
-    outputSchema: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('UPDATE_PROMPT', { 
-    promptId: z.string(),
-    label: z.string().optional(),
-    inputs: z.record(z.any()).optional(),
-    templateFn: z.string().optional(),
-    outputSchema: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('DELETE_PROMPT', { promptId: z.string() }),
-  busEvent('FETCH_PROMPTS_PAGE', { page: z.number().optional() }),
-  busEvent('IMPORT_PROMPTS', { prompts: z.any() }),
-  busEvent('EXPORT_PROMPTS', { directory: z.string() }),
-] as const
-
-export type PromptsInternalEvents = 
-  | SystemEvents
+type PromptsInternalEvents =
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingPromptEvents =
@@ -60,13 +35,14 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
-export const PromptsSystemEvents = fromSystem(IncomingPromptEvents)<OutgoingPromptEvents, typeof prompts>()
-type ReceivableEvents = MergeReceivable<typeof IncomingPromptEvents, PromptsInternalEvents>;
+export const promptsDef = defineSystem('prompts')<IncomingPromptEvents, OutgoingPromptEvents, PromptsInternalEvents>();
+export const prompts = promptsDef.id;
+const { typeOf } = promptsDef;
 
 export const promptsSystem = setup({
   types: {
     context: {} as {},
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof promptsDef>,
   },
   actions: {
     sendPromptsConnectedData: ({ system }) => {

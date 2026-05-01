@@ -1,8 +1,7 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { fromSystem, systemBus, type MergeReceivable } from '@/core/helpers/event-helpers';
-import { emit, getActor, safeEvents } from '@/core/helpers/actor-helpers';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { emit, getActor } from '@/core/helpers/actor-helpers';
 import type { LogsState, LogEntry } from './types';
-import { z } from 'zod';
 import { randomId } from '@/core/helpers/random-id';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { LogEvent } from '@/core/helpers/debug/logger';
@@ -11,32 +10,24 @@ import { repository } from '@/repository';
 import type { LogsSettings } from '../settings/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
 
-export const logs = 'logs' as const;
-
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
   const base = settings?.excludedSources ?? [];
   return settings?.showAppEvents ? base : [...base, 'app-events'];
 }
 
-const busEvent = systemBus(logs);
+type IncomingLogEvents =
+  | { type: 'EMPTY'; empty: string }
+  | { type: 'CLEAR_LOGS' }
+  | { type: 'REQUEST_LOGS_UPDATE' };
 
-export const IncomingLogEvents = [
-  busEvent('EMPTY', { empty: z.string() }),
-  busEvent('CLEAR_LOGS', {}),
-  busEvent('REQUEST_LOGS_UPDATE', {}),
-] as const
-
-export type LogsInternalEvents = 
-  | { type: "CLIENT_CONNECTED" }
+type LogsInternalEvents =
   | { type: 'REQUEST_LOGS_UPDATE' }
   | {
     type: 'ADD_LOG';
     log: Omit<LogEntry, 'id' | 'timestamp'>;
   }
   | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings; changes?: any };
-
-type ReceivableEvents = MergeReceivable<typeof IncomingLogEvents, LogsInternalEvents>;
 
 export type OutgoingLogsEvents =
   | { type: 'LOGS_CONNECTED'; logs: LogEntry[]; settings?: LogsSettings }
@@ -49,12 +40,14 @@ export interface LogsContext {
   logs: LogEntry[];
 }
 
-export const LogsSystemEvents = fromSystem(IncomingLogEvents)<OutgoingLogsEvents, typeof logs>();
+export const logsDef = defineSystem('logs')<IncomingLogEvents, OutgoingLogsEvents, LogsInternalEvents>();
+export const logs = logsDef.id;
+const { typeOf } = logsDef;
 
 export const logsSystem = setup({
   types: {
     context: {} as LogsContext,
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof logsDef>,
   },
   actors: {
     setupEventListeners: fromCallback(({ sendBack }) => {
@@ -92,7 +85,7 @@ export const logsSystem = setup({
     clearLogs: assign({ logs: () => [] }),
     addLog: assign({
       logs: ({ context, event }) => {
-        const { log } = event as Extract<ReceivableEvents, { type: 'ADD_LOG' }>;
+        const { log } = event as Extract<Receivable<typeof logsDef>, { type: 'ADD_LOG' }>;
         
         const newLog: LogEntry = {
           ...log,

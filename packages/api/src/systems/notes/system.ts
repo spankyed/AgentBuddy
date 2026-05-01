@@ -1,8 +1,7 @@
 import { setup } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/helpers/actor-helpers';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/repository';
@@ -10,7 +9,6 @@ import { qx } from '@/core/ears/helpers/query';
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
-import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
 
 const logger = createLogger('notes');
@@ -24,62 +22,21 @@ function isDescendantOf(noteId: EARS.EntityId, ancestorId: EARS.EntityId): boole
   return false;
 }
 
-export const notes = 'notes' as const;
-
-const busEvent = systemBus(notes);
-
-export const IncomingNoteEvents = [
-  busEvent('CREATE_NOTE', {
-    title: z.string(),
-    content: z.string().optional(),
-    icon: z.string().nullable().optional(),
-    parentId: z.string().optional(),
-    skipContentSync: z.boolean().optional(),
-    noteType: z.enum(['document', 'tasklist', 'task']).optional(),
-    completed: z.boolean().optional(),
-    displayOrder: z.number().optional(),
-  }),
-  busEvent('UPDATE_NOTE', {
-    id: z.string(),
-    title: z.string().optional(),
-    content: z.string().optional(),
-    icon: z.string().nullable().optional(),
-    completed: z.boolean().optional(),
-    hideCompletedChildren: z.boolean().optional(),
-    favorite: z.boolean().optional(),
-  }),
-  busEvent('DELETE_NOTE', {
-    id: z.string(),
-  }),
-  busEvent('SOFT_DELETE_NOTE', {
-    id: z.string(),
-  }),
-  busEvent('RESTORE_NOTE', {
-    id: z.string(),
-  }),
-  busEvent('MOVE_NOTE', {
-    ids: z.array(z.string()),
-    newParentId: z.string().nullable(),
-  }),
-  busEvent('REORDER_NOTE', {
-    id: z.string(),
-    newParentId: z.string().nullable(),
-    newIndex: z.number(),
-  }),
-  busEvent('VIEW_NOTE', {
-    id: z.string(),
-  }),
-  busEvent('SEARCH_NOTES', {
-    query: z.string(),
-  }),
-  busEvent('GET_TRASHED_NOTES', {}),
-  busEvent('PERMANENTLY_DELETE_NOTE', { id: z.string() }),
-  busEvent('EMPTY_TRASH', {}),
-  busEvent('IMPORT_NOTES', { directory: z.string() }),
-  busEvent('EXPORT_NOTES', { directory: z.string(), format: z.enum(['markdown', 'json']) }),
-] as const;
-
-export type NotesInternalEvents = SystemEvents;
+type IncomingNoteEvents =
+  | { type: 'CREATE_NOTE'; title: string; content?: string; icon?: string | null; parentId?: string; skipContentSync?: boolean; noteType?: 'document' | 'tasklist' | 'task'; completed?: boolean; displayOrder?: number }
+  | { type: 'UPDATE_NOTE'; id: string; title?: string; content?: string; icon?: string | null; completed?: boolean; hideCompletedChildren?: boolean; favorite?: boolean }
+  | { type: 'DELETE_NOTE'; id: string }
+  | { type: 'SOFT_DELETE_NOTE'; id: string }
+  | { type: 'RESTORE_NOTE'; id: string }
+  | { type: 'MOVE_NOTE'; ids: string[]; newParentId: string | null }
+  | { type: 'REORDER_NOTE'; id: string; newParentId: string | null; newIndex: number }
+  | { type: 'VIEW_NOTE'; id: string }
+  | { type: 'SEARCH_NOTES'; query: string }
+  | { type: 'GET_TRASHED_NOTES' }
+  | { type: 'PERMANENTLY_DELETE_NOTE'; id: string }
+  | { type: 'EMPTY_TRASH' }
+  | { type: 'IMPORT_NOTES'; directory: string }
+  | { type: 'EXPORT_NOTES'; directory: string; format: 'markdown' | 'json' };
 
 export type OutgoingNotesEvents =
   | { type: 'NOTES_CONNECTED'; data: NotesConnectedData }
@@ -94,15 +51,14 @@ export type OutgoingNotesEvents =
   | { type: 'NOTES_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
 
-export const NotesSystemEvents = fromSystem(IncomingNoteEvents)<OutgoingNotesEvents, typeof notes>();
-type ReceivableEvents = MergeReceivable<typeof IncomingNoteEvents, NotesInternalEvents>;
-
-const typeOf = safeEvents<ReceivableEvents>();
+export const notesDef = defineSystem('notes')<IncomingNoteEvents, OutgoingNotesEvents>();
+export const notes = notesDef.id;
+const { typeOf } = notesDef;
 
 export const notesSystem = setup({
   types: {
     context: {} as {},
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof notesDef>,
   },
   actions: {
     sendNotesConnectedData: ({ system }) => {

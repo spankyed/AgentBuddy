@@ -1,15 +1,12 @@
 import { assign, setup } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
 import { FileSystemRepository } from '../services/filesystem'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { FileChangeInfo } from '../services/gitwatcher'
 import { DirectoryContent, FileContent, FileInfo, CodeSystemError, QuickOpenResult } from '../types'
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 function requireRepository(context: Context, path: string): context is Context & { repository: FileSystemRepository } {
   if (!context.repository) {
@@ -28,20 +25,19 @@ function requireRepository(context: Context, path: string): context is Context &
 }
 
 // Incoming events from frontend
-export const IncomingExplorerEvents = [
-  busEvent('explorer.LIST_FILES', { path: z.string() }),
-  busEvent('explorer.READ_FILE', { path: z.string() }),
-  busEvent('explorer.WRITE_FILE', { path: z.string(), content: z.string() }),
-  busEvent('explorer.CREATE_FILE', { path: z.string(), content: z.string().optional() }),
-  busEvent('explorer.DELETE_FILE', { path: z.string() }),
-  busEvent('explorer.RENAME_FILE', { oldPath: z.string(), newPath: z.string() }),
-  busEvent('explorer.CREATE_DIRECTORY', { path: z.string() }),
-  busEvent('explorer.GET_FILE_INFO', { path: z.string() }),
-  busEvent('explorer.CLOSE_FILE', { path: z.string() }),
-  busEvent('explorer.QUICK_OPEN_SEARCH', { baseDirectory: z.string() }),
-  busEvent('explorer.MOVE_FILES', { sourcePaths: z.array(z.string()), targetDir: z.string() }),
-  busEvent('explorer.COPY_FILES', { sourcePaths: z.array(z.string()), targetDir: z.string() }),
-] as const
+export type IncomingExplorerEvents =
+  | { type: 'explorer.LIST_FILES'; path: string }
+  | { type: 'explorer.READ_FILE'; path: string }
+  | { type: 'explorer.WRITE_FILE'; path: string; content: string }
+  | { type: 'explorer.CREATE_FILE'; path: string; content?: string }
+  | { type: 'explorer.DELETE_FILE'; path: string }
+  | { type: 'explorer.RENAME_FILE'; oldPath: string; newPath: string }
+  | { type: 'explorer.CREATE_DIRECTORY'; path: string }
+  | { type: 'explorer.GET_FILE_INFO'; path: string }
+  | { type: 'explorer.CLOSE_FILE'; path: string }
+  | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
+  | { type: 'explorer.MOVE_FILES'; sourcePaths: string[]; targetDir: string }
+  | { type: 'explorer.COPY_FILES'; sourcePaths: string[]; targetDir: string }
 
 // Outgoing events to frontend
 export type OutgoingExplorerEvents =

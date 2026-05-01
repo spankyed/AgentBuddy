@@ -1,18 +1,18 @@
-import { mergeSystems } from '@/core/helpers/event-helpers';
-
 export { bus } from "@/systems/backend";
 
-import { brain, brainSystem, BrainSystemEvents } from '@/systems/brain/system';
-import { threads, threadsSystem, ThreadsSystemEvents } from '@/systems/threads/system';
-import { flows, flowsSystem, FlowsSystemEvents } from '@/systems/flows/system';
-import { database, databaseSystem, DatabaseSystemEvents } from '@/systems/database/system';
-import { logs, logsSystem, LogsSystemEvents } from '@/systems/logs/system';
-import { prompts, promptsSystem, PromptsSystemEvents } from '@/systems/prompts/system';
-import { settings, settingsSystem, SettingsSystemEvents } from '@/systems/settings/system';
-import { actions, actionsSystem, ActionsSystemEvents } from '@/systems/actions/system';
-import { library, librarySystem, LibrarySystemEvents } from '@/systems/library/system';
-import { id as code, systemMachine as codeSystem, incomingSystemEvents as CodeSystemEvents } from '@/systems/code/system';
-import { notes, notesSystem, NotesSystemEvents } from '@/systems/notes/system';
+import { brain, brainSystem, brainDef } from '@/systems/brain/system';
+import { threads, threadsSystem, threadsDef } from '@/systems/threads/system';
+import { flows, flowsSystem, flowsDef } from '@/systems/flows/system';
+import { database, databaseSystem, databaseDef } from '@/systems/database/system';
+import { logs, logsDef } from '@/systems/logs/system';
+import { prompts, promptsSystem, promptsDef } from '@/systems/prompts/system';
+import { settings, settingsSystem, settingsDef } from '@/systems/settings/system';
+import { actions, actionsSystem, actionsDef } from '@/systems/actions/system';
+import { library, librarySystem, libraryDef } from '@/systems/library/system';
+import { codeDef, systemMachine as codeSystem } from '@/systems/code/system';
+import { notes, notesSystem, notesDef } from '@/systems/notes/system';
+
+const code = codeDef.id;
 
 export default {
   [settings]: settingsSystem,
@@ -28,18 +28,16 @@ export default {
   // [logs]: logsSystem,
 } as const;
 
-export const events = mergeSystems(
-  SettingsSystemEvents,
-  BrainSystemEvents,
-  ThreadsSystemEvents,
-  FlowsSystemEvents,
-  DatabaseSystemEvents,
-  LogsSystemEvents,
-  PromptsSystemEvents,
-  ActionsSystemEvents,
-  LibrarySystemEvents,
-  CodeSystemEvents,
-  NotesSystemEvents
-);
+// Global event type assembly from all system definitions
+const allDefs = [
+  settingsDef, brainDef, threadsDef, flowsDef,
+  databaseDef, logsDef, promptsDef, actionsDef,
+  libraryDef, codeDef, notesDef,
+] as const;
+
+type AllDefs = (typeof allDefs)[number];
+
+export type IncomingSystemEvents = AllDefs['_incoming'];
+export type OutgoingSystemEvents = AllDefs['_outgoing'];
 
 export { backendSystem } from "@/systems/backend";

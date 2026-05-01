@@ -1,20 +1,17 @@
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/core/helpers/actor-helpers';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit, getActor, sendParentSafe } from '@/core/helpers/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
 import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
-import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { ActionEntity } from '@/systems/actions/types';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');
-const typeOf = safeEvents<ReceivableEvents>();
 
 /**
  * Format validation errors into a cleaner, deduplicated format.
@@ -60,35 +57,22 @@ function formatValidationErrors(
   return result;
 }
 
-export const flows = 'flows' as const;
+type IncomingFlowsEvents =
+  | { type: 'FLOW_SELECT'; flowId: string }
+  | { type: 'CREATE_FLOW' }
+  | { type: 'DELETE_FLOW'; flowId: string }
+  | { type: 'UPDATE_FLOW_LABEL'; flowId: string; label: string }
+  | { type: 'CREATE_NODE'; flowId: string; tempId: string; nodeData: any }
+  | { type: 'UPDATE_NODE'; flowId: string; nodeId: string; nodeData: any }
+  | { type: 'DELETE_NODE'; flowId: string; nodeId: string }
+  | { type: 'CREATE_EDGE'; flowId: string; sourceId: string; targetId: string; sourceHandle?: string; targetHandle?: string }
+  | { type: 'DELETE_EDGE'; flowId: string; edgeId: string }
+  | { type: 'UPDATE_EDGE'; flowId: string; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
+  | { type: 'IMPORT_DSL'; dsl: any }
+  | { type: 'EXPORT_DSL'; directory: string }
+  | { type: 'REINDEX_HANDLES'; flowId: string; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
 
-const busEvent = systemBus(flows);
-
-export const IncomingFlowsEvents = [
-  busEvent('FLOW_SELECT', { flowId: z.string() }),
-  busEvent('CREATE_FLOW', {}),
-  busEvent('DELETE_FLOW', { flowId: z.string() }),
-  busEvent('UPDATE_FLOW_LABEL', { flowId: z.string(), label: z.string() }),
-  busEvent('CREATE_NODE', { flowId: z.string(), tempId: z.string(), nodeData: z.any() }),
-  busEvent('UPDATE_NODE', { flowId: z.string(), nodeId: z.string(), nodeData: z.any() }),
-  busEvent('DELETE_NODE', { flowId: z.string(), nodeId: z.string() }),
-  busEvent('CREATE_EDGE', { flowId: z.string(), sourceId: z.string(), targetId: z.string(), sourceHandle: z.string().optional(), targetHandle: z.string().optional() }),
-  busEvent('DELETE_EDGE', { flowId: z.string(), edgeId: z.string() }),
-  busEvent('UPDATE_EDGE', {
-    flowId: z.string(),
-    edgeId: z.string(),
-    oldSource: z.string(),
-    oldTarget: z.string(),
-    newSource: z.string(),
-    newTarget: z.string()
-  }),
-  busEvent('IMPORT_DSL', { dsl: z.any() }),
-  busEvent('EXPORT_DSL', { directory: z.string() }),
-  busEvent('REINDEX_HANDLES', { flowId: z.string(), nodeId: z.string(), prefix: z.string(), index: z.number(), direction: z.union([z.literal(1), z.literal(-1)]) }),
-] as const
-
-export type FlowsInternalEvents = 
-  | SystemEvents
+type FlowsInternalEvents =
   | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingFlowsEvents =
@@ -111,15 +95,15 @@ export type OutgoingFlowsEvents =
   | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
-type ReceivableEvents = MergeReceivable<typeof IncomingFlowsEvents, FlowsInternalEvents>
-
-export const FlowsSystemEvents = fromSystem(IncomingFlowsEvents)<OutgoingFlowsEvents, typeof flows>()
+export const flowsDef = defineSystem('flows')<IncomingFlowsEvents, OutgoingFlowsEvents, FlowsInternalEvents>();
+export const flows = flowsDef.id;
+const { typeOf } = flowsDef;
 
 // export type FlowEvent = EventFromLogic<typeof flowsSystem>;
 
 export const flowsSystem = setup({
   types: {
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof flowsDef>,
   },
   actors: {},
   actions: {

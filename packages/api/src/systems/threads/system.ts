@@ -1,15 +1,12 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents, sendParentSafe } from '@/core/helpers/actor-helpers';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit, getActor, sendParentSafe } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
-import { z } from 'zod';
 import { repository } from '@/repository';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData, CommandItem } from '@/types';
-import { ThreadRelations, type ThreadExtendedData, type BlockResponse } from './types';
-import type { MappedZodLiterals } from '@/core/helpers/type-helpers';
+import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/systems/settings/settings-changes';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
@@ -21,127 +18,36 @@ import type { FieldContent } from '@/systems/library/types';
 
 const logger = createLogger('threads');
 
-export const threads = 'threads' as const;
-
-const busEvent = systemBus(threads);
-
-const tagsSchema = z.array(z.string()).optional();
-
-const threadSchema = {
-  topic: z.string(),
-  tags: tagsSchema,
-  instructions: z.string(),
-};
-
-const relatedThreadsSchema = z.array(z.object({
-  id: z.string(),
-  relation: z.union(
-    ThreadRelations.map(r => z.literal(r)) as MappedZodLiterals<typeof ThreadRelations>,
-  ),
-}))
-
-const referencesSchema = z.object({
-  images: z.array(z.object({ url: z.string(), name: z.string() })).optional(),
-  files: z.array(z.object({
-    name: z.string(),
-    path: z.string(),
-    typeLabel: z.string(),
-    isImage: z.boolean(),
-  })).optional(),
-  context: z.array(z.object({
-    refType: z.enum(['thread', 'document', 'note', 'task', 'tasklist', 'folder']),
-    refId: z.string(),
-    shortCode: z.string(),
-    label: z.string(),
-  })).optional(),
-}).optional();
-
-export const IncomingThreadsEvents = [
+type IncomingThreadsEvents =
   // Thread management events
-  busEvent('CREATE_THREAD', {
-    ...threadSchema,
-    linkedThreads: relatedThreadsSchema.optional(),
-    parentThreadId: z.string().optional(),
-  }),
-  busEvent('VIEW_THREAD', { threadId: z.string() }),
-  busEvent('UPDATE_THREAD_STATUS', {
-    threadId: z.string(),
-    status: z.string(),
-  }),
-  busEvent('UPDATE_THREAD_FIELD', {
-    threadId: z.string(),
-    key: z.string(),
-    value: z.any(),
-  }),
-  busEvent('DELETE_THREAD', { threadId: z.string() }),
-  busEvent('SET_THREAD_PARENT', {
-    childIds: z.array(z.string()),
-    parentId: z.string(),
-  }),
-  busEvent('EXPORT_THREADS', { directory: z.string() }),
-  busEvent('IMPORT_THREADS', { directory: z.string() }),
-
+  | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates' }[]; parentThreadId?: string }
+  | { type: 'VIEW_THREAD'; threadId: string }
+  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: string }
+  | { type: 'UPDATE_THREAD_FIELD'; threadId: string; key: string; value: any }
+  | { type: 'DELETE_THREAD'; threadId: string }
+  | { type: 'SET_THREAD_PARENT'; childIds: string[]; parentId: string }
+  | { type: 'EXPORT_THREADS'; directory: string }
+  | { type: 'IMPORT_THREADS'; directory: string }
   // Chat/agent events (merged from agent system)
-  busEvent('USER_MSG', {
-    text: z.string(),
-    mode: z.string().optional(),
-    phase: z.string().optional(),
-    threadId: z.string().optional(),
-    references: referencesSchema,
-    cwdOverride: z.string().optional(),
-    forceDirectoryPicker: z.boolean().optional(),
-  }),
-  busEvent('OPEN_THREAD_CHAT', { threadId: z.string() }),
-  busEvent('OPEN_THREAD_TAB', { threadId: z.string(), label: z.string(), pinned: z.boolean().optional() }),
-  busEvent('PAUSE_TURN', { threadId: z.string() }),
-  busEvent('APPROVE_TODO_LIST', { artifactId: z.string(), tasks: z.array(z.any()) }),
-  busEvent('REJECT_TODO_LIST', { artifactId: z.string() }),
-  busEvent('INTERACTIVE_MSG_RESPONSE', {
-    messageId: z.string(),
-    threadId: z.string(),
-    response: z.any(),
-  }),
-  busEvent('FORK_THREAD', {
-    messageId: z.string(),
-    threadId: z.string().optional(),
-    threadTopic: z.string().optional(),
-  }),
-  busEvent('REVERT_THREAD', {
-    messageId: z.string(),
-    threadId: z.string(),
-    restoreFiles: z.boolean().optional(),
-    userCliUuid: z.string().optional(),
-  }),
-  busEvent('SUMMARIZE_THREAD', {
-    messageId: z.string(),
-    threadId: z.string(),
-  }),
-  busEvent('USER_COMMAND', {
-    command: z.string(),
-    text: z.string(),
-    mode: z.string().optional(),
-    phase: z.string().optional(),
-    threadId: z.string().optional(),
-    references: referencesSchema,
-  }),
-  busEvent('TOGGLE_COMPACTED', {
-    markerId: z.string(),
-    compacted: z.boolean(),
-  }),
-  busEvent('DELETE_MESSAGE', {
-    messageId: z.string(),
-  }),
-  busEvent('FORWARD_BRAIN_EVENT', {
-    eventType: z.string(),
-    payload: z.any().optional(),
-  }),
-  busEvent('GET_ARCHIVED_THREADS', {}),
-  busEvent('REFRESH_THREADS', {}),
-] as const
+  | { type: 'USER_MSG'; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] }; cwdOverride?: string; forceDirectoryPicker?: boolean }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string }
+  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
+  | { type: 'PAUSE_TURN'; threadId: string }
+  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
+  | { type: 'REJECT_TODO_LIST'; artifactId: string }
+  | { type: 'INTERACTIVE_MSG_RESPONSE'; messageId: string; threadId: string; response: any }
+  | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
+  | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
+  | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
+  | { type: 'USER_COMMAND'; command: string; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] } }
+  | { type: 'TOGGLE_COMPACTED'; markerId: string; compacted: boolean }
+  | { type: 'DELETE_MESSAGE'; messageId: string }
+  | { type: 'FORWARD_BRAIN_EVENT'; eventType: string; payload?: any }
+  | { type: 'GET_ARCHIVED_THREADS' }
+  | { type: 'REFRESH_THREADS' }
 
 export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
-  | SystemEvents
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'API_KEYS_CHANGED' }
   | { type: 'BIRTH_FLOW_START' }
@@ -180,14 +86,14 @@ export type OutgoingThreadsEvents =
 
 export interface ThreadsContext {}
 
-export const ThreadsSystemEvents = fromSystem(IncomingThreadsEvents)<OutgoingThreadsEvents, typeof threads>()
-type ReceivableEvents = MergeReceivable<typeof IncomingThreadsEvents, ThreadsInternalEvents>;
-const typeOf = safeEvents<ReceivableEvents>();
+export const threadsDef = defineSystem('threads')<IncomingThreadsEvents, OutgoingThreadsEvents, ThreadsInternalEvents>();
+export const threads = threadsDef.id;
+const { typeOf } = threadsDef;
 
 export const threadsSystem = setup({
   types: {
     context: {} as ThreadsContext,
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof threadsDef>,
   },
   actions: {
     // ---- Thread management actions ----

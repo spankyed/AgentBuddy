@@ -1,10 +1,8 @@
 import { setup } from 'xstate';
-import { z } from 'zod';
 import { performance } from 'node:perf_hooks';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { emit, safeEvents, getActor } from '@/core/helpers/actor-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { emit, getActor } from '@/core/helpers/actor-helpers';
+import { bus } from '@/systems/backend';
 import { brain } from '@/systems/brain/system';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
@@ -20,48 +18,21 @@ import { flowsCommands } from '@/systems/flows/repository';
 
 const logger = createLogger('database');
 
-export const database = 'database' as const;
+type IncomingDatabaseEvents =
+  | { type: 'EXECUTE_QUERY'; code: string }
+  | { type: 'EXECUTE_TRANSACTION'; code: string }
+  | { type: 'GENERATE_AI_QUERY'; prompt: string; mode?: 'query' | 'transaction' }
+  | { type: 'REFRESH_SCHEMA' }
+  | { type: 'GET_TRACE_FLOWS' }
+  | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
+  | { type: 'GET_NODE_DETAILS'; nodeId: string }
+  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb' | 'secretsLmdb')[] }
+  | { type: 'IMPORT_DATABASE'; path: string }
+  | { type: 'GET_BACKUP_INFO'; path: string }
+  | { type: 'RESET_DATABASE' };
 
-const busEvent = systemBus(database);
-
-export const IncomingDatabaseEvents = [
-  busEvent('EXECUTE_QUERY', {
-    code: z.string(),
-  }),
-  busEvent('EXECUTE_TRANSACTION', {
-    code: z.string(),
-  }),
-busEvent('GENERATE_AI_QUERY', {
-    prompt: z.string(),
-    mode: z.enum(['query', 'transaction']).optional(),
-  }),
-  busEvent('REFRESH_SCHEMA', {}),
-  busEvent('GET_TRACE_FLOWS', {}),
-  busEvent('GET_FLOW_EVENTS', { 
-    flowId: z.string(), 
-    offset: z.number().optional(),
-    limit: z.number().optional()
-  }),
-  busEvent('GET_NODE_DETAILS', { 
-    nodeId: z.string() 
-  }),
-  busEvent('EXPORT_DATABASE', {
-    path: z.string(),
-    name: z.string().optional(),
-    databases: z.array(z.enum(['lmdb', 'volatileLmdb', 'secretsLmdb'])), // 'searchIndices' removed [SEARCH_INDEX_FF]
-  }),
-  busEvent('IMPORT_DATABASE', {
-    path: z.string(),
-  }),
-  busEvent('GET_BACKUP_INFO', {
-    path: z.string(),
-  }),
-  busEvent('RESET_DATABASE', {}),
-] as const;
-
-export type DatabaseInternalEvents = 
-  | { type: 'CLIENT_CONNECTED' }
-  | SystemEvents;
+type DatabaseInternalEvents =
+  | { type: 'CLIENT_CONNECTED' };
 
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_REFRESH'; data: DatabaseStartupData }
@@ -84,14 +55,14 @@ export type OutgoingDatabaseEvents =
 
 export interface DatabaseContext { }
 
-export const DatabaseSystemEvents = fromSystem(IncomingDatabaseEvents)<OutgoingDatabaseEvents, typeof database>();
-type ReceivableEvents = MergeReceivable<typeof IncomingDatabaseEvents, DatabaseInternalEvents>;
-const typeOf = safeEvents<ReceivableEvents>();
+export const databaseDef = defineSystem('database')<IncomingDatabaseEvents, OutgoingDatabaseEvents, DatabaseInternalEvents>();
+export const database = databaseDef.id;
+const { typeOf } = databaseDef;
 
 export const databaseSystem = setup({
   types: {
     context: {} as DatabaseContext,
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof databaseDef>,
   },
   actions: {
     sendDatabaseRefresh: ({ system }) => {

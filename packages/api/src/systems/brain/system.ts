@@ -1,10 +1,8 @@
 import { assign, setup, enqueueActions, raise } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, getActor, safeEvents,  } from '@/core/helpers/actor-helpers';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit, getActor } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
-import { z } from 'zod';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
@@ -14,39 +12,21 @@ import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-ins
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from '@/services/brain';
 
-const typeOf = safeEvents<ReceivableEvents>();
-const logger = createLogger('brain');
-
-export const brain = 'brain' as const;
-export const brainBus = 'brain-bus' as const;
-
-const busEvent = systemBus(brain);
-
-export const IncomingBrainEvents = [
-  busEvent('OPEN_TNODE', { tNodeId: z.string() }),
-  busEvent('GO_BACK_TNODE', { currentFlowTNodeId: z.string().optional() }),
-  busEvent('REQUEST_PLUGIN_DATA', { flowTNodeId: z.string().optional() }),
-  busEvent('GET_TNODE_DETAILS', { tNodeId: z.string() }),
-  busEvent('TOGGLE_INSPECT', {}),
-  busEvent('START_BRAIN', {}),
-  busEvent('KILL_BRAIN', {}),
-  busEvent('RESTART_BRAIN', {}),
-  busEvent('PAUSE_BRAIN', {}),
-  busEvent('RESUME_BRAIN', {}),
-  busEvent('HANDLE_BRAIN_EVENT', {
-    eventType: z.string(),
-    payload: z.any().optional(),
-    targetFlowId: z.string().optional()
-  }),
-  busEvent('TRIGGER_BRAIN_EVENT', {
-    eventType: z.string(),
-    payload: z.any().optional(),
-    targetFlowId: z.string().optional()
-  }),
-] as const
+type IncomingBrainEvents =
+  | { type: 'OPEN_TNODE'; tNodeId: string }
+  | { type: 'GO_BACK_TNODE'; currentFlowTNodeId?: string }
+  | { type: 'REQUEST_PLUGIN_DATA'; flowTNodeId?: string }
+  | { type: 'GET_TNODE_DETAILS'; tNodeId: string }
+  | { type: 'TOGGLE_INSPECT' }
+  | { type: 'START_BRAIN' }
+  | { type: 'KILL_BRAIN' }
+  | { type: 'RESTART_BRAIN' }
+  | { type: 'PAUSE_BRAIN' }
+  | { type: 'RESUME_BRAIN' }
+  | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
+  | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
 
 export type BrainInternalEvents =
-  | SystemEvents
   // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
@@ -68,8 +48,12 @@ export type OutgoingBrainEvents =
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
 
-export const BrainSystemEvents = fromSystem(IncomingBrainEvents)<OutgoingBrainEvents, typeof brain>()
-type ReceivableEvents = MergeReceivable<typeof IncomingBrainEvents, BrainInternalEvents>;
+export const brainDef = defineSystem('brain')<IncomingBrainEvents, OutgoingBrainEvents, BrainInternalEvents>();
+export const brain = brainDef.id;
+const { typeOf } = brainDef;
+const logger = createLogger('brain');
+
+export const brainBus = 'brain-bus' as const;
 
 export const brainSystem = setup({
   types: {
@@ -77,7 +61,7 @@ export const brainSystem = setup({
       brainActor?: any; // Reference to the spawned brain flow actor
       eventQueue: Array<{ eventType: string; payload?: any; targetFlowId?: string }>;
     },
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof brainDef>,
   },
   actions: {
     handleAppStartup: ({ system, self }) => {

@@ -1,31 +1,21 @@
 import { setup, assign, fromPromise } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
 import { terminalService } from '../services/terminal'
 import { TerminalInfo, CodeSettings } from '../types'
 import { repository } from '@/repository'
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
-export const IncomingTerminalEvents = [
-  busEvent('terminal.CREATE_TERMINAL', {
-    title: z.string().optional(),
-    cwd: z.string().optional(),
-    shell: z.string().optional(),
-    cols: z.number().optional(),
-    rows: z.number().optional()
-  }),
-  busEvent('terminal.CLOSE_TERMINAL', { terminalId: z.string() }),
-  busEvent('terminal.TERMINAL_INPUT', { terminalId: z.string(), data: z.string() }),
-  busEvent('terminal.RESIZE_TERMINAL', { terminalId: z.string(), cols: z.number(), rows: z.number() }),
-  busEvent('terminal.RENAME_TERMINAL', { terminalId: z.string(), customTitle: z.string() }),
-  busEvent('terminal.REFRESH_LIST', {}),
-  busEvent('terminal.OPEN_TERMINAL_TAB', { terminalId: z.string() }),
-] as const
+export type IncomingTerminalEvents =
+  | { type: 'terminal.CREATE_TERMINAL'; title?: string; cwd?: string; shell?: string; cols?: number; rows?: number }
+  | { type: 'terminal.CLOSE_TERMINAL'; terminalId: string }
+  | { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
+  | { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
+  | { type: 'terminal.RENAME_TERMINAL'; terminalId: string; customTitle: string }
+  | { type: 'terminal.REFRESH_LIST' }
+  | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
 
 // Outgoing events to frontend
 export type OutgoingTerminalEvents =

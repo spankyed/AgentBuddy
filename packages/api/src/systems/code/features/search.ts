@@ -1,28 +1,15 @@
 import { assign, setup } from 'xstate'
 import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
-import { systemBus } from '@/core/helpers/event-helpers'
-import { z } from 'zod'
 import { FileSystemRepository } from '../services/filesystem'
 import { SearchOptions, SearchResult, SearchProgress } from '../types'
 
 const pluginId = 'code' as const
-const busEvent = systemBus(pluginId)
 
 // Incoming events from frontend
-export const IncomingSearchEvents = [
-  busEvent('search.SEARCH_FILES', {
-    query: z.string(),
-    path: z.string(),
-    includePattern: z.string().optional(),
-    excludePattern: z.string().optional(),
-    caseSensitive: z.boolean().optional(),
-    wholeWord: z.boolean().optional(),
-    useRegex: z.boolean().optional(),
-    maxResults: z.number().optional()
-  }),
-  busEvent('search.CANCEL_SEARCH', {}),
-] as const
+export type IncomingSearchEvents =
+  | { type: 'search.SEARCH_FILES'; query: string; path: string; includePattern?: string; excludePattern?: string; caseSensitive?: boolean; wholeWord?: boolean; useRegex?: boolean; maxResults?: number }
+  | { type: 'search.CANCEL_SEARCH' }
 
 // Outgoing events to frontend
 export type OutgoingSearchEvents =

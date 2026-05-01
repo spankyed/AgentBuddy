@@ -1,51 +1,27 @@
 import { assign, createMachine, setup } from 'xstate';
-import type { MergeReceivable } from '@/core/helpers/event-helpers';
-import { fromSystem, systemBus } from '@/core/helpers/event-helpers';
-import { bus, SystemEvents } from '@/systems/backend';
-import { emit, safeEvents } from '@/core/helpers/actor-helpers';
+import { defineSystem, type Receivable } from '@/core/framework/define-system';
+import { bus } from '@/systems/backend';
+import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@/repository';
-import { z } from 'zod';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
 import { flows } from '@/systems/flows/system';
 import { exportActions } from './repository/export-actions';
 
 const logger = createLogger('actions');
-const typeOf = safeEvents<ReceivableEvents>();
 
-export const actions = 'actions' as const;
+type IncomingActionEvents =
+  | { type: 'ACTION_SELECT'; actionId: string }
+  | { type: 'CREATE_ACTION'; label: string; input: Record<string, any>; actionFn: string; output?: any; description?: string; category?: string }
+  | { type: 'UPDATE_ACTION'; actionId: string; label?: string; input?: Record<string, any>; actionFn?: string; output?: any; description?: string; category?: string }
+  | { type: 'DELETE_ACTION'; actionId: string }
+  | { type: 'FETCH_ACTIONS_PAGE'; page?: number }
+  | { type: 'IMPORT_ACTIONS'; actions: any }
+  | { type: 'EXPORT_ACTIONS'; directory: string }
 
-const busEvent = systemBus(actions);
-
-export const IncomingActionEvents = [
-  busEvent('ACTION_SELECT', { actionId: z.string() }),
-  busEvent('CREATE_ACTION', { 
-    label: z.string(),
-    input: z.record(z.any()),
-    actionFn: z.string(),
-    output: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('UPDATE_ACTION', { 
-    actionId: z.string(),
-    label: z.string().optional(),
-    input: z.record(z.any()).optional(),
-    actionFn: z.string().optional(),
-    output: z.any().optional(),
-    description: z.string().optional(),
-    category: z.string().optional()
-  }),
-  busEvent('DELETE_ACTION', { actionId: z.string() }),
-  busEvent('FETCH_ACTIONS_PAGE', { page: z.number().optional() }),
-  busEvent('IMPORT_ACTIONS', { actions: z.any() }),
-  busEvent('EXPORT_ACTIONS', { directory: z.string() }),
-] as const
-
-export type ActionsInternalEvents = 
-  | SystemEvents
+type ActionsInternalEvents =
   | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export type OutgoingActionEvents =
@@ -60,8 +36,9 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
-export const ActionsSystemEvents = fromSystem(IncomingActionEvents)<OutgoingActionEvents, typeof actions>()
-type ReceivableEvents = MergeReceivable<typeof IncomingActionEvents, ActionsInternalEvents>;
+export const actionsDef = defineSystem('actions')<IncomingActionEvents, OutgoingActionEvents, ActionsInternalEvents>();
+export const actions = actionsDef.id;
+const { typeOf } = actionsDef;
 
 // Helper to broadcast action events to both actions and flows plugins
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
@@ -73,7 +50,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 export const actionsSystem = setup({
   types: {
     context: {} as {},
-    events: {} as ReceivableEvents,
+    events: {} as Receivable<typeof actionsDef>,
   },
   actions: {
     sendActionsStartupData: ({ system }) => {
