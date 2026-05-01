@@ -6,6 +6,11 @@
     >
       <slot name="before" :item-class="itemClass" />
 
+      <ContextMenuItem :class="itemClass" @select="$emit('rename')">
+        <Pencil :size="14" class="text-neutral-400" />
+        Rename
+      </ContextMenuItem>
+
       <ContextMenuItem :class="itemClass" @select="handleCopyId">
         <Copy :size="14" class="text-neutral-400" />
         Copy Id
@@ -42,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
+import { Archive, Copy, Pencil, Pin, Trash2 } from 'lucide-vue-next';
 import {
   ContextMenuPortal, ContextMenuContent,
   ContextMenuItem, ContextMenuSeparator,
@@ -54,6 +59,7 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
+  rename: [];
   pin: [];
   unpin: [];
   archive: [];

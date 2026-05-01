@@ -43,6 +43,7 @@
     <ThreadContextMenu
       :is-pinned="isPinned"
       :copy-text="tab.id"
+      @rename="handleRename"
       @pin="$emit('pin-thread')"
       @unpin="$emit('unpin-thread')"
       @archive="$emit('archive-thread')"
@@ -106,5 +107,12 @@ function getThreadDotColor(threadId: string): string | undefined {
 
 function isThreadBusy(threadId: string): boolean {
   return getThreadStateConfig(threadId)?.busy ?? false;
+}
+
+function handleRename() {
+  const newName = prompt('Rename thread', props.tab.label || '');
+  if (newName !== null && newName.trim()) {
+    threadsActor.send({ type: 'RENAME_THREAD', threadId: props.tab.id, topic: newName.trim() });
+  }
 }
 </script>

@@ -184,6 +184,10 @@ export const threadsSystem = setup({
         }));
         services.chat.sendRecentThreadsRefresh();
       }
+
+      if (key === 'topic') {
+        services.chat.sendRecentThreadsRefresh();
+      }
     },
     updateThreadStatus: ({ system, event }) => {
       const { threadId, status } = threadsDef.typeOf('UPDATE_THREAD_STATUS', event);

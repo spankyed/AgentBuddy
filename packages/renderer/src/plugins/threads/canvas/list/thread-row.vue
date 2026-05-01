@@ -118,6 +118,7 @@
     <ThreadContextMenu
       :is-pinned="!!thread.pinned"
       :copy-text="thread.shortCode || thread.id"
+      @rename="$emit('rename-click', thread.id)"
       @pin="$emit('pin-click', thread.id)"
       @unpin="$emit('unpin-click', thread.id)"
       @archive="$emit('archive-click', thread.id)"
@@ -181,6 +182,7 @@ const emit = defineEmits<{
   'delete-click': [id: string]
   'unpin-click': [id: string]
   'pin-click': [id: string]
+  'rename-click': [id: string]
   'drag-start': [e: DragEvent, id: string]
   'drag-over': [e: DragEvent, id: string]
   'drag-leave': [e: DragEvent]

@@ -15,9 +15,9 @@
         </div>
       </div>
       <div v-else class="flex flex-col">
+        <ContextMenuRoot v-for="thread in recentThreads" :key="thread.id">
+          <ContextMenuTrigger as-child>
         <div
-          v-for="thread in recentThreads"
-          :key="thread.id"
           class="group flex items-center gap-3 w-full px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white"
           :class="thread.id === currentThread?.id ? 'bg-neutral-800/60' : ''"
           @click="handleSelectThread(thread.id)"
@@ -33,7 +33,17 @@
               class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
             />
           </span>
-          <span class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
+          <input
+            v-if="editingThreadId === thread.id"
+            ref="renameInputRef"
+            v-model="editingName"
+            class="flex-1 min-w-0 text-sm bg-neutral-800 text-neutral-100 border border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-400"
+            @keydown.enter.stop.prevent="confirmRename"
+            @keydown.escape.stop.prevent="cancelRename"
+            @blur="confirmRename"
+            @click.stop
+          />
+          <span v-else class="flex-1 min-w-0 truncate text-sm text-neutral-300 group-hover:text-white">
             {{ thread.topic || 'Untitled' }}
           </span>
           <button
@@ -109,6 +119,55 @@
             </ContextMenuRoot>
           </div>
         </div>
+          </ContextMenuTrigger>
+          <ContextMenuPortal>
+            <ContextMenuContent
+              class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[140px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
+              :side-offset="2"
+            >
+              <ContextMenuItem
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+                @select="startRename(thread.id, thread.topic)"
+              >
+                <Pencil :size="14" class="text-neutral-400" />
+                Rename
+              </ContextMenuItem>
+              <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+              <ContextMenuItem
+                v-if="thread.pinned"
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+                @select="handleUnpinThread(thread.id)"
+              >
+                <Pin :size="14" class="text-neutral-400" />
+                Unpin
+              </ContextMenuItem>
+              <ContextMenuItem
+                v-if="!thread.pinned"
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+                @select="handlePinThread(thread.id)"
+              >
+                <Pin :size="14" class="text-neutral-400" />
+                Pin
+              </ContextMenuItem>
+              <ContextMenuItem
+                v-if="!thread.pinned"
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-amber-400 hover:bg-neutral-700 transition-colors outline-none"
+                @select="handleArchiveThread(thread.id)"
+              >
+                <Archive :size="14" />
+                Archive
+              </ContextMenuItem>
+              <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+              <ContextMenuItem
+                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+                @select="handleDeleteThread(thread.id)"
+              >
+                <Trash2 :size="14" />
+                Delete
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenuPortal>
+        </ContextMenuRoot>
       </div>
     </div>
     </Teleport>
@@ -130,7 +189,35 @@
           class="group inline-flex items-center justify-center gap-2 max-w-full"
         >
           <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle inline dashboard" @click.stop="handleToggleInlineDashboard" />
-          <span class="hidden @md:inline truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard">{{ currentThread?.topic }}</span>
+          <input
+            v-if="editingTitleBar"
+            ref="titleBarInputRef"
+            v-model="editingName"
+            class="hidden @md:inline w-full max-w-[200px] text-sm bg-neutral-800 text-neutral-100 border border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-400 text-center"
+            @keydown.enter.stop.prevent="confirmTitleBarRename"
+            @keydown.escape.stop.prevent="cancelTitleBarRename"
+            @blur="confirmTitleBarRename"
+            @click.stop
+          />
+          <ContextMenuRoot v-else>
+            <ContextMenuTrigger as-child>
+              <span class="hidden @md:inline truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard">{{ currentThread?.topic }}</span>
+            </ContextMenuTrigger>
+            <ContextMenuPortal>
+              <ContextMenuContent
+                class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[120px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
+                :side-offset="2"
+              >
+                <ContextMenuItem
+                  class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
+                  @select="startTitleBarRename"
+                >
+                  <Pencil :size="14" class="text-neutral-400" />
+                  Rename
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenuPortal>
+          </ContextMenuRoot>
         </span>
       </div>
 
@@ -228,7 +315,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
-import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus } from 'lucide-vue-next'
+import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus, Pencil } from 'lucide-vue-next'
 import type { ThreadEntity } from '@app/api';
 import type { AgentThreadData } from '@app/api'
 import {
@@ -255,6 +342,15 @@ const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
 const containerRef = ref<HTMLDivElement | null>(null)
 const popupRef = ref<HTMLDivElement | null>(null)
+
+// Inline rename state for recent threads list
+const editingThreadId = ref<string | null>(null)
+const editingName = ref('')
+const renameInputRef = ref<HTMLInputElement[] | null>(null)
+
+// Inline rename state for title bar
+const editingTitleBar = ref(false)
+const titleBarInputRef = ref<HTMLInputElement | null>(null)
 
 // Position the teleported popup above the container using fixed coords
 const popupStyle = ref<CSSProperties>({})
@@ -328,6 +424,59 @@ const projects = useSelector(settingsActor, (state: any) =>
 )
 
 const dirName = (dir: string) => dir.split('/').filter(Boolean).pop() || dir
+
+// Rename helpers for recent threads list
+const startRename = (threadId: string, topic: string | undefined) => {
+  editingThreadId.value = threadId
+  editingName.value = topic || ''
+  nextTick(() => {
+    const input = renameInputRef.value?.[0]
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  })
+}
+
+const confirmRename = () => {
+  const threadId = editingThreadId.value
+  if (!threadId) return
+  const trimmed = editingName.value.trim()
+  if (trimmed) {
+    threadsActor.send({ type: 'RENAME_THREAD', threadId, topic: trimmed })
+  }
+  editingThreadId.value = null
+}
+
+const cancelRename = () => {
+  editingThreadId.value = null
+}
+
+// Rename helpers for title bar
+const startTitleBarRename = () => {
+  if (!props.currentThread?.id) return
+  editingName.value = props.currentThread.topic || ''
+  editingTitleBar.value = true
+  nextTick(() => {
+    titleBarInputRef.value?.focus()
+    titleBarInputRef.value?.select()
+  })
+}
+
+const confirmTitleBarRename = () => {
+  if (!editingTitleBar.value) return
+  const threadId = props.currentThread?.id
+  if (!threadId) return
+  const trimmed = editingName.value.trim()
+  if (trimmed) {
+    threadsActor.send({ type: 'RENAME_THREAD', threadId, topic: trimmed })
+  }
+  editingTitleBar.value = false
+}
+
+const cancelTitleBarRename = () => {
+  editingTitleBar.value = false
+}
 
 const handleArchiveThread = (id: string | undefined) => {
   if (!id) return

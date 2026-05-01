@@ -34,6 +34,7 @@
               @unarchive-click="(threadId) => actor.send({ type: 'UNARCHIVE_THREAD', threadId })"
               @delete-click="handleDeleteThread"
               @unpin-click="handleUnpinThread"
+              @rename-click="handleRenameThread"
               @pin-click="handlePinThread"
               @drag-start="handleDragStart"
               @drag-over="handleDragOver"
@@ -229,6 +230,15 @@ const handleUnpinThread = (threadId: string) => {
 
 const handlePinThread = (threadId: string) => {
   actor.send({ type: 'PIN_THREAD', threadId });
+};
+
+const handleRenameThread = (threadId: string) => {
+  const thread = threads.value.find(t => t.id === threadId);
+  if (!thread) return;
+  const newName = prompt('Rename thread', thread.topic || '');
+  if (newName !== null && newName.trim()) {
+    actor.send({ type: 'RENAME_THREAD', threadId, topic: newName.trim() });
+  }
 };
 
 const handleDeleteThread = (threadId: string) => {

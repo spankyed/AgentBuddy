@@ -197,6 +197,7 @@ type UIEvent =
   | { type: 'DISMISS_MESSAGE'; messageId: string }
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
+  | { type: 'RENAME_THREAD'; threadId: string; topic: string }
 
 type ThreadEvents =
   | UIEvent
@@ -449,6 +450,30 @@ const threadsState = setup({
         value,
       });
     },
+    renameThread: assign(({ event, context }) => {
+      const { threadId, topic } = typeOf('RENAME_THREAD', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'UPDATE_THREAD_FIELD',
+        threadId,
+        key: 'topic',
+        value: topic,
+      });
+      return {
+        recentThreads: context.recentThreads.map(t =>
+          t.id === threadId ? { ...t, topic } : t
+        ),
+        threads: context.threads.map(t =>
+          t.id === threadId ? { ...t, topic } : t
+        ),
+        ...(context.currentThread?.id === threadId
+          ? { currentThread: { ...context.currentThread, topic } }
+          : {}),
+        ...(context.view.id === threadId
+          ? { view: { ...context.view, topic } }
+          : {}),
+      };
+    }),
     setThreadsSettings: assign(({ event }) => {
       const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
       const chat = (ev.settings as any)?.chat as AgentSettings | undefined;
@@ -1281,6 +1306,9 @@ const threadsState = setup({
     },
     THREAD_UPDATED: {
       actions: 'updateThreadFromBackend',
+    },
+    RENAME_THREAD: {
+      actions: 'renameThread',
     },
     THREADS_SETTINGS_UPDATED: {
       actions: 'setThreadsSettings',
