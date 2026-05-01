@@ -1,6 +1,7 @@
 import type {AppModule} from '../../AppModule.ts';
 import {ModuleContext} from '../../ModuleContext.js';
 import {BrowserWindow, ipcMain, app, dialog, shell} from 'electron';
+import contextMenu from 'electron-context-menu';
 import type {AppInitConfig} from '../../AppInitConfig.ts';
 import type {ApiServer} from '../api-server/ApiServer.ts';
 import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
@@ -326,6 +327,8 @@ class WindowManager implements AppModule {
         additionalArguments: [`--api-port=${apiPort}`],
       },
     });
+
+    contextMenu({ window: browserWindow });
 
     try {
       if (this.#renderer instanceof URL) {

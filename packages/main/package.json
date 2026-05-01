@@ -15,6 +15,7 @@
     "@app/api": "*",
     "@app/preload": "*",
     "@app/renderer": "*",
+    "electron-context-menu": "^4.1.2",
     "get-port": "^7.1.0"
   },
   "devDependencies": {

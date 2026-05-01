@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import type { Editor } from '@tiptap/vue-3'
 import BubbleMenuNodeSelector from './bubble-menu/BubbleMenuNodeSelector.vue'
@@ -31,6 +31,23 @@ import BubbleMenuLinkInput from './bubble-menu/BubbleMenuLinkInput.vue'
 const props = defineProps<{ editor: Editor }>()
 
 const linkInput = ref<InstanceType<typeof BubbleMenuLinkInput>>()
+
+let rightClicked = false
+
+function onContextMenu() { rightClicked = true }
+function onMouseDown() { rightClicked = false }
+
+onMounted(() => {
+  const el = props.editor.view.dom
+  el.addEventListener('contextmenu', onContextMenu)
+  el.addEventListener('mousedown', onMouseDown)
+})
+
+onBeforeUnmount(() => {
+  const el = props.editor.view.dom
+  el.removeEventListener('contextmenu', onContextMenu)
+  el.removeEventListener('mousedown', onMouseDown)
+})
 
 const atomicNodes = ['image', 'subDocumentLink', 'reference']
 
@@ -43,6 +60,7 @@ const hasColors = computed(() => {
 })
 
 function shouldShow(props: Record<string, any>) {
+  if (rightClicked) return false
   if (props.state.selection.empty) return false
   if (props.editor.isEmpty) return false
   return !atomicNodes.some(node => props.editor.isActive(node))
