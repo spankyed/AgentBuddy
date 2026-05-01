@@ -447,25 +447,25 @@ useSubDocumentInsert(actor, editorRef, editingNote)
 
 // Debounced handlers
 const SAVE_DEBOUNCE_MS = 150
-const { debounced: debouncedUpdateContent, cancel: cancelContentUpdate } = useDebounce((noteId: string, content: string) => {
+const { debounced: debouncedUpdateContent, flush: flushContentUpdate } = useDebounce((noteId: string, content: string) => {
   actor.send({ type: 'NOTE.UPDATE_CONTENT', noteId, content })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTitle, cancel: cancelTitleUpdate } = useDebounce((noteId: string, title: string) => {
+const { debounced: debouncedUpdateTitle, flush: flushTitleUpdate } = useDebounce((noteId: string, title: string) => {
   actor.send({ type: 'NOTE.UPDATE_TITLE', noteId, title })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTaskContent, cancel: cancelTaskContentUpdate } = useDebounce((taskId: string, content: string) => {
+const { debounced: debouncedUpdateTaskContent, flush: flushTaskContentUpdate } = useDebounce((taskId: string, content: string) => {
   actor.send({ type: 'TASK.UPDATE_CONTENT', taskId, content })
 }, SAVE_DEBOUNCE_MS)
-const { debounced: debouncedUpdateTaskTitle, cancel: cancelTaskTitleUpdate } = useDebounce((taskId: string, title: string) => {
+const { debounced: debouncedUpdateTaskTitle, flush: flushTaskTitleUpdate } = useDebounce((taskId: string, title: string) => {
   actor.send({ type: 'TASK.UPDATE_TITLE', taskId, title })
 }, SAVE_DEBOUNCE_MS)
 
-// Cancel pending debounced updates when the edited note/task changes (covers deletion, switching, deselection)
+// Flush pending debounced updates when the edited note/task changes (covers deletion, switching, deselection)
 watch(editingNote, () => {
-  cancelContentUpdate()
-  cancelTitleUpdate()
-  cancelTaskContentUpdate()
-  cancelTaskTitleUpdate()
+  flushContentUpdate()
+  flushTitleUpdate()
+  flushTaskContentUpdate()
+  flushTaskTitleUpdate()
 })
 
 // Provide extra block items for the "Document" action

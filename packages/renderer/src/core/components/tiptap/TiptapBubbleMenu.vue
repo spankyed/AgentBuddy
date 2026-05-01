@@ -44,6 +44,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (props.editor.isDestroyed) return
   const el = props.editor.view.dom
   el.removeEventListener('contextmenu', onContextMenu)
   el.removeEventListener('mousedown', onMouseDown)

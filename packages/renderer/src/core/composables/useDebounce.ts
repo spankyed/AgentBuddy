@@ -29,31 +29,48 @@ export function useDebounce<T extends (...args: any[]) => any>(
 ): {
   debounced: T
   cancel: () => void
+  flush: () => void
 } {
   let timeoutId: NodeJS.Timeout | null = null
+  let pendingArgs: Parameters<T> | null = null
 
   const cancel = () => {
     if (timeoutId) {
       clearTimeout(timeoutId)
       timeoutId = null
     }
+    pendingArgs = null
+  }
+
+  const flush = () => {
+    if (timeoutId && pendingArgs) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+      const args = pendingArgs
+      pendingArgs = null
+      callback(...args)
+    }
   }
 
   const debounced = ((...args: Parameters<T>) => {
     cancel()
+    pendingArgs = args
     timeoutId = setTimeout(() => {
+      pendingArgs = null
       callback(...args)
     }, delay)
   }) as T
 
-  // Cleanup on component unmount
+  // Cancel on component unmount (don't flush — triggering state updates during
+  // Vue teardown can cause child components to access destroyed resources)
   onUnmounted(() => {
     cancel()
   })
 
   return {
     debounced,
-    cancel
+    cancel,
+    flush
   }
 }
 
