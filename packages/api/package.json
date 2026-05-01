@@ -5,9 +5,9 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "build": "tsc && tsc-alias -p tsconfig.json && tsup src/types.ts src/server.ts --format esm,cjs --dts --shims",
+    "build": "tspc && tsc-alias -p tsconfig.json --resolve-full-paths && tsup src/types.ts --dts-only",
     "dev": "run-p dev:types dev:serve",
-    "dev:types": "tsc -p . --watch --preserveWatchOutput",
+    "dev:types": "tspc -p . --watch --preserveWatchOutput",
     "dev:serve": "nodemon dist/server.js",
     "start": "node dist/server.js",
     "test": "vitest run",
@@ -54,6 +54,7 @@
     "lmdb": "^3.4.2",
     "node-pty": "^1.0.0",
     "playwright": "^1.54.1",
+    "typia": "^12.0.2",
     "ws": "^8.18.2",
     "xstate": "^5.19.2",
     "zod": "^3.24.4"
@@ -67,6 +68,7 @@
     "esbuild": "^0.25.0",
     "nodemon": "^3.1.10",
     "rollup-plugin-dts": "^6.2.3",
+    "ts-patch": "^3.3.0",
     "tsc-alias": "^1.8.10",
     "tsup": "^8.4.0",
     "tsx": "^4.19.4",

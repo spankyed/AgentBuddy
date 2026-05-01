@@ -5,8 +5,10 @@ import { repository } from '@/repository';
 import { z } from 'zod';
 
 // Lazy services getter to avoid circular dependency
-function getServices() {
-  return require('@/services').default;
+let _services: any;
+async function getServices() {
+  if (!_services) _services = (await import('@/services')).default;
+  return _services;
 }
 
 interface ActionNodeConfig {
@@ -36,7 +38,7 @@ async function executeActionFunction(
     const func = new AsyncFunction('params', 'services', 'z', 'flowId', actionFn);
 
     // Execute the function with params, services, zod, and flowId (which is actually the instance ID)
-    const services = getServices();
+    const services = await getServices();
     const result = await func(params, services, z, flowTNodeId);
 
     return result;

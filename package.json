@@ -73,7 +73,7 @@
     "playwright": "^1.54.1",
     "tsc-alias": "^1.8.16",
     "tsup": "^8.4.0",
-    "typescript": "^5.8.3"
+    "typescript": "~5.9.3"
   },
   "dependencies": {
     "@app/api": "*",
