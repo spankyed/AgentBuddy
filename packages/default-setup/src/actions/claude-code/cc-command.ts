@@ -7,6 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
+import { getClaudeState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -57,6 +58,7 @@ const handlers: Record<string, Handler> = {
   memory: handleMemory,
   skills: handleSkills,
   stats: handleStats,
+  rename: handleRename,
   // Passthrough commands — exec and relay stdout
   ...Object.fromEntries(
     Object.entries(PASSTHROUGH).map(([name, spec]) => [name, makePassthroughHandler(spec)]),
@@ -232,4 +234,34 @@ async function handleStats(
   return { text: lines.join('\n'), data: { version, auth, settings } };
 }
 
+async function handleRename(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<{ text: string; data?: any }> {
+  if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
+  const ccState = getClaudeState(services, threadId);
+  const sessionId = ccState?.sessionId;
+  if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
+
+  const prompt = args.length > 0 ? `/rename ${args.join(' ')}` : '/rename';
+  const handle = await services.cli.claudeCode.query({
+    ...(ccState?.cwd && { cwd: ccState.cwd }),
+    prompt,
+    resume: sessionId,
+    permissionMode: 'plan',
+  });
+
+  const result = await handle.result;
+  const newTitle = result.text?.trim() || args.join(' ') || 'Untitled';
+
+  services.repository.threadCommands.update(threadId as any, { topic: newTitle });
+  services.emitter.sendToPlugin('threads', {
+    type: 'THREAD_UPDATED',
+    threadId,
+    updates: { topic: newTitle },
+  });
+
+  return { text: `Renamed to: ${newTitle}` };
+}
