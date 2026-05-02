@@ -124,6 +124,15 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
 
   if (cfg.richFormatting) extensions.push(Color, Highlight.configure({ multicolor: true }), CustomHorizontalRule)
   if (cfg.fullExtensions) extensions.push(...createFullExtensions(mode))
+  // Tables are common in chat responses — include them even without fullExtensions
+  if (!cfg.fullExtensions && mode === 'viewer') {
+    extensions.push(
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableCell,
+      TableHeader,
+    )
+  }
   if (cfg.commandSuggestion) extensions.push(CommandSuggestion)
   if (cfg.commandViewerDeco && isCommand) extensions.push(CommandViewerDecoration)
   if (cfg.listShiftEnter) extensions.push(ListShiftEnter)
