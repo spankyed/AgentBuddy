@@ -516,27 +516,23 @@ export function createThreadAndNotify(
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, skipVisit?: boolean, skipTabSync?: boolean) {
-  if (!skipVisit) {
-    // Mark thread as visited when opening chat
+export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?: boolean) {
+  if (!restore) {
     repository.threadCommands.markAsVisited(threadId);
   }
 
-  // Reset 'success' state when the user revisits the thread
   const thread = repository.threadQueries.byId(threadId);
   if (thread?.chatState === 'success') {
     threadsService.updateChatState(threadId, 'idle');
   }
 
-  // Send thread data to load in chat
   sendToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
     data: repository.chatQueries.threadData(threadId),
-    ...(skipTabSync && { skipTabSync }),
+    ...(restore && { restore }),
   });
 
-  if (!skipVisit) {
-    // Send updated recent threads list
+  if (!restore) {
     sendRecentThreadsRefresh();
   }
 }

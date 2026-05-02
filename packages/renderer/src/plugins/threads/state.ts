@@ -135,7 +135,7 @@ type SystemEvent =
 
 type UIEvent =
   // Thread management events
-  | { type: 'OPEN_THREAD_CHAT'; threadId: string; skipVisit?: boolean; skipTabSync?: boolean }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string; restore?: boolean }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'VIEW_LIST' }
@@ -292,16 +292,13 @@ const threadsState = setup({
   actions: {
     // ---- Thread management actions ----
     openThreadChat: ({ self, event }) => {
-      const { threadId, skipVisit, skipTabSync } = typeOf('OPEN_THREAD_CHAT', event);
-      // Navigate to dashboard view (replaces old agent canvas navigation)
+      const { threadId, restore } = typeOf('OPEN_THREAD_CHAT', event);
       self.send({ type: 'VIEW_DASHBOARD' });
-      // Request thread chat data from backend
       trpc.bus.send.mutate({
         systemId: id,
         type: 'OPEN_THREAD_CHAT',
         threadId,
-        ...(skipVisit && { skipVisit }),
-        ...(skipTabSync && { skipTabSync }),
+        ...(restore && { restore }),
       });
     },
     setupParentThread: assign(({ event, context }) => {
@@ -856,62 +853,47 @@ const threadsState = setup({
       pendingActionId: undefined,
     })),
     setThreadChatData: assign(({ context, event }) => {
-      const typedEvent = typeOf('LOAD_CHAT_THREAD', event);
-      const thread = typedEvent.data;
-      const skipTabSync = (typedEvent as any).skipTabSync;
+      const thread = typeOf('LOAD_CHAT_THREAD', event).data;
+      const restore = (event as any).restore;
+      const label = thread.topic || `Thread ${thread.shortCode || ''}`;
 
-      if (thread.id && !skipTabSync) {
-        // Normal flow: tell backend to sync tab (loads artifacts, marks visited)
+      if (thread.id && !restore) {
         trpc.bus.send.mutate({
           systemId: id,
           type: 'OPEN_THREAD_TAB',
           threadId: thread.id,
-          label: thread.topic || `Thread ${thread.shortCode || ''}`,
+          label,
           ...(thread.pinned && { pinned: true }),
         });
       }
 
-      // Read chatState from thread entity (canonical source).
       const chatState: ChatState = (thread.chatState as ChatState) ?? 'idle';
+      const base = {
+        currentThread: thread,
+        chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+      };
 
-      // Build tab update for skipTabSync (create tab locally instead of round-tripping)
-      const artifacts = (thread.artifacts || []) as any as Tab['artifacts'];
-      const tabLabel = thread.topic || `Thread ${thread.shortCode || ''}`;
-      const tabUpdate = skipTabSync && thread.id ? {
-        tabs: context.tabs.find(t => t.id === thread.id)
-          ? context.tabs.map(t => t.id === thread.id
-              ? { ...t, label: tabLabel, artifacts }
-              : t)
-          : [...context.tabs, {
-              id: thread.id,
-              label: tabLabel,
-              artifacts,
-              selectedArtifactId: artifacts[0]?.id,
-              ...(thread.pinned && { pinned: true }),
-            } as Tab],
-        activeTabId: thread.id,
-      } : {};
+      // On restore, create tab locally instead of round-tripping via OPEN_THREAD_TAB
+      if (restore && thread.id) {
+        const artifacts = (thread.artifacts || []) as any as Tab['artifacts'];
+        const existing = context.tabs.find(t => t.id === thread.id);
+        Object.assign(base, {
+          tabs: existing
+            ? context.tabs.map(t => t.id === thread.id ? { ...t, label, artifacts } : t)
+            : [...context.tabs, { id: thread.id, label, artifacts, selectedArtifactId: artifacts[0]?.id, ...(thread.pinned && { pinned: true }) } as Tab],
+          activeTabId: thread.id,
+        });
+      }
 
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
         const newPhase = modeConfig?.phases?.length
           ? (thread.forcedMode in context.phaseByMode ? context.phaseByMode[thread.forcedMode] : modeConfig.phases[0].id)
           : undefined;
-
-        return {
-          currentThread: thread,
-          mode: thread.forcedMode,
-          phase: newPhase,
-          chatStates: { ...context.chatStates, [thread.id as string]: chatState },
-          ...tabUpdate,
-        };
+        return { ...base, mode: thread.forcedMode, phase: newPhase };
       }
 
-      return {
-        currentThread: thread,
-        chatStates: { ...context.chatStates, [thread.id as string]: chatState },
-        ...tabUpdate,
-      };
+      return base;
     }),
     setRefreshThreadsData: assign(({ event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
@@ -971,14 +953,9 @@ const threadsState = setup({
         }
       }
 
-      // Determine active tab: prefer stored, fallback to backend current thread
-      const allTabIds = new Set(allTabs.map(t => t.id));
-      const activeTabId = (stored?.activeTabId && allTabIds.has(stored.activeTabId))
+      const activeTabId = (stored?.activeTabId && allTabs.some(t => t.id === stored.activeTabId))
         ? stored.activeTabId
         : (currentThreadTab?.id || backendTabs[0]?.id || '');
-
-      // If active tab differs from backend's current thread, load it
-      const needsActiveTabLoad = activeTabId && activeTabId !== currentThread?.id;
 
       enqueue(assign({
         currentThread,
@@ -992,9 +969,8 @@ const threadsState = setup({
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       }));
 
-      // Only load the active tab's data if it's different from the backend's current thread
-      if (needsActiveTabLoad) {
-        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: activeTabId, skipVisit: true, skipTabSync: true }));
+      if (activeTabId && activeTabId !== currentThread?.id) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: activeTabId, restore: true }));
       }
 
       saveTabsToStorage(allTabs, activeTabId);

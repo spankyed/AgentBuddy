@@ -30,7 +30,7 @@ type IncomingThreadsEvents =
   | { type: 'IMPORT_THREADS'; directory: string }
   // Chat/agent events (merged from agent system)
   | { type: 'USER_MSG'; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] }; cwdOverride?: string; forceDirectoryPicker?: boolean }
-  | { type: 'OPEN_THREAD_CHAT'; threadId: string; skipVisit?: boolean; skipTabSync?: boolean }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string; restore?: boolean }
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'PAUSE_TURN'; threadId: string }
   | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
@@ -67,7 +67,7 @@ export type OutgoingThreadsEvents =
   | { type: 'ARCHIVED_THREADS_DATA'; threads: Partial<ThreadEntity>[] }
   // Chat/agent events (merged from agent system)
   | { type: 'AGENT_CONNECTED'; data: AgentConnectedData }
-  | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData, skipTabSync?: boolean }
+  | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData, restore?: boolean }
   | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
   | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
   | { type: 'ARTIFACT_UPDATED'; tabId: string; artifact: any }
@@ -402,9 +402,9 @@ export const threadsSystem = setup({
       }));
     },
     sendThreadChatData: ({ system, event }) => {
-      const { threadId, skipVisit, skipTabSync } = threadsDef.typeOf('OPEN_THREAD_CHAT', event);
+      const { threadId, restore } = threadsDef.typeOf('OPEN_THREAD_CHAT', event);
       try {
-        services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, skipVisit, skipTabSync);
+        services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
         system.get(bus).send(emit(threads, {
