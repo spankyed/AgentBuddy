@@ -516,7 +516,7 @@ export function createThreadAndNotify(
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, skipVisit?: boolean) {
+export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, skipVisit?: boolean, skipTabSync?: boolean) {
   if (!skipVisit) {
     // Mark thread as visited when opening chat
     repository.threadCommands.markAsVisited(threadId);
@@ -532,6 +532,7 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, skipVisi
   sendToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
     data: repository.chatQueries.threadData(threadId),
+    ...(skipTabSync && { skipTabSync }),
   });
 
   if (!skipVisit) {

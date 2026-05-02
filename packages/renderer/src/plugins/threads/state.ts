@@ -36,19 +36,33 @@ function getInitialView(): 'list' | 'kanban' | 'dashboard' {
 
 const THREADS_TABS_KEY = 'threads-open-tabs';
 
+interface StoredTabData {
+  tabs: { id: string; label: string }[];
+  activeTabId: string;
+}
+
 function saveTabsToStorage(tabs: Tab[], activeTabId: string) {
   try {
     localStorage.setItem(THREADS_TABS_KEY, JSON.stringify({
-      tabIds: tabs.filter(t => !t.pinned).map(t => t.id),
+      tabs: tabs.filter(t => !t.pinned).map(t => ({ id: t.id, label: t.label })),
       activeTabId,
-    }));
+    } satisfies StoredTabData));
   } catch {}
 }
 
-function loadTabsFromStorage(): { tabIds: string[]; activeTabId: string } | null {
+function loadTabsFromStorage(): StoredTabData | null {
   try {
     const raw = localStorage.getItem(THREADS_TABS_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Backward compat: old format stored tabIds as string[]
+    if (parsed.tabIds && !parsed.tabs) {
+      return {
+        tabs: parsed.tabIds.map((id: string) => ({ id, label: '' })),
+        activeTabId: parsed.activeTabId || '',
+      };
+    }
+    return parsed;
   } catch { return null; }
 }
 
@@ -121,7 +135,7 @@ type SystemEvent =
 
 type UIEvent =
   // Thread management events
-  | { type: 'OPEN_THREAD_CHAT'; threadId: string; skipVisit?: boolean }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string; skipVisit?: boolean; skipTabSync?: boolean }
   | { type: 'SHOW_CREATE_FORM' }
   | { type: 'SHOW_CREATE_FORM_AS_CHILD'; parentThreadId: string }
   | { type: 'VIEW_LIST' }
@@ -278,7 +292,7 @@ const threadsState = setup({
   actions: {
     // ---- Thread management actions ----
     openThreadChat: ({ self, event }) => {
-      const { threadId, skipVisit } = typeOf('OPEN_THREAD_CHAT', event);
+      const { threadId, skipVisit, skipTabSync } = typeOf('OPEN_THREAD_CHAT', event);
       // Navigate to dashboard view (replaces old agent canvas navigation)
       self.send({ type: 'VIEW_DASHBOARD' });
       // Request thread chat data from backend
@@ -287,6 +301,7 @@ const threadsState = setup({
         type: 'OPEN_THREAD_CHAT',
         threadId,
         ...(skipVisit && { skipVisit }),
+        ...(skipTabSync && { skipTabSync }),
       });
     },
     setupParentThread: assign(({ event, context }) => {
@@ -841,9 +856,12 @@ const threadsState = setup({
       pendingActionId: undefined,
     })),
     setThreadChatData: assign(({ context, event }) => {
-      const thread = typeOf('LOAD_CHAT_THREAD', event).data;
+      const typedEvent = typeOf('LOAD_CHAT_THREAD', event);
+      const thread = typedEvent.data;
+      const skipTabSync = (typedEvent as any).skipTabSync;
 
-      if (thread.id) {
+      if (thread.id && !skipTabSync) {
+        // Normal flow: tell backend to sync tab (loads artifacts, marks visited)
         trpc.bus.send.mutate({
           systemId: id,
           type: 'OPEN_THREAD_TAB',
@@ -856,6 +874,24 @@ const threadsState = setup({
       // Read chatState from thread entity (canonical source).
       const chatState: ChatState = (thread.chatState as ChatState) ?? 'idle';
 
+      // Build tab update for skipTabSync (create tab locally instead of round-tripping)
+      const artifacts = (thread.artifacts || []) as any as Tab['artifacts'];
+      const tabLabel = thread.topic || `Thread ${thread.shortCode || ''}`;
+      const tabUpdate = skipTabSync && thread.id ? {
+        tabs: context.tabs.find(t => t.id === thread.id)
+          ? context.tabs.map(t => t.id === thread.id
+              ? { ...t, label: tabLabel, artifacts }
+              : t)
+          : [...context.tabs, {
+              id: thread.id,
+              label: tabLabel,
+              artifacts,
+              selectedArtifactId: artifacts[0]?.id,
+              ...(thread.pinned && { pinned: true }),
+            } as Tab],
+        activeTabId: thread.id,
+      } : {};
+
       if (thread.forcedMode) {
         const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
         const newPhase = modeConfig?.phases?.length
@@ -867,12 +903,14 @@ const threadsState = setup({
           mode: thread.forcedMode,
           phase: newPhase,
           chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+          ...tabUpdate,
         };
       }
 
       return {
         currentThread: thread,
         chatStates: { ...context.chatStates, [thread.id as string]: chatState },
+        ...tabUpdate,
       };
     }),
     setRefreshThreadsData: assign(({ event }) => {
@@ -912,14 +950,40 @@ const threadsState = setup({
       const backendTabs: Tab[] = typedEvent.data.tabs || [];
       const stored = loadTabsFromStorage();
       const backendTabIds = new Set(backendTabs.map(t => t.id));
-      const activeTabId = (stored?.activeTabId && backendTabIds.has(stored.activeTabId))
+
+      // Build lookup from recentThreads/threads for tab labels
+      const allKnownThreads = [
+        ...(typedEvent.data.recentThreads || []),
+        ...(typedEvent.data.threads || []),
+      ];
+      const threadLabelMap = new Map<string, string>(
+        allKnownThreads.map(t => [t.id as string, t.topic || `Thread ${t.shortCode || ''}`])
+      );
+
+      // Create tab entries for stored tabs not already in backend tabs
+      let allTabs = [...backendTabs];
+      if (stored) {
+        for (const storedTab of stored.tabs) {
+          if (!backendTabIds.has(storedTab.id)) {
+            const label = threadLabelMap.get(storedTab.id) || storedTab.label || 'Thread';
+            allTabs.push({ id: storedTab.id, label, artifacts: [] });
+          }
+        }
+      }
+
+      // Determine active tab: prefer stored, fallback to backend current thread
+      const allTabIds = new Set(allTabs.map(t => t.id));
+      const activeTabId = (stored?.activeTabId && allTabIds.has(stored.activeTabId))
         ? stored.activeTabId
         : (currentThreadTab?.id || backendTabs[0]?.id || '');
+
+      // If active tab differs from backend's current thread, load it
+      const needsActiveTabLoad = activeTabId && activeTabId !== currentThread?.id;
 
       enqueue(assign({
         currentThread,
         recentThreads: (typedEvent.data.recentThreads || []) as ThreadEntity[],
-        tabs: backendTabs,
+        tabs: allTabs,
         activeTabId,
         ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
@@ -928,18 +992,12 @@ const threadsState = setup({
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       }));
 
-      // Re-open stored tabs not already provided by the backend.
-      // The stored active tab is opened last so it ends up as activeTabId.
-      if (stored) {
-        const missing = stored.tabIds.filter(id => !backendTabIds.has(id));
-        const activeIdx = missing.indexOf(stored.activeTabId);
-        if (activeIdx > -1) missing.push(missing.splice(activeIdx, 1)[0]);
-        for (const tabId of missing) {
-          enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId, skipVisit: true }));
-        }
+      // Only load the active tab's data if it's different from the backend's current thread
+      if (needsActiveTabLoad) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: activeTabId, skipVisit: true, skipTabSync: true }));
       }
 
-      saveTabsToStorage(backendTabs, activeTabId);
+      saveTabsToStorage(allTabs, activeTabId);
     }),
     handleChatSettingsUpdate: assign(({ event }) => {
       const typedEvent = typeOf('AGENT_SETTINGS_UPDATED', event);
