@@ -26,7 +26,7 @@ import { createToolActivityWriter } from './tool-activity-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
-import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, clearSessionId, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './thread-context';
+import { getClaudeState, persistClaudeState, setRunning, dequeueMessage, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './thread-context';
 import { parseContextMarkdown } from './context-parser';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
@@ -636,7 +636,15 @@ export async function consumeStream(
     // and the placeholder message may have been soft-deleted — touching
     // any shared state or emitting events could corrupt the session.
     if (!stillCurrent()) {
-      log.debug('stream consumer superseded — skipping all cleanup');
+      log.debug('stream consumer superseded — finalizing message, skipping thread cleanup');
+      // Finalize the message so "Thinking…" doesn't persist if not soft-deleted.
+      // Thread-scoped state (handle, isRunning, cc.stream.completed) is left to
+      // whoever superseded this consumer.
+      toolActivity.finalise('done');
+      services.chat.updateMessageState(currentMessageId as any, {
+        responseTimestamp: Date.now(),
+        forkable: true,
+      } as any);
       return;
     }
 
@@ -714,7 +722,7 @@ export async function consumeStream(
  * the session broken. Shared by the success-path error-result handler and the
  * catch-path error handler.
  */
-function finalizeSessionError(
+export function finalizeSessionError(
   services: Services,
   threadId: EntityId,
   writer: ReturnType<typeof createStreamWriter>,
@@ -726,7 +734,6 @@ function finalizeSessionError(
     ? '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.'
     : `⚠️ ${errorText}`;
   writer.finalize(prefix ? `${prefix}\n\n${warning}`.trim() : warning);
-  clearSessionId(services, threadId);
   markSessionBroken(services, threadId, staleId ? `Session ${staleId} not found` : errorText);
 }
 

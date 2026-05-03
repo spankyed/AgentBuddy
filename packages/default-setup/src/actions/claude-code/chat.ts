@@ -17,8 +17,8 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, clearSessionId, ensureSessionMarker, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
-import { consumeStream } from './_helpers/stream-consumer';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId } from './_helpers/thread-context';
+import { consumeStream, finalizeSessionError } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
   label: 'Claude Code Chat',
@@ -104,7 +104,7 @@ export async function action(
 
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
-  const resumeSessionId = prior?.sessionId;
+  const resumeSessionId = prior?.sessionId || undefined;
   let forkFrom = prior?.forkFrom;
   let revertTo = prior?.revertTo;
 
@@ -362,26 +362,13 @@ export async function action(
     toolActivity.finalise('error');
     setRunning(services, threadId, false);
 
-    // ─── Session-not-found: clear stale sessionId, mark artifact broken ──
-    const staleId = extractStaleSessionId(message);
-    if (staleId) {
-      log.error('[session-expired] stale session detected', {
-        threadId,
-        staleId,
-        resumeSessionId: resumeSessionId ?? null,
-        sessionCwd: sessionCwd ?? null,
-        hadRevertTo: !!revertTo,
-        hadForkFrom: !!forkFrom,
-        cliError: message,
-      });
-      const userMessage = 'Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.';
-      writer.finalize(`⚠️ ${userMessage}`);
-      clearSessionId(services, threadId);
-      markSessionBroken(services, threadId, `Session ${staleId} not found`);
-      return { success: false, error: userMessage, messageId: currentMessageId };
+    // ─── Session-not-found: clear stale sessionId, mark session broken ──
+    if (extractStaleSessionId(message)) {
+      finalizeSessionError(services, threadId as EntityId, writer, message);
+      return { success: false, error: message, messageId: currentMessageId };
     }
 
-    // ─── Generic error (existing behavior) ───────────────────────────────
+    // ─── Generic error ───────────────────────────────────────────────────
     updateChatState(services, threadId, 'idle');
     services.emitter.sendToPlugin('threads', {
       type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,

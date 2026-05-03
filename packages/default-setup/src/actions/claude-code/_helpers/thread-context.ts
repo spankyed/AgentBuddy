@@ -295,7 +295,7 @@ export function markSessionBroken(
 ): void {
   persistClaudeState(services, threadId as string, {
     sessionError: errorMessage,
-    sessionId: '',
+    sessionId: undefined,
   });
   updateChatState(services, threadId, 'error');
 }
@@ -307,11 +307,6 @@ export function markSessionBroken(
 /** Mark whether a chat action is currently running on this thread. */
 export function setRunning(services: Services, threadId: string, running: boolean): void {
   persistClaudeState(services, threadId, { isRunning: running });
-}
-
-/** Clear the sessionId so the next turn starts a fresh CLI session. */
-export function clearSessionId(services: Services, threadId: string): void {
-  persistClaudeState(services, threadId, { sessionId: undefined });
 }
 
 /**

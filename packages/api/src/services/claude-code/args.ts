@@ -85,7 +85,7 @@ export function argsFromOptions(opts: QueryOptions): string[] {
 
   // ─── Session control ──────────────────────────────────────────────────────
   if (opts.continue) args.push('--continue')
-  if (opts.resume !== undefined) {
+  if (opts.resume) {
     if (opts.resume === true) args.push('--resume')
     else args.push('--resume', opts.resume)
   }
