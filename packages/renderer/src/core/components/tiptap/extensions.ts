@@ -143,7 +143,7 @@ export function createExtensions({ mode, variant = 'full', placeholder, isComman
       if (node.type.name === 'heading') return `Heading ${node.attrs.level}`
       if (node.type.name === 'codeBlock') return ''
       if (node.type.name === 'detailsSummary') return 'Toggle summary'
-      return editor.isEmpty ? placeholder : ''
+      return editor.state.doc.content.size <= 2 ? placeholder : ''
     },
     includeChildren: true,
   }))

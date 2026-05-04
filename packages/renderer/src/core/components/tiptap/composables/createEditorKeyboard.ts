@@ -122,7 +122,7 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
     }
 
     if (cfg.historyNavigation) {
-      const isEmpty = !view.state.doc.textContent.trim()
+      const isEmpty = view.state.doc.content.size <= 2
 
       if (event.key === 'ArrowUp' && (isEmpty || getInHistoryMode())) {
         emit.historyPrev()
