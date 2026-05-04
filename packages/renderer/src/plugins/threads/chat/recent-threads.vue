@@ -150,7 +150,7 @@
           v-if="currentThread?.topic"
           class="group inline-flex items-center justify-center gap-2 max-w-full"
         >
-          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle inline dashboard" @click.stop="handleToggleInlineDashboard" />
+          <PanelLeft :size="14" class="shrink-0 cursor-pointer transition-colors hover:text-neutral-200" title="Toggle inline dashboard" @mousedown.prevent @click.stop="handleToggleInlineDashboard" />
           <input
             v-if="editingTitleBar"
             ref="titleBarInputRef"
@@ -469,6 +469,7 @@ const handleViewDashboard = () => {
 }
 
 const handleToggleInlineDashboard = () => {
+  if (editingTitleBar.value) confirmTitleBarRename()
   if (!props.currentThread?.id) return
   emit('toggle-inline-dashboard')
 }
