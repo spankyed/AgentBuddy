@@ -156,13 +156,13 @@
             ref="titleBarInputRef"
             v-model="editingName"
             :size="Math.max(editingName.length + 1, 1)"
-            class="hidden @md:inline min-w-0 text-sm bg-neutral-800 text-neutral-100 border border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-400 text-center"
+            class="min-w-0 text-sm bg-neutral-800 text-neutral-100 border border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-400 text-center"
             @keydown.enter.stop.prevent="confirmTitleBarRename"
             @keydown.escape.stop.prevent="cancelTitleBarRename"
             @blur="confirmTitleBarRename"
             @click.stop
           />
-          <span v-else class="hidden @md:inline truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard" @contextmenu.prevent="startTitleBarRename">{{ currentThread?.topic }}</span>
+          <span v-else class="min-w-[3ch] truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard" @contextmenu.prevent="startTitleBarRename">{{ currentThread?.topic }}</span>
         </span>
       </div>
 
