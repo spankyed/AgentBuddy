@@ -53,8 +53,8 @@ async function handleCompact(
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
   updateChatState(services, threadId as any, 'working');
-  persistClaudeState(services, threadId, { commandActive: true });
   try {
+    persistClaudeState(services, threadId, { commandActive: true });
     const sessionCwd = ccState?.cwd;
     const prompt = args.length > 0 ? `/compact ${args.join(' ')}` : '/compact';
     const handle = await services.cli.claudeCode.query({
