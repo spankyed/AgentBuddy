@@ -4,7 +4,7 @@
       <!-- Header -->
       <div class="flex items-center gap-2 px-3 py-2 border-b border-neutral-800">
         <Wrench :size="14" class="text-neutral-400" />
-        <h3 class="text-sm font-medium text-neutral-200 flex-1">Claude Code session</h3>
+        <h3 class="text-sm font-medium text-neutral-200">Claude Code session</h3>
         <button
           v-if="content.sessionId"
           @click="openTerminalTab"
@@ -13,6 +13,7 @@
         >
           <Terminal :size="12" />
         </button>
+        <span class="flex-1" />
         <span class="flex items-center gap-1.5">
           <span class="relative inline-block w-2 h-2" :title="content.chatState">
             <span
