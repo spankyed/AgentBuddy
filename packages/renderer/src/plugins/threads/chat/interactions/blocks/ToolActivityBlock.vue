@@ -67,7 +67,7 @@
 
           <!-- Input summary (paths truncated from the left to preserve filename) -->
           <div class="text-neutral-400 flex-1 min-w-0">
-            <div class="truncate font-mono" dir="rtl">{{ entry.summary }}</div>
+            <div class="truncate font-mono text-left" dir="rtl">{{ entry.summary }}</div>
           </div>
 
           <!-- Duration badge -->
