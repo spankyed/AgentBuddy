@@ -365,6 +365,7 @@ const handleKeydown = (e: KeyboardEvent) => {
     e.preventDefault()
     isOpen.value = !isOpen.value
     selectedIndex.value = -1
+    if (isOpen.value) (document.activeElement as HTMLElement)?.blur()
     return
   }
 
