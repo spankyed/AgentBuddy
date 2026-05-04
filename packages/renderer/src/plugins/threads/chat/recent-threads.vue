@@ -350,17 +350,18 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
-function isEditorFocused() {
+function isNonChatInputFocused() {
   const el = document.activeElement as HTMLElement | null
   if (!el) return false
+  if (el.closest?.('.ProseMirror')) return false
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
-    || !!el.closest?.('.ProseMirror') || !!el.closest?.('.monaco-editor')
+    || !!el.closest?.('.monaco-editor')
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
   // Shift+Space: toggle popup (only when not typing in an editor/input)
   if (e.key === ' ' && e.shiftKey && !e.metaKey && !e.ctrlKey) {
-    if (!isOpen.value && isEditorFocused()) return
+    if (!isOpen.value && isNonChatInputFocused()) return
     e.preventDefault()
     isOpen.value = !isOpen.value
     selectedIndex.value = -1
