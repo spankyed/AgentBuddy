@@ -3,16 +3,16 @@
     <!-- Header row: chevron + icon + label + streaming dots -->
     <button
       type="button"
-      class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/40 transition-colors"
+      class="w-full flex items-baseline gap-2 px-3 py-2 text-left hover:bg-neutral-700/40 transition-colors"
       @click="isOpen = !isOpen"
     >
       <ChevronRight
-        class="w-4 h-4 text-neutral-400 flex-shrink-0 transition-transform"
+        class="w-4 h-4 text-neutral-400 flex-shrink-0 self-center transition-transform"
         :class="{ 'rotate-90': isOpen }"
       />
-      <Brain class="w-4 h-4 text-neutral-400 flex-shrink-0" />
-      <span class="text-sm text-neutral-200 truncate">{{ label }}</span>
-      <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0" aria-hidden>
+      <Brain class="w-4 h-4 text-neutral-400 flex-shrink-0 self-center" />
+      <span class="text-sm text-neutral-200 truncate shrink">{{ label }}</span>
+      <span v-if="state === 'streaming'" class="flex gap-1 flex-shrink-0 self-baseline" aria-hidden>
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 0ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 150ms" />
         <span class="w-1 h-1 rounded-full bg-neutral-500 streaming-dot" style="animation-delay: 300ms" />

@@ -64,7 +64,7 @@ export function createThinkingWriter(
   }
 
   function buildLabel(): string {
-    if (state === 'streaming') return 'Thinking…';
+    if (state === 'streaming') return 'Thinking';
     const elapsed = Date.now() - (firstPushAt || Date.now());
     return `Thought for ${formatDuration(elapsed)}`;
   }
