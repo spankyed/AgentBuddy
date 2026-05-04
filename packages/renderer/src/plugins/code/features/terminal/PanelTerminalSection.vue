@@ -11,7 +11,7 @@
         TERMINAL
       </div>
       <div class="flex items-center gap-1" @click.stop>
-        <RunScriptPopover :scripts="terminalScripts" @run="runScript" @update="updateScripts" />
+        <RunScriptPopover :scripts="terminalScripts" @run="runScript" @run-new="runScriptInNewTerminal" @update="updateScripts" />
         <button
           @click="createTerminal"
           class="p-1 hover:bg-neutral-700 rounded transition-colors"
@@ -289,6 +289,20 @@ const createTerminal = () => {
 }
 
 const runScript = (script: TerminalScript) => {
+  const hasPanel = panelTerminalId.value && terminals.value.some((t: TerminalInfo) => t.id === panelTerminalId.value)
+  if (hasPanel) {
+    // Reuse existing panel terminal
+    terminalActor?.send({ type: 'terminal.INPUT', terminalId: panelTerminalId.value!, data: script.command + '\n' })
+  } else {
+    // No panel terminal — create a new one
+    terminalActor?.send({ type: 'terminal.CREATE', title: script.label, command: script.command })
+  }
+  if (!isExpanded.value) {
+    codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })
+  }
+}
+
+const runScriptInNewTerminal = (script: TerminalScript) => {
   terminalActor?.send({ type: 'terminal.CREATE', title: script.label, command: script.command })
   if (!isExpanded.value) {
     codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })

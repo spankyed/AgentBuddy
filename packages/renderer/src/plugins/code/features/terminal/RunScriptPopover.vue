@@ -50,7 +50,15 @@
               </button>
               <button
                 type="button"
-                class="px-2 py-2 text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                class="px-1.5 py-2 text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                title="Run in new terminal"
+                @click.stop="runScriptInNew(script)"
+              >
+                <SquarePlus :size="14" />
+              </button>
+              <button
+                type="button"
+                class="px-1.5 py-2 text-neutral-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                 title="Copy command"
                 @click.stop="copyCommand(script)"
               >
@@ -144,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Play, Pencil, X, Plus, Copy, Check } from 'lucide-vue-next'
+import { Play, Pencil, X, Plus, Copy, Check, SquarePlus } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
 import type { TerminalScript } from '@app/api'
 
@@ -154,6 +162,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'run', script: TerminalScript): void
+  (e: 'run-new', script: TerminalScript): void
   (e: 'update', scripts: TerminalScript[]): void
 }>()
 
@@ -198,6 +207,11 @@ watch(open, (isOpen) => {
 
 function runScript(script: TerminalScript) {
   emit('run', script)
+  open.value = false
+}
+
+function runScriptInNew(script: TerminalScript) {
+  emit('run-new', script)
   open.value = false
 }
 
