@@ -79,12 +79,19 @@ export async function action(
   // prompt or its own turn-completed fires. When a follow-up turn is
   // in flight, skip the idle transition AND the success flash;
   // the replayed turn's own turn-completed will handle both.
-  const running = getClaudeState(services, threadId)?.isRunning === true;
+  const ccState = getClaudeState(services, threadId);
+  const running = ccState?.isRunning === true;
+
+  // A non-streaming command (e.g. CC: Compact) owns chatState right now.
+  // Let it manage its own transitions — don't overwrite with 'success'.
+  if (ccState?.commandActive) {
+    return { success: true, hadErrors: !!hadErrors, error: errorMsg, costUsd, durationMs };
+  }
 
   if (!running) {
     // Don't overwrite a persistent 'error' state (e.g. session-not-found) —
     // markSessionBroken already set it and the user needs to see it.
-    const currentChatState = getClaudeState(services, threadId)?.chatState;
+    const currentChatState = ccState?.chatState;
     if (currentChatState !== 'error') {
       // If chatState is already 'idle', the turn was paused/cancelled by the
       // user (pause-turn sets 'idle' before this action fires). Skip the

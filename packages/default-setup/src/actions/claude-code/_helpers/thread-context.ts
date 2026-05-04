@@ -94,6 +94,8 @@ export interface ClaudeCodeThreadState {
   // ─── Ephemeral coordination state ──────────────────────────────────
   /** True while a chat action invocation is actively running on this thread. */
   isRunning?: boolean;
+  /** True while a non-streaming command (e.g. CC: Compact) owns chatState. Prevents Turn Completed from overwriting it with 'success'. */
+  commandActive?: boolean;
   /** Message waiting to be processed after the current turn ends. */
   queuedMessage?: QueuedMessage;
   /**
