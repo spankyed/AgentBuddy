@@ -520,9 +520,15 @@ export class GitRepository {
 
     const tracked: string[] = []
     const untracked: string[] = []
+    const external: string[] = []
     for (const p of unique) {
-      if (untrackedSet.has(p)) untracked.push(p)
-      else tracked.push(p)
+      if (path.isAbsolute(p) && !p.startsWith(this.workingDirectory + '/')) {
+        external.push(p)
+      } else if (untrackedSet.has(p)) {
+        untracked.push(p)
+      } else {
+        tracked.push(p)
+      }
     }
 
     const chunks: string[] = []
@@ -540,6 +546,11 @@ export class GitRepository {
     // Synthetic diffs for untracked files (no git subprocess needed)
     for (const p of untracked) {
       chunks.push(await this.buildSyntheticDiff(p))
+    }
+
+    // Synthetic diffs for external (out-of-repo) files
+    for (const p of external) {
+      chunks.push(await this.buildSyntheticDiffAbsolute(p))
     }
 
     return chunks.filter(Boolean).join('\n')
@@ -585,6 +596,47 @@ export class GitRepository {
       )
     } catch (error) {
       throw new Error(`Failed to read untracked file: ${error}`)
+    }
+  }
+
+  /** Build a synthetic diff for a file outside the repository. */
+  private async buildSyntheticDiffAbsolute(absPath: string): Promise<string> {
+    try {
+      const stat = await fs.stat(absPath)
+      if (stat.isDirectory()) {
+        return (
+          `diff --git a/${absPath} b/${absPath}\n` +
+          `new directory\n` +
+          `Unable to show diff for directory\n`
+        )
+      }
+    } catch {
+      return ''
+    }
+
+    if (await this.isBinaryFile(absPath)) {
+      return (
+        `diff --git a/${absPath} b/${absPath}\n` +
+        `new file mode 100644\n` +
+        `index 0000000..0000000\n` +
+        `Binary files /dev/null and b/${absPath} differ\n`
+      )
+    }
+
+    try {
+      const content = await fs.readFile(absPath, 'utf8')
+      const lines = content.split(/\r?\n/)
+      return (
+        `diff --git a/${absPath} b/${absPath}\n` +
+        `new file mode 100644\n` +
+        `index 0000000..0000000\n` +
+        `--- /dev/null\n` +
+        `+++ b/${absPath}\n` +
+        `@@ -0,0 +1,${lines.length} @@\n` +
+        lines.map(line => `+${line}`).join('\n')
+      )
+    } catch {
+      return ''
     }
   }
 
