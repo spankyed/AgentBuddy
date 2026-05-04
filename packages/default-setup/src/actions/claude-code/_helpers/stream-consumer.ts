@@ -194,6 +194,11 @@ export async function consumeStream(
 
         // Extended thinking deltas — accumulate into the thinking writer.
         if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+          // Clear the "Thinking…" placeholder text on the first thinking delta
+          // so only the thinking block is visible, not redundant text below it.
+          if (!thinking.hasContent) {
+            services.chat.updateMessageState(currentMessageId as any, { text: '' });
+          }
           thinking.push(delta.thinking);
           continue;
         }
