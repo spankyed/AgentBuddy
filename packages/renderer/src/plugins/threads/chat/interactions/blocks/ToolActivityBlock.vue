@@ -43,42 +43,44 @@
       class="border-t border-neutral-700 max-h-80 overflow-y-auto"
       @scroll="onListScroll"
     >
-      <JsonHoverPopup
+      <div
         v-for="(entry, index) in entries"
         :key="entry.id || index"
-        :value="entry.details?.input"
-        :label="entry.tool"
-        width="trigger"
+        class="px-3 py-1.5 text-xs flex items-center gap-2 border-b border-neutral-800/60 last:border-0 hover:bg-neutral-800/40 cursor-default"
+        :class="{ 'opacity-50 line-through': entry.status === 'denied' }"
       >
-        <div
-          class="px-3 py-1.5 text-xs flex items-center gap-2 border-b border-neutral-800/60 last:border-0 hover:bg-neutral-800/40 cursor-default"
-          :class="{
-            'opacity-50 line-through': entry.status === 'denied',
-          }"
-        >
-          <!-- Status icon -->
-          <Check v-if="entry.status === 'ok'" class="w-3 h-3 text-emerald-500 flex-shrink-0" />
-          <Loader2 v-else-if="entry.status === 'running'" class="w-3 h-3 text-neutral-400 animate-spin flex-shrink-0" />
-          <X v-else-if="entry.status === 'denied'" class="w-3 h-3 text-neutral-500 flex-shrink-0" />
-          <AlertCircle v-else-if="entry.status === 'error'" class="w-3 h-3 text-red-500 flex-shrink-0" />
+        <!-- Status icon -->
+        <Check v-if="entry.status === 'ok'" class="w-3 h-3 text-emerald-500 flex-shrink-0" />
+        <Loader2 v-else-if="entry.status === 'running'" class="w-3 h-3 text-neutral-400 animate-spin flex-shrink-0" />
+        <X v-else-if="entry.status === 'denied'" class="w-3 h-3 text-neutral-500 flex-shrink-0" />
+        <AlertCircle v-else-if="entry.status === 'error'" class="w-3 h-3 text-red-500 flex-shrink-0" />
 
-          <!-- Tool name (fixed-width column for alignment) -->
-          <span class="font-mono text-neutral-300 min-w-[4.5rem] flex-shrink-0">{{ entry.tool }}</span>
+        <!-- Tool name -->
+        <span class="font-mono text-neutral-300 min-w-[4.5rem] flex-shrink-0">{{ entry.tool }}</span>
 
-          <!-- Input summary (paths truncated from the left to preserve filename) -->
-          <div class="text-neutral-400 flex-1 min-w-0">
-            <div class="truncate font-mono text-left" dir="rtl">{{ entry.summary }}</div>
-          </div>
-
-          <!-- Duration badge -->
-          <span v-if="entry.durationMs != null" class="text-neutral-500 text-[10px] tabular-nums flex-shrink-0 min-w-[2.5rem] text-right">
-            {{ formatDuration(entry.durationMs) }}
-          </span>
-          <span v-else-if="entry.status === 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
-            running
-          </span>
+        <!-- Summaries -->
+        <div class="flex-1 min-w-0">
+          <JsonHoverPopup :value="entry.details?.input" :label="entry.tool" width="trigger">
+            <div class="text-neutral-400 truncate font-mono text-left" dir="rtl">{{ entry.summary }}</div>
+          </JsonHoverPopup>
+          <JsonHoverPopup
+            v-if="entry.outputSummary && entry.status !== 'running'"
+            :value="entry.details?.output || entry.details?.error"
+            :label="`${entry.tool} output`"
+            width="trigger"
+          >
+            <div class="truncate text-[10px] text-neutral-500">{{ entry.outputSummary }}</div>
+          </JsonHoverPopup>
         </div>
-      </JsonHoverPopup>
+
+        <!-- Duration badge -->
+        <span v-if="entry.durationMs != null" class="text-neutral-500 text-[10px] tabular-nums flex-shrink-0 min-w-[2.5rem] text-right">
+          {{ formatDuration(entry.durationMs) }}
+        </span>
+        <span v-else-if="entry.status === 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
+          running
+        </span>
+      </div>
     </div>
   </div>
 </template>

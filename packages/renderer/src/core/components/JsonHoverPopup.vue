@@ -6,7 +6,7 @@
 
     <HoverCardPortal>
       <HoverCardContent
-        v-if="isJsonLike(value)"
+        v-if="value != null"
         side="top"
         align="start"
         :side-offset="5"
@@ -21,9 +21,9 @@
               {{ label || getJsonTypeLabel(value) }}
             </span>
             <button
-              @click="copyJson"
+              @click="copyContent"
               class="p-1 text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700 rounded transition-colors"
-              title="Copy JSON"
+              title="Copy"
             >
               <Copy v-if="!copied" class="w-3 h-3" />
               <Check v-else class="w-3 h-3 text-green-500" />
@@ -33,10 +33,10 @@
           <!-- JSON Content -->
           <div class="max-h-96 overflow-auto">
             <div class="p-3">
-              <div class="rounded overflow-hidden border border-neutral-800" :style="{ height: jsonHeight }">
+              <div class="rounded overflow-hidden border border-neutral-800" :style="{ height: editorHeight }">
                 <SimpleMonacoEditor
-                  :model-value="formattedJson"
-                  language="json"
+                  :model-value="formattedContent"
+                  :language="contentLanguage"
                   :read-only="true"
                   class="h-full w-full"
                 />
@@ -48,7 +48,7 @@
           <div class="px-3 py-2 bg-neutral-850 border-t border-neutral-800">
             <div class="flex items-center justify-between text-xs text-neutral-500">
               <span>{{ getJsonStats(value) }}</span>
-              <span>{{ formattedJson.length }} chars</span>
+              <span>{{ formattedContent.length }} chars</span>
             </div>
           </div>
         </div>
@@ -88,12 +88,17 @@ const props = defineProps<Props>();
 const copied = ref(false);
 let copyTimeout: NodeJS.Timeout | undefined;
 
-const formattedJson = computed(() => {
-  return formatJsonValue(props.value);
+const isJson = computed(() => isJsonLike(props.value));
+
+const contentLanguage = computed(() => isJson.value ? 'json' : 'text');
+
+const formattedContent = computed(() => {
+  if (isJson.value) return formatJsonValue(props.value);
+  return String(props.value ?? '');
 });
 
-const jsonHeight = computed(() => {
-  const lineCount = formattedJson.value.split('\n').length;
+const editorHeight = computed(() => {
+  const lineCount = formattedContent.value.split('\n').length;
   const height = Math.min(300, Math.max(100, lineCount * 18));
   return `${height}px`;
 });
@@ -110,7 +115,8 @@ function getJsonTypeLabel(value: any): string {
   }
   if (isJsonArray(value)) return 'Array';
   if (isJsonObject(value)) return 'Object';
-  return 'JSON';
+  if (typeof value === 'string') return 'Text';
+  return 'Value';
 }
 
 function getJsonStats(value: any): string {
@@ -136,9 +142,9 @@ function getJsonStats(value: any): string {
   return '';
 }
 
-async function copyJson() {
+async function copyContent() {
   try {
-    await navigator.clipboard.writeText(formattedJson.value);
+    await navigator.clipboard.writeText(formattedContent.value);
     copied.value = true;
 
     if (copyTimeout) {

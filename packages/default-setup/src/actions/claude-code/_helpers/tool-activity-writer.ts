@@ -139,7 +139,7 @@ export function createToolActivityWriter(
     update(id: string, patch: Partial<ToolActivityEntry>): void {
       const idx = entries.findIndex(e => e.id === id);
       if (idx === -1) return;
-      entries[idx] = { ...entries[idx], ...patch };
+      entries[idx] = { ...entries[idx], ...patch, details: { ...entries[idx].details, ...patch.details } };
       schedule();
     },
 

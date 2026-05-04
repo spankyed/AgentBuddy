@@ -293,7 +293,7 @@ export async function consumeStream(
           toolActivity.update(toolUseId, {
             status: isError ? 'error' : 'ok',
             outputSummary: outputSummary || undefined,
-            ...(isError ? { details: { error: displayText } } : {}),
+            details: isError ? { error: displayText } : { output: displayText },
           });
 
           if (isError) {
