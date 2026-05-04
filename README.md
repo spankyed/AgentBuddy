@@ -53,7 +53,7 @@ packages/
 ## Getting Started
 
 ```sh
-git clone https://github.com/anthropics/AgentBuddy.git
+git clone https://github.com/spankyed/AgentBuddy.git
 cd AgentBuddy
 npm install
 ```
