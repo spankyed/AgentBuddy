@@ -65,11 +65,12 @@
           <!-- Tool name (fixed-width column for alignment) -->
           <span class="font-mono text-neutral-300 min-w-[4.5rem] flex-shrink-0">{{ entry.tool }}</span>
 
-          <!-- Input summary (truncated) -->
-          <span class="text-neutral-400 flex-1 truncate font-mono">{{ entry.summary }}</span>
+          <!-- Input summary (truncated; paths truncate from the left to preserve filename) -->
+          <span v-if="isPath(entry.summary)" class="text-neutral-400 flex-1 truncate font-mono" dir="rtl"><span dir="ltr">{{ entry.summary }}</span></span>
+          <span v-else class="text-neutral-400 flex-1 truncate font-mono">{{ entry.summary }}</span>
 
           <!-- Output summary (secondary) -->
-          <span v-if="entry.outputSummary && entry.status !== 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
+          <span v-if="entry.outputSummary && entry.status !== 'running'" class="text-neutral-500 text-[10px] truncate max-w-[40%]">
             {{ entry.outputSummary }}
           </span>
 
@@ -186,6 +187,10 @@ function selectArtifact() {
   if (!props.artifactRef) return
   const threadsActor = applicationState.system.get(threadsId)
   threadsActor.send({ type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
+}
+
+function isPath(s: string): boolean {
+  return s.startsWith('/') || s.startsWith('./')
 }
 
 function formatDuration(ms: number): string {
