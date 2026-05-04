@@ -391,6 +391,7 @@ function isThreadBusy(threadId: string): boolean {
 const recentThreads = computed(() => props.recentThreads)
 
 const handleClickOutside = (event: MouseEvent) => {
+  if (editingThreadId.value) return
   const target = event.target as Node
   if (containerRef.value && !containerRef.value.contains(target) && (!popupRef.value || !popupRef.value.contains(target))) {
     isOpen.value = false
