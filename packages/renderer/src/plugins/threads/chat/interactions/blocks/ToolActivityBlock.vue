@@ -65,14 +65,10 @@
           <!-- Tool name (fixed-width column for alignment) -->
           <span class="font-mono text-neutral-300 min-w-[4.5rem] flex-shrink-0">{{ entry.tool }}</span>
 
-          <!-- Input summary (truncated; paths truncate from the left to preserve filename) -->
-          <span v-if="isPath(entry.summary)" class="text-neutral-400 flex-1 truncate font-mono" dir="rtl"><span dir="ltr">{{ entry.summary }}</span></span>
-          <span v-else class="text-neutral-400 flex-1 truncate font-mono">{{ entry.summary }}</span>
-
-          <!-- Output summary (secondary) -->
-          <span v-if="entry.outputSummary && entry.status !== 'running'" class="text-neutral-500 text-[10px] truncate max-w-[40%]">
-            {{ entry.outputSummary }}
-          </span>
+          <!-- Input summary (paths truncated from the left to preserve filename) -->
+          <div class="text-neutral-400 flex-1 min-w-0">
+            <div class="truncate font-mono" dir="rtl">{{ entry.summary }}</div>
+          </div>
 
           <!-- Duration badge -->
           <span v-if="entry.durationMs != null" class="text-neutral-500 text-[10px] tabular-nums flex-shrink-0 min-w-[2.5rem] text-right">
@@ -189,10 +185,6 @@ function selectArtifact() {
   threadsActor.send({ type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
 }
 
-function isPath(s: string): boolean {
-  return s.startsWith('/') || s.startsWith('./')
-}
-
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
@@ -200,6 +192,7 @@ function formatDuration(ms: number): string {
   const secs = Math.round((ms % 60_000) / 1000)
   return `${mins}m${secs}s`
 }
+
 </script>
 
 <style scoped>

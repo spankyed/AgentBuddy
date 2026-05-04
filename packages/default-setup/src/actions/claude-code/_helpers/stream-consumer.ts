@@ -782,12 +782,12 @@ async function replayQueuedMessage(
   }
 }
 
-/** Shorten tool inputs for the inline tool-use note. */
+/** Extract primary field from tool input for the inline tool-use note. */
 function shortenInput(input: Record<string, unknown>): string {
   const keys = Object.keys(input);
   if (keys.length === 0) return '';
   const primary = (input as any).path || (input as any).file_path || (input as any).command || (input as any).pattern;
-  if (typeof primary === 'string') return primary.length > 60 ? primary.slice(0, 57) + '…' : primary;
+  if (typeof primary === 'string') return primary;
   return keys.slice(0, 3).join(', ');
 }
 
