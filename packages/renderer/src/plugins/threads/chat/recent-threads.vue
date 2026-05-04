@@ -193,31 +193,14 @@
             v-if="editingTitleBar"
             ref="titleBarInputRef"
             v-model="editingName"
-            class="hidden @md:inline w-full max-w-[200px] text-sm bg-neutral-800 text-neutral-100 border border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-400 text-center"
+            :size="Math.max(editingName.length + 1, 1)"
+            class="hidden @md:inline min-w-0 text-sm bg-neutral-800 text-neutral-100 border border-neutral-600 rounded px-1.5 py-0.5 outline-none focus:border-neutral-400 text-center"
             @keydown.enter.stop.prevent="confirmTitleBarRename"
             @keydown.escape.stop.prevent="cancelTitleBarRename"
             @blur="confirmTitleBarRename"
             @click.stop
           />
-          <ContextMenuRoot v-else>
-            <ContextMenuTrigger as-child>
-              <span class="hidden @md:inline truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard">{{ currentThread?.topic }}</span>
-            </ContextMenuTrigger>
-            <ContextMenuPortal>
-              <ContextMenuContent
-                class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[120px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
-                :side-offset="2"
-              >
-                <ContextMenuItem
-                  class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-                  @select="startTitleBarRename"
-                >
-                  <Pencil :size="14" class="text-neutral-400" />
-                  Rename
-                </ContextMenuItem>
-              </ContextMenuContent>
-            </ContextMenuPortal>
-          </ContextMenuRoot>
+          <span v-else class="hidden @md:inline truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard" @contextmenu.prevent="startTitleBarRename">{{ currentThread?.topic }}</span>
         </span>
       </div>
 
@@ -456,10 +439,10 @@ const startTitleBarRename = () => {
   if (!props.currentThread?.id) return
   editingName.value = props.currentThread.topic || ''
   editingTitleBar.value = true
-  nextTick(() => {
+  setTimeout(() => {
     titleBarInputRef.value?.focus()
     titleBarInputRef.value?.select()
-  })
+  }, 50)
 }
 
 const confirmTitleBarRename = () => {
