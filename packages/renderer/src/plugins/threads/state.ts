@@ -274,6 +274,19 @@ interface ThreadsContext {
   pendingForceDirectoryPicker?: boolean;
 }
 
+// ---- Helpers ----
+
+function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: string, value: unknown) {
+  trpc.bus.send.mutate({ systemId: id, type: 'UPDATE_THREAD_FIELD', threadId, key, value });
+  return {
+    recentThreads: context.recentThreads.map(t => t.id === threadId ? { ...t, [key]: value } : t),
+    threads: context.threads.map(t => t.id === threadId ? { ...t, [key]: value } : t),
+    tabs: context.tabs.map(t => t.id === threadId ? { ...t, [key]: value } : t),
+    ...(context.currentThread?.id === threadId ? { currentThread: { ...context.currentThread, [key]: value } } : {}),
+    ...(context.view.id === threadId ? { view: { ...context.view, [key]: value } } : {}),
+  };
+}
+
 // ---- State machine ----
 
 const threadsState = setup({
@@ -465,27 +478,7 @@ const threadsState = setup({
     },
     renameThread: assign(({ event, context }) => {
       const { threadId, topic } = typeOf('RENAME_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_THREAD_FIELD',
-        threadId,
-        key: 'topic',
-        value: topic,
-      });
-      return {
-        recentThreads: context.recentThreads.map(t =>
-          t.id === threadId ? { ...t, topic } : t
-        ),
-        threads: context.threads.map(t =>
-          t.id === threadId ? { ...t, topic } : t
-        ),
-        ...(context.currentThread?.id === threadId
-          ? { currentThread: { ...context.currentThread, topic } }
-          : {}),
-        ...(context.view.id === threadId
-          ? { view: { ...context.view, topic } }
-          : {}),
-      };
+      return optimisticFieldUpdate(context, threadId, 'topic', topic);
     }),
     setThreadsSettings: assign(({ event }) => {
       const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
@@ -514,26 +507,14 @@ const threadsState = setup({
         value: true,
       });
     },
-    unpinThread: ({ event }) => {
+    unpinThread: assign(({ event, context }) => {
       const { threadId } = typeOf('UNPIN_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_THREAD_FIELD',
-        threadId,
-        key: 'pinned',
-        value: false,
-      });
-    },
-    pinThread: ({ event }) => {
+      return optimisticFieldUpdate(context, threadId, 'pinned', false);
+    }),
+    pinThread: assign(({ event, context }) => {
       const { threadId } = typeOf('PIN_THREAD', event);
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'UPDATE_THREAD_FIELD',
-        threadId,
-        key: 'pinned',
-        value: true,
-      });
-    },
+      return optimisticFieldUpdate(context, threadId, 'pinned', true);
+    }),
     toggleViewArchive: assign(({ context }) => {
       const newShowArchived = !context.showArchived;
       if (newShowArchived) {

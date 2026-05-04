@@ -120,53 +120,15 @@
           </div>
         </div>
           </ContextMenuTrigger>
-          <ContextMenuPortal>
-            <ContextMenuContent
-              class="bg-neutral-800 border border-neutral-700 rounded-md p-1 min-w-[140px] shadow-[0_10px_38px_-10px_rgba(0,0,0,0.75),0_10px_20px_-15px_rgba(0,0,0,0.4)] z-50"
-              :side-offset="2"
-            >
-              <ContextMenuItem
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-                @select="startRename(thread.id, thread.topic)"
-              >
-                <Pencil :size="14" class="text-neutral-400" />
-                Rename
-              </ContextMenuItem>
-              <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-              <ContextMenuItem
-                v-if="thread.pinned"
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-                @select="handleUnpinThread(thread.id)"
-              >
-                <Pin :size="14" class="text-neutral-400" />
-                Unpin
-              </ContextMenuItem>
-              <ContextMenuItem
-                v-if="!thread.pinned"
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-neutral-50 hover:bg-neutral-700 transition-colors outline-none"
-                @select="handlePinThread(thread.id)"
-              >
-                <Pin :size="14" class="text-neutral-400" />
-                Pin
-              </ContextMenuItem>
-              <ContextMenuItem
-                v-if="!thread.pinned"
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-amber-400 hover:bg-neutral-700 transition-colors outline-none"
-                @select="handleArchiveThread(thread.id)"
-              >
-                <Archive :size="14" />
-                Archive
-              </ContextMenuItem>
-              <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-              <ContextMenuItem
-                class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
-                @select="handleDeleteThread(thread.id)"
-              >
-                <Trash2 :size="14" />
-                Delete
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenuPortal>
+          <ThreadContextMenu
+            :is-pinned="!!thread.pinned"
+            :copy-text="thread.shortCode || thread.id"
+            @rename="startRename(thread.id, thread.topic)"
+            @pin="handlePinThread(thread.id)"
+            @unpin="handleUnpinThread(thread.id)"
+            @archive="handleArchiveThread(thread.id)"
+            @delete="handleDeleteThread(thread.id)"
+          />
         </ContextMenuRoot>
       </div>
     </div>
@@ -315,6 +277,7 @@ import {
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import { id as threadsId, type ThreadsState } from '@/plugins/threads/state'
+import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue'
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;

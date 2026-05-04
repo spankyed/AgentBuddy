@@ -16,32 +16,29 @@
         Copy Id
       </ContextMenuItem>
 
-      <template v-if="isPinned">
-        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-        <ContextMenuItem :class="itemClass" @select="$emit('unpin')">
-          <Pin :size="14" class="text-neutral-400" />
-          Unpin
-        </ContextMenuItem>
-      </template>
+      <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
 
-      <template v-if="!isPinned">
-        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
-        <ContextMenuItem :class="itemClass" @select="$emit('pin')">
-          <Pin :size="14" class="text-neutral-400" />
-          Pin
-        </ContextMenuItem>
-        <ContextMenuItem :class="itemClass" @select="$emit('archive')">
-          <Archive :size="14" class="text-amber-400" />
-          Archive
-        </ContextMenuItem>
-        <ContextMenuItem
-          class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
-          @select="$emit('delete')"
-        >
-          <Trash2 :size="14" />
-          Delete
-        </ContextMenuItem>
-      </template>
+      <ContextMenuItem v-if="isPinned" :class="itemClass" @select="$emit('unpin')">
+        <Pin :size="14" class="text-neutral-400" />
+        Unpin
+      </ContextMenuItem>
+      <ContextMenuItem v-else :class="itemClass" @select="$emit('pin')">
+        <Pin :size="14" class="text-neutral-400" />
+        Pin
+      </ContextMenuItem>
+      <ContextMenuItem v-if="!isPinned" :class="itemClass" @select="$emit('archive')">
+        <Archive :size="14" class="text-amber-400" />
+        Archive
+      </ContextMenuItem>
+
+      <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+      <ContextMenuItem
+        class="flex items-center gap-2 px-3 py-2 text-sm rounded cursor-pointer text-red-400 hover:bg-neutral-700 transition-colors outline-none"
+        @select="$emit('delete')"
+      >
+        <Trash2 :size="14" />
+        Delete
+      </ContextMenuItem>
     </ContextMenuContent>
   </ContextMenuPortal>
 </template>
