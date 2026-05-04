@@ -140,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis } from 'lucide-vue-next'
 import {
@@ -244,10 +244,7 @@ const attachTerminal = (terminalId: string) => {
   resizeObserver = new ResizeObserver(() => {
     requestAnimationFrame(() => {
       fitAddon?.fit()
-      if (attachedTerminalId) {
-        terminalPool.refreshWebgl(attachedTerminalId)
-        terminalPool.syncViewport(attachedTerminalId)
-      }
+      if (attachedTerminalId) terminalPool.syncViewport(attachedTerminalId)
     })
   })
   resizeObserver.observe(container.value)
@@ -427,6 +424,17 @@ const cancelRename = () => {
   renamingTerminalId.value = null
   renameValue.value = ''
 }
+
+// Attach on mount if values are already available (e.g. after inspection panel re-open,
+// where the watcher below won't fire because all values are already stable).
+onMounted(() => {
+  const expanded = isExpanded.value
+  const termId = panelTerminalId.value
+  const info = activeTerminalInfo.value
+  if (expanded && termId && info && !attachedTerminalId) {
+    attachTerminal(termId)
+  }
+})
 
 // Watch expand/collapse, panelTerminalId, and activeTerminalInfo (for when terminals list arrives after expand)
 watch([isExpanded, panelTerminalId, activeTerminalInfo], async ([expanded, termId, info]) => {

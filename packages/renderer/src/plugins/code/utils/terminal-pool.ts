@@ -60,7 +60,6 @@ export interface PoolEntry {
   pinnedToBottom: boolean
   savedScrollFraction: number | null
   webglLoaded: boolean
-  webglAddon: WebglAddon | null
 }
 
 const showLoadingContent = (term: Terminal, info: TerminalInfo) => {
@@ -128,8 +127,7 @@ class TerminalPool {
       isShowingLoadingContent: false,
       pinnedToBottom: true,
       savedScrollFraction: null,
-      webglLoaded: false,
-      webglAddon: null
+      webglLoaded: false
     }
 
     // Shift+Enter inserts a newline instead of executing. Wired once here
@@ -187,7 +185,7 @@ class TerminalPool {
     // Load WebGL on first in-DOM attach so the GL canvas is sized from live
     // DOM metrics rather than a detached wrapper with zero dimensions.
     if (!entry.webglLoaded) {
-      this.loadWebgl(entry)
+      try { entry.term.loadAddon(new WebglAddon()) } catch { /* falls back to canvas renderer */ }
       entry.webglLoaded = true
     }
     return entry
@@ -246,27 +244,6 @@ class TerminalPool {
         }
       })
     })
-  }
-
-  /** Load the WebGL addon and wire up automatic recovery on context loss. */
-  private loadWebgl(entry: PoolEntry): void {
-    try {
-      const webgl = new WebglAddon()
-      webgl.onContextLoss(() => {
-        webgl.dispose()
-        entry.webglAddon = null
-        requestAnimationFrame(() => this.loadWebgl(entry))
-      })
-      entry.term.loadAddon(webgl)
-      entry.webglAddon = webgl
-    } catch { /* falls back to canvas renderer */ }
-  }
-
-  /** Force the WebGL renderer to rebuild its texture atlas and redraw. */
-  refreshWebgl(terminalId: string): void {
-    const entry = this.entries.get(terminalId)
-    if (!entry?.webglAddon) return
-    try { entry.webglAddon.clearTextureAtlas() } catch { /* ignore */ }
   }
 
   private getViewport(entry: PoolEntry): HTMLElement | null {
