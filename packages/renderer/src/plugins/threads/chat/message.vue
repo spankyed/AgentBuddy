@@ -297,13 +297,14 @@ const asideContext = computed(() => {
   return idx === -1 ? '' : text.slice(idx + 3)
 })
 
-// Split blocks by type so tool-activity renders above text while
+// Split blocks by type so tool-activity and thinking render above text while
 // other block types (approval, choice, etc.) render below text.
+const ABOVE_TEXT_BLOCKS = new Set(['tool-activity', 'thinking'])
 const toolActivityBlocks = computed(() =>
-  (props.message.blocks ?? []).filter((b: any) => b.type === 'tool-activity')
+  (props.message.blocks ?? []).filter((b: any) => ABOVE_TEXT_BLOCKS.has(b.type))
 )
 const otherBlocks = computed(() =>
-  (props.message.blocks ?? []).filter((b: any) => b.type !== 'tool-activity')
+  (props.message.blocks ?? []).filter((b: any) => !ABOVE_TEXT_BLOCKS.has(b.type))
 )
 
 const copyMessageText = async () => {

@@ -23,6 +23,7 @@ import type { Services, EntityId } from '../../../types';
 import { isPlanFileWrite, DONT_BYPASS } from './auto-approve';
 import { createStreamWriter } from './stream-writer';
 import { createToolActivityWriter } from './tool-activity-writer';
+import { createThinkingWriter } from './thinking-writer';
 import { createPlanDraft } from './plan-artifact';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval';
 import { parseAskUserQuestionInput } from './ask-user-question';
@@ -67,6 +68,7 @@ export interface ConsumerContext {
 export interface ConsumerWriters {
   writer: ReturnType<typeof createStreamWriter>;
   toolActivity: ReturnType<typeof createToolActivityWriter>;
+  thinking: ReturnType<typeof createThinkingWriter>;
   messageId: EntityId;
 }
 
@@ -94,6 +96,7 @@ export async function consumeStream(
   let currentMessageId: EntityId = initialWriters.messageId;
   let writer = initialWriters.writer;
   let toolActivity = initialWriters.toolActivity;
+  let thinking = initialWriters.thinking;
 
   // Set by the control_request handler after a user-interactive flow.
   // The next `message_start` will split into a new message.
@@ -114,16 +117,19 @@ export async function consumeStream(
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
     writer.finalize(writer.text);
+    thinking.finalise();
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
     toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
 
     const msg = services.chat.sendBlockMessage({ threadId, text: 'Thinking…', blocks: [], forkable: false });
     log.debug('message split', { previousId: currentMessageId, nextId: msg.messageId });
+    const newThinking = createThinkingWriter(services, msg.messageId as EntityId, { intervalMs: 250 });
     return {
       currentMessageId: msg.messageId as EntityId,
       writer: createStreamWriter(services, msg.messageId as EntityId, { intervalMs: 80 }),
-      toolActivity: createToolActivityWriter(services, msg.messageId as EntityId, { intervalMs: 250, phase }),
+      toolActivity: createToolActivityWriter(services, msg.messageId as EntityId, { intervalMs: 250, phase, getThinkingBlock: () => newThinking.buildBlock() }),
+      thinking: newThinking,
     };
   }
 
@@ -145,7 +151,7 @@ export async function consumeStream(
       const isMessageStart = line.type === 'assistant' || (line.type === 'stream_event' && (line as any).event?.type === 'message_start');
       if (splitOnNextMessageStart && isMessageStart) {
         splitOnNextMessageStart = false;
-        ({ currentMessageId, writer, toolActivity } = splitMessage());
+        ({ currentMessageId, writer, toolActivity, thinking } = splitMessage());
       }
 
       // First `system/init` event carries sessionId/model/cwd.
@@ -185,7 +191,16 @@ export async function consumeStream(
 
         // Anthropic text deltas.
         const delta = evt?.delta;
+
+        // Extended thinking deltas — accumulate into the thinking writer.
+        if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+          thinking.push(delta.thinking);
+          continue;
+        }
+
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
+          // Finalize thinking when the first text delta arrives.
+          if (thinking.isStreaming && thinking.hasContent) thinking.finalise();
           writer.push(delta.text);
           continue;
         }
@@ -203,6 +218,9 @@ export async function consumeStream(
           if (block?.type === 'tool_use') {
             if (block.name === 'ExitPlanMode') continue;
 
+            // Finalize thinking and hand blocks ownership to tool-activity.
+            if (thinking.isStreaming && thinking.hasContent) thinking.finalise();
+            thinking.stopDirectWrites();
             writer.flush();
             const summary = block.input ? shortenInput(block.input) : '';
             toolActivity.append({
@@ -349,6 +367,7 @@ export async function consumeStream(
 
         // Freeze the tool-activity block so it stops showing "Working…".
         writer.flush();
+        thinking.finalise();
         toolActivity.finalise('done');
 
         // Send the appropriate interactive block.
@@ -548,6 +567,7 @@ export async function consumeStream(
 
       finalizeSessionError(services, threadId, writer, errorText);
 
+      thinking.finalise();
       toolActivity.finalise('error');
       services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     } else {
@@ -560,6 +580,7 @@ export async function consumeStream(
       }
 
       // Finalize writers (needs closure references).
+      thinking.finalise();
       toolActivity.finalise(hadToolErrors ? 'error' : 'done');
       // If the stream produced text (either via streamed deltas into `writer`
       // or a terminal `result.result` string), finalize with it. Otherwise
@@ -640,6 +661,7 @@ export async function consumeStream(
       // Finalize the message so "Thinking…" doesn't persist if not soft-deleted.
       // Thread-scoped state (handle, isRunning, cc.stream.completed) is left to
       // whoever superseded this consumer.
+      thinking.finalise();
       toolActivity.finalise('done');
       services.chat.updateMessageState(currentMessageId as any, {
         responseTimestamp: Date.now(),
@@ -653,6 +675,7 @@ export async function consumeStream(
     const state = getClaudeState(services, threadId);
     if (!state?.isRunning) {
       log.debug('stream consumer exiting — turn was paused');
+      thinking.finalise();
       const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
@@ -691,6 +714,7 @@ export async function consumeStream(
 
     // Real error — not a user-initiated pause.
     log.error('stream consumer failed', { message, stack: err?.stack });
+    thinking.finalise();
     toolActivity.finalise('error');
 
     // Session-not-found mid-stream: clear stale session and mark broken.

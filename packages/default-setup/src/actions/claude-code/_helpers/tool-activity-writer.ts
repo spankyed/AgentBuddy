@@ -42,6 +42,8 @@ export interface ToolActivityWriterOptions {
   intervalMs?: number;
   /** Current phase — drives the streaming label ("Planning…" vs "Working…"). */
   phase?: string;
+  /** Optional getter for the thinking block — included in every `blocks` write so both blocks coexist. */
+  getThinkingBlock?: () => { type: string; props: any } | null;
 }
 
 export interface ToolActivityWriter {
@@ -108,7 +110,9 @@ export function createToolActivityWriter(
       type: 'tool-activity',
       props: buildBlockProps() as unknown as Record<string, unknown>,
     };
-    services.chat.updateMessageState(messageId, { blocks: [block] as any });
+    const thinkingBlock = opts.getThinkingBlock?.() ?? null;
+    const blocks = thinkingBlock ? [thinkingBlock, block] : [block];
+    services.chat.updateMessageState(messageId, { blocks: blocks as any });
     hasWrittenOnce = true;
     lastFlushAt = Date.now();
   };
@@ -159,10 +163,12 @@ export function createToolActivityWriter(
     finalise(finalState: 'done' | 'error'): void {
       state = finalState;
       if (entries.length === 0) {
-        // No tools actually ran. If we never wrote a block, nothing to do.
-        // If we had written then everything was denied and retracted,
-        // emit an empty-blocks update to clear the prior placeholder.
-        if (hasWrittenOnce) {
+        // No tools actually ran. Preserve the thinking block if present;
+        // otherwise clear the blocks array if we had written before.
+        const thinkingBlock = opts.getThinkingBlock?.() ?? null;
+        if (thinkingBlock) {
+          services.chat.updateMessageState(messageId, { blocks: [thinkingBlock] as any });
+        } else if (hasWrittenOnce) {
           services.chat.updateMessageState(messageId, { blocks: [] as any });
         }
         return;

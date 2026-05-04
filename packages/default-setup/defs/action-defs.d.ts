@@ -184,6 +184,8 @@ declare class GitRepository {
     getDiffMulti(paths: string[]): Promise<string>;
     /** Build a synthetic diff for an untracked file (new file / directory / binary). */
     private buildSyntheticDiff;
+    /** Build a synthetic diff for a file outside the repository. */
+    private buildSyntheticDiffAbsolute;
     getFileContent(filePath: string, version?: 'HEAD' | 'working' | 'index'): Promise<string>;
     /**
      * Read a file as a base64 data URL if it's an image, otherwise return text content.
@@ -2617,7 +2619,7 @@ interface QueryResult {
     raw: ResultLine;
 }
 
-type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
+type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'thinking' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
 interface BlockConfig {
     type: BlockType;
     props: Record<string, any>;
@@ -2981,6 +2983,7 @@ type OutgoingThreadsEvents = {
 } | {
     type: 'LOAD_CHAT_THREAD';
     data: AgentThreadData;
+    restore?: boolean;
 } | {
     type: 'REFRESH_RECENT_THREADS';
     data: RecentThreadRefreshData;
@@ -3199,6 +3202,7 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
 } | {
     type: "OPEN_THREAD_CHAT";
     threadId: string;
+    restore?: boolean;
 } | {
     type: "OPEN_THREAD_TAB";
     threadId: string;
@@ -5149,7 +5153,7 @@ declare function createThreadAndNotify(options: ThreadCreateData): {
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId): void;
+declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?: boolean): void;
 /**
  * Open thread tab and refresh recent threads list
  *

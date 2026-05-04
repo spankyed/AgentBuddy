@@ -4,7 +4,7 @@ import type { EARS } from "@/types";
 import type { PermissionMode } from "@/services/claude-code/types";
 
 // Block-based interaction system (composable architecture)
-export type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
+export type BlockType = 'prompt' | 'note' | 'markdown' | 'file-picker' | 'choice' | 'text' | 'approval' | 'actions' | 'link' | 'button-group' | 'tool-activity' | 'thinking' | 'question' | 'project-select' | 'toggles' | 'tool-input' | 'context-usage' | 'session-list';
 
 export interface BlockConfig {
   type: BlockType;
@@ -43,6 +43,18 @@ export interface ToolActivityBlockProps {
   defaultOpen?: boolean;
   /** Optional pointer to a promoted artifact (Phase C). */
   artifactRef?: { artifactId: string; label: string };
+}
+
+// Thinking block — collapsible display of extended thinking content from Claude.
+export interface ThinkingBlockProps {
+  /** Accumulated thinking text. */
+  content: string;
+  /** Collapsed header label (e.g. "Thinking…" or "Thought for 3s"). */
+  label: string;
+  /** Block state — drives spinner visibility. */
+  state: 'streaming' | 'done';
+  /** Initial open/closed state. Collapsed by default. */
+  defaultOpen?: boolean;
 }
 
 // Link block types

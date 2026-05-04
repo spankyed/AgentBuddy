@@ -17,6 +17,7 @@
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
+import { createThinkingWriter } from './_helpers/thinking-writer';
 import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId } from './_helpers/thread-context';
 import { consumeStream, finalizeSessionError } from './_helpers/stream-consumer';
 
@@ -236,7 +237,8 @@ export async function action(
   log.debug('placeholder message created', { messageId: currentMessageId });
 
   const writer = createStreamWriter(services, currentMessageId, { intervalMs: 80 });
-  const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250, phase });
+  const thinking = createThinkingWriter(services, currentMessageId, { intervalMs: 250 });
+  const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250, phase, getThinkingBlock: () => thinking.buildBlock() });
 
   // Upsert the thread's claude-session artifact (type marker only).
   ensureSessionMarker(services, threadId);
@@ -342,7 +344,7 @@ export async function action(
       revertCliUuid: revertTo?.cliUuid,
       forkCliUuid: forkFrom?.cliUuid,
     }, {
-      writer, toolActivity, messageId: currentMessageId as EntityId,
+      writer, toolActivity, thinking, messageId: currentMessageId as EntityId,
     }).catch((err) => {
       // Safety net — consumeStream has its own try/catch, but guard
       // against truly unexpected escapes. Mirror its cleanup path.

@@ -156,6 +156,15 @@
         :phase="(block.props as any).phase"
       />
 
+      <!-- Thinking Block — collapsible extended thinking content -->
+      <ThinkingBlock
+        v-else-if="block.type === 'thinking'"
+        :content="(block.props as any).content"
+        :label="(block.props as any).label"
+        :state="(block.props as any).state"
+        :default-open="(block.props as any).defaultOpen"
+      />
+
       <!-- Context Usage Block — styled token breakdown from /cc-context -->
       <ContextUsageBlock
         v-else-if="block.type === 'context-usage'"
@@ -179,6 +188,7 @@ import MarkdownBlock from './blocks/MarkdownBlock.vue'
 import ActionButtons from './blocks/ActionButtons.vue'
 import LinkBlock, { type Link } from './blocks/LinkBlock.vue'
 import ToolActivityBlock from './blocks/ToolActivityBlock.vue'
+import ThinkingBlock from './blocks/ThinkingBlock.vue'
 import ToolInputBlock from './blocks/ToolInputBlock.vue'
 import FilePickerInput from './inputs/FilePickerInput.vue'
 import ChoiceInput from './inputs/ChoiceInput.vue'
