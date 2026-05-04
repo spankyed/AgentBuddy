@@ -15,6 +15,7 @@
 
 import type { Services, EntityId } from '../../../types';
 import type { ThinkingBlockProps } from './thinking-types';
+import { formatDuration } from './tool-activity-label';
 
 export interface ThinkingWriterOptions {
   /** Minimum ms between `updateMessageState` calls. Default 250ms. */
@@ -22,24 +23,13 @@ export interface ThinkingWriterOptions {
 }
 
 export interface ThinkingWriter {
-  /** Append thinking text to the running buffer and schedule a throttled flush. */
   push(text: string): void;
-  /** Force-flush any pending buffered text. */
   flush(): void;
-  /** Freeze the block to its final state. */
   finalise(): void;
-  /** Stop writing directly to blocks — tool-activity writer takes over. */
   stopDirectWrites(): void;
-  /** Build the current block object (used by tool-activity writer). */
   buildBlock(): { type: string; props: ThinkingBlockProps } | null;
-  /** Whether any thinking content has been accumulated. */
   readonly hasContent: boolean;
-  /** Current accumulated thinking text. */
-  readonly content: string;
-  /** Whether the writer is still in the streaming state. */
   readonly isStreaming: boolean;
-  /** Epoch ms when the writer was created, for duration computation. */
-  readonly startedAt: number;
 }
 
 export function createThinkingWriter(
@@ -55,14 +45,6 @@ export function createThinkingWriter(
   let pendingTimer: ReturnType<typeof setTimeout> | null = null;
   let lastFlushAt = 0;
 
-  function formatDuration(ms: number): string {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-    const mins = Math.floor(ms / 60_000);
-    const secs = Math.round((ms % 60_000) / 1000);
-    return `${mins}m${secs}s`;
-  }
-
   function buildLabel(): string {
     if (state === 'streaming') return 'Thinking';
     const elapsed = Date.now() - (firstPushAt || Date.now());
@@ -73,12 +55,7 @@ export function createThinkingWriter(
     if (!buffer) return null;
     return {
       type: 'thinking',
-      props: {
-        content: buffer,
-        label: buildLabel(),
-        state,
-        defaultOpen: false,
-      },
+      props: { content: buffer, label: buildLabel(), state, defaultOpen: false },
     };
   }
 
@@ -108,9 +85,7 @@ export function createThinkingWriter(
 
   return {
     get hasContent() { return buffer.length > 0; },
-    get content() { return buffer; },
     get isStreaming() { return state === 'streaming'; },
-    get startedAt() { return firstPushAt; },
 
     push(text: string): void {
       if (!text || state === 'done') return;
@@ -134,17 +109,7 @@ export function createThinkingWriter(
     finalise(): void {
       if (state === 'done') return;
       state = 'done';
-      if (pendingTimer) {
-        clearTimeout(pendingTimer);
-        pendingTimer = null;
-      }
-      // Final write — either direct or via tool-activity's next write.
-      if (directWritesEnabled && buffer) {
-        const block = buildBlock();
-        if (block) {
-          services.chat.updateMessageState(messageId, { blocks: [block] as any });
-        }
-      }
+      writeNow();
     },
 
     buildBlock,

@@ -81,7 +81,7 @@ function groupByTool(entries: ToolActivityEntry[]): Array<{ tool: string; count:
 }
 
 /** Round a duration in ms to a short human string: "0.3s", "4.2s", "1m 12s". */
-function formatDuration(ms: number): string {
+export function formatDuration(ms: number): string {
   if (ms < 1000) return `${(ms / 1000).toFixed(1)}s`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
   const mins = Math.floor(ms / 60_000);

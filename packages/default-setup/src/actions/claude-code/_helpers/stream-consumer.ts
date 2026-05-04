@@ -98,6 +98,9 @@ export async function consumeStream(
   let toolActivity = initialWriters.toolActivity;
   let thinking = initialWriters.thinking;
 
+  /** Idempotent — safe to call from every finalization path. */
+  const finaliseThinking = () => { if (thinking.isStreaming) thinking.finalise(); };
+
   // Set by the control_request handler after a user-interactive flow.
   // The next `message_start` will split into a new message.
   let splitOnNextMessageStart = false;
@@ -117,7 +120,7 @@ export async function consumeStream(
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
     writer.finalize(writer.text);
-    thinking.finalise();
+    finaliseThinking();
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
     toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
@@ -205,7 +208,7 @@ export async function consumeStream(
 
         if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
           // Finalize thinking when the first text delta arrives.
-          if (thinking.isStreaming && thinking.hasContent) thinking.finalise();
+          finaliseThinking();
           writer.push(delta.text);
           continue;
         }
@@ -224,7 +227,7 @@ export async function consumeStream(
             if (block.name === 'ExitPlanMode') continue;
 
             // Finalize thinking and hand blocks ownership to tool-activity.
-            if (thinking.isStreaming && thinking.hasContent) thinking.finalise();
+            finaliseThinking();
             thinking.stopDirectWrites();
             writer.flush();
             const summary = block.input ? shortenInput(block.input) : '';
@@ -372,7 +375,7 @@ export async function consumeStream(
 
         // Freeze the tool-activity block so it stops showing "Working…".
         writer.flush();
-        thinking.finalise();
+        finaliseThinking();
         toolActivity.finalise('done');
 
         // Send the appropriate interactive block.
@@ -572,7 +575,7 @@ export async function consumeStream(
 
       finalizeSessionError(services, threadId, writer, errorText);
 
-      thinking.finalise();
+      finaliseThinking();
       toolActivity.finalise('error');
       services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
     } else {
@@ -585,7 +588,7 @@ export async function consumeStream(
       }
 
       // Finalize writers (needs closure references).
-      thinking.finalise();
+      finaliseThinking();
       toolActivity.finalise(hadToolErrors ? 'error' : 'done');
       // If the stream produced text (either via streamed deltas into `writer`
       // or a terminal `result.result` string), finalize with it. Otherwise
@@ -666,7 +669,7 @@ export async function consumeStream(
       // Finalize the message so "Thinking…" doesn't persist if not soft-deleted.
       // Thread-scoped state (handle, isRunning, cc.stream.completed) is left to
       // whoever superseded this consumer.
-      thinking.finalise();
+      finaliseThinking();
       toolActivity.finalise('done');
       services.chat.updateMessageState(currentMessageId as any, {
         responseTimestamp: Date.now(),
@@ -680,7 +683,7 @@ export async function consumeStream(
     const state = getClaudeState(services, threadId);
     if (!state?.isRunning) {
       log.debug('stream consumer exiting — turn was paused');
-      thinking.finalise();
+      finaliseThinking();
       const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
@@ -719,7 +722,7 @@ export async function consumeStream(
 
     // Real error — not a user-initiated pause.
     log.error('stream consumer failed', { message, stack: err?.stack });
-    thinking.finalise();
+    finaliseThinking();
     toolActivity.finalise('error');
 
     // Session-not-found mid-stream: clear stale session and mark broken.
