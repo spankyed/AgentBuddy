@@ -430,13 +430,11 @@ const dirName = (dir: string) => dir.split('/').filter(Boolean).pop() || dir
 const startRename = (threadId: string, topic: string | undefined) => {
   editingThreadId.value = threadId
   editingName.value = topic || ''
-  nextTick(() => {
+  setTimeout(() => {
     const input = renameInputRef.value?.[0]
-    if (input) {
-      input.focus()
-      input.select()
-    }
-  })
+    input?.focus()
+    input?.select()
+  }, 50)
 }
 
 const confirmRename = () => {
