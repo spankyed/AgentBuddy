@@ -348,13 +348,15 @@
   filter: brightness(0.9);
 }
 
-.tiptap-wrapper .ProseMirror img.ProseMirror-selectednode {
+.tiptap-wrapper .ProseMirror img.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror img.image-in-selection {
   outline: none;
   box-shadow: 0 0 0 2px rgb(96 165 250);
   transition: box-shadow 0.15s ease;
 }
 
-.tiptap-wrapper .ProseMirror[contenteditable="false"] img.ProseMirror-selectednode {
+.tiptap-wrapper .ProseMirror[contenteditable="false"] img.ProseMirror-selectednode,
+.tiptap-wrapper .ProseMirror[contenteditable="false"] img.image-in-selection {
   box-shadow: none;
 }
 

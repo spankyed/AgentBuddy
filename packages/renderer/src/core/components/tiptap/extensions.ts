@@ -28,6 +28,7 @@ import { EmptyLinePreserver } from './extensions/empty-line-preserver'
 import { BlockquotePipe } from './extensions/blockquote-pipe'
 import { DetailsBlock, DetailsBlockSummary, DetailsBlockContent } from './extensions/details-block'
 import { ImageUploadPlaceholder } from './extensions/image-upload-placeholder'
+import { ImageSelectionDecoration } from './extensions/image-selection-decoration'
 import { CustomHorizontalRule } from './extensions/custom-horizontal-rule'
 import { SearchAndFind } from './extensions/search-extension'
 
@@ -71,6 +72,7 @@ function createFullExtensions(mode: TiptapMode): AnyExtension[] {
     TaskList,
     TaskItem.configure({ nested: true }),
     ResizableImage.configure({ inline: false, allowBase64: false }),
+    ImageSelectionDecoration,
     DetailsBlockSummary,
     DetailsBlockContent,
     DetailsBlock,
