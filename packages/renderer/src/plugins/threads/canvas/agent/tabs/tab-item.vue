@@ -14,7 +14,7 @@
         <!-- Dot / Close button swap container -->
         <span class="relative flex items-center justify-center w-[22px] h-[22px] mr-1 shrink-0">
           <!-- State dot (default, hides on hover) -->
-          <span class="group-hover:opacity-0 transition-opacity relative inline-block w-1.5 h-1.5">
+          <span class="transition-opacity relative inline-block w-1.5 h-1.5" :class="{ 'group-hover:opacity-0': !isPinned }">
             <span
               class="block w-full h-full rounded-full transition-colors"
               :class="isThreadBusy(tab.id) ? 'mosaic-dot' : ''"
