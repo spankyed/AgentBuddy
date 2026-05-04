@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Mic, MicOff, PaperclipIcon, Sparkle, Hash, CornerDownLeft, EllipsisVertical, X } from 'lucide-vue-next'
 import FileBlock from './FileBlock.vue'
 import ImageThumbnail from './ImageThumbnail.vue'
@@ -555,11 +555,12 @@ const leftButtons = computed<ActionButton[]>(() => {
 // Computed properties for cleaner template
 const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
 
-// Reset to first visible mode when switching from forced-mode thread
+// Reset to first visible mode when switching from forced-mode thread, and focus editor
 watch(() => props.currentThread?.id, () => {
   if (props.currentMode && !props.currentThread?.forcedMode && !visibleModes.value.some(m => m.id === props.currentMode)) {
     emit('mode-change', visibleModes.value[0].id)
   }
+  nextTick(() => tiptapRef.value?.editor?.commands.focus('end'))
 })
 
 const handleButtonClick = (action: string) => {
