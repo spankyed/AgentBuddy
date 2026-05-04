@@ -15,11 +15,15 @@
         </div>
       </div>
       <div v-else class="flex flex-col">
-        <ContextMenuRoot v-for="thread in recentThreads" :key="thread.id">
+        <ContextMenuRoot v-for="(thread, index) in recentThreads" :key="thread.id">
           <ContextMenuTrigger as-child>
         <div
-          class="group flex items-center gap-3 w-full px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white"
-          :class="thread.id === currentThread?.id ? 'bg-neutral-800/60' : ''"
+          ref="threadRowRefs"
+          class="group flex items-center gap-3 w-full px-3 py-2 rounded-md cursor-pointer transition-colors"
+          :class="[
+            selectedIndex === index ? 'bg-neutral-700/60 text-white' : 'hover:bg-neutral-800 hover:text-white',
+            thread.id === currentThread?.id ? 'bg-blue-500/15' : '',
+          ]"
           @click="handleSelectThread(thread.id)"
         >
           <span class="shrink-0 relative inline-block w-1.5 h-1.5">
@@ -286,8 +290,10 @@ export interface ThreadsProps {
 
 const props = defineProps<ThreadsProps>()
 const isOpen = ref(false)
+const selectedIndex = ref(-1)
 const containerRef = ref<HTMLDivElement | null>(null)
 const popupRef = ref<HTMLDivElement | null>(null)
+const threadRowRefs = ref<HTMLDivElement[]>([])
 
 // Inline rename state for recent threads list
 const editingThreadId = ref<string | null>(null)
@@ -344,12 +350,65 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
+function isEditorFocused() {
+  const el = document.activeElement as HTMLElement | null
+  if (!el) return false
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+    || !!el.closest?.('.ProseMirror') || !!el.closest?.('.monaco-editor')
+}
+
+const handleKeydown = (e: KeyboardEvent) => {
+  // Shift+Space: toggle popup (only when not typing in an editor/input)
+  if (e.key === ' ' && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    if (!isOpen.value && isEditorFocused()) return
+    e.preventDefault()
+    isOpen.value = !isOpen.value
+    selectedIndex.value = -1
+    return
+  }
+
+  if (!isOpen.value) return
+
+  const currentIdx = recentThreads.value.findIndex(t => t.id === props.currentThread?.id)
+
+  switch (e.key) {
+    case 'ArrowDown': {
+      e.preventDefault()
+      let next = selectedIndex.value + 1
+      if (next === currentIdx) next++
+      if (next < recentThreads.value.length) selectedIndex.value = next
+      nextTick(() => threadRowRefs.value[selectedIndex.value]?.scrollIntoView({ block: 'nearest' }))
+      break
+    }
+    case 'ArrowUp': {
+      e.preventDefault()
+      let next = selectedIndex.value <= 0 ? 0 : selectedIndex.value - 1
+      if (next === currentIdx) next--
+      if (next >= 0) selectedIndex.value = next
+      nextTick(() => threadRowRefs.value[selectedIndex.value]?.scrollIntoView({ block: 'nearest' }))
+      break
+    }
+    case 'Enter':
+      if (selectedIndex.value >= 0) {
+        e.preventDefault()
+        handleSelectThread(recentThreads.value[selectedIndex.value]?.id)
+      }
+      break
+    case 'Escape':
+      e.preventDefault()
+      isOpen.value = false
+      break
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('keydown', handleKeydown)
 })
 
 const emit = defineEmits<{
