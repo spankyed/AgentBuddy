@@ -1,27 +1,24 @@
 <template>
   <HoverCardRoot :open-delay="300" :close-delay="100">
     <HoverCardTrigger as-child>
-      <div 
-        class="max-w-xs truncate cursor-default"
-      >
-        {{ formatCellValue(value) }}
-      </div>
+      <slot />
     </HoverCardTrigger>
-    
+
     <HoverCardPortal>
       <HoverCardContent
         v-if="isJsonLike(value)"
-        :side="'top'"
-        :align="'start'"
+        side="top"
+        align="start"
         :side-offset="5"
-        class="z-50 w-[36rem] max-w-[90vw] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden"
+        class="z-50 max-w-[90vw] bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden"
+        :class="width === 'trigger' ? 'w-[var(--reka-hover-card-trigger-width)] mx-2' : 'w-[36rem]'"
         @pointer-down-outside.prevent
       >
         <div class="relative">
           <!-- Header -->
           <div class="flex items-center justify-between px-3 py-2 bg-neutral-850 border-b border-neutral-800">
             <span class="text-xs font-medium text-neutral-400">
-              {{ getJsonTypeLabel(value) }}
+              {{ label || getJsonTypeLabel(value) }}
             </span>
             <button
               @click="copyJson"
@@ -32,7 +29,7 @@
               <Check v-else class="w-3 h-3 text-green-500" />
             </button>
           </div>
-          
+
           <!-- JSON Content -->
           <div class="max-h-96 overflow-auto">
             <div class="p-3">
@@ -46,7 +43,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Footer with stats -->
           <div class="px-3 py-2 bg-neutral-850 border-t border-neutral-800">
             <div class="flex items-center justify-between text-xs text-neutral-500">
@@ -55,7 +52,7 @@
             </div>
           </div>
         </div>
-        
+
         <HoverCardArrow class="fill-neutral-700" />
       </HoverCardContent>
     </HoverCardPortal>
@@ -73,16 +70,18 @@ import {
   HoverCardArrow,
 } from 'reka-ui';
 import SimpleMonacoEditor from '@/core/components/SimpleMonacoEditor.vue';
-import { 
-  isJsonLike, 
-  isJsonString, 
-  isJsonObject, 
+import {
+  isJsonLike,
+  isJsonString,
+  isJsonObject,
   isJsonArray,
-  formatJsonValue 
-} from '../utils/json-detection';
+  formatJsonValue
+} from '@/plugins/database/components/simple-table/utils/json-detection';
 
 interface Props {
   value: any;
+  label?: string;
+  width?: 'fixed' | 'trigger';
 }
 
 const props = defineProps<Props>();
@@ -95,16 +94,9 @@ const formattedJson = computed(() => {
 
 const jsonHeight = computed(() => {
   const lineCount = formattedJson.value.split('\n').length;
-  // Limit height between 100px and 300px
   const height = Math.min(300, Math.max(100, lineCount * 18));
   return `${height}px`;
 });
-
-function formatCellValue(value: any): string {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
 
 function getJsonTypeLabel(value: any): string {
   if (isJsonString(value)) {
@@ -123,7 +115,7 @@ function getJsonTypeLabel(value: any): string {
 
 function getJsonStats(value: any): string {
   let parsed = value;
-  
+
   if (isJsonString(value)) {
     try {
       parsed = JSON.parse(value);
@@ -131,16 +123,16 @@ function getJsonStats(value: any): string {
       return '';
     }
   }
-  
+
   if (Array.isArray(parsed)) {
     return `${parsed.length} items`;
   }
-  
+
   if (typeof parsed === 'object' && parsed !== null) {
     const keys = Object.keys(parsed);
     return `${keys.length} ${keys.length === 1 ? 'property' : 'properties'}`;
   }
-  
+
   return '';
 }
 
@@ -148,11 +140,11 @@ async function copyJson() {
   try {
     await navigator.clipboard.writeText(formattedJson.value);
     copied.value = true;
-    
+
     if (copyTimeout) {
       clearTimeout(copyTimeout);
     }
-    
+
     copyTimeout = setTimeout(() => {
       copied.value = false;
     }, 2000);

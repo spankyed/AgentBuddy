@@ -43,40 +43,45 @@
       class="border-t border-neutral-700 max-h-80 overflow-y-auto"
       @scroll="onListScroll"
     >
-      <div
+      <JsonHoverPopup
         v-for="(entry, index) in entries"
         :key="entry.id || index"
-        class="px-3 py-1.5 text-xs flex items-center gap-2 border-b border-neutral-800/60 last:border-0 hover:bg-neutral-800/40 cursor-default"
-        :class="{
-          'opacity-50 line-through': entry.status === 'denied',
-        }"
-        :title="entry.details?.input ? JSON.stringify(entry.details.input, null, 2) : entry.summary"
+        :value="entry.details?.input"
+        :label="entry.tool"
+        width="trigger"
       >
-        <!-- Status icon -->
-        <Check v-if="entry.status === 'ok'" class="w-3 h-3 text-emerald-500 flex-shrink-0" />
-        <Loader2 v-else-if="entry.status === 'running'" class="w-3 h-3 text-neutral-400 animate-spin flex-shrink-0" />
-        <X v-else-if="entry.status === 'denied'" class="w-3 h-3 text-neutral-500 flex-shrink-0" />
-        <AlertCircle v-else-if="entry.status === 'error'" class="w-3 h-3 text-red-500 flex-shrink-0" />
+        <div
+          class="px-3 py-1.5 text-xs flex items-center gap-2 border-b border-neutral-800/60 last:border-0 hover:bg-neutral-800/40 cursor-default"
+          :class="{
+            'opacity-50 line-through': entry.status === 'denied',
+          }"
+        >
+          <!-- Status icon -->
+          <Check v-if="entry.status === 'ok'" class="w-3 h-3 text-emerald-500 flex-shrink-0" />
+          <Loader2 v-else-if="entry.status === 'running'" class="w-3 h-3 text-neutral-400 animate-spin flex-shrink-0" />
+          <X v-else-if="entry.status === 'denied'" class="w-3 h-3 text-neutral-500 flex-shrink-0" />
+          <AlertCircle v-else-if="entry.status === 'error'" class="w-3 h-3 text-red-500 flex-shrink-0" />
 
-        <!-- Tool name (fixed-width column for alignment) -->
-        <span class="font-mono text-neutral-300 min-w-[4.5rem] flex-shrink-0">{{ entry.tool }}</span>
+          <!-- Tool name (fixed-width column for alignment) -->
+          <span class="font-mono text-neutral-300 min-w-[4.5rem] flex-shrink-0">{{ entry.tool }}</span>
 
-        <!-- Input summary (truncated) -->
-        <span class="text-neutral-400 flex-1 truncate font-mono">{{ entry.summary }}</span>
+          <!-- Input summary (truncated) -->
+          <span class="text-neutral-400 flex-1 truncate font-mono">{{ entry.summary }}</span>
 
-        <!-- Output summary (secondary) -->
-        <span v-if="entry.outputSummary && entry.status !== 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
-          {{ entry.outputSummary }}
-        </span>
+          <!-- Output summary (secondary) -->
+          <span v-if="entry.outputSummary && entry.status !== 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
+            {{ entry.outputSummary }}
+          </span>
 
-        <!-- Duration badge -->
-        <span v-if="entry.durationMs != null" class="text-neutral-500 text-[10px] tabular-nums flex-shrink-0 min-w-[2.5rem] text-right">
-          {{ formatDuration(entry.durationMs) }}
-        </span>
-        <span v-else-if="entry.status === 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
-          running
-        </span>
-      </div>
+          <!-- Duration badge -->
+          <span v-if="entry.durationMs != null" class="text-neutral-500 text-[10px] tabular-nums flex-shrink-0 min-w-[2.5rem] text-right">
+            {{ formatDuration(entry.durationMs) }}
+          </span>
+          <span v-else-if="entry.status === 'running'" class="text-neutral-500 text-[10px] flex-shrink-0">
+            running
+          </span>
+        </div>
+      </JsonHoverPopup>
     </div>
   </div>
 </template>
@@ -84,6 +89,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
+import JsonHoverPopup from '@/core/components/JsonHoverPopup.vue'
 import { computeLabel, computeBadge } from './tool-activity-label'
 import { applicationState } from '@/main'
 import { id as threadsId } from '@/plugins/threads/state'
