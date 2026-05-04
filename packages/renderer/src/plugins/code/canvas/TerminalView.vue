@@ -192,7 +192,7 @@ onMounted(() => {
   // Keep the terminal sized with its container
   resizeObserver = new ResizeObserver(() => {
     fitAddon?.fit()
-    term?.refresh(0, term.rows - 1)
+    terminalPool.refreshWebgl(props.terminalInfo.id)
     sendResize()
     if (isPinnedToBottom.value) terminalPool.syncViewport(props.terminalInfo.id)
   })
