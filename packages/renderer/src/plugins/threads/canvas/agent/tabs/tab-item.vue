@@ -36,7 +36,7 @@
           </button>
         </span>
         <span class="truncate">{{ tab.label }}</span>
-        <Pin v-if="isPinned" :size="12" class="shrink-0 ml-1.5 text-blue-400" />
+        <Pin v-if="isPinned" :size="12" class="shrink-0 ml-1.5 text-blue-400 hover:text-blue-300 cursor-pointer" @click.stop="$emit('unpin-thread')" />
       </div>
     </ContextMenuTrigger>
 
