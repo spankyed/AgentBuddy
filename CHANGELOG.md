@@ -1,22 +1,5 @@
 -e # Changelog
 
-## v0.2.14 (2026-05-05)
-
-### Features
-- threads): add copy button for cancelled user messages
-
-### Fixes
-- claude-code): extract title from CLI rename response format
-- cc-rename): revert to passthrough /rename via session resume
-- thinking-block): stop timer from ticking after thinking ends
-- threads): show copy button on all cancelled messages, not just tail
-- cc-rename): use direct session rename instead of broken /rename skill
-
-### Other
-- Revert "chore(release): v0.2.14"
-
--e # Changelog
-
 ## v0.2.13 (2026-05-04)
 
 ### Features
