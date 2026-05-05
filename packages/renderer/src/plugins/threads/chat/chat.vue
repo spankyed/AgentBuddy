@@ -22,6 +22,11 @@
                 <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
               </div>
               <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
+                <!-- Instructions banner -->
+                <div v-if="currentThread?.instructions" class="mb-3 rounded-lg border border-neutral-700/50 bg-neutral-800/50 px-4 py-3">
+                  <div class="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5 font-medium">Instructions</div>
+                  <div class="text-neutral-300 text-sm leading-relaxed" v-html="currentThread.instructions"></div>
+                </div>
                 <ChatMessage
                   v-for="message in visibleMessages"
                   :key="message.id"

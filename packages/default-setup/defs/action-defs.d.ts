@@ -2956,7 +2956,7 @@ type OutgoingThreadsEvents = {
 } | {
     type: 'THREAD_UPDATED';
     threadId: string;
-    updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned'>>;
+    updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned' | 'topic' | 'instructions'>>;
 } | {
     type: 'THREAD_DELETED';
     threadId: string;

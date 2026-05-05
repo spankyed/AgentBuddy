@@ -17,6 +17,16 @@ export default {
             },
           })],
         },
+        {
+          if: "$.event.data.payload.command == 'instructions'",
+          steps: [action("Set Instructions", {
+            label: "set instructions",
+            map: {
+              text: "$.event.data.payload.text",
+              threadId: "$.event.data.payload.threadId",
+            },
+          })],
+        },
       ]),
     ]], "Route Command"),
   ],

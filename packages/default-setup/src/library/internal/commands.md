@@ -19,3 +19,4 @@
 **cc-doctor**: Diagnose installation
 **cc-mcp**: Manage MCP servers
 **cc-agents**: List configured agents
+**instructions**: Thread instructions text
