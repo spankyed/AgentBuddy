@@ -79,6 +79,17 @@ default-setup/
 - Helper files prefixed with `_` (e.g., `_patterns.ts`) are not compiled
 - Flows are dynamically imported (not bundled) — they can use pattern helpers
 
+## Adding a command
+
+Commands are actions triggered by `/name` in the chat input. All commands fire a `user.command` brain event — any flow can listen for it via `on("user.command", ...)` and branch on the command name.
+
+1. **Create action** — export `meta` with `category: 'commands'` and an `action()` function. Common inputs: `text`, `threadId`, `references`. Place standalone commands in `src/actions/commands/`; feature-specific commands can live alongside their flow's actions.
+2. **Add flow branch** — in the appropriate flow, add an `on("user.command", ...)` listener (or extend an existing one) with a branch condition matching the command name. Use `command-listener-flow.ts` for standalone commands; feature flows (e.g. `claude-code-flow.ts` for `cc-*` commands) can handle their own.
+3. **Register in library** — add `**<name>**: <placeholder hint>` to `src/library/internal/commands.md` (populates the frontend command palette).
+4. **Compile** — `npm run compile`
+
+See `src/actions/commands/pr2md.ts` and `command-listener-flow.ts` for a standalone example, or the `cc-*` commands in `claude-code-flow.ts` for flow-scoped commands.
+
 ## Typing & verification
 
 - tsconfig at root `tsconfig.json`
