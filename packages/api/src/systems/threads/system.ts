@@ -199,6 +199,14 @@ export const threadsSystem = setup({
         threadId,
         updates: { status },
       }));
+
+      // Notify flows — all logic lives in the flow layer
+      const brainActor = getActor(system, brain);
+      brainActor.send({
+        type: 'TRIGGER_BRAIN_EVENT',
+        eventType: 'thread.status.changed',
+        payload: { threadId, status, userInduced: true },
+      });
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>

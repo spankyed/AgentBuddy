@@ -381,5 +381,23 @@ export default {
       ]],
       "Thread forked",
     ),
+    // ─── Thread status change (kanban drag) ────────────────────────────
+    // Auto-start a claude-code session when a thread is moved to
+    // "In Progress" by the user (e.g. kanban drag). The action reads
+    // the thread's instructions and sends a USER_MSG to kick off work.
+    on(
+      "thread.status.changed",
+      [[
+        action("CC: Handle Status Change", {
+          label: "status-changed",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            status: "$.event.data.payload.status",
+            userInduced: "$.event.data.payload.userInduced",
+          },
+        }),
+      ]],
+      "Thread status changed",
+    ),
   ],
 } satisfies FlowDSL;

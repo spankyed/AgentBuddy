@@ -258,6 +258,9 @@ declare class GitRepository {
         subject: string;
         body: string;
     }[]>;
+    gitLog(count?: number): Promise<CommitLogEntry[]>;
+    revertCommit(hash: string): Promise<void>;
+    resetToCommit(hash: string, mode?: 'soft' | 'mixed' | 'hard'): Promise<void>;
 }
 
 interface FileChangeInfo {
@@ -1724,6 +1727,15 @@ type IncomingCommitEvents = {
 } | {
     type: 'commit.RESOLVE_ALL_CONFLICTS';
     strategy: 'ours' | 'theirs';
+} | {
+    type: 'commit.LOG_LIST';
+} | {
+    type: 'commit.REVERT_COMMIT';
+    hash: string;
+} | {
+    type: 'commit.RESET_TO_COMMIT';
+    hash: string;
+    mode: 'soft' | 'mixed' | 'hard';
 };
 type OutgoingCommitEvents = {
     type: 'commit.STATUS_RECEIVED';
@@ -1832,6 +1844,21 @@ type OutgoingCommitEvents = {
     };
 } | {
     type: 'commit.ALL_CONFLICTS_RESOLVED';
+} | {
+    type: 'commit.LOG_LIST_RECEIVED';
+    data: {
+        commits: CommitLogEntry[];
+    };
+} | {
+    type: 'commit.REVERT_COMMIT_SUCCESS';
+    data: {
+        hash: string;
+    };
+} | {
+    type: 'commit.RESET_COMMIT_SUCCESS';
+    data: {
+        hash: string;
+    };
 };
 
 type IncomingSearchEvents = {
@@ -3975,6 +4002,16 @@ interface WorktreeEntry {
     isLocked: boolean;
     lockedReason?: string;
 }
+interface CommitLogEntry {
+    hash: string;
+    shortHash: string;
+    subject: string;
+    body: string;
+    authorName: string;
+    authorEmail: string;
+    date: string;
+    refs: string;
+}
 interface GhPullRequest {
     number: number;
     title: string;
@@ -4912,6 +4949,15 @@ declare function sendSystemMessage(options: {
     messageId: EARS.EntityId;
 };
 /**
+ * Send a user message and emit MESSAGE_ADDED event.
+ */
+declare function sendUserMessage(options: {
+    threadId: EARS.EntityId;
+    text: string;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
  * Create a file picker interaction using blocks
  */
 declare function sendFilePickerBlock(options: {
@@ -5186,6 +5232,14 @@ declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
  */
 declare function sendRecentThreadsRefresh(): void;
 /**
+ * Update a thread's status and notify the frontend.
+ *
+ * Use this from flow actions that need to change thread status without
+ * going through the threads system's UPDATE_THREAD_STATUS handler
+ * (which emits a brain event that could re-trigger flows).
+ */
+declare function updateThreadStatus(threadId: EARS.EntityId, status: string): void;
+/**
  * Resolve all message reference types (images, files, notes, threads,
  * library docs/folders) into prompt-ready content for the Claude Code CLI.
  *
@@ -5224,10 +5278,12 @@ declare const chat_sendQuestionBlock: typeof sendQuestionBlock;
 declare const chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
 declare const chat_sendSystemMessage: typeof sendSystemMessage;
 declare const chat_sendTextInputBlock: typeof sendTextInputBlock;
+declare const chat_sendUserMessage: typeof sendUserMessage;
 declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
 declare const chat_updateMessageState: typeof updateMessageState;
+declare const chat_updateThreadStatus: typeof updateThreadStatus;
 declare namespace chat {
-  export { chat_addMessagesToThread as addMessagesToThread, chat_createBlockMessage as createBlockMessage, chat_createMarkerMessage as createMarkerMessage, chat_createThreadAndNotify as createThreadAndNotify, chat_generateAsideText as generateAsideText, chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent, chat_openThreadTabAndRefresh as openThreadTabAndRefresh, chat_resolveReferences as resolveReferences, chat_sendApprovalBlock as sendApprovalBlock, chat_sendBlockMessage as sendBlockMessage, chat_sendButtonGroupBlock as sendButtonGroupBlock, chat_sendChoiceBlock as sendChoiceBlock, chat_sendFilePickerBlock as sendFilePickerBlock, chat_sendLinkBlock as sendLinkBlock, chat_sendQuestionBlock as sendQuestionBlock, chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh, chat_sendSystemMessage as sendSystemMessage, chat_sendTextInputBlock as sendTextInputBlock, chat_updateMessageBlockResponse as updateMessageBlockResponse, chat_updateMessageState as updateMessageState };
+  export { chat_addMessagesToThread as addMessagesToThread, chat_createBlockMessage as createBlockMessage, chat_createMarkerMessage as createMarkerMessage, chat_createThreadAndNotify as createThreadAndNotify, chat_generateAsideText as generateAsideText, chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent, chat_openThreadTabAndRefresh as openThreadTabAndRefresh, chat_resolveReferences as resolveReferences, chat_sendApprovalBlock as sendApprovalBlock, chat_sendBlockMessage as sendBlockMessage, chat_sendButtonGroupBlock as sendButtonGroupBlock, chat_sendChoiceBlock as sendChoiceBlock, chat_sendFilePickerBlock as sendFilePickerBlock, chat_sendLinkBlock as sendLinkBlock, chat_sendQuestionBlock as sendQuestionBlock, chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh, chat_sendSystemMessage as sendSystemMessage, chat_sendTextInputBlock as sendTextInputBlock, chat_sendUserMessage as sendUserMessage, chat_updateMessageBlockResponse as updateMessageBlockResponse, chat_updateMessageState as updateMessageState, chat_updateThreadStatus as updateThreadStatus };
   export type { chat_AutoHideOptions as AutoHideOptions };
 }
 

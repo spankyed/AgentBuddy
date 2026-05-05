@@ -254,17 +254,46 @@ export function ensureSessionMarker(services: Services, threadId: EntityId): Ent
 }
 
 /**
+ * Mapping from chatState to kanban status. Every chatState transition
+ * automatically keeps the thread's kanban column in sync.
+ * `null` means "keep current status" (e.g. error — user needs to investigate).
+ */
+const CHAT_STATE_TO_STATUS: Record<string, string | null> = {
+  working: 'In Progress',
+  paused: 'In Review',
+  success: 'Done',
+  idle: 'Open',
+  error: null,
+};
+
+/**
  * Update the chat state on the thread AND push a real-time event to the
- * frontend threads plugin. This is the single call site for chat state
- * transitions.
+ * frontend threads plugin. Also keeps the kanban status in sync via
+ * the chatState→status mapping above.
+ *
+ * Pass `{ syncStatus: false }` to skip kanban sync for internal
+ * maintenance operations (e.g. /compact) that shouldn't move the thread.
+ *
+ * This is the single call site for chat state transitions.
  */
 export function updateChatState(
   services: Services,
   threadId: EntityId,
   chatState: ChatState,
+  options?: { syncStatus?: boolean },
 ): void {
   persistClaudeState(services, threadId as string, { chatState });
   services.threads.updateChatState(threadId, chatState);
+
+  // Keep kanban status in sync with chatState (unless opted out).
+  if (options?.syncStatus === false) return;
+  const targetStatus = CHAT_STATE_TO_STATUS[chatState];
+  if (targetStatus) {
+    const thread = services.repository.threadQueries.byId(threadId);
+    if (thread && thread.status !== targetStatus) {
+      services.chat.updateThreadStatus(threadId, targetStatus);
+    }
+  }
 }
 
 /**
