@@ -117,7 +117,7 @@ const tabGroups = useSelector(actor, (state) => state.context.tabGroups)
 const fileEditorRef = ref<InstanceType<typeof FileEditor>>()
 const pendingRevealLine = useSelector(actor, (state) => state.context.pendingRevealLine)
 
-// Reveal pending line in editor (called from @editor-file-ready and @editor-mount)
+// Reveal pending line in editor (called from @editor-file-ready, @editor-mount, and watch)
 const tryRevealLine = async () => {
   const reveal = pendingRevealLine.value
   if (!reveal) return
@@ -125,11 +125,15 @@ const tryRevealLine = async () => {
   await nextTick()
 
   const ref = fileEditorRef.value
-  if (!ref) return
+  if (!ref) {
+    console.warn('[code] tryRevealLine: editor ref not available for', reveal.filePath)
+    return
+  }
 
   // Monaco editor path
   const monacoEditor = ref.getEditor()
   if (monacoEditor) {
+    monacoEditor.layout()
     monacoEditor.revealLineInCenter(reveal.line)
     monacoEditor.setPosition({ lineNumber: reveal.line, column: reveal.column })
     monacoEditor.focus()
