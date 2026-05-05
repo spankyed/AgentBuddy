@@ -65,6 +65,13 @@
 
           <template v-else-if="isUser && message.status === 'cancelled' && isTail">
             <button
+              @click="copyMessageText"
+              class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
+              title="Copy message text"
+            >
+              <Copy :size="16" />
+            </button>
+            <button
               @click="$emit('resend', message.id, message.text, message.references)"
               class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
               title="Resend message"
