@@ -39,7 +39,7 @@ export async function action(
   const plainText = stripHtml(instructions);
   const topic = plainText.substring(0, TOPIC_MAX_LENGTH);
 
-  const result = services.chat.createThreadAndNotify({ topic, instructions });
+  const result = services.chat.createThreadAndNotify({ topic, instructions, status: 'Open' });
 
   if (threadId) {
     services.chat.sendSystemMessage({
