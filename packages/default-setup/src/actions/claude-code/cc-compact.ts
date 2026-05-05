@@ -52,7 +52,7 @@ async function handleCompact(
   const sessionId = ccState?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
-  updateChatState(services, threadId as any, 'working');
+  updateChatState(services, threadId as any, 'working', { syncStatus: false });
   try {
     persistClaudeState(services, threadId, { commandActive: true });
     const sessionCwd = ccState?.cwd;
@@ -82,6 +82,6 @@ async function handleCompact(
     return { text: summaryText, skipMessage: compactedMessageIds.length > 0 };
   } finally {
     persistClaudeState(services, threadId, { commandActive: false });
-    updateChatState(services, threadId as any, 'idle');
+    updateChatState(services, threadId as any, 'idle', { syncStatus: false });
   }
 }

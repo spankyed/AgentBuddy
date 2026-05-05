@@ -92,19 +92,37 @@ export function sendSystemMessage(options: {
   threadId: EARS.EntityId;
   text: string;
 }): { messageId: EARS.EntityId } {
-  const { threadId, text } = options;
+  return sendMessage({ ...options, sender: 'system' });
+}
+
+/**
+ * Send a user message and emit MESSAGE_ADDED event.
+ */
+export function sendUserMessage(options: {
+  threadId: EARS.EntityId;
+  text: string;
+}): { messageId: EARS.EntityId } {
+  return sendMessage({ ...options, sender: 'user' });
+}
+
+function sendMessage(options: {
+  threadId: EARS.EntityId;
+  text: string;
+  sender: 'user' | 'system';
+}): { messageId: EARS.EntityId } {
+  const { threadId, text, sender } = options;
 
   const result = repository.chatCommands.addMessage({
     threadId,
     text,
-    sender: 'system',
+    sender,
   });
 
   const message: MessageEntity = {
     id: result.id,
     entityType: EARS.Entity.Message,
     text: result.text,
-    sender: 'system',
+    sender,
     timestamp: result.timestamp,
     createdAt: result.timestamp,
     updatedAt: result.timestamp,
@@ -115,6 +133,8 @@ export function sendSystemMessage(options: {
     threadId,
     message,
   });
+
+  sendRecentThreadsRefresh();
 
   return { messageId: result.id };
 }
@@ -617,6 +637,22 @@ export function sendRecentThreadsRefresh() {
   sendToPlugin('threads', {
     type: 'REFRESH_RECENT_THREADS',
     data: repository.chatQueries.refreshThreadsData()
+  });
+}
+
+/**
+ * Update a thread's status and notify the frontend.
+ *
+ * Use this from flow actions that need to change thread status without
+ * going through the threads system's UPDATE_THREAD_STATUS handler
+ * (which emits a brain event that could re-trigger flows).
+ */
+export function updateThreadStatus(threadId: EARS.EntityId, status: string) {
+  repository.threadCommands.update(threadId, { status });
+  sendToPlugin('threads', {
+    type: 'THREAD_UPDATED',
+    threadId: threadId as string,
+    updates: { status },
   });
 }
 
