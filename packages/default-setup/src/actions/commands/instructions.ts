@@ -2,11 +2,11 @@ import type { ActionMeta, Services, Z } from '../../types';
 
 export const meta: ActionMeta = {
   label: 'Set Instructions',
-  description: 'Set thread instructions and use the first part as the thread title',
+  description: 'Create a new thread with instructions, using the first part as the title',
   category: 'commands',
   input: {
     text: { type: 'string', description: 'Instructions text', required: true },
-    threadId: { type: 'string', description: 'Thread ID', required: false },
+    threadId: { type: 'string', description: 'Thread ID for feedback', required: false },
   },
 };
 
@@ -24,16 +24,14 @@ export async function action(
 ) {
   const { text, threadId } = params;
 
-  if (!threadId) {
-    return { success: false, error: 'No active thread' };
-  }
-
   if (!text?.trim()) {
-    services.chat.sendBlockMessage({
-      threadId,
-      text: 'Usage: /instructions <your instructions text>',
-      blocks: [],
-    });
+    if (threadId) {
+      services.chat.sendBlockMessage({
+        threadId,
+        text: 'Usage: /instructions <your instructions text>',
+        blocks: [],
+      });
+    }
     return { success: false, error: 'No instructions provided' };
   }
 
@@ -41,24 +39,15 @@ export async function action(
   const plainText = stripHtml(instructions);
   const topic = plainText.substring(0, TOPIC_MAX_LENGTH);
 
-  services.repository.threadCommands.update(threadId as any, {
-    topic,
-    instructions,
-  });
+  const result = services.chat.createThreadAndNotify({ topic, instructions });
 
-  services.emitter.sendToPlugin('threads', {
-    type: 'THREAD_UPDATED',
-    threadId,
-    updates: { topic, instructions },
-  });
+  if (threadId) {
+    services.chat.sendBlockMessage({
+      threadId,
+      text: `Thread created: ${result.shortCode} — ${topic}`,
+      blocks: [],
+    });
+  }
 
-  services.chat.sendRecentThreadsRefresh();
-
-  services.chat.sendBlockMessage({
-    threadId,
-    text: 'Instructions set.',
-    blocks: [],
-  });
-
-  return { success: true };
+  return { success: true, threadId: result.id, shortCode: result.shortCode };
 }
