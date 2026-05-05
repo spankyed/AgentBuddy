@@ -43,7 +43,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  defaultOpen: false,
+  defaultOpen: true,
 })
 
 const isOpen = ref(props.defaultOpen)
