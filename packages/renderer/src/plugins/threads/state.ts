@@ -281,7 +281,7 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
   return {
     recentThreads: context.recentThreads.map(t => t.id === threadId ? { ...t, [key]: value } : t),
     threads: context.threads.map(t => t.id === threadId ? { ...t, [key]: value } : t),
-    tabs: context.tabs.map(t => t.id === threadId ? { ...t, [key]: value } : t),
+    tabs: context.tabs.map(t => t.id === threadId ? { ...t, [key]: value, ...(key === 'topic' ? { label: value } : {}) } : t),
     ...(context.currentThread?.id === threadId ? { currentThread: { ...context.currentThread, [key]: value } } : {}),
     ...(context.view.id === threadId ? { view: { ...context.view, [key]: value } } : {}),
   };
@@ -472,6 +472,9 @@ const threadsState = setup({
         currentThread: context.currentThread?.id === threadId
           ? { ...context.currentThread, ...updates }
           : context.currentThread,
+        ...(updates.topic !== undefined ? {
+          tabs: context.tabs.map(t => t.id === threadId ? { ...t, label: updates.topic! } : t),
+        } : {}),
       };
     }),
     sendUpdateThreadField: ({ event, context }) => {
