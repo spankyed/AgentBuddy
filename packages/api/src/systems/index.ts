@@ -4,7 +4,7 @@ import { brain, brainSystem, brainDef } from '@/systems/brain/system';
 import { threads, threadsSystem, threadsDef } from '@/systems/threads/system';
 import { flows, flowsSystem, flowsDef } from '@/systems/flows/system';
 import { database, databaseSystem, databaseDef } from '@/systems/database/system';
-import { logs, logsDef } from '@/systems/logs/system';
+import { logs, logsSystem, logsDef } from '@/systems/logs/system';
 import { prompts, promptsSystem, promptsDef } from '@/systems/prompts/system';
 import { settings, settingsSystem, settingsDef } from '@/systems/settings/system';
 import { actions, actionsSystem, actionsDef } from '@/systems/actions/system';
@@ -25,7 +25,6 @@ const systems = {
   [library]: librarySystem,
   [code]: codeSystem,
   [notes]: notesSystem,
-  // [logs]: logsSystem,
 } as const;
 
 export default systems;
@@ -46,5 +45,6 @@ export type OutgoingSystemEvents = AllDefs['_outgoing'];
 export const eventValidationMap: Map<string, Set<string>> = new Map(
   Object.entries(systems).map(([id, machine]) => [id, new Set(machine.events)])
 );
+eventValidationMap.set(logs, new Set(logsSystem.events));
 
 export { backendSystem } from "@/systems/backend";
