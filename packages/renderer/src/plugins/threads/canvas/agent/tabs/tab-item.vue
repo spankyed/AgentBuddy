@@ -2,7 +2,7 @@
   <ContextMenuRoot>
     <ContextMenuTrigger as-child>
       <div
-        class="relative flex items-center px-4 py-2 text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
+        class="relative flex items-center px-4 py-1 text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
         :class="[
           isActive
             ? 'bg-neutral-850 text-white border-t border-blue-500'
