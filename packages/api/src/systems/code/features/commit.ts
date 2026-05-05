@@ -127,6 +127,7 @@ export const commitSystem = setup({
       context._statusRefreshTimer = setTimeout(() => {
         context._statusRefreshTimer = undefined
         self.send({ type: 'commit.GET_GIT_STATUS' })
+        self.send({ type: 'commit.LOG_LIST' })
       }, 150)
 
       // Also notify the PR system to refresh if it exists
