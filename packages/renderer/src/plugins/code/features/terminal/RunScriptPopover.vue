@@ -73,49 +73,65 @@
 
           <!-- Edit mode -->
           <template v-else>
-            <div
-              v-for="script in localScripts"
-              :key="script.id"
-              class="flex items-center gap-1 px-2 py-1.5"
+            <ArrangeableList
+              :identifier="'terminal-scripts'"
+              :group="reorderGroup"
+              :targets="[reorderGroup]"
+              :list="localScripts"
+              :options="arrangeableOptions"
+              class="terminal-scripts-list"
+              @drop-item="reorderScript"
             >
-              <div class="flex-1 min-w-0 flex flex-col gap-0.5">
-                <input
-                  v-if="editingId === script.id"
-                  ref="editLabelRef"
-                  v-model="editLabel"
-                  placeholder="Label"
-                  class="w-full px-1 py-0.5 text-xs bg-transparent border border-neutral-700 rounded text-neutral-200 focus:outline-none focus:border-primary-500"
-                  @keydown.enter="finishEdit(script.id)"
-                  @keydown.escape="cancelEdit"
-                />
-                <span
-                  v-else
-                  class="text-sm text-neutral-300 truncate cursor-text hover:text-white"
-                  @click="startEdit(script)"
-                >{{ script.label }}</span>
+              <template #default="{ item: script }">
+                <div class="flex items-center gap-1 px-1 py-1.5 bg-neutral-900 rounded-md">
+                  <span
+                    data-handle
+                    class="flex-shrink-0 cursor-grab text-neutral-600 hover:text-neutral-400 p-1 pointer-events-auto"
+                    title="Drag to reorder"
+                    @click.stop
+                  >
+                    <GripVertical :size="12" class="pointer-events-none" />
+                  </span>
+                  <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <input
+                      v-if="editingId === script.id"
+                      ref="editLabelRef"
+                      v-model="editLabel"
+                      placeholder="Label"
+                      class="w-full px-1 py-0.5 text-xs bg-transparent border border-neutral-700 rounded text-neutral-200 focus:outline-none focus:border-primary-500"
+                      @keydown.enter="finishEdit(script.id)"
+                      @keydown.escape="cancelEdit"
+                    />
+                    <span
+                      v-else
+                      class="text-sm text-neutral-300 truncate cursor-text hover:text-white"
+                      @click="startEdit(script)"
+                    >{{ script.label }}</span>
 
-                <input
-                  v-if="editingId === script.id"
-                  v-model="editCommand"
-                  placeholder="Command"
-                  class="w-full px-1 py-0.5 text-xs bg-transparent border border-neutral-700 rounded text-neutral-400 focus:outline-none focus:border-primary-500 font-mono"
-                  @keydown.enter="finishEdit(script.id)"
-                  @keydown.escape="cancelEdit"
-                />
-                <span
-                  v-else
-                  class="text-xs text-neutral-500 truncate cursor-text font-mono"
-                  @click="startEdit(script)"
-                >{{ script.command }}</span>
-              </div>
-              <button
-                type="button"
-                class="p-1 text-neutral-500 hover:text-red-400 flex-shrink-0"
-                @click="deleteScript(script.id)"
-              >
-                <X :size="14" />
-              </button>
-            </div>
+                    <input
+                      v-if="editingId === script.id"
+                      v-model="editCommand"
+                      placeholder="Command"
+                      class="w-full px-1 py-0.5 text-xs bg-transparent border border-neutral-700 rounded text-neutral-400 focus:outline-none focus:border-primary-500 font-mono"
+                      @keydown.enter="finishEdit(script.id)"
+                      @keydown.escape="cancelEdit"
+                    />
+                    <span
+                      v-else
+                      class="text-xs text-neutral-500 truncate cursor-text font-mono"
+                      @click="startEdit(script)"
+                    >{{ script.command }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="p-1 mr-2 text-neutral-500 hover:text-red-400 flex-shrink-0"
+                    @click="deleteScript(script.id)"
+                  >
+                    <X :size="14" />
+                  </button>
+                </div>
+              </template>
+            </ArrangeableList>
           </template>
         </div>
 
@@ -152,8 +168,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Play, Pencil, X, Plus, Copy, Check, SquarePlus } from 'lucide-vue-next'
+import { Play, Pencil, X, Plus, Copy, Check, SquarePlus, GripVertical } from 'lucide-vue-next'
 import { PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent } from 'reka-ui'
+import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { TerminalScript } from '@app/api'
 
 const props = defineProps<{
@@ -181,6 +198,16 @@ const newLabel = ref('')
 const newCommand = ref('')
 const canAdd = computed(() => newLabel.value.trim() && newCommand.value.trim())
 
+// Reorder
+const reorderGroup = Symbol('terminal-scripts')
+const arrangeableOptions = {
+  handle: true,
+  liftDelay: 100,
+  hoverClass: 'shadow-lg shadow-black/40 scale-[1.02] cursor-grabbing',
+  pickedItemClass: 'opacity-30',
+}
+let droppingItem = false
+
 // Copy feedback
 const copiedId = ref<string | null>(null)
 
@@ -192,6 +219,10 @@ function copyCommand(script: TerminalScript) {
 
 // Sync from props
 watch(() => props.scripts, (val) => {
+  if (droppingItem) {
+    droppingItem = false
+    return
+  }
   localScripts.value = [...val]
 }, { deep: true })
 
@@ -245,6 +276,14 @@ function deleteScript(id: string) {
   emit('update', updated)
 }
 
+function reorderScript(moving: MovingItem<TerminalScript>) {
+  if (!moving.destination?.listItems) return
+  droppingItem = true
+  const updated = [...moving.destination.listItems]
+  localScripts.value = updated
+  emit('update', updated)
+}
+
 function addScript() {
   const label = newLabel.value.trim()
   const command = newCommand.value.trim()
@@ -261,3 +300,20 @@ function addScript() {
   emit('update', updated)
 }
 </script>
+
+<style scoped>
+.terminal-scripts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+:deep(.cursor-grabbing) {
+  position: fixed !important;
+  border-radius: 0.375rem;
+}
+
+:deep(.arrangeable-list__transition-all) {
+  transition-duration: 0s;
+}
+</style>
