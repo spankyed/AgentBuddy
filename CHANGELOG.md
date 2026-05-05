@@ -1,5 +1,31 @@
 -e # Changelog
 
+## v0.2.15 (2026-05-05)
+
+### Features
+- commit): add commit log viewing, revert, and reset operations
+- instructions): add default 'Open' status when creating thread from instructions
+- chat): add sendSystemMessage for non-interactive aside messages
+- threads): default thinking block to open state
+- threads): display instructions banner in chat and add /instructions command
+
+### Fixes
+- commit): refresh log list alongside git status after commit
+- threads): skip threads array rebuild for context-only THREAD_UPDATED events
+- threads): include command prefix in thread topic when text is provided
+- chat): hide empty state quote when thread has instructions
+- threads): debounce kanban board rebuilds to prevent duplicates and stuttering during streaming
+- cc-flow): gate cc command router to only handle cc-* prefixed commands
+- logs): register logs system in event validation map
+
+### Refactors
+- instructions): create new thread instead of updating existing one
+
+### Other
+- docs(default-setup): add "Adding a command" guide to CLAUDE.md
+
+-e # Changelog
+
 ## v0.2.14 (2026-05-05)
 
 ### Features
