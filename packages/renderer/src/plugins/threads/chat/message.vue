@@ -63,7 +63,7 @@
             </button>
           </template>
 
-          <template v-else-if="isUser && message.status === 'cancelled' && isTail">
+          <template v-else-if="isUser && message.status === 'cancelled'">
             <button
               @click="copyMessageText"
               class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
@@ -72,6 +72,7 @@
               <Copy :size="16" />
             </button>
             <button
+              v-if="isTail"
               @click="$emit('resend', message.id, message.text, message.references)"
               class="p-1.5 hover:bg-neutral-700 transition-colors text-neutral-300"
               title="Resend message"
