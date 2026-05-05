@@ -254,7 +254,10 @@ async function handleRename(
   });
 
   const result = await handle.result;
-  const newTitle = result.text?.trim() || args.join(' ') || 'Untitled';
+  const raw = result.text?.trim() || '';
+  // CLI responds with "Session renamed to: <title>" — extract just the title.
+  const match = raw.match(/^Session renamed to:\s*(.+)/i);
+  const newTitle = match?.[1]?.trim() || args.join(' ') || 'Untitled';
 
   services.repository.threadCommands.update(threadId as any, { topic: newTitle });
   services.emitter.sendToPlugin('threads', {
