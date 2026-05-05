@@ -1,19 +1,39 @@
 <template>
-  <div class="flex overflow-x-auto">
-    <TabItem
-      v-for="tab in sortedTabs"
-      :key="tab.id"
-      :tab="tab"
-      :isActive="tab.id === activeTabId"
-      :isPinned="tab.pinned === true"
-      @select="$emit('select-tab', tab.id)"
-      @close="$emit('close-tab', tab.id)"
-      @edit-details="$emit('edit-details', tab.id)"
-      @delete-thread="$emit('delete-thread', tab.id)"
-      @archive-thread="$emit('archive-thread', tab.id)"
-      @unpin-thread="$emit('unpin-thread', tab.id)"
-      @pin-thread="$emit('pin-thread', tab.id)"
-    />
+  <div>
+    <!-- Pinned row -->
+    <div v-if="pinnedTabs.length" class="flex overflow-x-auto border-b border-neutral-800">
+      <TabItem
+        v-for="tab in pinnedTabs"
+        :key="tab.id"
+        :tab="tab"
+        :isActive="tab.id === activeTabId"
+        :isPinned="true"
+        @select="$emit('select-tab', tab.id)"
+        @close="$emit('close-tab', tab.id)"
+        @edit-details="$emit('edit-details', tab.id)"
+        @delete-thread="$emit('delete-thread', tab.id)"
+        @archive-thread="$emit('archive-thread', tab.id)"
+        @unpin-thread="$emit('unpin-thread', tab.id)"
+        @pin-thread="$emit('pin-thread', tab.id)"
+      />
+    </div>
+    <!-- Unpinned row -->
+    <div class="flex overflow-x-auto">
+      <TabItem
+        v-for="tab in unpinnedTabs"
+        :key="tab.id"
+        :tab="tab"
+        :isActive="tab.id === activeTabId"
+        :isPinned="false"
+        @select="$emit('select-tab', tab.id)"
+        @close="$emit('close-tab', tab.id)"
+        @edit-details="$emit('edit-details', tab.id)"
+        @delete-thread="$emit('delete-thread', tab.id)"
+        @archive-thread="$emit('archive-thread', tab.id)"
+        @unpin-thread="$emit('unpin-thread', tab.id)"
+        @pin-thread="$emit('pin-thread', tab.id)"
+      />
+    </div>
   </div>
 </template>
 
@@ -27,9 +47,8 @@ const props = defineProps<{
   activeTabId: string;
 }>();
 
-const sortedTabs = computed(() =>
-  [...props.tabs].sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false))
-);
+const pinnedTabs = computed(() => props.tabs.filter(t => t.pinned));
+const unpinnedTabs = computed(() => props.tabs.filter(t => !t.pinned));
 
 defineEmits<{
   'select-tab': [tabId: string];
