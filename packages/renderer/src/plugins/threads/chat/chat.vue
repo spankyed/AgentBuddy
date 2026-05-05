@@ -18,7 +18,7 @@
           <!-- Agent Chat Content -->
           <div class="relative flex-grow w-full overflow-hidden min-h-0" :class="$style.messagesWrapper">
             <div class="h-full overflow-y-auto" :class="$style.messagesContainer" ref="messagesContainer" @scroll="onScroll">
-              <div v-if="allMessages.length === 0" class="flex items-center justify-center h-full">
+              <div v-if="allMessages.length === 0 && !currentThread?.instructions" class="flex items-center justify-center h-full">
                 <p class="text-neutral-700 text-center italic max-w-sm">{{ randomQuote }}</p>
               </div>
               <div v-else class="w-9/12 py-2 mx-auto space-y-1" ref="messagesContent">
