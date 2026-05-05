@@ -341,7 +341,7 @@ export async function _experimental_rename(
 ): Promise<void> {
   assertSafeId(id)
   warnExperimental('_experimental_rename')
-  await appendMetadata(id, { type: 'metadata', title, updatedAt: new Date().toISOString() }, opts)
+  await appendMetadata(id, { type: 'metadata', customTitle: title, updatedAt: new Date().toISOString() }, opts)
 }
 
 /** Add/remove a session tag by appending a metadata entry. @experimental */
@@ -385,7 +385,7 @@ export async function _experimental_fork(
 
   await fs.promises.writeFile(target, keptLines.join('\n') + '\n')
   if (opts.title) {
-    await appendMetadata(newId, { type: 'metadata', title: opts.title, updatedAt: new Date().toISOString() }, { cwd })
+    await appendMetadata(newId, { type: 'metadata', customTitle: opts.title, updatedAt: new Date().toISOString() }, { cwd })
   }
 
   return { sessionId: newId, file: target }

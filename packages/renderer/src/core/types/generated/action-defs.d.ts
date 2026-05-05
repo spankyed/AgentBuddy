@@ -2911,7 +2911,6 @@ interface Tab {
     artifacts: ArtifactItem[];
     selectedArtifactId?: string;
     pinned?: boolean;
-    groupId?: string;
 }
 type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan' | 'note';
 interface ArtifactItem {
