@@ -8,6 +8,7 @@
       :model-value="content.text"
       :language="resolvedLanguage"
       preset="codeEditor"
+      :options="{ scrollbar: { alwaysConsumeMouseWheel: false } }"
       @update:model-value="emit('update', $event)"
       @mount="handleMount"
     />
