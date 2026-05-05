@@ -245,19 +245,18 @@ async function handleRename(
   const sessionId = ccState?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
-  const prompt = args.length > 0 ? `/rename ${args.join(' ')}` : '/rename';
-  const handle = await services.cli.claudeCode.query({
-    ...(ccState?.cwd && { cwd: ccState.cwd }),
-    prompt,
-    resume: sessionId,
-    permissionMode: 'plan',
-  });
+  let newTitle: string;
 
-  const result = await handle.result;
-  const raw = result.text?.trim() || '';
-  // CLI responds with "Session renamed to: <title>" — extract just the title.
-  const match = raw.match(/^Session renamed to:\s*(.+)/i);
-  const newTitle = match?.[1]?.trim() || args.join(' ') || 'Untitled';
+  if (args.length > 0) {
+    newTitle = args.join(' ');
+  } else {
+    newTitle = await generateTitle(services, threadId);
+  }
+
+  // /rename is REPL-only — doesn't work via `claude -p`. Use direct JSONL rename.
+  await services.cli.claudeCode.renameSession(sessionId, newTitle, {
+    ...(ccState.cwd && { cwd: ccState.cwd }),
+  });
 
   services.repository.threadCommands.update(threadId as any, { topic: newTitle });
   services.emitter.sendToPlugin('threads', {
@@ -267,4 +266,34 @@ async function handleRename(
   });
 
   return { text: `Renamed to: ${newTitle}` };
+}
+
+async function generateTitle(services: Services, threadId: string): Promise<string> {
+  const threadData = services.repository.chatQueries.threadData(threadId as any);
+  const messages = threadData?.messages ?? [];
+
+  if (messages.length === 0) return 'Untitled';
+
+  const serialized = messages
+    .filter((m: any) => !m.compacted && m.status !== 'cancelled' && !m.deleted && m.text)
+    .slice(-10)
+    .map((m: any) => {
+      const role = m.sender === 'user' ? 'User' : 'Assistant';
+      return `[${role}] ${m.text}`;
+    })
+    .join('\n');
+
+  if (!serialized) return 'Untitled';
+
+  const handle = await services.cli.claudeCode.query({
+    prompt: `Generate a short, descriptive title (3-6 words, no quotes) for this conversation:\n\n${serialized}`,
+    permissionMode: 'plan',
+    allowedTools: [],
+    noSessionPersistence: true,
+    maxTurns: 1,
+  });
+
+  for await (const _ev of handle.events) { /* drain */ }
+  const result = await handle.result;
+  return result.text?.trim().replace(/^["']|["']$/g, '') || 'Untitled';
 }
