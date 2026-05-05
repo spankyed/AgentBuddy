@@ -1,5 +1,17 @@
 -e # Changelog
 
+## v0.2.14 (2026-05-04)
+
+### Features
+- threads): add copy button for cancelled user messages
+
+### Fixes
+- thinking-block): stop timer from ticking after thinking ends
+- threads): show copy button on all cancelled messages, not just tail
+- cc-rename): use direct session rename instead of broken /rename skill
+
+-e # Changelog
+
 ## v0.2.13 (2026-05-04)
 
 ### Features
