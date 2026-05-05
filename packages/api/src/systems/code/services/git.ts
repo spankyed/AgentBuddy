@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import { GitStatusFile, StashEntry } from '../types'
+import { GitStatusFile, StashEntry, CommitLogEntry } from '../types'
 
 const execFileAsync = promisify(execFile)
 
@@ -1549,5 +1549,58 @@ export class GitRepository {
         }
       })
       .filter(c => c.subject)
+  }
+
+  // --- Commit log operations ---
+
+  async gitLog(count = 50): Promise<CommitLogEntry[]> {
+    const separator = '|||'
+    const recordSep = '---RECORD_SEP---'
+    const format = [
+      '%H', '%h', '%s', '%b', '%an', '%ae', '%aI', '%D'
+    ].join(separator)
+    const result = await this.executeGitCommand([
+      'log', `-n${count}`,
+      `--format=${format}${recordSep}`,
+    ])
+    if (!result.success || !result.output?.trim()) return []
+
+    return result.output
+      .split(recordSep)
+      .filter(chunk => chunk.trim())
+      .map(chunk => {
+        const parts = chunk.trim().split(separator)
+        return {
+          hash: (parts[0] || '').trim(),
+          shortHash: (parts[1] || '').trim(),
+          subject: (parts[2] || '').trim(),
+          body: (parts[3] || '').trim(),
+          authorName: (parts[4] || '').trim(),
+          authorEmail: (parts[5] || '').trim(),
+          date: (parts[6] || '').trim(),
+          refs: (parts[7] || '').trim(),
+        }
+      })
+      .filter(c => c.hash)
+  }
+
+  async revertCommit(hash: string): Promise<void> {
+    return this.withWriteFlag(async () => {
+      const result = await this.executeGitCommand(['revert', hash, '--no-edit'])
+      if (!result.success) {
+        throw new Error(result.error || `Failed to revert commit ${hash}`)
+      }
+      this.clearCache()
+    })
+  }
+
+  async resetToCommit(hash: string, mode: 'soft' | 'mixed' | 'hard' = 'mixed'): Promise<void> {
+    return this.withWriteFlag(async () => {
+      const result = await this.executeGitCommand(['reset', `--${mode}`, hash])
+      if (!result.success) {
+        throw new Error(result.error || `Failed to reset to commit ${hash}`)
+      }
+      this.clearCache()
+    })
   }
 }

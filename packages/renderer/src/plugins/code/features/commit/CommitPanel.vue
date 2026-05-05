@@ -586,6 +586,9 @@
       </div>
     </div>
 
+    <!-- Commits Section -->
+    <CommitLogSection :toast="toast" />
+
     <!-- Drop Stash Dialog -->
     <RevertDialog
       :show="showDropStashDialog"
@@ -625,6 +628,7 @@ import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
+import CommitLogSection from '@/plugins/code/features/commit/CommitLogSection.vue'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 

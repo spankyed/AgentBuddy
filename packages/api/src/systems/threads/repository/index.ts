@@ -177,9 +177,9 @@ export const threadCommands = {
       ? tx(input.id as EARS.EntityId, true).id()
       : tx(EARS.Entity.Thread).id();
 
-    const status = settingsQueries.getPluginSettings('threads')?.statuses[0]?.label ?? '';
+    const status = input.status || settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || '';
     tx(id).updateBatch({
-      status: status,
+      status,
       shortCode: shortCode,
       timestamp: ts,
       lastMessageTimestamp: ts,

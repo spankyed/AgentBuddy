@@ -51,6 +51,7 @@ export interface Context {
   isStashing: boolean
   worktreeList: WorktreeEntry[]
   isWorktreeLoading: boolean
+  commitLog: CommitLogEntry[]
 }
 
 export interface StashEntry {
@@ -69,6 +70,17 @@ export interface WorktreeEntry {
   isMain: boolean
   isLocked: boolean
   lockedReason?: string
+}
+
+export interface CommitLogEntry {
+  hash: string
+  shortHash: string
+  subject: string
+  body: string
+  authorName: string
+  authorEmail: string
+  date: string
+  refs: string
 }
 
 export type Event =
@@ -125,6 +137,12 @@ export type Event =
   | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
   | { type: 'commit.CONFLICT_RESOLVED'; path: string }
   | { type: 'commit.ALL_CONFLICTS_RESOLVED' }
+  | { type: 'commit.LOG_LIST' }
+  | { type: 'commit.LOG_LIST_RECEIVED'; data: { commits: CommitLogEntry[] } }
+  | { type: 'commit.REVERT_COMMIT'; hash: string }
+  | { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+  | { type: 'commit.REVERT_COMMIT_SUCCESS'; data: { hash: string } }
+  | { type: 'commit.RESET_COMMIT_SUCCESS'; data: { hash: string } }
   | { type: 'CODE_STARTUP' };
 
 export const commitState = setup({
@@ -400,6 +418,7 @@ export const commitState = setup({
         self.send({ type: 'commit.REFRESH_STATUS' })
         sendToBackend('commit.STASH_LIST', {})
         sendToBackend('commit.WORKTREE_LIST', {})
+        sendToBackend('commit.LOG_LIST', {})
       }
     },
 
@@ -476,7 +495,28 @@ export const commitState = setup({
 
     handleWorktreeAdded: assign({ isWorktreeLoading: false }),
 
-    handleWorktreeRemoved: assign({ isWorktreeLoading: false })
+    handleWorktreeRemoved: assign({ isWorktreeLoading: false }),
+
+    requestLogList: () => {
+      sendToBackend('commit.LOG_LIST', {})
+    },
+
+    handleLogListReceived: assign({
+      commitLog: ({ event }) => {
+        const ev = event as { type: 'commit.LOG_LIST_RECEIVED'; data: { commits: CommitLogEntry[] } }
+        return ev.data.commits
+      }
+    }),
+
+    revertCommit: ({ event }) => {
+      const ev = event as { type: 'commit.REVERT_COMMIT'; hash: string }
+      sendToBackend('commit.REVERT_COMMIT', { hash: ev.hash })
+    },
+
+    resetToCommit: ({ event }) => {
+      const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+      sendToBackend('commit.RESET_TO_COMMIT', { hash: ev.hash, mode: ev.mode })
+    }
   }
 }).createMachine({
   id: 'commit',
@@ -502,7 +542,8 @@ export const commitState = setup({
     stashList: [],
     isStashing: false,
     worktreeList: [],
-    isWorktreeLoading: false
+    isWorktreeLoading: false,
+    commitLog: []
   },
   states: {
     idle: {
@@ -665,6 +706,24 @@ export const commitState = setup({
         },
         'commit.WORKTREE_REMOVED': {
           actions: ['handleWorktreeRemoved', 'requestWorktreeList']
+        },
+        'commit.LOG_LIST': {
+          actions: 'requestLogList'
+        },
+        'commit.LOG_LIST_RECEIVED': {
+          actions: 'handleLogListReceived'
+        },
+        'commit.REVERT_COMMIT': {
+          actions: 'revertCommit'
+        },
+        'commit.RESET_TO_COMMIT': {
+          actions: 'resetToCommit'
+        },
+        'commit.REVERT_COMMIT_SUCCESS': {
+          actions: ['refreshGitStatus', 'requestLogList']
+        },
+        'commit.RESET_COMMIT_SUCCESS': {
+          actions: ['refreshGitStatus', 'requestLogList']
         },
         'CODE_STARTUP': {
           actions: 'handleCodeStartup'

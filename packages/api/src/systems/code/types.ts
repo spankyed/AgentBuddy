@@ -114,6 +114,17 @@ export interface WorktreeEntry {
   lockedReason?: string
 }
 
+export interface CommitLogEntry {
+  hash: string
+  shortHash: string
+  subject: string
+  body: string
+  authorName: string
+  authorEmail: string
+  date: string
+  refs: string
+}
+
 // GitHub PR types
 export interface GhPullRequest {
   number: number

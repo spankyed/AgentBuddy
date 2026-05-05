@@ -3,7 +3,7 @@ import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
-import { GitStatusFile, GitDiff, StashEntry, WorktreeEntry } from '../types'
+import { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
 import { sendToBrainSystem } from '@/services/event-emitter'
 
@@ -37,6 +37,9 @@ export type IncomingCommitEvents =
   | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
   | { type: 'commit.MARK_RESOLVED'; path: string }
   | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
+  | { type: 'commit.LOG_LIST' }
+  | { type: 'commit.REVERT_COMMIT'; hash: string }
+  | { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =
@@ -62,6 +65,9 @@ export type OutgoingCommitEvents =
   | { type: 'commit.WORKTREE_REMOVED'; data: { path: string } }
   | { type: 'commit.CONFLICT_RESOLVED'; data: { path: string } }
   | { type: 'commit.ALL_CONFLICTS_RESOLVED' }
+  | { type: 'commit.LOG_LIST_RECEIVED'; data: { commits: CommitLogEntry[] } }
+  | { type: 'commit.REVERT_COMMIT_SUCCESS'; data: { hash: string } }
+  | { type: 'commit.RESET_COMMIT_SUCCESS'; data: { hash: string } }
 
 export interface Context {
   gitRepository: GitRepository | null
@@ -96,6 +102,9 @@ export type Event =
   | { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
   | { type: 'commit.MARK_RESOLVED'; path: string }
   | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
+  | { type: 'commit.LOG_LIST' }
+  | { type: 'commit.REVERT_COMMIT'; hash: string }
+  | { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
   | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
@@ -794,6 +803,71 @@ export const commitSystem = setup({
       }
     },
 
+    logList: async ({ context }) => {
+      if (!requireGitRepository(context)) return
+
+      try {
+        const commits = await context.gitRepository.gitLog()
+        const wrapped = emit(pluginId, {
+          type: 'commit.LOG_LIST_RECEIVED',
+          data: { commits }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    revertCommit: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.REVERT_COMMIT'; hash: string }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.revertCommit(ev.hash)
+        const wrapped = emit(pluginId, {
+          type: 'commit.REVERT_COMMIT_SUCCESS',
+          data: { hash: ev.hash }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
+        self.send({ type: 'commit.LOG_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
+    resetToCommit: async ({ event, context, self }) => {
+      const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+
+      if (!requireGitRepository(context)) return
+
+      try {
+        await context.gitRepository.resetToCommit(ev.hash, ev.mode)
+        const wrapped = emit(pluginId, {
+          type: 'commit.RESET_COMMIT_SUCCESS',
+          data: { hash: ev.hash }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
+        self.send({ type: 'commit.LOG_LIST' })
+      } catch (error: any) {
+        const wrapped = emit(pluginId, {
+          type: 'commit.ERROR_RECEIVED',
+          data: { message: error.message }
+        })
+        rootEvents.emitOutgoing(wrapped.event)
+      }
+    },
+
     worktreeList: async ({ context }) => {
       if (!requireGitRepository(context)) return
 
@@ -920,7 +994,7 @@ export const commitSystem = setup({
           actions: 'generateCommitMessage'
         },
         'commit.UPDATE_BASE_DIRECTORY': {
-          actions: ['updateBaseDirectory', 'selfRefreshGitStatus', 'worktreeList', 'getAllBranches']
+          actions: ['updateBaseDirectory', 'selfRefreshGitStatus', 'worktreeList', 'getAllBranches', 'logList']
         },
         'commit.GIT_STATUS_CHANGED': {
           actions: 'handleGitStatusChanged'
@@ -951,6 +1025,15 @@ export const commitSystem = setup({
         },
         'commit.WORKTREE_REMOVE': {
           actions: 'worktreeRemove'
+        },
+        'commit.LOG_LIST': {
+          actions: 'logList'
+        },
+        'commit.REVERT_COMMIT': {
+          actions: 'revertCommit'
+        },
+        'commit.RESET_TO_COMMIT': {
+          actions: 'resetToCommit'
         }
       }
     }
