@@ -40,6 +40,7 @@ export function createThinkingWriter(
   const intervalMs = opts.intervalMs ?? 250;
   let buffer = '';
   let firstPushAt = 0;
+  let finalisedAt = 0;
   let state: 'streaming' | 'done' = 'streaming';
   let directWritesEnabled = true;
   let pendingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -47,7 +48,7 @@ export function createThinkingWriter(
 
   function buildLabel(): string {
     if (state === 'streaming') return 'Thinking';
-    const elapsed = Date.now() - (firstPushAt || Date.now());
+    const elapsed = (finalisedAt || Date.now()) - (firstPushAt || Date.now());
     return `Thought for ${formatDuration(elapsed)}`;
   }
 
@@ -108,6 +109,7 @@ export function createThinkingWriter(
 
     finalise(): void {
       if (state === 'done') return;
+      finalisedAt = Date.now();
       state = 'done';
       writeNow();
     },
