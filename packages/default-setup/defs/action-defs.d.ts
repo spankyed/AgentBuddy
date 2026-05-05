@@ -4903,6 +4903,15 @@ declare function sendBlockMessage(options: BlockMessageOptions): {
     messageId: EARS.EntityId;
 };
 /**
+ * Send a system message (non-interactive aside) and emit MESSAGE_ADDED event
+ */
+declare function sendSystemMessage(options: {
+    threadId: EARS.EntityId;
+    text: string;
+}): {
+    messageId: EARS.EntityId;
+};
+/**
  * Create a file picker interaction using blocks
  */
 declare function sendFilePickerBlock(options: {
@@ -5213,11 +5222,12 @@ declare const chat_sendFilePickerBlock: typeof sendFilePickerBlock;
 declare const chat_sendLinkBlock: typeof sendLinkBlock;
 declare const chat_sendQuestionBlock: typeof sendQuestionBlock;
 declare const chat_sendRecentThreadsRefresh: typeof sendRecentThreadsRefresh;
+declare const chat_sendSystemMessage: typeof sendSystemMessage;
 declare const chat_sendTextInputBlock: typeof sendTextInputBlock;
 declare const chat_updateMessageBlockResponse: typeof updateMessageBlockResponse;
 declare const chat_updateMessageState: typeof updateMessageState;
 declare namespace chat {
-  export { chat_addMessagesToThread as addMessagesToThread, chat_createBlockMessage as createBlockMessage, chat_createMarkerMessage as createMarkerMessage, chat_createThreadAndNotify as createThreadAndNotify, chat_generateAsideText as generateAsideText, chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent, chat_openThreadTabAndRefresh as openThreadTabAndRefresh, chat_resolveReferences as resolveReferences, chat_sendApprovalBlock as sendApprovalBlock, chat_sendBlockMessage as sendBlockMessage, chat_sendButtonGroupBlock as sendButtonGroupBlock, chat_sendChoiceBlock as sendChoiceBlock, chat_sendFilePickerBlock as sendFilePickerBlock, chat_sendLinkBlock as sendLinkBlock, chat_sendQuestionBlock as sendQuestionBlock, chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh, chat_sendTextInputBlock as sendTextInputBlock, chat_updateMessageBlockResponse as updateMessageBlockResponse, chat_updateMessageState as updateMessageState };
+  export { chat_addMessagesToThread as addMessagesToThread, chat_createBlockMessage as createBlockMessage, chat_createMarkerMessage as createMarkerMessage, chat_createThreadAndNotify as createThreadAndNotify, chat_generateAsideText as generateAsideText, chat_openThreadChatAndRefreshRecent as openThreadChatAndRefreshRecent, chat_openThreadTabAndRefresh as openThreadTabAndRefresh, chat_resolveReferences as resolveReferences, chat_sendApprovalBlock as sendApprovalBlock, chat_sendBlockMessage as sendBlockMessage, chat_sendButtonGroupBlock as sendButtonGroupBlock, chat_sendChoiceBlock as sendChoiceBlock, chat_sendFilePickerBlock as sendFilePickerBlock, chat_sendLinkBlock as sendLinkBlock, chat_sendQuestionBlock as sendQuestionBlock, chat_sendRecentThreadsRefresh as sendRecentThreadsRefresh, chat_sendSystemMessage as sendSystemMessage, chat_sendTextInputBlock as sendTextInputBlock, chat_updateMessageBlockResponse as updateMessageBlockResponse, chat_updateMessageState as updateMessageState };
   export type { chat_AutoHideOptions as AutoHideOptions };
 }
 

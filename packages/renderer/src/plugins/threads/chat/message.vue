@@ -28,6 +28,11 @@
         <span v-if="asideContext" class="text-neutral-600 ml-2">{{ asideContext }}</span>
       </div>
 
+      <!-- System message: non-interactive aside -->
+      <div v-else-if="isSystem" class="text-xs italic py-1 px-2 text-neutral-500">
+        {{ message.text }}
+      </div>
+
       <!-- Normal message rendering -->
       <template v-else-if="!message.autoHide || !message.asideText || expanded">
       <div class="relative">
@@ -251,6 +256,7 @@ const statusIndicator = computed(() => {
   return null
 })
 const isMarker = computed(() => props.message.sender === 'marker')
+const isSystem = computed(() => props.message.sender === 'system')
 const isCollapsedAsideAsUser = computed(() =>
   props.message.autoHide && props.message.asideText && !expanded.value && props.message.asUser
 )

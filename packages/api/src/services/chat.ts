@@ -86,6 +86,40 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
 }
 
 /**
+ * Send a system message (non-interactive aside) and emit MESSAGE_ADDED event
+ */
+export function sendSystemMessage(options: {
+  threadId: EARS.EntityId;
+  text: string;
+}): { messageId: EARS.EntityId } {
+  const { threadId, text } = options;
+
+  const result = repository.chatCommands.addMessage({
+    threadId,
+    text,
+    sender: 'system',
+  });
+
+  const message: MessageEntity = {
+    id: result.id,
+    entityType: EARS.Entity.Message,
+    text: result.text,
+    sender: 'system',
+    timestamp: result.timestamp,
+    createdAt: result.timestamp,
+    updatedAt: result.timestamp,
+  };
+
+  sendToPlugin('threads', {
+    type: 'MESSAGE_ADDED',
+    threadId,
+    message,
+  });
+
+  return { messageId: result.id };
+}
+
+/**
  * Create a file picker interaction using blocks
  */
 export function sendFilePickerBlock(options: {

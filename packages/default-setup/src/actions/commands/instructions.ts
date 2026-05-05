@@ -42,10 +42,9 @@ export async function action(
   const result = services.chat.createThreadAndNotify({ topic, instructions });
 
   if (threadId) {
-    services.chat.sendBlockMessage({
+    services.chat.sendSystemMessage({
       threadId,
       text: `Thread created: ${result.shortCode} — ${topic}`,
-      blocks: [],
     });
   }
 
