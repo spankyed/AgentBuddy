@@ -1,5 +1,96 @@
 -e # Changelog
 
+## v0.2.13 (2026-05-04)
+
+### Features
+- tabs): show pinned threads on separate row above unpinned tabs
+- claude-code): add thinking artifact block for extended thinking
+- threads): add thinking block to display extended thinking content
+- tabs): show pin icon on hover for unpinned thread tabs
+- tiptap): highlight images within text selections
+- tool-activity): show tool output in hover popups alongside input
+- threads): truncate file paths from the left to preserve filename visibility
+- chat): focus editor when switching threads
+- threads): add keyboard navigation to recent threads popup
+- threads): make pinned tab icon clickable to unpin thread
+- tiptap): add table extensions to viewer mode without fullExtensions
+-  add rename thread from context menus + fix recent threads not updating on topic change
+- tiptap): add Enter key handling for blockquotes
+- code): allow editing unstaged diffs in file editor
+- commit): add merge conflict resolution support
+- api): replace loose zod schema with typed custom validator for bus router input
+-  add runtime event validation to bus router via XState introspection
+-  add types property to defineSystem() and remove Receivable<>
+-  replace Zod event schemas with plain TS types via defineSystem() framework
+-  add native context menu and suppress bubble menu on right-click
+-  add useExternalFileDrag composable and support file drop on chat input
+- cc-rename): add /cc-rename command to rename sessions
+- threads): add tooltip to chat input action buttons
+-  hide non-core plugins by default
+
+### Fixes
+- code-plugin): fix inaccurate line navigation when opening files from search results
+- code-plugin): navigate to correct line when clicking search results in same file
+- claude-session-artifact): move flex-1 spacer after terminal button
+- claude-code): clear placeholder text on first thinking delta
+- threads): correct conditional emit syntax in tab pin toggle
+- terminal): attach panel terminal on mount after inspection panel re-open
+- code): support out-of-repo paths in diff artifact assembly
+- claude-code): prevent Turn Completed from overwriting CC: Compact chatState
+- terminal): reuse existing panel terminal when running scripts
+- claude-code): prevent Turn Completed from overwriting CC: Compact chatState
+- terminal): handle WebGL context loss on container resize
+- threads): preserve left text alignment for RTL-truncated tool activity summary
+- threads): blur active element when opening recent threads dropdown
+- threads): allow Shift+Space toggle from ProseMirror chat input
+- tabs): prevent state dot from hiding on hover for pinned tabs
+- threads): show title bar input and topic on all screen sizes
+- recent-threads): prevent inline-dashboard icon click from opening recent threads during rename
+- recent-threads): right-click title bar triggers inline rename directly
+- threads): use setTimeout for rename input focus to ensure DOM readiness
+- recent-threads): keep popup open when rename is triggered from context menu
+- chat-input): hide placeholder and disable history recall when Shift+Enter adds empty lines
+-  prevent broken revert loop from stale sessionId
+-  eliminate cascading backend calls during tab restoration on refresh
+-  preserve recent threads order on page refresh
+-  flush pending debounce updates instead of canceling on note switch
+-  mariachi band
+- terminal): refresh WebGL renderer on container resize
+- tabs): move pin icon to right end
+- code): refresh branch list after directory switch and PR merge, fix wildcard event validation
+- code): refresh branch list after directory switch and PR merge
+- commit): reset textarea height after commit
+- tiptap): raise bubble menu z-index above chat input controls
+-  refresh threads list after onboarding completes
+- fix type
+-  hide statusline when chat is collapsed, extract useAnchorTracking composable
+-  scope non-global plugin hotkeys to active plugin only
+-  disable word wrap in diff editor to enable horizontal scrolling
+-  strip NODE_ENV from Claude Code subprocess environment
+- notes): stop capture-phase file drop handler from swallowing internal drag events
+
+### Refactors
+- claude-code): simplify thinking-writer finalization and deduplicate formatDuration
+- tool-activity): simplify tool input display and remove truncation
+- renderer): move JsonHoverPopup to core and make it reusable
+- threads): extract optimistic update helper and reuse shared context menu
+-  simplify startup restore flags into single `restore` flag
+-  rename brainBus to brainRuntime for clarity in flow system
+
+### Other
+- style(tabs): reduce vertical padding on tab items
+- docs(readme): update repository clone URL to correct fork
+- code cleanup
+- Merge pull request #138 from spankyed/AS/defineSystem-helper
+- code cleanup
+- code cleanup
+- docs(systems): condense CLAUDE.md to essential patterns and rules
+- prevent ProseMirror from showing an insertion cursor during file drags by disabling pointer events on the editor while dragging.
+- update defs
+- update restore/kill button texts
+
+-e # Changelog
+
 ## v0.2.12 (2026-04-27)
 
 ### Fixes
