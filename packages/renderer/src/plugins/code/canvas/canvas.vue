@@ -158,6 +158,10 @@ const tryRevealLine = async () => {
   }
 }
 
+watch(pendingRevealLine, () => {
+  tryRevealLine()
+})
+
 // Computed
 const activeFile = computed(() =>
   openFiles.value.find(f => f.path === activeFilePath.value)
