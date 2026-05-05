@@ -2909,6 +2909,7 @@ interface Tab {
     artifacts: ArtifactItem[];
     selectedArtifactId?: string;
     pinned?: boolean;
+    groupId?: string;
 }
 type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan' | 'note';
 interface ArtifactItem {
@@ -4324,6 +4325,10 @@ interface CliServiceType {
             scope: string;
             path: string;
         }>>;
+        /** Rename a Claude Code session by appending a metadata entry to its JSONL file. */
+        renameSession(id: string, title: string, opts?: {
+            cwd?: string;
+        }): Promise<void>;
     };
 }
 

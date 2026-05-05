@@ -245,17 +245,21 @@ async function handleRename(
   const sessionId = ccState?.sessionId;
   if (!sessionId) return { text: 'No active session — run a Claude Code turn first.' };
 
-  const prompt = args.length > 0 ? `/rename ${args.join(' ')}` : '/rename';
-  const handle = await services.cli.claudeCode.query({
-    ...(ccState?.cwd && { cwd: ccState.cwd }),
-    prompt,
-    resume: sessionId,
-    permissionMode: 'plan',
+  let newTitle: string;
+
+  if (args.length > 0) {
+    newTitle = args.join(' ');
+  } else {
+    // Auto-generate a title from recent messages
+    newTitle = await generateTitle(services, threadId);
+  }
+
+  // Rename the CLI session file
+  await services.cli.claudeCode.renameSession(sessionId, newTitle, {
+    ...(ccState.cwd && { cwd: ccState.cwd }),
   });
 
-  const result = await handle.result;
-  const newTitle = result.text?.trim() || args.join(' ') || 'Untitled';
-
+  // Update the thread topic
   services.repository.threadCommands.update(threadId as any, { topic: newTitle });
   services.emitter.sendToPlugin('threads', {
     type: 'THREAD_UPDATED',
@@ -264,4 +268,34 @@ async function handleRename(
   });
 
   return { text: `Renamed to: ${newTitle}` };
+}
+
+async function generateTitle(services: Services, threadId: string): Promise<string> {
+  const threadData = services.repository.chatQueries.threadData(threadId as any);
+  const messages = threadData?.messages ?? [];
+
+  if (messages.length === 0) return 'Untitled';
+
+  const serialized = messages
+    .filter((m: any) => !m.compacted && m.status !== 'cancelled' && !m.deleted && m.text)
+    .slice(-10)
+    .map((m: any) => {
+      const role = m.sender === 'user' ? 'User' : 'Assistant';
+      return `[${role}] ${m.text}`;
+    })
+    .join('\n');
+
+  if (!serialized) return 'Untitled';
+
+  const handle = await services.cli.claudeCode.query({
+    prompt: `Generate a short, descriptive title (3-6 words, no quotes) for this conversation:\n\n${serialized}`,
+    permissionMode: 'plan',
+    allowedTools: [],
+    noSessionPersistence: true,
+    maxTurns: 1,
+  });
+
+  for await (const _ev of handle.events) { /* drain */ }
+  const result = await handle.result;
+  return result.text?.trim().replace(/^["']|["']$/g, '') || 'Untitled';
 }

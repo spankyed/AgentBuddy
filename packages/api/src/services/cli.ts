@@ -80,6 +80,8 @@ export interface CliServiceType {
     listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>
     /** List memory/CLAUDE.md files from known locations. */
     listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** Rename a Claude Code session by appending a metadata entry to its JSONL file. */
+    renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
   }
 }
 
@@ -273,6 +275,10 @@ function createCliService(): CliServiceType {
           } catch { /* dir doesn't exist */ }
         }
         return results
+      },
+      async renameSession(id, title, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        await claudeCode.sessions._experimental_rename(id, title, { cwd })
       },
     },
   }
