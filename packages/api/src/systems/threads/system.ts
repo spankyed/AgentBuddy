@@ -531,7 +531,8 @@ export const threadsSystem = setup({
       let threadData: any = null;
 
       if (!providedThreadId) {
-        const result = repository.chatCommands.createThreadFromMessage(text || `/${command}`);
+        const topicText = text ? `/${command} ${text}` : `/${command}`;
+        const result = repository.chatCommands.createThreadFromMessage(topicText);
         threadId = result.threadId;
         threadData = result.threadData;
 
