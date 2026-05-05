@@ -454,10 +454,18 @@ const threadsState = setup({
       const typedEvent = typeOf('THREAD_UPDATED', event);
       const { threadId, updates } = typedEvent;
 
+      // Skip threads array rebuild for context-only updates. The `context`
+      // field (e.g. claudeCode session state) is not consumed by list/kanban
+      // views — only currentThread/view need it (always updated below).
+      // Using a blocklist so new fields are included by default.
+      const hasListChange = Object.keys(updates).some(k => k !== 'context');
+
       return {
-        threads: context.threads.map(t =>
-          t.id === threadId ? { ...t, ...updates } : t
-        ),
+        ...(hasListChange ? {
+          threads: context.threads.map(t =>
+            t.id === threadId ? { ...t, ...updates } : t
+          ),
+        } : {}),
         view: context.view.id === threadId
           ? { ...context.view, ...updates }
           : context.view,

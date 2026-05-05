@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useDebounce } from '@/core/composables/useDebounce'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
@@ -137,13 +136,12 @@ function initializeItems() {
 
 // Initialize and watch for changes
 initializeItems()
-const { debounced: debouncedInitializeItems } = useDebounce(initializeItems, 250)
 watch([threads, settings, filters], () => {
   if (droppingItem) {
     droppingItem = false
     return
   }
-  debouncedInitializeItems()
+  initializeItems()
 })
 
 /* -------------------------------------------------------------------------- */
