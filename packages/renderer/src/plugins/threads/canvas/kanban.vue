@@ -221,7 +221,7 @@ async function dropItem<T extends KanbanList | WorkItem>(moving: MovingItem<T>) 
       >
         <!-- column header -->
         <header
-          class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium"
+          class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium whitespace-nowrap"
           :class="list.color"
         >
           <span class="text-sm text-neutral-200">{{ list.name }}</span>
