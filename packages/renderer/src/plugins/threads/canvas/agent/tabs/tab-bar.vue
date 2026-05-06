@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="min-w-0">
     <!-- Pinned row -->
     <div v-if="pinnedTabs.length" class="flex overflow-x-auto border-b border-neutral-800">
       <TabItem
