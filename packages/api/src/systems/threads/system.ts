@@ -22,7 +22,7 @@ type IncomingThreadsEvents =
   // Thread management events
   | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates' }[]; parentThreadId?: string }
   | { type: 'VIEW_THREAD'; threadId: string }
-  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: string }
+  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: string; userInduced?: boolean }
   | { type: 'UPDATE_THREAD_FIELD'; threadId: string; key: string; value: any }
   | { type: 'DELETE_THREAD'; threadId: string }
   | { type: 'SET_THREAD_PARENT'; childIds: string[]; parentId: string }
@@ -205,7 +205,7 @@ export const threadsSystem = setup({
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.status.changed',
-        payload: { threadId, status, userInduced: true },
+        payload: { threadId, status, userInduced: (event as any).userInduced ?? true },
       });
     },
     handleSettingsUpdate: ({ system, event }) => {

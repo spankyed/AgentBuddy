@@ -381,5 +381,29 @@ export default {
       ]],
       "Thread forked",
     ),
+    // ─── Kanban automation ──────────────────────────────────────────
+    // When a thread is dragged to "In Progress" on the kanban board,
+    // start a Claude Code session using the thread's instructions.
+    on(
+      "thread.status.changed",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.status == 'In Progress'",
+            steps: [
+              action("CC: Kanban Start", {
+                label: "kanban-start",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                  status: "$.event.data.payload.status",
+                  userInduced: "$.event.data.payload.userInduced",
+                },
+              }),
+            ],
+          },
+        ], undefined, "Kanban Status Gate"),
+      ]],
+      "Kanban → start Claude Code",
+    ),
   ],
 } satisfies FlowDSL;

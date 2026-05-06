@@ -254,9 +254,22 @@ export function ensureSessionMarker(services: Services, threadId: EntityId): Ent
 }
 
 /**
+ * Maps chatState transitions to kanban thread status updates.
+ * Only specific states trigger a status change; others are ignored.
+ */
+const chatStateToStatus: Record<string, string> = {
+  working: 'In Progress',
+  paused: 'In Review',
+  idle: 'In Progress',
+};
+
+/**
  * Update the chat state on the thread AND push a real-time event to the
  * frontend threads plugin. This is the single call site for chat state
  * transitions.
+ *
+ * Also syncs mapped chatState values to thread kanban status
+ * (e.g. 'paused' → 'In Review', 'success' → 'Done').
  */
 export function updateChatState(
   services: Services,
@@ -265,6 +278,16 @@ export function updateChatState(
 ): void {
   persistClaudeState(services, threadId as string, { chatState });
   services.threads.updateChatState(threadId, chatState);
+
+  const status = chatStateToStatus[chatState];
+  if (status) {
+    services.emitter.sendToSystem('threads', {
+      type: 'UPDATE_THREAD_STATUS',
+      threadId,
+      status,
+      userInduced: false,
+    } as any);
+  }
 }
 
 /**

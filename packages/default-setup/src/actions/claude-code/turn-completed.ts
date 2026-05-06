@@ -92,6 +92,17 @@ export async function action(
       // success state — the turn didn't complete, it was interrupted.
       const wasPaused = currentChatState === 'idle';
       updateChatState(services, threadId as EntityId, !hadErrors && !wasPaused ? 'success' : 'idle');
+
+      // Kanban: transition to Done on successful completion.
+      // Separate from the chatState update so the success flash shows first.
+      if (!hadErrors && !wasPaused) {
+        services.emitter.sendToSystem('threads', {
+          type: 'UPDATE_THREAD_STATUS',
+          threadId,
+          status: 'Done',
+          userInduced: false,
+        } as any);
+      }
     }
   }
 
