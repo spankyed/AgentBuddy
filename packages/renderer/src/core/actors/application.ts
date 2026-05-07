@@ -525,7 +525,12 @@ export const createApplicationState = () => setup({
       };
     }),
     maximizeChat: assign(({ context }) => {
-      const newSizes = { ...context.panelSizes, chatMaximized: true };
+      const isCollapsed = context.panelSizes.canvasHeight >= 93;
+      const newSizes = {
+        ...context.panelSizes,
+        chatMaximized: true,
+        ...(isCollapsed ? { canvasHeight: 50 } : {}),
+      };
       localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
       return { panelSizes: newSizes };
     }),
