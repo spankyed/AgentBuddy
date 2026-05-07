@@ -1,5 +1,22 @@
 -e # Changelog
 
+## v0.2.16 (2026-05-07)
+
+### Features
+- threads): notify flow layer on thread status change
+
+### Fixes
+- threads): add type assertion for topic label value in optimistic update
+- renderer): reset canvas height when maximizing chat from collapsed state
+- threads): prevent tab bar from overflowing its container
+- threads): sync tab label when thread topic is updated
+
+### Other
+- update defs
+- style(kanban): prevent column header text wrapping
+
+-e # Changelog
+
 ## v0.2.15 (2026-05-05)
 
 ### Features
