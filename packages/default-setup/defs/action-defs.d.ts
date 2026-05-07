@@ -258,6 +258,9 @@ declare class GitRepository {
         subject: string;
         body: string;
     }[]>;
+    gitLog(count?: number): Promise<CommitLogEntry[]>;
+    revertCommit(hash: string): Promise<void>;
+    resetToCommit(hash: string, mode?: 'soft' | 'mixed' | 'hard'): Promise<void>;
 }
 
 interface FileChangeInfo {
@@ -1724,6 +1727,15 @@ type IncomingCommitEvents = {
 } | {
     type: 'commit.RESOLVE_ALL_CONFLICTS';
     strategy: 'ours' | 'theirs';
+} | {
+    type: 'commit.LOG_LIST';
+} | {
+    type: 'commit.REVERT_COMMIT';
+    hash: string;
+} | {
+    type: 'commit.RESET_TO_COMMIT';
+    hash: string;
+    mode: 'soft' | 'mixed' | 'hard';
 };
 type OutgoingCommitEvents = {
     type: 'commit.STATUS_RECEIVED';
@@ -1832,6 +1844,21 @@ type OutgoingCommitEvents = {
     };
 } | {
     type: 'commit.ALL_CONFLICTS_RESOLVED';
+} | {
+    type: 'commit.LOG_LIST_RECEIVED';
+    data: {
+        commits: CommitLogEntry[];
+    };
+} | {
+    type: 'commit.REVERT_COMMIT_SUCCESS';
+    data: {
+        hash: string;
+    };
+} | {
+    type: 'commit.RESET_COMMIT_SUCCESS';
+    data: {
+        hash: string;
+    };
 };
 
 type IncomingSearchEvents = {
@@ -3974,6 +4001,16 @@ interface WorktreeEntry {
     isMain: boolean;
     isLocked: boolean;
     lockedReason?: string;
+}
+interface CommitLogEntry {
+    hash: string;
+    shortHash: string;
+    subject: string;
+    body: string;
+    authorName: string;
+    authorEmail: string;
+    date: string;
+    refs: string;
 }
 interface GhPullRequest {
     number: number;
