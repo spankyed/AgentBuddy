@@ -209,9 +209,11 @@ const isDiffFile = computed(() => {
   return activeFile.value && 'isDiff' in activeFile.value && activeFile.value.isDiff === true
 })
 
-// Unstaged diffs are editable (right side = working tree); staged diffs stay read-only
+// Regular files are editable; unstaged diffs are editable (right side = working tree); staged diffs stay read-only
 const isDiffReadOnly = computed(() => {
-  return !activeFile.value || !isEditableDiff(activeFile.value as OpenFile)
+  if (!activeFile.value) return true
+  if (!isDiffFile.value) return false
+  return !isEditableDiff(activeFile.value as OpenFile)
 })
 
 // Helper to check if file is an image diff (side-by-side comparison)
