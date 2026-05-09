@@ -615,6 +615,10 @@ const actionsState = setup({
         ]),
       },
       on: {
+        'ACTION.SELECT': {
+          actions: 'selectAction',
+          target: 'detail',
+        },
         'FORM.UPDATE_LABEL': { actions: 'updateFormLabel' },
         'FORM.UPDATE_DESCRIPTION': { actions: 'updateFormDescription' },
         'FORM.UPDATE_PARAMETERS': { actions: 'updateFormParameters' },
