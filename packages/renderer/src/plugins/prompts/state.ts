@@ -615,6 +615,10 @@ const promptsState = setup({
         ]),
       },
       on: {
+        'PROMPT.SELECT': {
+          actions: 'selectPrompt',
+          target: 'detail',
+        },
         'FORM.UPDATE_LABEL': { actions: 'updateFormLabel' },
         'FORM.UPDATE_DESCRIPTION': { actions: 'updateFormDescription' },
         'FORM.UPDATE_INPUTS': { actions: 'updateFormInputs' },
