@@ -1,5 +1,14 @@
 -e # Changelog
 
+## v0.2.17 (2026-05-10)
+
+### Fixes
+- prompts): handle PROMPT.SELECT in detail state to allow switching prompts while viewing one
+- actions): handle ACTION.SELECT in detail state so "Edit Template" updates the viewed action
+- code): allow regular files to be editable in diff read-only check
+
+-e # Changelog
+
 ## v0.2.16 (2026-05-07)
 
 ### Features
