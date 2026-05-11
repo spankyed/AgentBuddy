@@ -359,8 +359,8 @@ function isNonChatInputFocused() {
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
-  // Shift+Space: toggle popup (only when not typing in an editor/input)
-  if (e.key === ' ' && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+  // Ctrl+Space: toggle popup (only when not typing in an editor/input)
+  if (e.key === ' ' && e.ctrlKey && !e.metaKey && !e.shiftKey) {
     if (!isOpen.value && isNonChatInputFocused()) return
     e.preventDefault()
     isOpen.value = !isOpen.value
