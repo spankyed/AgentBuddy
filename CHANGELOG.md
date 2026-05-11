@@ -1,5 +1,15 @@
 -e # Changelog
 
+## v0.2.18 (2026-05-11)
+
+### Features
+- explorer): add refresh tree action to base directory menu
+
+### Fixes
+- claude-code): prevent session-expired error after cancel → revert sequence
+
+-e # Changelog
+
 ## v0.2.17 (2026-05-10)
 
 ### Fixes
