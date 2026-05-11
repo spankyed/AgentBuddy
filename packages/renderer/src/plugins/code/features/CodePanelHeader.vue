@@ -21,6 +21,7 @@
           @open-directory="handleDirectorySelect"
           @open-terminal="terminalActor?.send({ type: 'terminal.CREATE', cwd: baseDirectory })"
           @open-project-directory="handleProjectDirectorySelect"
+          @refresh="explorerActor?.send({ type: 'explorer.REFRESH_TREE' })"
         />
         <div class="flex items-center gap-1 min-w-5">
           <slot name="actions" />

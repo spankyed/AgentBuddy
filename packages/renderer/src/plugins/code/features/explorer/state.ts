@@ -104,6 +104,7 @@ export type Event =
   // Reveal in tree
   | { type: 'explorer.REVEAL_IN_TREE'; path: string }
   | { type: 'explorer.CLEAR_REVEAL' }
+  | { type: 'explorer.REFRESH_TREE' }
   // Broadcast events from parent
   | { type: 'CODE_CONNECTED'; data: { baseDirectory: string | null } };
 
@@ -330,6 +331,31 @@ export const explorerState = setup({
       }
     }),
 
+    refreshTree: assign(({ context, self }) => {
+      const parentContext = getParentContext(self)
+      const baseDirectory = parentContext?.baseDirectory || ''
+      if (!baseDirectory) return {}
+
+      // Re-fetch base directory
+      sendToBackend('explorer.LIST_FILES', { path: baseDirectory })
+
+      // Re-fetch all currently expanded directories
+      for (const dir of context.expandedDirs) {
+        if (dir !== baseDirectory) {
+          sendToBackend('explorer.LIST_FILES', { path: dir })
+        }
+      }
+
+      // Clear cache but keep expandedDirs so tree stays open
+      const loadingDirs = new Set(context.expandedDirs)
+      loadingDirs.add(baseDirectory)
+
+      return {
+        dirContents: {} as Record<string, FileInfo[]>,
+        loadingDirs,
+      }
+    }),
+
     expandDirectory: assign(({ event, context }) => {
       const ev = event as { type: 'explorer.EXPAND_DIRECTORY'; path: string }
       const newExpanded = new Set(context.expandedDirs)
@@ -541,6 +567,9 @@ export const explorerState = setup({
       on: {
         'CODE_CONNECTED': {
           actions: 'handleCodeConnected'
+        },
+        'explorer.REFRESH_TREE': {
+          actions: 'refreshTree'
         },
         'explorer.LIST_FILES': {
           actions: ['setLoading', 'listFiles']

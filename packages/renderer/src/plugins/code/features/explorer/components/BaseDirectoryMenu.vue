@@ -86,6 +86,14 @@
               <FolderOpen class="w-4 h-4" />
               Open in Finder
             </DropdownMenuItem>
+            <DropdownMenuSeparator class="h-px my-1 bg-neutral-700" />
+            <DropdownMenuItem
+              @select="$emit('refresh')"
+              class="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+            >
+              <RefreshCw class="w-4 h-4" />
+              Refresh
+            </DropdownMenuItem>
             <ProjectMenuItems
               :directory-path="baseDirectory"
               :show-separator="true"
@@ -121,7 +129,7 @@ import {
   DropdownMenuItemIndicator,
   DropdownMenuSeparator,
 } from 'reka-ui'
-import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal, Copy } from 'lucide-vue-next'
+import { FolderOpen, Layers, ChevronDown, ChevronRight, Terminal, Copy, RefreshCw } from 'lucide-vue-next'
 import ProjectMenuItems from './ProjectMenuItems.vue'
 import { useProjectActions } from '../composables/useProjectActions'
 import { useTrackedMenuOpen } from '@/core/composables/useMenuState'
@@ -134,6 +142,7 @@ defineEmits<{
   'open-directory': []
   'open-terminal': []
   'open-project-directory': [path: string]
+  'refresh': []
 }>()
 
 const copyPath = () => navigator.clipboard.writeText(props.baseDirectory)
