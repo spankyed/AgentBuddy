@@ -763,7 +763,7 @@ export function finalizeSessionError(
 ): void {
   const staleId = extractStaleSessionId(errorText);
   const warning = staleId
-    ? '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session.'
+    ? '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session in the same project directory. Previous messages are still visible for reference.'
     : `⚠️ ${errorText}`;
   writer.finalize(prefix ? `${prefix}\n\n${warning}`.trim() : warning);
   markSessionBroken(services, threadId, staleId ? `Session ${staleId} not found` : errorText);

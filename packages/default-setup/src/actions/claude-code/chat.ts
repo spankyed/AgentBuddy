@@ -125,6 +125,17 @@ export async function action(
       revertTo: undefined,
       forkFrom: undefined,
     });
+    // Notify the user — their revert/fork intent was silently dropped.
+    services.chat.sendBlockMessage({
+      threadId,
+      text: '⚠️ Could not revert — session data is unavailable. Starting a fresh session.',
+      blocks: [{ type: 'note', props: {
+        content: 'The revert point could not be found because the session was lost. Your next message will start a new conversation.',
+        variant: 'warning',
+        label: 'Revert Skipped',
+      }}],
+      forkable: false,
+    });
     forkFrom = undefined;
     revertTo = undefined;
   }
@@ -300,10 +311,20 @@ export async function action(
     // the CLI can locate the session JSONL in the correct project bucket.
     // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
     sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || undefined);
+
+    // Fallback: if resuming but prior.cwd is missing, try project settings
+    // so the CLI doesn't fall back to process.cwd() (wrong directory).
     if (resumeSessionId && !sessionCwd) {
-      log.warn('[resume] sessionId exists but sessionCwd is missing — CLI will use process.cwd()', {
-        threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,
+      sessionCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined;
+      log.warn('[resume] sessionId exists but sessionCwd is missing — falling back to project settings', {
+        threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null, fallbackCwd: sessionCwd ?? 'NONE',
       });
+    }
+
+    // Eager persist: store CWD before the query fires so it survives if
+    // the turn is killed before the CLI's system/init event arrives.
+    if (sessionCwd && !prior?.cwd) {
+      persistClaudeState(services, threadId, { cwd: sessionCwd });
     }
 
     const handle = await services.cli.claudeCode.query({
