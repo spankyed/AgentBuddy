@@ -31,7 +31,7 @@ export default /** @type import('electron-builder').Configuration */
       NSMicrophoneUsageDescription: 'AgentBuddy needs microphone access for voice input.',
       NSSpeechRecognitionUsageDescription: 'AgentBuddy uses speech recognition to convert voice to text.',
     },
-    ...(process.env.APPLE_TEAM_ID ? { notarize: { teamId: process.env.APPLE_TEAM_ID } } : {}),
+    notarize: !!process.env.APPLE_TEAM_ID,
     target: [
       {
         target: 'dmg',
