@@ -43,6 +43,12 @@ jobs:
             exit 1
           fi
 
+      - name: Write notarization API key to file
+        if: ${{ secrets.APPLE_API_KEY != '' }}
+        run: |
+          echo "${{ secrets.APPLE_API_KEY }}" > /tmp/AuthKey.p8
+          chmod 600 /tmp/AuthKey.p8
+
       - name: Build, package, sign
         env:
           # @vscode/ripgrep downloads from GitHub API during postinstall;
@@ -59,7 +65,7 @@ jobs:
             export APPLE_TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
             export APPLE_API_KEY_ID="${{ secrets.APPLE_API_KEY_ID }}"
             export APPLE_API_ISSUER="${{ secrets.APPLE_API_ISSUER }}"
-            export APPLE_API_KEY="${{ secrets.APPLE_API_KEY }}"
+            export APPLE_API_KEY="/tmp/AuthKey.p8"
           fi
           npm run build-prod
 
