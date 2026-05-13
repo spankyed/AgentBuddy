@@ -48,7 +48,10 @@ export const getEnvironment = (port: number) => {
   const env = { ...process.env };
 
   // Production Electron inherits a minimal PATH missing common binary locations
-  if (app.isPackaged && env.PATH) {
+  // On Windows the env var key is typically "Path" not "PATH"; { ...process.env }
+  // produces a case-sensitive object so we must find the actual key.
+  const pathKey = Object.keys(env).find(k => k.toLowerCase() === 'path') || 'PATH';
+  if (app.isPackaged && env[pathKey]) {
     const home = os.homedir();
     const extraPaths: string[] = [];
 
@@ -82,11 +85,11 @@ export const getEnvironment = (port: number) => {
       }
     }
 
-    const existing = env.PATH.split(path.delimiter);
+    const existing = env[pathKey]!.split(path.delimiter);
     for (const p of extraPaths) {
       if (!existing.includes(p)) existing.push(p);
     }
-    env.PATH = existing.join(path.delimiter);
+    env[pathKey] = existing.join(path.delimiter);
   }
 
   return {

@@ -263,9 +263,9 @@ class TerminalService {
     const normalizedShell = shell.toLowerCase().trim()
     
     // Check against allowed shells
-    if (this.ALLOWED_SHELLS.some(allowed => 
-      normalizedShell === allowed.toLowerCase() || 
-      normalizedShell.endsWith('/' + allowed)
+    if (this.ALLOWED_SHELLS.some(allowed =>
+      normalizedShell === allowed.toLowerCase() ||
+      path.basename(normalizedShell) === allowed.toLowerCase()
     )) {
       return shell
     }
