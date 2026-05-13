@@ -354,7 +354,7 @@ export function killTurn(services: Services, threadId: string): void {
     approvalMessageId: prior?.pendingControlRequest?.approvalMessageId ?? null,
   });
 
-  // Kill CLI process.
+  // Kill CLI subprocess.
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
   if (handle) {
     try { handle.kill(); } catch { /* already gone */ }

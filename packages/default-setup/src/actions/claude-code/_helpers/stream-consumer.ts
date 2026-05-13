@@ -609,7 +609,7 @@ export async function consumeStream(
     }
     log.debug('stream consumer completed');
 
-    // Close stdin so the CLI process exits cleanly (prevents child leak).
+    // Close stdin so the CLI subprocess exits cleanly (prevents child leak).
     try { await handle.close(); } catch (closeErr: any) {
       log.debug('handle.close failed', { message: closeErr?.message });
     }
@@ -650,7 +650,7 @@ export async function consumeStream(
 
     // Fire-and-forget: query /context in the background AFTER all turn
     // cleanup (clearHandle, setRunning, queued replay, cc.stream.completed)
-    // so a concurrent new turn doesn't race with this process for the
+    // so a concurrent new turn doesn't race with this instance for the
     // same session JSONL.
     if (!isErrorResult && result.sessionId) {
       queryContextInBackground(services, threadId, result.sessionId, ctx.sessionCwd, log);

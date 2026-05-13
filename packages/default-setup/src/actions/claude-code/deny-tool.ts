@@ -1,5 +1,5 @@
 /**
- * CC: Deny Tool — kills the CLI process and stops the turn when the user
+ * CC: Deny Tool — kills the CLI subprocess and stops the turn when the user
  * denies a tool approval or cancels an interaction.
  */
 
@@ -8,7 +8,7 @@ import { killTurn, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Deny Tool',
-  description: 'Kills the CLI process and stops the turn on denial.',
+  description: 'Kills the CLI subprocess and stops the turn on denial.',
   category: 'claude-code',
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },

@@ -164,7 +164,7 @@ export async function action(
   }
 
   // If the turn is paused on a permission prompt (isRunning=false but
-  // pendingControlRequest exists), kill the old CLI process so the old
+  // pendingControlRequest exists), kill the old CLI subprocess so the old
   // consumer exits cleanly, then proceed with this message as a new turn.
   if (prior?.pendingControlRequest) {
     log.info('[concurrency-guard] killing paused turn — will invalidate approval block', {
@@ -313,7 +313,7 @@ export async function action(
     sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || undefined);
 
     // Fallback: if resuming but prior.cwd is missing, try project settings
-    // so the CLI doesn't fall back to process.cwd() (wrong directory).
+    // so the CLI doesn't fall back to its own cwd (wrong directory).
     if (resumeSessionId && !sessionCwd) {
       sessionCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined;
       log.warn('[resume] sessionId exists but sessionCwd is missing — falling back to project settings', {

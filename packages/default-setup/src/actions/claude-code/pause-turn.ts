@@ -1,5 +1,5 @@
 /**
- * CC: Pause Turn — kills the CLI process and ends the turn when the user
+ * CC: Pause Turn — kills the CLI subprocess and ends the turn when the user
  * clicks the Pause button.
  */
 
@@ -8,7 +8,7 @@ import { getClaudeState, killTurn, updateChatState } from './_helpers/thread-con
 
 export const meta: ActionMeta = {
   label: 'CC: Pause Turn',
-  description: 'Kills the CLI process and ends the turn on user pause.',
+  description: 'Kills the CLI subprocess and ends the turn on user pause.',
   category: 'claude-code',
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },

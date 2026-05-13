@@ -30,7 +30,7 @@ export async function backfillUserCliUuids(
   // Worktree threads have a worktree path here; non-worktree threads
   // have the project cwd. Either way it's the bucket key Claude used
   // to store the JSONL.
-  const cwd = state?.cwd ?? process.cwd();
+  const cwd = state.cwd;
 
   let transcript: Array<Record<string, unknown>>;
   try {
