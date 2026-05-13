@@ -95,7 +95,7 @@ export default /** @type import('electron-builder').Configuration */
   },
   
   // Native modules configuration
-  npmRebuild: true, // Let electron-builder handle native module rebuilding
+  npmRebuild: process.platform !== 'win32', // Windows: selective rebuild in build.sh (lmdb source fails on MSVC)
   nodeGypRebuild: false, // Use npmRebuild instead
   
   // Files configuration
