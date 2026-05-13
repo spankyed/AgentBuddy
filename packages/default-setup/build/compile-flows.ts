@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { pathToFileURL } from 'url';
 import type { FlowDSL } from '../src/types';
 import { isFlowConfig } from './flow-dsl-utils';
 import { validate } from './flow-dsl-validator';
@@ -33,7 +34,7 @@ export async function compileFlows(): Promise<void> {
   for (const file of tsFiles) {
     const filePath = path.join(FLOWS_DIR, file);
     try {
-      const mod = await import(filePath);
+      const mod = await import(pathToFileURL(filePath).href);
 
       if (!mod.default) {
         console.log(`  - ${file} (no default export, skipping)`);
