@@ -9,49 +9,34 @@ const execFileAsync = promisify(execFile)
 export type CliName = 'copilot' | 'claude-code' | 'codex' | 'gh'
 
 const HOME = os.homedir()
-const APPDATA = process.env.APPDATA || path.join(HOME, 'AppData', 'Roaming')
-const LOCALAPPDATA = process.env.LOCALAPPDATA || path.join(HOME, 'AppData', 'Local')
 
-const UNIX_FALLBACK_PATHS: Record<CliName, string[]> = {
-  copilot: [
-    '/usr/local/bin/copilot',
-    `${HOME}/.nvm/versions/node/*/bin/copilot`,
-  ],
-  'claude-code': [
-    `${HOME}/.claude/local/claude`,
-    `${HOME}/.local/bin/claude`,
-    '/opt/homebrew/bin/claude',
-    '/usr/local/bin/claude',
-    `${HOME}/.nvm/versions/node/*/bin/claude`,
-  ],
-  codex: [
-    '/usr/local/bin/codex',
-    `${HOME}/.nvm/versions/node/*/bin/codex`,
-  ],
-  gh: [
-    '/opt/homebrew/bin/gh',
-    '/usr/local/bin/gh',
-  ],
-}
-
-const WIN_FALLBACK_PATHS: Record<CliName, string[]> = {
-  copilot: [
-    path.join(APPDATA, 'npm', 'copilot.cmd'),
-  ],
-  'claude-code': [
-    path.join(LOCALAPPDATA, 'Programs', 'claude-code', 'claude.exe'),
-    path.join(APPDATA, 'npm', 'claude.cmd'),
-  ],
-  codex: [
-    path.join(APPDATA, 'npm', 'codex.cmd'),
-  ],
-  gh: [
-    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'GitHub CLI', 'gh.exe'),
-    path.join(LOCALAPPDATA, 'Programs', 'gh', 'gh.exe'),
-  ],
-}
-
-const FALLBACK_PATHS = process.platform === 'win32' ? WIN_FALLBACK_PATHS : UNIX_FALLBACK_PATHS
+const FALLBACK_PATHS: Record<CliName, string[]> = process.platform === 'win32'
+  ? (() => {
+      const appData = process.env.APPDATA || path.join(HOME, 'AppData', 'Roaming')
+      const localAppData = process.env.LOCALAPPDATA || path.join(HOME, 'AppData', 'Local')
+      return {
+        copilot: [path.join(appData, 'npm', 'copilot.cmd')],
+        'claude-code': [
+          path.join(localAppData, 'Programs', 'claude-code', 'claude.exe'),
+          path.join(appData, 'npm', 'claude.cmd'),
+        ],
+        codex: [path.join(appData, 'npm', 'codex.cmd')],
+        gh: [
+          path.join(process.env.ProgramFiles || 'C:\\Program Files', 'GitHub CLI', 'gh.exe'),
+          path.join(localAppData, 'Programs', 'gh', 'gh.exe'),
+        ],
+      }
+    })()
+  : {
+      copilot: ['/usr/local/bin/copilot', `${HOME}/.nvm/versions/node/*/bin/copilot`],
+      'claude-code': [
+        `${HOME}/.claude/local/claude`, `${HOME}/.local/bin/claude`,
+        '/opt/homebrew/bin/claude', '/usr/local/bin/claude',
+        `${HOME}/.nvm/versions/node/*/bin/claude`,
+      ],
+      codex: ['/usr/local/bin/codex', `${HOME}/.nvm/versions/node/*/bin/codex`],
+      gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh'],
+    }
 
 const resolvedCache = new Map<string, string>()
 

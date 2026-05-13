@@ -38,6 +38,16 @@ class TerminalService {
     'NODE_ENV',
   ]
 
+  private get defaultShell(): string {
+    return process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash')
+  }
+
+  private killProcessGroup(pid: number): void {
+    if (process.platform !== 'win32') {
+      try { process.kill(-pid, 'SIGHUP') } catch {}
+    }
+  }
+
   create(options: TerminalCreate): TerminalInfo {
     // Check terminal limit (0 = no limit)
     const codeSettings = repository.settingsQueries.getPluginSettings('code')
@@ -50,8 +60,7 @@ class TerminalService {
     const id = tx(EARS.Entity.Terminal).id()
     
     // Validate and sanitize shell
-    const defaultShell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash')
-    const requestedShell = options.shell || defaultShell
+    const requestedShell = options.shell || this.defaultShell
     const shell = this.validateShell(requestedShell)
     
     // Validate cwd exists and is accessible
@@ -191,7 +200,7 @@ class TerminalService {
       terminal.dataDisposable = undefined
 
       // Kill the entire process group (shell + children) before killing the pty
-      if (process.platform !== 'win32') { try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {} }
+      this.killProcessGroup(terminal.pty.pid)
       terminal.pty.kill()
 
       // If onExit already fired synchronously during pty.kill(), terminal is cleaned up
@@ -220,7 +229,7 @@ class TerminalService {
         terminal.dataDisposable?.dispose()
         terminal.exitDisposable?.dispose()
         // Kill the entire process group (shell + children) before killing the pty
-        if (process.platform !== 'win32') { try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {} }
+        this.killProcessGroup(terminal.pty.pid)
         terminal.pty.kill()
       } catch (error) {
         console.error(`Error killing terminal ${id}:`, error)
@@ -270,10 +279,8 @@ class TerminalService {
       return shell
     }
     
-    // Default to platform-appropriate shell if invalid shell requested
-    const fallback = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash'
-    console.warn(`Invalid shell requested: ${shell}, defaulting to ${fallback}`)
-    return fallback
+    console.warn(`Invalid shell requested: ${shell}, defaulting to ${this.defaultShell}`)
+    return this.defaultShell
   }
 
   private validateCwd(cwd?: string): string {

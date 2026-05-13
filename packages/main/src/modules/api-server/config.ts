@@ -47,9 +47,8 @@ export const getApiPaths = () => {
 export const getEnvironment = (port: number) => {
   const env = { ...process.env };
 
-  // Production Electron inherits a minimal PATH missing common binary locations
-  // On Windows the env var key is typically "Path" not "PATH"; { ...process.env }
-  // produces a case-sensitive object so we must find the actual key.
+  // Production Electron inherits a minimal PATH missing common binary locations.
+  // Windows uses "Path" not "PATH"; spread produces a case-sensitive object.
   const pathKey = Object.keys(env).find(k => k.toLowerCase() === 'path') || 'PATH';
   if (app.isPackaged && env[pathKey]) {
     const home = os.homedir();

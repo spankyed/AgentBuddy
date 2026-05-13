@@ -9,6 +9,19 @@ set -e  # Exit on error
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR/.."
 
+# Platform detection
+IS_MAC=false; IS_WIN=false
+if [[ "$OSTYPE" == "darwin"* ]]; then IS_MAC=true
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then IS_WIN=true
+fi
+
+validate_api_package() {
+  if [ ! -d "$1/packages/api" ]; then
+    echo -e "  ❌ Build validation failed: API package not found"
+    exit 1
+  fi
+}
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -54,7 +67,7 @@ echo ""
 
 # Step 5: Build native helpers
 echo -e "${BLUE}[5/7]${NC} Building native helpers..."
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if $IS_MAC; then
     npm run build:speech-macos
     echo -e "${GREEN}✓${NC} Native helpers built"
 else
@@ -63,7 +76,7 @@ fi
 echo ""
 
 # Validate native helpers exist before packaging
-if [[ "$OSTYPE" == "darwin"* ]] && [ ! -f "native/speech/macos/SpeechHelper" ]; then
+if $IS_MAC && [ ! -f "native/speech/macos/SpeechHelper" ]; then
     echo -e "  ❌ Build failed: native/speech/macos/SpeechHelper not found"
     exit 1
 fi
@@ -71,7 +84,7 @@ fi
 # Step 6: Package with electron-builder (signing + notarization via env vars)
 echo -e "${BLUE}[6/7]${NC} Packaging application..."
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if $IS_MAC; then
   if [ -n "$APPLE_TEAM_ID" ]; then
     echo "  Code signing: enabled (Team ID: $APPLE_TEAM_ID)"
     echo "  Notarization: $([ -n "$APPLE_API_KEY_ID" ] && echo 'enabled' || echo 'disabled (missing APPLE_API_KEY_ID)')"
@@ -79,40 +92,21 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "  Code signing: disabled (set APPLE_TEAM_ID to enable)"
   fi
   npx electron-builder build --config electron-builder.mjs --mac --arm64
-
-  # Quick validation - check for app directory (ASAR disabled)
-  APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/Resources"
-  if [ ! -d "$APP_PATH/app" ]; then
-    echo -e "  ❌ Build validation failed: app directory not found"
-    exit 1
-  fi
-  if [ ! -d "$APP_PATH/app/packages/api" ]; then
-    echo -e "  ❌ Build validation failed: API package not found"
-    exit 1
-  fi
-elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+  validate_api_package "dist/mac-arm64/AgentBuddy.app/Contents/Resources/app"
+elif $IS_WIN; then
   echo "  Platform: Windows (unsigned)"
   npx electron-builder build --config electron-builder.mjs --win --x64
-
-  # Quick validation - check for app directory (ASAR disabled)
-  if [ ! -d "dist/win-unpacked/resources/app/packages/api" ]; then
-    echo -e "  ❌ Build validation failed: API package not found in win-unpacked"
-    exit 1
-  fi
+  validate_api_package "dist/win-unpacked/resources/app"
 else
   echo "  Platform: Linux"
   npx electron-builder build --config electron-builder.mjs --linux --x64
-
-  if [ ! -d "dist/linux-unpacked/resources/app/packages/api" ]; then
-    echo -e "  ❌ Build validation failed: API package not found in linux-unpacked"
-    exit 1
-  fi
+  validate_api_package "dist/linux-unpacked/resources/app"
 fi
 echo -e "${GREEN}✓${NC} Application packaged"
 echo ""
 
 # Step 7: Verify signing (macOS only)
-if [[ "$OSTYPE" == "darwin"* ]] && [ -n "$APPLE_TEAM_ID" ]; then
+if $IS_MAC && [ -n "$APPLE_TEAM_ID" ]; then
   echo -e "${BLUE}[7/7]${NC} Verifying code signing..."
   APP_BUNDLE="dist/mac-arm64/AgentBuddy.app"
 
@@ -140,11 +134,11 @@ echo "✅ Build Complete!"
 echo "=========================================="
 echo ""
 echo "📁 Output:"
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if $IS_MAC; then
   echo "  • App: dist/mac-arm64/AgentBuddy.app"
   echo "  • DMG: dist/AgentBuddy-*.dmg"
   echo "  • ZIP: dist/AgentBuddy-*.zip"
-elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+elif $IS_WIN; then
   echo "  • Installer: dist/AgentBuddy-*.exe"
 else
   echo "  • AppImage: dist/AgentBuddy-*.AppImage"
