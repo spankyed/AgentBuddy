@@ -313,9 +313,9 @@ class WindowManager implements AppModule {
       center: true,
       title: WINDOW_CONFIG.MAIN_TITLE, // Used for window identification
       icon: iconPath, // Set the window icon
-      titleBarStyle: 'hiddenInset', // macOS: Hide title bar but keep traffic lights
-      trafficLightPosition: {x: 10, y: 15},
-      frame: process.platform !== 'darwin', // Windows/Linux: completely frameless
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+      ...(process.platform === 'darwin' ? { trafficLightPosition: {x: 10, y: 15} } : {}),
+      frame: false, // All platforms: frameless with custom window controls
       transparent: false,
       vibrancy: 'under-window', // macOS: window vibrancy effect
       webPreferences: {

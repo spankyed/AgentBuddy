@@ -5,6 +5,18 @@ import pkg from './package.json' with {type: 'json'};
  * Native module rebuilding is handled by build.sh script
  */
 
+// Exclude prebuilds for platforms we're not targeting
+const excludePrebuilds = {
+  win32:  ['!**/node-pty/prebuilds/darwin-*'],
+  darwin: ['!**/node-pty/prebuilds/win32-*', '!**/node-pty/prebuilds/darwin-x64'],
+  linux:  ['!**/node-pty/prebuilds/darwin-*', '!**/node-pty/prebuilds/win32-*'],
+}[process.platform] ?? [];
+
+// Only include speech helpers for the target platform
+const speechResources = process.platform === 'win32'
+  ? [{ from: 'native/speech/windows/SpeechHelper.ps1', to: 'native/speech/SpeechHelper.ps1', filter: ['**/*'] }]
+  : [{ from: 'native/speech/macos/SpeechHelper', to: 'native/speech/SpeechHelper', filter: ['**/*'] }];
+
 export default /** @type import('electron-builder').Configuration */
 ({
   // Basic configuration
@@ -119,9 +131,7 @@ export default /** @type import('electron-builder').Configuration */
     // Include API's local node_modules
     'packages/api/node_modules/**/*',
     // Exclude platform-specific prebuilds not needed for current target
-    // NOTE: mac-arm64 only — adjust if building for other platforms
-    '!**/node-pty/prebuilds/win32-*',
-    '!**/node-pty/prebuilds/darwin-x64',
+    ...excludePrebuilds,
     // Exclude dev tool artifacts
     '!**/node_modules/.bin',
     '!**/node_modules/@types/**',
@@ -143,16 +153,7 @@ export default /** @type import('electron-builder').Configuration */
     //   to: 'api/local_cache',
     //   filter: ['**/*']
     // }
-    {
-      from: 'native/speech/macos/SpeechHelper',
-      to: 'native/speech/SpeechHelper',
-      filter: ['**/*'],
-    },
-    {
-      from: 'native/speech/windows/SpeechHelper.ps1',
-      to: 'native/speech/SpeechHelper.ps1',
-      filter: ['**/*'],
-    },
+    ...speechResources,
   ],
   
   // Publishing: enable with PUBLISH_TO_GITHUB=true

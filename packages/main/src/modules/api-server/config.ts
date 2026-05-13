@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 // API Server Configuration
@@ -46,33 +47,48 @@ export const getApiPaths = () => {
 export const getEnvironment = (port: number) => {
   const env = { ...process.env };
 
-  // Production Electron inherits a minimal PATH missing common binary locations
-  if (app.isPackaged && env.PATH) {
-    const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin', '/usr/local/sbin'];
+  // Production Electron inherits a minimal PATH missing common binary locations.
+  // Windows uses "Path" not "PATH"; spread produces a case-sensitive object.
+  const pathKey = Object.keys(env).find(k => k.toLowerCase() === 'path') || 'PATH';
+  if (app.isPackaged && env[pathKey]) {
+    const home = os.homedir();
+    const extraPaths: string[] = [];
 
-    // CLI tools like `claude` use `#!/usr/bin/env node` shebangs, so `node`
-    // must be on PATH. When installed via nvm, node lives under
-    // ~/.nvm/versions/node/vX.Y.Z/bin/ which isn't in the packaged app's PATH.
-    const nvmBin = process.env.NVM_BIN;
-    if (nvmBin) {
-      extraPaths.unshift(nvmBin);
+    if (process.platform === 'win32') {
+      // Windows: npm global, Program Files, nvm-windows
+      const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+      extraPaths.push(path.join(appData, 'npm'));
+      extraPaths.push(path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs'));
+      const nvmSymlink = process.env.NVM_SYMLINK;
+      if (nvmSymlink) extraPaths.unshift(nvmSymlink);
     } else {
-      const nvmNodeDir = path.join(process.env.HOME || '', '.nvm', 'versions', 'node');
-      try {
-        const versions = fs.readdirSync(nvmNodeDir)
-          .filter(e => e.startsWith('v'))
-          .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-        if (versions.length > 0) {
-          extraPaths.unshift(path.join(nvmNodeDir, versions[0], 'bin'));
-        }
-      } catch { /* nvm not installed — skip */ }
+      // macOS / Linux
+      extraPaths.push('/opt/homebrew/bin', '/usr/local/bin', '/opt/homebrew/sbin', '/usr/local/sbin');
+
+      // CLI tools like `claude` use `#!/usr/bin/env node` shebangs, so `node`
+      // must be on PATH. When installed via nvm, node lives under
+      // ~/.nvm/versions/node/vX.Y.Z/bin/ which isn't in the packaged app's PATH.
+      const nvmBin = process.env.NVM_BIN;
+      if (nvmBin) {
+        extraPaths.unshift(nvmBin);
+      } else {
+        const nvmNodeDir = path.join(home, '.nvm', 'versions', 'node');
+        try {
+          const versions = fs.readdirSync(nvmNodeDir)
+            .filter(e => e.startsWith('v'))
+            .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+          if (versions.length > 0) {
+            extraPaths.unshift(path.join(nvmNodeDir, versions[0], 'bin'));
+          }
+        } catch { /* nvm not installed — skip */ }
+      }
     }
 
-    const existing = env.PATH.split(':');
+    const existing = env[pathKey]!.split(path.delimiter);
     for (const p of extraPaths) {
       if (!existing.includes(p)) existing.push(p);
     }
-    env.PATH = existing.join(':');
+    env[pathKey] = existing.join(path.delimiter);
   }
 
   return {

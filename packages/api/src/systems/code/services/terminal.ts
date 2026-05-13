@@ -1,6 +1,7 @@
 import * as pty from 'node-pty'
 import { tx } from '@/core/ears/helpers/transaction'
 import * as os from 'os'
+import * as path from 'path'
 import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'
@@ -37,6 +38,16 @@ class TerminalService {
     'NODE_ENV',
   ]
 
+  private get defaultShell(): string {
+    return process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash')
+  }
+
+  private killProcessGroup(pid: number): void {
+    if (process.platform !== 'win32') {
+      try { process.kill(-pid, 'SIGHUP') } catch {}
+    }
+  }
+
   create(options: TerminalCreate): TerminalInfo {
     // Check terminal limit (0 = no limit)
     const codeSettings = repository.settingsQueries.getPluginSettings('code')
@@ -49,7 +60,7 @@ class TerminalService {
     const id = tx(EARS.Entity.Terminal).id()
     
     // Validate and sanitize shell
-    const requestedShell = options.shell || process.env.SHELL || '/bin/bash'
+    const requestedShell = options.shell || this.defaultShell
     const shell = this.validateShell(requestedShell)
     
     // Validate cwd exists and is accessible
@@ -60,7 +71,7 @@ class TerminalService {
     const rows = Math.max(1, Math.min(options.rows || 24, 200))
 
     // Generate default title from cwd (use directory name)
-    const defaultTitle = cwd.split('/').filter(Boolean).pop() || 'root'
+    const defaultTitle = path.basename(cwd) || 'root'
     const title = this.sanitizeTitle(options.title || defaultTitle)
 
     try {
@@ -169,7 +180,7 @@ class TerminalService {
     // Auto-update title only if no customTitle is set
     let newTitle: string | undefined
     if (!terminal.info.customTitle) {
-      newTitle = newCwd.split('/').filter(Boolean).pop() || 'root'
+      newTitle = path.basename(newCwd) || 'root'
       terminal.info.title = this.sanitizeTitle(newTitle)
     }
 
@@ -189,7 +200,7 @@ class TerminalService {
       terminal.dataDisposable = undefined
 
       // Kill the entire process group (shell + children) before killing the pty
-      try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {}
+      this.killProcessGroup(terminal.pty.pid)
       terminal.pty.kill()
 
       // If onExit already fired synchronously during pty.kill(), terminal is cleaned up
@@ -218,7 +229,7 @@ class TerminalService {
         terminal.dataDisposable?.dispose()
         terminal.exitDisposable?.dispose()
         // Kill the entire process group (shell + children) before killing the pty
-        try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {}
+        this.killProcessGroup(terminal.pty.pid)
         terminal.pty.kill()
       } catch (error) {
         console.error(`Error killing terminal ${id}:`, error)
@@ -261,16 +272,15 @@ class TerminalService {
     const normalizedShell = shell.toLowerCase().trim()
     
     // Check against allowed shells
-    if (this.ALLOWED_SHELLS.some(allowed => 
-      normalizedShell === allowed.toLowerCase() || 
-      normalizedShell.endsWith('/' + allowed)
+    if (this.ALLOWED_SHELLS.some(allowed =>
+      normalizedShell === allowed.toLowerCase() ||
+      path.basename(normalizedShell) === allowed.toLowerCase()
     )) {
       return shell
     }
     
-    // Default to bash if invalid shell requested
-    console.warn(`Invalid shell requested: ${shell}, defaulting to /bin/bash`)
-    return '/bin/bash'
+    console.warn(`Invalid shell requested: ${shell}, defaulting to ${this.defaultShell}`)
+    return this.defaultShell
   }
 
   private validateCwd(cwd?: string): string {
@@ -313,7 +323,7 @@ class TerminalService {
   }
 
   private injectShellIntegration(ptyProcess: pty.IPty, shell: string): void {
-    const shellName = shell.split('/').pop()?.toLowerCase() || ''
+    const shellName = path.basename(shell).replace(/\.exe$/i, '').toLowerCase()
 
     const comment = '# AgentBuddy listener'
 

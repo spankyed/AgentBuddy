@@ -227,8 +227,10 @@ const switchToFile = (filePath: string, content: string) => {
     model.setValue(content)
   }
   
-  // Switch to the model
-  editorInstance.value.setModel(model)
+  // Switch to the model (skip if already active to avoid canceling pending operations)
+  if (editorInstance.value.getModel() !== model) {
+    editorInstance.value.setModel(model)
+  }
   
   // Restore view state
   if (props.preserveViewState && model) {
