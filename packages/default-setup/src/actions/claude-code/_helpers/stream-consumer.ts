@@ -729,7 +729,7 @@ export async function consumeStream(
     finalizeSessionError(services, threadId, writer, message, writer.text);
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
 
-    // Kill the CLI process on error (it may be in a bad state).
+    // Kill the CLI subprocess on error (it may be in a bad state).
     try { handle.kill(); } catch { /* already gone */ }
 
     // Critical cleanup — dequeue before setRunning(false) to avoid race.
@@ -807,7 +807,7 @@ async function replayQueuedMessage(
     updateChatState(services, threadId, 'idle');
     services.chat.sendBlockMessage({
       threadId,
-      text: `⚠️ Couldn't process queued message: ${message}`,
+      text: `⚠️ Couldn't handle queued message: ${message}`,
       blocks: [],
       forkable: false,
     });
@@ -851,7 +851,7 @@ function stripToolUseErrorEnvelope(raw: string): string {
 const CONTEXT_THRESHOLDS = [25, 50, 75, 90];
 
 /**
- * Query /context in a separate non-persisted CLI process and update the
+ * Query /context in a separate non-persisted CLI instance and update the
  * thread context directly when done. Fire-and-forget — never blocks
  * the turn completion flow.
  */
