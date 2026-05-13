@@ -7,14 +7,15 @@ A desktop app for building and running AI agent workflows using an actor-based a
 - **Actor-based architecture** — XState state machines drive both frontend and backend, communicating through a typed event bus
 - **Plugin system** — extend the app with plugins that register their own canvas views, panels, and state machines
 - **LLM integration** — connect to Anthropic, OpenAI, and Google models via the Vercel AI SDK
-- **Graph database** — custom entity-attribute-relation store backed by LMDB for fast, in-memory data access
+- **Graph database** — custom entity-attribute-relation store (EARS) backed by LMDB for fast, in-memory data access
 - **Visual node editor** — design agent flows with a drag-and-drop canvas powered by Vue Flow
 - **Embedded terminal** — run commands directly inside the app with xterm.js and node-pty
 - **Rich text editing** — author prompts and documentation with a Tiptap-based editor
+- **Cross-platform** — runs on macOS, Windows, and Linux
 
 ## Tech Stack
 
-Electron, Vue 3, XState v5, tRPC, Tailwind CSS, Vite, LMDB, Monaco Editor
+Electron, Vue 3, XState v5, tRPC v11, Tailwind CSS, Vite, LMDB, Monaco Editor, Vercel AI SDK, Zod
 
 ## Project Structure
 
@@ -38,16 +39,17 @@ packages/
 ├── main/                 # Electron main process
 │   └── src/modules/      # Window manager, API server launcher, security, etc.
 ├── preload/              # IPC bridge (contextBridge APIs)
-└── renderer/             # Frontend — Vue 3 + Tailwind CSS
-    └── src/
-        ├── core/         # App shell, router, event bus client
-        ├── plugins/      # Frontend plugin actors (actions, flows, library, etc.)
-        └── setup/        # Plugin registration
+├── renderer/             # Frontend — Vue 3 + Tailwind CSS
+│   └── src/
+│       ├── core/         # App shell, router, event bus client
+│       ├── plugins/      # Frontend plugin actors (actions, flows, library, etc.)
+│       └── setup/        # Plugin registration
+└── electron-versions/    # Electron version management
 ```
 
 ## Prerequisites
 
-- Node.js &gt;= 23
+- Node.js >= 23
 - npm
 
 ## Getting Started
@@ -58,22 +60,35 @@ cd AgentBuddy
 npm install
 ```
 
-### Run in development
+### Development
 
 ```sh
-npm start
+npm start                # Dev mode (skips DSL generation)
+npm run start:gen        # Dev mode with DSL generation
 ```
 
-### Build for production
+### Build
 
 ```sh
-npm run build
+npm run build            # Build all workspaces
+npm run build:be         # Build backend only
+npm run build-prod       # Full production build
 ```
 
-### Run tests
+### Test
 
 ```sh
-npm test
+npm test                 # Playwright E2E tests
+npm run test:unit        # Unit tests
+```
+
+### Other Commands
+
+```sh
+npm run typecheck        # Type check all workspaces
+npm run compile          # Compile all DSLs (actions, prompts, flows, library)
+npm run db:cli           # Database CLI
+npm run db:reset         # Reset database
 ```
 
 ## License
