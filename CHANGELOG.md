@@ -1,5 +1,39 @@
 -e # Changelog
 
+## v0.2.19 (2026-05-13)
+
+### Features
+-  add Windows support
+
+### Fixes
+- build): skip LMDB source rebuild on Windows
+- default-setup): use pathToFileURL for dynamic import of flow files
+- build): allow Windows absolute paths in DSL source validator
+- ci): use env var for secrets check in workflow step condition
+-  handle Windows path casing in shell validation and env config
+- editor): skip redundant setModel call to preserve pending operations
+- ci): write notarization API key to temp file for notarytool
+- threads): change recent threads popup shortcut from Shift+Space to Ctrl+Space
+
+### Refactors
+-  simplify some Windows support code
+- claude-code): replace "CLI process" with "CLI subprocess" in comments and remove process.cwd() fallback
+- build): simplify macOS notarize config to use boolean flag
+
+### Other
+- Revert "chore(release): v0.2.19"
+- Revert "chore(release): v0.2.20"
+- Revert "chore(release): v0.2.19"
+- Revert "chore(release): v0.2.19"
+- chore: extract postinstall script into standalone node script
+- ci: remove empty branches filter from build workflows
+- docs(readme): improve project documentation with expanded commands and details
+- Merge pull request #143 from spankyed/AS/windows-support
+- docs: add macOS Electron code signing and notarization guide
+- chore: update wording in stream-consumer comments and error message
+
+-e # Changelog
+
 ## v0.2.18 (2026-05-11)
 
 ### Features
