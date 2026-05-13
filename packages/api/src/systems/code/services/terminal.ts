@@ -1,6 +1,7 @@
 import * as pty from 'node-pty'
 import { tx } from '@/core/ears/helpers/transaction'
 import * as os from 'os'
+import * as path from 'path'
 import * as fs from 'fs'
 import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/core/types'
@@ -49,7 +50,8 @@ class TerminalService {
     const id = tx(EARS.Entity.Terminal).id()
     
     // Validate and sanitize shell
-    const requestedShell = options.shell || process.env.SHELL || '/bin/bash'
+    const defaultShell = process.platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || '/bin/bash')
+    const requestedShell = options.shell || defaultShell
     const shell = this.validateShell(requestedShell)
     
     // Validate cwd exists and is accessible
@@ -60,7 +62,7 @@ class TerminalService {
     const rows = Math.max(1, Math.min(options.rows || 24, 200))
 
     // Generate default title from cwd (use directory name)
-    const defaultTitle = cwd.split('/').filter(Boolean).pop() || 'root'
+    const defaultTitle = path.basename(cwd) || 'root'
     const title = this.sanitizeTitle(options.title || defaultTitle)
 
     try {
@@ -169,7 +171,7 @@ class TerminalService {
     // Auto-update title only if no customTitle is set
     let newTitle: string | undefined
     if (!terminal.info.customTitle) {
-      newTitle = newCwd.split('/').filter(Boolean).pop() || 'root'
+      newTitle = path.basename(newCwd) || 'root'
       terminal.info.title = this.sanitizeTitle(newTitle)
     }
 
@@ -189,7 +191,7 @@ class TerminalService {
       terminal.dataDisposable = undefined
 
       // Kill the entire process group (shell + children) before killing the pty
-      try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {}
+      if (process.platform !== 'win32') { try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {} }
       terminal.pty.kill()
 
       // If onExit already fired synchronously during pty.kill(), terminal is cleaned up
@@ -218,7 +220,7 @@ class TerminalService {
         terminal.dataDisposable?.dispose()
         terminal.exitDisposable?.dispose()
         // Kill the entire process group (shell + children) before killing the pty
-        try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {}
+        if (process.platform !== 'win32') { try { process.kill(-terminal.pty.pid, 'SIGHUP') } catch {} }
         terminal.pty.kill()
       } catch (error) {
         console.error(`Error killing terminal ${id}:`, error)
@@ -268,9 +270,10 @@ class TerminalService {
       return shell
     }
     
-    // Default to bash if invalid shell requested
-    console.warn(`Invalid shell requested: ${shell}, defaulting to /bin/bash`)
-    return '/bin/bash'
+    // Default to platform-appropriate shell if invalid shell requested
+    const fallback = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash'
+    console.warn(`Invalid shell requested: ${shell}, defaulting to ${fallback}`)
+    return fallback
   }
 
   private validateCwd(cwd?: string): string {
@@ -313,7 +316,7 @@ class TerminalService {
   }
 
   private injectShellIntegration(ptyProcess: pty.IPty, shell: string): void {
-    const shellName = shell.split('/').pop()?.toLowerCase() || ''
+    const shellName = path.basename(shell).replace(/\.exe$/i, '').toLowerCase()
 
     const comment = '# AgentBuddy listener'
 

@@ -70,29 +70,49 @@ fi
 
 # Step 6: Package with electron-builder (signing + notarization via env vars)
 echo -e "${BLUE}[6/7]${NC} Packaging application..."
-if [ -n "$APPLE_TEAM_ID" ]; then
-  echo "  Code signing: enabled (Team ID: $APPLE_TEAM_ID)"
-  echo "  Notarization: $([ -n "$APPLE_API_KEY_ID" ] && echo 'enabled' || echo 'disabled (missing APPLE_API_KEY_ID)')"
-else
-  echo "  Code signing: disabled (set APPLE_TEAM_ID to enable)"
-fi
-npx electron-builder build --config electron-builder.mjs --mac --arm64
 
-# Quick validation - check for app directory (ASAR disabled)
-APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/Resources"
-if [ ! -d "$APP_PATH/app" ]; then
-  echo -e "  ❌ Build validation failed: app directory not found"
-  exit 1
-fi
-if [ ! -d "$APP_PATH/app/packages/api" ]; then
-  echo -e "  ❌ Build validation failed: API package not found"
-  exit 1
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  if [ -n "$APPLE_TEAM_ID" ]; then
+    echo "  Code signing: enabled (Team ID: $APPLE_TEAM_ID)"
+    echo "  Notarization: $([ -n "$APPLE_API_KEY_ID" ] && echo 'enabled' || echo 'disabled (missing APPLE_API_KEY_ID)')"
+  else
+    echo "  Code signing: disabled (set APPLE_TEAM_ID to enable)"
+  fi
+  npx electron-builder build --config electron-builder.mjs --mac --arm64
+
+  # Quick validation - check for app directory (ASAR disabled)
+  APP_PATH="dist/mac-arm64/AgentBuddy.app/Contents/Resources"
+  if [ ! -d "$APP_PATH/app" ]; then
+    echo -e "  ❌ Build validation failed: app directory not found"
+    exit 1
+  fi
+  if [ ! -d "$APP_PATH/app/packages/api" ]; then
+    echo -e "  ❌ Build validation failed: API package not found"
+    exit 1
+  fi
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+  echo "  Platform: Windows (unsigned)"
+  npx electron-builder build --config electron-builder.mjs --win --x64
+
+  # Quick validation - check for app directory (ASAR disabled)
+  if [ ! -d "dist/win-unpacked/resources/app/packages/api" ]; then
+    echo -e "  ❌ Build validation failed: API package not found in win-unpacked"
+    exit 1
+  fi
+else
+  echo "  Platform: Linux"
+  npx electron-builder build --config electron-builder.mjs --linux --x64
+
+  if [ ! -d "dist/linux-unpacked/resources/app/packages/api" ]; then
+    echo -e "  ❌ Build validation failed: API package not found in linux-unpacked"
+    exit 1
+  fi
 fi
 echo -e "${GREEN}✓${NC} Application packaged"
 echo ""
 
-# Step 7: Verify signing (if credentials were provided)
-if [ -n "$APPLE_TEAM_ID" ]; then
+# Step 7: Verify signing (macOS only)
+if [[ "$OSTYPE" == "darwin"* ]] && [ -n "$APPLE_TEAM_ID" ]; then
   echo -e "${BLUE}[7/7]${NC} Verifying code signing..."
   APP_BUNDLE="dist/mac-arm64/AgentBuddy.app"
 
@@ -111,7 +131,7 @@ if [ -n "$APPLE_TEAM_ID" ]; then
   spctl --assess --type exec --verbose "$APP_BUNDLE" 2>&1 || true
   echo ""
 else
-  echo -e "${BLUE}[7/7]${NC} Skipping signing verification (unsigned build)"
+  echo -e "${BLUE}[7/7]${NC} Skipping signing verification"
   echo ""
 fi
 
@@ -120,9 +140,16 @@ echo "✅ Build Complete!"
 echo "=========================================="
 echo ""
 echo "📁 Output:"
-echo "  • App: dist/mac-arm64/AgentBuddy.app"
-echo "  • DMG: dist/AgentBuddy-*.dmg"
-echo "  • ZIP: dist/AgentBuddy-*.zip"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  echo "  • App: dist/mac-arm64/AgentBuddy.app"
+  echo "  • DMG: dist/AgentBuddy-*.dmg"
+  echo "  • ZIP: dist/AgentBuddy-*.zip"
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+  echo "  • Installer: dist/AgentBuddy-*.exe"
+else
+  echo "  • AppImage: dist/AgentBuddy-*.AppImage"
+  echo "  • Deb: dist/AgentBuddy-*.deb"
+fi
 echo ""
 echo "📦 Next steps:"
 echo "  1. Copy dev data: npm run copy-dev-data"

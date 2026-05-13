@@ -1,15 +1,18 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 
 const execFileAsync = promisify(execFile)
 
 export type CliName = 'copilot' | 'claude-code' | 'codex' | 'gh'
 
-const HOME = process.env.HOME || ''
+const HOME = os.homedir()
+const APPDATA = process.env.APPDATA || path.join(HOME, 'AppData', 'Roaming')
+const LOCALAPPDATA = process.env.LOCALAPPDATA || path.join(HOME, 'AppData', 'Local')
 
-const FALLBACK_PATHS: Record<CliName, string[]> = {
+const UNIX_FALLBACK_PATHS: Record<CliName, string[]> = {
   copilot: [
     '/usr/local/bin/copilot',
     `${HOME}/.nvm/versions/node/*/bin/copilot`,
@@ -30,6 +33,25 @@ const FALLBACK_PATHS: Record<CliName, string[]> = {
     '/usr/local/bin/gh',
   ],
 }
+
+const WIN_FALLBACK_PATHS: Record<CliName, string[]> = {
+  copilot: [
+    path.join(APPDATA, 'npm', 'copilot.cmd'),
+  ],
+  'claude-code': [
+    path.join(LOCALAPPDATA, 'Programs', 'claude-code', 'claude.exe'),
+    path.join(APPDATA, 'npm', 'claude.cmd'),
+  ],
+  codex: [
+    path.join(APPDATA, 'npm', 'codex.cmd'),
+  ],
+  gh: [
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'GitHub CLI', 'gh.exe'),
+    path.join(LOCALAPPDATA, 'Programs', 'gh', 'gh.exe'),
+  ],
+}
+
+const FALLBACK_PATHS = process.platform === 'win32' ? WIN_FALLBACK_PATHS : UNIX_FALLBACK_PATHS
 
 const resolvedCache = new Map<string, string>()
 
