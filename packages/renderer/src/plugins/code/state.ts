@@ -50,13 +50,15 @@ export interface OpenFile {
   isBinary?: boolean
   isRichText?: boolean
   _richTextBaselineSet?: boolean
+  isPrDiff?: boolean
   isPinned?: boolean
   groupId?: string
   isPreview?: boolean
 }
 
-/** Unstaged diff tabs are editable (right side = working tree). */
-export function isEditableDiff(file: OpenFile | { isDiff?: boolean; gitFile?: { staged: boolean } }): boolean {
+/** Unstaged diff tabs are editable (right side = working tree). PR diffs are read-only. */
+export function isEditableDiff(file: OpenFile | { isDiff?: boolean; isPrDiff?: boolean; gitFile?: { staged: boolean } }): boolean {
+  if ('isPrDiff' in file && file.isPrDiff) return false
   return file.isDiff === true && file.gitFile?.staged === false
 }
 

@@ -289,6 +289,7 @@ export const pullRequestState = setup({
             content: '',
             modified: false,
             isDiff: true,
+            isPrDiff: true,
             gitDiff: ev.data,
             gitFile: context.selectedPrFile
           }
