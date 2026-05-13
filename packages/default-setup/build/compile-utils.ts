@@ -36,9 +36,13 @@ function createValidatorPlugin(entryFilePath: string): esbuild.Plugin {
     name: 'source-validator',
     setup(build) {
       // Block bare package imports (e.g. 'lodash', 'fs')
-      build.onResolve({ filter: /^[^./]/ }, (args) => ({
-        errors: [{ text: `Bare package imports are disallowed: '${args.path}'` }],
-      }));
+      // Allow relative (./ ../) and absolute (/ or C:\) paths
+      build.onResolve({ filter: /^[^./]/ }, (args) => {
+        if (/^[a-zA-Z]:/.test(args.path)) return undefined;
+        return {
+          errors: [{ text: `Bare package imports are disallowed: '${args.path}'` }],
+        };
+      });
 
     },
   };
