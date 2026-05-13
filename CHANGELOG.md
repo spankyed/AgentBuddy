@@ -1,12 +1,5 @@
 -e # Changelog
 
-## v0.2.20 (2026-05-13)
-
-### Fixes
-- default-setup): use pathToFileURL for dynamic import of flow files
-
--e # Changelog
-
 ## v0.2.19 (2026-05-13)
 
 ### Features
