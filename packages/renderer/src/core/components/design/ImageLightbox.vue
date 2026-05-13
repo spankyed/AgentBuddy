@@ -25,7 +25,7 @@
     <div
       v-if="showMenu"
       ref="menuRef"
-      class="pointer-events-auto fixed z-[60] bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
+      class="pointer-events-auto fixed z-[10003] bg-neutral-800 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[140px]"
       :style="{ left: `${menuPos.x}px`, top: `${menuPos.y}px` }"
     >
       <button
@@ -130,7 +130,7 @@ const contextMenuItems = computed<MenuItem[]>(() => [
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.8);
-  z-index: 50;
+  z-index: 10000;
   animation: overlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -139,7 +139,7 @@ const contextMenuItems = computed<MenuItem[]>(() => [
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 51;
+  z-index: 10001;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -156,7 +156,7 @@ const contextMenuItems = computed<MenuItem[]>(() => [
   position: absolute;
   top: -12px;
   right: -12px;
-  z-index: 52;
+  z-index: 10002;
   width: 32px;
   height: 32px;
   display: flex;
