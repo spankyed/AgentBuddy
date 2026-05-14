@@ -94,7 +94,7 @@ const CONFIGS: Partial<Record<ConfigKey, EditorConfig>> = {
     commandViewerDeco: true,
     listShiftEnter: false,
     editorInteractions: false,
-    viewerImageClick: false,
+    viewerImageClick: true,
     subDocumentTracking: false,
     historyNavigation: false,
     enterSubmit: false,

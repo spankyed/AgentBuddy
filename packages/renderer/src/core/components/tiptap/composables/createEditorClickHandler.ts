@@ -44,6 +44,14 @@ export function createEditorClickHandler(emit: ClickEmit) {
 
 export function createViewerClickHandler(emit: { imageClick: (src: string) => void }) {
   return (_view: any, _pos: any, event: MouseEvent) => {
+    // Links open on regular click in viewer mode
+    const anchor = (event.target as HTMLElement).closest('a')
+    const href = anchor?.getAttribute('href')
+    if (href) {
+      const url = /^https?:\/\//.test(href) ? href : `https://${href}`
+      window.electronAPI?.shell?.openExternal(url)
+      return true
+    }
     const img = (event.target as HTMLElement).closest('img')
     if (img?.src) {
       emit.imageClick(img.src)
