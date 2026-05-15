@@ -124,6 +124,70 @@
     </CollapsibleSection>
     </div>
 
+    <!-- Commit Panel Section -->
+    <div class="border-t border-neutral-800 pt-8">
+    <CollapsibleSection label="Commit Panel" :default-open="true" class="mb-8">
+      <p class="text-sm text-neutral-500 mb-4">
+        Choose which sections to show in the commit panel
+      </p>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="show-commits" class="text-sm font-medium text-neutral-200">
+              Show commits
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Show the commit log section in the commit panel
+            </p>
+          </div>
+          <input
+            id="show-commits"
+            v-model="showCommits"
+            type="checkbox"
+            @change="saveShowCommitsSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="show-stashes" class="text-sm font-medium text-neutral-200">
+              Show stashes
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Show the stashes section in the commit panel
+            </p>
+          </div>
+          <input
+            id="show-stashes"
+            v-model="showStashes"
+            type="checkbox"
+            @change="saveShowStashesSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <label for="show-worktrees" class="text-sm font-medium text-neutral-200">
+              Show worktrees
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Show the worktrees section in the commit panel
+            </p>
+          </div>
+          <input
+            id="show-worktrees"
+            v-model="showWorktrees"
+            type="checkbox"
+            @change="saveShowWorktreesSetting"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+          />
+        </div>
+      </div>
+    </CollapsibleSection>
+    </div>
+
     <!-- Terminal Settings Section -->
     <div class="border-t border-neutral-800 pt-8">
       <CollapsibleSection label="Terminal Settings" :default-open="true" class="mb-8">
@@ -439,6 +503,9 @@ const mdEditorDefault = ref(props.settings?.mdEditorDefault ?? false)
 const defaultBaseDirectory = ref<string | null>(props.settings?.defaultBaseDirectory || null)
 const autoFetchRemote = ref(props.settings?.autoFetchRemote ?? false)
 const autoFetchIntervalSeconds = ref(props.settings?.autoFetchIntervalSeconds ?? 180)
+const showStashes = ref(props.settings?.showStashes ?? false)
+const showCommits = ref(props.settings?.showCommits ?? true)
+const showWorktrees = ref(props.settings?.showWorktrees ?? false)
 
 // Terminal scripts
 const localScripts = ref<TerminalScript[]>([...(props.settings?.terminalScripts ?? [])])
@@ -537,6 +604,27 @@ const saveAutoFetchIntervalSetting = () => {
   emit('update-setting', {
     path: ['autoFetchIntervalSeconds'],
     value
+  })
+}
+
+const saveShowStashesSetting = () => {
+  emit('update-setting', {
+    path: ['showStashes'],
+    value: showStashes.value
+  })
+}
+
+const saveShowCommitsSetting = () => {
+  emit('update-setting', {
+    path: ['showCommits'],
+    value: showCommits.value
+  })
+}
+
+const saveShowWorktreesSetting = () => {
+  emit('update-setting', {
+    path: ['showWorktrees'],
+    value: showWorktrees.value
   })
 }
 

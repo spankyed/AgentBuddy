@@ -425,7 +425,7 @@
     </div>
 
     <!-- Worktrees Section -->
-    <div v-if="worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+    <div v-if="codeSettings?.showWorktrees && worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isWorktreesExpanded = !isWorktreesExpanded">
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isWorktreesExpanded" class="w-3 h-3" />
@@ -515,13 +515,13 @@
 
     <!-- Stash resize handle -->
     <PanelResizer
-      v-if="stashList.length > 0 && isStashesExpanded"
+      v-if="codeSettings?.showStashes && stashList.length > 0 && isStashesExpanded"
       orientation="vertical"
       @resize="onStashResize"
     />
 
     <!-- Stashes Section (pinned to bottom) -->
-    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+    <div v-if="codeSettings?.showStashes && stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isStashesExpanded = !isStashesExpanded">
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
@@ -587,7 +587,7 @@
     </div>
 
     <!-- Commits Section -->
-    <CommitLogSection :toast="toast" />
+    <CommitLogSection v-if="codeSettings?.showCommits !== false" :toast="toast" />
 
     <!-- Drop Stash Dialog -->
     <RevertDialog
@@ -635,6 +635,9 @@ import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const commitActor = codeActor.system.get('commit')!
+
+// Settings from code actor
+const codeSettings = useSelector(codeActor, (state) => state.context.settings)
 
 // State selectors from commit actor
 const gitStatus = useSelector(commitActor, (state: any) => state.context.gitStatus)

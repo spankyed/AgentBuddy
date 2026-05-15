@@ -804,16 +804,16 @@ declare const LogEntry: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     timestamp: number;
-    level: "debug" | "info" | "warn" | "error";
     message: string;
+    level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
 }, {
     id: string;
     timestamp: number;
-    level: "debug" | "info" | "warn" | "error";
     message: string;
+    level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -4131,6 +4131,9 @@ interface CodeSettings {
     autoFetchRemote?: boolean;
     autoFetchIntervalSeconds?: number;
     terminalScripts?: TerminalScript[];
+    showStashes?: boolean;
+    showCommits?: boolean;
+    showWorktrees?: boolean;
 }
 type CodeConnectedData = {
     baseDirectory: string | null;
