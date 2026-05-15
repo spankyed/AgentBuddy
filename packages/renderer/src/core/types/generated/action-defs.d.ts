@@ -682,6 +682,11 @@ type OutgoingActionEvents = {
         totalPages: number;
     };
 } | {
+    type: 'ACTIONS_ALL_LOADED';
+    data: {
+        actions: ActionEntity[];
+    };
+} | {
     type: 'ACTIONS_IMPORTED';
     count: number;
     errors?: string[];
@@ -766,6 +771,11 @@ type OutgoingPromptEvents = {
         totalPages: number;
     };
 } | {
+    type: 'PROMPTS_ALL_LOADED';
+    data: {
+        prompts: PromptEntity[];
+    };
+} | {
     type: 'PROMPTS_IMPORTED';
     count: number;
     errors?: string[];
@@ -794,16 +804,16 @@ declare const LogEntry: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     timestamp: number;
-    message: string;
     level: "debug" | "info" | "warn" | "error";
+    message: string;
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
 }, {
     id: string;
     timestamp: number;
-    message: string;
     level: "debug" | "info" | "warn" | "error";
+    message: string;
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -3449,6 +3459,8 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "FETCH_PROMPTS_PAGE";
     page?: number;
 } | {
+    type: "FETCH_ALL_PROMPTS";
+} | {
     type: "IMPORT_PROMPTS";
     prompts: any;
 } | {
@@ -3484,6 +3496,8 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
 } | {
     type: "FETCH_ACTIONS_PAGE";
     page?: number;
+} | {
+    type: "FETCH_ALL_ACTIONS";
 } | {
     type: "IMPORT_ACTIONS";
     actions: any;
