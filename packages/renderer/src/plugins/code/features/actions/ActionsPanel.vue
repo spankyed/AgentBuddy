@@ -279,6 +279,9 @@ const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, 
 
 const handleSearchClick = () => {
   isSearchMode.value = true
+  if (hasMore.value) {
+    actionsPluginActor.send({ type: 'ACTIONS.LOAD_ALL' })
+  }
   nextTick(() => searchInput.value?.focus())
 }
 

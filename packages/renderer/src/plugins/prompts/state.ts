@@ -64,6 +64,7 @@ export interface PromptsContext {
 
 type SystemEvent = OutgoingPromptEvents
   | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
+  | { type: 'PROMPTS_ALL_LOADED'; data: { prompts: PromptEntity[] } }
   | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
@@ -89,6 +90,7 @@ type UIEvent =
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
   | { type: 'PROMPTS.LOAD_MORE' }
+  | { type: 'PROMPTS.LOAD_ALL' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
   // Import/Export events
@@ -457,6 +459,24 @@ const promptsState = setup({
       };
     }),
 
+    requestAllItems: assign(() => {
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'FETCH_ALL_PROMPTS',
+      });
+      return { loadingMore: true };
+    }),
+
+    setAllItems: assign(({ event }) => {
+      const ev = typeOf('PROMPTS_ALL_LOADED', event);
+      return {
+        prompts: ev.data.prompts,
+        page: 1,
+        totalPages: 1,
+        loadingMore: false,
+      };
+    }),
+
     /* ── filter actions ──────────────────────────────────── */
     toggleCategoryFilter: assign(({ event, context }) => {
       const ev = typeOf('FILTER.TOGGLE_CATEGORY', event);
@@ -529,7 +549,9 @@ const promptsState = setup({
     TOGGLE_OUTPUT_SECTION: { actions: 'toggleOutputSection' },
     TOGGLE_METADATA_SECTION: { actions: 'toggleMetadataSection' },
     'PROMPTS.LOAD_MORE': { actions: 'requestNextPage' },
+    'PROMPTS.LOAD_ALL': { actions: 'requestAllItems' },
     PROMPTS_PAGE_LOADED: { actions: 'appendPageData' },
+    PROMPTS_ALL_LOADED: { actions: 'setAllItems' },
     'FILTER.TOGGLE_CATEGORY': { actions: 'toggleCategoryFilter' },
     'FILTER.CLEAR': { actions: 'clearCategoryFilters' },
     // Import events

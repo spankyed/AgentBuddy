@@ -18,6 +18,7 @@ type IncomingActionEvents =
   | { type: 'UPDATE_ACTION'; actionId: string; label?: string; input?: Record<string, any>; actionFn?: string; output?: any; description?: string; category?: string }
   | { type: 'DELETE_ACTION'; actionId: string }
   | { type: 'FETCH_ACTIONS_PAGE'; page?: number }
+  | { type: 'FETCH_ALL_ACTIONS' }
   | { type: 'IMPORT_ACTIONS'; actions: any }
   | { type: 'EXPORT_ACTIONS'; directory: string }
 
@@ -31,6 +32,7 @@ export type OutgoingActionEvents =
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
   | { type: 'ACTIONS_PAGE_LOADED'; data: { actions: ActionEntity[]; page: number; totalPages: number } }
+  | { type: 'ACTIONS_ALL_LOADED'; data: { actions: ActionEntity[] } }
   | { type: 'ACTIONS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'ACTIONS_IMPORT_FAILED'; errors: string[] }
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
@@ -72,6 +74,13 @@ export const actionsSystem = setup({
           page: data.page,
           totalPages: data.totalPages
         }
+      }));
+    },
+    fetchAllActions: ({ system }) => {
+      const allActions = repository.actionQueries.all();
+      system.get(bus).send(emit(actions, {
+        type: 'ACTIONS_ALL_LOADED',
+        data: { actions: allActions }
       }));
     },
     sendActionData: ({ system, event }) => {
@@ -288,6 +297,9 @@ export const actionsSystem = setup({
       },
       FETCH_ACTIONS_PAGE: {
         actions: 'fetchActionsPage',
+      },
+      FETCH_ALL_ACTIONS: {
+        actions: 'fetchAllActions',
       },
       ACTIONS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
