@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id } from '@/plugins/threads/state'
@@ -42,4 +42,15 @@ watch(chatSettings, (settings) => {
     actor.send({ type: 'OPEN_THREAD_CHAT', threadId: chatThreadId })
   }
 }, { immediate: true })
+
+// Cmd+W / Ctrl+W closes the popout window
+// (The threads plugin's closeTab hotkey intercepts Cmd+W before Electron's native menu)
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'w' && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    e.preventDefault()
+    window.close()
+  }
+}
+onMounted(() => window.addEventListener('keydown', handleKeydown, { capture: true }))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown, { capture: true }))
 </script>
