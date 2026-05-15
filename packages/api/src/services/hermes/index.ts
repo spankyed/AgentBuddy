@@ -150,7 +150,7 @@ export const hermes = {
   memory: {
     async get(): Promise<HermesMemoryFiles> {
       const result = await getBridge().send<{ files: HermesMemoryFiles }>('getMemory')
-      return result.files
+      return result.files ?? { 'MEMORY.md': '', 'USER.md': '', 'SOUL.md': '' }
     },
 
     async write(filename: string, content: string): Promise<{ written: boolean }> {

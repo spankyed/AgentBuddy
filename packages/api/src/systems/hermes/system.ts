@@ -10,7 +10,7 @@ import { setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit } from '@/core/helpers/actor-helpers';
-import { hermes } from '@/services/hermes';
+import { hermes as hermesService } from '@/services/hermes';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { HermesConnectedData, HermesSkill } from './types';
 
@@ -51,13 +51,13 @@ type OutgoingHermesEvents =
 // ─── System Definition ──────────────────────────────────────────────────────
 
 export const hermesDef = defineSystem('hermes')<IncomingHermesEvents, OutgoingHermesEvents>();
-export const hermesId = hermesDef.id;
+export const hermes = hermesDef.id;
 
 // Helper to send error events
 function sendError(system: any, method: string, err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   logger.error(`Hermes ${method} failed: ${message}`);
-  system.get(bus).send(emit(hermesId, {
+  system.get(bus).send(emit(hermes, {
     type: 'HERMES_ERROR',
     message,
     method,
@@ -68,11 +68,10 @@ export const hermesSystem = setup({
   types: hermesDef.types,
   actions: {
     sendConnectedData: ({ system }) => {
-      // Attempt to gather all data — if bridge is not running, send what we can
-      const bridge = hermes.info;
+      const bridge = hermesService.info;
 
       if (bridge.status !== 'ready') {
-        system.get(bus).send(emit(hermesId, {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_CONNECTED',
           data: {
             bridge,
@@ -87,161 +86,152 @@ export const hermesSystem = setup({
         return;
       }
 
-      // Fetch all data in parallel
       Promise.all([
-        hermes.skills.list().catch(() => []),
-        hermes.models.list().catch(() => []),
-        hermes.tools.list().catch(() => ({ tools: [], enabledToolsets: [] })),
-        hermes.persona.get().catch(() => ({ content: '', path: '' })),
-        hermes.memory.get().catch(() => ({ 'MEMORY.md': '', 'USER.md': '', 'SOUL.md': '' })),
-        hermes.workspaces.list().catch(() => []),
+        hermesService.skills.list().catch(() => [] as HermesSkill[]),
+        hermesService.models.list().catch(() => [] as Array<{ name: string; provider: string; model: string }>),
+        hermesService.tools.list().catch(() => ({ tools: [] as Array<{ name: string; enabled: boolean; description: string }>, enabledToolsets: [] as string[] })),
+        hermesService.persona.get().catch(() => ({ content: '', path: '' })),
+        hermesService.memory.get().catch(() => ({ 'MEMORY.md': '', 'USER.md': '', 'SOUL.md': '' } as Record<string, string>)),
+        hermesService.workspaces.list().catch(() => [] as string[]),
       ]).then(([skills, models, tools, persona, memory, workspaces]) => {
-        system.get(bus).send(emit(hermesId, {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_CONNECTED',
-          data: {
-            bridge,
-            skills: skills as any,
-            models: models as any,
-            tools: tools as any,
-            persona: persona as any,
-            memory: memory as any,
-            workspaces: workspaces as any,
-          },
+          data: { bridge, skills, models, tools, persona, memory, workspaces } as HermesConnectedData,
         }));
-      }).catch((err) => sendError(system, 'sendConnectedData', err));
+      }).catch((err: unknown) => sendError(system, 'sendConnectedData', err));
     },
 
     startBridge: ({ system }) => {
-      hermes.start().then((info) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.start().then((info) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
           bridge: info,
         }));
-      }).catch((err) => sendError(system, 'startBridge', err));
+      }).catch((err: unknown) => sendError(system, 'startBridge', err));
     },
 
     stopBridge: ({ system }) => {
-      hermes.stop().then(() => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.stop().then(() => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
-          bridge: hermes.info,
+          bridge: hermesService.info,
         }));
-      }).catch((err) => sendError(system, 'stopBridge', err));
+      }).catch((err: unknown) => sendError(system, 'stopBridge', err));
     },
 
     checkConnection: ({ system }) => {
-      hermes.health().then((result) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.health().then((result) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
-          bridge: { ...hermes.info, ...result },
+          bridge: { ...hermesService.info, ...result },
         }));
-      }).catch((err) => sendError(system, 'checkConnection', err));
+      }).catch((err: unknown) => sendError(system, 'checkConnection', err));
     },
 
     getSkills: ({ system }) => {
-      hermes.skills.list().then((skills) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.skills.list().then((skills) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_SKILLS_DATA',
           skills,
         }));
-      }).catch((err) => sendError(system, 'getSkills', err));
+      }).catch((err: unknown) => sendError(system, 'getSkills', err));
     },
 
     saveSkill: ({ system, event }) => {
       const ev = hermesDef.typeOf('HERMES_SAVE_SKILL', event);
-      hermes.skills.save({
+      hermesService.skills.save({
         name: ev.name,
         category: ev.category,
         content: ev.content,
       }).then((result) => {
-        system.get(bus).send(emit(hermesId, {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_SKILL_SAVED',
           saved: result.saved,
           path: result.path,
         }));
-      }).catch((err) => sendError(system, 'saveSkill', err));
+      }).catch((err: unknown) => sendError(system, 'saveSkill', err));
     },
 
     deleteSkill: ({ system, event }) => {
       const ev = hermesDef.typeOf('HERMES_DELETE_SKILL', event);
-      hermes.skills.delete(ev.path).then((result) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.skills.delete(ev.path).then((result) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_SKILL_DELETED',
           deleted: result.deleted,
         }));
-      }).catch((err) => sendError(system, 'deleteSkill', err));
+      }).catch((err: unknown) => sendError(system, 'deleteSkill', err));
     },
 
     getPersona: ({ system }) => {
-      hermes.persona.get().then((result) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.persona.get().then((result) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_PERSONA_DATA',
           content: result.content,
           path: result.path,
         }));
-      }).catch((err) => sendError(system, 'getPersona', err));
+      }).catch((err: unknown) => sendError(system, 'getPersona', err));
     },
 
     updatePersona: ({ system, event }) => {
       const ev = hermesDef.typeOf('HERMES_UPDATE_PERSONA', event);
-      hermes.persona.update(ev.content).then((result) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.persona.update(ev.content).then((result) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_PERSONA_UPDATED',
           written: result.written,
         }));
-      }).catch((err) => sendError(system, 'updatePersona', err));
+      }).catch((err: unknown) => sendError(system, 'updatePersona', err));
     },
 
     getMemory: ({ system }) => {
-      hermes.memory.get().then((files) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.memory.get().then((files) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_MEMORY_DATA',
-          files: files as any,
+          files: files as Record<string, string>,
         }));
-      }).catch((err) => sendError(system, 'getMemory', err));
+      }).catch((err: unknown) => sendError(system, 'getMemory', err));
     },
 
     writeMemory: ({ system, event }) => {
       const ev = hermesDef.typeOf('HERMES_WRITE_MEMORY', event);
-      hermes.memory.write(ev.filename, ev.content).then((result) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.memory.write(ev.filename, ev.content).then((result) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_MEMORY_WRITTEN',
           written: result.written,
           filename: ev.filename,
         }));
-      }).catch((err) => sendError(system, 'writeMemory', err));
+      }).catch((err: unknown) => sendError(system, 'writeMemory', err));
     },
 
     getTools: ({ system }) => {
-      hermes.tools.list().then((result) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.tools.list().then((result) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_TOOLS_DATA',
           tools: result.tools,
           enabledToolsets: result.enabledToolsets,
         }));
-      }).catch((err) => sendError(system, 'getTools', err));
+      }).catch((err: unknown) => sendError(system, 'getTools', err));
     },
 
     getModels: ({ system }) => {
-      hermes.models.list().then((models) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.models.list().then((models) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_MODELS_DATA',
           models,
         }));
-      }).catch((err) => sendError(system, 'getModels', err));
+      }).catch((err: unknown) => sendError(system, 'getModels', err));
     },
 
     getWorkspaces: ({ system }) => {
-      hermes.workspaces.list().then((workspaces) => {
-        system.get(bus).send(emit(hermesId, {
+      hermesService.workspaces.list().then((workspaces) => {
+        system.get(bus).send(emit(hermes, {
           type: 'HERMES_WORKSPACES_DATA',
           workspaces,
         }));
-      }).catch((err) => sendError(system, 'getWorkspaces', err));
+      }).catch((err: unknown) => sendError(system, 'getWorkspaces', err));
     },
   },
 }).createMachine({
-  id: hermesId,
+  id: hermes,
   initial: 'idle',
   context: ({}) => ({}),
   on: {

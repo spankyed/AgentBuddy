@@ -64,11 +64,7 @@ export interface HermesTool {
   description: string
 }
 
-export interface HermesMemoryFiles {
-  'MEMORY.md': string
-  'USER.md': string
-  'SOUL.md': string
-}
+export type HermesMemoryFiles = Record<string, string>
 
 // ─── Stream Events ──────────────────────────────────────────────────────────
 

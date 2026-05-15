@@ -11,7 +11,7 @@ import { actions, actionsSystem, actionsDef } from '@/systems/actions/system';
 import { library, librarySystem, libraryDef } from '@/systems/library/system';
 import { codeDef, systemMachine as codeSystem } from '@/systems/code/system';
 import { notes, notesSystem, notesDef } from '@/systems/notes/system';
-import { hermesId, hermesSystem, hermesDef } from '@/systems/hermes/system';
+import { hermes, hermesSystem, hermesDef } from '@/systems/hermes/system';
 
 const code = codeDef.id;
 
@@ -26,7 +26,7 @@ const systems = {
   [library]: librarySystem,
   [code]: codeSystem,
   [notes]: notesSystem,
-  [hermesId]: hermesSystem,
+  [hermes]: hermesSystem,
 } as const;
 
 export default systems;

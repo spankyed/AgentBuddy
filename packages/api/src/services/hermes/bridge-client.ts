@@ -8,7 +8,7 @@
  * since we own both sides of the protocol.
  */
 
-import { spawn, type ChildProcess } from 'child_process'
+import { spawn, execSync, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
 import path from 'path'
 import { createLogger } from '@/core/helpers/debug/logger'
@@ -23,7 +23,6 @@ const BRIDGE_SCRIPT = path.join(__dirname, 'bridge', 'hermes-bridge.py')
 function discoverPython(config: HermesConfig): string {
   if (config.pythonPath) return config.pythonPath
 
-  const { execSync } = require('child_process') as typeof import('child_process')
   for (const name of ['python3', 'python']) {
     try {
       const result = execSync(`which ${name}`, { encoding: 'utf8', timeout: 5000 }).trim()
@@ -60,6 +59,8 @@ export class HermesBridgeClient {
   private _agentDir: string | null = null
   private _error: string | undefined
   private _config: HermesConfig
+  private _readyResolve: ((info: BridgeInfo) => void) | null = null
+  private _readyTimeout: ReturnType<typeof setTimeout> | null = null
 
   constructor(config: HermesConfig = {}) {
     this._config = config
@@ -90,7 +91,7 @@ export class HermesBridgeClient {
 
     const env: Record<string, string> = { ...process.env } as Record<string, string>
     if (this._config.hermesHome) env.HERMES_HOME = this._config.hermesHome
-    if (this._config.agentDir) env.HERMES_AGENT_DIR = this._config.agentDir
+    if (this._config.agentDir) env.HERMES_WEBUI_AGENT_DIR = this._config.agentDir
 
     this.process = spawn(pythonPath, [BRIDGE_SCRIPT], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -105,7 +106,21 @@ export class HermesBridgeClient {
       }
     })
 
-    // Parse JSONL from stdout
+    // Wait for ready message — set up the promise BEFORE attaching the
+    // readline listener so the ready message can't be missed.
+    const readyPromise = new Promise<BridgeInfo>((resolve, reject) => {
+      this._readyResolve = resolve
+      const timeout = setTimeout(() => {
+        this._readyResolve = null
+        reject(new Error('Bridge startup timed out (10s)'))
+        this.stop()
+      }, 10_000)
+
+      // Store timeout for cleanup if ready arrives before timeout
+      this._readyTimeout = timeout
+    })
+
+    // Parse JSONL from stdout — attached after readyPromise is set up
     this.readline = createInterface({ input: this.process.stdout! })
     this.readline.on('line', (line: string) => {
       this._handleLine(line)
@@ -131,31 +146,7 @@ export class HermesBridgeClient {
       this._error = err.message
     })
 
-    // Wait for ready message
-    return new Promise<BridgeInfo>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Bridge startup timed out (10s)'))
-        this.stop()
-      }, 10_000)
-
-      const onReady = (line: string) => {
-        try {
-          const msg = JSON.parse(line) as BridgeResponse
-          if (msg.type === 'ready') {
-            clearTimeout(timeout)
-            this._status = 'ready'
-            this._agentDir = (msg.data?.agentDir as string) ?? null
-            this.readline?.removeListener('line', onReady)
-            logger.info(`Bridge ready`, { agentDir: this._agentDir })
-            resolve(this.info)
-          }
-        } catch {
-          // Not valid JSON — ignore
-        }
-      }
-
-      this.readline!.on('line', onReady)
-    })
+    return readyPromise
   }
 
   async stop(): Promise<void> {
@@ -280,8 +271,19 @@ export class HermesBridgeClient {
       return
     }
 
-    // Ready message is handled during startup
-    if (msg.type === 'ready') return
+    // Ready message — resolve the startup promise
+    if (msg.type === 'ready') {
+      if (this._readyResolve) {
+        if (this._readyTimeout) clearTimeout(this._readyTimeout)
+        this._status = 'ready'
+        this._agentDir = (msg.data?.agentDir as string) ?? null
+        logger.info(`Bridge ready`, { agentDir: this._agentDir })
+        this._readyResolve(this.info)
+        this._readyResolve = null
+        this._readyTimeout = null
+      }
+      return
+    }
 
     const id = msg.id
     if (!id) {

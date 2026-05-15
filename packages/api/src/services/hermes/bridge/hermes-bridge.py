@@ -20,6 +20,7 @@ import threading
 import collections
 import hashlib
 import logging
+import signal
 from pathlib import Path
 
 # ── Logging to stderr (never stdout — that's the protocol channel) ───────────
@@ -89,6 +90,9 @@ SESSION_AGENT_CACHE_LOCK = threading.Lock()
 ACTIVE_STREAMS: dict[str, threading.Event] = {}
 ACTIVE_STREAMS_LOCK = threading.Lock()
 
+# Environment lock — prevents concurrent env var mutations across threads
+_ENV_LOCK = threading.Lock()
+
 
 # ── JSONL I/O ────────────────────────────────────────────────────────────────
 
@@ -119,11 +123,23 @@ def _error(req_id: str, message: str, code: str = "ERROR"):
 _AIAgent = None  # Lazy-loaded
 
 
+_agent_params_cache: set | None = None
+
+
 def _ensure_agent_class():
     global _AIAgent
     if _AIAgent is None:
         from run_agent import AIAgent
         _AIAgent = AIAgent
+
+
+def _get_agent_params() -> set:
+    """Cache the AIAgent.__init__ parameter names."""
+    global _agent_params_cache
+    if _agent_params_cache is None:
+        import inspect
+        _agent_params_cache = set(inspect.signature(_AIAgent.__init__).parameters.keys())
+    return _agent_params_cache
 
 
 def handle_health(req_id: str, params: dict):
@@ -235,11 +251,12 @@ def handle_chat(req_id: str, params: dict):
         try:
             _ensure_agent_class()
 
-            # Set environment
-            os.environ["TERMINAL_CWD"] = str(workspace)
-            os.environ["HERMES_EXEC_ASK"] = "1"
-            if session_id:
-                os.environ["HERMES_SESSION_KEY"] = session_id
+            # Set environment under lock to prevent concurrent mutations
+            with _ENV_LOCK:
+                os.environ["TERMINAL_CWD"] = str(workspace)
+                os.environ["HERMES_EXEC_ASK"] = "1"
+                if session_id:
+                    os.environ["HERMES_SESSION_KEY"] = session_id
 
             # Build agent kwargs
             agent_kwargs = {
@@ -270,8 +287,7 @@ def handle_chat(req_id: str, params: dict):
             agent_kwargs["tool_progress_callback"] = on_tool
 
             # Check for optional callback params
-            import inspect
-            _agent_params = set(inspect.signature(_AIAgent.__init__).parameters.keys())
+            _agent_params = _get_agent_params()
 
             if "tool_start_callback" in _agent_params:
                 def on_tool_start(tool_call_id, name, args):
@@ -369,8 +385,7 @@ def _get_or_create_agent(session_id: str, kwargs: dict):
         return agent
 
     # Create new agent — filter kwargs to only supported params
-    import inspect
-    supported = set(inspect.signature(_AIAgent.__init__).parameters.keys())
+    supported = _get_agent_params()
     filtered = {k: v for k, v in kwargs.items() if k in supported}
     agent = _AIAgent(**filtered)
 
@@ -638,8 +653,14 @@ METHODS = {
 # ── Main Loop ────────────────────────────────────────────────────────────────
 
 def main():
+    # Graceful shutdown on SIGTERM
+    def _shutdown(signum, frame):
+        logger.info("Received signal %s, shutting down", signum)
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, _shutdown)
+
     # Parse startup config from first line (optional)
-    agent_dir_hint = os.getenv("HERMES_AGENT_DIR")
+    agent_dir_hint = os.getenv("HERMES_WEBUI_AGENT_DIR")
 
     # Discover and inject agent
     agent_dir = _discover_agent_dir(agent_dir_hint)
