@@ -24,22 +24,27 @@ import { applicationState } from '@/main'
 import { id } from '@/plugins/threads/state'
 import type { ThreadsState } from '@/plugins/threads/state'
 import Chat from '@/plugins/threads/chat/chat.vue'
+import { trpc } from '@/core/trpc'
 import type { AgentThreadData } from '@app/api'
 
 const chatThreadId = window.electronAPI?.chatThreadId
 const isMac = navigator.platform.toLowerCase().includes('mac')
 
 const actor: ThreadsState = applicationState.system.get(id)
-const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData | undefined)
 const threadTopic = useSelector(actor, (state) => (state.context.currentThread as AgentThreadData | undefined)?.topic)
 
-// Wait for startup data (AGENT_CONNECTED), then open the target thread
+// Wait for startup data (AGENT_CONNECTED), then load the target thread locally
+// (bypasses OPEN_THREAD_CHAT which would broadcast LOAD_CHAT_THREAD to all windows)
 const chatSettings = useSelector(actor, (state) => state.context.chatSettings)
 let opened = false
-watch(chatSettings, (settings) => {
-  if (settings && chatThreadId && !opened) {
-    opened = true
-    actor.send({ type: 'OPEN_THREAD_CHAT', threadId: chatThreadId })
+watch(chatSettings, async (settings) => {
+  if (!settings || !chatThreadId || opened) return
+  opened = true
+  try {
+    const data = await trpc.bus.threadData.query({ threadId: chatThreadId })
+    actor.send({ type: 'LOAD_CHAT_THREAD', data } as any)
+  } catch (err) {
+    console.error('[ChatOnlyShell] Failed to load thread:', err)
   }
 }, { immediate: true })
 

@@ -7,20 +7,9 @@ function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
 }
 
-// Parse API port from command line arguments
-function getApiPort(): number {
-  const portArg = process.argv.find(arg => arg.startsWith('--api-port='));
-  if (portArg) {
-    const port = parseInt(portArg.split('=')[1], 10);
-    return port;
-  }
-  return 3001;
-}
-
-// Parse chat thread ID for popout windows
-function getChatThreadId(): string | null {
-  const arg = process.argv.find(a => a.startsWith('--chat-thread-id='));
-  return arg ? arg.split('=')[1] : null;
+function getArg(key: string): string | undefined {
+  const arg = process.argv.find(a => a.startsWith(`--${key}=`));
+  return arg?.split('=')[1];
 }
 
 // Window controls API
@@ -43,9 +32,9 @@ const fileUtils = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 };
 
-// Get the API port and optional chat thread ID (for popout windows)
-const apiPort = getApiPort();
-const chatThreadId = getChatThreadId();
+// Parse CLI args passed via Electron's additionalArguments
+const apiPort = parseInt(getArg('api-port') ?? '3001', 10);
+const chatThreadId = getArg('chat-thread-id') ?? null;
 
 // Shell utilities
 const shell = {

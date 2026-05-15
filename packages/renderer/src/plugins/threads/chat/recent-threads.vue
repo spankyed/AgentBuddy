@@ -542,7 +542,7 @@ function openInWindow(threadId: string) {
 const handleSelectThread = (id: string | undefined, event?: MouseEvent | KeyboardEvent) => {
   if (!id) return
   if (event?.shiftKey) {
-    window.electronAPI?.windowControls.openChatWindow(id)
+    openInWindow(id)
   } else {
     emit('open-thread-chat', id)
   }

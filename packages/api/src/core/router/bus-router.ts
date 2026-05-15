@@ -7,10 +7,17 @@ import { eventValidationMap } from '@/systems';
 import { procedure, router } from './trpc';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
+import { repository } from '@/repository';
+import type { EARS } from '@/core/types';
 
 const logger = createLogger('app-events');
 
 export const systemBusRouter = router({
+  threadData: procedure
+    .input(z.object({ threadId: z.string() }))
+    .query(({ input }) => {
+      return repository.chatQueries.threadData(input.threadId as EARS.EntityId);
+    }),
   send: procedure
     .input(z.custom<IncomingSystemEvents>((val) =>
       typeof val === 'object' && val !== null && 'type' in val && 'systemId' in val
