@@ -239,6 +239,11 @@ export class GitRepository {
           return { success: true, output: gitError.stdout || '' }
         }
         if (gitError.code === 128 && args[0] === 'show') {
+          // File doesn't exist in this ref — expected for added/deleted files.
+          // Log the stderr so silent failures are diagnosable.
+          if (gitError.stderr) {
+            console.debug(`[git] show exit 128: ${gitError.stderr.trim()}`, { ref: args[1] })
+          }
           return { success: true, output: '' }
         }
 
@@ -1099,18 +1104,19 @@ export class GitRepository {
   }
 
   async getFileContentFromBranch(filePath: string, branch: string): Promise<string> {
-    // For files with special characters, we need to be careful
-    // If the path contains colons or starts with -, we need special handling
+    // Normalize path — strip working directory prefix if present (matches getFileContent behavior)
+    const relativePath = filePath.startsWith(this.workingDirectory)
+      ? filePath.slice(this.workingDirectory.length + 1)
+      : filePath
+
     let result: GitCommandResult
-    
-    if (filePath.includes(':') || filePath.startsWith('-')) {
-      // Use the rev:./path syntax which is safer for special characters
-      result = await this.executeGitCommand(['show', `${branch}:./${filePath}`])
+
+    if (relativePath.includes(':') || relativePath.startsWith('-')) {
+      result = await this.executeGitCommand(['show', `${branch}:./${relativePath}`])
     } else {
-      // Standard format for normal paths
-      result = await this.executeGitCommand(['show', `${branch}:${filePath}`])
+      result = await this.executeGitCommand(['show', `${branch}:${relativePath}`])
     }
-    
+
     if (!result.success) {
       // File might not exist in that branch - this is not an error
       return ''

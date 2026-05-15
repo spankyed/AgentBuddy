@@ -129,13 +129,13 @@ export const secretsActor = setup({
     
     getSecretValue: ({ event, self }) => {
       const ev = event as Extract<SecretsEvents, { type: 'GET_SECRET_VALUE' }>;
-      
-      const secret = secretsQueries.getSecret(ev.id);
-      if (secret) {
+
+      const value = secretsQueries.getSecretValue(ev.id);
+      if (value) {
         self._parent?.send({
           type: 'SECRETS.EVENT.VALUE',
           id: ev.id,
-          value: secret.encryptedValue // Will be plain text for now
+          value
         });
       } else {
         self._parent?.send({
@@ -144,18 +144,17 @@ export const secretsActor = setup({
         });
       }
     },
-    
+
     retrieveSecretValue: ({ event, self }) => {
       const ev = event as Extract<SecretsEvents, { type: 'RETRIEVE_SECRET_VALUE' }>;
-      
-      const secret = secretsQueries.getSecret(ev.id);
-      if (secret) {
-        // Send value back to parent for internal system use
+
+      const value = secretsQueries.getSecretValue(ev.id);
+      if (value) {
         console.log(`[Secrets] Retrieved value for ${ev.requester}: ${ev.id}`);
         self._parent?.send({
           type: 'SECRETS.EVENT.VALUE',
           id: ev.id,
-          value: secret.encryptedValue
+          value
         });
       }
     },

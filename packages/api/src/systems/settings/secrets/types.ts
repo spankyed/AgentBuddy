@@ -4,7 +4,6 @@ export interface SecretEntity {
   id: EARS.EntityId;
   entityType: EARS.Entity.Secret;
   provider: SecretProvider;
-  encryptedValue: string; // Will store plain text for now, encryption to be added later
   customName?: string;
   createdAt: number;
   updatedAt?: number;

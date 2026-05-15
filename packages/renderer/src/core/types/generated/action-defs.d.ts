@@ -319,7 +319,6 @@ interface SecretEntity {
     id: EARS.EntityId;
     entityType: EARS.Entity.Secret;
     provider: SecretProvider;
-    encryptedValue: string;
     customName?: string;
     createdAt: number;
     updatedAt?: number;
@@ -5782,6 +5781,7 @@ declare const services: {
         readonly secretsQueries: {
             getAllSecrets: () => SecretEntity[];
             getSecret: (id: EARS.EntityId) => SecretEntity | null;
+            getSecretValue: (id: EARS.EntityId) => string | null;
             getSecretByProvider: (provider: SecretProvider, customName?: string) => SecretEntity | null;
             getSecretsData: () => SecretData[];
         };

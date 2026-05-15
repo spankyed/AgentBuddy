@@ -4,7 +4,7 @@
     <div class="mb-8">
       <h2 class="text-xl font-semibold text-white mb-2">Secrets</h2>
       <p class="text-sm text-neutral-500">
-        Manage your API keys for various providers. Keys are stored securely in a separate database partition.
+        Manage your API keys for various providers. Keys are stored securely in your operating system's keychain.
       </p>
     </div>
 
