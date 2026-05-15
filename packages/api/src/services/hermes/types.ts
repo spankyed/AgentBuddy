@@ -25,10 +25,11 @@ export interface BridgeResponse {
 export interface HermesSession {
   id: string
   model: string
-  workspace: string
+  source: string
   message_count: number
   updated_at: number
   title: string
+  started_at: number
 }
 
 export interface HermesMessage {

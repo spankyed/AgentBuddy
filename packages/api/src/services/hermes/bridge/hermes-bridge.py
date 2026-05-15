@@ -93,6 +93,9 @@ ACTIVE_STREAMS_LOCK = threading.Lock()
 # Environment lock — prevents concurrent env var mutations across threads
 _ENV_LOCK = threading.Lock()
 
+# SessionDB instance — initialized in main() after agent path injection
+_session_db = None
+
 
 # ── JSONL I/O ────────────────────────────────────────────────────────────────
 
@@ -152,27 +155,27 @@ def handle_health(req_id: str, params: dict):
 
 
 def handle_list_sessions(req_id: str, params: dict):
-    """List Hermes sessions from the session database."""
+    """List Hermes sessions from the native SessionDB (state.db)."""
     try:
-        hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
-        sessions_dir = Path(hermes_home) / "webui" / "sessions"
-        sessions = []
+        if _session_db is None:
+            return _reply(req_id, {"sessions": []})
 
-        if sessions_dir.exists():
-            for f in sorted(sessions_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
-                if f.suffix == ".json":
-                    try:
-                        data = json.loads(f.read_text())
-                        sessions.append({
-                            "id": f.stem,
-                            "model": data.get("model", ""),
-                            "workspace": data.get("workspace", ""),
-                            "message_count": len(data.get("messages", [])),
-                            "updated_at": f.stat().st_mtime,
-                            "title": data.get("title", f.stem[:12]),
-                        })
-                    except Exception:
-                        continue
+        limit = params.get("limit", 50)
+        raw = _session_db.list_sessions_rich(
+            limit=limit,
+            order_by_last_active=True,
+        )
+        sessions = []
+        for row in raw:
+            sessions.append({
+                "id": row.get("id", ""),
+                "model": row.get("model", ""),
+                "source": row.get("source", ""),
+                "message_count": row.get("message_count", 0),
+                "updated_at": row.get("last_active") or row.get("started_at", 0),
+                "title": row.get("title") or row.get("preview") or row.get("id", "")[:12],
+                "started_at": row.get("started_at", 0),
+            })
 
         _reply(req_id, {"sessions": sessions})
     except Exception as e:
@@ -180,47 +183,58 @@ def handle_list_sessions(req_id: str, params: dict):
 
 
 def handle_get_session(req_id: str, params: dict):
-    """Get a single session with messages."""
+    """Get a single session with messages from SessionDB."""
     try:
         session_id = params.get("sessionId")
         if not session_id:
             return _error(req_id, "sessionId required")
 
-        hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
-        session_file = Path(hermes_home) / "webui" / "sessions" / f"{session_id}.json"
+        if _session_db is None:
+            return _error(req_id, "SessionDB not available", "NOT_READY")
 
-        if not session_file.exists():
+        session = _session_db.get_session(session_id)
+        if not session:
             return _error(req_id, f"Session {session_id} not found", "NOT_FOUND")
 
-        data = json.loads(session_file.read_text())
-        _reply(req_id, {"session": data})
+        messages = _session_db.get_messages(session_id)
+        session["messages"] = messages
+
+        _reply(req_id, {"session": session})
     except Exception as e:
         _error(req_id, str(e))
 
 
 def handle_create_session(req_id: str, params: dict):
-    """Create a new Hermes session."""
+    """Create a new Hermes session in SessionDB."""
     try:
+        if _session_db is None:
+            return _error(req_id, "SessionDB not available", "NOT_READY")
+
         import uuid
         session_id = str(uuid.uuid4())[:8]
+        model = params.get("model", "")
+        title = params.get("title", "")
 
-        hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
-        sessions_dir = Path(hermes_home) / "webui" / "sessions"
-        sessions_dir.mkdir(parents=True, exist_ok=True)
+        _session_db.create_session(
+            session_id=session_id,
+            source="agentbuddy",
+            model=model,
+        )
 
-        session_data = {
-            "session_id": session_id,
-            "model": params.get("model", ""),
-            "workspace": params.get("workspace", str(HOME)),
-            "messages": [],
-            "created_at": time.time(),
-            "title": params.get("title", ""),
+        if title:
+            try:
+                _session_db.set_session_title(session_id, title)
+            except (ValueError, Exception):
+                pass  # Title collision or invalid — non-fatal
+
+        session = _session_db.get_session(session_id) or {
+            "id": session_id,
+            "model": model,
+            "source": "agentbuddy",
+            "title": title,
         }
 
-        session_file = sessions_dir / f"{session_id}.json"
-        session_file.write_text(json.dumps(session_data, indent=2))
-
-        _reply(req_id, {"session": session_data})
+        _reply(req_id, {"session": session})
     except Exception as e:
         _error(req_id, str(e))
 
@@ -265,6 +279,8 @@ def handle_chat(req_id: str, params: dict):
                 "quiet_mode": True,
                 "session_id": session_id or "",
             }
+            if _session_db is not None:
+                agent_kwargs["session_db"] = _session_db
 
             # Streaming callbacks
             def on_token(text):
@@ -323,14 +339,10 @@ def handle_chat(req_id: str, params: dict):
             # Get or create cached agent
             agent = _get_or_create_agent(session_id, agent_kwargs)
 
-            # Load session history
+            # Load session history from SessionDB
             messages = []
-            if session_id:
-                hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
-                session_file = Path(hermes_home) / "webui" / "sessions" / f"{session_id}.json"
-                if session_file.exists():
-                    session_data = json.loads(session_file.read_text())
-                    messages = session_data.get("messages", [])
+            if session_id and _session_db is not None:
+                messages = _session_db.get_messages_as_conversation(session_id)
 
             # Run the conversation
             result = agent.run_conversation(
@@ -669,6 +681,18 @@ def main():
         logger.info("Hermes agent found at: %s", agent_dir)
     else:
         logger.warning("Hermes agent not found — chat will fail but management commands may work")
+
+    # Initialize SessionDB (agent's native SQLite storage)
+    global _session_db
+    if agent_dir:
+        try:
+            from hermes_state import SessionDB
+            _session_db = SessionDB()
+            logger.info("SessionDB initialized at %s", _session_db._db_path if hasattr(_session_db, '_db_path') else '~/.hermes/state.db')
+        except ImportError:
+            logger.warning("hermes_state not available — session management will be limited")
+        except Exception as e:
+            logger.warning("Failed to initialize SessionDB: %s", e)
 
     # Signal readiness
     _write({"type": "ready", "data": {"agentDir": str(agent_dir) if agent_dir else None}})
