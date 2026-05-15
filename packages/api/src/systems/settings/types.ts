@@ -135,6 +135,7 @@ export interface ThreadsSettings {
   recentThreadsLimit: number;
   recentThreadsSortOrder: 'created' | 'visited' | 'message';
   recordingLimitMinutes: number;
+  skipArchiveConfirm?: boolean;
   chat?: AgentSettings;
 }
 

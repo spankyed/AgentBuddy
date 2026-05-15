@@ -486,8 +486,7 @@ const cancelTitleBarRename = () => {
 
 const handleArchiveThread = (id: string | undefined) => {
   if (!id) return
-  const confirmed = confirm('Archive this thread? It will be hidden from all lists.')
-  if (confirmed) {
+  if (settings.value?.skipArchiveConfirm || confirm('Archive this thread? It will be hidden from all lists.')) {
     threadsActor.send({ type: 'ARCHIVE_THREAD', threadId: id })
   }
 }
