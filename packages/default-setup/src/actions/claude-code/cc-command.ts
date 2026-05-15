@@ -108,7 +108,19 @@ export async function action(
 async function handleSessions(
   args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any; blocks?: any[] }> {
+  // Resolve effective cwd from thread context so sessions are scoped to the
+  // correct project directory (e.g. thread created via "+ new thread" menu).
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
+  const effectiveCwd = prior?.cwdOverride
+    || prior?.cwd
+    || codeSettings?.defaultBaseDirectory
+    || codeSettings?.lastDirectoryOpened
+    || undefined;
+  const cwdOpts = effectiveCwd ? { cwd: effectiveCwd } : undefined;
+
   const [sessionId] = args;
 
   if (sessionId) {
@@ -124,7 +136,7 @@ async function handleSessions(
     };
   }
 
-  const sessions = await services.cli.claudeCode.listSessions();
+  const sessions = await services.cli.claudeCode.listSessions(cwdOpts);
   if (!sessions.length) return { text: 'No sessions found.' };
 
   const items = sessions.map(s => ({

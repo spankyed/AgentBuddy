@@ -6,7 +6,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, ensureSessionMarker, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CC: Session Ops',
@@ -138,9 +138,21 @@ async function handleResume(
   // e.g. `/cc-resume "Branched conversation (Branch 14)"`
   const identifier = args.join(' ').replace(/^["']|["']$/g, '').trim();
 
+  // Resolve the thread's effective cwd so listSessions scopes to the right
+  // project directory (e.g. when the thread was created via "+ new thread"
+  // on a specific project in the sidebar).
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
+  const effectiveCwd = prior?.cwdOverride
+    || prior?.cwd
+    || codeSettings?.defaultBaseDirectory
+    || codeSettings?.lastDirectoryOpened
+    || undefined;
+  const cwdOpts = effectiveCwd ? { cwd: effectiveCwd } : undefined;
+
   // No args: show session picker
   if (!identifier) {
-    const sessions = await services.cli.claudeCode.listSessions();
+    const sessions = await services.cli.claudeCode.listSessions(cwdOpts);
     if (!sessions.length) return { text: 'No sessions found.' };
 
     const items = sessions.map((s: any) => ({
@@ -158,7 +170,7 @@ async function handleResume(
   }
 
   // Validate session exists — match by UUID first, then by title
-  const sessions = await services.cli.claudeCode.listSessions();
+  const sessions = await services.cli.claudeCode.listSessions(cwdOpts);
   const session = sessions.find((s: any) => s.id === identifier)
     || sessions.find((s: any) => s.title && s.title.toLowerCase() === identifier.toLowerCase());
   if (!session) return { text: `Session not found: ${identifier}` };
