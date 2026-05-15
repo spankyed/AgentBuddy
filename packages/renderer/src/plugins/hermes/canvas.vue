@@ -103,7 +103,7 @@ import AgentsView from './components/AgentsView.vue'
 
 const actor = applicationState.system.get(id)
 
-const activeView = useSelector(actor, (s: any) => s.context.activeView)
+const activeView = useSelector(actor, (s: any) => s.context.activeView as HermesView)
 const connectionStatus = useSelector(actor, (s: any) => s.context.connectionStatus)
 const agentDir = useSelector(actor, (s: any) => s.context.agentDir)
 const skills = useSelector(actor, (s: any) => s.context.skills)

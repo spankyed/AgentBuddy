@@ -4,6 +4,95 @@ import * as ai from 'ai';
 import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
+interface HermesSession {
+    id: string;
+    model: string;
+    source: string;
+    message_count: number;
+    updated_at: number;
+    title: string;
+    started_at: number;
+}
+interface HermesModel {
+    name: string;
+    provider: string;
+    model: string;
+}
+interface HermesSkill {
+    name: string;
+    category: string;
+    path: string;
+    content: string;
+}
+interface HermesTool {
+    name: string;
+    enabled: boolean;
+    description: string;
+}
+type HermesMemoryFiles = Record<string, string>;
+interface HermesConfig {
+    /** Path to hermes-agent directory (auto-discovered if not set). */
+    agentDir?: string;
+    /** Python executable path (auto-discovered if not set). */
+    pythonPath?: string;
+    /** HERMES_HOME directory (defaults to ~/.hermes). */
+    hermesHome?: string;
+    /** Default model for new sessions. */
+    defaultModel?: string;
+    /** Default workspace directory. */
+    defaultWorkspace?: string;
+    /** Auto-start bridge on app launch. */
+    autoStart?: boolean;
+}
+type BridgeStatus = 'stopped' | 'starting' | 'ready' | 'error';
+interface BridgeInfo {
+    status: BridgeStatus;
+    agentDir: string | null;
+    pid: number | null;
+    error?: string;
+}
+
+/**
+ * Hermes Agent Bridge Client — manages the Python subprocess lifecycle.
+ *
+ * Spawns `hermes-bridge.py` as a child process and communicates via JSONL
+ * over stdin/stdout. Provides both request/response and streaming APIs.
+ *
+ * Pattern: mirrors the claude-code runner.ts / query.ts split, but simplified
+ * since we own both sides of the protocol.
+ */
+
+declare class HermesBridgeClient {
+    private process;
+    private readline;
+    private pending;
+    private _status;
+    private _agentDir;
+    private _error;
+    private _config;
+    private _readyResolve;
+    private _readyTimeout;
+    constructor(config?: HermesConfig);
+    get status(): BridgeStatus;
+    get info(): BridgeInfo;
+    start(): Promise<BridgeInfo>;
+    stop(): Promise<void>;
+    restart(): Promise<BridgeInfo>;
+    updateConfig(config: Partial<HermesConfig>): void;
+    /**
+     * Send a request and wait for the result response.
+     * For non-streaming methods (listSessions, getMemory, etc.).
+     */
+    send<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>): Promise<T>;
+    /**
+     * Send a streaming request. Calls `onEvent` for each streaming event,
+     * resolves when the stream completes (done/error).
+     */
+    sendStreaming(method: string, params: Record<string, unknown>, onEvent: (type: string, data: Record<string, unknown>) => void): Promise<Record<string, unknown>>;
+    private _write;
+    private _handleLine;
+}
+
 interface FileEntry {
     name: string;
     isDirectory: boolean;
@@ -130,6 +219,26 @@ interface BaseEntity {
     entityType: EARS.Entity;
     createdAt: number;
     updatedAt?: number;
+}
+
+/**
+ * Hermes management system types — events and data shapes.
+ */
+
+interface HermesConnectedData {
+    bridge: BridgeInfo;
+    skills: HermesSkill[];
+    models: HermesModel[];
+    tools: {
+        tools: HermesTool[];
+        enabledToolsets: string[];
+    };
+    persona: {
+        content: string;
+        path: string;
+    };
+    memory: HermesMemoryFiles;
+    workspaces: string[];
 }
 
 type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
@@ -3635,7 +3744,97 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "EXPORT_NOTES";
     directory: string;
     format: "markdown" | "json";
-}, OutgoingNotesEvents, {}>];
+}, OutgoingNotesEvents, {}>, SystemDefinition<"hermes", {
+    type: "HERMES_START_BRIDGE";
+} | {
+    type: "HERMES_STOP_BRIDGE";
+} | {
+    type: "HERMES_CHECK_CONNECTION";
+} | {
+    type: "HERMES_GET_SKILLS";
+} | {
+    type: "HERMES_SAVE_SKILL";
+    name: string;
+    category?: string;
+    content: string;
+} | {
+    type: "HERMES_DELETE_SKILL";
+    path: string;
+} | {
+    type: "HERMES_GET_PERSONA";
+} | {
+    type: "HERMES_UPDATE_PERSONA";
+    content: string;
+} | {
+    type: "HERMES_GET_MEMORY";
+} | {
+    type: "HERMES_WRITE_MEMORY";
+    filename: string;
+    content: string;
+} | {
+    type: "HERMES_GET_TOOLS";
+} | {
+    type: "HERMES_GET_MODELS";
+} | {
+    type: "HERMES_GET_WORKSPACES";
+}, {
+    type: "HERMES_CONNECTED";
+    data: HermesConnectedData;
+} | {
+    type: "HERMES_BRIDGE_STATUS";
+    bridge: {
+        status: string;
+        agentDir: string | null;
+        pid: number | null;
+        error?: string;
+    };
+} | {
+    type: "HERMES_SKILLS_DATA";
+    skills: HermesSkill[];
+} | {
+    type: "HERMES_SKILL_SAVED";
+    saved: boolean;
+    path: string;
+} | {
+    type: "HERMES_SKILL_DELETED";
+    deleted: boolean;
+} | {
+    type: "HERMES_PERSONA_DATA";
+    content: string;
+    path: string;
+} | {
+    type: "HERMES_PERSONA_UPDATED";
+    written: boolean;
+} | {
+    type: "HERMES_MEMORY_DATA";
+    files: Record<string, string>;
+} | {
+    type: "HERMES_MEMORY_WRITTEN";
+    written: boolean;
+    filename: string;
+} | {
+    type: "HERMES_TOOLS_DATA";
+    tools: Array<{
+        name: string;
+        enabled: boolean;
+        description: string;
+    }>;
+    enabledToolsets: string[];
+} | {
+    type: "HERMES_MODELS_DATA";
+    models: Array<{
+        name: string;
+        provider: string;
+        model: string;
+    }>;
+} | {
+    type: "HERMES_WORKSPACES_DATA";
+    workspaces: string[];
+} | {
+    type: "HERMES_ERROR";
+    message: string;
+    method: string;
+}, {}>];
 type AllDefs = (typeof allDefs)[number];
 type IncomingSystemEvents = AllDefs['_incoming'];
 type OutgoingSystemEvents = AllDefs['_outgoing'];
@@ -5921,6 +6120,76 @@ declare const services: {
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
     threads: typeof threads;
+    hermes: {
+        readonly bridge: HermesBridgeClient;
+        start(config?: HermesConfig): Promise<BridgeInfo>;
+        stop(): Promise<void>;
+        restart(config?: HermesConfig): Promise<BridgeInfo>;
+        readonly info: BridgeInfo;
+        health(): Promise<{
+            status: string;
+            agent_available: boolean;
+        }>;
+        sessions: {
+            list(): Promise<HermesSession[]>;
+            get(sessionId: string): Promise<Record<string, unknown>>;
+            create(opts?: {
+                model?: string;
+                workspace?: string;
+                title?: string;
+            }): Promise<Record<string, unknown>>;
+        };
+        chat(params: {
+            sessionId?: string;
+            message: string;
+            model?: string;
+            workspace?: string;
+        }, onEvent: (type: string, data: Record<string, unknown>) => void): Promise<Record<string, unknown>>;
+        cancelStream(streamId: string): Promise<{
+            cancelled: boolean;
+        }>;
+        models: {
+            list(): Promise<HermesModel[]>;
+        };
+        skills: {
+            list(): Promise<HermesSkill[]>;
+            save(skill: {
+                name: string;
+                category?: string;
+                content: string;
+            }): Promise<{
+                saved: boolean;
+                path: string;
+            }>;
+            delete(skillPath: string): Promise<{
+                deleted: boolean;
+            }>;
+        };
+        memory: {
+            get(): Promise<HermesMemoryFiles>;
+            write(filename: string, content: string): Promise<{
+                written: boolean;
+            }>;
+        };
+        tools: {
+            list(): Promise<{
+                tools: HermesTool[];
+                enabledToolsets: string[];
+            }>;
+        };
+        persona: {
+            get(): Promise<{
+                content: string;
+                path: string;
+            }>;
+            update(content: string): Promise<{
+                written: boolean;
+            }>;
+        };
+        workspaces: {
+            list(): Promise<string[]>;
+        };
+    };
 };
 
 /**
