@@ -16,10 +16,7 @@ import type { BridgeRequest, BridgeResponse, BridgeStatus, BridgeInfo, HermesCon
 
 const logger = createLogger('hermes-bridge')
 
-// __dirname at runtime: .../packages/api/dist/services/hermes/
-// Go up to packages/api/ then into src/ for the .py file (tsc doesn't copy non-TS files)
-const API_PKG_ROOT = path.resolve(__dirname, '..', '..', '..')
-const BRIDGE_SCRIPT = path.join(API_PKG_ROOT, 'src', 'services', 'hermes', 'bridge', 'hermes-bridge.py')
+const BRIDGE_SCRIPT = path.join(process.cwd(), 'src', 'services', 'hermes', 'bridge', 'hermes-bridge.py')
 
 // ─── Python Discovery ───────────────────────────────────────────────────────
 
