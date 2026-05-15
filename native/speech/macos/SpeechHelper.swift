@@ -62,6 +62,18 @@ class SpeechHelper {
             recognitionRequest.append(buffer)
         }
 
+        // Allow recording to coexist with other audio (YouTube, TTS, etc.)
+        if #available(macOS 12.0, *) {
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers])
+                try session.setActive(true)
+            } catch {
+                emitEvent(["event": "error", "code": "audio_session_failed", "message": error.localizedDescription])
+                return
+            }
+        }
+
         audioEngine.prepare()
         do {
             try audioEngine.start()
@@ -104,6 +116,11 @@ class SpeechHelper {
         recognitionTask?.finish()
         recognitionRequest = nil
         recognitionTask = nil
+
+        if #available(macOS 12.0, *) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+
         emitEvent(["event": "stopped"])
     }
 
