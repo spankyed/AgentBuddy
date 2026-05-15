@@ -1,232 +1,108 @@
 /**
- * Fire-and-forget stream consumer for Hermes agent responses.
+ * Stream consumer for Hermes agent responses.
  *
- * Translates Hermes bridge JSONL events into AgentBuddy thread messages:
- * - token → UPDATE_MESSAGE_STATE (streaming text append)
- * - tool_start → tool activity block
- * - tool_complete → update tool status
- * - done → finalize message, update thread state
- * - stream_error → error message
- *
- * Mirrors the claude-code `_helpers/stream-consumer.ts` pattern but is
- * simpler since Hermes bridge events are already high-level.
+ * Handles high-frequency streaming inline (tokens, tool blocks) and fires
+ * a single brain event at lifecycle boundaries (started/done/error) for
+ * the flow-routed `Hermes: Stream Lifecycle` action.
  */
 
 import type { Services } from '../../../types';
-import {
-  getHermesState,
-  persistHermesState,
-} from './thread-context';
 
 interface StreamConsumerOptions {
   threadId: string;
   services: Services;
 }
 
-/**
- * Consume streaming events from the Hermes bridge.
- *
- * Called from the Hermes Chat action — runs as a long-lived callback
- * handler that processes events as they arrive from the bridge.
- *
- * Returns an event handler function to be passed to `hermes.chat()`.
- */
-export function createStreamConsumer(opts: StreamConsumerOptions) {
-  const { threadId, services } = opts;
-  const log = services.logger;
-
+export function createStreamConsumer({ threadId, services }: StreamConsumerOptions) {
   let currentMessageId: string | null = null;
   let accumulatedText = '';
   let toolActivities: Array<{ name: string; toolCallId: string; status: 'running' | 'done' }> = [];
-  let streamId: string | null = null;
-
-  // Throttle text updates to avoid flooding the frontend
   let flushTimeout: ReturnType<typeof setTimeout> | null = null;
-  const FLUSH_INTERVAL = 80; // ms
 
   function flushText() {
     if (!currentMessageId || !accumulatedText) return;
-    services.chat.updateMessageState(currentMessageId as any, {
-      text: accumulatedText,
-    } as any);
+    services.chat.updateMessageState(currentMessageId as any, { text: accumulatedText } as any);
   }
 
   function scheduleFlush() {
     if (flushTimeout) return;
-    flushTimeout = setTimeout(() => {
-      flushTimeout = null;
-      flushText();
-    }, FLUSH_INTERVAL);
+    flushTimeout = setTimeout(() => { flushTimeout = null; flushText(); }, 80);
+  }
+
+  function fireLifecycle(eventType: string, payload: Record<string, unknown> = {}) {
+    services.emitter.sendToBrainSystem({
+      eventType: 'hermes.stream.lifecycle',
+      payload: { eventType, threadId, ...payload },
+    });
+  }
+
+  function updateToolBlock(label: string) {
+    if (!currentMessageId) return;
+    services.chat.updateMessageState(currentMessageId as any, {
+      text: accumulatedText || label,
+      blocks: [{
+        type: 'tool-activity',
+        props: { label, tools: toolActivities.map(t => ({ name: t.name, status: t.status })) },
+      }],
+    } as any);
   }
 
   return function onEvent(type: string, data: Record<string, unknown>) {
     switch (type) {
       case 'stream_start': {
-        streamId = data.streamId as string;
-        persistHermesState(services, threadId, {
-          activeStreamId: streamId,
-          chatState: 'working',
-          isRunning: true,
-        });
-
-        // Create the assistant message placeholder
         const msg = services.chat.sendBlockMessage({
-          threadId: threadId as any,
-          text: 'Thinking\u2026',
-          blocks: [],
-          forkable: false,
+          threadId: threadId as any, text: 'Thinking\u2026', blocks: [], forkable: false,
         });
         currentMessageId = msg?.messageId ?? null;
         accumulatedText = '';
         toolActivities = [];
+        fireLifecycle('started', { streamId: data.streamId });
         break;
       }
 
       case 'token': {
         const text = data.text as string;
-        if (!text) break;
-        accumulatedText += text;
-        scheduleFlush();
+        if (text) { accumulatedText += text; scheduleFlush(); }
         break;
       }
 
       case 'tool_start': {
-        const name = data.name as string;
-        const toolCallId = data.toolCallId as string;
-        toolActivities.push({ name, toolCallId, status: 'running' });
-
-        if (currentMessageId) {
-          services.chat.updateMessageState(currentMessageId as any, {
-            text: accumulatedText || 'Using tools\u2026',
-            blocks: [{
-              type: 'tool-activity',
-              props: {
-                label: `Running ${name}\u2026`,
-                tools: toolActivities.map(t => ({
-                  name: t.name,
-                  status: t.status,
-                })),
-              },
-            }],
-          } as any);
-        }
+        toolActivities.push({ name: data.name as string, toolCallId: data.toolCallId as string, status: 'running' });
+        updateToolBlock(`Running ${data.name}\u2026`);
         break;
       }
 
       case 'tool_complete': {
-        const toolCallId = data.toolCallId as string;
-        const activity = toolActivities.find(t => t.toolCallId === toolCallId);
-        if (activity) {
-          activity.status = 'done';
-        }
-
-        if (currentMessageId) {
-          const allDone = toolActivities.every(t => t.status === 'done');
-          services.chat.updateMessageState(currentMessageId as any, {
-            text: accumulatedText || 'Using tools\u2026',
-            blocks: [{
-              type: 'tool-activity',
-              props: {
-                label: allDone
-                  ? `Used ${toolActivities.length} tool${toolActivities.length > 1 ? 's' : ''}`
-                  : 'Running tools\u2026',
-                tools: toolActivities.map(t => ({
-                  name: t.name,
-                  status: t.status,
-                })),
-              },
-            }],
-          } as any);
-        }
+        const activity = toolActivities.find(t => t.toolCallId === data.toolCallId);
+        if (activity) activity.status = 'done';
+        const allDone = toolActivities.every(t => t.status === 'done');
+        updateToolBlock(allDone ? `Used ${toolActivities.length} tool${toolActivities.length > 1 ? 's' : ''}` : 'Running tools\u2026');
         break;
       }
 
       case 'tool_call': {
-        const name = data.name as string;
-        if (currentMessageId) {
-          services.chat.updateMessageState(currentMessageId as any, {
-            text: accumulatedText || `Using ${name}\u2026`,
-            blocks: [{
-              type: 'tool-activity',
-              props: {
-                label: `Using ${name}\u2026`,
-                tools: [{ name, status: 'running' }],
-              },
-            }],
-          } as any);
-        }
+        updateToolBlock(`Using ${data.name}\u2026`);
         break;
       }
 
-      case 'reasoning':
-        // Could display reasoning in a collapsible block — skip for now
-        break;
-
       case 'done': {
-        if (flushTimeout) {
-          clearTimeout(flushTimeout);
-          flushTimeout = null;
-        }
-
-        const finalResponse = data.finalResponse as string;
-        if (finalResponse) {
-          accumulatedText = finalResponse;
-        }
+        if (flushTimeout) { clearTimeout(flushTimeout); flushTimeout = null; }
+        if (data.finalResponse) accumulatedText = data.finalResponse as string;
         flushText();
-
-        // Mark message as forkable
-        if (currentMessageId) {
-          services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
-        }
-
-        const state = getHermesState(services, threadId);
-        persistHermesState(services, threadId, {
-          chatState: 'success',
-          isRunning: false,
-          activeStreamId: undefined,
-          turns: (state?.turns || 0) + 1,
-          sessionId: (data.sessionId as string) || state?.sessionId,
+        fireLifecycle('done', {
+          messageId: currentMessageId,
+          sessionId: data.sessionId,
+          finalResponse: accumulatedText,
         });
-
-        log.info('Hermes stream completed');
         break;
       }
 
       case 'stream_error': {
-        if (flushTimeout) {
-          clearTimeout(flushTimeout);
-          flushTimeout = null;
-        }
-
-        const errorMsg = (data.message as string) || 'Unknown error';
+        if (flushTimeout) { clearTimeout(flushTimeout); flushTimeout = null; }
         flushText();
-
-        services.chat.sendBlockMessage({
-          threadId: threadId as any,
-          text: `Error: ${errorMsg}`,
-          blocks: [{
-            type: 'note',
-            props: {
-              content: errorMsg,
-              variant: 'error',
-              label: 'Hermes Error',
-            },
-          }],
-          forkable: false,
-        });
-
-        persistHermesState(services, threadId, {
-          chatState: 'error',
-          isRunning: false,
-          activeStreamId: undefined,
-        });
-
-        log.error('Hermes stream error');
+        fireLifecycle('error', { errorMessage: (data.message as string) || 'Unknown error' });
         break;
       }
-
-      default:
-        log.debug('Unknown Hermes stream event');
     }
   };
 }

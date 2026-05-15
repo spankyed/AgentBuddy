@@ -4,39 +4,49 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
 /**
  * Hermes Agent flow.
  *
- * Listens for `user.message` events and routes to the Hermes Chat action
- * only when the user is in `hermes` mode. Any other mode flows past
- * untouched.
- *
- * Mirrors the Claude Code flow structure.
+ * Routes user messages in hermes mode to the chat action, and stream
+ * lifecycle events (started/done/error) to a unified lifecycle handler.
  */
 export default {
   "Hermes Agent": [
-    entry(
-      [keepAlive()],
-    ),
+    entry([keepAlive()]),
+
     on(
       "user.message",
       [[
-        branch([
-          {
-            if: "$.event.data.payload.mode == 'hermes'",
-            steps: [
-              action("Hermes Chat", {
-                label: "hermes-chat",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                  text: "$.event.data.payload.text",
-                  mode: "$.event.data.payload.mode",
-                  model: "$.event.data.payload.model",
-                  workspace: "$.event.data.payload.workspace",
-                },
-              }),
-            ],
-          },
-        ]),
+        branch([{
+          if: "$.event.data.payload.mode == 'hermes'",
+          steps: [action("Hermes Chat", {
+            label: "hermes-chat",
+            map: {
+              threadId: "$.event.data.payload.threadId",
+              text: "$.event.data.payload.text",
+              model: "$.event.data.payload.model",
+              workspace: "$.event.data.payload.workspace",
+            },
+          })],
+        }]),
       ]],
       "Hermes mode \u2192 Hermes Chat",
+    ),
+
+    on(
+      "hermes.stream.lifecycle",
+      [[
+        action("Hermes: Stream Lifecycle", {
+          label: "lifecycle",
+          map: {
+            eventType: "$.event.data.payload.eventType",
+            threadId: "$.event.data.payload.threadId",
+            streamId: "$.event.data.payload.streamId",
+            messageId: "$.event.data.payload.messageId",
+            sessionId: "$.event.data.payload.sessionId",
+            finalResponse: "$.event.data.payload.finalResponse",
+            errorMessage: "$.event.data.payload.errorMessage",
+          },
+        }),
+      ]],
+      "Stream lifecycle",
     ),
   ],
 } satisfies FlowDSL;

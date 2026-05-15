@@ -23,7 +23,7 @@
       v-model="editedContent"
       rows="24"
       class="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-neutral-200 font-mono placeholder-neutral-500 focus:outline-none focus:border-primary-500 resize-y"
-      placeholder="# Agent Persona\n\nDescribe your agent's personality, instructions, and behavior here..."
+      placeholder="Describe your agent's personality, instructions, and behavior here..."
     />
   </div>
 </template>
