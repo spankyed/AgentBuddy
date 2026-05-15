@@ -1,7 +1,5 @@
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@/core/breadcrumb'
-import { safeEvents } from '@/core/types/safe-events'
-import { TRAIL_CLICK } from '@/core/actors/route-trailer'
 import { trpc } from '@/core/trpc'
 
 export const id = 'hermes' as const
@@ -249,11 +247,6 @@ const hermesState = setup({
   states: {
     ready: {
       meta: breadcrumb('ready', 'Hermes', true),
-      on: {
-        ...TRAIL_CLICK([
-          ['.ready', 'ready'],
-        ]),
-      },
     },
   },
 })
