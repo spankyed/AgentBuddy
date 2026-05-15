@@ -35,7 +35,23 @@ export async function action(
   if (!threadId || !requestId) return { success: false, reason: 'missing threadId or requestId' };
 
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
-  if (!handle) return { success: false, reason: 'no active CLI handle' };
+
+  // Handle post-restart: CLI process is gone but the user can still approve
+  // the pending plan/tool. Start a new turn to resume the session.
+  if (!handle) {
+    if (toolName === 'ExitPlanMode') {
+      resolvePlanDraft(services, threadId as EntityId, 'approved');
+      services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'edit' });
+    }
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    // Start a new turn that resumes the session — mirrors replayQueuedMessage.
+    await services.action.getAndExecute('Claude Code Chat', {
+      threadId,
+      text: 'continue',
+      phase: toolName === 'ExitPlanMode' ? 'edit' : undefined,
+    });
+    return { success: true, resumed: true };
+  }
 
   handle.respond(requestId, { behavior: 'allow', updatedInput: originalInput ?? {} });
 
