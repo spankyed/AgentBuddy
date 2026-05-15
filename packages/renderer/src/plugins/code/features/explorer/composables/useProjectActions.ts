@@ -147,7 +147,7 @@ export function useProjectActions() {
 
     // Navigate to General tab
     settingsActor?.send({
-      type: 'SETTINGS_TAB.SELECT',
+      type: 'TAB.SELECT',
       tab: 'general'
     })
 
