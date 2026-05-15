@@ -16,6 +16,11 @@
         Copy Id
       </ContextMenuItem>
 
+      <ContextMenuItem :class="itemClass" @select="$emit('open-in-window')">
+        <ExternalLink :size="14" class="text-neutral-400" />
+        Open in separate window
+      </ContextMenuItem>
+
       <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
 
       <ContextMenuItem v-if="isPinned" :class="itemClass" @select="$emit('unpin')">
@@ -44,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { Archive, Copy, Pencil, Pin, Trash2 } from 'lucide-vue-next';
+import { Archive, Copy, ExternalLink, Pencil, Pin, Trash2 } from 'lucide-vue-next';
 import {
   ContextMenuPortal, ContextMenuContent,
   ContextMenuItem, ContextMenuSeparator,
@@ -57,6 +62,7 @@ const props = defineProps<{
 
 defineEmits<{
   rename: [];
+  'open-in-window': [];
   pin: [];
   unpin: [];
   archive: [];

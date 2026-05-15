@@ -9,7 +9,6 @@ function send(channel: string, message: string) {
 
 // Parse API port from command line arguments
 function getApiPort(): number {
-  // Look for --api-port= in process.argv
   const portArg = process.argv.find(arg => arg.startsWith('--api-port='));
   if (portArg) {
     const port = parseInt(portArg.split('=')[1], 10);
@@ -18,11 +17,18 @@ function getApiPort(): number {
   return 3001;
 }
 
+// Parse chat thread ID for popout windows
+function getChatThreadId(): string | null {
+  const arg = process.argv.find(a => a.startsWith('--chat-thread-id='));
+  return arg ? arg.split('=')[1] : null;
+}
+
 // Window controls API
 const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
+  openChatWindow: (threadId: string) => ipcRenderer.invoke('window:open-chat', threadId) as Promise<void>,
 };
 
 // File utilities
@@ -37,8 +43,9 @@ const fileUtils = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 };
 
-// Get the API port
+// Get the API port and optional chat thread ID (for popout windows)
 const apiPort = getApiPort();
+const chatThreadId = getChatThreadId();
 
 // Shell utilities
 const shell = {
@@ -109,6 +116,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   zoom,
   apiStatus,
   apiPort,
+  chatThreadId,
 });
 
 // Export the tRPC client and connection status

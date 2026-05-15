@@ -19,6 +19,7 @@ class WindowManager implements AppModule {
   readonly #openDevTools;
   readonly #apiServer?: ApiServer;
   readonly #splashScreen?: SplashScreen;
+  readonly #chatWindows = new Map<string, BrowserWindow>();
 
   constructor({initConfig, openDevTools = false, apiServer, splashScreen}: {
     initConfig: AppInitConfig, 
@@ -293,6 +294,17 @@ class WindowManager implements AppModule {
       const dir = join(getMediaBasePath(), entityId);
       await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
     });
+
+    // Open a chat in a separate popout window
+    ipcMain.handle('window:open-chat', async (_event, threadId: string) => {
+      const existing = this.#chatWindows.get(threadId);
+      if (existing && !existing.isDestroyed()) {
+        if (existing.isMinimized()) existing.restore();
+        existing.focus();
+        return;
+      }
+      await this.createChatWindow(threadId);
+    });
   }
 
   async createWindow(): Promise<BrowserWindow> {
@@ -360,6 +372,62 @@ class WindowManager implements AppModule {
     return window.getTitle() === WINDOW_CONFIG.MAIN_TITLE;
   }
 
+  async createChatWindow(threadId: string): Promise<BrowserWindow> {
+    const apiPort = this.#apiServer?.getStatus().port || 3001;
+    const iconSuffix = app.isPackaged ? '' : '-dev';
+    const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
+                     process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
+    const iconPath = join(process.cwd(), 'build', 'resources', iconName);
+
+    const chatWindow = new BrowserWindow({
+      show: false,
+      width: WINDOW_CONFIG.CHAT_WIDTH,
+      height: WINDOW_CONFIG.CHAT_HEIGHT,
+      minWidth: WINDOW_CONFIG.CHAT_MIN_WIDTH,
+      minHeight: WINDOW_CONFIG.CHAT_MIN_HEIGHT,
+      center: true,
+      title: `${WINDOW_CONFIG.CHAT_TITLE_PREFIX}${threadId}`,
+      icon: iconPath,
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+      ...(process.platform === 'darwin' ? { trafficLightPosition: {x: 10, y: 15} } : {}),
+      frame: false,
+      transparent: false,
+      vibrancy: 'under-window',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        webviewTag: false,
+        preload: this.#preload.path,
+        additionalArguments: [`--api-port=${apiPort}`, `--chat-thread-id=${threadId}`],
+      },
+    });
+
+    contextMenu({ window: chatWindow });
+
+    this.#chatWindows.set(threadId, chatWindow);
+
+    chatWindow.on('closed', () => {
+      this.#chatWindows.delete(threadId);
+    });
+
+    try {
+      if (this.#renderer instanceof URL) {
+        await chatWindow.loadURL(this.#renderer.href);
+      } else {
+        await chatWindow.loadFile(this.#renderer.path);
+      }
+    } catch (error) {
+      console.error('[MAIN] Failed to load chat window:', error);
+      this.#chatWindows.delete(threadId);
+      throw error;
+    }
+
+    chatWindow.show();
+    chatWindow.focus();
+    return chatWindow;
+  }
+
   async restoreOrCreateWindow(show = false) {
     // Find main window using window tagging
     let window = BrowserWindow.getAllWindows().find(w => 
@@ -368,6 +436,13 @@ class WindowManager implements AppModule {
     
     if (window === undefined) {
       window = await this.createWindow();
+      // Close all chat popout windows when the main window closes
+      window.on('close', () => {
+        for (const chatWin of this.#chatWindows.values()) {
+          if (!chatWin.isDestroyed()) chatWin.close();
+        }
+        this.#chatWindows.clear();
+      });
     }
 
     if (!show) {

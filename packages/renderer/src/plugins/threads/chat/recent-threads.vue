@@ -24,7 +24,7 @@
             selectedIndex === index ? 'bg-neutral-700/60 text-white' : 'hover:bg-neutral-800 hover:text-white',
             thread.id === currentThread?.id ? 'bg-blue-500/15' : '',
           ]"
-          @click="handleSelectThread(thread.id)"
+          @click="handleSelectThread(thread.id, $event)"
         >
           <span class="shrink-0 relative inline-block w-1.5 h-1.5">
             <span
@@ -132,6 +132,7 @@
             @unpin="handleUnpinThread(thread.id)"
             @archive="handleArchiveThread(thread.id)"
             @delete="handleDeleteThread(thread.id)"
+            @open-in-window="openInWindow(thread.id)"
           />
         </ContextMenuRoot>
       </div>
@@ -393,7 +394,7 @@ const handleKeydown = (e: KeyboardEvent) => {
     case 'Enter':
       if (selectedIndex.value >= 0) {
         e.preventDefault()
-        handleSelectThread(recentThreads.value[selectedIndex.value]?.id)
+        handleSelectThread(recentThreads.value[selectedIndex.value]?.id, e)
       }
       break
     case 'Escape':
@@ -534,9 +535,17 @@ const handleToggleInlineDashboard = () => {
   emit('toggle-inline-dashboard')
 }
 
-const handleSelectThread = (id: string | undefined) => {
+function openInWindow(threadId: string) {
+  window.electronAPI?.windowControls.openChatWindow(threadId)
+}
+
+const handleSelectThread = (id: string | undefined, event?: MouseEvent | KeyboardEvent) => {
   if (!id) return
-  emit('open-thread-chat', id)
+  if (event?.shiftKey) {
+    window.electronAPI?.windowControls.openChatWindow(id)
+  } else {
+    emit('open-thread-chat', id)
+  }
   isOpen.value = false
 }
 

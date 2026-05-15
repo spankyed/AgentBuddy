@@ -7,6 +7,7 @@ declare global {
         minimize: () => void;
         maximize: () => void;
         close: () => void;
+        openChatWindow: (threadId: string) => Promise<void>;
       };
       fileUtils: {
         selectDirectory: () => Promise<string | null>;
@@ -47,6 +48,7 @@ declare global {
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
       apiPort: number;
+      chatThreadId: string | null;
     };
   }
 }
