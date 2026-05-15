@@ -351,6 +351,19 @@ class TerminalService {
           continue
         }
 
+        // Kill orphaned process from previous session (e.g. after a crash)
+        const oldPid = persistedTerminal.pid
+        if (oldPid) {
+          try {
+            process.kill(oldPid, 0) // Check if still alive
+            this.killProcessGroup(oldPid)
+            try { process.kill(oldPid, 'SIGKILL') } catch {}
+            console.log(`[Terminal] Killed orphaned process ${oldPid} for terminal ${persistedTerminal.id}`)
+          } catch {
+            // Process doesn't exist — expected after clean shutdown
+          }
+        }
+
         // Sanitize environment variables
         const sanitizedEnv = this.sanitizeEnvironment(process.env as { [key: string]: string })
 

@@ -42,5 +42,18 @@ export function createWebSocketServer() {
     process.exit(0);
   });
 
+  // Detect parent process death (e.g. Electron crashed) and trigger graceful shutdown
+  if (process.platform !== 'win32') {
+    const originalPpid = process.ppid;
+    const parentCheck = setInterval(() => {
+      if (process.ppid !== originalPpid) {
+        console.log('[API] Parent process died, shutting down');
+        clearInterval(parentCheck);
+        process.kill(process.pid, 'SIGTERM');
+      }
+    }, 2000);
+    parentCheck.unref();
+  }
+
   return { wss, handler, port };
 }
