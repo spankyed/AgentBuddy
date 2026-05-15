@@ -187,11 +187,20 @@ export const pullRequestSystem = setup({
           const getContent = isImage
             ? (p: string, b: string) => repo.getFileContentFromBranchAsDataUrl(p, b)
             : (p: string, b: string) => repo.getFileContentFromBranch(p, b)
-          const [diff, originalContent, modifiedContent] = await Promise.all([
+          let [diff, originalContent, modifiedContent] = await Promise.all([
             repo.getFileDiffBetweenBranches(ev.path, ev.baseBranch, target),
             getContent(ev.path, ev.baseBranch),
             getContent(ev.path, target),
           ])
+          // Fallback: if content is empty but a diff exists (file should have content),
+          // retry with getFileContent which normalizes paths differently. This guards
+          // against git show silently failing due to path format mismatches.
+          if (!modifiedContent && diff && !isImage && target === 'HEAD') {
+            try { modifiedContent = await repo.getFileContent(ev.path, 'HEAD') } catch {}
+          }
+          if (!originalContent && diff && !isImage) {
+            try { originalContent = await repo.getFileContentFromBranch(ev.path, `origin/${ev.baseBranch}`) } catch {}
+          }
           return { diff, originalContent, modifiedContent, isImage }
         },
         ({ diff, originalContent, modifiedContent, isImage }) => emitToFrontend({

@@ -67,8 +67,8 @@ function getApiKey(providerName: string, explicitApiKey?: string): string {
     const secretId = settings.secrets?.[baseProvider] as EARS.EntityId | undefined;
 
     if (secretId) {
-      const secret = repository.secretsQueries.getSecret(secretId);
-      if (secret?.encryptedValue) return secret.encryptedValue;
+      const value = repository.secretsQueries.getSecretValue(secretId);
+      if (value) return value;
     }
   } else {
     // Fallback to environment variables
