@@ -4129,6 +4129,9 @@ interface CodeSettings {
     autoFetchRemote?: boolean;
     autoFetchIntervalSeconds?: number;
     terminalScripts?: TerminalScript[];
+    showStashes?: boolean;
+    showCommits?: boolean;
+    showWorktrees?: boolean;
 }
 type CodeConnectedData = {
     baseDirectory: string | null;
