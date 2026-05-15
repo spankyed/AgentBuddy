@@ -2,11 +2,12 @@ import Foundation
 import Speech
 import AVFoundation
 
-class SpeechHelper {
-    private let audioEngine = AVAudioEngine()
+class SpeechHelper: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
+    private var captureSession: AVCaptureSession?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var speechRecognizer: SFSpeechRecognizer?
+    private let captureQueue = DispatchQueue(label: "speech.capture")
 
     func emitEvent(_ dict: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
@@ -55,32 +56,34 @@ class SpeechHelper {
             }
         }
 
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        // Use AVCaptureSession instead of AVAudioEngine to avoid interrupting
+        // other audio (YouTube, TTS, etc.). AVCaptureSession only touches the
+        // input path and doesn't reconfigure the output audio hardware.
+        let session = AVCaptureSession()
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-            recognitionRequest.append(buffer)
-        }
-
-        // Allow recording to coexist with other audio (YouTube, TTS, etc.)
-        if #available(macOS 12.0, *) {
-            do {
-                let session = AVAudioSession.sharedInstance()
-                try session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers])
-                try session.setActive(true)
-            } catch {
-                emitEvent(["event": "error", "code": "audio_session_failed", "message": error.localizedDescription])
-                return
-            }
-        }
-
-        audioEngine.prepare()
-        do {
-            try audioEngine.start()
-        } catch {
-            emitEvent(["event": "error", "code": "audio_engine_failed", "message": error.localizedDescription])
+        guard let mic = AVCaptureDevice.default(for: .audio),
+              let input = try? AVCaptureDeviceInput(device: mic) else {
+            emitEvent(["event": "error", "code": "mic_failed", "message": "Could not access microphone"])
             return
         }
+
+        guard session.canAddInput(input) else {
+            emitEvent(["event": "error", "code": "mic_failed", "message": "Could not add microphone input to capture session"])
+            return
+        }
+        session.addInput(input)
+
+        let output = AVCaptureAudioDataOutput()
+        output.setSampleBufferDelegate(self, queue: captureQueue)
+
+        guard session.canAddOutput(output) else {
+            emitEvent(["event": "error", "code": "capture_failed", "message": "Could not add audio output to capture session"])
+            return
+        }
+        session.addOutput(output)
+
+        session.startRunning()
+        captureSession = session
 
         recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             guard let self = self else { return }
@@ -109,18 +112,18 @@ class SpeechHelper {
         emitEvent(["event": "started"])
     }
 
+    // AVCaptureAudioDataOutputSampleBufferDelegate
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        recognitionRequest?.appendAudioSampleBuffer(sampleBuffer)
+    }
+
     func stopRecognition() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        captureSession?.stopRunning()
+        captureSession = nil
         recognitionRequest?.endAudio()
         recognitionTask?.finish()
         recognitionRequest = nil
         recognitionTask = nil
-
-        if #available(macOS 12.0, *) {
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        }
-
         emitEvent(["event": "stopped"])
     }
 
