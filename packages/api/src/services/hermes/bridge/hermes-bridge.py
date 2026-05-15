@@ -443,8 +443,7 @@ def handle_list_models(req_id: str, params: dict):
                         "model": profile.get("model", name),
                     })
             except ImportError:
-                # No pyyaml — try basic parsing
-                pass
+                logger.warning("pyyaml not installed — cannot parse config.yaml for models")
 
         _reply(req_id, {"models": models})
     except Exception as e:
@@ -565,7 +564,7 @@ def handle_list_tools(req_id: str, params: dict):
                 cfg = yaml.safe_load(config_path.read_text()) or {}
                 enabled_toolsets = cfg.get("enabled_toolsets", [])
             except ImportError:
-                pass
+                logger.warning("pyyaml not installed — cannot parse config.yaml for toolsets")
 
         # Try to get tool list from agent
         try:
@@ -633,7 +632,7 @@ def handle_list_workspaces(req_id: str, params: dict):
                 if isinstance(ws, list):
                     workspaces = ws
             except ImportError:
-                pass
+                logger.warning("pyyaml not installed — cannot parse config.yaml for workspaces")
 
         _reply(req_id, {"workspaces": workspaces})
     except Exception as e:

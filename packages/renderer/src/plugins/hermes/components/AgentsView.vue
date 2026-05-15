@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 defineProps<{
-  connectionStatus: string
+  connectionStatus: 'connected' | 'disconnected' | 'error'
   agentDir: string | null
   models: Array<{ name: string; provider: string; model: string }>
   workspaces: string[]

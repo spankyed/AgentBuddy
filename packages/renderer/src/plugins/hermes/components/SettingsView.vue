@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 defineProps<{
-  connectionStatus: string
+  connectionStatus: 'connected' | 'disconnected' | 'error'
   agentDir: string | null
 }>()
 </script>
