@@ -2,8 +2,8 @@ import type { LmdbDbs } from './envs';
 import type { PersistenceSink } from '../partitioning/base-sink';
 
 export interface LmdbAdapterOptions {
-  hardDelete?: boolean; // If true, permanently delete instead of tombstoning
-  syncFlush?: boolean;  // If true, flush writes to LMDB immediately (required when LMDB is the read source)
+  hardDelete?: boolean;
+  syncFlush?: boolean; // kept for API compat, always treated as true
 }
 
 type Encoded = { t: string; v: any };
@@ -163,19 +163,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
 
   function scheduleFlush() {
     if (closed) return;
-    if (syncFlush) {
-      // LMDB is the read source — flush immediately so writes are visible
-      doFlush();
-    } else {
-      // In-memory is the read source — batch for performance
-      if (scheduled) return;
-      scheduled = true;
-      queueMicrotask(() => {
-        if (closed) return;
-        scheduled = false;
-        doFlush();
-      });
-    }
+    doFlush();
   }
 
   function bufferArrayRewrite(kind: string, entityId: string, array: unknown[]) {

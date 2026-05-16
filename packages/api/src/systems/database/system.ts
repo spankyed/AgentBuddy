@@ -12,8 +12,7 @@ import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
 import { createLogger } from '@/core/helpers/debug/logger';
 import type { TNodeEntity } from '@/systems/brain/types';
-import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
+import { resetLmdbFiles, clearMemory, reinitializeLmdb, envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { flowsCommands } from '@/systems/flows/repository';
 
 const logger = createLogger('database');
@@ -224,14 +223,8 @@ export const databaseSystem = setup({
       
       importDatabase(path).then(
         async (result) => {
-          // Clear memory and rehydrate from imported databases
-          clearMemory();
-          await hydrateSharded({ 
-            envs, 
-            policy,
-            includeVolatile: result.databases.includes('volatileLmdb'),
-            shardedPersistence: persistence
-          });
+          // Reinitialize LMDB connections to pick up imported data
+          reinitializeLmdb();
           
           // Stop brain and notify success
           getActor(system, brain).send({ type: 'KILL_BRAIN' });
@@ -245,9 +238,8 @@ export const databaseSystem = setup({
           }));
         },
         async (error: unknown) => {
-          // Restore memory state
-          clearMemory();
-          await hydrateSharded({ envs, policy, shardedPersistence: persistence });
+          // Restore LMDB connections
+          reinitializeLmdb();
           
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to import database:', { error: errorMessage });

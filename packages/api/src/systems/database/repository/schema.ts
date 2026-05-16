@@ -1,8 +1,6 @@
 import { EARS } from '@/core/types';
 import type { DatabaseSchemaInfo } from '../types';
-import { getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getEntitiesOfType, getAttributeStats, queryEntitiesByRelationTo } from '@/core/ears/attribute-storage';
-import { relationIndex } from '@/core/ears/relation-index';
-import { USE_LMDB } from '@/core/ears/use-lmdb';
+import { getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getEntitiesOfType, getAttributeStats } from '@/core/ears/attribute-storage';
 import { lmdbGetRelationStats } from '@/core/ears/lmdb-reads';
 
 /**
@@ -56,37 +54,12 @@ export function getSchemaStats() {
   // Count relations by type
   const relationKinds = getAllRelationKinds();
   for (const kind of relationKinds) {
-    if (USE_LMDB) {
-      stats.relations[kind] = lmdbGetRelationStats(kind);
-    } else {
-      const entry = relationIndex[kind];
-      if (entry) {
-        const uniqueRelationIds = new Set<string>();
-        for (const relIds of Object.values(entry.bySource)) {
-          relIds.forEach(id => uniqueRelationIds.add(id));
-        }
-        stats.relations[kind] = {
-          totalRelations: uniqueRelationIds.size,
-          uniqueSources: Object.keys(entry.bySource).length,
-          uniqueTargets: Object.keys(entry.byTarget).length,
-        };
-      }
-    }
+    stats.relations[kind] = lmdbGetRelationStats(kind);
   }
-  
+
   return stats;
 }
 
-/**
- * Get relation counts for a specific relation kind
- */
 export function getRelationCount(kind: string): number {
-  if (USE_LMDB) return lmdbGetRelationStats(kind).totalRelations;
-  const entry = relationIndex[kind];
-  if (!entry) return 0;
-  const uniqueRelationIds = new Set<string>();
-  for (const relIds of Object.values(entry.bySource)) {
-    relIds.forEach(id => uniqueRelationIds.add(id));
-  }
-  return uniqueRelationIds.size;
+  return lmdbGetRelationStats(kind).totalRelations;
 }

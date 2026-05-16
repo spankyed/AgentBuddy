@@ -14,17 +14,12 @@ import {
   getAllRelationKinds,
   destroyEntity
 } from '@/core/ears/attribute-storage';
-import { relationIndex } from '@/core/ears/relation-index';
-import { USE_LMDB } from '@/core/ears/use-lmdb';
 import { lmdbRelationIdsFor } from '@/core/ears/lmdb-reads';
 
-function getRelationIndex(): typeof relationIndex {
-  if (!USE_LMDB) return relationIndex;
+function getRelationIndex() {
   return new Proxy({}, {
     ownKeys() { return getAllRelationKinds(); },
-    getOwnPropertyDescriptor(_, key) {
-      return { configurable: true, enumerable: true };
-    },
+    getOwnPropertyDescriptor() { return { configurable: true, enumerable: true }; },
     get(_, kind) {
       if (typeof kind !== 'string') return undefined;
       const buildDir = (direction: 'out' | 'in') => new Proxy({}, {
@@ -35,7 +30,7 @@ function getRelationIndex(): typeof relationIndex {
       });
       return { bySource: buildDir('out'), byTarget: buildDir('in') };
     },
-  }) as typeof relationIndex;
+  });
 }
 import {
   prepareEntity,

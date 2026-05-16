@@ -44,8 +44,6 @@ export { EARS } from '@/core/types';
 
 import { EARS as EARSTypes } from '@/core/types';
 import { getEntitiesOfType, getAll, getAllEntityTypes } from '@/core/ears/attribute-storage';
-import { relationIndex } from '@/core/ears/relation-index';
-import { USE_LMDB } from '@/core/ears/use-lmdb';
 import { lmdbBuildTopology } from '@/core/ears/lmdb-reads';
 
 /**
@@ -83,27 +81,7 @@ export function buildQueryContext(): { schema: string; topology: string } {
   }
 
   // Build topology
-  const edges = USE_LMDB ? lmdbBuildTopology() : (() => {
-    const m = new Map<string, number>();
-    for (const [kind, entry] of Object.entries(relationIndex)) {
-      const relToTarget = new Map<string, string>();
-      for (const [targetId, tRelIds] of Object.entries(entry.byTarget)) {
-        for (const relId of tRelIds) relToTarget.set(relId, targetId);
-      }
-      for (const [sourceId, relIds] of Object.entries(entry.bySource)) {
-        const sourceType = sourceId.split('-')[0];
-        for (const relId of relIds) {
-          const targetId = relToTarget.get(relId);
-          if (targetId) {
-            const targetType = targetId.split('-')[0];
-            const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
-            m.set(edgeKey, (m.get(edgeKey) ?? 0) + 1);
-          }
-        }
-      }
-    }
-    return m;
-  })();
+  const edges = lmdbBuildTopology();
 
   const topologyLines = [...edges.entries()]
     .sort(([, a], [, b]) => b - a)

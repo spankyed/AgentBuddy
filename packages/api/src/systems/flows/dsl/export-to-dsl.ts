@@ -9,23 +9,14 @@
  */
 
 import * as path from 'node:path';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { envs, policy, persistence, closePersistence } from '@/core/ears/attribute-storage';
+import { closePersistence } from '@/core/ears/attribute-storage';
 import { exportFlowsDSL } from './export-dsl';
 
 // Use process.cwd() relative path since this runs from api package
 const DSL_DIR = path.resolve(process.cwd(), 'src/systems/flows/dsl');
 
 async function exportAllFlows() {
-  console.log('🔄 Initializing database...');
-
-  await hydrateSharded({
-    envs,
-    policy,
-    shardedPersistence: persistence
-  });
-
-  console.log('✅ Database initialized\n');
+  console.log('🔄 Initializing database (LMDB direct reads)...\n');
 
   const outputDir = path.join(DSL_DIR, 'examples');
   const { filePath, flowCount } = exportFlowsDSL(outputDir, false);

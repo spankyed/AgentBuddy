@@ -3,7 +3,6 @@ import { logErrors } from '@/core/helpers/actor-helpers';
 import { logsSystem } from '@/systems/logs/system';
 import { backendSystem, bus } from '@/systems/backend';
 import { initializeLogCapture } from '@/core/helpers/debug/log-capture';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from '@/systems/settings/repository';
 import { runBootSeed } from '@/setup/seed/index';
@@ -23,10 +22,6 @@ export async function setupBackend(): Promise<void> {
   logsActor.subscribe(logErrors('Logs'));
 
   console.log(`[app] AgentBuddy v${APP_VERSION}`);
-
-  // Hydrate from LMDB using sharded approach (primary partition only by default)
-  // Pass shardedPersistence to seed metadata caches
-  await hydrateSharded({ envs, policy, shardedPersistence: persistence });
 
   // Initialize default settings if they don't exist
   createDefaultSettings();

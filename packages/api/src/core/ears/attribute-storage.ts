@@ -1,9 +1,11 @@
 /*─────────────────────────────────────────────────────────────
- * attribute‑store.ts – single‑bucket, generic mutator + query shims
+ * attribute‑store.ts – LMDB-backed attribute storage
+ *
+ * All reads go directly to LMDB on disk. Writes flush to LMDB
+ * synchronously so reads always see fresh data.
  *─────────────────────────────────────────────────────────────*/
 import { isPlainObject } from "@/core/helpers";
 import { logInternal }   from "@/core/helpers/debug/cli/log-internal";
-import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationIndex } from "./relation-index";
 import { EARS } from "../types";
 import { randomId } from "../helpers/random-id";
 import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from "@/core/helpers/paths";
@@ -11,23 +13,26 @@ import { openShardedEnvs, closeShardedEnvs, deleteLmdbDirectories } from "@/core
 import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
 import { makePolicy } from "@/core/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
-
-import { USE_LMDB } from './use-lmdb';
 import { initLmdbReads } from './lmdb-reads';
+import {
+  lmdbGetAttr, lmdbGetAttrs, lmdbGetAllEntities, lmdbGetEntitiesOfType, lmdbGetAll,
+  lmdbRelationIdsFor, lmdbRelationIdsForAll, lmdbHasRelation,
+  lmdbGetAllRelationKinds, lmdbGetAllEntityTypes, lmdbGetAllAttributeKinds,
+} from './lmdb-reads';
 
 // Configuration
 const HARD_DELETE_MODE = true;
 
-// 1) Open two environments
+// 1) Open environments
 let envs = openShardedEnvs({
   primary: getLmdbPath(),
   volatileBackup: getVolatileLmdbPath(),
   secrets: getSecretsLmdbPath(),
 });
-if (USE_LMDB) initLmdbReads(envs.primary);
+initLmdbReads(envs.primary);
 
-// 2) Create base sinks
-const adapterOpts = { hardDelete: HARD_DELETE_MODE, syncFlush: USE_LMDB };
+// 2) Create base sinks (syncFlush: true — reads come from LMDB)
+const adapterOpts = { hardDelete: HARD_DELETE_MODE, syncFlush: true };
 let sinks = {
   primary: makeLmdbAdapter(envs.primary, adapterOpts),
   volatileBackup: makeLmdbAdapter(envs.volatileBackup, adapterOpts),
@@ -38,22 +43,21 @@ let sinks = {
 const policy = makePolicy({
   excludedEntityTypes: new Set([EARS.Entity.TNode]),
   secretEntityTypes: new Set([EARS.Entity.Secret]),
-  hydratePartitions: new Set(['primary', 'secrets']), // hydrate primary and secrets on startup
+  hydratePartitions: new Set(['primary', 'secrets']),
 });
 
 // 4) Sharded router
 let persistence = makeShardedPersistence(policy, sinks);
 
-// Export for hydration and testing
+// Export for testing and other modules
 export { envs, policy, persistence };
 
-// Graceful shutdown function
+// Graceful shutdown
 export function closePersistence() {
   try {
     persistence.close?.();
     closeShardedEnvs(envs);
   } catch (error) {
-    // Log unexpected errors but don't throw
     if (error instanceof Error &&
         !error.message?.includes('Dbi is not open') &&
         !error.message?.includes('already been closed')) {
@@ -64,9 +68,7 @@ export function closePersistence() {
 
 // Reinitialize LMDB (close if needed, then reopen)
 export function reinitializeLmdb() {
-  if (envs !== null) {
-    closePersistence();
-  }
+  if (envs !== null) closePersistence();
 
   envs = openShardedEnvs({
     primary: getLmdbPath(),
@@ -81,20 +83,14 @@ export function reinitializeLmdb() {
   };
 
   persistence = makeShardedPersistence(policy, sinks);
-  if (USE_LMDB) initLmdbReads(envs.primary);
+  initLmdbReads(envs.primary);
 }
 
-/**
- * Reset LMDB by deleting and recreating all database directories.
- * Follows pattern: null → close → delete → recreate
- */
+/** Reset LMDB by deleting and recreating all database directories. */
 export async function resetLmdbFiles() {
-  // Clear memory and null out envs to prevent new operations
-  clearMemory();
   const currentEnvs = envs;
   envs = null as any;
 
-  // Close connections
   try {
     persistence.close?.();
     closeShardedEnvs(currentEnvs);
@@ -102,88 +98,43 @@ export async function resetLmdbFiles() {
     // Expected if already closed
   }
 
-  // Wait for OS to release file handles
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  // Delete directories
   deleteLmdbDirectories({
     primary: getLmdbPath(),
     volatileBackup: getVolatileLmdbPath(),
     secrets: getSecretsLmdbPath(),
   });
 
-  // Recreate fresh databases
   reinitializeLmdb();
 }
+
+/** No-op — kept for test compatibility. In-memory state no longer exists. */
+export function clearMemory() {}
 
 export const createEntity = (t: EARS.Entity) =>
   `${t}-${randomId()}` as EARS.EntityId;
 
-/*─ base buckets ─*/
-const store       = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
-const entityIndex = new Map<EARS.Entity, Set<EARS.EntityId>>();
-
-/*─ memory management ─*/
-export function clearMemory() {
-  store.clear();
-  entityIndex.clear();
-  clearRelationIndex();
-}
-
-/*─ helpers ─*/
-const bucket = (k: EARS.AttrKind) => {
-  if (!store.has(k)) store.set(k, new Map());
-  return store.get(k)!;
-};
-const entType = (id: EARS.EntityId) => {
-  const dash = id.indexOf('-');
-  return dash === -1 ? id as EARS.Entity : id.substring(0, dash) as EARS.Entity;
-};
-
 /*─────────────────────────────────────────────────────────────
- * 1 ▸ generic mutator factory
+ * 1 ▸ write functions — flush to LMDB synchronously
  *─────────────────────────────────────────────────────────────*/
 function makeMutator() {
-  // add - appends a new value to the array (old putAttr behavior)
   const add = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
-    const b = bucket(kind);
-    (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
-    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-      .add(id);
-    const list = b.get(id)!;
-    // Use array rewrite for consistency
+    const list = [...(lmdbGetAttrs(id, kind) as EARS.AttributeValue[]), val as EARS.AttributeValue];
     persistence.onPutAttrArray?.(kind, id, list);
     logInternal("AA", false, kind, id, val);
   };
 
-  // put - replaces the entire array with a single value (old updateAttr behavior)
   const put = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
-    const b = bucket(kind);
-    // Replace the entire array with a single value
-    b.set(id, [val as EARS.AttributeValue]);
-    // Ensure entity is in index
-    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-      .add(id);
-    // Use array rewrite for consistency
     persistence.onPutAttrArray?.(kind, id, [val]);
     logInternal("AU", false, kind, id, val);
   };
 
   const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
-    const b = bucket(kind);
-    let list = b.get(id);
-    if (!list) {
-      list = [];
-      b.set(id, list);
-      // Also ensure entity is in index
-      (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-        .add(id);
-    }
-    
-    // Fill gaps with null instead of the value
+    const list = [...(lmdbGetAttrs(id, kind) as EARS.AttributeValue[])];
+
     while (list.length < idx) list.push(null as any);
-    
-    // Ensure we have an element at idx
+
     if (list.length === idx) {
       list.push(val as EARS.AttributeValue);
     } else {
@@ -193,30 +144,26 @@ function makeMutator() {
           ? { ...cur, ...val }
           : (val as EARS.AttributeValue);
     }
-    
-    // Use array rewrite for consistency
+
     persistence.onPutAttrArray?.(kind, id, list);
     logInternal("AU", false, kind, id, val);
   };
 
   const drop = (id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) => {
-    const list = bucket(kind).get(id);
-    if (!list?.length) return;
+    const list = [...(lmdbGetAttrs(id, kind) as EARS.AttributeValue[])];
+    if (!list.length) return;
     list.splice(idx, 1);
     if (!list.length) {
-      bucket(kind).delete(id);
-      // Empty array - remove from persistence
       persistence.onDropAttr(kind, id, idx, []);
     } else {
-      // Use array rewrite for consistency
       persistence.onPutAttrArray?.(kind, id, list);
     }
     logInternal("AR", false, kind, id, null);
   };
 
   const dropIf = (id: EARS.EntityId, kind: EARS.AttrKind, crit: unknown) => {
-    const list = bucket(kind).get(id);
-    if (!list) return;
+    const list = lmdbGetAttrs(id, kind) as EARS.AttributeValue[];
+    if (!list.length) return;
     const i = list.findIndex(
       v =>
         v === crit ||
@@ -227,20 +174,16 @@ function makeMutator() {
     if (i !== -1) drop(id, kind, i);
   };
 
-  // update - alias for put (for backward compatibility)
   const update = put;
 
   return { add, put, merge, drop, dropIf, update };
 }
-// Export with new naming convention:
-// putAttr - replaces value (default behavior)
-// addAttr - appends value (for multiple attributes)
-// updateAttr - alias for putAttr (backward compatibility)
+
 export const { put: putAttr, add: addAttr, merge: mergeAttr, drop: dropAttr, dropIf, update: updateAttr } =
   makeMutator();
 
 /*─────────────────────────────────────────────────────────────
- * 2 ▸ roles & relations thin wrappers
+ * 2 ▸ roles & relations
  *─────────────────────────────────────────────────────────────*/
 export const grantRole  = (id: EARS.EntityId, role: string) =>
   addAttr(id, EARS.AttrKind.Role, role);
@@ -253,18 +196,7 @@ export function addRelation(
   tgt: EARS.EntityId,
   info?: unknown,
 ) {
-  // Check for existing relation with same source, kind, and target to prevent duplicates
-  const existingRelId = USE_LMDB
-    ? lmdbHasRelation(src, kind, tgt)
-    : (() => {
-        const entry = relationIndex[kind];
-        if (!entry?.bySource?.[src] || !entry?.byTarget?.[tgt]) return null;
-        const fromSource = new Set(entry.bySource[src]);
-        for (const id of entry.byTarget[tgt]) {
-          if (fromSource.has(id)) return id;
-        }
-        return null;
-      })();
+  const existingRelId = lmdbHasRelation(src, kind, tgt);
   if (existingRelId) {
     const existingRel = getAttr(existingRelId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
     if (info === undefined || JSON.stringify(existingRel.info) === JSON.stringify(info)) {
@@ -273,7 +205,6 @@ export function addRelation(
     }
   }
 
-  // No existing relation found (or info differs) - create new one
   const relId = createEntity(EARS.Entity.Relation);
   putAttr(relId, EARS.AttrKind.RelationDetails, {
     sourceEntity: src,
@@ -281,7 +212,6 @@ export function addRelation(
     relationType: kind,
     info,
   } as EARS.RelationDetail);
-  if (!USE_LMDB) addToIndex(kind, src, tgt, relId);
   persistence.onAddRelation(relId, kind, src, tgt, info);
   return relId;
 }
@@ -292,20 +222,13 @@ export function updateRelation(
   newT?: EARS.EntityId,
   info?: unknown,
 ) {
-  const d = getAttr(
-    relId,
-    EARS.AttrKind.RelationDetails,
-  ) as EARS.RelationDetail | null;
+  const d = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
   if (!d) return;
-  const { sourceEntity: oS, targetEntity: oT, relationType: k } = d;
   if (newS) d.sourceEntity = newS;
   if (newT) d.targetEntity = newT;
   if (info !== undefined) d.info = info;
   mergeAttr(relId, EARS.AttrKind.RelationDetails, d);
-  if (!USE_LMDB && (newS || newT))
-    updateIndex(k, relId, oS, oT, d.sourceEntity, d.targetEntity);
-  
-  // Only include defined values in the patch
+
   const patch: any = {};
   if (newS) patch.src = newS;
   if (newT) patch.tgt = newT;
@@ -314,60 +237,30 @@ export function updateRelation(
 }
 
 export const removeRelation = (relId: EARS.EntityId) => {
-  const d = getAttr(
-    relId,
-    EARS.AttrKind.RelationDetails,
-  ) as EARS.RelationDetail | null;
-  if (d && !USE_LMDB)
-    removeFromIndex(d.relationType, d.sourceEntity, d.targetEntity, relId);
   dropAttr(relId, EARS.AttrKind.RelationDetails);
   persistence.onRemoveRelation(relId);
 };
 
 /*─────────────────────────────────────────────────────────────
- * 3 ▸ read functions — flag-gated for LMDB switchover
- *
- * Only the 4 primitives are gated. Everything else composes
- * on top and works with either backend automatically.
+ * 3 ▸ read functions — all from LMDB
  *─────────────────────────────────────────────────────────────*/
-import {
-  lmdbGetAttr, lmdbGetAttrs, lmdbGetAllEntities, lmdbGetEntitiesOfType, lmdbGetAll,
-  lmdbRelationIdsFor, lmdbRelationIdsForAll, lmdbHasRelation,
-  lmdbGetAllRelationKinds, lmdbGetAllEntityTypes, lmdbGetAllAttributeKinds,
-} from './lmdb-reads';
-
-/* ── gated primitives ── */
-
 export const getAttr = (id: EARS.EntityId, k: EARS.AttrKind, i = 0) =>
-  USE_LMDB ? lmdbGetAttr(id, k, i) : bucket(k).get(id)?.[i] ?? null;
+  lmdbGetAttr(id, k, i);
 
 export const getAttrs = (id: EARS.EntityId, k: EARS.AttrKind) =>
-  USE_LMDB ? lmdbGetAttrs(id, k) : bucket(k).get(id) ?? [];
-
-export const getAllEntities = (): EARS.EntityId[] => {
-  if (USE_LMDB) return lmdbGetAllEntities();
-  const all: EARS.EntityId[] = [];
-  for (const set of entityIndex.values())
-    for (const id of set) all.push(id);
-  return all;
-};
-
-export const getEntitiesOfType = (t: EARS.Entity) =>
-  USE_LMDB ? lmdbGetEntitiesOfType(t) : [...(entityIndex.get(t) ?? [])];
-
-/* ── derived (compose on gated primitives — no flag needed) ── */
+  lmdbGetAttrs(id, k);
 
 export const getRoles = (id: EARS.EntityId) =>
   getAttrs(id, EARS.AttrKind.Role) as string[];
 
-export const getAll = (id: EARS.EntityId) => {
-  if (USE_LMDB) return lmdbGetAll(id);
-  const out: Record<string, unknown> = {};
-  for (const [k, b] of store)
-    if (b.get(id))
-      out[k] = b.get(id)!.length === 1 ? b.get(id)![0] : b.get(id);
-  return out;
-};
+export const getAll = (id: EARS.EntityId) =>
+  lmdbGetAll(id);
+
+export const getAllEntities = (): EARS.EntityId[] =>
+  lmdbGetAllEntities();
+
+export const getEntitiesOfType = (t: EARS.Entity) =>
+  lmdbGetEntitiesOfType(t);
 
 export const queryEntitiesByRole = (role: string) =>
   getAllEntities().filter(id => getRoles(id).includes(role));
@@ -379,12 +272,7 @@ export const queryEntitiesByAttribute = (k: EARS.AttrKind, v?: unknown) =>
 
 /** target id participates in *any* relation with `target` (both directions) */
 export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
-  const relIds = USE_LMDB
-    ? lmdbRelationIdsForAll(target)
-    : Object.keys(relationIndex).flatMap(k => [
-        ...(relationIndex[k].bySource[target] ?? []),
-        ...(relationIndex[k].byTarget[target] ?? []),
-      ]);
+  const relIds = lmdbRelationIdsForAll(target);
   const out = new Set<EARS.EntityId>();
   for (const relId of relIds) {
     const d = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
@@ -396,9 +284,7 @@ export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
 
 /** one specific relation type (+ direction) */
 export const queryEntitiesByRelationTo = (relKind: string, id: EARS.EntityId, asSource = false) => {
-  const relIds = USE_LMDB
-    ? lmdbRelationIdsFor(id, relKind, asSource ? 'out' : 'in')
-    : (asSource ? relationIndex[relKind]?.bySource[id] : relationIndex[relKind]?.byTarget[id]) ?? [];
+  const relIds = lmdbRelationIdsFor(id, relKind, asSource ? 'out' : 'in');
   return relIds
     .map(rel => {
       const d = getAttr(rel, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
@@ -408,65 +294,45 @@ export const queryEntitiesByRelationTo = (relKind: string, id: EARS.EntityId, as
 };
 
 /*─────────────────────────────────────────────────────────────
- * 5 ▸ entity teardown (needed by tx.destroy)
+ * 4 ▸ entity teardown (needed by tx.destroy)
  *─────────────────────────────────────────────────────────────*/
 export function destroyEntity(id: EARS.EntityId, skipPersistence = false) {
-  /* remove from relation index */
-  const allRelIds = USE_LMDB
-    ? lmdbRelationIdsForAll(id)
-    : Object.keys(relationIndex).flatMap(k => [
-        ...(relationIndex[k].bySource[id] ?? []),
-        ...(relationIndex[k].byTarget[id] ?? []),
-      ]);
+  const allRelIds = lmdbRelationIdsForAll(id);
   allRelIds.forEach(removeRelation);
-  if (!USE_LMDB) {
-    for (const k of Object.keys(relationIndex)) {
-      delete relationIndex[k].bySource[id];
-      delete relationIndex[k].byTarget[id];
-    }
-  }
 
-  /* remove all attributes */
-  for (const [k, b] of store) b.delete(id);
-
-  /* entity index */
-  const entitySet = entityIndex.get(entType(id));
-  if (entitySet) {
-    entitySet.delete(id);
-    // Clean up empty sets to prevent memory leaks
-    if (entitySet.size === 0) {
-      entityIndex.delete(entType(id));
-    }
-  }
-  
-  /* persist the deletion unless skipped (for volatile data) */
   if (!skipPersistence) {
     persistence.onDestroyEntity(id);
   }
 }
 
 /*─────────────────────────────────────────────────────────────
- * 6 ▸ exports list
+ * 5 ▸ Schema discovery helpers
  *─────────────────────────────────────────────────────────────*/
-
-/*─────────────────────────────────────────────────────────────
- * 7 ▸ Schema discovery helpers
- *─────────────────────────────────────────────────────────────*/
-
 export const getAllAttributeKinds = (): EARS.AttrKind[] =>
-  USE_LMDB ? lmdbGetAllAttributeKinds() : Array.from(store.keys());
+  lmdbGetAllAttributeKinds();
 
 export const getAllRelationKinds = (): string[] =>
-  USE_LMDB ? lmdbGetAllRelationKinds() : Object.keys(relationIndex);
+  lmdbGetAllRelationKinds();
 
 export const getAllEntityTypes = (): EARS.Entity[] =>
-  USE_LMDB ? lmdbGetAllEntityTypes() : Array.from(entityIndex.keys());
+  lmdbGetAllEntityTypes();
 
 export const getAttributeStats = (kind: EARS.AttrKind) => {
-  const b = bucket(kind);
+  const entities = [...new Set(
+    [...(function*() {
+      const US = '\x1F';
+      const prefix = `${kind}${US}`;
+      for (const { key } of envs.primary.attrs.getRange({ start: prefix, end: prefix + '\xFF' })) {
+        const k = String(key);
+        const i = k.indexOf(US);
+        const j = k.indexOf(US, i + 1);
+        yield k.substring(i + 1, j);
+      }
+    })()]
+  )];
   let totalValues = 0;
-  for (const values of b.values()) {
-    totalValues += values.length;
+  for (const eid of entities) {
+    totalValues += lmdbGetAttrs(eid as EARS.EntityId, kind).length;
   }
-  return { entityCount: b.size, totalValues };
+  return { entityCount: entities.length, totalValues };
 };

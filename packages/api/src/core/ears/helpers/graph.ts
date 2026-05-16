@@ -1,6 +1,5 @@
 // graph.ts – high-level graph algorithms
 import { qx } from "@/core/ears/helpers/query";
-import { relationIndex } from "@/core/ears/relation-index";
 import { edgeStore } from "@/core/ears/helpers/edge-store";
 import { EARS } from "@/core/types";
 

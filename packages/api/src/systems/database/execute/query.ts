@@ -12,19 +12,14 @@ import {
   queryEntitiesInRelationTo,
   getAllRelationKinds,
 } from '@/core/ears/attribute-storage';
-import { relationIndex } from '@/core/ears/relation-index';
-import { USE_LMDB } from '@/core/ears/use-lmdb';
 import { lmdbRelationIdsFor } from '@/core/ears/lmdb-reads';
 import { getSchemaStats } from '../repository/schema';
 
-/** Proxy that works under both modes. User code sees the same shape. */
-function getRelationIndex(): typeof relationIndex {
-  if (!USE_LMDB) return relationIndex;
+/** LMDB-backed proxy matching the old relationIndex shape for user code compat */
+function getRelationIndex() {
   return new Proxy({}, {
     ownKeys() { return getAllRelationKinds(); },
-    getOwnPropertyDescriptor(_, key) {
-      return { configurable: true, enumerable: true };
-    },
+    getOwnPropertyDescriptor() { return { configurable: true, enumerable: true }; },
     get(_, kind) {
       if (typeof kind !== 'string') return undefined;
       const buildDir = (direction: 'out' | 'in') => new Proxy({}, {
@@ -35,7 +30,7 @@ function getRelationIndex(): typeof relationIndex {
       });
       return { bySource: buildDir('out'), byTarget: buildDir('in') };
     },
-  }) as typeof relationIndex;
+  });
 }
 
 /**
