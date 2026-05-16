@@ -188,7 +188,6 @@ const isBusy = useSelector(actor, ({ context }) => {
   return !!busyId && !!threadId && context.chatStates[threadId] === busyId
 })
 const statusLineCwd = computed(() => {
-  if (currentMode.value !== 'work') return undefined
   return currentThread.value?.context?.claudeCode?.cwd
 })
 const statusLine = computed(() => {

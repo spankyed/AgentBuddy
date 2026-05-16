@@ -11,7 +11,7 @@
  * `_helpers/stream-consumer.ts`.
  *
  * Triggered from the "Claude Code" flow when a user.message arrives with
- * `mode === 'work'`.
+ * `mode === 'claude-code'`.
  */
 
 import type { ActionMeta, Services, Z, EntityId } from '../../types';

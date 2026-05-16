@@ -2,10 +2,10 @@ import type { FlowDSL } from '../types';
 import { entry, on, keepAlive, action, branch } from './_patterns';
 
 /**
- * Claude Code work-mode flow.
+ * Claude Code mode flow.
  *
  * Listens for `user.message` events and routes to the Claude Code Chat
- * action only when the user is in `work` mode. Any other mode (`chat`,
+ * action only when the user is in `claude-code` mode. Any other mode (`chat`,
  * `note`, `birth`, …) flows past this track untouched — the switch node
  * emits a `noMatch` completion and the chain ends without firing any
  * action. See `packages/api/src/systems/brain/node-handlers/switch-node.ts`
@@ -24,10 +24,10 @@ export default {
       [[
         branch([
           {
-            if: "$.event.data.payload.mode == 'work'",
+            if: "$.event.data.payload.mode == 'claude-code'",
             steps: [
               action("Claude Code Chat", {
-                label: "work",
+                label: "claude-code",
                 map: {
                   threadId: "$.event.data.payload.threadId",
                   text: "$.event.data.payload.text",
@@ -43,7 +43,7 @@ export default {
           },
         ]),
       ]],
-      "Work mode → Claude Code",
+      "Claude Code mode → Claude Code",
     ),
     // Route interactive block responses (approval, choice, question) back
     // to the CLI. The router classifies the response, then the switch

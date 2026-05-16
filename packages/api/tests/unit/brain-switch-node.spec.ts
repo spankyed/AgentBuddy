@@ -81,8 +81,8 @@ function condElse(label = 'else'): Condition {
 describe('switchNodeHandler', () => {
   describe('single condition', () => {
     it('matches and emits branch-0 completion', () => {
-      const node = makeSwitchNode([condEquals('$.event.data.mode', 'work', 'match-work')])
-      const ctx = makeContext({ mode: 'work' })
+      const node = makeSwitchNode([condEquals('$.event.data.mode', 'claude-code', 'match-claude-code')])
+      const ctx = makeContext({ mode: 'claude-code' })
       const actor = makeActor()
 
       switchNodeHandler(makeTNode(), node, ctx, actor)

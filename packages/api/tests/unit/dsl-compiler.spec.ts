@@ -488,9 +488,9 @@ describe('compile', () => {
 
     it('=== parsed before == (longest match first, regression for stray `= \'…\'`)', () => {
       // Regression guard: the old parser split at the first `==` inside `===`,
-      // leaving `= 'work'` as the value and silently breaking work-mode routing.
-      const pred = parsedPredicate("$.event.data.payload.mode === 'work'");
-      expect(pred.value).toBe('work');
+      // leaving `= 'claude-code'` as the value and silently breaking mode routing.
+      const pred = parsedPredicate("$.event.data.payload.mode === 'claude-code'");
+      expect(pred.value).toBe('claude-code');
       expect(pred.value).not.toContain('=');
     });
 

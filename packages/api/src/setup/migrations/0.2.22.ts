@@ -3,23 +3,37 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.2.22',
-  description: 'Add hermes agent mode to thread settings',
+  description: 'Rename work mode to claude-code; add hermes mode if missing',
   up: () => {
     const data = settingsQueries.getSettings();
-    const modes: Array<{ id: string; [k: string]: any }> =
+    const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> =
       (data.plugins as any)?.threads?.chat?.modes ?? [];
 
-    if (modes.some(m => m.id === 'hermes')) return;
+    // Rename work → claude-code
+    const workMode = modes.find(m => m.id === 'work');
+    if (workMode) {
+      workMode.id = 'claude-code';
+      workMode.name = 'Claude Code';
+      workMode.description = 'Claude Code agent mode';
+    }
 
-    // Insert after 'work', before hidden 'manager'
-    const workIdx = modes.findIndex(m => m.id === 'work');
-    const insertAt = workIdx !== -1 ? workIdx + 1 : modes.length;
-    modes.splice(insertAt, 0, {
-      id: 'hermes',
-      name: 'Hermes',
-      description: 'Hermes autonomous agent mode',
-    });
+    // Add hermes mode if missing
+    if (!modes.some(m => m.id === 'hermes')) {
+      const ccIdx = modes.findIndex(m => m.id === 'claude-code');
+      const insertAt = ccIdx !== -1 ? ccIdx + 1 : modes.length;
+      modes.splice(insertAt, 0, {
+        id: 'hermes',
+        name: 'Hermes',
+        description: 'Hermes autonomous agent mode',
+      });
+    }
 
     settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+
+    // Update defaultMode if it was 'work'
+    const defaultMode = (data.plugins as any)?.threads?.chat?.defaultMode;
+    if (defaultMode === 'work') {
+      settingsCommands.updateSettings('plugin', 'threads', ['chat', 'defaultMode'], 'claude-code');
+    }
   },
 };

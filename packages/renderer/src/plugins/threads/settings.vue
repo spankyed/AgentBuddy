@@ -297,7 +297,7 @@
               @change="saveHotkeys"
             />
             <p class="mt-1.5 text-xs text-neutral-600">
-              Cycle through chat modes (Plan → Work → Chat → Note) - Works across all plugins
+              Cycle through available chat modes
             </p>
           </div>
         </div>

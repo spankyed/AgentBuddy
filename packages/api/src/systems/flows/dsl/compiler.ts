@@ -144,7 +144,7 @@ function parseExpressionToPredicate(expr: string): { key: string; operator: Bina
   // `===` / `!==` map to the same enum as `==` / `!=` — the runtime
   // evaluator uses loose comparison regardless, and accepting both forms
   // prevents silent breakage when authors write JS-idiomatic strict equality
-  // (see the stray `= 'work'` regression in claude-code-flow.ts).
+  // (see the stray `= 'value'` regression in flow conditions).
   const operatorMap: Record<string, BinaryOperator> = {
     '===': BinaryOperator.EQUALS,
     '!==': BinaryOperator.NOT_EQUALS,

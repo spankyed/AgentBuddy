@@ -92,14 +92,14 @@ const settings: SettingsData = {
     },
     threads: {
       chat: {
-        defaultMode: 'work',
+        defaultMode: 'claude-code',
         defaultPhase: 'plan',
         modes: [
           { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
           {
-            id: 'work',
-            name: 'Work',
-            description: 'Implementation and coding mode',
+            id: 'claude-code',
+            name: 'Claude Code',
+            description: 'Claude Code agent mode',
             phases: [
               { id: 'plan', name: 'Plan', description: 'Strategic planning and task breakdown', color: '#3B82F6' },
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },

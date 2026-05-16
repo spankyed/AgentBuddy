@@ -22,7 +22,7 @@
  *      The chat action reads `revertTo`, applies fork+truncate, and
  *      streams back the summary as a normal assistant message.
  *
- * `mode: 'work'` is not involved in the direct invocation — we skip the
+ * `mode: 'claude-code'` is not involved in the direct invocation — we skip the
  * `user.message` → flow-routing round-trip entirely. This is a
  * Claude-Code-specific feature and goes straight to its action.
  */
