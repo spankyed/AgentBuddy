@@ -42,3 +42,8 @@ export const myMachine = setup({
 - `qx()` / `tx()` for data queries/mutations — synchronous, do NOT await
 - `system.get(otherSystemId)` to communicate between systems
 - Register new systems in `packages/api/src/systems/index.ts` (add to default export + `allDefs` array)
+
+## Event bus pitfalls
+
+- **`sendToPlugin` wraps events with a `pluginId` field** for routing. If your event payload also has a field named `pluginId`, the wrapper **overwrites** it. Use a different field name (e.g. `targetId`) for any inner plugin reference.
+- **`sendToPlugin('application', ...)`** is an escape hatch to reach the root application actor (not a registered plugin). It works because the frontend `backendListener` special-cases `pluginId === 'application'`. Never put a `pluginId` field inside events sent this way — it will be stripped during destructuring.

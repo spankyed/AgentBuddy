@@ -44,6 +44,7 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 - **Backend → Frontend**: `system.get(bus).send(emit(pluginName, { type, data }))`
 - **Frontend → Backend**: `trpc.bus.send.mutate({ systemId, type, data })`
 - **System → System**: `system.get(otherSystemId).send({ type })`
+- **⚠️ `sendToPlugin` wraps events with `pluginId`** — never use `pluginId` as a field name inside event payloads sent via `sendToPlugin()`, it gets overwritten by the transport layer. Use `targetId` or similar instead.
 
 Systems define `IncomingSystemEvents` (Zod-validated), `SystemInternalEvents`, and `OutgoingSystemEvents`. See `packages/api/src/systems/CLAUDE.md` for the full pattern.
 

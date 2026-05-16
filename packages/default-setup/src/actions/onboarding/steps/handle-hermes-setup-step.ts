@@ -29,6 +29,7 @@ export async function action(
       blocks: [],
       forkable: false,
     });
+    (services.emitter as any).sendToPlugin('application', { type: 'SELECT_PLUGIN', targetId: 'hermes' });
   }
 
   finishOnboarding(services, state, threadId, { skipCompletionMessage: response === 'yes' });

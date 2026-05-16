@@ -224,16 +224,18 @@ export const createApplicationState = () => setup({
       const onStateChange = ({ crumbs, target, menuItems }: UpdateData) =>
         system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target, menuItems });
 
-      let unsubscribe = trailActor(system.get(id), onStateChange);
+      const initial = system.get(id);
+      let unsubscribe = initial ? trailActor(initial, onStateChange) : () => {};
 
       receive((event) => {
         if (event.type === 'TRAIL_NEW_PLUGIN') {
           unsubscribe();
-          unsubscribe = trailActor(system.get(event.id), onStateChange);
+          const plugin = system.get(event.id);
+          unsubscribe = plugin ? trailActor(plugin, onStateChange) : () => {};
         }
       });
 
-      return unsubscribe;
+      return () => unsubscribe();
     }),
 
     backendListener: fromCallback(({ system, sendBack }) => {
@@ -422,8 +424,9 @@ export const createApplicationState = () => setup({
       contextMenuItems: typeOf('TRAIL_UPDATE', event).menuItems,
     })),
     setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
-      const { pluginId, historyIndex } = typeOf('SELECT_PLUGIN', event);
-      const newPlugin = context.plugins.find(p => p.id === pluginId) || context.activePlugin;
+      const { pluginId, targetId, historyIndex } = typeOf('SELECT_PLUGIN', event) as any;
+      const resolvedId = pluginId || targetId;
+      const newPlugin = context.plugins.find(p => p.id === resolvedId) || context.activePlugin;
 
       // Send plugin activation events
       if (context.activePlugin.id !== newPlugin.id) {
@@ -488,7 +491,8 @@ export const createApplicationState = () => setup({
       if (event.type === 'DEFAULT_TOGGLE') {
         pluginId = !context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id;
       } else {
-        pluginId = typeOf('SELECT_PLUGIN', event).pluginId;
+        const sel = typeOf('SELECT_PLUGIN', event) as any;
+        pluginId = sel.pluginId || sel.targetId;
       }
 
       enqueue.sendTo('pluginTrailer', {
