@@ -5,11 +5,13 @@
   >
     <!-- HEADER ROW -->
     <div class="flex items-center w-full h-header px-3 border-b border-neutral-800" :class="[headerClass, menuOpen ? '' : 'canvas-header']">
-      <!-- ▸ Breadcrumbs with inline ⋮ menu trigger -->
+      <!-- ▸ Breadcrumbs with inline ⋮ menu trigger
+           IMPORTANT: Do NOT add `no-drag` here — it blocks window dragging on the left half of the titlebar.
+           Interactive children (buttons, clickable spans) are already excluded via the CSS rules below. -->
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-sm text-neutral-500 no-drag whitespace-nowrap"
+        class="flex items-center gap-1 ml-2 text-sm text-neutral-500 whitespace-nowrap"
         @contextmenu.prevent="menuItems.length > 0 && (menuOpen = true)"
       >
         <DropdownMenuRoot v-model:open="menuOpen">
