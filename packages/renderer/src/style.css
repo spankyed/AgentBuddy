@@ -70,10 +70,10 @@
 .mosaic-dot {
   background: conic-gradient(
     from var(--thinking-angle, 0deg),
-    #facc15,
+    #a3e635,
     #a855f7,
     #3b82f6,
-    #facc15
+    #a3e635
   );
   animation: thinking-rotate 3s linear infinite;
   filter: saturate(1.5) brightness(1.2);
@@ -82,10 +82,10 @@
 .mosaic-glow {
   background: conic-gradient(
     from var(--thinking-angle, 0deg),
-    #facc15,
+    #a3e635,
     #a855f7,
     #3b82f6,
-    #facc15
+    #a3e635
   );
   animation: thinking-rotate 3s linear infinite;
   filter: blur(3px) saturate(2) brightness(1.3);
