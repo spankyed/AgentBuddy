@@ -600,21 +600,26 @@ watch(
     const editor = editorRef.value?.editor
     if (!editor || !currentNote.value) return
 
-    isSyncingSubDocumentLinks.value = true
+    // Collect all needed changes first (positions are from the current document)
+    const changes: { pos: number; attrs: Record<string, any> }[] = []
     editor.state.doc.descendants((node, pos) => {
       if (node.type.name === 'subDocumentLink' && node.attrs.noteId) {
         const child = allNotes.find(n => n.id === node.attrs.noteId)
         if (child && (node.attrs.title !== child.title || node.attrs.icon !== child.icon)) {
-          editor.view.dispatch(
-            editor.state.tr.setNodeMarkup(pos, undefined, {
-              ...node.attrs,
-              title: child.title,
-              icon: child.icon,
-            })
-          )
+          changes.push({ pos, attrs: { ...node.attrs, title: child.title, icon: child.icon } })
         }
       }
     })
+
+    if (changes.length === 0) return
+
+    // Apply all changes in a single transaction (reverse order keeps positions valid)
+    isSyncingSubDocumentLinks.value = true
+    let tr = editor.state.tr
+    for (let i = changes.length - 1; i >= 0; i--) {
+      tr = tr.setNodeMarkup(changes[i].pos, undefined, changes[i].attrs)
+    }
+    editor.view.dispatch(tr)
     isSyncingSubDocumentLinks.value = false
   },
   { deep: true }
