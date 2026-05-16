@@ -256,21 +256,26 @@ function handleKeyDown(event: KeyboardEvent) {
 // Register key handler on the editor's DOM
 watch(isActive, (active) => {
   try {
+    const dom = props.editor?.view?.dom
+    if (!dom) return
     if (active) {
-      props.editor.view.dom.addEventListener('keydown', handleKeyDown, true)
+      dom.addEventListener('keydown', handleKeyDown, true)
     } else {
-      props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
+      dom.removeEventListener('keydown', handleKeyDown, true)
     }
-  } catch (err) {
-    console.warn('[reference-suggestion-popup] failed to (un)register keydown listener', err)
+  } catch {
+    // Editor may have been destroyed before this watcher fires
   }
 }, { immediate: true })
 
 onBeforeUnmount(() => {
   try {
-    props.editor.view.dom.removeEventListener('keydown', handleKeyDown, true)
-  } catch (err) {
-    console.warn('[reference-suggestion-popup] failed to remove keydown listener', err)
+    const dom = props.editor?.view?.dom
+    if (dom) {
+      dom.removeEventListener('keydown', handleKeyDown, true)
+    }
+  } catch {
+    // Editor already destroyed — nothing to clean up
   }
   document.removeEventListener('mousedown', handleClickOutside, true)
 })

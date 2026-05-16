@@ -1,5 +1,5 @@
 <template>
-  <div class="tool-input-block rounded-lg border border-neutral-700/60 overflow-hidden text-xs font-mono bg-neutral-900/40">
+  <div ref="containerRef" class="tool-input-block rounded-lg border border-neutral-700/60 overflow-hidden text-xs font-mono bg-neutral-900/40">
     <!-- File path header (Edit/Write/NotebookEdit) -->
     <div v-if="filePath" class="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800/60 border-b border-neutral-700/40 text-neutral-500 truncate" :title="filePath">
       <FileCode class="w-3.5 h-3.5 flex-shrink-0 text-neutral-500" />
@@ -10,6 +10,7 @@
     <template v-if="toolName === 'Edit'">
       <div class="diff-container h-48">
         <UnifiedMonacoEditor
+          v-if="visible"
           model-value=""
           :diff-original="input?.old_string || ''"
           :diff-modified="input?.new_string || ''"
@@ -21,6 +22,7 @@
           :diff-options="diffOptions"
           class="h-full"
         />
+        <pre v-else class="p-3 h-full overflow-hidden text-neutral-500 leading-relaxed">{{ placeholderText }}</pre>
       </div>
     </template>
 
@@ -28,6 +30,7 @@
     <template v-else-if="toolName === 'Write'">
       <div class="h-48">
         <UnifiedMonacoEditor
+          v-if="visible"
           :model-value="truncatedContent"
           :file-path="filePath || undefined"
           mode="simple"
@@ -35,6 +38,7 @@
           theme="vs-dark"
           class="h-full"
         />
+        <pre v-else class="p-3 h-full overflow-hidden text-neutral-500 leading-relaxed">{{ placeholderText }}</pre>
       </div>
     </template>
 
@@ -56,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { FileCode } from 'lucide-vue-next'
 import UnifiedMonacoEditor from '@/core/components/UnifiedMonacoEditor.vue'
 
@@ -65,6 +69,31 @@ const props = withDefaults(defineProps<{
   input?: Record<string, any>
 }>(), {
   input: () => ({}),
+})
+
+// Lazy-mount Monaco editors to prevent 200+ listener leak in long threads
+const containerRef = ref<HTMLElement>()
+const visible = ref(false)
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  if (!containerRef.value) return
+  observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        visible.value = true
+        observer?.disconnect()
+        observer = null
+      }
+    },
+    { rootMargin: '200px' }
+  )
+  observer.observe(containerRef.value)
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
 })
 
 const filePath = computed(() =>
@@ -104,6 +133,14 @@ const truncatedContent = computed(() => {
 const fieldCount = computed(() => Object.keys(props.input || {}).length)
 
 const formattedJson = computed(() => JSON.stringify(props.input, null, 2))
+
+const placeholderText = computed(() => {
+  const text = props.toolName === 'Edit'
+    ? (props.input?.new_string || props.input?.old_string || '')
+    : (props.input?.content || props.input?.file_text || '')
+  // Show first ~10 lines as a lightweight preview
+  return text.split('\n').slice(0, 10).join('\n')
+})
 </script>
 
 <style scoped>
