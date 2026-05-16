@@ -1,5 +1,67 @@
 -e # Changelog
 
+## v0.2.22 (2026-05-16)
+
+### Features
+- renderer): add 30s connection timeout and backend reconnection handling
+- threads): add horizontal scroll on wheel for compact artifact list
+- settings): add navigation button to jump to plugin from settings tab
+- hermes): detect existing hermes-agent installations before managed venv
+- hermes): replace agent-dir discovery with managed venv installation
+- hermes): add paused state handling and improve tool-activity block shape
+- hermes): pass base_url to AIAgent and resolve per-provider API keys
+- hermes): persist provider and model config across chat requests
+- hermes): redesign settings UI with multi-provider key management and model dropdown
+- hermes): auto-select hermes plugin when navigating to settings
+- hermes): integrate Hermes plugin selection into onboarding flow
+- onboarding): add Hermes agent setup step to onboarding flow
+- hermes): navigate to Plugins tab when opening settings from canvas
+- hermes): pass API keys via JSONL updateConfig instead of env vars at spawn
+- hermes): add hot-update config support and scrub stale API keys
+- hermes): add LLM provider configuration with API key and model settings
+- hermes): auto-discover agent directory and prefer its venv
+- hermes): add approval gates, slash commands, session browsing, and persona auto-save
+- threads): add Hermes autonomous agent mode
+- hermes): add warnings for missing pyyaml and narrow connectionStatus type
+- hermes): add Hermes agent bridge integration types and service definitions
+- hermes): harden bridge startup, thread safety, and memory flexibility
+- hermes): add bridge client for Python subprocess communication
+
+### Fixes
+- onboarding): add empty instructions field to birth thread creation for type satisfaction
+- onboarding): remove instructions field from birth thread creation
+- threads): pass cwdOverride through USER_COMMAND path for /cc-resume
+- application): target connected substate when closing dev letter
+- threads): add error handling and early return guard to forkThread
+- notes): batch sub-document link updates into a single transaction
+- speech-recognition): stop recording when renderer navigates or reloads
+- renderer): guard tiptap editor.view.dom access + lazy-mount Monaco in ToolInputBlock
+- migrations): rename hermes agent mode migration from 0.2.21 to 0.2.22
+- hermes): broaden agent directory discovery with additional sibling paths
+- hermes): resolve session ID lookup and improve UI consistency
+- hermes): resolve bridge script path via process.cwd() instead of __dirname
+- hermes): resolve bridge script path from source tree
+- hermes): use native SessionDB instead of webui JSON files for session storage
+
+### Refactors
+- startup): progressive rendering + rename onboarding to welcome
+-  rename 'work' mode to 'claude-code' across packages
+- hermes): decouple chatState updates from persistHermesState calls
+- hermes): move settings to dedicated plugin settings panel
+- hermes): delegate stream lifecycle handling to brain events
+- hermes): remove unused trail click handler and imports
+
+### Other
+- perf(threads): defer message loading from startup payload to on-demand fetch
+- chore: revert version to 0.2.21
+- update defs
+- perf(startup): eliminate 15s blank screen with progressive rendering + lazy thread data
+- Merge pull request #144 from spankyed/AS/hermes-integration
+- Merge remote-tracking branch 'origin/master' into AS/hermes-integration
+- Merge remote-tracking branch 'origin/master' into AS/hermes-integration
+
+-e # Changelog
+
 ## v0.2.21 (2026-05-16)
 
 ### Fixes
