@@ -72,12 +72,14 @@
         :sessions="sessions"
         :connection-status="connectionStatus"
         :agent-dir="agentDir"
+        :hermes-config="hermesConfig"
         @save-skill="saveSkill"
         @delete-skill="deleteSkill"
         @update-persona="updatePersona"
         @write-memory="writeMemory"
         @refresh-sessions="refreshSessions"
         @resume-session="resumeSession"
+        @update-config="updateConfig"
       />
     </div>
   </div>
@@ -118,6 +120,7 @@ const personaPath = useSelector(actor, (s: any) => s.context.personaPath)
 const memory = useSelector(actor, (s: any) => s.context.memory)
 const workspaces = useSelector(actor, (s: any) => s.context.workspaces)
 const sessions = useSelector(actor, (s: any) => s.context.sessions)
+const hermesConfig = useSelector(actor, (s: any) => s.context.hermesConfig)
 
 const navItems = [
   { id: 'agents' as HermesView, label: 'Agents', icon: Bot },
@@ -144,6 +147,9 @@ const selectView = (view: HermesView) => {
 const startBridge = () => actor.send({ type: 'BRIDGE.START' })
 const stopBridge = () => actor.send({ type: 'BRIDGE.STOP' })
 const refreshSessions = () => actor.send({ type: 'REFRESH' })
+const updateConfig = (config: { provider: string; apiKey: string; model: string }) => {
+  actor.send({ type: 'CONFIG.UPDATE', config })
+}
 const resumeSession = (sessionId: string) => {
   // TODO: wire session resume to thread creation in hermes mode
   console.log('Resume session:', sessionId)

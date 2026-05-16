@@ -100,6 +100,11 @@ export class HermesBridgeClient {
     const env: Record<string, string> = { ...process.env } as Record<string, string>
     if (this._config.hermesHome) env.HERMES_HOME = this._config.hermesHome
     if (this._config.agentDir) env.HERMES_WEBUI_AGENT_DIR = this._config.agentDir
+    if (this._config.apiKey) {
+      const p = (this._config.provider || 'openai').toLowerCase()
+      if (p === 'anthropic') env.ANTHROPIC_API_KEY = this._config.apiKey
+      else env.OPENAI_API_KEY = this._config.apiKey
+    }
 
     this.process = spawn(pythonPath, [BRIDGE_SCRIPT], {
       stdio: ['pipe', 'pipe', 'pipe'],

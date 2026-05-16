@@ -115,6 +115,10 @@ export interface HermesConfig {
   defaultWorkspace?: string
   /** Auto-start bridge on app launch. */
   autoStart?: boolean
+  /** LLM provider API key. */
+  apiKey?: string
+  /** LLM provider (openai, anthropic). */
+  provider?: string
 }
 
 // ─── Bridge Status ──────────────────────────────────────────────────────────

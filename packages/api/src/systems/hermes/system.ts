@@ -12,6 +12,7 @@ import { bus } from '@/systems/backend';
 import { emit } from '@/core/helpers/actor-helpers';
 import { hermes as hermesService } from '@/services/hermes';
 import { createLogger } from '@/core/helpers/debug/logger';
+import { repository } from '@/repository';
 import type { HermesConnectedData, HermesSkill } from './types';
 
 const logger = createLogger('hermes-system');
@@ -31,7 +32,8 @@ type IncomingHermesEvents =
   | { type: 'HERMES_WRITE_MEMORY'; filename: string; content: string }
   | { type: 'HERMES_GET_TOOLS' }
   | { type: 'HERMES_GET_MODELS' }
-  | { type: 'HERMES_GET_WORKSPACES' };
+  | { type: 'HERMES_GET_WORKSPACES' }
+  | { type: 'HERMES_UPDATE_CONFIG'; provider?: string; apiKey?: string; model?: string };
 
 type OutgoingHermesEvents =
   | { type: 'HERMES_CONNECTED'; data: HermesConnectedData }
@@ -104,7 +106,14 @@ export const hermesSystem = setup({
     },
 
     startBridge: ({ system }) => {
-      hermesService.start().then((info) => {
+      // Read stored config (apiKey, provider, model) and pass to bridge
+      const stored = repository.settingsQueries.getPluginSettings('hermes') as any;
+      const config = stored?.config ?? {};
+      hermesService.start({
+        ...(config.apiKey ? { apiKey: config.apiKey } : {}),
+        ...(config.provider ? { provider: config.provider } : {}),
+        ...(config.model ? { defaultModel: config.model } : {}),
+      }).then((info) => {
         system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
           bridge: info,
@@ -231,6 +240,16 @@ export const hermesSystem = setup({
         }));
       }).catch((err: unknown) => sendError(system, 'getWorkspaces', err));
     },
+
+    updateConfig: ({ system, event }) => {
+      const ev = hermesDef.typeOf('HERMES_UPDATE_CONFIG', event);
+      const current = (repository.settingsQueries.getPluginSettings('hermes') as any)?.config ?? {};
+      const next = { ...current };
+      if (ev.provider !== undefined) next.provider = ev.provider;
+      if (ev.apiKey !== undefined) next.apiKey = ev.apiKey;
+      if (ev.model !== undefined) next.model = ev.model;
+      repository.settingsCommands.updateSettings('plugin', 'hermes', ['config'], next);
+    },
   },
 }).createMachine({
   id: hermes,
@@ -241,6 +260,7 @@ export const hermesSystem = setup({
     HERMES_DELETE_SKILL: { actions: 'deleteSkill' },
     HERMES_UPDATE_PERSONA: { actions: 'updatePersona' },
     HERMES_WRITE_MEMORY: { actions: 'writeMemory' },
+    HERMES_UPDATE_CONFIG: { actions: 'updateConfig' },
   },
   states: {
     idle: {
