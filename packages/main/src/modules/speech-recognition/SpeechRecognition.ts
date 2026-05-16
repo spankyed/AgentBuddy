@@ -7,12 +7,31 @@ export function createSpeechRecognition(): AppModule {
   let helper: SpeechHelperProcess | null = null;
   let spawnPromise: Promise<SpeechHelperProcess> | null = null;
   let activeWebContents: WebContents | null = null;
+  let teardownNavGuard: (() => void) | null = null;
 
   const emit = (event: SpeechEvent) => {
     if (activeWebContents && !activeWebContents.isDestroyed()) {
       activeWebContents.send('speech:event', event);
     }
   };
+
+  /** Stop recording if the renderer reloads/navigates while a session is active. */
+  function guardNavigation() {
+    teardownNavGuard?.();
+    if (!activeWebContents || activeWebContents.isDestroyed()) return;
+    const wc = activeWebContents;
+    const handler = (details: Electron.Event<Electron.WebContentsDidStartNavigationEventParams>) => {
+      if (!details.isMainFrame || details.isSameDocument) return;
+      if (helper?.isRunning()) helper.sendCommand({ command: 'stop' });
+      teardownNavGuard?.();
+      activeWebContents = null;
+    };
+    wc.on('did-start-navigation', handler);
+    teardownNavGuard = () => {
+      if (!wc.isDestroyed()) wc.removeListener('did-start-navigation', handler);
+      teardownNavGuard = null;
+    };
+  }
 
   // Dedup concurrent calls: all callers share the same spawn promise until the helper is ready.
   async function ensureHelper(): Promise<SpeechHelperProcess> {
@@ -49,15 +68,18 @@ export function createSpeechRecognition(): AppModule {
           return;
         }
         helper.sendCommand({ command: 'start', lang });
+        guardNavigation();
       });
 
       ipcMain.handle('speech:stop', () => {
+        teardownNavGuard?.();
         if (helper?.isRunning()) {
           helper.sendCommand({ command: 'stop' });
         }
       });
 
       app.on('before-quit', () => {
+        teardownNavGuard?.();
         if (helper) {
           helper.kill();
           helper = null;
