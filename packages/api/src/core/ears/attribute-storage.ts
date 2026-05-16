@@ -321,16 +321,41 @@ export const removeRelation = (relId: EARS.EntityId) => {
 };
 
 /*─────────────────────────────────────────────────────────────
- * 3 ▸ simple getters (kept identical)
+ * 3 ▸ read functions — flag-gated for LMDB switchover
+ *
+ * Only the 4 primitives are gated. Everything else composes
+ * on top and works with either backend automatically.
  *─────────────────────────────────────────────────────────────*/
-export const getAttr  = (id: EARS.EntityId, k: EARS.AttrKind, i = 0) =>
-  bucket(k).get(id)?.[i] ?? null;
+import { lmdbGetAttr, lmdbGetAttrs, lmdbGetAllEntities, lmdbGetEntitiesOfType, lmdbGetAll } from './lmdb-reads';
+
+const USE_LMDB = false;
+
+/* ── gated primitives ── */
+
+export const getAttr = (id: EARS.EntityId, k: EARS.AttrKind, i = 0) =>
+  USE_LMDB ? lmdbGetAttr(id, k, i) : bucket(k).get(id)?.[i] ?? null;
+
 export const getAttrs = (id: EARS.EntityId, k: EARS.AttrKind) =>
-  bucket(k).get(id) ?? [];
+  USE_LMDB ? lmdbGetAttrs(id, k) : bucket(k).get(id) ?? [];
+
+export const getAllEntities = (): EARS.EntityId[] => {
+  if (USE_LMDB) return lmdbGetAllEntities();
+  const all: EARS.EntityId[] = [];
+  for (const set of entityIndex.values())
+    for (const id of set) all.push(id);
+  return all;
+};
+
+export const getEntitiesOfType = (t: EARS.Entity) =>
+  USE_LMDB ? lmdbGetEntitiesOfType(t) : [...(entityIndex.get(t) ?? [])];
+
+/* ── derived (compose on gated primitives — no flag needed) ── */
+
 export const getRoles = (id: EARS.EntityId) =>
   getAttrs(id, EARS.AttrKind.Role) as string[];
 
 export const getAll = (id: EARS.EntityId) => {
+  if (USE_LMDB) return lmdbGetAll(id);
   const out: Record<string, unknown> = {};
   for (const [k, b] of store)
     if (b.get(id))
@@ -338,34 +363,13 @@ export const getAll = (id: EARS.EntityId) => {
   return out;
 };
 
-/*─────────────────────────────────────────────────────────────
- * 4 ▸  convenience *query* shims  (❗added back)
- *─────────────────────────────────────────────────────────────*/
-export const getAllEntities = () => {
-  const all: EARS.EntityId[] = [];
-  for (const set of entityIndex.values()) {
-    for (const id of set) {
-      all.push(id);
-    }
-  }
-  return all;
-};
-
-export const getEntitiesOfType = (t: EARS.Entity) =>
-  [...(entityIndex.get(t) ?? [])];
-
 export const queryEntitiesByRole = (role: string) =>
   getAllEntities().filter(id => getRoles(id).includes(role));
 
-export const queryEntitiesByAttribute = (
-  k: EARS.AttrKind,
-  v?: unknown,
-) =>
+export const queryEntitiesByAttribute = (k: EARS.AttrKind, v?: unknown) =>
   v === undefined
     ? getAllEntities().filter(id => getAttrs(id, k).length)
-    : getAllEntities().filter(id =>
-        getAttrs(id, k).some(attr => attr === v),
-      );
+    : getAllEntities().filter(id => getAttrs(id, k).some(attr => attr === v));
 
 /** target id participates in *any* relation with `target` (both directions) */
 export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
@@ -373,17 +377,11 @@ export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
   for (const k of Object.keys(relationIndex)) {
     const { bySource, byTarget } = relationIndex[k];
     bySource[target]?.forEach(relId => {
-      const { targetEntity } = getAttr(
-        relId,
-        EARS.AttrKind.RelationDetails,
-      ) as EARS.RelationDetail;
+      const { targetEntity } = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
       out.add(targetEntity);
     });
     byTarget[target]?.forEach(relId => {
-      const { sourceEntity } = getAttr(
-        relId,
-        EARS.AttrKind.RelationDetails,
-      ) as EARS.RelationDetail;
+      const { sourceEntity } = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
       out.add(sourceEntity);
     });
   }
@@ -391,20 +389,13 @@ export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
 };
 
 /** one specific relation type (+ direction) */
-export const queryEntitiesByRelationTo = (
-  relKind: string,
-  id: EARS.EntityId,
-  asSource = false,
-) => {
+export const queryEntitiesByRelationTo = (relKind: string, id: EARS.EntityId, asSource = false) => {
   const dir = relationIndex[relKind];
   if (!dir) return [];
   const relIds = asSource ? dir.bySource[id] ?? [] : dir.byTarget[id] ?? [];
   return relIds
     .map(rel => {
-      const d = getAttr(
-        rel,
-        EARS.AttrKind.RelationDetails,
-      ) as EARS.RelationDetail;
+      const d = getAttr(rel, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
       return asSource ? d.targetEntity : d.sourceEntity;
     })
     .filter(Boolean);
