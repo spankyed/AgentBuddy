@@ -182,29 +182,13 @@
               <FolderPlus class="w-4 h-4" />
               <span class="hidden @lg:inline">New Folder</span>
             </button>
-            <DropdownMenuRoot v-model:open="folderMenuOpen">
-              <DropdownMenuTrigger as-child>
-                <button
-                  class="flex items-center justify-center h-full px-1 border-l border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-neutral-100 rounded-r-md transition-colors"
-                  aria-label="Folder creation options"
-                >
-                  <ChevronDown class="w-3 h-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuPortal>
-                <DropdownMenuContent
-                  class="min-w-[180px] rounded-md border border-neutral-700 bg-neutral-800 p-1 shadow-md z-50"
-                  :side-offset="4"
-                >
-                  <DropdownMenuItem
-                    @select="createSymlinkFolder"
-                    class="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-200 rounded cursor-pointer hover:bg-neutral-700 outline-none"
-                  >
-                    <Link class="w-4 h-4" /> New Symlink Folder
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenuRoot>
+            <button
+              @click="createSymlinkFolder"
+              class="flex items-center justify-center h-full px-1 border-l border-neutral-600 text-neutral-400 hover:bg-neutral-600 hover:text-neutral-100 rounded-r-md transition-colors"
+              aria-label="New symlink folder"
+            >
+              <ChevronDown class="w-3 h-3" />
+            </button>
           </div>
           <Button @click="createDocument" variant="primary" size="sm" data-onboarding-id="library-create-button">
             <FileText class="w-4 h-4" />
@@ -326,11 +310,6 @@ import {
   ContextMenuItem,
   ContextMenuPortal,
   ContextMenuSeparator,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
 } from 'reka-ui'
 import Button from '@/core/components/design/button.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -494,7 +473,6 @@ const deleteDialog = reactive({
   isUnlink: false
 })
 
-const folderMenuOpen = ref(false)
 const symlinkInput = reactive({ show: false, path: '' })
 
 
