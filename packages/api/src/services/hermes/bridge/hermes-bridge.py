@@ -99,6 +99,12 @@ _session_db = None
 # Active config — set by handle_update_config, read by handle_chat
 _active_config: dict = {"provider": "", "model": ""}
 
+# AIAgent requires both api_key AND base_url for explicit credential mode
+PROVIDER_BASE_URLS: dict = {
+    "openai": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com",
+}
+
 
 # ── JSONL I/O ────────────────────────────────────────────────────────────────
 
@@ -276,19 +282,20 @@ def handle_chat(req_id: str, params: dict):
                     os.environ["HERMES_SESSION_KEY"] = session_id
 
             # Build agent kwargs
-            _provider = _active_config.get("provider", "")
             agent_kwargs = {
                 "model": model,
                 "platform": "webui",
                 "quiet_mode": True,
                 "session_id": session_id or "",
             }
-            if _provider:
-                agent_kwargs["provider"] = _provider
-            # API key comes from os.environ, set by handle_update_config via JSONL
+            # API key + base_url — AIAgent requires both for explicit credential mode
             _api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
+            _base_url = PROVIDER_BASE_URLS.get(_active_config.get("provider", ""), "")
             if _api_key:
                 agent_kwargs["api_key"] = _api_key
+            if _base_url:
+                agent_kwargs["base_url"] = _base_url
+            logger.info("Agent kwargs: model=%s, api_key=%s", model, "set" if _api_key else "EMPTY")
             if _session_db is not None:
                 agent_kwargs["session_db"] = _session_db
 

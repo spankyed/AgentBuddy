@@ -110,7 +110,15 @@ export const hermesSystem = setup({
         // Push stored config (apiKey, provider) to the fresh bridge via JSONL
         const stored = repository.settingsQueries.getPluginSettings('hermes') as any;
         const config = stored?.config;
-        if (config?.apiKey) hermesService.updateConfig(config).catch(() => {});
+        if (config) {
+          // Resolve active provider's key from per-provider keys store
+          const activeKey = config.keys?.[config.provider] || config.apiKey || '';
+          hermesService.updateConfig({
+            provider: config.provider,
+            apiKey: activeKey,
+            model: config.models?.[config.provider] || config.model || '',
+          }).catch(() => {});
+        }
         system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
           bridge: info,
