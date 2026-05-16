@@ -77,6 +77,18 @@ export default {
             }),
           ],
         },
+        {
+          if: "$.lastStep.result.step == 'hermes-setup'",
+          steps: [
+            action("Handle Hermes Setup Step", {
+              label: "hermes-setup",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
       ]),
     ]], "Route Response"),
     on("user.message", [[

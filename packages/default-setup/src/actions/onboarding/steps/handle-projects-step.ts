@@ -93,6 +93,7 @@ export async function startCcImportStep(
       forkable: false,
     });
     finishOnboarding(services, state, threadId);
+    persistOnboardingState(services, threadId, state);
     return;
   }
 

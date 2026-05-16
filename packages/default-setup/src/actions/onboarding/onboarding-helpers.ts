@@ -1,7 +1,7 @@
 import type { EntityId, Services } from '../../types';
 
 export interface OnboardingState {
-  step: 'welcome' | 'cli-test-ask' | 'projects' | 'import-threads' | 'pick-thread' | 'complete';
+  step: 'welcome' | 'cli-test-ask' | 'projects' | 'import-threads' | 'pick-thread' | 'hermes-setup' | 'complete';
   threadId: EntityId;
   pendingMessageId: EntityId;
   data: { cliFound?: boolean; authenticated?: boolean };
@@ -32,12 +32,37 @@ export function flashState(services: Services, threadId: EntityId, stateId: stri
   });
 }
 
+/**
+ * Finish onboarding. On first call, shows the Hermes setup prompt.
+ * On second call (from hermes-setup handler), actually completes.
+ */
 export function finishOnboarding(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
   options?: { skipCompletionMessage?: boolean },
 ) {
+  // If not yet past hermes-setup, show the prompt first
+  if (state.step !== 'hermes-setup') {
+    const { messageId } = services.chat.sendChoiceBlock({
+      threadId,
+      text: 'Would you like to set up Hermes Agent? Hermes is an autonomous AI agent framework that supports 200+ models from OpenAI, Anthropic, and more.',
+      prompt: 'Set up Hermes?',
+      choices: [
+        { id: 'yes', label: 'Yes, set up Hermes', description: '' },
+        { id: 'skip', label: 'Skip for now', description: '' },
+      ],
+      allowCustom: false,
+      forkable: false,
+      autoHide: true,
+      asUser: true,
+    } as any);
+    state.step = 'hermes-setup';
+    state.pendingMessageId = messageId as EntityId;
+    return;
+  }
+
+  // Actually complete
   state.step = 'complete';
 
   services.settings.updateInternalSetting(['hasOnboarded'], true);
@@ -49,7 +74,6 @@ export function finishOnboarding(
   });
 
   if (!options?.skipCompletionMessage) {
-    // Find recent claude-code threads to suggest
     const allThreads = services.repository.threadQueries.all();
     const ccThreads = allThreads
       .filter((t: any) => t.tags?.includes('claude-code') && t.id !== threadId)
@@ -61,17 +85,11 @@ export function finishOnboarding(
       .slice(0, 7);
 
     if (ccThreads.length > 0) {
-      const choices = ccThreads.map((t: any) => ({
-        id: t.id,
-        label: t.topic || 'Untitled',
-        description: t.tags?.join(', ') || '',
-      }));
-
       services.chat.sendChoiceBlock({
         threadId,
         text: "You're all setup! Here are some of your previous threads. Or click `+ New thread` below the chat to get to work on something new!",
         prompt: 'Continue a previous thread',
-        choices,
+        choices: ccThreads.map((t: any) => ({ id: t.id, label: t.topic || 'Untitled', description: t.tags?.join(', ') || '' })),
         allowCustom: false,
         forkable: false,
       });
@@ -98,6 +116,5 @@ export function finishOnboarding(
     mode: 'work',
   });
 
-  // Restore chat from maximized onboarding state
   (services.emitter as any).sendToPlugin('application', { type: 'RESTORE_CHAT' });
 }

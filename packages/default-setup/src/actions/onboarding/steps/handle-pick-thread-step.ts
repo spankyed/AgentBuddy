@@ -23,7 +23,6 @@ export async function action(
   if (response === 'skip' || !response) {
     finishOnboarding(services, state, threadId);
   } else {
-    // User picked a thread — open it and finish without the generic message
     services.chat.openThreadChatAndRefreshRecent(response as EntityId);
     finishOnboarding(services, state, threadId, { skipCompletionMessage: true });
   }
