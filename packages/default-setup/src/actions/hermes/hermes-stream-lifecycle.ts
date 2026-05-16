@@ -7,7 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getHermesState, persistHermesState } from './_helpers/thread-context';
+import { getHermesState, persistHermesState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'Hermes: Stream Lifecycle',
@@ -37,17 +37,15 @@ export async function action(
     case 'started':
       persistHermesState(services, threadId, {
         activeStreamId: streamId,
-        chatState: 'working',
         isRunning: true,
         ...(sessionId ? { sessionId } : {}),
       });
+      updateChatState(services, threadId, 'working');
       break;
 
     case 'paused':
-      persistHermesState(services, threadId, {
-        chatState: 'paused',
-        isRunning: false,
-      });
+      persistHermesState(services, threadId, { isRunning: false });
+      updateChatState(services, threadId, 'paused');
       break;
 
     case 'done': {
@@ -60,13 +58,14 @@ export async function action(
       const state = getHermesState(services, threadId);
       if (state?.chatState !== 'error') {
         const wasPaused = state?.chatState === 'paused';
+        const nextState = wasPaused ? 'idle' : 'success';
         persistHermesState(services, threadId, {
-          chatState: wasPaused ? 'idle' : 'success',
           isRunning: false,
           activeStreamId: undefined,
           turns: (state?.turns || 0) + 1,
           ...(sessionId ? { sessionId } : {}),
         });
+        updateChatState(services, threadId, nextState);
       }
       break;
     }
@@ -79,10 +78,10 @@ export async function action(
         forkable: false,
       });
       persistHermesState(services, threadId, {
-        chatState: 'error',
         isRunning: false,
         activeStreamId: undefined,
       });
+      updateChatState(services, threadId, 'error');
       break;
   }
 
