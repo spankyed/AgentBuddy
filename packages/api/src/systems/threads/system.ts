@@ -627,35 +627,39 @@ export const threadsSystem = setup({
     },
     forkThread: ({ system, event }) => {
       const { messageId, threadId, threadTopic } = threadsDef.typeOf('FORK_THREAD', event);
-      const originalTopic = threadTopic || 'Untitled';
+      if (!threadId) return;
 
-      const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
-      const forkTopic = `Fork ${forkCount + 1} - ${originalTopic}`;
+      try {
+        const originalTopic = threadTopic || 'Untitled';
 
-      const result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
+        const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
+        const forkTopic = `Fork ${forkCount + 1} - ${originalTopic}`;
 
-      repository.threadCommands.linkFork(threadId as EARS.EntityId, result.id);
+        const result = services.chat.createThreadAndNotify({ topic: forkTopic, instructions: '' });
 
-      if (threadId) {
+        repository.threadCommands.linkFork(threadId as EARS.EntityId, result.id);
+
         repository.chatCommands.copyMessagesUpTo({
           sourceThreadId: threadId as EARS.EntityId,
           targetThreadId: result.id,
           upToMessageId: messageId,
         });
+
+        services.chat.openThreadChatAndRefreshRecent(result.id);
+
+        const brainActor = getActor(system, brain);
+        brainActor.send({
+          type: 'TRIGGER_BRAIN_EVENT',
+          eventType: 'thread.fork',
+          payload: {
+            sourceThreadId: threadId,
+            sourceMessageId: messageId,
+            newThreadId: result.id,
+          },
+        });
+      } catch (err) {
+        console.error('[threads] forkThread failed:', err);
       }
-
-      services.chat.openThreadChatAndRefreshRecent(result.id);
-
-      const brainActor = getActor(system, brain);
-      brainActor.send({
-        type: 'TRIGGER_BRAIN_EVENT',
-        eventType: 'thread.fork',
-        payload: {
-          sourceThreadId: threadId,
-          sourceMessageId: messageId,
-          newThreadId: result.id,
-        },
-      });
     },
     revertThread: ({ system, event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsDef.typeOf('REVERT_THREAD', event);
