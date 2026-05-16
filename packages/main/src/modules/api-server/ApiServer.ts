@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import getPort from 'get-port';
@@ -59,6 +59,16 @@ export class ApiServer implements AppModule {
       error: this.lastError,
       restartAttempts: this.restartAttempts,
     }));
+
+    // Reveal the log file in the system file manager
+    ipcMain.handle('api:open-log-file', () => {
+      shell.showItemInFolder(getLogger().getLogPath());
+    });
+
+    // Reload the renderer page (bypasses will-navigate security handler)
+    ipcMain.handle('app:reload', (event) => {
+      event.sender.reload();
+    });
 
     // Relaunch the entire Electron app
     ipcMain.handle('app:relaunch', () => {

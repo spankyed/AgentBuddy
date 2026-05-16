@@ -95,6 +95,7 @@ export class ProcessManager {
               const parsed = JSON.parse(trimmed);
               if (parsed.__fatal) {
                 this.fatalErrors.push({ message: parsed.message, stack: parsed.stack, source: parsed.source });
+                broadcastEvent('api:fatal', { message: parsed.message, stack: parsed.stack, source: parsed.source });
               }
             } catch { /* not valid JSON, ignore */ }
           }

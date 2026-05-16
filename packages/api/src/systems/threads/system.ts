@@ -296,7 +296,12 @@ export const threadsSystem = setup({
       // Stop active processes before hard-deleting the thread.
       services.threads.runCleanup(threadId);
 
-      repository.threadCommands.delete(threadId as EARS.EntityId);
+      try {
+        repository.threadCommands.delete(threadId as EARS.EntityId);
+      } catch (error) {
+        logger.warn('Failed to delete thread (may already be deleted)', { threadId, error });
+        return;
+      }
 
       system.get(bus).send(emit(threads, {
         type: 'THREAD_DELETED',

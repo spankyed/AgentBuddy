@@ -102,13 +102,22 @@
         <div class="btn-row">
           <button class="reload-btn" onclick="
             window.__errorPageShown = false;
-            window.location.reload();
+            if (window.electronAPI && window.electronAPI.apiStatus) {
+              window.electronAPI.apiStatus.reload();
+            } else {
+              window.location.reload();
+            }
           ">Reload</button>
           <button class="restart-btn" onclick="
             if (window.electronAPI && window.electronAPI.apiStatus) {
               window.electronAPI.apiStatus.relaunch();
             }
           ">Restart App</button>
+          <button class="restart-btn" onclick="
+            if (window.electronAPI && window.electronAPI.apiStatus) {
+              window.electronAPI.apiStatus.openLogFile();
+            }
+          ">View Logs</button>
         </div>
       </div>
     </div>
