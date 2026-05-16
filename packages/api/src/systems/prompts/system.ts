@@ -17,6 +17,7 @@ type IncomingPromptEvents =
   | { type: 'UPDATE_PROMPT'; promptId: string; label?: string; inputs?: Record<string, any>; templateFn?: string; outputSchema?: any; description?: string; category?: string }
   | { type: 'DELETE_PROMPT'; promptId: string }
   | { type: 'FETCH_PROMPTS_PAGE'; page?: number }
+  | { type: 'FETCH_ALL_PROMPTS' }
   | { type: 'IMPORT_PROMPTS'; prompts: any }
   | { type: 'EXPORT_PROMPTS'; directory: string }
 
@@ -30,6 +31,7 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPT_UPDATED'; prompt: PromptEntity; promptId: EARS.EntityId }
   | { type: 'PROMPT_DELETED'; promptId: EARS.EntityId }
   | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
+  | { type: 'PROMPTS_ALL_LOADED'; data: { prompts: PromptEntity[] } }
   | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
   | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
@@ -114,7 +116,7 @@ export const promptsSystem = setup({
     fetchPromptsPage: ({ system, event }) => {
       const ev = promptsDef.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
-      
+
       system.get(bus).send(emit(prompts, {
         type: 'PROMPTS_PAGE_LOADED',
         data: {
@@ -122,6 +124,13 @@ export const promptsSystem = setup({
           page: data.page,
           totalPages: data.totalPages
         }
+      }));
+    },
+    fetchAllPrompts: ({ system }) => {
+      const allPrompts = repository.promptQueries.all();
+      system.get(bus).send(emit(prompts, {
+        type: 'PROMPTS_ALL_LOADED',
+        data: { prompts: allPrompts }
       }));
     },
     importPrompts: ({ system, event }) => {
@@ -281,6 +290,9 @@ export const promptsSystem = setup({
       },
       FETCH_PROMPTS_PAGE: {
         actions: 'fetchPromptsPage',
+      },
+      FETCH_ALL_PROMPTS: {
+        actions: 'fetchAllPrompts',
       },
       PROMPTS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',

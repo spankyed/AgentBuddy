@@ -30,18 +30,30 @@ export function reconcileStaleClaudeState(): void {
   const threads = findAll<ThreadEntity>(EARS.Entity.Thread);
   for (const thread of threads) {
     const cc = (thread.context as any)?.claudeCode;
+    const isPaused = (thread as any).chatState === 'paused';
+
+    // Always clear process-scoped flags; keep pendingControlRequest for
+    // paused threads so the user can still approve after restart.
     const needsContextRepair = cc && (
       cc.isRunning === true ||
-      cc.pendingControlRequest !== undefined ||
-      cc.autoAcceptEdits !== undefined
+      cc.autoAcceptEdits !== undefined ||
+      (!isPaused && cc.pendingControlRequest !== undefined)
     );
-    const staleChatState = (thread as any).chatState === 'working' || (thread as any).chatState === 'paused';
+    // Only 'working' is stale — 'paused' threads have a pending approval
+    // the user can still act on.
+    const staleChatState = (thread as any).chatState === 'working';
 
     if (!needsContextRepair && !staleChatState) continue;
 
     const threadTx = tx(thread.id as any).put('updatedAt', Date.now());
     if (needsContextRepair) {
-      const nextCc = { ...cc, isRunning: false, autoAcceptEdits: undefined, pendingControlRequest: undefined };
+      const nextCc = {
+        ...cc,
+        isRunning: false,
+        autoAcceptEdits: undefined,
+        // Preserve pendingControlRequest for paused threads.
+        ...(!isPaused && { pendingControlRequest: undefined }),
+      };
       threadTx.put('context', { ...(thread.context as any || {}), claudeCode: nextCc });
     }
     if (staleChatState) {
@@ -56,7 +68,7 @@ export function reconcileStaleClaudeState(): void {
   for (const a of artifacts) {
     if (a.artifactType !== 'claude-session') continue;
     const content = a.content as any;
-    if (!content || (content.chatState !== 'working' && content.chatState !== 'paused')) continue;
+    if (!content || content.chatState !== 'working') continue;
     tx(a.id as any).put('content', { ...content, chatState: 'idle' }).put('updatedAt', Date.now()).id();
     artifactsFixed++;
   }

@@ -17,6 +17,7 @@ const FALLBACK_PATHS: Record<CliName, string[]> = process.platform === 'win32'
       return {
         copilot: [path.join(appData, 'npm', 'copilot.cmd')],
         'claude-code': [
+          path.join(HOME, '.local', 'bin', 'claude.exe'),
           path.join(localAppData, 'Programs', 'claude-code', 'claude.exe'),
           path.join(appData, 'npm', 'claude.cmd'),
         ],
@@ -121,16 +122,15 @@ export async function resolveCliPath(
   }
 
   // 3. Slow check: bare command via PATH (execFile with 2s timeout)
-  if (effective && !path.isAbsolute(effective)) {
-    if (await isExecutable(effective)) {
-      resolvedCache.set(cacheKey, effective)
-      return effective
-    }
+  const bareCmd = effective && !path.isAbsolute(effective) ? effective : 'claude'
+  if (await isExecutable(bareCmd)) {
+    resolvedCache.set(cacheKey, bareCmd)
+    return bareCmd
   }
 
-  // 4. Nothing found — return CLI name so caller gets a recognizable ENOENT
-  resolvedCache.set(cacheKey, cli)
-  return cli
+  // 4. Nothing found — return 'claude' so caller gets a recognizable ENOENT
+  resolvedCache.set(cacheKey, 'claude')
+  return 'claude'
 }
 
 /** Clear the resolution cache (e.g. when CLI paths are updated in settings). */

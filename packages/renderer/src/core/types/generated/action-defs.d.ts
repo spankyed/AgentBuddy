@@ -791,6 +791,11 @@ type OutgoingActionEvents = {
         totalPages: number;
     };
 } | {
+    type: 'ACTIONS_ALL_LOADED';
+    data: {
+        actions: ActionEntity[];
+    };
+} | {
     type: 'ACTIONS_IMPORTED';
     count: number;
     errors?: string[];
@@ -873,6 +878,11 @@ type OutgoingPromptEvents = {
         prompts: PromptEntity[];
         page: number;
         totalPages: number;
+    };
+} | {
+    type: 'PROMPTS_ALL_LOADED';
+    data: {
+        prompts: PromptEntity[];
     };
 } | {
     type: 'PROMPTS_IMPORTED';
@@ -3558,6 +3568,8 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "FETCH_PROMPTS_PAGE";
     page?: number;
 } | {
+    type: "FETCH_ALL_PROMPTS";
+} | {
     type: "IMPORT_PROMPTS";
     prompts: any;
 } | {
@@ -3593,6 +3605,8 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
 } | {
     type: "FETCH_ACTIONS_PAGE";
     page?: number;
+} | {
+    type: "FETCH_ALL_ACTIONS";
 } | {
     type: "IMPORT_ACTIONS";
     actions: any;
@@ -4096,6 +4110,7 @@ interface ThreadsSettings {
     recentThreadsLimit: number;
     recentThreadsSortOrder: 'created' | 'visited' | 'message';
     recordingLimitMinutes: number;
+    skipArchiveConfirm?: boolean;
     chat?: AgentSettings;
 }
 interface NotesSettings {
@@ -4315,6 +4330,9 @@ interface CodeSettings {
     autoFetchRemote?: boolean;
     autoFetchIntervalSeconds?: number;
     terminalScripts?: TerminalScript[];
+    showStashes?: boolean;
+    showCommits?: boolean;
+    showWorktrees?: boolean;
 }
 type CodeConnectedData = {
     baseDirectory: string | null;

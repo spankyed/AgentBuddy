@@ -97,4 +97,7 @@ export function finishOnboarding(
     type: 'SET_MODE',
     mode: 'work',
   });
+
+  // Restore chat from maximized onboarding state
+  (services.emitter as any).sendToPlugin('application', { type: 'RESTORE_CHAT' });
 }

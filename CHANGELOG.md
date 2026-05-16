@@ -1,5 +1,51 @@
 -e # Changelog
 
+## v0.2.20 (2026-05-16)
+
+### Features
+- migrations): add default settings for showStashes, showCommits, and showWorktrees in code plugin
+-  improve error handling and add error page diagnostics
+- onboarding): maximize chat during onboarding, restore on completion
+- terminal): add Ctrl+Shift+C/V copy-paste shortcuts to terminal pool
+- renderer): add drag-to-restore behavior on maximized chat handle
+- code): add right-click context menu to commit panel sections
+- commit-panel): reorder panel sections and enable stashes by default
+- Merge pull request #145 from spankyed/AS/commit-subpanel-settings-2
+- code): add settings to toggle commit panel sections (stashes, commits, worktrees)
+-  add fetch-all support for actions and prompts on search
+- tabs): add horizontal scroll on mouse wheel for tab bar rows
+- threads): add setting to skip archive confirmation dialog
+- build): add CSC_IDENTITY_AUTO_DISCOVERY toggle for local unsigned builds
+- tiptap): enable link clicks and image click in viewer mode
+- pull-request): make PR diff tabs read-only
+
+### Fixes
+- layout): remove no-drag from breadcrumb nav to restore titlebar dragging
+- renderer): replace yellow with lime-green in busy indicator gradient to differentiate from amber pause state
+- renderer): resize window controls to fit 72px toolbar on Windows
+- resolve-cli): fix Windows ENOENT by adding native installer path and bare claude probe
+- fork): copy cwd to forked thread to prevent session lookup failure
+- tiptap): use DOM-based scrolling for search highlight instead of plugin state
+- code): clean up orphaned terminal processes after app crash
+- claude-code): scope cc-resume and cc-sessions to thread's project directory
+- claude-code): preserve paused thread state across app restarts
+- speech): replace AVAudioEngine with AVCaptureSession to avoid interrupting audio playback
+- speech): allow recording to coexist with other audio on macOS
+- explorer): update settings tab event type from SETTINGS_TAB.SELECT to TAB.SELECT
+- ImageLightbox): increase z-index values to prevent stacking context conflicts
+
+### Refactors
+- library): replace folder dropdown with direct symlink action
+- code): extract section visibility menu into shared composable
+
+### Other
+- style(flows): replace blurry overlay with clear edit button on flow preview
+- Merge pull request #145 from spankyed/AS/commit-subpanel-settings-2
+- update defs
+- docs: add Twitter/X data scraping tools landscape overview
+
+-e # Changelog
+
 ## v0.2.19 (2026-05-13)
 
 ### Features

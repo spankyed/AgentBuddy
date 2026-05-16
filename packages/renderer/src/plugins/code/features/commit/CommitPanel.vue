@@ -424,8 +424,106 @@
       </div>
     </div>
 
+    <!-- Commits Section -->
+    <div @contextmenu.prevent="onSectionContextMenu">
+      <CommitLogSection v-if="codeSettings?.showCommits !== false" :toast="toast" />
+    </div>
+
+    <!-- Stash resize handle -->
+    <PanelResizer
+      v-if="codeSettings?.showStashes && stashList.length > 0 && isStashesExpanded"
+      orientation="vertical"
+      @resize="onStashResize"
+    />
+
+    <!-- Stashes Section -->
+    <div v-if="codeSettings?.showStashes && stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800" @contextmenu.prevent="onSectionContextMenu">
+      <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isStashesExpanded = !isStashesExpanded">
+        <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
+          <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
+          <ChevronDown v-else class="w-3 h-3" />
+          STASHES ({{ stashSearchQuery.trim() ? `${filteredStashes.length}/` : '' }}{{ stashList.length }})
+        </div>
+        <div class="flex items-center gap-1" @click.stop>
+          <button @click="toggleStashSearch" class="p-1 hover:bg-neutral-700 rounded transition-colors" :class="showStashSearch ? 'bg-neutral-700' : ''" title="Search Stashes">
+            <Search class="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+          <button @click="openClearStashesDialog" class="p-1 hover:bg-neutral-700 rounded transition-colors" title="Clear All Stashes">
+            <Trash2 class="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+        </div>
+      </div>
+      <div v-if="isStashesExpanded" class="overflow-y-auto pb-3" :style="{ maxHeight: stashHeight + 'px' }">
+        <div v-if="showStashSearch" class="pl-5 pr-3 mb-1.5">
+          <div class="relative">
+          <Search :size="12" class="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+          <input
+            ref="stashSearchInput"
+            v-model="stashSearchQuery"
+            placeholder="Search stashes..."
+            class="w-full pl-7 pr-7 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+            @click.stop
+          />
+          <button
+            v-if="stashSearchQuery"
+            @click.stop="stashSearchQuery = ''"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-neutral-700 rounded"
+          >
+            <X :size="12" class="text-neutral-400" />
+          </button>
+          </div>
+        </div>
+        <div class="space-y-0.5 pl-3">
+          <div
+            v-for="stash in filteredStashes"
+            :key="stash.ref"
+            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors cursor-pointer"
+            @click="applyStash(stash.index)"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-neutral-200 truncate">{{ formatStashMessage(stash) }}</div>
+                <div class="text-[11px] text-neutral-500 truncate">{{ stash.ref }} · {{ formatStashBranch(stash.message) }} · {{ formatStashDate(stash.date) }}</div>
+              </div>
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <button @click.stop="copyStashMessage(stash)" class="p-0.5 hover:bg-neutral-700 rounded" title="Copy message">
+                  <Copy class="w-3 h-3 text-neutral-400" />
+                </button>
+                <button @click.stop="popStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Pop (apply & remove)">
+                  <ArrowDownToLine class="w-3 h-3 text-neutral-400" />
+                </button>
+                <button @click.stop="openDropStashDialog(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Drop">
+                  <Trash2 class="w-3 h-3 text-red-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop Stash Dialog -->
+    <RevertDialog
+      :show="showDropStashDialog"
+      :file="null"
+      :customTitle="'Drop Stash'"
+      :customMessage="'Are you sure you want to drop this stash? This action cannot be undone.'"
+      @confirm="confirmDropStash"
+      @cancel="cancelDropStash"
+    />
+
+    <!-- Clear All Stashes Dialog -->
+    <RevertDialog
+      :show="showClearStashesDialog"
+      :file="null"
+      :customTitle="'Clear All Stashes'"
+      :customMessage="'Are you sure you want to clear all stashes? This action cannot be undone.'"
+      @confirm="confirmClearStashes"
+      @cancel="cancelClearStashes"
+    />
+
     <!-- Worktrees Section -->
-    <div v-if="worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+    <div v-if="codeSettings?.showWorktrees && worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800" @contextmenu.prevent="onSectionContextMenu">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isWorktreesExpanded = !isWorktreesExpanded">
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isWorktreesExpanded" class="w-3 h-3" />
@@ -513,103 +611,14 @@
       @cancel="cancelRemoveWorktree"
     />
 
-    <!-- Stash resize handle -->
-    <PanelResizer
-      v-if="stashList.length > 0 && isStashesExpanded"
-      orientation="vertical"
-      @resize="onStashResize"
-    />
-
-    <!-- Stashes Section (pinned to bottom) -->
-    <div v-if="stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
-      <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isStashesExpanded = !isStashesExpanded">
-        <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
-          <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
-          <ChevronDown v-else class="w-3 h-3" />
-          STASHES ({{ stashSearchQuery.trim() ? `${filteredStashes.length}/` : '' }}{{ stashList.length }})
-        </div>
-        <div class="flex items-center gap-1" @click.stop>
-          <button @click="toggleStashSearch" class="p-1 hover:bg-neutral-700 rounded transition-colors" :class="showStashSearch ? 'bg-neutral-700' : ''" title="Search Stashes">
-            <Search class="w-3.5 h-3.5 text-neutral-400" />
-          </button>
-          <button @click="openClearStashesDialog" class="p-1 hover:bg-neutral-700 rounded transition-colors" title="Clear All Stashes">
-            <Trash2 class="w-3.5 h-3.5 text-neutral-400" />
-          </button>
-        </div>
-      </div>
-      <div v-if="isStashesExpanded" class="overflow-y-auto pb-3" :style="{ maxHeight: stashHeight + 'px' }">
-        <div v-if="showStashSearch" class="pl-5 pr-3 mb-1.5">
-          <div class="relative">
-          <Search :size="12" class="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
-          <input
-            ref="stashSearchInput"
-            v-model="stashSearchQuery"
-            placeholder="Search stashes..."
-            class="w-full pl-7 pr-7 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
-            @click.stop
-          />
-          <button
-            v-if="stashSearchQuery"
-            @click.stop="stashSearchQuery = ''"
-            class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-neutral-700 rounded"
-          >
-            <X :size="12" class="text-neutral-400" />
-          </button>
-          </div>
-        </div>
-        <div class="space-y-0.5 pl-3">
-          <div
-            v-for="stash in filteredStashes"
-            :key="stash.ref"
-            class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors cursor-pointer"
-            @click="applyStash(stash.index)"
-          >
-            <div class="flex items-center gap-2 min-w-0">
-              <div class="flex-1 min-w-0">
-                <div class="text-xs text-neutral-200 truncate">{{ formatStashMessage(stash) }}</div>
-                <div class="text-[11px] text-neutral-500 truncate">{{ stash.ref }} · {{ formatStashBranch(stash.message) }} · {{ formatStashDate(stash.date) }}</div>
-              </div>
-              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                <button @click.stop="copyStashMessage(stash)" class="p-0.5 hover:bg-neutral-700 rounded" title="Copy message">
-                  <Copy class="w-3 h-3 text-neutral-400" />
-                </button>
-                <button @click.stop="popStash(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Pop (apply & remove)">
-                  <ArrowDownToLine class="w-3 h-3 text-neutral-400" />
-                </button>
-                <button @click.stop="openDropStashDialog(stash.index)" class="p-0.5 hover:bg-neutral-700 rounded" title="Drop">
-                  <Trash2 class="w-3 h-3 text-red-400" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Commits Section -->
-    <CommitLogSection :toast="toast" />
-
-    <!-- Drop Stash Dialog -->
-    <RevertDialog
-      :show="showDropStashDialog"
-      :file="null"
-      :customTitle="'Drop Stash'"
-      :customMessage="'Are you sure you want to drop this stash? This action cannot be undone.'"
-      @confirm="confirmDropStash"
-      @cancel="cancelDropStash"
-    />
-
-    <!-- Clear All Stashes Dialog -->
-    <RevertDialog
-      :show="showClearStashesDialog"
-      :file="null"
-      :customTitle="'Clear All Stashes'"
-      :customMessage="'Are you sure you want to clear all stashes? This action cannot be undone.'"
-      @confirm="confirmClearStashes"
-      @cancel="cancelClearStashes"
-    />
-
     <ToastNotification ref="toast" />
+
+    <ContextMenuPopup
+      :show="showMenu"
+      :pos="menuPos"
+      :items="sectionMenuItems"
+      @close="showMenu = false"
+    />
     </template>
   </div>
 </template>
@@ -630,11 +639,19 @@ import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 import CommitLogSection from '@/plugins/code/features/commit/CommitLogSection.vue'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
+import { useSectionVisibilityMenu } from '@/plugins/code/composables/useSectionVisibilityMenu'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
 const commitActor = codeActor.system.get('commit')!
+
+// Settings from code actor
+const codeSettings = useSelector(codeActor, (state) => state.context.settings)
+
+// Section visibility context menu
+const { showMenu, menuPos, sectionMenuItems, onSectionContextMenu } = useSectionVisibilityMenu(codeSettings)
 
 // State selectors from commit actor
 const gitStatus = useSelector(commitActor, (state: any) => state.context.gitStatus)

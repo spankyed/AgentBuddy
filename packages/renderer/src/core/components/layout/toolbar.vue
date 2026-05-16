@@ -1,6 +1,6 @@
 <template>
   <div class="toolbar flex flex-col flex-shrink-0 h-full text-white border-r border-neutral-800" data-onboarding-id="toolbar" :style="toolbarZoomStyle" @contextmenu.prevent="onContextMenu">
-    <!-- Window controls area (macOS traffic lights) -->
+    <!-- Window controls area (macOS traffic lights / Windows buttons) -->
     <div class="window-controls-area flex-shrink-0 flex items-center justify-center border-b border-neutral-800" :style="controlsAreaStyle">
       <WindowControls v-if="!isMac" />
     </div>

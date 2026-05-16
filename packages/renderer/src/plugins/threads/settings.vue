@@ -24,6 +24,24 @@
 
         <div class="flex items-center justify-between mt-4">
           <div class="flex-1">
+            <label for="skip-archive-confirm" class="text-sm font-medium text-neutral-200">
+              Skip archive confirmation
+            </label>
+            <p class="mt-1 text-xs text-neutral-600">
+              Archive threads without showing a confirmation dialog
+            </p>
+          </div>
+          <input
+            id="skip-archive-confirm"
+            v-model="skipArchiveConfirm"
+            type="checkbox"
+            class="w-4 h-4 text-blue-600 bg-neutral-800 border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+            @change="saveSkipArchiveConfirm"
+          />
+        </div>
+
+        <div class="flex items-center justify-between mt-4">
+          <div class="flex-1">
             <label for="quick-prompt-number-key-inserts" class="text-sm font-medium text-neutral-200">
               Insert quick prompt on number key
             </label>
@@ -711,6 +729,7 @@ const chatStateConfigs = ref<ChatStateConfig[]>(
   props.settings?.chatStates ? props.settings.chatStates.map(s => ({ ...s })) : []
 )
 
+const skipArchiveConfirm = ref(props.settings?.skipArchiveConfirm ?? false)
 const showOnlyRootThreads = ref(props.settings?.showOnlyRootThreads || false)
 const clickToChat = ref(props.settings?.clickToChat || false)
 const recentThreadsLimit = ref<number>(props.settings?.recentThreadsLimit ?? 7)
@@ -810,6 +829,10 @@ const saveRecordingLimit = () => {
     path: ['recordingLimitMinutes'],
     value: clamped
   })
+}
+
+const saveSkipArchiveConfirm = () => {
+  emit('update-setting', { path: ['skipArchiveConfirm'], value: skipArchiveConfirm.value })
 }
 
 // ---- Chat (agent) save helpers ----

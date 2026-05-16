@@ -109,12 +109,10 @@ function prevMatch() {
 }
 
 function scrollToCurrentMatch() {
-  const state = searchPluginKey.getState(props.editor.state)
-  if (!state || state.matches.length === 0) return
-  const match = state.matches[state.currentIndex]
-  if (!match) return
-  props.editor.chain().setTextSelection(match.from).scrollIntoView().run()
-  // Return focus to the search input
+  const el = props.editor.view.dom.querySelector('.search-highlight-current')
+  if (el) {
+    el.scrollIntoView({ block: 'center' })
+  }
   nextTick(() => inputRef.value?.focus())
 }
 

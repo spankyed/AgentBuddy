@@ -142,7 +142,8 @@ class WindowManager implements AppModule {
 
       const result = await dialog.showOpenDialog(window, {
         properties: ['openDirectory'],
-        title: 'Select Directory'
+        title: 'Select Directory',
+        defaultPath: app.getPath('home'),
       });
 
       if (result.canceled || result.filePaths.length === 0) {
@@ -178,7 +179,8 @@ class WindowManager implements AppModule {
 
       const result = await dialog.showOpenDialog(window, {
         properties,
-        title: type === 'directory' ? 'Select Directory' : 'Select File'
+        title: type === 'directory' ? 'Select Directory' : 'Select File',
+        defaultPath: app.getPath('home'),
       });
 
       if (result.canceled || result.filePaths.length === 0) {

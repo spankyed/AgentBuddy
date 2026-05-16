@@ -55,11 +55,14 @@ export class SpeechHelperProcess {
 
       const platform = process.platform;
 
+      const cwd = path.dirname(helperPath);
+
       if (platform === 'darwin') {
-        this.process = spawn(helperPath, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+        this.process = spawn(helperPath, [], { stdio: ['pipe', 'pipe', 'pipe'], cwd });
       } else if (platform === 'win32') {
         this.process = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', helperPath], {
           stdio: ['pipe', 'pipe', 'pipe'],
+          cwd,
         });
       } else {
         reject(new Error('Unsupported platform'));

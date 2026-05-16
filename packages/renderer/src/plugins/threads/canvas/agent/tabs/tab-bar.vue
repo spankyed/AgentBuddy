@@ -1,7 +1,7 @@
 <template>
   <div class="min-w-0">
     <!-- Pinned row -->
-    <div v-if="pinnedTabs.length" class="flex overflow-x-auto border-b border-neutral-800">
+    <div v-if="pinnedTabs.length" class="flex overflow-x-auto border-b border-neutral-800" @wheel.prevent="(e: WheelEvent) => (e.currentTarget as HTMLElement).scrollLeft += e.deltaY">
       <TabItem
         v-for="tab in pinnedTabs"
         :key="tab.id"
@@ -18,7 +18,7 @@
       />
     </div>
     <!-- Unpinned row -->
-    <div class="flex overflow-x-auto">
+    <div class="flex overflow-x-auto" @wheel.prevent="(e: WheelEvent) => (e.currentTarget as HTMLElement).scrollLeft += e.deltaY">
       <TabItem
         v-for="tab in unpinnedTabs"
         :key="tab.id"

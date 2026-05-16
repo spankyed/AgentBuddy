@@ -12,9 +12,13 @@ import {createSplashScreen} from './modules/splash-screen/index.js';
 import {createMediaProtocol} from './modules/media-protocol/index.js';
 import {createSpeechRecognition} from './modules/speech-recognition/index.js';
 import {createMacOSAppMenu} from './modules/MacOSAppMenu.js';
+import {app} from 'electron';
 
 
 export async function initApp(initConfig: AppInitConfig) {
+  // Disable Chromium media features that trigger macOS Apple Music permission prompt
+  app.commandLine.appendSwitch('disable-features', 'MediaSessionService,HardwareMediaKeyHandling');
+
   // Create instances that need to be shared between modules
   const apiServer = createApiServer();
   const splashScreen = createSplashScreen();

@@ -275,7 +275,13 @@ export const createApplicationState = () => setup({
       // Listen for Electron IPC crash notifications (instant detection)
       const cleanupApiStatus = window.electronAPI?.apiStatus?.onEvent((event) => {
         if (event.type === 'api:stopped' && (event as any).restarting) return; // Restart in progress
-        if (event.type === 'api:stopped' || event.type === 'api:error') {
+        if (event.type === 'api:fatal') {
+          const { message, stack, source } = event as any;
+          sendBack({
+            type: 'BACKEND_ERROR',
+            error: stack ? `[${source}] ${message}\n\n${stack}` : `[${source}] ${message}`,
+          });
+        } else if (event.type === 'api:stopped' || event.type === 'api:error') {
           const err = event.error as any;
           const errorDetail = err?.message || err || 'The backend process stopped unexpectedly.';
           const errorStack = err?.stack;
@@ -558,9 +564,8 @@ export const createApplicationState = () => setup({
         panelSizes: newSizes
       };
     }),
-    closeDevLetter: ({ context, self }) => {
+    closeDevLetter: ({ self }) => {
       self.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
-      self.send({ type: 'RESET_CHAT_HEIGHT' });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({
@@ -678,6 +683,9 @@ export const createApplicationState = () => setup({
     },
     'onboarding': {
       tags: ['onboarding'],
+      entry: assign({
+        panelSizes: ({ context }) => ({ ...context.panelSizes, chatMaximized: true }),
+      }),
       on: {
         CLOSE_DEV_LETTER: {
           actions: 'closeDevLetter',
@@ -688,6 +696,9 @@ export const createApplicationState = () => setup({
     'running': {
       tags: ['running'],
       initial: 'connected',
+      on: {
+        RESTORE_CHAT: { actions: 'restoreChat' },
+      },
       states: {
         'connected': {},
         'disconnected': {},

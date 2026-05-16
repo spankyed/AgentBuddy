@@ -57,8 +57,8 @@
                     v-if="chatMaximized"
                     class="group absolute top-0 left-0 right-0 h-2 z-20 cursor-row-resize"
                     title="Click to restore chat size"
-                    @click="handleChatRestore"
-                    @contextmenu.prevent="handleChatRestore"
+                    @mousedown.prevent="startMaxDrag"
+                    @contextmenu.prevent="() => handleChatRestore()"
                 >
                     <div class="absolute top-0 left-0 right-0 h-[7px] bg-transparent group-hover:bg-blue-500/50 transition-colors" />
                 </div>
@@ -191,31 +191,71 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   applicationState.system.get(pluginId).send(event)
 }
 
-const MIN_CHAT_HEIGHT = 180; // px — enough for chat input to remain visible
+const MIN_CHAT_HEIGHT = 180 // px — enough for chat input to remain visible
+const MAX_DRAG_THRESHOLD = 3
+
+const getMainAreaHeight = () => window.innerHeight - 50 // Approximate, accounting for toolbar
+
+// --- Maximized-chat restore handle (click = restore, drag = restore at max chat height) ---
+let maxDragStartY = 0
+let dragged = false
+
+const cleanupMaxDrag = () => {
+  document.removeEventListener('mousemove', handleMaxDrag)
+  document.removeEventListener('mouseup', stopMaxDrag)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+const startMaxDrag = (e: MouseEvent) => {
+  if (e.button !== 0) return
+  dragged = false
+  maxDragStartY = e.clientY
+  document.addEventListener('mousemove', handleMaxDrag)
+  document.addEventListener('mouseup', stopMaxDrag)
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+}
+
+const handleMaxDrag = (e: MouseEvent) => {
+  if (Math.abs(e.clientY - maxDragStartY) < MAX_DRAG_THRESHOLD) return
+  dragged = true
+  cleanupMaxDrag()
+  handleChatRestore(true)
+}
+
+const stopMaxDrag = () => {
+  cleanupMaxDrag()
+  if (!dragged) handleChatRestore()
+}
 
 const handleCanvasResize = (delta: number) => {
-  const mainAreaHeight = window.innerHeight - 50; // Approximate, accounting for toolbar
-  const currentHeightPx = (panelSizes.value.canvasHeight / 100) * mainAreaHeight;
-  const newHeightPx = currentHeightPx + delta;
-  const maxCanvasPercent = ((mainAreaHeight - MIN_CHAT_HEIGHT) / mainAreaHeight) * 100;
-  const newHeightPercent = Math.min(maxCanvasPercent, (newHeightPx / mainAreaHeight) * 100);
-
-  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: newHeightPercent });
+  const mainAreaHeight = getMainAreaHeight()
+  const currentHeightPx = (panelSizes.value.canvasHeight / 100) * mainAreaHeight
+  const newHeightPx = currentHeightPx + delta
+  const maxCanvasPercent = ((mainAreaHeight - MIN_CHAT_HEIGHT) / mainAreaHeight) * 100
+  const newHeightPercent = Math.min(maxCanvasPercent, (newHeightPx / mainAreaHeight) * 100)
+  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: newHeightPercent })
 }
 
 const handleInspectionResize = (delta: number) => {
-  const newWidth = panelSizes.value.inspectionWidth - delta; // Negative because we're dragging from left side
-  send({ type: 'RESIZE_PANEL', panel: 'inspection', size: newWidth });
+  const newWidth = panelSizes.value.inspectionWidth - delta
+  send({ type: 'RESIZE_PANEL', panel: 'inspection', size: newWidth })
 }
 
 const handleCanvasClick = () => {
-  // Toggle between collapsed (thread bar only) and default (50/50)
-  const isCollapsed = panelSizes.value.canvasHeight >= 93;
-  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 95 });
+  const isCollapsed = panelSizes.value.canvasHeight >= 93
+  send({ type: 'RESIZE_PANEL', panel: 'canvas', size: isCollapsed ? 50 : 95 })
 }
 
 const handleChatMaximize = () => send({ type: 'MAXIMIZE_CHAT' })
-const handleChatRestore = () => send({ type: 'RESTORE_CHAT' })
+const handleChatRestore = (maxChat = false) => {
+  send({ type: 'RESTORE_CHAT' })
+  if (maxChat) {
+    const minCanvasPercent = (MIN_CHAT_HEIGHT / getMainAreaHeight()) * 100
+    send({ type: 'RESIZE_PANEL', panel: 'canvas', size: minCanvasPercent })
+  }
+}
 
 const handleInspectionClick = () => {
   // Toggle inspection panel between collapsed and default
