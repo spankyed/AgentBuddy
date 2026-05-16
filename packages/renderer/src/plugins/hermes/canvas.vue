@@ -149,7 +149,11 @@ const selectView = (view: HermesView) => {
 
 const startBridge = () => actor.send({ type: 'BRIDGE.START' })
 const stopBridge = () => actor.send({ type: 'BRIDGE.STOP' })
-const goToSettings = () => applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' } as any)
+const goToSettings = () => {
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' } as any)
+  // Switch to Plugins tab so the Hermes settings are visible
+  applicationState.system.get('settings').send({ type: 'TAB.SELECT', tab: 'plugins' })
+}
 const refreshSessions = () => actor.send({ type: 'REFRESH' })
 const resumeSession = (sessionId: string) => {
   // TODO: wire session resume to thread creation in hermes mode
