@@ -13,7 +13,7 @@ import { emit } from '@/core/helpers/actor-helpers';
 import { hermes as hermesService } from '@/services/hermes';
 import { createLogger } from '@/core/helpers/debug/logger';
 import { repository } from '@/repository';
-import type { HermesConnectedData, HermesSkill } from './types';
+import type { HermesConnectedData, HermesSkill, BridgeInfo } from './types';
 
 const logger = createLogger('hermes-system');
 
@@ -38,8 +38,8 @@ type IncomingHermesEvents =
 
 type OutgoingHermesEvents =
   | { type: 'HERMES_CONNECTED'; data: HermesConnectedData }
-  | { type: 'HERMES_INSTALL_STATUS'; installStatus: string; version: string | null; error?: string }
-  | { type: 'HERMES_BRIDGE_STATUS'; bridge: { status: string; installStatus: string; version: string | null; pid: number | null; error?: string } }
+  | { type: 'HERMES_INSTALL_STATUS'; installStatus: string; version: string | null; source?: string; error?: string }
+  | { type: 'HERMES_BRIDGE_STATUS'; bridge: BridgeInfo }
   | { type: 'HERMES_SKILLS_DATA'; skills: HermesSkill[] }
   | { type: 'HERMES_SKILL_SAVED'; saved: boolean; path: string }
   | { type: 'HERMES_SKILL_DELETED'; deleted: boolean }
@@ -120,6 +120,7 @@ export const hermesSystem = setup({
           type: 'HERMES_INSTALL_STATUS',
           installStatus: 'installed',
           version: hermesService.info.version,
+          source: hermesService.info.source,
         }));
       }).catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
@@ -163,10 +164,10 @@ export const hermesSystem = setup({
     },
 
     checkConnection: ({ system }) => {
-      hermesService.health().then((result) => {
+      hermesService.health().then(() => {
         system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
-          bridge: { ...hermesService.info, ...result },
+          bridge: hermesService.info,
         }));
       }).catch((err: unknown) => sendError(system, 'checkConnection', err));
     },

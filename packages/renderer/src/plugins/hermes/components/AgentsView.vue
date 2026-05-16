@@ -19,6 +19,10 @@
               {{ installStatus === 'installed' ? `v${version || 'unknown'}` : installStatus }}
             </span>
           </div>
+          <div v-if="source" class="flex items-center gap-2">
+            <span class="text-neutral-500">Detected:</span>
+            <span class="text-neutral-300">{{ source }}</span>
+          </div>
         </div>
       </div>
 
@@ -93,6 +97,7 @@ defineProps<{
   connectionStatus: 'connected' | 'disconnected' | 'error'
   installStatus: string
   version: string | null
+  source: string | null
   models: Array<{ name: string; provider: string; model: string }>
   workspaces: string[]
   sessions: Array<{ id: string; title: string; model: string; message_count: number; updated_at: number; source: string }>

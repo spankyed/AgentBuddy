@@ -118,6 +118,7 @@
         :connection-status="connectionStatus"
         :install-status="installStatus"
         :version="version"
+        :source="source"
         @save-skill="saveSkill"
         @delete-skill="deleteSkill"
         @update-persona="updatePersona"
@@ -157,6 +158,7 @@ const activeView = useSelector(actor, (s: any) => s.context.activeView as Hermes
 const connectionStatus = useSelector(actor, (s: any) => s.context.connectionStatus)
 const installStatus = useSelector(actor, (s: any) => s.context.installStatus)
 const version = useSelector(actor, (s: any) => s.context.version)
+const source = useSelector(actor, (s: any) => s.context.source)
 const skills = useSelector(actor, (s: any) => s.context.skills)
 const models = useSelector(actor, (s: any) => s.context.models)
 const tools = useSelector(actor, (s: any) => s.context.tools)

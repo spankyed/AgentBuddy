@@ -4,13 +4,13 @@
  * Spawns `hermes-bridge.py` as a child process and communicates via JSONL
  * over stdin/stdout. Provides both request/response and streaming APIs.
  *
- * The hermes-agent package is installed into a managed venv at
- * ~/.agentbuddy/hermes-venv/ — no repo clone or manual setup required.
+ * Detects existing hermes-agent installations (PATH, curl installer, pipx,
+ * repo clone) before falling back to a managed venv at ~/.agentbuddy/hermes-venv/.
  */
 
 import { spawn, execSync, exec as execCb, type ChildProcess } from 'child_process'
 import { promisify } from 'util'
-import { mkdirSync } from 'fs'
+import { existsSync, mkdirSync } from 'fs'
 import { createInterface, type Interface } from 'readline'
 import path from 'path'
 import os from 'os'
@@ -22,41 +22,117 @@ const exec = promisify(execCb)
 const logger = createLogger('hermes-bridge')
 
 const BRIDGE_SCRIPT = path.join(process.cwd(), 'src', 'services', 'hermes', 'bridge', 'hermes-bridge.py')
-const VENV_DIR = path.join(os.homedir(), '.agentbuddy', 'hermes-venv')
-const VENV_PYTHON = path.join(VENV_DIR, 'bin', 'python')
-const VENV_PIP = path.join(VENV_DIR, 'bin', 'pip')
+const MANAGED_VENV_DIR = path.join(os.homedir(), '.agentbuddy', 'hermes-venv')
+const MANAGED_VENV_PYTHON = path.join(MANAGED_VENV_DIR, 'bin', 'python')
+const MANAGED_VENV_PIP = path.join(MANAGED_VENV_DIR, 'bin', 'pip')
 
-// ─── Installation ───────────────────────────────────────────────────────────
+// ─── Resolution ─────────────────────────────────────────────────────────────
+
+interface ResolvedPython {
+  python: string
+  source: string
+}
+
+/**
+ * Validate that a Python binary can `import run_agent`.
+ */
+function canImportRunAgent(python: string): boolean {
+  try {
+    execSync(`"${python}" -c "import run_agent"`, { timeout: 10_000, stdio: 'pipe' })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Detect an existing hermes-agent installation.
+ *
+ * Resolution order:
+ * 1. `which hermes-agent` → derive python from the same bin/ dir (pip, pipx, curl installer on PATH)
+ * 2. Managed venv: ~/.agentbuddy/hermes-venv/bin/python
+ * 3. Curl installer default: ~/.hermes/hermes-agent/venv/bin/python
+ * 4. System python: python3 -c "import run_agent"
+ * 5. Sibling repo (dev): ../hermes-agent/{.venv,venv}/bin/python
+ */
+function resolveHermesPython(): ResolvedPython | null {
+  // 1. hermes-agent CLI on PATH → derive python from same bin/ directory
+  try {
+    const binPath = execSync('which hermes-agent', { encoding: 'utf8', timeout: 5000, stdio: 'pipe' }).trim()
+    if (binPath) {
+      const binDir = path.dirname(binPath)
+      const python = path.join(binDir, 'python')
+      if (existsSync(python) && canImportRunAgent(python)) {
+        return { python, source: 'PATH (hermes-agent)' }
+      }
+      // Maybe it's a shim — try python3 in same dir
+      const python3 = path.join(binDir, 'python3')
+      if (existsSync(python3) && canImportRunAgent(python3)) {
+        return { python: python3, source: 'PATH (hermes-agent)' }
+      }
+    }
+  } catch { /* not on PATH */ }
+
+  // 2. Managed venv (our own install)
+  if (existsSync(MANAGED_VENV_PYTHON) && canImportRunAgent(MANAGED_VENV_PYTHON)) {
+    return { python: MANAGED_VENV_PYTHON, source: 'managed venv' }
+  }
+
+  // 3. Curl installer default location
+  const curlPython = path.join(os.homedir(), '.hermes', 'hermes-agent', 'venv', 'bin', 'python')
+  if (existsSync(curlPython) && canImportRunAgent(curlPython)) {
+    return { python: curlPython, source: 'curl installer (~/.hermes)' }
+  }
+
+  // 4. System python (global pip install)
+  for (const name of ['python3', 'python']) {
+    try {
+      const sysPython = execSync(`which ${name}`, { encoding: 'utf8', timeout: 5000, stdio: 'pipe' }).trim()
+      if (sysPython && canImportRunAgent(sysPython)) {
+        return { python: sysPython, source: `system (${name})` }
+      }
+    } catch { continue }
+  }
+
+  // 5. Sibling repo (dev) — relative to CWD
+  const siblingBase = path.resolve(process.cwd(), '..', 'hermes-agent')
+  for (const venvName of ['.venv', 'venv']) {
+    const devPython = path.join(siblingBase, venvName, 'bin', 'python')
+    if (existsSync(devPython) && canImportRunAgent(devPython)) {
+      return { python: devPython, source: `sibling repo (${venvName})` }
+    }
+  }
+
+  return null
+}
+
+// ─── Installation helpers ────────────────────────────────────────────────────
 
 function findSystemPython(): string {
   for (const name of ['python3', 'python']) {
     try {
-      const result = execSync(`which ${name}`, { encoding: 'utf8', timeout: 5000 }).trim()
+      const result = execSync(`which ${name}`, { encoding: 'utf8', timeout: 5000, stdio: 'pipe' }).trim()
       if (result) return result
     } catch { continue }
   }
   return 'python3'
 }
 
-function isInstalled(): InstallStatus {
+function getInstalledVersion(python: string): string | null {
   try {
-    execSync(`test -f "${VENV_PYTHON}"`, { timeout: 2000 })
-    // Verify hermes-agent is actually importable
-    execSync(
-      `"${VENV_PYTHON}" -c "import run_agent"`,
-      { timeout: 10_000 },
-    )
-    return 'installed'
-  } catch {
-    return 'not_installed'
-  }
-}
-
-function getInstalledVersion(): string | null {
-  try {
+    // Try pip show in the same venv first
+    const pipPath = path.join(path.dirname(python), 'pip')
+    if (existsSync(pipPath)) {
+      const version = execSync(
+        `"${pipPath}" show hermes-agent 2>/dev/null | grep -i '^Version:' | cut -d' ' -f2`,
+        { encoding: 'utf8', timeout: 10_000 },
+      ).trim()
+      if (version) return version
+    }
+    // Fallback: ask python directly
     const version = execSync(
-      `"${VENV_PIP}" show hermes-agent 2>/dev/null | grep -i '^Version:' | cut -d' ' -f2`,
-      { encoding: 'utf8', timeout: 10_000 },
+      `"${python}" -c "from importlib.metadata import version; print(version('hermes-agent'))"`,
+      { encoding: 'utf8', timeout: 10_000, stdio: 'pipe' },
     ).trim()
     return version || null
   } catch {
@@ -87,8 +163,10 @@ export class HermesBridgeClient {
   private _status: BridgeStatus = 'stopped'
   private _installStatus: InstallStatus = 'unknown'
   private _version: string | null = null
+  private _source: string | undefined
   private _error: string | undefined
   private _config: HermesConfig
+  private _resolvedPython: ResolvedPython | null = null
   private _readyResolve: ((info: BridgeInfo) => void) | null = null
   private _readyTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -105,13 +183,14 @@ export class HermesBridgeClient {
       version: this._version,
       pid: this.process?.pid ?? null,
       error: this._error,
+      source: this._source,
     }
   }
 
   // ── Installation ────────────────────────────────────────────────────────
 
   /**
-   * Install hermes-agent into the managed venv.
+   * Install hermes-agent into the managed venv (fallback when no existing install detected).
    * Calls `onProgress` with status messages for UI feedback.
    */
   async install(onProgress?: (msg: string) => void): Promise<void> {
@@ -126,22 +205,25 @@ export class HermesBridgeClient {
       const sysPython = findSystemPython()
 
       // Ensure parent dir exists
-      mkdirSync(path.dirname(VENV_DIR), { recursive: true })
+      mkdirSync(path.dirname(MANAGED_VENV_DIR), { recursive: true })
 
       // Create venv
       onProgress?.('Creating Python environment...')
-      await exec(`"${sysPython}" -m venv "${VENV_DIR}"`, { timeout: 60_000 })
+      await exec(`"${sysPython}" -m venv "${MANAGED_VENV_DIR}"`, { timeout: 60_000 })
 
       // Upgrade pip
       onProgress?.('Upgrading pip...')
-      await exec(`"${VENV_PYTHON}" -m pip install --upgrade pip`, { timeout: 120_000 })
+      await exec(`"${MANAGED_VENV_PYTHON}" -m pip install --upgrade pip`, { timeout: 120_000 })
 
       // Install hermes-agent
       onProgress?.('Installing hermes-agent (this may take a minute)...')
-      await exec(`"${VENV_PIP}" install hermes-agent`, { timeout: 300_000 })
+      await exec(`"${MANAGED_VENV_PIP}" install hermes-agent`, { timeout: 300_000 })
 
+      // Re-resolve to pick up the new install
+      this._resolvedPython = resolveHermesPython()
       this._installStatus = 'installed'
-      this._version = getInstalledVersion()
+      this._source = this._resolvedPython?.source
+      this._version = getInstalledVersion(MANAGED_VENV_PYTHON)
       onProgress?.(`Installed hermes-agent v${this._version}`)
       logger.info(`hermes-agent installed: v${this._version}`)
     } catch (err) {
@@ -153,12 +235,20 @@ export class HermesBridgeClient {
   }
 
   /**
-   * Check installation status (refreshes cached value).
+   * Check installation status by resolving an existing hermes-agent Python.
+   * Returns 'installed' if found anywhere, 'not_installed' otherwise.
    */
   checkInstall(): InstallStatus {
-    this._installStatus = isInstalled()
-    if (this._installStatus === 'installed') {
-      this._version = getInstalledVersion()
+    this._resolvedPython = resolveHermesPython()
+    if (this._resolvedPython) {
+      this._installStatus = 'installed'
+      this._source = this._resolvedPython.source
+      this._version = getInstalledVersion(this._resolvedPython.python)
+      logger.info(`hermes-agent resolved: ${this._resolvedPython.source} (${this._resolvedPython.python})`)
+    } else {
+      this._installStatus = 'not_installed'
+      this._source = undefined
+      this._version = null
     }
     return this._installStatus
   }
@@ -170,22 +260,28 @@ export class HermesBridgeClient {
       return this.info
     }
 
-    if (this._installStatus !== 'installed') {
-      this._installStatus = isInstalled()
-      if (this._installStatus !== 'installed') {
-        throw new Error('hermes-agent is not installed. Install it first.')
-      }
+    // Resolve python if not already done
+    if (!this._resolvedPython) {
+      this._resolvedPython = resolveHermesPython()
     }
 
+    if (!this._resolvedPython) {
+      this._installStatus = 'not_installed'
+      throw new Error('hermes-agent is not installed. Install it first.')
+    }
+
+    this._installStatus = 'installed'
+    this._source = this._resolvedPython.source
     this._status = 'starting'
     this._error = undefined
 
-    logger.info(`Starting Hermes bridge with venv Python: ${VENV_PYTHON}`)
+    const python = this._resolvedPython.python
+    logger.info(`Starting Hermes bridge with Python: ${python} (source: ${this._source})`)
 
     const env: Record<string, string> = { ...process.env } as Record<string, string>
     if (this._config.hermesHome) env.HERMES_HOME = this._config.hermesHome
 
-    this.process = spawn(VENV_PYTHON, [BRIDGE_SCRIPT], {
+    this.process = spawn(python, [BRIDGE_SCRIPT], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env,
     })

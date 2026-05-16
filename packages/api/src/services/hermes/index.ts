@@ -5,13 +5,14 @@
  * the claude-code service pattern. Used by both the brain system (actions/flows)
  * and the hermes management system.
  *
- * The hermes-agent package is auto-installed into a managed venv at
- * ~/.agentbuddy/hermes-venv/ — no manual repo clone needed.
+ * Detects existing hermes-agent installations (PATH, curl installer, pipx,
+ * repo clone) before falling back to a managed venv at ~/.agentbuddy/hermes-venv/.
  *
  * Usage:
  *   import { hermes } from '@/services/hermes'
  *
- *   await hermes.install()   // first-time setup
+ *   hermes.checkInstall()    // detect existing install
+ *   await hermes.install()   // fallback: managed venv
  *   await hermes.start()
  *   const sessions = await hermes.sessions.list()
  */
@@ -51,17 +52,17 @@ export const hermes = {
 
   // ── Installation ──────────────────────────────────────────────────────
 
-  /** Check if hermes-agent is installed in the managed venv. */
+  /** Current install status. */
   get installStatus(): InstallStatus {
     return getBridge().installStatus
   },
 
-  /** Refresh install status (re-checks venv). */
+  /** Re-resolve hermes-agent (checks PATH, managed venv, curl installer, etc). */
   checkInstall(): InstallStatus {
     return getBridge().checkInstall()
   },
 
-  /** Install hermes-agent into managed venv. */
+  /** Install hermes-agent into managed venv (fallback when nothing detected). */
   async install(onProgress?: (msg: string) => void): Promise<void> {
     return getBridge().install(onProgress)
   },

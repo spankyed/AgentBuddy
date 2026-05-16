@@ -40,6 +40,8 @@ export interface HermesContext {
   connectionStatus: 'disconnected' | 'connected' | 'error'
   installStatus: 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error'
   version: string | null
+  /** How hermes-agent was detected (e.g. 'PATH', 'managed venv', 'curl installer'). */
+  source: string | null
   skills: HermesSkill[]
   models: HermesModel[]
   tools: HermesTool[]
@@ -69,7 +71,7 @@ type UIEvent =
 type SystemEvent =
   | { type: 'HERMES_CONNECTED'; data: any }
   | { type: 'HERMES_BRIDGE_STATUS'; bridge: any }
-  | { type: 'HERMES_INSTALL_STATUS'; installStatus: string; version: string | null; error?: string }
+  | { type: 'HERMES_INSTALL_STATUS'; installStatus: string; version: string | null; source?: string; error?: string }
   | { type: 'HERMES_SKILLS_DATA'; skills: HermesSkill[] }
   | { type: 'HERMES_SKILL_SAVED'; saved: boolean; path: string }
   | { type: 'HERMES_SKILL_DELETED'; deleted: boolean }
@@ -103,6 +105,7 @@ const hermesState = setup({
         connectionStatus: data.bridge?.status === 'ready' ? 'connected' as const : 'disconnected' as const,
         installStatus: data.bridge?.installStatus ?? 'unknown',
         version: data.bridge?.version ?? null,
+        source: data.bridge?.source ?? null,
         skills: data.skills ?? [],
         models: data.models ?? [],
         tools: data.tools?.tools ?? [],
@@ -121,6 +124,7 @@ const hermesState = setup({
         connectionStatus: ev.bridge?.status === 'ready' ? 'connected' as const : 'disconnected' as const,
         installStatus: ev.bridge?.installStatus ?? 'unknown',
         version: ev.bridge?.version ?? null,
+        source: ev.bridge?.source ?? null,
       }
     }),
 
@@ -129,6 +133,7 @@ const hermesState = setup({
       return {
         installStatus: ev.installStatus as HermesContext['installStatus'],
         version: ev.version ?? null,
+        source: ev.source ?? null,
         error: ev.error ?? null,
       }
     }),
@@ -237,6 +242,7 @@ const hermesState = setup({
     connectionStatus: 'disconnected' as const,
     installStatus: 'unknown' as const,
     version: null,
+    source: null,
     skills: [],
     models: [],
     tools: [],

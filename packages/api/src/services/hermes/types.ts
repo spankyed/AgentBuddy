@@ -128,4 +128,6 @@ export interface BridgeInfo {
   version: string | null
   pid: number | null
   error?: string
+  /** How hermes-agent was detected (e.g. 'PATH', 'managed venv', 'curl installer', 'sibling repo'). */
+  source?: string
 }
