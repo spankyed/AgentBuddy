@@ -133,12 +133,29 @@ class TerminalPool {
     // Shift+Enter inserts a newline instead of executing. Wired once here
     // because attachCustomKeyEventHandler is a setter, not an event.
     term.attachCustomKeyEventHandler((event) => {
+      // Shift+Enter → literal newline
       if (event.type === 'keydown' && (event.key === 'Enter' || event.keyCode === 13) && event.shiftKey) {
         sendInput('\n')
         event.preventDefault()
         event.stopPropagation()
         return false
       }
+
+      // Ctrl+Shift+C → copy selection (Windows/Linux terminal convention)
+      if (event.type === 'keydown' && event.ctrlKey && event.shiftKey && event.key === 'C') {
+        const selection = term.getSelection()
+        if (selection) navigator.clipboard.writeText(selection)
+        return false
+      }
+
+      // Ctrl+Shift+V → paste from clipboard (Windows/Linux terminal convention)
+      if (event.type === 'keydown' && event.ctrlKey && event.shiftKey && event.key === 'V') {
+        navigator.clipboard.readText().then((text) => {
+          if (text) sendInput(text)
+        })
+        return false
+      }
+
       return true
     })
 
