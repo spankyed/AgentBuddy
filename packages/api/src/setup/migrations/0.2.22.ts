@@ -2,7 +2,7 @@ import { settingsQueries, settingsCommands } from '@/systems/settings/repository
 import type { Migration } from './index';
 
 export const migration: Migration = {
-  target: '0.2.21',
+  target: '0.2.22',
   description: 'Add hermes agent mode to thread settings',
   up: () => {
     const data = settingsQueries.getSettings();
