@@ -37,10 +37,13 @@ let _bridge: HermesBridgeClient | null = null
 
 function discoverAgentDir(): string | undefined {
   const home = process.env.HOME || ''
+  const cwd = process.cwd()
   const candidates = [
     process.env.HERMES_WEBUI_AGENT_DIR,
     path.join(home, '.hermes', 'hermes-agent'),
-    path.resolve(process.cwd(), '..', 'hermes-agent'),
+    path.resolve(cwd, '..', 'hermes-agent'),           // sibling of packages/api/
+    path.resolve(cwd, '..', '..', 'hermes-agent'),      // sibling of packages/
+    path.resolve(cwd, '..', '..', '..', 'hermes-agent'), // sibling of AgentBuddy/
     path.join(home, 'hermes-agent'),
   ].filter(Boolean) as string[]
 
