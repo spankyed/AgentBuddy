@@ -33,6 +33,15 @@
         {{ item.label }}
       </button>
 
+      <!-- Settings link → navigates to Settings plugin -->
+      <button
+        @click="goToSettings"
+        class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+      >
+        <Settings class="w-4 h-4" />
+        Settings
+      </button>
+
       <!-- Spacer -->
       <div class="flex-1" />
 
@@ -72,14 +81,12 @@
         :sessions="sessions"
         :connection-status="connectionStatus"
         :agent-dir="agentDir"
-        :hermes-config="hermesConfig"
         @save-skill="saveSkill"
         @delete-skill="deleteSkill"
         @update-persona="updatePersona"
         @write-memory="writeMemory"
         @refresh-sessions="refreshSessions"
         @resume-session="resumeSession"
-        @update-config="updateConfig"
       />
     </div>
   </div>
@@ -103,7 +110,6 @@ import SkillsView from './components/SkillsView.vue'
 import PersonaView from './components/PersonaView.vue'
 import MemoryView from './components/MemoryView.vue'
 import ToolsView from './components/ToolsView.vue'
-import SettingsView from './components/SettingsView.vue'
 import AgentsView from './components/AgentsView.vue'
 
 const actor = applicationState.system.get(id)
@@ -120,7 +126,6 @@ const personaPath = useSelector(actor, (s: any) => s.context.personaPath)
 const memory = useSelector(actor, (s: any) => s.context.memory)
 const workspaces = useSelector(actor, (s: any) => s.context.workspaces)
 const sessions = useSelector(actor, (s: any) => s.context.sessions)
-const hermesConfig = useSelector(actor, (s: any) => s.context.hermesConfig)
 
 const navItems = [
   { id: 'agents' as HermesView, label: 'Agents', icon: Bot },
@@ -128,7 +133,6 @@ const navItems = [
   { id: 'persona' as HermesView, label: 'Persona', icon: User },
   { id: 'memory' as HermesView, label: 'Memory', icon: Brain },
   { id: 'tools' as HermesView, label: 'Tools', icon: Wrench },
-  { id: 'settings' as HermesView, label: 'Settings', icon: Settings },
 ]
 
 const viewComponents: Record<HermesView, any> = {
@@ -137,7 +141,6 @@ const viewComponents: Record<HermesView, any> = {
   persona: PersonaView,
   memory: MemoryView,
   tools: ToolsView,
-  settings: SettingsView,
 }
 
 const selectView = (view: HermesView) => {
@@ -146,10 +149,8 @@ const selectView = (view: HermesView) => {
 
 const startBridge = () => actor.send({ type: 'BRIDGE.START' })
 const stopBridge = () => actor.send({ type: 'BRIDGE.STOP' })
+const goToSettings = () => applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' } as any)
 const refreshSessions = () => actor.send({ type: 'REFRESH' })
-const updateConfig = (config: { provider: string; apiKey: string; model: string }) => {
-  actor.send({ type: 'CONFIG.UPDATE', config })
-}
 const resumeSession = (sessionId: string) => {
   // TODO: wire session resume to thread creation in hermes mode
   console.log('Resume session:', sessionId)

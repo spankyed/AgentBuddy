@@ -5,7 +5,7 @@ import { trpc } from '@/core/trpc'
 export const id = 'hermes' as const
 export type HermesPluginState = ActorRefFrom<typeof hermesState>
 
-export type HermesView = 'agents' | 'skills' | 'persona' | 'memory' | 'tools' | 'settings'
+export type HermesView = 'agents' | 'skills' | 'persona' | 'memory' | 'tools'
 
 export interface HermesSkill {
   name: string
@@ -48,7 +48,6 @@ export interface HermesContext {
   memory: Record<string, string>
   workspaces: string[]
   sessions: HermesSession[]
-  hermesConfig: { provider?: string; apiKey?: string; model?: string }
   error: string | null
 }
 
@@ -63,7 +62,6 @@ type UIEvent =
   | { type: 'BRIDGE.START' }
   | { type: 'BRIDGE.STOP' }
   | { type: 'BRIDGE.CHECK' }
-  | { type: 'CONFIG.UPDATE'; config: { provider: string; apiKey: string; model: string } }
   | { type: 'REFRESH' }
 
 type SystemEvent =
@@ -204,15 +202,6 @@ const hermesState = setup({
       })
     },
 
-    sendUpdateConfig: ({ event }) => {
-      const ev = event as UIEvent & { type: 'CONFIG.UPDATE' }
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'HERMES_UPDATE_CONFIG',
-        ...ev.config,
-      })
-    },
-
     refreshAll: () => {
       trpc.bus.send.mutate({ systemId: id, type: 'HERMES_GET_SKILLS' })
       trpc.bus.send.mutate({ systemId: id, type: 'HERMES_GET_PERSONA' })
@@ -238,7 +227,6 @@ const hermesState = setup({
     memory: {},
     workspaces: [],
     sessions: [],
-    hermesConfig: {},
     error: null,
   }),
   on: {
@@ -255,7 +243,6 @@ const hermesState = setup({
     HERMES_TOOLS_DATA: { actions: 'setTools' },
     HERMES_MODELS_DATA: { actions: 'setModels' },
     HERMES_WORKSPACES_DATA: { actions: 'setWorkspaces' },
-    'CONFIG.UPDATE': { actions: 'sendUpdateConfig' },
     HERMES_ERROR: { actions: 'setError' },
 
     // UI events
