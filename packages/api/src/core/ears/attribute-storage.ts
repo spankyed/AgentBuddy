@@ -237,8 +237,8 @@ export function updateRelation(
 }
 
 export const removeRelation = (relId: EARS.EntityId) => {
+  persistence.onRemoveRelation(relId); // Route before dropping — router reads RelationDetails from LMDB
   dropAttr(relId, EARS.AttrKind.RelationDetails);
-  persistence.onRemoveRelation(relId);
 };
 
 /*─────────────────────────────────────────────────────────────
