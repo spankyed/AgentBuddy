@@ -5,6 +5,7 @@
       ? 'overflow-x-auto border-b border-neutral-800 shrink-0'
       : 'w-64 h-full overflow-y-auto border-r border-neutral-800'"
       class="bg-neutral-900"
+      @wheel.prevent="compact && (($event.currentTarget as HTMLElement).scrollLeft += $event.deltaY)"
     >
       <ArtifactList
         :artifacts="artifacts"
