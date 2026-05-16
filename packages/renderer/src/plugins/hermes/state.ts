@@ -38,7 +38,8 @@ export interface HermesSession {
 export interface HermesContext {
   activeView: HermesView
   connectionStatus: 'disconnected' | 'connected' | 'error'
-  agentDir: string | null
+  installStatus: 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error'
+  version: string | null
   skills: HermesSkill[]
   models: HermesModel[]
   tools: HermesTool[]
@@ -59,6 +60,7 @@ type UIEvent =
   | { type: 'SKILL.DELETE'; path: string }
   | { type: 'PERSONA.UPDATE'; content: string }
   | { type: 'MEMORY.WRITE'; filename: string; content: string }
+  | { type: 'INSTALL' }
   | { type: 'BRIDGE.START' }
   | { type: 'BRIDGE.STOP' }
   | { type: 'BRIDGE.CHECK' }
@@ -67,6 +69,7 @@ type UIEvent =
 type SystemEvent =
   | { type: 'HERMES_CONNECTED'; data: any }
   | { type: 'HERMES_BRIDGE_STATUS'; bridge: any }
+  | { type: 'HERMES_INSTALL_STATUS'; installStatus: string; version: string | null; error?: string }
   | { type: 'HERMES_SKILLS_DATA'; skills: HermesSkill[] }
   | { type: 'HERMES_SKILL_SAVED'; saved: boolean; path: string }
   | { type: 'HERMES_SKILL_DELETED'; deleted: boolean }
@@ -98,7 +101,8 @@ const hermesState = setup({
       const data = ev.data
       return {
         connectionStatus: data.bridge?.status === 'ready' ? 'connected' as const : 'disconnected' as const,
-        agentDir: data.bridge?.agentDir ?? null,
+        installStatus: data.bridge?.installStatus ?? 'unknown',
+        version: data.bridge?.version ?? null,
         skills: data.skills ?? [],
         models: data.models ?? [],
         tools: data.tools?.tools ?? [],
@@ -115,7 +119,17 @@ const hermesState = setup({
       const ev = event as SystemEvent & { type: 'HERMES_BRIDGE_STATUS' }
       return {
         connectionStatus: ev.bridge?.status === 'ready' ? 'connected' as const : 'disconnected' as const,
-        agentDir: ev.bridge?.agentDir ?? null,
+        installStatus: ev.bridge?.installStatus ?? 'unknown',
+        version: ev.bridge?.version ?? null,
+      }
+    }),
+
+    updateInstallStatus: assign(({ event }) => {
+      const ev = event as SystemEvent & { type: 'HERMES_INSTALL_STATUS' }
+      return {
+        installStatus: ev.installStatus as HermesContext['installStatus'],
+        version: ev.version ?? null,
+        error: ev.error ?? null,
       }
     }),
 
@@ -150,6 +164,10 @@ const hermesState = setup({
     }),
 
     // ─── Backend commands ───────────────────────────────────────
+
+    sendInstall: () => {
+      trpc.bus.send.mutate({ systemId: id, type: 'HERMES_INSTALL' })
+    },
 
     sendStartBridge: () => {
       trpc.bus.send.mutate({ systemId: id, type: 'HERMES_START_BRIDGE' })
@@ -217,7 +235,8 @@ const hermesState = setup({
   context: () => ({
     activeView: 'skills' as HermesView,
     connectionStatus: 'disconnected' as const,
-    agentDir: null,
+    installStatus: 'unknown' as const,
+    version: null,
     skills: [],
     models: [],
     tools: [],
@@ -233,6 +252,7 @@ const hermesState = setup({
     // System events (from backend)
     HERMES_CONNECTED: { actions: 'setConnectedData' },
     HERMES_BRIDGE_STATUS: { actions: 'updateBridgeStatus' },
+    HERMES_INSTALL_STATUS: { actions: 'updateInstallStatus' },
     HERMES_SKILLS_DATA: { actions: 'setSkills' },
     HERMES_SKILL_SAVED: { actions: 'refreshAll' },
     HERMES_SKILL_DELETED: { actions: 'refreshAll' },
@@ -251,6 +271,7 @@ const hermesState = setup({
     'SKILL.DELETE': { actions: 'sendDeleteSkill' },
     'PERSONA.UPDATE': { actions: 'sendUpdatePersona' },
     'MEMORY.WRITE': { actions: 'sendWriteMemory' },
+    INSTALL: { actions: 'sendInstall' },
     'BRIDGE.START': { actions: 'sendStartBridge' },
     'BRIDGE.STOP': { actions: 'sendStopBridge' },
     'BRIDGE.CHECK': { actions: 'sendCheckConnection' },

@@ -5,18 +5,18 @@
  * the claude-code service pattern. Used by both the brain system (actions/flows)
  * and the hermes management system.
  *
+ * The hermes-agent package is auto-installed into a managed venv at
+ * ~/.agentbuddy/hermes-venv/ — no manual repo clone needed.
+ *
  * Usage:
  *   import { hermes } from '@/services/hermes'
  *
+ *   await hermes.install()   // first-time setup
  *   await hermes.start()
  *   const sessions = await hermes.sessions.list()
- *   const handle = hermes.chat({ sessionId, message, model })
  */
 
-import { execSync } from 'child_process'
-import path from 'path'
 import { HermesBridgeClient } from './bridge-client'
-import { createLogger } from '@/core/helpers/debug/logger'
 import type {
   HermesConfig,
   HermesSession,
@@ -25,42 +25,18 @@ import type {
   HermesTool,
   HermesMemoryFiles,
   BridgeInfo,
+  InstallStatus,
 } from './types'
 
 export type * from './types'
-
-const logger = createLogger('hermes-service')
 
 // ─── Singleton Bridge ───────────────────────────────────────────────────────
 
 let _bridge: HermesBridgeClient | null = null
 
-function discoverAgentDir(): string | undefined {
-  const home = process.env.HOME || ''
-  const cwd = process.cwd()
-  const candidates = [
-    process.env.HERMES_WEBUI_AGENT_DIR,
-    path.join(home, '.hermes', 'hermes-agent'),
-    path.resolve(cwd, '..', 'hermes-agent'),           // sibling of packages/api/
-    path.resolve(cwd, '..', '..', 'hermes-agent'),      // sibling of packages/
-    path.resolve(cwd, '..', '..', '..', 'hermes-agent'), // sibling of AgentBuddy/
-    path.join(home, 'hermes-agent'),
-  ].filter(Boolean) as string[]
-
-  for (const dir of candidates) {
-    try {
-      execSync(`test -f "${path.join(dir, 'run_agent.py')}"`, { timeout: 2000 })
-      return dir
-    } catch {}
-  }
-  return undefined
-}
-
 function getBridge(): HermesBridgeClient {
   if (!_bridge) {
-    const agentDir = discoverAgentDir()
-    _bridge = new HermesBridgeClient(agentDir ? { agentDir } : {})
-    if (agentDir) logger.info(`Hermes agent discovered at ${agentDir}`)
+    _bridge = new HermesBridgeClient()
   }
   return _bridge
 }
@@ -72,6 +48,25 @@ export const hermes = {
   get bridge(): HermesBridgeClient {
     return getBridge()
   },
+
+  // ── Installation ──────────────────────────────────────────────────────
+
+  /** Check if hermes-agent is installed in the managed venv. */
+  get installStatus(): InstallStatus {
+    return getBridge().installStatus
+  },
+
+  /** Refresh install status (re-checks venv). */
+  checkInstall(): InstallStatus {
+    return getBridge().checkInstall()
+  },
+
+  /** Install hermes-agent into managed venv. */
+  async install(onProgress?: (msg: string) => void): Promise<void> {
+    return getBridge().install(onProgress)
+  },
+
+  // ── Bridge Lifecycle ──────────────────────────────────────────────────
 
   /** Start the bridge subprocess. */
   async start(config?: HermesConfig): Promise<BridgeInfo> {
@@ -132,10 +127,6 @@ export const hermes = {
 
   // ── Chat ────────────────────────────────────────────────────────────────
 
-  /**
-   * Start a streaming chat turn. Returns a promise that resolves when done.
-   * Call `onEvent` for each streaming token/tool event.
-   */
   async chat(
     params: {
       sessionId?: string
@@ -148,7 +139,6 @@ export const hermes = {
     return getBridge().sendStreaming('chat', params, onEvent)
   },
 
-  /** Cancel an active stream. */
   async cancelStream(streamId: string): Promise<{ cancelled: boolean }> {
     return getBridge().send('cancelStream', { streamId })
   },

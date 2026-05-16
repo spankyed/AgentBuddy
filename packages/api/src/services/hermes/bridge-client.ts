@@ -4,43 +4,64 @@
  * Spawns `hermes-bridge.py` as a child process and communicates via JSONL
  * over stdin/stdout. Provides both request/response and streaming APIs.
  *
- * Pattern: mirrors the claude-code runner.ts / query.ts split, but simplified
- * since we own both sides of the protocol.
+ * The hermes-agent package is installed into a managed venv at
+ * ~/.agentbuddy/hermes-venv/ — no repo clone or manual setup required.
  */
 
-import { spawn, execSync, type ChildProcess } from 'child_process'
+import { spawn, execSync, exec as execCb, type ChildProcess } from 'child_process'
+import { promisify } from 'util'
+import { mkdirSync } from 'fs'
 import { createInterface, type Interface } from 'readline'
 import path from 'path'
+import os from 'os'
 import { createLogger } from '@/core/helpers/debug/logger'
-import type { BridgeRequest, BridgeResponse, BridgeStatus, BridgeInfo, HermesConfig } from './types'
+import type { BridgeRequest, BridgeResponse, BridgeStatus, BridgeInfo, HermesConfig, InstallStatus } from './types'
+
+const exec = promisify(execCb)
 
 const logger = createLogger('hermes-bridge')
 
 const BRIDGE_SCRIPT = path.join(process.cwd(), 'src', 'services', 'hermes', 'bridge', 'hermes-bridge.py')
+const VENV_DIR = path.join(os.homedir(), '.agentbuddy', 'hermes-venv')
+const VENV_PYTHON = path.join(VENV_DIR, 'bin', 'python')
+const VENV_PIP = path.join(VENV_DIR, 'bin', 'pip')
 
-// ─── Python Discovery ───────────────────────────────────────────────────────
+// ─── Installation ───────────────────────────────────────────────────────────
 
-function discoverPython(config: HermesConfig): string {
-  if (config.pythonPath) return config.pythonPath
-
-  // Check agent dir venvs first (they have the right deps installed)
-  if (config.agentDir) {
-    for (const venv of ['.venv', 'venv']) {
-      const venvPy = path.join(config.agentDir, venv, 'bin', 'python')
-      try { execSync(`test -f "${venvPy}"`, { timeout: 2000 }); return venvPy } catch {}
-    }
-  }
-
+function findSystemPython(): string {
   for (const name of ['python3', 'python']) {
     try {
       const result = execSync(`which ${name}`, { encoding: 'utf8', timeout: 5000 }).trim()
       if (result) return result
-    } catch {
-      continue
-    }
+    } catch { continue }
   }
-
   return 'python3'
+}
+
+function isInstalled(): InstallStatus {
+  try {
+    execSync(`test -f "${VENV_PYTHON}"`, { timeout: 2000 })
+    // Verify hermes-agent is actually importable
+    execSync(
+      `"${VENV_PYTHON}" -c "import run_agent"`,
+      { timeout: 10_000 },
+    )
+    return 'installed'
+  } catch {
+    return 'not_installed'
+  }
+}
+
+function getInstalledVersion(): string | null {
+  try {
+    const version = execSync(
+      `"${VENV_PIP}" show hermes-agent 2>/dev/null | grep -i '^Version:' | cut -d' ' -f2`,
+      { encoding: 'utf8', timeout: 10_000 },
+    ).trim()
+    return version || null
+  } catch {
+    return null
+  }
 }
 
 // ─── Request/Response Correlation ───────────────────────────────────────────
@@ -64,7 +85,8 @@ export class HermesBridgeClient {
   private readline: Interface | null = null
   private pending = new Map<string, PendingCallback>()
   private _status: BridgeStatus = 'stopped'
-  private _agentDir: string | null = null
+  private _installStatus: InstallStatus = 'unknown'
+  private _version: string | null = null
   private _error: string | undefined
   private _config: HermesConfig
   private _readyResolve: ((info: BridgeInfo) => void) | null = null
@@ -75,13 +97,70 @@ export class HermesBridgeClient {
   }
 
   get status(): BridgeStatus { return this._status }
+  get installStatus(): InstallStatus { return this._installStatus }
   get info(): BridgeInfo {
     return {
       status: this._status,
-      agentDir: this._agentDir,
+      installStatus: this._installStatus,
+      version: this._version,
       pid: this.process?.pid ?? null,
       error: this._error,
     }
+  }
+
+  // ── Installation ────────────────────────────────────────────────────────
+
+  /**
+   * Install hermes-agent into the managed venv.
+   * Calls `onProgress` with status messages for UI feedback.
+   */
+  async install(onProgress?: (msg: string) => void): Promise<void> {
+    if (this._installStatus === 'installing') {
+      throw new Error('Installation already in progress')
+    }
+
+    this._installStatus = 'installing'
+    this._error = undefined
+
+    try {
+      const sysPython = findSystemPython()
+
+      // Ensure parent dir exists
+      mkdirSync(path.dirname(VENV_DIR), { recursive: true })
+
+      // Create venv
+      onProgress?.('Creating Python environment...')
+      await exec(`"${sysPython}" -m venv "${VENV_DIR}"`, { timeout: 60_000 })
+
+      // Upgrade pip
+      onProgress?.('Upgrading pip...')
+      await exec(`"${VENV_PYTHON}" -m pip install --upgrade pip`, { timeout: 120_000 })
+
+      // Install hermes-agent
+      onProgress?.('Installing hermes-agent (this may take a minute)...')
+      await exec(`"${VENV_PIP}" install hermes-agent`, { timeout: 300_000 })
+
+      this._installStatus = 'installed'
+      this._version = getInstalledVersion()
+      onProgress?.(`Installed hermes-agent v${this._version}`)
+      logger.info(`hermes-agent installed: v${this._version}`)
+    } catch (err) {
+      this._installStatus = 'error'
+      this._error = err instanceof Error ? err.message : String(err)
+      logger.error(`hermes-agent install failed: ${this._error}`)
+      throw err
+    }
+  }
+
+  /**
+   * Check installation status (refreshes cached value).
+   */
+  checkInstall(): InstallStatus {
+    this._installStatus = isInstalled()
+    if (this._installStatus === 'installed') {
+      this._version = getInstalledVersion()
+    }
+    return this._installStatus
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────
@@ -91,18 +170,22 @@ export class HermesBridgeClient {
       return this.info
     }
 
+    if (this._installStatus !== 'installed') {
+      this._installStatus = isInstalled()
+      if (this._installStatus !== 'installed') {
+        throw new Error('hermes-agent is not installed. Install it first.')
+      }
+    }
+
     this._status = 'starting'
     this._error = undefined
 
-    const pythonPath = discoverPython(this._config)
-    logger.info(`Starting Hermes bridge with Python: ${pythonPath}`)
+    logger.info(`Starting Hermes bridge with venv Python: ${VENV_PYTHON}`)
 
     const env: Record<string, string> = { ...process.env } as Record<string, string>
     if (this._config.hermesHome) env.HERMES_HOME = this._config.hermesHome
-    if (this._config.agentDir) env.HERMES_WEBUI_AGENT_DIR = this._config.agentDir
-    // API keys are sent via JSONL updateConfig after startup — not env vars
 
-    this.process = spawn(pythonPath, [BRIDGE_SCRIPT], {
+    this.process = spawn(VENV_PYTHON, [BRIDGE_SCRIPT], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env,
     })
@@ -198,10 +281,6 @@ export class HermesBridgeClient {
 
   // ── Request/Response ──────────────────────────────────────────────────
 
-  /**
-   * Send a request and wait for the result response.
-   * For non-streaming methods (listSessions, getMemory, etc.).
-   */
   async send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     if (this._status !== 'ready') {
       throw new Error(`Bridge not ready (status: ${this._status})`)
@@ -227,10 +306,6 @@ export class HermesBridgeClient {
     })
   }
 
-  /**
-   * Send a streaming request. Calls `onEvent` for each streaming event,
-   * resolves when the stream completes (done/error).
-   */
   async sendStreaming(
     method: string,
     params: Record<string, unknown>,
@@ -285,8 +360,7 @@ export class HermesBridgeClient {
       if (this._readyResolve) {
         if (this._readyTimeout) clearTimeout(this._readyTimeout)
         this._status = 'ready'
-        this._agentDir = (msg.data?.agentDir as string) ?? null
-        logger.info(`Bridge ready`, { agentDir: this._agentDir })
+        logger.info(`Bridge ready`)
         this._readyResolve(this.info)
         this._readyResolve = null
         this._readyTimeout = null

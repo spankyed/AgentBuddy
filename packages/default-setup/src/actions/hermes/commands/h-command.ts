@@ -124,7 +124,7 @@ export async function action(
 
       case 'h-status': {
         const info = hermes.info;
-        reply(`Hermes Bridge: ${info.status}\nAgent Dir: ${info.agentDir || 'not found'}\nPID: ${info.pid || 'n/a'}`);
+        reply(`Hermes Bridge: ${info.status}\nInstalled: ${(info as any).installStatus || 'unknown'} (${(info as any).version || 'n/a'})\nPID: ${info.pid || 'n/a'}`);
         break;
       }
 

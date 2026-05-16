@@ -8,11 +8,21 @@
           <div
             :class="[
               'w-2 h-2 rounded-full',
-              connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'error' ? 'bg-red-500' : 'bg-neutral-500'
+              installStatus === 'not_installed' || installStatus === 'unknown' ? 'bg-neutral-600' :
+              installStatus === 'installing' ? 'bg-yellow-500 animate-pulse' :
+              connectionStatus === 'connected' ? 'bg-green-500' :
+              connectionStatus === 'error' || installStatus === 'error' ? 'bg-red-500' :
+              'bg-neutral-500'
             ]"
           />
           <span class="text-neutral-400">
-            {{ connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'error' ? 'Error' : 'Disconnected' }}
+            {{
+              installStatus === 'not_installed' || installStatus === 'unknown' ? 'Not Installed' :
+              installStatus === 'installing' ? 'Installing...' :
+              installStatus === 'error' ? 'Install Error' :
+              connectionStatus === 'connected' ? 'Connected' :
+              connectionStatus === 'error' ? 'Error' : 'Disconnected'
+            }}
           </span>
         </div>
       </div>
@@ -47,22 +57,48 @@
 
       <!-- Bridge Controls -->
       <div class="px-3 py-2 border-t border-neutral-800 mt-2">
-        <button
-          v-if="connectionStatus !== 'connected'"
-          @click="startBridge"
-          class="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors"
-        >
-          <Play class="w-3 h-3" />
-          Start Bridge
-        </button>
-        <button
-          v-else
-          @click="stopBridge"
-          class="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
-        >
-          <Square class="w-3 h-3" />
-          Stop Bridge
-        </button>
+        <template v-if="installStatus === 'not_installed' || installStatus === 'unknown'">
+          <button
+            @click="install"
+            class="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors"
+          >
+            <Download class="w-3 h-3" />
+            Install Hermes
+          </button>
+        </template>
+        <template v-else-if="installStatus === 'installing'">
+          <div class="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs text-neutral-400">
+            <Loader2 class="w-3 h-3 animate-spin" />
+            Installing...
+          </div>
+        </template>
+        <template v-else-if="installStatus === 'installed'">
+          <button
+            v-if="connectionStatus !== 'connected'"
+            @click="startBridge"
+            class="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors"
+          >
+            <Play class="w-3 h-3" />
+            Start Bridge
+          </button>
+          <button
+            v-else
+            @click="stopBridge"
+            class="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+          >
+            <Square class="w-3 h-3" />
+            Stop Bridge
+          </button>
+        </template>
+        <template v-else-if="installStatus === 'error'">
+          <button
+            @click="install"
+            class="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+          >
+            <Download class="w-3 h-3" />
+            Retry Install
+          </button>
+        </template>
       </div>
     </div>
 
@@ -80,7 +116,8 @@
         :workspaces="workspaces"
         :sessions="sessions"
         :connection-status="connectionStatus"
-        :agent-dir="agentDir"
+        :install-status="installStatus"
+        :version="version"
         @save-skill="saveSkill"
         @delete-skill="deleteSkill"
         @update-persona="updatePersona"
@@ -105,6 +142,8 @@ import {
   Settings,
   Play,
   Square,
+  Download,
+  Loader2,
 } from 'lucide-vue-next'
 import SkillsView from './components/SkillsView.vue'
 import PersonaView from './components/PersonaView.vue'
@@ -116,7 +155,8 @@ const actor = applicationState.system.get(id)
 
 const activeView = useSelector(actor, (s: any) => s.context.activeView as HermesView)
 const connectionStatus = useSelector(actor, (s: any) => s.context.connectionStatus)
-const agentDir = useSelector(actor, (s: any) => s.context.agentDir)
+const installStatus = useSelector(actor, (s: any) => s.context.installStatus)
+const version = useSelector(actor, (s: any) => s.context.version)
 const skills = useSelector(actor, (s: any) => s.context.skills)
 const models = useSelector(actor, (s: any) => s.context.models)
 const tools = useSelector(actor, (s: any) => s.context.tools)
@@ -147,6 +187,7 @@ const selectView = (view: HermesView) => {
   actor.send({ type: 'VIEW.SELECT', view })
 }
 
+const install = () => actor.send({ type: 'INSTALL' })
 const startBridge = () => actor.send({ type: 'BRIDGE.START' })
 const stopBridge = () => actor.send({ type: 'BRIDGE.STOP' })
 const goToSettings = () => {

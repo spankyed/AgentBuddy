@@ -103,10 +103,6 @@ export interface HermesStreamErrorEvent {
 // ─── Service Config ─────────────────────────────────────────────────────────
 
 export interface HermesConfig {
-  /** Path to hermes-agent directory (auto-discovered if not set). */
-  agentDir?: string
-  /** Python executable path (auto-discovered if not set). */
-  pythonPath?: string
   /** HERMES_HOME directory (defaults to ~/.hermes). */
   hermesHome?: string
   /** Default model for new sessions. */
@@ -124,10 +120,12 @@ export interface HermesConfig {
 // ─── Bridge Status ──────────────────────────────────────────────────────────
 
 export type BridgeStatus = 'stopped' | 'starting' | 'ready' | 'error'
+export type InstallStatus = 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error'
 
 export interface BridgeInfo {
   status: BridgeStatus
-  agentDir: string | null
+  installStatus: InstallStatus
+  version: string | null
   pid: number | null
   error?: string
 }

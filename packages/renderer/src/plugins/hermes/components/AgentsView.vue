@@ -13,9 +13,11 @@
               {{ connectionStatus }}
             </span>
           </div>
-          <div v-if="agentDir" class="flex items-center gap-2">
-            <span class="text-neutral-500">Agent Dir:</span>
-            <span class="font-mono text-xs">{{ agentDir }}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-neutral-500">Installed:</span>
+            <span :class="installStatus === 'installed' ? 'text-green-400' : installStatus === 'installing' ? 'text-yellow-400' : 'text-neutral-500'">
+              {{ installStatus === 'installed' ? `v${version || 'unknown'}` : installStatus }}
+            </span>
           </div>
         </div>
       </div>
@@ -89,7 +91,8 @@
 <script setup lang="ts">
 defineProps<{
   connectionStatus: 'connected' | 'disconnected' | 'error'
-  agentDir: string | null
+  installStatus: string
+  version: string | null
   models: Array<{ name: string; provider: string; model: string }>
   workspaces: string[]
   sessions: Array<{ id: string; title: string; model: string; message_count: number; updated_at: number; source: string }>

@@ -5,6 +5,10 @@ Hermes Agent Bridge — JSONL subprocess protocol for AgentBuddy.
 Reads JSONL commands from stdin, writes JSONL responses to stdout.
 Stderr is reserved for Python logging (forwarded to AgentBuddy logs).
 
+This script runs inside a managed venv (~/.agentbuddy/hermes-venv/) where
+hermes-agent is pip-installed. All imports (run_agent, hermes_state, etc.)
+resolve normally — no sys.path injection needed.
+
 Protocol:
   Request:  {"id": "req-1", "method": "chat", "params": {...}}
   Response: {"id": "req-1", "type": "result", "data": {...}}
@@ -32,53 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("hermes-bridge")
 
-# ── Agent Discovery ──────────────────────────────────────────────────────────
-
 HOME = Path.home()
-BRIDGE_DIR = Path(__file__).resolve().parent
-
-
-def _discover_agent_dir(hint: str | None = None) -> Path | None:
-    """Locate the hermes-agent checkout using multi-strategy search."""
-    candidates = []
-
-    # 0. Explicit hint from AgentBuddy settings
-    if hint:
-        candidates.append(Path(hint).expanduser().resolve())
-
-    # 1. HERMES_WEBUI_AGENT_DIR env var
-    if os.getenv("HERMES_WEBUI_AGENT_DIR"):
-        candidates.append(Path(os.getenv("HERMES_WEBUI_AGENT_DIR")).expanduser().resolve())
-
-    # 2. HERMES_HOME / hermes-agent
-    hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
-    candidates.append(Path(hermes_home).expanduser() / "hermes-agent")
-
-    # 3. Common install paths
-    candidates.append(HOME / ".hermes" / "hermes-agent")
-    candidates.append(HOME / "hermes-agent")
-
-    # 4. XDG
-    xdg_data = Path(os.getenv("XDG_DATA_HOME", str(HOME / ".local" / "share")))
-    candidates.append(xdg_data.expanduser() / "hermes-agent")
-
-    # 5. System-wide
-    for sys_prefix in ("/opt", "/usr/local", "/usr/local/share"):
-        candidates.append(Path(sys_prefix) / "hermes-agent")
-
-    for path in candidates:
-        if path.exists() and (path / "run_agent.py").exists():
-            return path.resolve()
-
-    return None
-
-
-def _inject_agent_path(agent_dir: Path):
-    """Add agent dir to sys.path (at end, to avoid shadowing pip packages)."""
-    s = str(agent_dir)
-    if s not in sys.path:
-        sys.path.append(s)
-
 
 # ── Agent Cache ──────────────────────────────────────────────────────────────
 
@@ -93,7 +51,7 @@ ACTIVE_STREAMS_LOCK = threading.Lock()
 # Environment lock — prevents concurrent env var mutations across threads
 _ENV_LOCK = threading.Lock()
 
-# SessionDB instance — initialized in main() after agent path injection
+# SessionDB instance — initialized in main()
 _session_db = None
 
 # Active config — set by handle_update_config, read by handle_chat
@@ -133,8 +91,6 @@ def _error(req_id: str, message: str, code: str = "ERROR"):
 # ── Method Handlers ──────────────────────────────────────────────────────────
 
 _AIAgent = None  # Lazy-loaded
-
-
 _agent_params_cache: set | None = None
 
 
@@ -295,7 +251,6 @@ def handle_chat(req_id: str, params: dict):
                 agent_kwargs["api_key"] = _api_key
             if _base_url:
                 agent_kwargs["base_url"] = _base_url
-            logger.info("Agent kwargs: model=%s, api_key=%s", model, "set" if _api_key else "EMPTY")
             if _session_db is not None:
                 agent_kwargs["session_db"] = _session_db
 
@@ -363,7 +318,6 @@ def handle_chat(req_id: str, params: dict):
                         "choices": [str(c) for c in (choices or [])],
                         "streamId": stream_id,
                     })
-                    # Return a default — actual response routing happens via AgentBuddy UI
                     return "The user will respond via the UI. Proceed with your best judgement if no response."
                 agent_kwargs["clarify_callback"] = on_clarify
 
@@ -464,8 +418,7 @@ def handle_list_models(req_id: str, params: dict):
         if config_path.exists():
             try:
                 import yaml
-                cfg = yaml.safe_load(config_path.read_text()) or {}
-                # Extract model profiles
+                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
                 model_profiles = cfg.get("model_profiles", {})
                 for name, profile in model_profiles.items():
                     models.append({
@@ -497,7 +450,7 @@ def handle_list_skills(req_id: str, params: dict):
                                 "name": skill_file.stem,
                                 "category": category_dir.name,
                                 "path": str(skill_file),
-                                "content": skill_file.read_text()[:500],
+                                "content": skill_file.read_text(encoding="utf-8")[:500],
                             })
 
         _reply(req_id, {"skills": skills})
@@ -520,7 +473,7 @@ def handle_save_skill(req_id: str, params: dict):
         skill_dir.mkdir(parents=True, exist_ok=True)
 
         skill_file = skill_dir / f"{name}.md"
-        skill_file.write_text(content)
+        skill_file.write_text(content, encoding="utf-8")
 
         _reply(req_id, {"saved": True, "path": str(skill_file)})
     except Exception as e:
@@ -553,7 +506,7 @@ def handle_get_memory(req_id: str, params: dict):
         for name in ("MEMORY.md", "USER.md", "SOUL.md"):
             filepath = Path(hermes_home) / name
             if filepath.exists():
-                memory_files[name] = filepath.read_text()
+                memory_files[name] = filepath.read_text(encoding="utf-8")
             else:
                 memory_files[name] = ""
 
@@ -573,7 +526,7 @@ def handle_write_memory(req_id: str, params: dict):
 
         hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
         filepath = Path(hermes_home) / filename
-        filepath.write_text(content)
+        filepath.write_text(content, encoding="utf-8")
 
         _reply(req_id, {"written": True, "filename": filename})
     except Exception as e:
@@ -592,7 +545,7 @@ def handle_list_tools(req_id: str, params: dict):
         if config_path.exists():
             try:
                 import yaml
-                cfg = yaml.safe_load(config_path.read_text()) or {}
+                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
                 enabled_toolsets = cfg.get("enabled_toolsets", [])
             except ImportError:
                 logger.warning("pyyaml not installed — cannot parse config.yaml for toolsets")
@@ -600,7 +553,6 @@ def handle_list_tools(req_id: str, params: dict):
         # Try to get tool list from agent
         try:
             _ensure_agent_class()
-            # Enumerate available toolsets from the agent module
             try:
                 from tools import TOOL_REGISTRY
                 for name, tool_cls in TOOL_REGISTRY.items():
@@ -627,7 +579,7 @@ def handle_get_persona(req_id: str, params: dict):
 
         content = ""
         if soul_path.exists():
-            content = soul_path.read_text()
+            content = soul_path.read_text(encoding="utf-8")
 
         _reply(req_id, {"content": content, "path": str(soul_path)})
     except Exception as e:
@@ -641,7 +593,7 @@ def handle_update_persona(req_id: str, params: dict):
         hermes_home = os.getenv("HERMES_HOME", str(HOME / ".hermes"))
         soul_path = Path(hermes_home) / "SOUL.md"
         soul_path.parent.mkdir(parents=True, exist_ok=True)
-        soul_path.write_text(content)
+        soul_path.write_text(content, encoding="utf-8")
 
         _reply(req_id, {"written": True, "path": str(soul_path)})
     except Exception as e:
@@ -658,7 +610,7 @@ def handle_list_workspaces(req_id: str, params: dict):
         if config_path.exists():
             try:
                 import yaml
-                cfg = yaml.safe_load(config_path.read_text()) or {}
+                cfg = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
                 ws = cfg.get("workspaces", [])
                 if isinstance(ws, list):
                     workspaces = ws
@@ -730,31 +682,19 @@ def main():
         sys.exit(0)
     signal.signal(signal.SIGTERM, _shutdown)
 
-    # Parse startup config from first line (optional)
-    agent_dir_hint = os.getenv("HERMES_WEBUI_AGENT_DIR")
-
-    # Discover and inject agent
-    agent_dir = _discover_agent_dir(agent_dir_hint)
-    if agent_dir:
-        _inject_agent_path(agent_dir)
-        logger.info("Hermes agent found at: %s", agent_dir)
-    else:
-        logger.warning("Hermes agent not found — chat will fail but management commands may work")
-
     # Initialize SessionDB (agent's native SQLite storage)
     global _session_db
-    if agent_dir:
-        try:
-            from hermes_state import SessionDB
-            _session_db = SessionDB()
-            logger.info("SessionDB initialized at %s", _session_db._db_path if hasattr(_session_db, '_db_path') else '~/.hermes/state.db')
-        except ImportError:
-            logger.warning("hermes_state not available — session management will be limited")
-        except Exception as e:
-            logger.warning("Failed to initialize SessionDB: %s", e)
+    try:
+        from hermes_state import SessionDB
+        _session_db = SessionDB()
+        logger.info("SessionDB initialized")
+    except ImportError:
+        logger.warning("hermes_state not available — session management will be limited")
+    except Exception as e:
+        logger.warning("Failed to initialize SessionDB: %s", e)
 
     # Signal readiness
-    _write({"type": "ready", "data": {"agentDir": str(agent_dir) if agent_dir else None}})
+    _write({"type": "ready", "data": {}})
 
     # Read JSONL from stdin
     for line in sys.stdin:

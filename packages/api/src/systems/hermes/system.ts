@@ -20,6 +20,7 @@ const logger = createLogger('hermes-system');
 // ─── Event Types ────────────────────────────────────────────────────────────
 
 type IncomingHermesEvents =
+  | { type: 'HERMES_INSTALL' }
   | { type: 'HERMES_START_BRIDGE' }
   | { type: 'HERMES_STOP_BRIDGE' }
   | { type: 'HERMES_CHECK_CONNECTION' }
@@ -37,7 +38,8 @@ type IncomingHermesEvents =
 
 type OutgoingHermesEvents =
   | { type: 'HERMES_CONNECTED'; data: HermesConnectedData }
-  | { type: 'HERMES_BRIDGE_STATUS'; bridge: { status: string; agentDir: string | null; pid: number | null; error?: string } }
+  | { type: 'HERMES_INSTALL_STATUS'; installStatus: string; version: string | null; error?: string }
+  | { type: 'HERMES_BRIDGE_STATUS'; bridge: { status: string; installStatus: string; version: string | null; pid: number | null; error?: string } }
   | { type: 'HERMES_SKILLS_DATA'; skills: HermesSkill[] }
   | { type: 'HERMES_SKILL_SAVED'; saved: boolean; path: string }
   | { type: 'HERMES_SKILL_DELETED'; deleted: boolean }
@@ -103,6 +105,31 @@ export const hermesSystem = setup({
           data: { bridge, skills, models, tools, persona, memory, workspaces, sessions } as HermesConnectedData,
         }));
       }).catch((err: unknown) => sendError(system, 'sendConnectedData', err));
+    },
+
+    installAgent: ({ system }) => {
+      system.get(bus).send(emit(hermes, {
+        type: 'HERMES_INSTALL_STATUS',
+        installStatus: 'installing',
+        version: null,
+      }));
+      hermesService.install((msg) => {
+        logger.info(`Install progress: ${msg}`);
+      }).then(() => {
+        system.get(bus).send(emit(hermes, {
+          type: 'HERMES_INSTALL_STATUS',
+          installStatus: 'installed',
+          version: hermesService.info.version,
+        }));
+      }).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        system.get(bus).send(emit(hermes, {
+          type: 'HERMES_INSTALL_STATUS',
+          installStatus: 'error',
+          version: null,
+          error: message,
+        }));
+      });
     },
 
     startBridge: ({ system }) => {
@@ -273,6 +300,7 @@ export const hermesSystem = setup({
     idle: {
       on: {
         CLIENT_CONNECTED: { actions: 'sendConnectedData' },
+        HERMES_INSTALL: { actions: 'installAgent' },
         HERMES_START_BRIDGE: { actions: 'startBridge' },
         HERMES_STOP_BRIDGE: { actions: 'stopBridge' },
         HERMES_CHECK_CONNECTION: { actions: 'checkConnection' },
