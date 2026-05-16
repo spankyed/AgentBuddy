@@ -96,6 +96,9 @@ _ENV_LOCK = threading.Lock()
 # SessionDB instance — initialized in main() after agent path injection
 _session_db = None
 
+# Active config — set by handle_update_config, read by handle_chat
+_active_config: dict = {"provider": "", "model": ""}
+
 
 # ── JSONL I/O ────────────────────────────────────────────────────────────────
 
@@ -247,7 +250,7 @@ def handle_chat(req_id: str, params: dict):
     """
     session_id = params.get("sessionId")
     message = params.get("message", "")
-    model = params.get("model", "")
+    model = params.get("model", "") or _active_config.get("model", "")
     workspace = params.get("workspace", str(HOME))
 
     if not message:
@@ -273,12 +276,15 @@ def handle_chat(req_id: str, params: dict):
                     os.environ["HERMES_SESSION_KEY"] = session_id
 
             # Build agent kwargs
+            _provider = _active_config.get("provider", "")
             agent_kwargs = {
                 "model": model,
                 "platform": "webui",
                 "quiet_mode": True,
                 "session_id": session_id or "",
             }
+            if _provider:
+                agent_kwargs["provider"] = _provider
             # API key comes from os.environ, set by handle_update_config via JSONL
             _api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
             if _api_key:
@@ -662,6 +668,10 @@ def handle_update_config(req_id: str, params: dict):
     try:
         provider = params.get("provider", "openai")
         api_key = params.get("apiKey", "")
+        model = params.get("model", "")
+
+        _active_config["provider"] = provider
+        _active_config["model"] = model
 
         if api_key:
             os.environ.pop("OPENAI_API_KEY", None)
