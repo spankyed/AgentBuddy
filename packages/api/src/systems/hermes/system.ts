@@ -81,6 +81,7 @@ export const hermesSystem = setup({
             persona: { content: '', path: '' },
             memory: { 'MEMORY.md': '', 'USER.md': '', 'SOUL.md': '' },
             workspaces: [],
+            sessions: [],
           },
         }));
         return;
@@ -93,10 +94,11 @@ export const hermesSystem = setup({
         hermesService.persona.get().catch(() => ({ content: '', path: '' })),
         hermesService.memory.get().catch(() => ({ 'MEMORY.md': '', 'USER.md': '', 'SOUL.md': '' } as Record<string, string>)),
         hermesService.workspaces.list().catch(() => [] as string[]),
-      ]).then(([skills, models, tools, persona, memory, workspaces]) => {
+        hermesService.sessions.list().catch(() => []),
+      ]).then(([skills, models, tools, persona, memory, workspaces, sessions]) => {
         system.get(bus).send(emit(hermes, {
           type: 'HERMES_CONNECTED',
-          data: { bridge, skills, models, tools, persona, memory, workspaces } as HermesConnectedData,
+          data: { bridge, skills, models, tools, persona, memory, workspaces, sessions } as HermesConnectedData,
         }));
       }).catch((err: unknown) => sendError(system, 'sendConnectedData', err));
     },

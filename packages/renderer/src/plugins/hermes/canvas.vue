@@ -69,12 +69,15 @@
         :persona-path="personaPath"
         :memory="memory"
         :workspaces="workspaces"
+        :sessions="sessions"
         :connection-status="connectionStatus"
         :agent-dir="agentDir"
         @save-skill="saveSkill"
         @delete-skill="deleteSkill"
         @update-persona="updatePersona"
         @write-memory="writeMemory"
+        @refresh-sessions="refreshSessions"
+        @resume-session="resumeSession"
       />
     </div>
   </div>
@@ -114,6 +117,7 @@ const persona = useSelector(actor, (s: any) => s.context.persona)
 const personaPath = useSelector(actor, (s: any) => s.context.personaPath)
 const memory = useSelector(actor, (s: any) => s.context.memory)
 const workspaces = useSelector(actor, (s: any) => s.context.workspaces)
+const sessions = useSelector(actor, (s: any) => s.context.sessions)
 
 const navItems = [
   { id: 'agents' as HermesView, label: 'Agents', icon: Bot },
@@ -139,6 +143,11 @@ const selectView = (view: HermesView) => {
 
 const startBridge = () => actor.send({ type: 'BRIDGE.START' })
 const stopBridge = () => actor.send({ type: 'BRIDGE.STOP' })
+const refreshSessions = () => actor.send({ type: 'REFRESH' })
+const resumeSession = (sessionId: string) => {
+  // TODO: wire session resume to thread creation in hermes mode
+  console.log('Resume session:', sessionId)
+}
 
 const saveSkill = (event: { name: string; category?: string; content: string }) => {
   actor.send({ type: 'SKILL.SAVE', ...event })

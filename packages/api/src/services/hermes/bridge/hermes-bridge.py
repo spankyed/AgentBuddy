@@ -336,6 +336,20 @@ def handle_chat(req_id: str, params: dict):
                     _stream_event(req_id, "reasoning", {"text": str(text), "streamId": stream_id})
                 agent_kwargs["reasoning_callback"] = on_reasoning
 
+            # Clarify callback — bridges Hermes clarify prompts to AgentBuddy
+            if "clarify_callback" in _agent_params:
+                def on_clarify(question, choices):
+                    if cancel_event.is_set():
+                        return "Use your best judgement to proceed."
+                    _stream_event(req_id, "clarify", {
+                        "question": str(question or ""),
+                        "choices": [str(c) for c in (choices or [])],
+                        "streamId": stream_id,
+                    })
+                    # Return a default — actual response routing happens via AgentBuddy UI
+                    return "The user will respond via the UI. Proceed with your best judgement if no response."
+                agent_kwargs["clarify_callback"] = on_clarify
+
             # Get or create cached agent
             agent = _get_or_create_agent(session_id, agent_kwargs)
 

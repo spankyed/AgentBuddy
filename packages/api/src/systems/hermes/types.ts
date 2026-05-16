@@ -2,7 +2,7 @@
  * Hermes management system types — events and data shapes.
  */
 
-import type { HermesSkill, HermesModel, HermesTool, HermesMemoryFiles, BridgeInfo } from '@/services/hermes/types'
+import type { HermesSkill, HermesModel, HermesTool, HermesMemoryFiles, HermesSession, BridgeInfo } from '@/services/hermes/types'
 
 export interface HermesConnectedData {
   bridge: BridgeInfo
@@ -12,6 +12,7 @@ export interface HermesConnectedData {
   persona: { content: string; path: string }
   memory: HermesMemoryFiles
   workspaces: string[]
+  sessions: HermesSession[]
 }
 
-export type { HermesSkill, HermesModel, HermesTool, HermesMemoryFiles, BridgeInfo }
+export type { HermesSkill, HermesModel, HermesTool, HermesMemoryFiles, HermesSession, BridgeInfo }

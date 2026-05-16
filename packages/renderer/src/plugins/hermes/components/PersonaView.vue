@@ -5,14 +5,17 @@
         <h2 class="text-lg font-medium text-neutral-100">Persona</h2>
         <p class="text-xs text-neutral-500 mt-0.5">Edit SOUL.md — the agent's personality and instructions</p>
       </div>
-      <button
-        @click="handleSave"
-        :disabled="!isDirty"
-        class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50"
-      >
-        <Save class="w-3 h-3" />
-        Save
-      </button>
+      <div class="flex items-center gap-2">
+        <span v-if="saveStatus" class="text-xs text-neutral-500">{{ saveStatus }}</span>
+        <button
+          @click="handleSave"
+          :disabled="!isDirty"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50"
+        >
+          <Save class="w-3 h-3" />
+          Save
+        </button>
+      </div>
     </div>
 
     <div v-if="personaPath" class="mb-3 text-xs text-neutral-500 font-mono">
@@ -42,6 +45,8 @@ const emit = defineEmits<{
 }>()
 
 const editedContent = ref(props.persona)
+const saveStatus = ref('')
+let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null
 
 watch(() => props.persona, (val) => {
   editedContent.value = val
@@ -49,7 +54,21 @@ watch(() => props.persona, (val) => {
 
 const isDirty = computed(() => editedContent.value !== props.persona)
 
+// Auto-save with 1.5s debounce
+watch(editedContent, () => {
+  if (!isDirty.value) return
+  if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
+  autoSaveTimeout = setTimeout(() => {
+    emit('updatePersona', editedContent.value)
+    saveStatus.value = 'Auto-saved'
+    setTimeout(() => { saveStatus.value = '' }, 2000)
+  }, 1500)
+})
+
 function handleSave() {
+  if (autoSaveTimeout) { clearTimeout(autoSaveTimeout); autoSaveTimeout = null }
   emit('updatePersona', editedContent.value)
+  saveStatus.value = 'Saved'
+  setTimeout(() => { saveStatus.value = '' }, 2000)
 }
 </script>

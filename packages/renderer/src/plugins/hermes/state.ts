@@ -26,6 +26,15 @@ export interface HermesTool {
   description: string
 }
 
+export interface HermesSession {
+  id: string
+  title: string
+  model: string
+  message_count: number
+  updated_at: number
+  source: string
+}
+
 export interface HermesContext {
   activeView: HermesView
   connectionStatus: 'disconnected' | 'connected' | 'error'
@@ -38,6 +47,7 @@ export interface HermesContext {
   personaPath: string
   memory: Record<string, string>
   workspaces: string[]
+  sessions: HermesSession[]
   error: string | null
 }
 
@@ -97,6 +107,7 @@ const hermesState = setup({
         personaPath: data.persona?.path ?? '',
         memory: data.memory ?? {},
         workspaces: data.workspaces ?? [],
+        sessions: data.sessions ?? [],
       }
     }),
 
@@ -215,6 +226,7 @@ const hermesState = setup({
     personaPath: '',
     memory: {},
     workspaces: [],
+    sessions: [],
     error: null,
   }),
   on: {

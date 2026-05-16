@@ -103,6 +103,34 @@ export function createStreamConsumer({ threadId, services }: StreamConsumerOptio
         fireLifecycle('error', { errorMessage: (data.message as string) || 'Unknown error' });
         break;
       }
+
+      case 'approval': {
+        const question = (data.question as string) || 'The agent requires your approval to proceed.';
+        services.chat.sendApprovalBlock({
+          threadId: threadId as any,
+          text: question,
+          prompt: 'Do you want to approve this action?',
+          context: data.context as string,
+          autoHide: true,
+          asUser: true,
+        } as any);
+        break;
+      }
+
+      case 'clarify': {
+        const q = (data.question as string) || 'The agent needs clarification.';
+        const choices = (data.choices as string[]) || [];
+        services.chat.sendChoiceBlock({
+          threadId: threadId as any,
+          text: q,
+          prompt: q,
+          choices: choices.length > 0 ? choices : ['Continue', 'Cancel'],
+          forkable: false,
+          autoHide: true,
+          asUser: true,
+        } as any);
+        break;
+      }
     }
   };
 }
