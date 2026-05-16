@@ -965,8 +965,10 @@ const threadsState = setup({
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
       }));
 
-      if (activeTabId && activeTabId !== currentThread?.id) {
-        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: activeTabId, restore: true }));
+      // Fetch messages for the active thread (messages are deferred from startup payload)
+      const threadToLoad = activeTabId || (currentThread?.id as string);
+      if (threadToLoad) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: threadToLoad, restore: true }));
       }
 
       saveTabsToStorage(allTabs, activeTabId);

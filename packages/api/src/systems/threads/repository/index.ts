@@ -403,8 +403,8 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
   }
 
   const mostRecentThread = threads[0];
-  const messageFields = ["id", "text", "sender", "timestamp", "blocks", "blockResponse", "responseTimestamp", "forkable", "references", "isCommand", "command", "autoHide", "asUser", "asideText", "asideContext", "status", "context", "compacted"] as const;
 
+  // Send only thread metadata — messages are loaded on demand via OPEN_THREAD_CHAT
   const currentThread: AgentThreadData = {
     id: mostRecentThread.id,
     shortCode: mostRecentThread.shortCode,
@@ -415,17 +415,7 @@ function getThreadsWithCurrent(limit: number = getConfiguredRecentThreadsLimit()
     forcedMode: mostRecentThread.forcedMode,
     chatState: mostRecentThread.chatState,
     context: mostRecentThread.context,
-    messages: mostRecentThread.id
-      ? ((qx(mostRecentThread.id)
-          .linksPick(EARS.RelKind.CONTAINS, [...messageFields, "deleted"] as const, EARS.Entity.Message) ?? [])
-          .filter((m: any) => !m.deleted)
-          .sort((a: any, b: any) => {
-            // Safety net: queued messages always appear last
-            if (a.status === 'queued' && b.status !== 'queued') return 1;
-            if (b.status === 'queued' && a.status !== 'queued') return -1;
-            return 0;
-          })) as Partial<MessageEntity>[]
-      : [],
+    messages: [],
     artifacts: mostRecentThread.id
       ? getThreadArtifacts(mostRecentThread.id) as any as ArtifactEntity[]
       : [],
