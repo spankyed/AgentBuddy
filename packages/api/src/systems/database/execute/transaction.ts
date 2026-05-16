@@ -1,9 +1,9 @@
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
-import { 
-  getAllEntities, 
-  getAll, 
+import {
+  getAllEntities,
+  getAll,
   queryEntitiesByRelationTo,
   getAttr,
   getAttrs,
@@ -11,9 +11,32 @@ import {
   getEntitiesOfType,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
+  getAllRelationKinds,
   destroyEntity
 } from '@/core/ears/attribute-storage';
 import { relationIndex } from '@/core/ears/relation-index';
+import { USE_LMDB } from '@/core/ears/use-lmdb';
+import { lmdbRelationIdsFor } from '@/core/ears/lmdb-reads';
+
+function getRelationIndex(): typeof relationIndex {
+  if (!USE_LMDB) return relationIndex;
+  return new Proxy({}, {
+    ownKeys() { return getAllRelationKinds(); },
+    getOwnPropertyDescriptor(_, key) {
+      return { configurable: true, enumerable: true };
+    },
+    get(_, kind) {
+      if (typeof kind !== 'string') return undefined;
+      const buildDir = (direction: 'out' | 'in') => new Proxy({}, {
+        get(_, id) {
+          if (typeof id !== 'string') return undefined;
+          return lmdbRelationIdsFor(id as EARS.EntityId, kind, direction);
+        }
+      });
+      return { bySource: buildDir('out'), byTarget: buildDir('in') };
+    },
+  }) as typeof relationIndex;
+}
 import {
   prepareEntity,
   createEntityWithDefaults,
@@ -73,10 +96,10 @@ export async function executeTransaction(code: string): Promise<any> {
     
     const result = await transactionFunction(
       // Query utilities
-      qx, 
-      EARS, 
-      getAllEntities, 
-      getAll, 
+      qx,
+      EARS,
+      getAllEntities,
+      getAll,
       queryEntitiesByRelationTo,
       getAttr,
       getAttrs,
@@ -84,7 +107,7 @@ export async function executeTransaction(code: string): Promise<any> {
       getEntitiesOfType,
       queryEntitiesByAttribute,
       queryEntitiesInRelationTo,
-      relationIndex,
+      getRelationIndex(),
       // Transaction utilities
       tx,
       destroyEntity,

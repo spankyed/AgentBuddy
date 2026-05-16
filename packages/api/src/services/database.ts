@@ -83,8 +83,8 @@ export function buildQueryContext(): { schema: string; topology: string } {
   }
 
   // Build topology
-  const edges = new Map<string, number>();
-  if (!USE_LMDB) {
+  const edges = USE_LMDB ? lmdbBuildTopology() : (() => {
+    const m = new Map<string, number>();
     for (const [kind, entry] of Object.entries(relationIndex)) {
       const relToTarget = new Map<string, string>();
       for (const [targetId, tRelIds] of Object.entries(entry.byTarget)) {
@@ -97,13 +97,13 @@ export function buildQueryContext(): { schema: string; topology: string } {
           if (targetId) {
             const targetType = targetId.split('-')[0];
             const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
-            edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
+            m.set(edgeKey, (m.get(edgeKey) ?? 0) + 1);
           }
         }
       }
     }
-  }
-  // Under USE_LMDB, topology is empty — acceptable for AI prompt context
+    return m;
+  })();
 
   const topologyLines = [...edges.entries()]
     .sort(([, a], [, b]) => b - a)
