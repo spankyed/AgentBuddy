@@ -100,16 +100,7 @@ export class HermesBridgeClient {
     const env: Record<string, string> = { ...process.env } as Record<string, string>
     if (this._config.hermesHome) env.HERMES_HOME = this._config.hermesHome
     if (this._config.agentDir) env.HERMES_WEBUI_AGENT_DIR = this._config.agentDir
-    if (this._config.apiKey) {
-      // Scrub host keys only when user provides their own — otherwise let
-      // the agent's native resolution (env vars, credential pools, config.yaml) work
-      delete env.OPENAI_API_KEY
-      delete env.ANTHROPIC_API_KEY
-      delete env.OPENROUTER_API_KEY
-      const p = (this._config.provider || 'openai').toLowerCase()
-      if (p === 'anthropic') env.ANTHROPIC_API_KEY = this._config.apiKey
-      else env.OPENAI_API_KEY = this._config.apiKey
-    }
+    // API keys are sent via JSONL updateConfig after startup — not env vars
 
     this.process = spawn(pythonPath, [BRIDGE_SCRIPT], {
       stdio: ['pipe', 'pipe', 'pipe'],

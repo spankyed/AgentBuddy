@@ -279,7 +279,7 @@ def handle_chat(req_id: str, params: dict):
                 "quiet_mode": True,
                 "session_id": session_id or "",
             }
-            # Pass API key explicitly if available in env (set by bridge client)
+            # API key comes from os.environ, set by handle_update_config via JSONL
             _api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
             if _api_key:
                 agent_kwargs["api_key"] = _api_key

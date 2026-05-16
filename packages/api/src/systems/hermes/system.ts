@@ -106,14 +106,11 @@ export const hermesSystem = setup({
     },
 
     startBridge: ({ system }) => {
-      // Read stored config (apiKey, provider, model) and pass to bridge
-      const stored = repository.settingsQueries.getPluginSettings('hermes') as any;
-      const config = stored?.config ?? {};
-      hermesService.start({
-        ...(config.apiKey ? { apiKey: config.apiKey } : {}),
-        ...(config.provider ? { provider: config.provider } : {}),
-        ...(config.model ? { defaultModel: config.model } : {}),
-      }).then((info) => {
+      hermesService.start().then((info) => {
+        // Push stored config (apiKey, provider) to the fresh bridge via JSONL
+        const stored = repository.settingsQueries.getPluginSettings('hermes') as any;
+        const config = stored?.config;
+        if (config?.apiKey) hermesService.updateConfig(config).catch(() => {});
         system.get(bus).send(emit(hermes, {
           type: 'HERMES_BRIDGE_STATUS',
           bridge: info,
