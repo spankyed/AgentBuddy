@@ -81,7 +81,7 @@ const settings: SettingsData = {
         { id: 'ts_default_2', label: 'Build', command: 'npm run build' },
         { id: 'ts_default_3', label: 'Test', command: 'npm test' },
       ],
-      showStashes: false,
+      showStashes: true,
       showCommits: true,
       showWorktrees: false,
     },
