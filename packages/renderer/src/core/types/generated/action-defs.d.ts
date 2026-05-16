@@ -33,10 +33,6 @@ interface HermesTool {
 }
 type HermesMemoryFiles = Record<string, string>;
 interface HermesConfig {
-    /** Path to hermes-agent directory (auto-discovered if not set). */
-    agentDir?: string;
-    /** Python executable path (auto-discovered if not set). */
-    pythonPath?: string;
     /** HERMES_HOME directory (defaults to ~/.hermes). */
     hermesHome?: string;
     /** Default model for new sessions. */
@@ -45,13 +41,21 @@ interface HermesConfig {
     defaultWorkspace?: string;
     /** Auto-start bridge on app launch. */
     autoStart?: boolean;
+    /** LLM provider API key. */
+    apiKey?: string;
+    /** LLM provider (openai, anthropic). */
+    provider?: string;
 }
 type BridgeStatus = 'stopped' | 'starting' | 'ready' | 'error';
+type InstallStatus = 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error';
 interface BridgeInfo {
     status: BridgeStatus;
-    agentDir: string | null;
+    installStatus: InstallStatus;
+    version: string | null;
     pid: number | null;
     error?: string;
+    /** How hermes-agent was detected (e.g. 'PATH', 'managed venv', 'curl installer', 'sibling repo'). */
+    source?: string;
 }
 
 /**
@@ -60,8 +64,8 @@ interface BridgeInfo {
  * Spawns `hermes-bridge.py` as a child process and communicates via JSONL
  * over stdin/stdout. Provides both request/response and streaming APIs.
  *
- * Pattern: mirrors the claude-code runner.ts / query.ts split, but simplified
- * since we own both sides of the protocol.
+ * Detects existing hermes-agent installations (PATH, curl installer, pipx,
+ * repo clone) before falling back to a managed venv at ~/.agentbuddy/hermes-venv/.
  */
 
 declare class HermesBridgeClient {
@@ -69,27 +73,33 @@ declare class HermesBridgeClient {
     private readline;
     private pending;
     private _status;
-    private _agentDir;
+    private _installStatus;
+    private _version;
+    private _source;
     private _error;
     private _config;
+    private _resolvedPython;
     private _readyResolve;
     private _readyTimeout;
     constructor(config?: HermesConfig);
     get status(): BridgeStatus;
+    get installStatus(): InstallStatus;
     get info(): BridgeInfo;
+    /**
+     * Install hermes-agent into the managed venv (fallback when no existing install detected).
+     * Calls `onProgress` with status messages for UI feedback.
+     */
+    install(onProgress?: (msg: string) => void): Promise<void>;
+    /**
+     * Check installation status by resolving an existing hermes-agent Python.
+     * Returns 'installed' if found anywhere, 'not_installed' otherwise.
+     */
+    checkInstall(): InstallStatus;
     start(): Promise<BridgeInfo>;
     stop(): Promise<void>;
     restart(): Promise<BridgeInfo>;
     updateConfig(config: Partial<HermesConfig>): void;
-    /**
-     * Send a request and wait for the result response.
-     * For non-streaming methods (listSessions, getMemory, etc.).
-     */
     send<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>): Promise<T>;
-    /**
-     * Send a streaming request. Calls `onEvent` for each streaming event,
-     * resolves when the stream completes (done/error).
-     */
     sendStreaming(method: string, params: Record<string, unknown>, onEvent: (type: string, data: Record<string, unknown>) => void): Promise<Record<string, unknown>>;
     private _write;
     private _handleLine;
@@ -241,6 +251,7 @@ interface HermesConnectedData {
     };
     memory: HermesMemoryFiles;
     workspaces: string[];
+    sessions: HermesSession[];
 }
 
 type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
@@ -914,7 +925,7 @@ declare const LogEntry: z.ZodObject<{
     id: string;
     timestamp: number;
     message: string;
-    level: "debug" | "info" | "warn" | "error";
+    level: "error" | "debug" | "info" | "warn";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -922,7 +933,7 @@ declare const LogEntry: z.ZodObject<{
     id: string;
     timestamp: number;
     message: string;
-    level: "debug" | "info" | "warn" | "error";
+    level: "error" | "debug" | "info" | "warn";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -3761,6 +3772,8 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     directory: string;
     format: "markdown" | "json";
 }, OutgoingNotesEvents, {}>, SystemDefinition<"hermes", {
+    type: "HERMES_INSTALL";
+} | {
     type: "HERMES_START_BRIDGE";
 } | {
     type: "HERMES_STOP_BRIDGE";
@@ -3793,17 +3806,23 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "HERMES_GET_MODELS";
 } | {
     type: "HERMES_GET_WORKSPACES";
+} | {
+    type: "HERMES_UPDATE_CONFIG";
+    provider?: string;
+    apiKey?: string;
+    model?: string;
 }, {
     type: "HERMES_CONNECTED";
     data: HermesConnectedData;
 } | {
+    type: "HERMES_INSTALL_STATUS";
+    installStatus: string;
+    version: string | null;
+    source?: string;
+    error?: string;
+} | {
     type: "HERMES_BRIDGE_STATUS";
-    bridge: {
-        status: string;
-        agentDir: string | null;
-        pid: number | null;
-        error?: string;
-    };
+    bridge: BridgeInfo;
 } | {
     type: "HERMES_SKILLS_DATA";
     skills: HermesSkill[];
@@ -6124,8 +6143,16 @@ declare const services: {
     threads: typeof threads;
     hermes: {
         readonly bridge: HermesBridgeClient;
+        readonly installStatus: InstallStatus;
+        checkInstall(): InstallStatus;
+        install(onProgress?: (msg: string) => void): Promise<void>;
         start(config?: HermesConfig): Promise<BridgeInfo>;
         stop(): Promise<void>;
+        updateConfig(config: {
+            provider?: string;
+            apiKey?: string;
+            model?: string;
+        }): Promise<void>;
         restart(config?: HermesConfig): Promise<BridgeInfo>;
         readonly info: BridgeInfo;
         health(): Promise<{
