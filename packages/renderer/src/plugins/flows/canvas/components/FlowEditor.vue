@@ -90,16 +90,14 @@
     <!-- Backdrop overlay when in list state -->
     <div
       v-if="showOverlay"
-      class="absolute inset-0 z-10 cursor-pointer backdrop-blur-[2px] bg-gradient-to-b from-black/25 via-black/15 to-black/20 transition-all duration-300"
+      class="absolute inset-0 z-10 cursor-pointer bg-black/30 hover:bg-black/20 transition-all duration-200 flex items-center justify-center group"
       @click="$emit('overlay-click')"
     >
-      <div class="absolute pointer-events-none top-16 left-1/2 -translate-x-1/2">
-        <div class="flex flex-col items-center gap-1.5">
-          <div v-if="props.selectedFlowLabel" class="px-5 py-2 text-sm font-medium tracking-wide text-neutral-200 rounded-full bg-neutral-800/70 border border-neutral-600/30 shadow-lg shadow-black/20">
-            {{ props.selectedFlowLabel }}
-          </div>
-          <div class="text-xs text-neutral-400/70">Click to edit</div>
-        </div>
+      <div class="pointer-events-none flex items-center gap-2.5 px-5 py-2.5 rounded-lg bg-neutral-800/80 border border-neutral-600/40 shadow-xl shadow-black/30 group-hover:bg-neutral-700/80 group-hover:border-neutral-500/50 group-hover:scale-105 transition-all duration-200">
+        <Pencil :size="15" class="text-neutral-400 group-hover:text-neutral-200 transition-colors" />
+        <span class="text-sm font-medium text-neutral-200 group-hover:text-white transition-colors">
+          {{ props.selectedFlowLabel || 'Edit Flow' }}
+        </span>
       </div>
     </div>
   </div>
@@ -117,7 +115,7 @@ import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeMouseEv
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 // import { MiniMap } from '@vue-flow/minimap'
-import { Maximize } from 'lucide-vue-next'
+import { Maximize, Pencil } from 'lucide-vue-next'
 
 import GenericEdge from '../edges/GenericEdge.vue'
 import { nodeTypes } from '../nodes'
