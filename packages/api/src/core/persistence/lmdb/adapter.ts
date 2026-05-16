@@ -74,7 +74,6 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
   const relDeletes = new Set<string>();
   const entityUpdates = new Map<string, any>();
   
-  let scheduled = false;
   let closed = false;
 
   // Extract flush logic to reusable function

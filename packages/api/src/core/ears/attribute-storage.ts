@@ -318,21 +318,16 @@ export const getAllEntityTypes = (): EARS.Entity[] =>
   lmdbGetAllEntityTypes();
 
 export const getAttributeStats = (kind: EARS.AttrKind) => {
-  const entities = [...new Set(
-    [...(function*() {
-      const US = '\x1F';
-      const prefix = `${kind}${US}`;
-      for (const { key } of envs.primary.attrs.getRange({ start: prefix, end: prefix + '\xFF' })) {
-        const k = String(key);
-        const i = k.indexOf(US);
-        const j = k.indexOf(US, i + 1);
-        yield k.substring(i + 1, j);
-      }
-    })()]
-  )];
+  const US = '\x1F';
+  const prefix = `${kind}${US}`;
+  const entities = new Set<string>();
   let totalValues = 0;
-  for (const eid of entities) {
-    totalValues += lmdbGetAttrs(eid as EARS.EntityId, kind).length;
+  for (const { key } of envs.primary.attrs.getRange({ start: prefix, end: prefix + '\xFF' })) {
+    const k = String(key);
+    const i = k.indexOf(US);
+    const j = k.indexOf(US, i + 1);
+    entities.add(k.substring(i + 1, j));
+    totalValues++;
   }
-  return { entityCount: entities.length, totalValues };
+  return { entityCount: entities.size, totalValues };
 };
