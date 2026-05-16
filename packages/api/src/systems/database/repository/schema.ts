@@ -1,7 +1,9 @@
 import { EARS } from '@/core/types';
 import type { DatabaseSchemaInfo } from '../types';
-import { getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getEntitiesOfType, getAttributeStats } from '@/core/ears/attribute-storage';
+import { getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getEntitiesOfType, getAttributeStats, queryEntitiesByRelationTo } from '@/core/ears/attribute-storage';
 import { relationIndex } from '@/core/ears/relation-index';
+import { USE_LMDB } from '@/core/ears/use-lmdb';
+import { lmdbGetRelationStats } from '@/core/ears/lmdb-reads';
 
 /**
  * Generate schema information from actual data in the system
@@ -54,25 +56,21 @@ export function getSchemaStats() {
   // Count relations by type
   const relationKinds = getAllRelationKinds();
   for (const kind of relationKinds) {
-    const entry = relationIndex[kind];
-    if (entry) {
-      // Count total relations by summing up all relation IDs
-      let totalRelations = 0;
-      const uniqueSources = Object.keys(entry.bySource).length;
-      const uniqueTargets = Object.keys(entry.byTarget).length;
-      
-      // Count unique relation IDs (each relation appears in both bySource and byTarget)
-      const uniqueRelationIds = new Set<string>();
-      for (const relIds of Object.values(entry.bySource)) {
-        relIds.forEach(id => uniqueRelationIds.add(id));
+    if (USE_LMDB) {
+      stats.relations[kind] = lmdbGetRelationStats(kind);
+    } else {
+      const entry = relationIndex[kind];
+      if (entry) {
+        const uniqueRelationIds = new Set<string>();
+        for (const relIds of Object.values(entry.bySource)) {
+          relIds.forEach(id => uniqueRelationIds.add(id));
+        }
+        stats.relations[kind] = {
+          totalRelations: uniqueRelationIds.size,
+          uniqueSources: Object.keys(entry.bySource).length,
+          uniqueTargets: Object.keys(entry.byTarget).length,
+        };
       }
-      totalRelations = uniqueRelationIds.size;
-      
-      stats.relations[kind] = {
-        totalRelations,
-        uniqueSources,
-        uniqueTargets,
-      };
     }
   }
   
@@ -83,9 +81,9 @@ export function getSchemaStats() {
  * Get relation counts for a specific relation kind
  */
 export function getRelationCount(kind: string): number {
+  if (USE_LMDB) return lmdbGetRelationStats(kind).totalRelations;
   const entry = relationIndex[kind];
   if (!entry) return 0;
-  
   const uniqueRelationIds = new Set<string>();
   for (const relIds of Object.values(entry.bySource)) {
     relIds.forEach(id => uniqueRelationIds.add(id));

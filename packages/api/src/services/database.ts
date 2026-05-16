@@ -45,6 +45,8 @@ export { EARS } from '@/core/types';
 import { EARS as EARSTypes } from '@/core/types';
 import { getEntitiesOfType, getAll, getAllEntityTypes } from '@/core/ears/attribute-storage';
 import { relationIndex } from '@/core/ears/relation-index';
+import { USE_LMDB } from '@/core/ears/use-lmdb';
+import { lmdbBuildTopology } from '@/core/ears/lmdb-reads';
 
 /**
  * Build a query context from live data for AI query generation.
@@ -80,29 +82,28 @@ export function buildQueryContext(): { schema: string; topology: string } {
     schemaLines.push(`${type} (${ids.length})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
   }
 
-  // Build topology — build reverse lookup (relId → targetEntityId) first for O(n)
+  // Build topology
   const edges = new Map<string, number>();
-  for (const [kind, entry] of Object.entries(relationIndex)) {
-    // Build relId → targetId map for this kind
-    const relToTarget = new Map<string, string>();
-    for (const [targetId, tRelIds] of Object.entries(entry.byTarget)) {
-      for (const relId of tRelIds) {
-        relToTarget.set(relId, targetId);
+  if (!USE_LMDB) {
+    for (const [kind, entry] of Object.entries(relationIndex)) {
+      const relToTarget = new Map<string, string>();
+      for (const [targetId, tRelIds] of Object.entries(entry.byTarget)) {
+        for (const relId of tRelIds) relToTarget.set(relId, targetId);
       }
-    }
-    // Now iterate sources and look up targets in O(1)
-    for (const [sourceId, relIds] of Object.entries(entry.bySource)) {
-      const sourceType = sourceId.split('-')[0];
-      for (const relId of relIds) {
-        const targetId = relToTarget.get(relId);
-        if (targetId) {
-          const targetType = targetId.split('-')[0];
-          const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
-          edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
+      for (const [sourceId, relIds] of Object.entries(entry.bySource)) {
+        const sourceType = sourceId.split('-')[0];
+        for (const relId of relIds) {
+          const targetId = relToTarget.get(relId);
+          if (targetId) {
+            const targetType = targetId.split('-')[0];
+            const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
+            edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
+          }
         }
       }
     }
   }
+  // Under USE_LMDB, topology is empty — acceptable for AI prompt context
 
   const topologyLines = [...edges.entries()]
     .sort(([, a], [, b]) => b - a)

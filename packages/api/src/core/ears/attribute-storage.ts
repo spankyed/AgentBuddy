@@ -12,9 +12,11 @@ import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
 import { makePolicy } from "@/core/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
 
+import { USE_LMDB } from './use-lmdb';
+import { initLmdbReads } from './lmdb-reads';
+
 // Configuration
 const HARD_DELETE_MODE = true;
-const USE_LMDB = false; // When true, reads come from LMDB on disk instead of in-memory store
 
 // 1) Open two environments
 let envs = openShardedEnvs({
@@ -22,6 +24,7 @@ let envs = openShardedEnvs({
   volatileBackup: getVolatileLmdbPath(),
   secrets: getSecretsLmdbPath(),
 });
+if (USE_LMDB) initLmdbReads(envs.primary);
 
 // 2) Create base sinks
 const adapterOpts = { hardDelete: HARD_DELETE_MODE, syncFlush: USE_LMDB };
@@ -78,6 +81,7 @@ export function reinitializeLmdb() {
   };
 
   persistence = makeShardedPersistence(policy, sinks);
+  if (USE_LMDB) initLmdbReads(envs.primary);
 }
 
 /**
@@ -277,7 +281,7 @@ export function addRelation(
     relationType: kind,
     info,
   } as EARS.RelationDetail);
-  addToIndex(kind, src, tgt, relId);
+  if (!USE_LMDB) addToIndex(kind, src, tgt, relId);
   persistence.onAddRelation(relId, kind, src, tgt, info);
   return relId;
 }
@@ -298,7 +302,7 @@ export function updateRelation(
   if (newT) d.targetEntity = newT;
   if (info !== undefined) d.info = info;
   mergeAttr(relId, EARS.AttrKind.RelationDetails, d);
-  if (newS || newT)
+  if (!USE_LMDB && (newS || newT))
     updateIndex(k, relId, oS, oT, d.sourceEntity, d.targetEntity);
   
   // Only include defined values in the patch
@@ -314,7 +318,7 @@ export const removeRelation = (relId: EARS.EntityId) => {
     relId,
     EARS.AttrKind.RelationDetails,
   ) as EARS.RelationDetail | null;
-  if (d)
+  if (d && !USE_LMDB)
     removeFromIndex(d.relationType, d.sourceEntity, d.targetEntity, relId);
   dropAttr(relId, EARS.AttrKind.RelationDetails);
   persistence.onRemoveRelation(relId);
@@ -329,6 +333,7 @@ export const removeRelation = (relId: EARS.EntityId) => {
 import {
   lmdbGetAttr, lmdbGetAttrs, lmdbGetAllEntities, lmdbGetEntitiesOfType, lmdbGetAll,
   lmdbRelationIdsFor, lmdbRelationIdsForAll, lmdbHasRelation,
+  lmdbGetAllRelationKinds, lmdbGetAllEntityTypes, lmdbGetAllAttributeKinds,
 } from './lmdb-reads';
 
 /* ── gated primitives ── */
@@ -448,11 +453,14 @@ export function destroyEntity(id: EARS.EntityId, skipPersistence = false) {
  * 7 ▸ Schema discovery helpers
  *─────────────────────────────────────────────────────────────*/
 
-export const getAllAttributeKinds = (): EARS.AttrKind[] => Array.from(store.keys());
+export const getAllAttributeKinds = (): EARS.AttrKind[] =>
+  USE_LMDB ? lmdbGetAllAttributeKinds() : Array.from(store.keys());
 
-export const getAllRelationKinds = (): string[] => Object.keys(relationIndex);
+export const getAllRelationKinds = (): string[] =>
+  USE_LMDB ? lmdbGetAllRelationKinds() : Object.keys(relationIndex);
 
-export const getAllEntityTypes = (): EARS.Entity[] => Array.from(entityIndex.keys());
+export const getAllEntityTypes = (): EARS.Entity[] =>
+  USE_LMDB ? lmdbGetAllEntityTypes() : Array.from(entityIndex.keys());
 
 export const getAttributeStats = (kind: EARS.AttrKind) => {
   const b = bucket(kind);

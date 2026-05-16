@@ -12,11 +12,9 @@ import {
 
 import { relationIndex } from "@/core/ears/relation-index";
 import { lmdbRelationIdsFor } from "@/core/ears/lmdb-reads";
+import { USE_LMDB } from "@/core/ears/use-lmdb";
 import { EARS } from "@/core/types";
 import { asArr, MaybeArr } from "@/core/helpers";
-
-// Must match flag in attribute-storage.ts
-const USE_LMDB = false;
 
 /*──────── helpers ────────*/
 const isEntity = (v: unknown): v is EARS.Entity =>
