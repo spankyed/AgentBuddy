@@ -6,8 +6,8 @@ import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 
-const isSettingUp = useSelector(applicationState, (s) => s.hasTag('setup'));
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
+const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
 
 // Toggle for showing API status (can be toggled with a hotkey)
 const showApiStatus = ref(false);
@@ -21,15 +21,15 @@ window.addEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <!-- Loading skeleton for initial state -->
-  <Skeleton v-if="isSettingUp" />
+  <!-- Onboarding modal overlay -->
+  <Onboarding v-if="isOnboarding" />
+  <!-- Main web app component (always rendered, plugins show own loading states) -->
+  <WebApp />
 
-  <template v-else>
-    <!-- Onboarding modal overlay -->
-    <Onboarding v-if="isOnboarding" />
-    <!-- Main web app component (always rendered when running) -->
-    <WebApp />
-  </template>
+  <!-- Loading overlay while waiting for backend connection -->
+  <Transition name="fade">
+    <div v-if="isConnecting" class="loading-overlay" />
+  </Transition>
 
   <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->
   <div v-if="showApiStatus" class="api-status-overlay">
@@ -75,5 +75,22 @@ window.addEventListener('keydown', (e) => {
 
 .close-btn:hover {
   background: #f0f0f0;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(23 23 23 / 0.85);
+  z-index: 9998;
+}
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

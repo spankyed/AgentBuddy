@@ -121,7 +121,8 @@ export const threadQueries = {
     };
   },
   
-  // Get connected data
+  // Get connected data — sends only thread metadata (no messages/linkedThreads).
+  // Messages are fetched on demand via VIEW_THREAD / OPEN_THREAD_CHAT.
   connectedData: (): ThreadConnectedData => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
     const extendedThreads = threads.map(thread => {
@@ -129,7 +130,6 @@ export const threadQueries = {
       const parentIds = qx(thread.id).linksTo('parent_of', EARS.Entity.Thread, false).ids();
       return {
         ...thread,
-        ...threadQueries.extendedData(thread.id),
         ...(parentIds.length > 0 ? { parentId: parentIds[0] as string } : {}),
       };
     });

@@ -645,7 +645,7 @@ export const createApplicationState = () => setup({
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
     };
   },
-  initial: 'setup',
+  initial: 'running',
   entry: [
     'spawnPluginActors',
     ({ context, system }) => {
@@ -655,36 +655,9 @@ export const createApplicationState = () => setup({
     'trailActivePlugin',
     spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
     spawnChild('mouseListener', { id: 'mouseListener' }),
+    spawnChild('backendListener'),
   ],
   states: {
-    'setup': {
-      tags: ['setup'],
-      entry: spawnChild('backendListener'),
-      after: {
-        30000: {
-          target: 'error',
-          actions: () => {
-            window.__showErrorPage?.(
-              'Unable to connect',
-              'The backend did not respond within 30 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
-            );
-          }
-        }
-      },
-      on: {
-        'CLIENT_CONNECTED': [
-          {
-            actions: [],
-            target: 'onboarding',
-            guard: ({ event }) => event.hasOnboarded === false
-          },
-          {
-            actions: [],
-            target: 'running',
-          }
-        ],
-      }
-    },
     'onboarding': {
       tags: ['onboarding'],
       entry: assign({
@@ -699,11 +672,23 @@ export const createApplicationState = () => setup({
     },
     'running': {
       tags: ['running'],
-      initial: 'connected',
+      initial: 'connecting',
       on: {
         RESTORE_CHAT: { actions: 'restoreChat' },
       },
       states: {
+        'connecting': {
+          tags: ['connecting'],
+          on: {
+            CLIENT_CONNECTED: [
+              {
+                target: '#application.onboarding',
+                guard: ({ event }) => (event as any).hasOnboarded === false,
+              },
+              { target: 'connected' },
+            ],
+          },
+        },
         'connected': {},
         'disconnected': {},
       }
