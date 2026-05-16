@@ -23,6 +23,14 @@ const BRIDGE_SCRIPT = path.join(process.cwd(), 'src', 'services', 'hermes', 'bri
 function discoverPython(config: HermesConfig): string {
   if (config.pythonPath) return config.pythonPath
 
+  // Check agent dir venvs first (they have the right deps installed)
+  if (config.agentDir) {
+    for (const venv of ['.venv', 'venv']) {
+      const venvPy = path.join(config.agentDir, venv, 'bin', 'python')
+      try { execSync(`test -f "${venvPy}"`, { timeout: 2000 }); return venvPy } catch {}
+    }
+  }
+
   for (const name of ['python3', 'python']) {
     try {
       const result = execSync(`which ${name}`, { encoding: 'utf8', timeout: 5000 }).trim()

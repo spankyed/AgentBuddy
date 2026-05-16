@@ -13,6 +13,8 @@
  *   const handle = hermes.chat({ sessionId, message, model })
  */
 
+import { execSync } from 'child_process'
+import path from 'path'
 import { HermesBridgeClient } from './bridge-client'
 import { createLogger } from '@/core/helpers/debug/logger'
 import type {
@@ -33,9 +35,29 @@ const logger = createLogger('hermes-service')
 
 let _bridge: HermesBridgeClient | null = null
 
+function discoverAgentDir(): string | undefined {
+  const home = process.env.HOME || ''
+  const candidates = [
+    process.env.HERMES_WEBUI_AGENT_DIR,
+    path.join(home, '.hermes', 'hermes-agent'),
+    path.resolve(process.cwd(), '..', 'hermes-agent'),
+    path.join(home, 'hermes-agent'),
+  ].filter(Boolean) as string[]
+
+  for (const dir of candidates) {
+    try {
+      execSync(`test -f "${path.join(dir, 'run_agent.py')}"`, { timeout: 2000 })
+      return dir
+    } catch {}
+  }
+  return undefined
+}
+
 function getBridge(): HermesBridgeClient {
   if (!_bridge) {
-    _bridge = new HermesBridgeClient()
+    const agentDir = discoverAgentDir()
+    _bridge = new HermesBridgeClient(agentDir ? { agentDir } : {})
+    if (agentDir) logger.info(`Hermes agent discovered at ${agentDir}`)
   }
   return _bridge
 }
