@@ -279,6 +279,10 @@ def handle_chat(req_id: str, params: dict):
                 "quiet_mode": True,
                 "session_id": session_id or "",
             }
+            # Pass API key explicitly if available in env (set by bridge client)
+            _api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
+            if _api_key:
+                agent_kwargs["api_key"] = _api_key
             if _session_db is not None:
                 agent_kwargs["session_db"] = _session_db
 
@@ -653,6 +657,30 @@ def handle_list_workspaces(req_id: str, params: dict):
         _error(req_id, str(e))
 
 
+def handle_update_config(req_id: str, params: dict):
+    """Hot-update API key/provider/model without restarting the bridge."""
+    try:
+        provider = params.get("provider", "openai")
+        api_key = params.get("apiKey", "")
+
+        if api_key:
+            os.environ.pop("OPENAI_API_KEY", None)
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+            if provider == "anthropic":
+                os.environ["ANTHROPIC_API_KEY"] = api_key
+            else:
+                os.environ["OPENAI_API_KEY"] = api_key
+
+        # Clear agent cache so next chat picks up new credentials
+        with SESSION_AGENT_CACHE_LOCK:
+            SESSION_AGENT_CACHE.clear()
+
+        logger.info("Config updated (provider=%s, key=%s)", provider, "set" if api_key else "unchanged")
+        _reply(req_id, {"updated": True})
+    except Exception as e:
+        _error(req_id, str(e))
+
+
 # ── Method Router ────────────────────────────────────────────────────────────
 
 METHODS = {
@@ -672,6 +700,7 @@ METHODS = {
     "getPersona": handle_get_persona,
     "updatePersona": handle_update_persona,
     "listWorkspaces": handle_list_workspaces,
+    "updateConfig": handle_update_config,
 }
 
 

@@ -241,7 +241,7 @@ export const hermesSystem = setup({
       }).catch((err: unknown) => sendError(system, 'getWorkspaces', err));
     },
 
-    updateConfig: ({ system, event }) => {
+    updateConfig: ({ event }) => {
       const ev = hermesDef.typeOf('HERMES_UPDATE_CONFIG', event);
       const current = (repository.settingsQueries.getPluginSettings('hermes') as any)?.config ?? {};
       const next = { ...current };
@@ -249,6 +249,8 @@ export const hermesSystem = setup({
       if (ev.apiKey !== undefined) next.apiKey = ev.apiKey;
       if (ev.model !== undefined) next.model = ev.model;
       repository.settingsCommands.updateSettings('plugin', 'hermes', ['config'], next);
+      // Forward to running bridge — hot-updates env + clears agent cache
+      hermesService.updateConfig(next).catch(() => {});
     },
   },
 }).createMachine({

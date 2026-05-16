@@ -82,6 +82,15 @@ export const hermes = {
     return getBridge().stop()
   },
 
+  /** Hot-update config on the running bridge (no restart needed). */
+  async updateConfig(config: { provider?: string; apiKey?: string; model?: string }): Promise<void> {
+    const bridge = getBridge()
+    bridge.updateConfig(config)
+    if (bridge.status === 'ready') {
+      await bridge.send('updateConfig', config as Record<string, unknown>)
+    }
+  },
+
   /** Restart the bridge subprocess. */
   async restart(config?: HermesConfig): Promise<BridgeInfo> {
     const bridge = getBridge()
