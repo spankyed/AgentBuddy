@@ -48,7 +48,17 @@
     <!-- Content Area -->
     <div class="flex-1 p-8 overflow-auto">
       <div v-if="selectedPlugin">
-        <h2 class="text-xl font-semibold text-white mb-6">{{ selectedPlugin.label }} Settings</h2>
+        <div class="flex items-center gap-3 mb-6">
+          <h2 class="text-xl font-semibold text-white">{{ selectedPlugin.label }} Settings</h2>
+          <button
+            v-if="selectedPlugin.id !== 'settings'"
+            @click="goToPlugin(selectedPlugin.id)"
+            title="Go to plugin"
+            class="p-1 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+          >
+            <ExternalLink class="w-4 h-4" />
+          </button>
+        </div>
         <component 
           :is="selectedPlugin.settings"
           :settings="currentPluginSettings"
@@ -80,7 +90,7 @@
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { Package, CheckCircle, Eye, EyeOff } from 'lucide-vue-next'
+import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 import plugins from '@/plugins'
 
@@ -117,6 +127,10 @@ const selectedPlugin = computed(() => {
 
 const selectPlugin = (pluginId: string) => {
   actor.send({ type: 'PLUGIN.SELECT', pluginId })
+}
+
+const goToPlugin = (pluginId: string) => {
+  applicationState.send({ type: 'SELECT_PLUGIN', pluginId })
 }
 
 // Check if a plugin is visible
