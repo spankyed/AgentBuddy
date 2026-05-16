@@ -3,6 +3,7 @@ import type { PersistenceSink } from '../partitioning/base-sink';
 
 export interface LmdbAdapterOptions {
   hardDelete?: boolean; // If true, permanently delete instead of tombstoning
+  syncFlush?: boolean;  // If true, flush writes to LMDB immediately (required when LMDB is the read source)
 }
 
 type Encoded = { t: string; v: any };
@@ -47,9 +48,24 @@ const entTypeOf = (id: string) => id.split('-')[0] ?? id;
 let errorCount = 0;
 let lastError: { op: string; key?: string; error: any } | null = null;
 
+function relIdxKey(kind: string, id: string) { return `${kind}${SEP}${id}`; }
+
+function appendToRelIdx(db: LmdbDbs['relBySrc'], key: string, relId: string) {
+  const arr = db.get(key) ?? [];
+  if (!arr.includes(relId)) db.put(key, [...arr, relId]);
+}
+
+function removeFromRelIdx(db: LmdbDbs['relBySrc'], key: string, relId: string) {
+  const arr = db.get(key);
+  if (!arr) return;
+  const filtered = arr.filter((id: string) => id !== relId);
+  if (filtered.length) db.put(key, filtered);
+  else db.remove(key);
+}
+
 export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}): PersistenceSink {
-  const { entities, attrs, relations } = dbs;
-  const { hardDelete = false } = options;
+  const { entities, attrs, relations, relBySrc, relByTgt } = dbs;
+  const { hardDelete = false, syncFlush = false } = options;
 
   // Keyed buffers for coalescing writes
   const arrayRewrites = new Map<string, unknown[]>(); // kind\x1FentityId -> final array
@@ -102,46 +118,64 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
     }
     arrayRewrites.clear();
 
-    // Relation deletions
+    // Relation deletions (+ secondary index cleanup)
     for (const id of relDeletes) {
+      const old = relations.get(id);
+      if (old) {
+        removeFromRelIdx(relBySrc, relIdxKey(old.kind, old.src), id);
+        removeFromRelIdx(relByTgt, relIdxKey(old.kind, old.tgt), id);
+      }
       relations.remove(id);
     }
     relDeletes.clear();
 
-    // Relation upserts
+    // Relation upserts (+ secondary index sync)
     for (const [id, obj] of relUpserts) {
+      const old = relations.get(id);
+      if (old) {
+        // Remove from old index positions if src/tgt changed
+        if (old.src !== obj.src || old.kind !== obj.kind)
+          removeFromRelIdx(relBySrc, relIdxKey(old.kind, old.src), id);
+        if (old.tgt !== obj.tgt || old.kind !== obj.kind)
+          removeFromRelIdx(relByTgt, relIdxKey(old.kind, old.tgt), id);
+      }
+      appendToRelIdx(relBySrc, relIdxKey(obj.kind, obj.src), id);
+      appendToRelIdx(relByTgt, relIdxKey(obj.kind, obj.tgt), id);
       relations.put(id, obj);
     }
     relUpserts.clear();
   }
 
+  function doFlush() {
+    try {
+      entities.transactionSync(() => { flushBody(); });
+    } catch (error) {
+      errorCount++;
+      lastError = { op: 'flush', error };
+      console.error('[LMDB] Transaction failed:', error);
+      ensureBuf.clear();
+      entityUpdates.clear();
+      arrayRewrites.clear();
+      relDeletes.clear();
+      relUpserts.clear();
+    }
+  }
+
   function scheduleFlush() {
-    if (scheduled || closed) return;
-    scheduled = true;
-    queueMicrotask(() => {
-      if (closed) return;
-      scheduled = false;
-      
-      try {
-        entities.transactionSync(() => {
-          flushBody();
-        });
-      } catch (error) {
-        errorCount++;
-        lastError = {
-          op: 'flush',
-          error
-        };
-        console.error('[LMDB] Transaction failed:', error);
-        console.error('[LMDB] Error count:', errorCount);
-        // Clear buffers even on error to prevent infinite retries
-        ensureBuf.clear();
-        entityUpdates.clear();
-        arrayRewrites.clear();
-        relDeletes.clear();
-        relUpserts.clear();
-      }
-    });
+    if (closed) return;
+    if (syncFlush) {
+      // LMDB is the read source — flush immediately so writes are visible
+      doFlush();
+    } else {
+      // In-memory is the read source — batch for performance
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        if (closed) return;
+        scheduled = false;
+        doFlush();
+      });
+    }
   }
 
   function bufferArrayRewrite(kind: string, entityId: string, array: unknown[]) {
@@ -208,9 +242,11 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
               }
             }
 
-            // Delete relations where this entity is source or target
+            // Delete relations where this entity is source or target (+ secondary indexes)
             for (const { key, value } of relations.getRange()) {
               if (value && (value.src === entityId || value.tgt === entityId)) {
+                removeFromRelIdx(relBySrc, relIdxKey(value.kind, value.src), String(key));
+                removeFromRelIdx(relByTgt, relIdxKey(value.kind, value.tgt), String(key));
                 relations.remove(key);
               }
             }

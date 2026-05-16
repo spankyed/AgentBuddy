@@ -30,6 +30,15 @@ export const lmdbGetAllEntities = (): EARS.EntityId[] => {
 export const lmdbGetEntitiesOfType = (t: EARS.Entity): EARS.EntityId[] =>
   [...q.entitiesOfType(t)] as EARS.EntityId[];
 
+export const lmdbRelationIdsFor = (id: EARS.EntityId, kind: string, direction: 'out' | 'in'): EARS.EntityId[] =>
+  q.relationIdsFor(id, kind, direction) as EARS.EntityId[];
+
+export const lmdbRelationIdsForAll = (id: EARS.EntityId): EARS.EntityId[] =>
+  q.relationIdsForAll(id) as EARS.EntityId[];
+
+export const lmdbHasRelation = (src: EARS.EntityId, kind: string, tgt: EARS.EntityId): EARS.EntityId | null =>
+  q.hasRelation(src, kind, tgt) as EARS.EntityId | null;
+
 export const lmdbGetAll = (id: EARS.EntityId): Record<string, unknown> => {
   const US = '\x1F';
   const out: Record<string, unknown[]> = {};

@@ -12,8 +12,9 @@ import { makeLmdbAdapter } from "@/core/persistence/lmdb/adapter";
 import { makePolicy } from "@/core/persistence/partitioning/policy";
 import { makeShardedPersistence } from "@/core/persistence/partitioning/sharded-router";
 
-// Configuration for hard delete mode
-const HARD_DELETE_MODE = true; // Set to true to permanently delete entities instead of tombstoning
+// Configuration
+const HARD_DELETE_MODE = true;
+const USE_LMDB = false; // When true, reads come from LMDB on disk instead of in-memory store
 
 // 1) Open two environments
 let envs = openShardedEnvs({
@@ -23,10 +24,11 @@ let envs = openShardedEnvs({
 });
 
 // 2) Create base sinks
+const adapterOpts = { hardDelete: HARD_DELETE_MODE, syncFlush: USE_LMDB };
 let sinks = {
-  primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
-  volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
-  secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
+  primary: makeLmdbAdapter(envs.primary, adapterOpts),
+  volatileBackup: makeLmdbAdapter(envs.volatileBackup, adapterOpts),
+  secrets: makeLmdbAdapter(envs.secrets, adapterOpts),
 };
 
 // 3) Policy: exclude TNode, handle secrets
@@ -70,9 +72,9 @@ export function reinitializeLmdb() {
   });
 
   sinks = {
-    primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
-    volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
-    secrets: makeLmdbAdapter(envs.secrets, { hardDelete: HARD_DELETE_MODE }),
+    primary: makeLmdbAdapter(envs.primary, adapterOpts),
+    volatileBackup: makeLmdbAdapter(envs.volatileBackup, adapterOpts),
+    secrets: makeLmdbAdapter(envs.secrets, adapterOpts),
   };
 
   persistence = makeShardedPersistence(policy, sinks);
@@ -248,24 +250,22 @@ export function addRelation(
   info?: unknown,
 ) {
   // Check for existing relation with same source, kind, and target to prevent duplicates
-  const entry = relationIndex[kind];
-  if (entry?.bySource?.[src] && entry?.byTarget?.[tgt]) {
-    const fromSource = new Set(entry.bySource[src]);
-    const fromTarget = new Set(entry.byTarget[tgt]);
-
-    // Find intersection - relations that match both source and target
-    for (const existingRelId of fromSource) {
-      if (fromTarget.has(existingRelId)) {
-        // Found existing relation - check if info matches
-        const existingRel = getAttr(existingRelId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
-
-        // If no info provided, or info matches existing, return existing relation (idempotent)
-        if (info === undefined || JSON.stringify(existingRel.info) === JSON.stringify(info)) {
-          console.warn(`[Relation] Duplicate relation link attempted (${kind}) between ${src} and ${tgt}. Reusing existing relation.`);
-          return existingRelId;
+  const existingRelId = USE_LMDB
+    ? lmdbHasRelation(src, kind, tgt)
+    : (() => {
+        const entry = relationIndex[kind];
+        if (!entry?.bySource?.[src] || !entry?.byTarget?.[tgt]) return null;
+        const fromSource = new Set(entry.bySource[src]);
+        for (const id of entry.byTarget[tgt]) {
+          if (fromSource.has(id)) return id;
         }
-        // If info differs, continue to create new relation (allows multi-value with distinct info)
-      }
+        return null;
+      })();
+  if (existingRelId) {
+    const existingRel = getAttr(existingRelId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
+    if (info === undefined || JSON.stringify(existingRel.info) === JSON.stringify(info)) {
+      console.warn(`[Relation] Duplicate relation link attempted (${kind}) between ${src} and ${tgt}. Reusing existing relation.`);
+      return existingRelId;
     }
   }
 
@@ -326,9 +326,10 @@ export const removeRelation = (relId: EARS.EntityId) => {
  * Only the 4 primitives are gated. Everything else composes
  * on top and works with either backend automatically.
  *─────────────────────────────────────────────────────────────*/
-import { lmdbGetAttr, lmdbGetAttrs, lmdbGetAllEntities, lmdbGetEntitiesOfType, lmdbGetAll } from './lmdb-reads';
-
-const USE_LMDB = false;
+import {
+  lmdbGetAttr, lmdbGetAttrs, lmdbGetAllEntities, lmdbGetEntitiesOfType, lmdbGetAll,
+  lmdbRelationIdsFor, lmdbRelationIdsForAll, lmdbHasRelation,
+} from './lmdb-reads';
 
 /* ── gated primitives ── */
 
@@ -373,30 +374,30 @@ export const queryEntitiesByAttribute = (k: EARS.AttrKind, v?: unknown) =>
 
 /** target id participates in *any* relation with `target` (both directions) */
 export const queryEntitiesInRelationTo = (target: EARS.EntityId) => {
+  const relIds = USE_LMDB
+    ? lmdbRelationIdsForAll(target)
+    : Object.keys(relationIndex).flatMap(k => [
+        ...(relationIndex[k].bySource[target] ?? []),
+        ...(relationIndex[k].byTarget[target] ?? []),
+      ]);
   const out = new Set<EARS.EntityId>();
-  for (const k of Object.keys(relationIndex)) {
-    const { bySource, byTarget } = relationIndex[k];
-    bySource[target]?.forEach(relId => {
-      const { targetEntity } = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
-      out.add(targetEntity);
-    });
-    byTarget[target]?.forEach(relId => {
-      const { sourceEntity } = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
-      out.add(sourceEntity);
-    });
+  for (const relId of relIds) {
+    const d = getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
+    if (d?.sourceEntity === target) out.add(d.targetEntity);
+    else if (d?.targetEntity === target) out.add(d.sourceEntity);
   }
   return [...out];
 };
 
 /** one specific relation type (+ direction) */
 export const queryEntitiesByRelationTo = (relKind: string, id: EARS.EntityId, asSource = false) => {
-  const dir = relationIndex[relKind];
-  if (!dir) return [];
-  const relIds = asSource ? dir.bySource[id] ?? [] : dir.byTarget[id] ?? [];
+  const relIds = USE_LMDB
+    ? lmdbRelationIdsFor(id, relKind, asSource ? 'out' : 'in')
+    : (asSource ? relationIndex[relKind]?.bySource[id] : relationIndex[relKind]?.byTarget[id]) ?? [];
   return relIds
     .map(rel => {
       const d = getAttr(rel, EARS.AttrKind.RelationDetails) as EARS.RelationDetail;
-      return asSource ? d.targetEntity : d.sourceEntity;
+      return asSource ? d?.targetEntity : d?.sourceEntity;
     })
     .filter(Boolean);
 };
@@ -406,12 +407,18 @@ export const queryEntitiesByRelationTo = (relKind: string, id: EARS.EntityId, as
  *─────────────────────────────────────────────────────────────*/
 export function destroyEntity(id: EARS.EntityId, skipPersistence = false) {
   /* remove from relation index */
-  for (const k of Object.keys(relationIndex)) {
-    const { bySource, byTarget } = relationIndex[k];
-    const relIds = [...(bySource[id] ?? []), ...(byTarget[id] ?? [])];
-    relIds.forEach(removeRelation);
-    delete bySource[id];
-    delete byTarget[id];
+  const allRelIds = USE_LMDB
+    ? lmdbRelationIdsForAll(id)
+    : Object.keys(relationIndex).flatMap(k => [
+        ...(relationIndex[k].bySource[id] ?? []),
+        ...(relationIndex[k].byTarget[id] ?? []),
+      ]);
+  allRelIds.forEach(removeRelation);
+  if (!USE_LMDB) {
+    for (const k of Object.keys(relationIndex)) {
+      delete relationIndex[k].bySource[id];
+      delete relationIndex[k].byTarget[id];
+    }
   }
 
   /* remove all attributes */

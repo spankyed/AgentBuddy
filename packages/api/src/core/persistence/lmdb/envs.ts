@@ -6,6 +6,8 @@ export type LmdbDbs = {
   entities: Database<any>;
   attrs: Database<any>;
   relations: Database<any>;
+  relBySrc: Database<string[]>;
+  relByTgt: Database<string[]>;
   root: RootDatabase;
 };
 
@@ -26,6 +28,8 @@ export function openEnvAt(basePath: string): LmdbDbs {
     entities: root.openDB({ name: 'entities', encoding: 'json' }),
     attrs: root.openDB({ name: 'attrs', encoding: 'json' }),
     relations: root.openDB({ name: 'relations', encoding: 'json' }),
+    relBySrc: root.openDB({ name: 'relBySrc', encoding: 'json' }),
+    relByTgt: root.openDB({ name: 'relByTgt', encoding: 'json' }),
     root,
   };
 }
@@ -50,6 +54,8 @@ export function closeEnv(dbs: LmdbDbs): void {
     dbs.entities?.close();
     dbs.attrs?.close();
     dbs.relations?.close();
+    dbs.relBySrc?.close();
+    dbs.relByTgt?.close();
     dbs.root?.close();
     console.log('[LMDB] Environment closed successfully');
   } catch (error: any) {

@@ -11,8 +11,12 @@ import {
 } from "@/core/ears/attribute-storage";
 
 import { relationIndex } from "@/core/ears/relation-index";
+import { lmdbRelationIdsFor } from "@/core/ears/lmdb-reads";
 import { EARS } from "@/core/types";
 import { asArr, MaybeArr } from "@/core/helpers";
+
+// Must match flag in attribute-storage.ts
+const USE_LMDB = false;
 
 /*──────── helpers ────────*/
 const isEntity = (v: unknown): v is EARS.Entity =>
@@ -148,12 +152,15 @@ export const qx = (
       kinds?: string | readonly string[],
       asSrc = true,
     ): EARS.EntityId[] => {
-      const ksInput = kinds ? asArr(kinds) : (Object.keys(relationIndex) as readonly string[]);
-      const ks = ksInput.filter(k => relationIndex[k] !== undefined); /* ➊ validate once */
+      const ks = kinds ? asArr(kinds) : (Object.keys(relationIndex) as readonly string[]);
       const out = new Set<EARS.EntityId>();
       for (const i of ids) for (const k of ks) {
-        const dir = relationIndex[k]!;           // safe: ks filtered above
-        (asSrc ? dir.bySource[i] : dir.byTarget[i])?.forEach(r => out.add(r));
+        if (USE_LMDB) {
+          lmdbRelationIdsFor(i, k, asSrc ? 'out' : 'in').forEach(r => out.add(r));
+        } else {
+          const dir = relationIndex[k];
+          if (dir) (asSrc ? dir.bySource[i] : dir.byTarget[i])?.forEach(r => out.add(r));
+        }
       }
       return [...out];
     },

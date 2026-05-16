@@ -403,6 +403,38 @@ export class LmdbQuery {
     return dist; // includes startId at distance 0
   }
 
+  // ───────────────────────────── Secondary-index relation queries ─────────────
+
+  /** O(1) lookup: get relation IDs where entity is source or target for a given kind */
+  relationIdsFor(id: string, kind: string, direction: 'out' | 'in'): string[] {
+    const db = direction === 'out' ? this.dbs.relBySrc : this.dbs.relByTgt;
+    return (db.get(`${kind}\x1F${id}`) as string[] | undefined) ?? [];
+  }
+
+  /** All relation IDs for entity across all kinds and both directions */
+  relationIdsForAll(id: string): string[] {
+    const out = new Set<string>();
+    const suffix = `\x1F${id}`;
+    for (const db of [this.dbs.relBySrc, this.dbs.relByTgt]) {
+      for (const { key, value } of (db as any).getRange()) {
+        if (String(key).endsWith(suffix) && Array.isArray(value)) {
+          for (const relId of value) out.add(relId);
+        }
+      }
+    }
+    return [...out];
+  }
+
+  /** O(1) duplicate check: does a relation with this (src, kind, tgt) exist? */
+  hasRelation(src: string, kind: string, tgt: string): string | null {
+    const srcRels = this.relationIdsFor(src, kind, 'out');
+    const tgtSet = new Set(this.relationIdsFor(tgt, kind, 'in'));
+    for (const relId of srcRels) {
+      if (tgtSet.has(relId)) return relId;
+    }
+    return null;
+  }
+
   // ───────────────────────────── Generic range util ─────────────────────────────
 
   /**
