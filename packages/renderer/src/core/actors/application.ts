@@ -679,6 +679,17 @@ export const createApplicationState = () => setup({
       states: {
         'connecting': {
           tags: ['connecting'],
+          after: {
+            30000: {
+              target: '#application.error',
+              actions: () => {
+                window.__showErrorPage?.(
+                  'Unable to connect',
+                  'The backend did not respond within 30 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
+                );
+              }
+            }
+          },
           on: {
             CLIENT_CONNECTED: [
               {
@@ -689,7 +700,15 @@ export const createApplicationState = () => setup({
             ],
           },
         },
-        'connected': {},
+        'connected': {
+          on: {
+            // Handle backend reconnections (e.g. after crash + restart)
+            CLIENT_CONNECTED: {
+              target: 'connected',
+              reenter: true,
+            },
+          },
+        },
         'disconnected': {},
       }
     },
