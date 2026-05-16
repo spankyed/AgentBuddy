@@ -151,8 +151,9 @@ const startBridge = () => actor.send({ type: 'BRIDGE.START' })
 const stopBridge = () => actor.send({ type: 'BRIDGE.STOP' })
 const goToSettings = () => {
   applicationState.send({ type: 'SELECT_PLUGIN', pluginId: 'settings' } as any)
-  // Switch to Plugins tab so the Hermes settings are visible
-  applicationState.system.get('settings').send({ type: 'TAB.SELECT', tab: 'plugins' })
+  const settingsActor = applicationState.system.get('settings')
+  settingsActor.send({ type: 'TAB.SELECT', tab: 'plugins' })
+  settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'hermes' })
 }
 const refreshSessions = () => actor.send({ type: 'REFRESH' })
 const resumeSession = (sessionId: string) => {
