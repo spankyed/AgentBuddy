@@ -1,5 +1,12 @@
 -e # Changelog
 
+## v0.2.21 (2026-05-16)
+
+### Fixes
+- renderer): increase backend connection timeout from 5s to 30s
+
+-e # Changelog
+
 ## v0.2.20 (2026-05-16)
 
 ### Features

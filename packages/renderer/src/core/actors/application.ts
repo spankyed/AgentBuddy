@@ -657,12 +657,12 @@ export const createApplicationState = () => setup({
       tags: ['setup'],
       entry: spawnChild('backendListener'),
       after: {
-        5000: {
+        30000: {
           target: 'error',
           actions: () => {
             window.__showErrorPage?.(
               'Unable to connect',
-              'The backend did not respond within 5 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
+              'The backend did not respond within 30 seconds. It may have crashed during startup.\n\nCheck the terminal/logs for details.'
             );
           }
         }
