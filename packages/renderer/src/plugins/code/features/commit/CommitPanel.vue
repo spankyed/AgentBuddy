@@ -425,7 +425,9 @@
     </div>
 
     <!-- Commits Section -->
-    <CommitLogSection v-if="codeSettings?.showCommits !== false" :toast="toast" />
+    <div @contextmenu.prevent="onSectionContextMenu">
+      <CommitLogSection v-if="codeSettings?.showCommits !== false" :toast="toast" />
+    </div>
 
     <!-- Stash resize handle -->
     <PanelResizer
@@ -435,7 +437,7 @@
     />
 
     <!-- Stashes Section -->
-    <div v-if="codeSettings?.showStashes && stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+    <div v-if="codeSettings?.showStashes && stashList.length > 0" class="flex-shrink-0 border-t border-neutral-800" @contextmenu.prevent="onSectionContextMenu">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isStashesExpanded = !isStashesExpanded">
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isStashesExpanded" class="w-3 h-3" />
@@ -521,7 +523,7 @@
     />
 
     <!-- Worktrees Section -->
-    <div v-if="codeSettings?.showWorktrees && worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800">
+    <div v-if="codeSettings?.showWorktrees && worktreeList.length > 0" class="flex-shrink-0 border-t border-neutral-800" @contextmenu.prevent="onSectionContextMenu">
       <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isWorktreesExpanded = !isWorktreesExpanded">
         <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
           <ChevronRight v-if="!isWorktreesExpanded" class="w-3 h-3" />
@@ -610,6 +612,13 @@
     />
 
     <ToastNotification ref="toast" />
+
+    <ContextMenuPopup
+      :show="showMenu"
+      :pos="menuPos"
+      :items="sectionMenuItems"
+      @close="showMenu = false"
+    />
     </template>
   </div>
 </template>
@@ -620,7 +629,7 @@ import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { GitStatusFile } from '@/plugins/code/features/commit/state'
-import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
+import { GitBranch, GitBranchPlus, GitCommit, GitCommitHorizontal, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock, Archive } from 'lucide-vue-next'
 import { ContextMenuItem } from 'reka-ui'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS } from '@/plugins/code/features/explorer/constants'
 import GitFileItem from '@/plugins/code/features/commit/GitFileItem.vue'
@@ -630,7 +639,10 @@ import EmptyState from '@/plugins/code/features/EmptyState.vue'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 import CommitLogSection from '@/plugins/code/features/commit/CommitLogSection.vue'
 import ToastNotification from '@/core/components/design/ToastNotification.vue'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
+import { useContextMenu, type MenuItem } from '@/core/composables/useContextMenu'
+import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 
 // Get actors
 const codeActor: CodeState = applicationState.system.get(codeId)
@@ -638,6 +650,59 @@ const commitActor = codeActor.system.get('commit')!
 
 // Settings from code actor
 const codeSettings = useSelector(codeActor, (state) => state.context.settings)
+
+// Section visibility context menu
+const { showMenu, menuPos, open } = useContextMenu()
+const { updateSettings } = useSettingsSaveStatus()
+
+const toggleSectionVisibility = (settingKey: 'showCommits' | 'showStashes' | 'showWorktrees') => {
+  const current = settingKey === 'showCommits'
+    ? codeSettings.value?.showCommits !== false
+    : !!codeSettings.value?.[settingKey]
+  updateSettings({
+    entityType: 'plugin',
+    label: 'code',
+    path: [settingKey],
+    value: !current,
+  })
+}
+
+const sectionMenuItems = computed<MenuItem[]>(() => {
+  const commitsVisible = codeSettings.value?.showCommits !== false
+  const stashesVisible = !!codeSettings.value?.showStashes
+  const worktreesVisible = !!codeSettings.value?.showWorktrees
+
+  return [
+    {
+      label: 'Commits',
+      icon: GitCommitHorizontal,
+      class: commitsVisible ? 'text-neutral-200' : 'text-neutral-500',
+      iconClass: commitsVisible ? 'text-neutral-200' : 'text-neutral-500',
+      action: () => toggleSectionVisibility('showCommits'),
+      keepOpen: true,
+    },
+    {
+      label: 'Stashes',
+      icon: Archive,
+      class: stashesVisible ? 'text-neutral-200' : 'text-neutral-500',
+      iconClass: stashesVisible ? 'text-neutral-200' : 'text-neutral-500',
+      action: () => toggleSectionVisibility('showStashes'),
+      keepOpen: true,
+    },
+    {
+      label: 'Worktrees',
+      icon: GitFork,
+      class: worktreesVisible ? 'text-neutral-200' : 'text-neutral-500',
+      iconClass: worktreesVisible ? 'text-neutral-200' : 'text-neutral-500',
+      action: () => toggleSectionVisibility('showWorktrees'),
+      keepOpen: true,
+    },
+  ]
+})
+
+const onSectionContextMenu = (e: MouseEvent) => {
+  open(e, sectionMenuItems.value.length)
+}
 
 // State selectors from commit actor
 const gitStatus = useSelector(commitActor, (state: any) => state.context.gitStatus)
