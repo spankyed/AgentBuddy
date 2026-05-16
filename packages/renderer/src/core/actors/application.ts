@@ -666,7 +666,7 @@ export const createApplicationState = () => setup({
       on: {
         CLOSE_DEV_LETTER: {
           actions: 'closeDevLetter',
-          target: 'running',
+          target: 'running.connected',
         },
       }
     },
