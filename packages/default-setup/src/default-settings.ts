@@ -105,6 +105,7 @@ const settings: SettingsData = {
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
+          { id: 'hermes', name: 'Hermes', description: 'Hermes autonomous agent mode' },
           { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents', hidden: true },
         ],
         hotkeys: {

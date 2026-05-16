@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full">
     <!-- Navigation Sidebar -->
-    <div class="w-64 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
+    <div ref="sidebarRef" class="w-64 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
       <h3 class="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Plugins with Settings</h3>
       <div v-if="pluginsWithSettings.length === 0" class="px-3 py-6 text-center">
         <p class="text-sm text-neutral-500">No plugins have settings configured yet</p>
@@ -9,6 +9,7 @@
       <div
         v-for="plugin in pluginsWithSettings"
         :key="plugin.id"
+        :data-active="selectedPluginId === plugin.id"
         class="flex items-center gap-1 mb-0.5"
       >
         <button
@@ -76,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { Package, CheckCircle, Eye, EyeOff } from 'lucide-vue-next'
@@ -87,6 +88,13 @@ const actor = applicationState.system.get('settings')
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
 const settings = useSelector(actor, (state: any) => state.context.settings)
+
+const sidebarRef = ref<HTMLElement | null>(null)
+function scrollToActive() {
+  sidebarRef.value?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' })
+}
+onMounted(scrollToActive)
+onUpdated(scrollToActive)
 
 // Use the settings save status composable
 const { saveStatus, updateSettings } = useSettingsSaveStatus()

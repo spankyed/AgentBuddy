@@ -10,6 +10,7 @@ import Blank from './_blank/plugin.ts';
 import Library from './library/plugin.ts';
 import Code from './code/plugin.ts';
 import Notes from './notes/plugin.ts';
+import Hermes from './hermes/plugin.ts';
 import type { Plugin } from '@/core/types/index.ts';
 import {
   Code as CodeIcon,
@@ -55,6 +56,7 @@ export default [
   Database,
   Logs,
   Settings,
+  Hermes,
   // Blank,
   ...mockPlugins,
 ];
