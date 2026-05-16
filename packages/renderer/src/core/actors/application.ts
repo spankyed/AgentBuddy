@@ -558,9 +558,8 @@ export const createApplicationState = () => setup({
         panelSizes: newSizes
       };
     }),
-    closeDevLetter: ({ context, self }) => {
+    closeDevLetter: ({ self }) => {
       self.send({ type: 'SELECT_PLUGIN', pluginId: 'threads' });
-      self.send({ type: 'RESET_CHAT_HEIGHT' });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({
@@ -678,6 +677,9 @@ export const createApplicationState = () => setup({
     },
     'onboarding': {
       tags: ['onboarding'],
+      entry: assign({
+        panelSizes: ({ context }) => ({ ...context.panelSizes, chatMaximized: true }),
+      }),
       on: {
         CLOSE_DEV_LETTER: {
           actions: 'closeDevLetter',
@@ -688,6 +690,9 @@ export const createApplicationState = () => setup({
     'running': {
       tags: ['running'],
       initial: 'connected',
+      on: {
+        RESTORE_CHAT: { actions: 'restoreChat' },
+      },
       states: {
         'connected': {},
         'disconnected': {},
