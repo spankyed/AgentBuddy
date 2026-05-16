@@ -24,6 +24,7 @@ type Handler = (
   args: string[],
   services: Services,
   threadId?: string,
+  cwdOverride?: string,
 ) => Promise<{ text: string; data?: any; blocks?: any[]; skipMessage?: boolean }>;
 
 const handlers: Record<string, Handler> = {
@@ -37,7 +38,7 @@ export async function action(
   _z: Z,
   _flowId: string,
 ) {
-  const { command, text, threadId } = params;
+  const { command, text, threadId, cwdOverride } = params;
   const name = (command as string).replace(/^cc-/, '');
   const args = text?.trim() ? text.trim().split(/\s+/) : [];
 
@@ -46,7 +47,7 @@ export async function action(
 
   if (handler) {
     try {
-      result = await handler(args, services, threadId);
+      result = await handler(args, services, threadId, cwdOverride);
     } catch (error: any) {
       result = { text: `cc-${name} failed: ${error?.message || 'Unknown error'}` };
     }
@@ -133,6 +134,7 @@ async function handleResume(
   args: string[],
   services: Services,
   threadId?: string,
+  cwdOverride?: string,
 ): Promise<{ text: string; data?: any; blocks?: any[]; skipMessage?: boolean }> {
   // Join args back and strip outer quotes to support titles with spaces
   // e.g. `/cc-resume "Branched conversation (Branch 14)"`
@@ -143,7 +145,8 @@ async function handleResume(
   // on a specific project in the sidebar).
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
   const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
-  const effectiveCwd = prior?.cwdOverride
+  const effectiveCwd = cwdOverride
+    || prior?.cwdOverride
     || prior?.cwd
     || codeSettings?.defaultBaseDirectory
     || codeSettings?.lastDirectoryOpened

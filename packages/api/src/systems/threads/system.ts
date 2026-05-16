@@ -39,7 +39,7 @@ type IncomingThreadsEvents =
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
   | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
-  | { type: 'USER_COMMAND'; command: string; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] } }
+  | { type: 'USER_COMMAND'; command: string; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] }; cwdOverride?: string }
   | { type: 'TOGGLE_COMPACTED'; markerId: string; compacted: boolean }
   | { type: 'DELETE_MESSAGE'; messageId: string }
   | { type: 'FORWARD_BRAIN_EVENT'; eventType: string; payload?: any }
@@ -531,7 +531,7 @@ export const threadsSystem = setup({
       });
     },
     forwardUserCommand: ({ system, event }) => {
-      const { command, text, mode, phase, threadId: providedThreadId, references } = threadsDef.typeOf('USER_COMMAND', event);
+      const { command, text, mode, phase, threadId: providedThreadId, references, cwdOverride } = threadsDef.typeOf('USER_COMMAND', event);
 
       const sanitizedRefs = references ? {
         ...references,
@@ -622,6 +622,7 @@ export const threadsSystem = setup({
           threadId,
           messageId: messageResult.id,
           ...(sanitizedRefs && { references: sanitizedRefs }),
+          ...(cwdOverride && { cwdOverride }),
         },
       });
     },

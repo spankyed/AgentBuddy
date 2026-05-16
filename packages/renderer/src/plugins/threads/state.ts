@@ -758,7 +758,7 @@ const threadsState = setup({
         enqueue.assign({ pendingThreadCwd: undefined, pendingForceDirectoryPicker: undefined });
       }
     }),
-    sendCommand: ({ context, event }) => {
+    sendCommand: enqueueActions(({ enqueue, context, event }) => {
       const { command, text, references } = typeOf('SEND_COMMAND', event);
       trpc.bus.send.mutate({
         systemId: id,
@@ -769,8 +769,12 @@ const threadsState = setup({
         phase: context.phase,
         threadId: context.currentThread?.id,
         ...(references && { references }),
+        ...(context.pendingThreadCwd && { cwdOverride: context.pendingThreadCwd }),
       });
-    },
+      if (context.pendingThreadCwd) {
+        enqueue.assign({ pendingThreadCwd: undefined });
+      }
+    }),
     clearThread: assign(({ context }) => {
       const { mode, phase } = resolveDefaultModePhase(
         context.chatSettings, context.modes, context.mode, context.phase,
