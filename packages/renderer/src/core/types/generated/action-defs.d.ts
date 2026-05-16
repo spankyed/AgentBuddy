@@ -3014,6 +3014,8 @@ type AgentThreadData = {
     pinned?: boolean;
     chatState?: string;
     context?: ThreadContext;
+    nextCursor?: string | null;
+    hasMore?: boolean;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -3210,6 +3212,12 @@ type OutgoingThreadsEvents = {
     type: 'THREAD_CHAT_ERROR';
     threadId: string;
     error: string;
+} | {
+    type: 'MESSAGES_PAGE_LOADED';
+    threadId: string;
+    messages: Partial<MessageEntity>[];
+    nextCursor: string | null;
+    hasMore: boolean;
 };
 interface ThreadsContext {
 }
@@ -3422,6 +3430,7 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
             label: string;
         }[];
     };
+    cwdOverride?: string;
 } | {
     type: "TOGGLE_COMPACTED";
     markerId: string;
@@ -3437,6 +3446,10 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "GET_ARCHIVED_THREADS";
 } | {
     type: "REFRESH_THREADS";
+} | {
+    type: "LOAD_MORE_MESSAGES";
+    threadId: string;
+    cursor: string;
 }) | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>, SystemDefinition<"flows", ({
     type: "FLOW_SELECT";
     flowId: string;
@@ -5755,6 +5768,11 @@ declare const services: {
         readonly chatQueries: {
             readonly hasRequiredApiKeys: () => boolean;
             readonly threadArtifacts: (threadId: EARS.EntityId) => ArtifactItem[];
+            readonly threadMessages: (threadId: EARS.EntityId, pageSize?: number, cursor?: string | null) => {
+                messages: Partial<MessageEntity>[];
+                nextCursor: string | null;
+                hasMore: boolean;
+            };
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
             readonly connectedData: () => AgentConnectedData;
