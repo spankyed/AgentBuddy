@@ -15,4 +15,11 @@ export const WINDOW_CONFIG = {
   
   // Error display duration
   ERROR_DISPLAY_TIME: 5000, // ms
+
+  // Chat popout window dimensions
+  CHAT_WIDTH: 600,
+  CHAT_HEIGHT: 800,
+  CHAT_MIN_WIDTH: 400,
+  CHAT_MIN_HEIGHT: 500,
+  CHAT_TITLE_PREFIX: 'AgentBuddy-Chat-',
 } as const;

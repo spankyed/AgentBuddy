@@ -55,6 +55,7 @@
       @unpin="$emit('unpin-thread')"
       @archive="$emit('archive-thread')"
       @delete="$emit('delete-thread')"
+      @open-in-window="openInWindow(tab.id)"
     >
       <template #before="{ itemClass }">
         <ContextMenuItem v-if="!isPinned" :class="itemClass" @select="$emit('close')">
@@ -114,6 +115,10 @@ function getThreadDotColor(threadId: string): string | undefined {
 
 function isThreadBusy(threadId: string): boolean {
   return getThreadStateConfig(threadId)?.busy ?? false;
+}
+
+function openInWindow(threadId: string) {
+  window.electronAPI?.windowControls.openChatWindow(threadId)
 }
 
 function handleRename() {

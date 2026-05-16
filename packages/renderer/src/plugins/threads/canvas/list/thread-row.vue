@@ -123,6 +123,7 @@
       @unpin="$emit('unpin-click', thread.id)"
       @archive="$emit('archive-click', thread.id)"
       @delete="$emit('delete-click', thread.id)"
+      @open-in-window="openInWindow(thread.id)"
     >
       <template #before="{ itemClass }">
         <ContextMenuItem
@@ -188,6 +189,10 @@ const emit = defineEmits<{
   'drag-leave': [e: DragEvent]
   'drop': [e: DragEvent, id: string]
 }>();
+
+function openInWindow(threadId: string) {
+  window.electronAPI?.windowControls.openChatWindow(threadId)
+}
 
 function handleRowClick(event: MouseEvent) {
   if (event.metaKey || event.ctrlKey || event.shiftKey) {

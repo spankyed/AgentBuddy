@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import WebApp from './WebApp.vue';
+import ChatOnlyShell from './ChatOnlyShell.vue';
 import ApiStatus from './core/components/ApiStatus.vue';
 import Onboarding from './core/components/onboarding/Onboarding.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 
+const isChatOnly = !!window.electronAPI?.chatThreadId;
 const isSettingUp = useSelector(applicationState, (s) => s.hasTag('setup'));
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
 
@@ -21,14 +23,19 @@ window.addEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <!-- Loading skeleton for initial state -->
-  <Skeleton v-if="isSettingUp" />
+  <!-- Chat-only popout window -->
+  <template v-if="isChatOnly">
+    <Skeleton v-if="isSettingUp" />
+    <ChatOnlyShell v-else />
+  </template>
 
+  <!-- Full application -->
   <template v-else>
-    <!-- Onboarding modal overlay -->
-    <Onboarding v-if="isOnboarding" />
-    <!-- Main web app component (always rendered when running) -->
-    <WebApp />
+    <Skeleton v-if="isSettingUp" />
+    <template v-else>
+      <Onboarding v-if="isOnboarding" />
+      <WebApp />
+    </template>
   </template>
 
   <!-- Floating API status overlay (toggle with Ctrl+Shift+A) -->

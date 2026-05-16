@@ -19,6 +19,7 @@ class WindowManager implements AppModule {
   readonly #openDevTools;
   readonly #apiServer?: ApiServer;
   readonly #splashScreen?: SplashScreen;
+  readonly #chatWindows = new Map<string, BrowserWindow>();
 
   constructor({initConfig, openDevTools = false, apiServer, splashScreen}: {
     initConfig: AppInitConfig, 
@@ -293,51 +294,78 @@ class WindowManager implements AppModule {
       const dir = join(getMediaBasePath(), entityId);
       await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
     });
+
+    // Open a chat in a separate popout window
+    ipcMain.handle('window:open-chat', async (_event, threadId: string) => {
+      const existing = this.#chatWindows.get(threadId);
+      if (existing && !existing.isDestroyed()) {
+        if (existing.isMinimized()) existing.restore();
+        existing.focus();
+        return;
+      }
+      await this.createChatWindow(threadId);
+    });
   }
 
-  async createWindow(): Promise<BrowserWindow> {
-    // Determine icon path based on platform (use dev icon in development)
+  private get iconPath(): string {
     const iconSuffix = app.isPackaged ? '' : '-dev';
     const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
                      process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
-    const iconPath = join(process.cwd(), 'build', 'resources', iconName);
-    
-    // Get the API port before creating the window
-    const apiPort = this.#apiServer?.getStatus().port || 3001;
-    console.log(`[MAIN] Creating window with API port: ${apiPort}`);
-    
+    return join(process.cwd(), 'build', 'resources', iconName);
+  }
+
+  private get apiPort(): number {
+    return this.#apiServer?.getStatus().port || 3001;
+  }
+
+  private get baseWindowOptions(): Partial<Electron.BrowserWindowConstructorOptions> {
+    return {
+      show: false,
+      center: true,
+      icon: this.iconPath,
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+      ...(process.platform === 'darwin' ? { trafficLightPosition: {x: 10, y: 15} } : {}),
+      frame: false,
+      transparent: false,
+      vibrancy: 'under-window',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        webviewTag: false,
+        preload: this.#preload.path,
+      },
+    };
+  }
+
+  private async loadRenderer(window: BrowserWindow): Promise<void> {
+    if (this.#renderer instanceof URL) {
+      await window.loadURL(this.#renderer.href);
+    } else {
+      await window.loadFile(this.#renderer.path);
+    }
+  }
+
+  async createWindow(): Promise<BrowserWindow> {
+    console.log(`[MAIN] Creating window with API port: ${this.apiPort}`);
+
     const browserWindow = new BrowserWindow({
-      show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
+      ...this.baseWindowOptions,
       width: WINDOW_CONFIG.WIDTH,
       height: WINDOW_CONFIG.HEIGHT,
       minWidth: WINDOW_CONFIG.MIN_WIDTH,
       minHeight: WINDOW_CONFIG.MIN_HEIGHT,
-      center: true,
-      title: WINDOW_CONFIG.MAIN_TITLE, // Used for window identification
-      icon: iconPath, // Set the window icon
-      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
-      ...(process.platform === 'darwin' ? { trafficLightPosition: {x: 10, y: 15} } : {}),
-      frame: false, // All platforms: frameless with custom window controls
-      transparent: false,
-      vibrancy: 'under-window', // macOS: window vibrancy effect
+      title: WINDOW_CONFIG.MAIN_TITLE,
       webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: false, // Sandbox disabled because the demo of preload script depend on the Node.ts api
-        webviewTag: false, // The webview tag is not recommended. Consider alternatives like an iframe or Electron's BrowserView. @see https://www.electronjs.org/docs/latest/api/webview-tag#warning
-        preload: this.#preload.path,
-        additionalArguments: [`--api-port=${apiPort}`],
+        ...this.baseWindowOptions.webPreferences,
+        additionalArguments: [`--api-port=${this.apiPort}`],
       },
     });
 
     contextMenu({ window: browserWindow });
 
     try {
-      if (this.#renderer instanceof URL) {
-        await browserWindow.loadURL(this.#renderer.href);
-      } else {
-        await browserWindow.loadFile(this.#renderer.path);
-      }
+      await this.loadRenderer(browserWindow);
     } catch (error) {
       console.error('[MAIN] Failed to load renderer:', error);
       await this.closeSplashWithDelay();
@@ -356,8 +384,39 @@ class WindowManager implements AppModule {
   }
 
   private isMainWindow(window: BrowserWindow): boolean {
-    // Use window title as identifier
     return window.getTitle() === WINDOW_CONFIG.MAIN_TITLE;
+  }
+
+  async createChatWindow(threadId: string): Promise<BrowserWindow> {
+    const chatWindow = new BrowserWindow({
+      ...this.baseWindowOptions,
+      width: WINDOW_CONFIG.CHAT_WIDTH,
+      height: WINDOW_CONFIG.CHAT_HEIGHT,
+      minWidth: WINDOW_CONFIG.CHAT_MIN_WIDTH,
+      minHeight: WINDOW_CONFIG.CHAT_MIN_HEIGHT,
+      title: `${WINDOW_CONFIG.CHAT_TITLE_PREFIX}${threadId}`,
+      webPreferences: {
+        ...this.baseWindowOptions.webPreferences,
+        additionalArguments: [`--api-port=${this.apiPort}`, `--chat-thread-id=${threadId}`],
+      },
+    });
+
+    contextMenu({ window: chatWindow });
+
+    try {
+      await this.loadRenderer(chatWindow);
+    } catch (error) {
+      console.error('[MAIN] Failed to load chat window:', error);
+      chatWindow.destroy();
+      throw error;
+    }
+
+    this.#chatWindows.set(threadId, chatWindow);
+    chatWindow.on('closed', () => this.#chatWindows.delete(threadId));
+
+    chatWindow.show();
+    chatWindow.focus();
+    return chatWindow;
   }
 
   async restoreOrCreateWindow(show = false) {
@@ -368,6 +427,12 @@ class WindowManager implements AppModule {
     
     if (window === undefined) {
       window = await this.createWindow();
+      // Close all chat popout windows when the main window closes
+      window.on('close', () => {
+        for (const chatWin of [...this.#chatWindows.values()]) {
+          if (!chatWin.isDestroyed()) chatWin.close();
+        }
+      });
     }
 
     if (!show) {
