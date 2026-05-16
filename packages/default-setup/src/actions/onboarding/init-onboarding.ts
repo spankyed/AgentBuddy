@@ -29,7 +29,8 @@ export async function action(
   // Create the birth thread (birthdate is set by startBirthFlow in threads system)
   const { id: threadId } = services.chat.createThreadAndNotify({
     topic: 'Getting Started',
-tags: [],
+    instructions: '',
+    tags: [],
     role: ASSISTANT_BIRTH_ROLE,
     forcedMode: 'birth',
     pinned: true,
