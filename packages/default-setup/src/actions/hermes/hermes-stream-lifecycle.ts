@@ -43,6 +43,13 @@ export async function action(
       });
       break;
 
+    case 'paused':
+      persistHermesState(services, threadId, {
+        chatState: 'paused',
+        isRunning: false,
+      });
+      break;
+
     case 'done': {
       if (messageId) {
         services.chat.updateMessageState(messageId as any, {
@@ -51,13 +58,16 @@ export async function action(
         } as any);
       }
       const state = getHermesState(services, threadId);
-      persistHermesState(services, threadId, {
-        chatState: 'success',
-        isRunning: false,
-        activeStreamId: undefined,
-        turns: (state?.turns || 0) + 1,
-        ...(sessionId ? { sessionId } : {}),
-      });
+      if (state?.chatState !== 'error') {
+        const wasPaused = state?.chatState === 'paused';
+        persistHermesState(services, threadId, {
+          chatState: wasPaused ? 'idle' : 'success',
+          isRunning: false,
+          activeStreamId: undefined,
+          turns: (state?.turns || 0) + 1,
+          ...(sessionId ? { sessionId } : {}),
+        });
+      }
       break;
     }
 

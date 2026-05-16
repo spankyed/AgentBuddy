@@ -42,7 +42,16 @@ export function createStreamConsumer({ threadId, services }: StreamConsumerOptio
       text: accumulatedText || label,
       blocks: [{
         type: 'tool-activity',
-        props: { label, tools: toolActivities.map(t => ({ name: t.name, status: t.status })) },
+        props: {
+          label,
+          state: toolActivities.every(t => t.status === 'done') ? 'done' : 'streaming',
+          entries: toolActivities.map(t => ({
+            id: t.toolCallId,
+            tool: t.name,
+            summary: t.name,
+            status: t.status === 'done' ? 'ok' : 'running',
+          })),
+        },
       }],
     } as any);
   }
@@ -114,6 +123,7 @@ export function createStreamConsumer({ threadId, services }: StreamConsumerOptio
           autoHide: true,
           asUser: true,
         } as any);
+        fireLifecycle('paused', {});
         break;
       }
 
@@ -129,6 +139,7 @@ export function createStreamConsumer({ threadId, services }: StreamConsumerOptio
           autoHide: true,
           asUser: true,
         } as any);
+        fireLifecycle('paused', {});
         break;
       }
     }

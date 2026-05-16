@@ -76,4 +76,5 @@ export function setRunning(services: Services, threadId: string, running: boolea
 
 export function updateChatState(services: Services, threadId: string, chatState: ChatState) {
   persistHermesState(services, threadId, { chatState });
+  services.threads.updateChatState(threadId, chatState);
 }

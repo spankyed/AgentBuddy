@@ -7,7 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../types';
-import { getHermesState } from './_helpers/thread-context';
+import { getHermesState, updateChatState } from './_helpers/thread-context';
 import { createStreamConsumer } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -38,6 +38,9 @@ export async function action(
   if (prior?.isRunning) {
     return { success: true, queued: true };
   }
+
+  // Set working BEFORE launching stream — immediate frontend feedback
+  updateChatState(services, threadId, 'working');
 
   const onEvent = createStreamConsumer({ threadId, services });
 
