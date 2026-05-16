@@ -1,7 +1,7 @@
 <template>
-  <div class="onboarding-container">
-    <div class="onboarding-content">
-      <div class="onboarding-header">
+  <div class="welcome-container">
+    <div class="welcome-content">
+      <div class="welcome-header">
         <h1 class="title">A Letter from the Dev</h1>
       </div>
 
@@ -9,7 +9,7 @@
         <TiptapEditor mode="viewer" variant="chat" :model-value="letterContent" />
       </div>
 
-      <div class="onboarding-actions">
+      <div class="welcome-actions">
         <button
           @click="closeDevLetter"
           class="btn btn-primary"
@@ -69,7 +69,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.onboarding-container {
+.welcome-container {
   position: fixed;
   top: 0;
   left: 0;
@@ -83,7 +83,7 @@ onUnmounted(() => {
   padding: 2rem;
 }
 
-.onboarding-content {
+.welcome-content {
   background: #262626;
   border-radius: 16px;
   padding: 3rem;
@@ -92,7 +92,7 @@ onUnmounted(() => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-.onboarding-header {
+.welcome-header {
   text-align: center;
   margin-bottom: 2rem;
 }
@@ -110,7 +110,7 @@ onUnmounted(() => {
   font-size: 1.05rem;
 }
 
-.onboarding-actions {
+.welcome-actions {
   display: flex;
   justify-content: center;
 }

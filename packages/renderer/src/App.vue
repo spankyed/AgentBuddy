@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import WebApp from './WebApp.vue';
 import ApiStatus from './core/components/ApiStatus.vue';
-import Onboarding from './core/components/onboarding/Onboarding.vue';
+import Welcome from './core/components/welcome/Welcome.vue';
 import { ref } from 'vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 
-const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'));
+const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
 
 // Toggle for showing API status (can be toggled with a hotkey)
@@ -21,8 +21,8 @@ window.addEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <!-- Onboarding modal overlay -->
-  <Onboarding v-if="isOnboarding" />
+  <!-- Welcome modal overlay (first-time users) -->
+  <Welcome v-if="isWelcome" />
   <!-- Main web app component (always rendered, plugins show own loading states) -->
   <WebApp />
 

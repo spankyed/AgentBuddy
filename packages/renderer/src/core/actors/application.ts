@@ -658,8 +658,8 @@ export const createApplicationState = () => setup({
     spawnChild('backendListener'),
   ],
   states: {
-    'onboarding': {
-      tags: ['onboarding'],
+    'welcome': {
+      tags: ['welcome'],
       entry: assign({
         panelSizes: ({ context }) => ({ ...context.panelSizes, chatMaximized: true }),
       }),
@@ -682,7 +682,7 @@ export const createApplicationState = () => setup({
           on: {
             CLIENT_CONNECTED: [
               {
-                target: '#application.onboarding',
+                target: '#application.welcome',
                 guard: ({ event }) => (event as any).hasOnboarded === false,
               },
               { target: 'connected' },
