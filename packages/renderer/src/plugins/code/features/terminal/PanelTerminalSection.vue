@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-shrink-0 border-t border-neutral-800">
+  <div class="flex-shrink-0 border-t border-neutral-800" @contextmenu.prevent="onSectionContextMenu">
     <!-- Collapsible header -->
     <div
       class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors"
@@ -136,6 +136,13 @@
         </ContextMenuRoot>
       </div>
     </div>
+
+    <ContextMenuPopup
+      :show="showMenu"
+      :pos="menuPos"
+      :items="sectionMenuItems"
+      @close="showMenu = false"
+    />
   </div>
 </template>
 
@@ -161,6 +168,8 @@ import type { TerminalInfo } from './state'
 import { terminalPool } from '@/plugins/code/utils/terminal-pool'
 import { useTerminalActions } from '@/plugins/code/composables/useTerminalActions'
 import RunScriptPopover from './RunScriptPopover.vue'
+import ContextMenuPopup from '@/core/components/design/ContextMenuPopup.vue'
+import { useSectionVisibilityMenu } from '@/plugins/code/composables/useSectionVisibilityMenu'
 import type { TerminalScript } from '@app/api'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
@@ -185,6 +194,10 @@ const terminalScripts = useSelector(settingsActor, (state: any) =>
 )
 
 const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
+
+// Section visibility context menu
+const codeSettings = useSelector(codeActor, (state) => state.context.settings)
+const { showMenu, menuPos, sectionMenuItems, onSectionContextMenu } = useSectionVisibilityMenu(codeSettings)
 
 // Derived
 const activeTerminalInfo = computed(() =>
