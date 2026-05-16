@@ -7,6 +7,7 @@
  */
 
 import type { ActionMeta, Services, Z } from '../../../types';
+import { getHermesState } from '../_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'Hermes Command',
@@ -32,31 +33,33 @@ export async function action(
     services.chat.sendBlockMessage({ threadId: threadId as any, text: msg, blocks: [], forkable: false });
   };
 
+  const sessionId = threadId ? getHermesState(services, threadId)?.sessionId : undefined;
+
   try {
     switch (command) {
       case 'h-approve':
         reply('Approved. Sending /approve to agent\u2026');
-        await hermes.chat({ message: '/approve', sessionId: text || undefined }, () => {});
+        await hermes.chat({ message: '/approve', sessionId }, () => {});
         break;
 
       case 'h-deny':
         reply('Denied. Sending /deny to agent\u2026');
-        await hermes.chat({ message: '/deny', sessionId: text || undefined }, () => {});
+        await hermes.chat({ message: '/deny', sessionId }, () => {});
         break;
 
       case 'h-compact':
         reply('Compacting context\u2026');
-        await hermes.chat({ message: `/compact ${text || ''}`.trim(), sessionId: text || undefined }, () => {});
+        await hermes.chat({ message: `/compact ${text || ''}`.trim(), sessionId }, () => {});
         break;
 
       case 'h-undo':
         reply('Undoing last message\u2026');
-        await hermes.chat({ message: '/undo', sessionId: text || undefined }, () => {});
+        await hermes.chat({ message: '/undo', sessionId }, () => {});
         break;
 
       case 'h-retry':
         reply('Retrying last turn\u2026');
-        await hermes.chat({ message: '/retry', sessionId: text || undefined }, () => {});
+        await hermes.chat({ message: '/retry', sessionId }, () => {});
         break;
 
       case 'h-model': {

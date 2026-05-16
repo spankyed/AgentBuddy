@@ -124,7 +124,7 @@ export function createStreamConsumer({ threadId, services }: StreamConsumerOptio
           threadId: threadId as any,
           text: q,
           prompt: q,
-          choices: choices.length > 0 ? choices : ['Continue', 'Cancel'],
+          choices: (choices.length > 0 ? choices : ['Continue', 'Cancel']).map((c: string) => ({ id: c, label: c })),
           forkable: false,
           autoHide: true,
           asUser: true,

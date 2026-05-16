@@ -49,6 +49,7 @@ const saveStatus = ref('')
 let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null
 
 watch(() => props.persona, (val) => {
+  if (autoSaveTimeout) { clearTimeout(autoSaveTimeout); autoSaveTimeout = null }
   editedContent.value = val
 })
 
