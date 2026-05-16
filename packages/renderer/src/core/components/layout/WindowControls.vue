@@ -1,21 +1,21 @@
 <template>
-  <div v-if="!isMac" class="window-controls flex items-center">
+  <div v-if="!isMac" class="window-controls">
     <button
       @click="minimize"
-      class="control-button minimize"
+      class="control-button"
       title="Minimize"
     >
-      <svg width="10" height="1" viewBox="0 0 10 1">
-        <rect width="10" height="1" fill="currentColor" />
+      <svg width="8" height="1" viewBox="0 0 8 1">
+        <rect width="8" height="1" fill="currentColor" />
       </svg>
     </button>
     <button
       @click="maximize"
-      class="control-button maximize"
+      class="control-button"
       title="Maximize"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10">
-        <rect width="10" height="10" fill="none" stroke="currentColor" stroke-width="1" />
+      <svg width="8" height="8" viewBox="0 0 8 8">
+        <rect width="8" height="8" fill="none" stroke="currentColor" stroke-width="1" />
       </svg>
     </button>
     <button
@@ -23,8 +23,8 @@
       class="control-button close"
       title="Close"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10">
-        <path d="M0 0 L10 10 M10 0 L0 10" stroke="currentColor" stroke-width="1" />
+      <svg width="8" height="8" viewBox="0 0 8 8">
+        <path d="M0 0 L8 8 M8 0 L0 8" stroke="currentColor" stroke-width="1.2" />
       </svg>
     </button>
   </div>
@@ -59,20 +59,24 @@ const close = () => {
 <style scoped>
 .window-controls {
   -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   height: 100%;
-  margin-left: auto;
 }
 
 .control-button {
-  width: 46px;
-  height: 38px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  color: #999;
-  transition: all 0.1s ease;
+  border-radius: 50%;
+  color: #777;
+  transition: all 0.15s ease;
   cursor: pointer;
 }
 
