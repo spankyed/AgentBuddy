@@ -1,5 +1,5 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
-import type { ListenerNode, ScheduleNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, NodeEntity } from '@/systems/flows/config/types';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
@@ -54,7 +54,6 @@ type TNodeFlowMachineContext = {
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
   eventNodes: ListenerNode[];
-  scheduleNodes: ScheduleNode[];
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Per-event-track live child counter, keyed by eventTNodeId.
@@ -170,22 +169,22 @@ export function createFlowNodeSystem(
 
   const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
 
-  // Query schedule nodes for this flow
+  // Query schedule nodes and merge them into eventNodes as synthetic listeners
   const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
+  const allTriggerNodes: ListenerNode[] = [
+    ...eventNodes,
+    ...scheduleNodes.map(n => ({
+      ...n,
+      nodeType: 'listener' as const,
+      eventType: `schedule.${n.id}`,
+      scope: 'local' as const,
+    })),
+  ];
 
   const eventHandlers: Record<string, any> = {};
-
-  // Add event listeners
-  eventNodes.forEach((node) => {
+  allTriggerNodes.forEach((node) => {
     if (!node.eventType) return;
     eventHandlers[node.eventType] = {
-      actions: ['handleTrackEvent'],
-    };
-  });
-
-  // Add schedule node handlers (synthetic event types)
-  scheduleNodes.forEach((node) => {
-    eventHandlers[`schedule.${node.id}`] = {
       actions: ['handleTrackEvent'],
     };
   });
@@ -238,23 +237,9 @@ export function createFlowNodeSystem(
           }
 
           // Get ALL event nodes matching this event type (not just the first)
-          // Also check schedule nodes (synthetic event type: schedule.<nodeId>)
-          const matchingListenerNodes = context.eventNodes.filter(
+          const matchingEventNodes = context.eventNodes.filter(
             (n) => n.eventType === eventType,
           );
-          const matchingScheduleNodes = context.scheduleNodes.filter(
-            (n) => `schedule.${n.id}` === eventType,
-          );
-
-          // Normalize schedule nodes to have eventType for downstream processing
-          const matchingEventNodes: Array<Pick<ListenerNode, 'id' | 'label' | 'eventType'>> = [
-            ...matchingListenerNodes,
-            ...matchingScheduleNodes.map(n => ({
-              id: n.id,
-              label: n.label,
-              eventType,
-            })),
-          ];
 
           if (matchingEventNodes.length === 0) return;
 
@@ -556,8 +541,7 @@ export function createFlowNodeSystem(
         flowStepNodeId: flowTNode?.blueprint?.nodeId,  // Store the original flow step node ID
         flowStepLabel: flowTNode?.label,  // Store the flow step node label for references
         eventTNodeId: eventTNodeId,
-        eventNodes: eventNodes,
-        scheduleNodes: scheduleNodes,
+        eventNodes: allTriggerNodes,
         eventTrackContexts: {},
         eventTrackChildCounts: {},
         finalResult: undefined,

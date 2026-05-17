@@ -208,6 +208,9 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     component: 'VariableNode',
     isImplemented: true
   },
+  // Trigger nodes (listener, schedule) share the TriggerNode canvas component
+  // because they have identical structure: no inputs, dynamic exits, subtitle.
+  // See TriggerNode.vue for details.
   listener: {
     type: 'listener',
     label: 'Listener',
@@ -217,7 +220,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-blue-500/10',
     hoverBgColor: 'group-hover:bg-blue-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
-    component: 'ListenerNode',
+    component: 'TriggerNode',
     isImplemented: true
   },
   schedule: {
@@ -229,7 +232,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-orange-500/10',
     hoverBgColor: 'group-hover:bg-orange-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
-    component: 'ScheduleNode',
+    component: 'TriggerNode',
     isImplemented: true
   },
   query: {

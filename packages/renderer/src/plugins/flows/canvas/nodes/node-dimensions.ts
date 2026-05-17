@@ -75,7 +75,7 @@ const triggerDescriptor: NodeLayoutDescriptor = {
   getHeight: (node, ctx) => {
     const exitCount = ctx.exitCount
     if (exitCount === undefined) return defaults.height
-    // +1 matches ListenerNode.vue which always renders one extra exit slot (maxIndex + 2)
+    // +1 matches TriggerNode.vue which always renders one extra exit slot (maxIndex + 2)
     const visualExitCount = exitCount + 1
     const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listener
     const hasSubtitle = !!(node.eventType || node.cronExpression)

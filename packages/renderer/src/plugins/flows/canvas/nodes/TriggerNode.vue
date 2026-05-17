@@ -36,6 +36,15 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Shared canvas component for trigger nodes (listener, schedule).
+ *
+ * Trigger nodes share identical structure: no input handle, dynamic exit
+ * handles, and an optional subtitle below the label. The only difference
+ * is the subtitle source — eventType for listeners, cronExpression for
+ * schedules. Both are configured as `component: 'TriggerNode'` in
+ * node-config.ts.
+ */
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
@@ -43,7 +52,9 @@ import { NODE_DIMENSIONS } from './node-dimensions'
 
 interface NodeData {
   label: string
+  eventType?: string
   cronExpression?: string
+  [key: string]: any
 }
 
 interface Props extends NodeProps<NodeData> {
@@ -60,10 +71,7 @@ defineEmits<{
 
 const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listener
 
-/**
- * Convert a cron expression to a human-readable string.
- * Handles common patterns; falls back to raw expression for complex ones.
- */
+/** Convert a cron expression to a human-readable string. */
 function cronToHuman(expr: string): string {
   const parts = expr.trim().split(/\s+/)
   if (parts.length !== 5) return expr
@@ -72,7 +80,6 @@ function cronToHuman(expr: string): string {
 
   if (min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every minute'
 
-  // Step expressions: */N * * * * or */N in hour field
   const minStep = min.match(/^\*\/(\d+)$/)
   if (minStep && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${minStep[1]} min`
   const hourStep = hour.match(/^\*\/(\d+)$/)
@@ -94,7 +101,7 @@ function cronToHuman(expr: string): string {
 
 const subtitle = computed(() => {
   if (props.data.cronExpression) return cronToHuman(props.data.cronExpression)
-  return ''
+  return props.data.eventType || ''
 })
 
 const hasSubtitle = computed(() => !!subtitle.value)
@@ -118,11 +125,9 @@ const exitHandles = computed<HandleConfig[]>(() => {
   const count = maxIndex + 2 // at least 1
 
   if (count === 1) {
-    // Single handle — no offsetY, BaseNode centers it at 50%
     return [{ id: 'exit-0', label: 'Exit 1' }]
   }
 
-  // Pixel-based positioning aligned with exit rows
   const offset = headerOffset.value
   return Array.from({ length: count }, (_, i) => ({
     id: `exit-${i}`,
@@ -131,7 +136,6 @@ const exitHandles = computed<HandleConfig[]>(() => {
   }))
 })
 
-// Grow the node to fit exit rows
 const nodeStyle = computed(() => {
   const count = exitHandles.value.length
   if (count <= 1) return {}
