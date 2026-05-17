@@ -129,7 +129,7 @@ export interface KillNode extends NodeBase {
 
 export interface ScheduleNode extends NodeBase {
   nodeType: 'schedule';
-  cronExpression: string; // 5-field cron, e.g. '0 9 * * 1-5'
+  cronExpression: string; // 5- or 6-field cron, e.g. '0 9 * * 1-5' or '*/5 * * * * *'
 }
 
 export interface LLMNode extends NodeBase {

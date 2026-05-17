@@ -17,6 +17,20 @@ describe('validate', () => {
       expect(result.errors).toEqual([]);
     });
 
+    it('allows six-field schedule tracks for second-level intervals', () => {
+      const result = validate({
+        'Second Interval Root': {
+          root: true,
+          tracks: [
+            { schedule: '*/5 * * * * *', exits: [[]] },
+          ],
+        },
+      } as FlowDSL);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it('allows root flows with a schedule track before an event track', () => {
       const result = validate({
         'Schedule First Root': {
