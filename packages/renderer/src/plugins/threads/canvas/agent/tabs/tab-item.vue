@@ -2,14 +2,22 @@
   <ContextMenuRoot>
     <ContextMenuTrigger as-child>
       <div
-        class="relative flex items-center px-4 py-1 text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
+        draggable="true"
+        class="tab-item relative flex items-center px-4 py-1 text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
         :class="[
           isActive
             ? 'bg-neutral-850 text-white border-t border-blue-500'
-            : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200'
+            : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200',
+          isDragging && 'opacity-50'
         ]"
+        :style="groupColorStyle"
         :title="tab.label"
+        :data-tab-id="tab.id"
+        :data-group-id="groupId"
+        :data-context="!groupId ? (isPinned ? 'pinned' : 'ungrouped') : undefined"
         @click="$emit('select')"
+        @dragstart="$emit('dragstart', $event)"
+        @dragend="$emit('dragend', $event)"
       >
         <!-- Dot / Close button swap container -->
         <span class="relative flex items-center justify-center w-[22px] h-[22px] mr-1 shrink-0">
@@ -75,17 +83,65 @@
           <SquarePen :size="14" class="text-blue-400" />
           Edit Details
         </ContextMenuItem>
+
+        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+
+        <!-- Group menu items -->
+        <template v-if="groupId">
+          <ContextMenuItem :class="itemClass" @select="$emit('remove-from-group')">
+            <FolderMinus :size="14" class="text-neutral-400" />
+            Remove from Group
+          </ContextMenuItem>
+        </template>
+        <template v-else>
+          <ContextMenuSub v-if="tabGroups.length > 0">
+            <ContextMenuSubTrigger :class="itemClass">
+              <FolderPlus :size="14" class="text-neutral-400" />
+              Add to Group
+              <ChevronRight :size="12" class="ml-auto text-neutral-500" />
+            </ContextMenuSubTrigger>
+            <ContextMenuPortal>
+              <ContextMenuSubContent class="min-w-[140px] bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50">
+                <ContextMenuItem
+                  v-for="group in tabGroups"
+                  :key="group.id"
+                  :class="itemClass"
+                  @select="$emit('add-to-group', group.id)"
+                >
+                  <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: `var(--color-${group.color})` }" />
+                  {{ group.name }}
+                </ContextMenuItem>
+                <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
+                <ContextMenuItem :class="itemClass" @select="$emit('create-group')">
+                  <FolderPlus :size="14" class="text-blue-400" />
+                  New Group
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuPortal>
+          </ContextMenuSub>
+          <ContextMenuItem v-else :class="itemClass" @select="$emit('create-group')">
+            <FolderPlus :size="14" class="text-blue-400" />
+            Add to New Group
+          </ContextMenuItem>
+        </template>
+
+        <ContextMenuSeparator class="h-px bg-neutral-700 my-1" />
       </template>
     </ThreadContextMenu>
   </ContextMenuRoot>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
-import { X, SquarePen, Pin } from 'lucide-vue-next';
-import { ContextMenuRoot, ContextMenuTrigger, ContextMenuItem } from 'reka-ui';
+import { ref, nextTick, computed } from 'vue';
+import { X, SquarePen, Pin, FolderPlus, FolderMinus, ChevronRight } from 'lucide-vue-next';
+import {
+  ContextMenuRoot, ContextMenuTrigger, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger,
+  ContextMenuSubContent, ContextMenuPortal,
+} from 'reka-ui';
 import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue';
 import type { Tab } from '@app/api';
+import type { ThreadTabGroup } from './types';
 import { applicationState } from '@/main';
 import { useSelector } from '@xstate/vue';
 import { id as threadsId, type ThreadsState } from '@/plugins/threads/state';
@@ -94,6 +150,9 @@ const props = defineProps<{
   tab: Tab;
   isActive: boolean;
   isPinned: boolean;
+  groupId?: string;
+  tabGroups: ThreadTabGroup[];
+  isDragging?: boolean;
 }>();
 
 defineEmits<{
@@ -104,6 +163,11 @@ defineEmits<{
   'unpin-thread': [];
   'pin-thread': [];
   'archive-thread': [];
+  'dragstart': [event: DragEvent];
+  'dragend': [event: DragEvent];
+  'add-to-group': [groupId: string];
+  'remove-from-group': [];
+  'create-group': [];
 }>();
 
 const threadsActor: ThreadsState = applicationState.system.get(threadsId);
@@ -126,6 +190,18 @@ function getThreadDotColor(threadId: string): string | undefined {
 function isThreadBusy(threadId: string): boolean {
   return getThreadStateConfig(threadId)?.busy ?? false;
 }
+
+const groupColorStyle = computed(() => {
+  if (!props.groupId) return {}
+  const group = props.tabGroups.find(g => g.id === props.groupId)
+  if (!group) return {}
+  return {
+    borderBottom: `2px solid var(--color-${group.color})`,
+    backgroundColor: props.isActive
+      ? `color-mix(in srgb, var(--color-${group.color}) 15%, rgb(28, 28, 30))`
+      : undefined
+  }
+})
 
 const isRenaming = ref(false)
 const renamingName = ref('')

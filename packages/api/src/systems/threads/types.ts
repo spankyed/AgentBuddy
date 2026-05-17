@@ -400,6 +400,7 @@ export interface Tab {
   artifacts: ArtifactItem[];
   selectedArtifactId?: string;
   pinned?: boolean;
+  groupId?: string;
 }
 
 export type ArtifactType =

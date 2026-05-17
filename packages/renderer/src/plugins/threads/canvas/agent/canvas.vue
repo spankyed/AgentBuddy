@@ -7,6 +7,7 @@
         <TabBar
           :tabs="tabs"
           :activeTabId="activeTabId"
+          :tabGroups="tabGroups"
           @select-tab="selectTab"
           @close-tab="closeTab"
           @edit-details="editDetails"
@@ -14,6 +15,20 @@
           @archive-thread="archiveThread"
           @unpin-thread="unpinThread"
           @pin-thread="pinThread"
+          @reorder="reorderTabs"
+          @pin-tab-at="pinTabAt"
+          @unpin-tab-at="unpinTabAt"
+          @create-group="createGroup"
+          @rename-group="renameGroup"
+          @change-group-color="changeGroupColor"
+          @delete-group="deleteGroup"
+          @toggle-group-collapse="toggleGroupCollapse"
+          @add-tab-to-group="addTabToGroup"
+          @remove-tab-from-group="removeTabFromGroup"
+          @ungroup-all="ungroupAll"
+          @close-all-in-group="closeAllInGroup"
+          @pin-group="pinGroup"
+          @unpin-group="unpinGroup"
         />
       </div>
     </template>
@@ -47,6 +62,7 @@ const actor: ThreadsState = applicationState.system.get(id);
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);
+const tabGroups = useSelector(actor, (state) => state.context.tabGroups);
 
 const currentTab = computed(() => tabs.value.find(tab => tab.id === activeTabId.value));
 
@@ -81,5 +97,62 @@ function pinThread(tabId: string) {
 
 function selectArtifact(artifactId: string) {
   actor.send({ type: 'SELECT_ARTIFACT', artifactId });
+}
+
+// Tab reorder & group events
+function reorderTabs(fromIndex: number, toIndex: number) {
+  actor.send({ type: 'REORDER_TABS', fromIndex, toIndex });
+}
+
+function pinTabAt(tabId: string, targetTabId: string, side: 'left' | 'right') {
+  actor.send({ type: 'PIN_TAB_AT', tabId, targetTabId, side });
+}
+
+function unpinTabAt(tabId: string, targetTabId: string, side: 'left' | 'right') {
+  actor.send({ type: 'UNPIN_TAB_AT', tabId, targetTabId, side });
+}
+
+function createGroup(tabIds: string[]) {
+  actor.send({ type: 'CREATE_TAB_GROUP', tabIds });
+}
+
+function renameGroup(groupId: string, name: string) {
+  actor.send({ type: 'RENAME_TAB_GROUP', groupId, name });
+}
+
+function changeGroupColor(groupId: string, color: string) {
+  actor.send({ type: 'CHANGE_TAB_GROUP_COLOR', groupId, color: color as import('@/plugins/threads/canvas/agent/tabs/types').TabGroupColor });
+}
+
+function deleteGroup(groupId: string) {
+  actor.send({ type: 'DELETE_TAB_GROUP', groupId });
+}
+
+function toggleGroupCollapse(groupId: string) {
+  actor.send({ type: 'TOGGLE_TAB_GROUP_COLLAPSE', groupId });
+}
+
+function addTabToGroup(tabId: string, groupId: string) {
+  actor.send({ type: 'ADD_TAB_TO_GROUP', tabId, groupId });
+}
+
+function removeTabFromGroup(tabId: string) {
+  actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId });
+}
+
+function ungroupAll(groupId: string) {
+  actor.send({ type: 'UNGROUP_ALL_IN_GROUP', groupId });
+}
+
+function closeAllInGroup(groupId: string) {
+  actor.send({ type: 'CLOSE_ALL_IN_GROUP', groupId });
+}
+
+function pinGroup(groupId: string) {
+  actor.send({ type: 'PIN_TAB_GROUP', groupId });
+}
+
+function unpinGroup(groupId: string) {
+  actor.send({ type: 'UNPIN_TAB_GROUP', groupId });
 }
 </script>
