@@ -137,12 +137,10 @@ export const commitSystem = setup({
       }
     },
 
-    getGitStatus: async ({ context }) => {
+    getGitStatus: ({ context }) => {
       if (!requireGitRepository(context)) return
-      
-      try {
-        // First check if we're in a git repository
-        const isGitRepo = await context.gitRepository.isGitRepository()
+
+      context.gitRepository.isGitRepository().then((isGitRepo) => {
         if (!isGitRepo) {
           const wrapped = emit(pluginId, {
             type: 'commit.ERROR_RECEIVED',
@@ -152,19 +150,19 @@ export const commitSystem = setup({
           return
         }
 
-        const [status, branch, hasUpstream, commitsInfo] = await Promise.all([
-          context.gitRepository.getStatus(),
-          context.gitRepository.getCurrentBranch(),
-          context.gitRepository.isCurrentBranchPublished(),
-          context.gitRepository.getCommitsAheadBehind()
-        ])
-        const wrapped = emit(pluginId, {
-          type: 'commit.STATUS_RECEIVED',
-          data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead, commitsBehind: commitsInfo.behind }
+        return Promise.all([
+          context.gitRepository!.getStatus(),
+          context.gitRepository!.getCurrentBranch(),
+          context.gitRepository!.isCurrentBranchPublished(),
+          context.gitRepository!.getCommitsAheadBehind()
+        ]).then(([status, branch, hasUpstream, commitsInfo]) => {
+          const wrapped = emit(pluginId, {
+            type: 'commit.STATUS_RECEIVED',
+            data: { files: status, branch, hasUpstream, commitsAhead: commitsInfo.ahead, commitsBehind: commitsInfo.behind }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
         })
-        rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
-        // Handle specific git errors
+      }).catch((error: any) => {
         let errorMessage = error.message
         if (error.message.includes('git: command not found') || error.message.includes('\'git\' is not recognized')) {
           errorMessage = 'Git is not installed. Please install Git to use version control features.'
@@ -177,27 +175,27 @@ export const commitSystem = setup({
           data: { message: errorMessage }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    getGitDiff: async ({ event, context }) => {
+    getGitDiff: ({ event, context }) => {
       const ev = event as { type: 'commit.GET_GIT_DIFF'; path?: string; staged?: boolean }
-      
-      if (!requireGitRepository(context)) return
-      
-      try {
-        const diff = await context.gitRepository.getDiff(ev.path, ev.staged || false)
 
-        // Get the file status to determine what content to fetch
-        const status = await context.gitRepository.getStatus()
+      if (!requireGitRepository(context)) return
+
+      const isImage = ev.path ? context.gitRepository!.isImageFile(ev.path) : false
+      const getContent = isImage
+        ? (p: string, v: 'HEAD' | 'working' | 'index') => context.gitRepository!.getFileContentAsDataUrl(p, v)
+        : (p: string, v: 'HEAD' | 'working' | 'index') => context.gitRepository!.getFileContent(p, v)
+
+      Promise.all([
+        context.gitRepository!.getDiff(ev.path, ev.staged || false),
+        context.gitRepository!.getStatus()
+      ]).then(async ([diff, status]) => {
         const fileStatus = status.find(f => f.path === ev.path && f.staged === (ev.staged || false))
 
         let originalContent = ''
         let modifiedContent = ''
-        const isImage = ev.path ? context.gitRepository.isImageFile(ev.path) : false
-        const getContent = isImage
-          ? (p: string, v: 'HEAD' | 'working' | 'index') => context.gitRepository.getFileContentAsDataUrl(p, v)
-          : (p: string, v: 'HEAD' | 'working' | 'index') => context.gitRepository.getFileContent(p, v)
 
         if (fileStatus) {
           if (fileStatus.status === 'added' || fileStatus.status === 'untracked') {
@@ -211,7 +209,6 @@ export const commitSystem = setup({
               : await getContent(ev.path!, 'index')
             modifiedContent = ''
           } else if (fileStatus.status === 'renamed' || fileStatus.status === 'copied') {
-            // For renames/copies, the original content lives at the old path in HEAD
             const oldPath = fileStatus.originalPath || ev.path!
             if (ev.staged) {
               originalContent = await getContent(oldPath, 'HEAD')
@@ -221,8 +218,7 @@ export const commitSystem = setup({
               modifiedContent = await getContent(ev.path!, 'working')
             }
           } else if (fileStatus.status === 'unmerged') {
-            // For unmerged files: show HEAD as original, working tree (with conflict markers) as modified
-            originalContent = await getContent(ev.path!, 'HEAD') // returns '' if not in HEAD
+            originalContent = await getContent(ev.path!, 'HEAD')
             modifiedContent = await getContent(ev.path!, 'working')
           } else {
             if (ev.staged) {
@@ -247,46 +243,42 @@ export const commitSystem = setup({
           }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    stageFiles: async ({ event, context, self }) => {
+    stageFiles: ({ event, context, self }) => {
       const ev = event as { type: 'commit.STAGE_FILES'; paths: string[] }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.stageFiles(ev.paths)
+      context.gitRepository.stageFiles(ev.paths).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.FILES_STAGED',
           data: { paths: ev.paths }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Debounced status refresh (watcher may also trigger one — they coalesce)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    unstageFiles: async ({ event, context, self }) => {
+    unstageFiles: ({ event, context, self }) => {
       const ev = event as { type: 'commit.UNSTAGE_FILES'; paths: string[] }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        // For renamed/copied files, we need to reset both old and new paths
-        const status = await context.gitRepository.getStatus()
+      context.gitRepository.getStatus().then((status) => {
         const allPaths = new Set(ev.paths)
         for (const p of ev.paths) {
           const fileStatus = status.find(f => f.path === p)
@@ -294,38 +286,35 @@ export const commitSystem = setup({
             allPaths.add(fileStatus.originalPath)
           }
         }
-        await context.gitRepository.unstageFiles([...allPaths])
+        return context.gitRepository!.unstageFiles([...allPaths])
+      }).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.FILES_UNSTAGED',
           data: { paths: ev.paths }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Debounced status refresh (watcher may also trigger one — they coalesce)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    revertFile: async ({ event, context, self }) => {
+    revertFile: ({ event, context, self }) => {
       const ev = event as { type: 'commit.REVERT_FILE'; path: string }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.revertFile(ev.path)
+      context.gitRepository.revertFile(ev.path).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.FILE_REVERTED',
           data: { path: ev.path }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Debounced status refresh
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        // Notify frontend about file change
         const fileChangeWrapped = emit(pluginId, {
           type: 'explorer.FILE_CHANGED_EXTERNALLY',
           data: {
@@ -335,30 +324,27 @@ export const commitSystem = setup({
           }
         })
         rootEvents.emitOutgoing(fileChangeWrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    revertFiles: async ({ event, context, self }) => {
+    revertFiles: ({ event, context, self }) => {
       const ev = event as { type: 'commit.REVERT_FILES'; paths: string[] }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.revertFiles(ev.paths)
+      context.gitRepository.revertFiles(ev.paths).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.FILES_REVERTED',
           data: { paths: ev.paths }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        // Debounced status refresh
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        // Notify frontend about file changes
         for (const path of ev.paths) {
           const fileChangeWrapped = emit(pluginId, {
             type: 'explorer.FILE_CHANGED_EXTERNALLY',
@@ -370,84 +356,82 @@ export const commitSystem = setup({
           })
           rootEvents.emitOutgoing(fileChangeWrapped.event)
         }
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    resolveConflict: async ({ event, context, self }) => {
+    resolveConflict: ({ event, context, self }) => {
       const ev = event as { type: 'commit.RESOLVE_CONFLICT'; path: string; strategy: 'ours' | 'theirs' }
       if (!requireGitRepository(context)) return
-      try {
-        await context.gitRepository.resolveConflict(ev.path, ev.strategy)
+
+      context.gitRepository.resolveConflict(ev.path, ev.strategy).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.CONFLICT_RESOLVED',
           data: { path: ev.path }
         })
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    markResolved: async ({ event, context, self }) => {
+    markResolved: ({ event, context, self }) => {
       const ev = event as { type: 'commit.MARK_RESOLVED'; path: string }
       if (!requireGitRepository(context)) return
-      try {
-        await context.gitRepository.stageFiles([ev.path])
+
+      context.gitRepository.stageFiles([ev.path]).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.CONFLICT_RESOLVED',
           data: { path: ev.path }
         })
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    resolveAllConflicts: async ({ event, context, self }) => {
+    resolveAllConflicts: ({ event, context, self }) => {
       const ev = event as { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
       if (!requireGitRepository(context)) return
-      try {
-        const status = await context.gitRepository.getStatus()
+
+      context.gitRepository.getStatus().then(async (status) => {
         const unmerged = status.filter(f => f.status === 'unmerged')
         for (const f of unmerged) {
-          await context.gitRepository.resolveConflict(f.path, ev.strategy)
+          await context.gitRepository!.resolveConflict(f.path, ev.strategy)
         }
         const wrapped = emit(pluginId, { type: 'commit.ALL_CONFLICTS_RESOLVED' })
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    commit: async ({ event, context, self }) => {
+    commit: ({ event, context, self }) => {
       const ev = event as { type: 'commit.COMMIT'; message: string }
-      
+
       if (!requireGitRepository(context)) return
-      
-      try {
-        // Check if there are any staged files
-        const stagedFiles = await context.gitRepository.getStagedFiles()
+
+      context.gitRepository.getStagedFiles().then((stagedFiles) => {
         if (stagedFiles.length === 0) {
           const wrapped = emit(pluginId, {
             type: 'commit.ERROR_RECEIVED',
@@ -457,15 +441,15 @@ export const commitSystem = setup({
           return
         }
 
-        await context.gitRepository.commit(ev.message)
-        const wrapped = emit(pluginId, {
-          type: 'commit.COMMIT_SUCCESS',
-          data: { message: ev.message }
+        return context.gitRepository!.commit(ev.message).then(() => {
+          const wrapped = emit(pluginId, {
+            type: 'commit.COMMIT_SUCCESS',
+            data: { message: ev.message }
+          })
+          rootEvents.emitOutgoing(wrapped.event)
+          self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         })
-        rootEvents.emitOutgoing(wrapped.event)
-        // Debounced status refresh
-        self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         let errorMessage = error.message
         if (error.message.includes('nothing to commit')) {
           errorMessage = 'No changes to commit. Stage your changes first.'
@@ -478,118 +462,104 @@ export const commitSystem = setup({
           data: { message: errorMessage }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    getCurrentBranch: async ({ context }) => {
+    getCurrentBranch: ({ context }) => {
       if (!requireGitRepository(context)) return
-      
-      try {
-        const branch = await context.gitRepository.getCurrentBranch()
+
+      context.gitRepository.getCurrentBranch().then((branch) => {
         const wrapped = emit(pluginId, {
           type: 'commit.BRANCH_RETRIEVED',
           data: { branch }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    getAllBranches: async ({ context }) => {
+    getAllBranches: ({ context }) => {
       if (!requireGitRepository(context)) return
-      
-      try {
-        const branches = await context.gitRepository.getAllBranches()
+
+      context.gitRepository.getAllBranches().then((branches) => {
         const wrapped = emit(pluginId, {
           type: 'commit.BRANCHES_RECEIVED',
           data: { branches }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    checkoutBranch: async ({ event, context, self }) => {
+    checkoutBranch: ({ event, context, self }) => {
       const ev = event as { type: 'commit.CHECKOUT_BRANCH'; branchName: string }
-      
+
       if (!requireGitRepository(context)) return
-      
-      try {
-        await context.gitRepository.checkoutBranch(ev.branchName)
-        
-        // Clear cache and refresh status after branch switch
-        context.gitRepository.clearCache()
-        
+
+      context.gitRepository.checkoutBranch(ev.branchName).then(() => {
+        context.gitRepository!.clearCache()
+
         const wrapped = emit(pluginId, {
           type: 'commit.BRANCH_CHECKOUT_SUCCESS',
           data: { branchName: ev.branchName }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        
-        // Debounced status refresh
+
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-        
-        // Also notify PR system about branch change
+
         const prSystem = self.system.get('pr')
         if (prSystem) {
           prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
         }
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    pushBranch: async ({ context, self }) => {
+    pushBranch: ({ context, self }) => {
       if (!requireGitRepository(context)) return
-      
-      try {
-        const currentBranch = await context.gitRepository.getCurrentBranch()
-        await context.gitRepository.pushBranch()
-        
+
+      let branchName: string
+      context.gitRepository.getCurrentBranch().then((currentBranch) => {
+        branchName = currentBranch
+        return context.gitRepository!.pushBranch()
+      }).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.BRANCH_PUSHED',
-          data: { branchName: currentBranch }
+          data: { branchName }
         })
         rootEvents.emitOutgoing(wrapped.event)
-        
-        // Debounced status refresh
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    generateCommitMessage: async ({ context }) => {
+    generateCommitMessage: ({ context }) => {
       if (!requireGitRepository(context)) return
 
-      try {
-        // Get diff: prefer staged, fall back to unstaged
-        const stagedFiles = await context.gitRepository.getStagedFiles()
-        let diff: string
-        if (stagedFiles.length > 0) {
-          diff = await context.gitRepository.getDiff(undefined, true)
-        } else {
-          diff = await context.gitRepository.getDiff(undefined, false)
-        }
-
+      context.gitRepository.getStagedFiles().then((stagedFiles) => {
+        const staged = stagedFiles.length > 0
+        return context.gitRepository!.getDiff(undefined, staged)
+      }).then(async (diff) => {
         if (!diff.trim()) {
           const wrapped = emit(pluginId, {
             type: 'commit.ERROR_RECEIVED',
@@ -599,52 +569,48 @@ export const commitSystem = setup({
           return
         }
 
-        // Truncate diff to 40k chars
         const truncatedDiff = diff.length > 40000 ? diff.substring(0, 40000) + '\n... (truncated)' : diff
 
-        const branch = await context.gitRepository.getCurrentBranch()
-        const repoDir = context.gitRepository.getWorkingDir()
+        const branch = await context.gitRepository!.getCurrentBranch()
+        const repoDir = context.gitRepository!.getWorkingDir()
         const repoName = repoDir.split('/').pop() || ''
 
         sendToBrainSystem({
           eventType: 'commit.generate',
           payload: { diff: truncatedDiff, branch, repoName },
         })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    pullBranch: async ({ context, self }) => {
+    pullBranch: ({ context, self }) => {
       if (!requireGitRepository(context)) return
-      
-      try {
-        const currentBranch = await context.gitRepository.getCurrentBranch()
-        await context.gitRepository.pullBranch()
 
-        // Force a fetch on the next status check to get accurate ahead/behind
-        // counts after merge, regardless of auto-fetch setting
-        context.gitRepository.forceFetchOnce()
+      let branchName: string
+      context.gitRepository.getCurrentBranch().then((currentBranch) => {
+        branchName = currentBranch
+        return context.gitRepository!.pullBranch()
+      }).then(() => {
+        context.gitRepository!.forceFetchOnce()
 
         const wrapped = emit(pluginId, {
           type: 'commit.BRANCH_PULLED',
-          data: { branchName: currentBranch }
+          data: { branchName }
         })
         rootEvents.emitOutgoing(wrapped.event)
-
-        // Debounced status refresh
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
     updateBaseDirectory: assign({
@@ -662,13 +628,12 @@ export const commitSystem = setup({
       self.send({ type: 'commit.GIT_STATUS_CHANGED' })
     },
 
-    stashPush: async ({ event, context, self }) => {
+    stashPush: ({ event, context, self }) => {
       const ev = event as { type: 'commit.STASH_PUSH'; message?: string; stagedOnly?: boolean }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        const result = await context.gitRepository.stashPush(ev.message, ev.stagedOnly)
+      context.gitRepository.stashPush(ev.message, ev.stagedOnly).then((result) => {
         const wrapped = emit(pluginId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: result }
@@ -676,51 +641,47 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    stashList: async ({ context }) => {
+    stashList: ({ context }) => {
       if (!requireGitRepository(context)) return
 
-      try {
-        const stashes = await context.gitRepository.stashList()
+      context.gitRepository.stashList().then((stashes) => {
         const wrapped = emit(pluginId, {
           type: 'commit.STASH_LIST_RECEIVED',
           data: { stashes }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    stashApply: async ({ event, context, self }) => {
+    stashApply: ({ event, context, self }) => {
       const ev = event as { type: 'commit.STASH_APPLY'; index: number }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.stashApply(ev.index)
+      context.gitRepository.stashApply(ev.index).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: 'Stash applied successfully' }
         })
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         if (error instanceof StashConflictError) {
-          // Partial success — files are applied but unmerged. Report as a
-          // non-fatal status message and still refresh UI state.
           const wrapped = emit(pluginId, {
             type: 'commit.STASH_SUCCESS',
             data: { message: error.message }
@@ -734,16 +695,15 @@ export const commitSystem = setup({
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    stashPop: async ({ event, context, self }) => {
+    stashPop: ({ event, context, self }) => {
       const ev = event as { type: 'commit.STASH_POP'; index: number }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.stashPop(ev.index)
+      context.gitRepository.stashPop(ev.index).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.STASH_SUCCESS',
           data: { message: 'Stash popped successfully' }
@@ -751,10 +711,8 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.STASH_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         if (error instanceof StashConflictError) {
-          // Partial success — stash is applied with conflicts and is still
-          // in the stash list. Report non-fatally and refresh UI state.
           const wrapped = emit(pluginId, {
             type: 'commit.STASH_SUCCESS',
             data: { message: error.message }
@@ -769,67 +727,63 @@ export const commitSystem = setup({
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    stashDrop: async ({ event, context, self }) => {
+    stashDrop: ({ event, context, self }) => {
       const ev = event as { type: 'commit.STASH_DROP'; index: number }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.stashDrop(ev.index)
+      context.gitRepository.stashDrop(ev.index).then(() => {
         self.send({ type: 'commit.STASH_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    stashClear: async ({ context, self }) => {
+    stashClear: ({ context, self }) => {
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.stashClear()
+      context.gitRepository.stashClear().then(() => {
         self.send({ type: 'commit.STASH_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    logList: async ({ context }) => {
+    logList: ({ context }) => {
       if (!requireGitRepository(context)) return
 
-      try {
-        const commits = await context.gitRepository.gitLog()
+      context.gitRepository.gitLog().then((commits) => {
         const wrapped = emit(pluginId, {
           type: 'commit.LOG_LIST_RECEIVED',
           data: { commits }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    revertCommit: async ({ event, context, self }) => {
+    revertCommit: ({ event, context, self }) => {
       const ev = event as { type: 'commit.REVERT_COMMIT'; hash: string }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.revertCommit(ev.hash)
+      context.gitRepository.revertCommit(ev.hash).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.REVERT_COMMIT_SUCCESS',
           data: { hash: ev.hash }
@@ -837,22 +791,21 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.LOG_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    resetToCommit: async ({ event, context, self }) => {
+    resetToCommit: ({ event, context, self }) => {
       const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string }
 
       if (!requireGitRepository(context)) return
 
-      try {
-        await context.gitRepository.resetToCommit(ev.hash)
+      context.gitRepository.resetToCommit(ev.hash).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.RESET_COMMIT_SUCCESS',
           data: { hash: ev.hash }
@@ -860,74 +813,71 @@ export const commitSystem = setup({
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
         self.send({ type: 'commit.LOG_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    worktreeList: async ({ context }) => {
+    worktreeList: ({ context }) => {
       if (!requireGitRepository(context)) return
 
-      try {
-        const worktrees = await context.gitRepository.worktreeList()
+      context.gitRepository.worktreeList().then((worktrees) => {
         const wrapped = emit(pluginId, {
           type: 'commit.WORKTREE_LIST_RECEIVED',
           data: { worktrees }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    worktreeAdd: async ({ event, context, self }) => {
+    worktreeAdd: ({ event, context, self }) => {
       if (!requireGitRepository(context)) return
       const ev = event as { type: 'commit.WORKTREE_ADD'; path: string; branch?: string; createBranch?: boolean }
 
-      try {
-        await context.gitRepository.worktreeAdd(ev.path, ev.branch, ev.createBranch)
+      context.gitRepository.worktreeAdd(ev.path, ev.branch, ev.createBranch).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.WORKTREE_ADDED',
           data: { path: ev.path, branch: ev.branch || '' }
         })
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.WORKTREE_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     },
 
-    worktreeRemove: async ({ event, context, self }) => {
+    worktreeRemove: ({ event, context, self }) => {
       if (!requireGitRepository(context)) return
       const ev = event as { type: 'commit.WORKTREE_REMOVE'; path: string; force?: boolean }
 
-      try {
-        await context.gitRepository.worktreeRemove(ev.path, ev.force)
+      context.gitRepository.worktreeRemove(ev.path, ev.force).then(() => {
         const wrapped = emit(pluginId, {
           type: 'commit.WORKTREE_REMOVED',
           data: { path: ev.path }
         })
         rootEvents.emitOutgoing(wrapped.event)
         self.send({ type: 'commit.WORKTREE_LIST' })
-      } catch (error: any) {
+      }).catch((error: any) => {
         const wrapped = emit(pluginId, {
           type: 'commit.ERROR_RECEIVED',
           data: { message: error.message }
         })
         rootEvents.emitOutgoing(wrapped.event)
-      }
+      })
     }
   }
 }).createMachine({
