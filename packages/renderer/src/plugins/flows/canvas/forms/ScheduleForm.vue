@@ -63,24 +63,21 @@
     <!-- Day of week selector (weekly) -->
     <div v-if="frequency === 'weekly'">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
-        ON DAYS
+        ON DAY
       </label>
-      <div class="flex gap-1">
-        <button
-          v-for="day in dayOptions"
-          :key="day.value"
-          @click="toggleDay(day.value)"
-          :class="[
-            'flex-1 px-1 py-1.5 text-xs font-medium rounded-md transition-all duration-200 border',
-            daysOfWeek.includes(day.value)
-              ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
-              : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-neutral-700'
-          ]"
-          type="button"
-        >
-          {{ day.label }}
-        </button>
-      </div>
+      <select
+        :value="dayOfWeek"
+        @change="handleDayOfWeekChange(Number(($event.target as HTMLSelectElement).value))"
+        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+      >
+        <option :value="1">Monday</option>
+        <option :value="2">Tuesday</option>
+        <option :value="3">Wednesday</option>
+        <option :value="4">Thursday</option>
+        <option :value="5">Friday</option>
+        <option :value="6">Saturday</option>
+        <option :value="0">Sunday</option>
+      </select>
     </div>
 
     <!-- Day of month selector (monthly) -->
@@ -150,21 +147,11 @@ const frequencyOptions: Array<{ value: Frequency; label: string }> = [
   { value: 'custom', label: 'Custom' },
 ]
 
-const dayOptions = [
-  { value: 1, label: 'M' },
-  { value: 2, label: 'T' },
-  { value: 3, label: 'W' },
-  { value: 4, label: 'T' },
-  { value: 5, label: 'F' },
-  { value: 6, label: 'S' },
-  { value: 0, label: 'S' },
-]
-
 // Internal visual state
 const frequency = ref<Frequency>('hourly')
 const minute = ref(0)
 const hour = ref(9)
-const daysOfWeek = ref<number[]>([1, 2, 3, 4, 5])
+const dayOfWeek = ref(1) // 0=Sun, 1=Mon, ..., 6=Sat
 const dayOfMonth = ref(1)
 
 const showMinute = computed(() => ['hourly', 'daily', 'weekly', 'monthly'].includes(frequency.value))
@@ -205,13 +192,14 @@ function parseCron(expr: string): Frequency {
     return 'daily'
   }
 
-  // Weekly: N N * * DOW
+  // Weekly: N N * * DOW (single day only)
   if (domP === '*' && monP === '*' && dowP !== '*') {
+    const parsedDow = parseInt(dowP)
+    // Multi-day (commas, ranges) falls to custom
+    if (isNaN(parsedDow) || dowP.includes(',') || dowP.includes('-') || dowP.includes('/')) return 'custom'
     minute.value = parsedMin
     hour.value = parsedHour
-    const days = dowP.split(',').map(Number).filter(n => !isNaN(n))
-    if (days.length === 0) return 'custom'
-    daysOfWeek.value = days
+    dayOfWeek.value = parsedDow
     return 'weekly'
   }
 
@@ -236,10 +224,7 @@ function buildCron(): string {
     case 'every_minute': return '* * * * *'
     case 'hourly': return `${min} * * * *`
     case 'daily': return `${min} ${hr} * * *`
-    case 'weekly': {
-      const days = daysOfWeek.value.length > 0 ? daysOfWeek.value.sort((a, b) => a - b).join(',') : '*'
-      return `${min} ${hr} * * ${days}`
-    }
+    case 'weekly': return `${min} ${hr} * * ${dayOfWeek.value}`
     case 'monthly': return `${min} ${hr} ${dayOfMonth.value} * *`
     default: return nodeData.value.cronExpression || '* * * * *'
   }
@@ -278,13 +263,8 @@ function handleHourChange(val: number) {
   emitCron()
 }
 
-function toggleDay(day: number) {
-  const idx = daysOfWeek.value.indexOf(day)
-  if (idx >= 0) {
-    daysOfWeek.value = daysOfWeek.value.filter(d => d !== day)
-  } else {
-    daysOfWeek.value = [...daysOfWeek.value, day]
-  }
+function handleDayOfWeekChange(val: number) {
+  dayOfWeek.value = val
   emitCron()
 }
 
