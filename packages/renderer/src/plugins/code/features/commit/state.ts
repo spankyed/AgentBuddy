@@ -140,7 +140,7 @@ export type Event =
   | { type: 'commit.LOG_LIST' }
   | { type: 'commit.LOG_LIST_RECEIVED'; data: { commits: CommitLogEntry[] } }
   | { type: 'commit.REVERT_COMMIT'; hash: string }
-  | { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+  | { type: 'commit.RESET_TO_COMMIT'; hash: string }
   | { type: 'commit.REVERT_COMMIT_SUCCESS'; data: { hash: string } }
   | { type: 'commit.RESET_COMMIT_SUCCESS'; data: { hash: string } }
   | { type: 'CODE_STARTUP' };
@@ -514,8 +514,8 @@ export const commitState = setup({
     },
 
     resetToCommit: ({ event }) => {
-      const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
-      sendToBackend('commit.RESET_TO_COMMIT', { hash: ev.hash, mode: ev.mode })
+      const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string }
+      sendToBackend('commit.RESET_TO_COMMIT', { hash: ev.hash })
     }
   }
 }).createMachine({

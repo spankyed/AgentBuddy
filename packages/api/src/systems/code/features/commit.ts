@@ -39,7 +39,7 @@ export type IncomingCommitEvents =
   | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
   | { type: 'commit.LOG_LIST' }
   | { type: 'commit.REVERT_COMMIT'; hash: string }
-  | { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+  | { type: 'commit.RESET_TO_COMMIT'; hash: string }
 
 // Outgoing events to frontend
 export type OutgoingCommitEvents =
@@ -104,7 +104,7 @@ export type Event =
   | { type: 'commit.RESOLVE_ALL_CONFLICTS'; strategy: 'ours' | 'theirs' }
   | { type: 'commit.LOG_LIST' }
   | { type: 'commit.REVERT_COMMIT'; hash: string }
-  | { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+  | { type: 'commit.RESET_TO_COMMIT'; hash: string }
   | { type: 'commit.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository; gitWatcher: GitWatcherService }
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
@@ -847,12 +847,12 @@ export const commitSystem = setup({
     },
 
     resetToCommit: async ({ event, context, self }) => {
-      const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string; mode: 'soft' | 'mixed' | 'hard' }
+      const ev = event as { type: 'commit.RESET_TO_COMMIT'; hash: string }
 
       if (!requireGitRepository(context)) return
 
       try {
-        await context.gitRepository.resetToCommit(ev.hash, ev.mode)
+        await context.gitRepository.resetToCommit(ev.hash)
         const wrapped = emit(pluginId, {
           type: 'commit.RESET_COMMIT_SUCCESS',
           data: { hash: ev.hash }

@@ -61,7 +61,7 @@
               <button @click.stop="openRevertCommitDialog(entry)" class="p-0.5 hover:bg-neutral-700 rounded" title="Revert this commit">
                 <Undo2 class="w-3 h-3 text-neutral-400" />
               </button>
-              <button @click.stop="openResetCommitDialog(entry)" class="p-0.5 hover:bg-neutral-700 rounded" title="Reset to this commit">
+              <button @click.stop="resetToCommit(entry)" class="p-0.5 hover:bg-neutral-700 rounded" title="Reset to this commit">
                 <RotateCw class="w-3 h-3 text-neutral-400" />
               </button>
               <button @click.stop="copyCommitHash(entry)" class="p-0.5 hover:bg-neutral-700 rounded" title="Copy commit hash">
@@ -84,13 +84,6 @@
     @cancel="cancelRevertCommit"
   />
 
-  <!-- Reset to Commit Dialog -->
-  <ResetDialog
-    :show="showResetCommitDialog"
-    :shortHash="pendingCommitShortHash"
-    @confirm="confirmResetCommit"
-    @cancel="cancelResetCommit"
-  />
 </template>
 
 <script setup lang="ts">
@@ -101,7 +94,6 @@ import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { CommitLogEntry } from '@/plugins/code/features/commit/state'
 import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy, Search, X } from 'lucide-vue-next'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
-import ResetDialog from '@/plugins/code/features/commit/ResetDialog.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 
 const props = defineProps<{
@@ -124,7 +116,6 @@ const MIN_COMMITS_HEIGHT = 80
 const MAX_COMMITS_HEIGHT = 400
 const commitsHeight = ref(192)
 const showRevertCommitDialog = ref(false)
-const showResetCommitDialog = ref(false)
 const pendingCommitHash = ref<string | null>(null)
 const pendingCommitShortHash = ref('')
 
@@ -165,25 +156,8 @@ const cancelRevertCommit = () => {
   pendingCommitShortHash.value = ''
 }
 
-const openResetCommitDialog = (entry: CommitLogEntry) => {
-  pendingCommitHash.value = entry.hash
-  pendingCommitShortHash.value = entry.shortHash
-  showResetCommitDialog.value = true
-}
-
-const confirmResetCommit = (mode: 'soft' | 'mixed' | 'hard') => {
-  if (pendingCommitHash.value) {
-    commitActor?.send({ type: 'commit.RESET_TO_COMMIT', hash: pendingCommitHash.value, mode })
-  }
-  showResetCommitDialog.value = false
-  pendingCommitHash.value = null
-  pendingCommitShortHash.value = ''
-}
-
-const cancelResetCommit = () => {
-  showResetCommitDialog.value = false
-  pendingCommitHash.value = null
-  pendingCommitShortHash.value = ''
+const resetToCommit = (entry: CommitLogEntry) => {
+  commitActor?.send({ type: 'commit.RESET_TO_COMMIT', hash: entry.hash })
 }
 
 const copyCommitHash = (entry: CommitLogEntry) => {

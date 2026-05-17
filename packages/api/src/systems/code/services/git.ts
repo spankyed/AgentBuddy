@@ -1594,9 +1594,9 @@ export class GitRepository {
     })
   }
 
-  async resetToCommit(hash: string, mode: 'soft' | 'mixed' | 'hard' = 'mixed'): Promise<void> {
+  async resetToCommit(hash: string): Promise<void> {
     return this.withWriteFlag(async () => {
-      const result = await this.executeGitCommand(['reset', `--${mode}`, hash])
+      const result = await this.executeGitCommand(['reset', hash])
       if (!result.success) {
         throw new Error(result.error || `Failed to reset to commit ${hash}`)
       }
