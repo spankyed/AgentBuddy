@@ -255,6 +255,9 @@ function emitCron() {
 watch(() => nodeData.value.cronExpression, (expr) => {
   if (expr) {
     frequency.value = parseCron(expr)
+  } else {
+    // Persist default cron if node has none (e.g. just created)
+    emitCron()
   }
 }, { immediate: true })
 

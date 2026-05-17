@@ -98,6 +98,7 @@ import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
 import type { FlowEntity, NodeEntity, EARS } from '@app/api'
+import { isTriggerNode } from './nodes/node-config'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -253,7 +254,7 @@ const plainNodes = computed(() => {
 const plainEdges = computed(() =>
   Object.values(edges.value).map((e) => {
     const sourceNode = nodes.value.find(n => n.id === e.source)
-    const isFromEventNode = sourceNode?.nodeType === 'listener'
+    const isFromEventNode = isTriggerNode(sourceNode?.nodeType)
     const isAnimated = e.kind === 'transitions_to' && isFromEventNode
 
     return {

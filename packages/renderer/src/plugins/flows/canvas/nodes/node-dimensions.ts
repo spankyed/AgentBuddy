@@ -21,6 +21,7 @@ export interface LayoutNodeData {
   nodeType?: string
   conditions?: Array<{ predicate?: unknown; label?: string }>
   eventType?: string
+  cronExpression?: string
 }
 
 export interface DescriptorContext {
@@ -77,7 +78,8 @@ const triggerDescriptor: NodeLayoutDescriptor = {
     // +1 matches ListenerNode.vue which always renders one extra exit slot (maxIndex + 2)
     const visualExitCount = exitCount + 1
     const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listener
-    const headerOffset = baseHeaderOffset + (node.eventType ? eventTypeHeight : 0)
+    const hasSubtitle = !!(node.eventType || node.cronExpression)
+    const headerOffset = baseHeaderOffset + (hasSubtitle ? eventTypeHeight : 0)
     return Math.max(defaults.height, headerOffset + visualExitCount * rowHeight + bottomPadding)
   },
   getPorts: (node, ctx) => {

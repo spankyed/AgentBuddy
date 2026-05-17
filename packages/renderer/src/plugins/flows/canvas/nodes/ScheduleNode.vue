@@ -11,8 +11,8 @@
     @remove-handle="(nodeId, handleId) => $emit('remove-handle', nodeId, handleId)"
     v-slot="{ dividerClass }"
   >
-    <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
-      <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
+    <div v-if="subtitle" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
+      <span class="text-[10px] text-neutral-400 font-mono truncate">{{ subtitle }}</span>
     </div>
 
     <!-- Exit rows — only shown when multiple exits exist -->
@@ -38,14 +38,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import type { ListenerNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { NODE_DIMENSIONS } from './node-dimensions'
 
-interface NodeData extends Partial<ListenerNode> {
+interface NodeData {
   label: string
-  scope?: 'global' | 'local' | 'entry'
-  eventType?: string
+  cronExpression?: string
 }
 
 interface Props extends NodeProps<NodeData> {
@@ -62,8 +60,45 @@ defineEmits<{
 
 const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listener
 
-const hasEventType = computed(() => !!props.data.eventType)
-const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasEventType.value ? EVENT_TYPE_HEIGHT : 0))
+/**
+ * Convert a cron expression to a human-readable string.
+ * Handles common patterns; falls back to raw expression for complex ones.
+ */
+function cronToHuman(expr: string): string {
+  const parts = expr.trim().split(/\s+/)
+  if (parts.length !== 5) return expr
+
+  const [min, hour, dom, mon, dow] = parts
+
+  if (min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every minute'
+
+  // Step expressions: */N * * * * or */N in hour field
+  const minStep = min.match(/^\*\/(\d+)$/)
+  if (minStep && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${minStep[1]} min`
+  const hourStep = hour.match(/^\*\/(\d+)$/)
+  if (min !== '*' && hourStep && dom === '*' && mon === '*' && dow === '*') return `Every ${hourStep[1]}h at :${min.padStart(2, '0')}`
+
+  if (hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Hourly at :${min.padStart(2, '0')}`
+  if (dom === '*' && mon === '*' && dow === '*') return `Daily at ${hour}:${min.padStart(2, '0')}`
+
+  const dayNames: Record<string, string> = { '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat', '7': 'Sun' }
+  if (dom === '*' && mon === '*' && dow !== '*') {
+    const days = dow.split(',').map(d => dayNames[d] || d).join(', ')
+    return `${days} at ${hour}:${min.padStart(2, '0')}`
+  }
+
+  if (mon === '*' && dow === '*') return `Day ${dom} at ${hour}:${min.padStart(2, '0')}`
+
+  return expr
+}
+
+const subtitle = computed(() => {
+  if (props.data.cronExpression) return cronToHuman(props.data.cronExpression)
+  return ''
+})
+
+const hasSubtitle = computed(() => !!subtitle.value)
+const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasSubtitle.value ? EVENT_TYPE_HEIGHT : 0))
 
 // Compute dynamic exit handles from connected edges
 const exitHandles = computed<HandleConfig[]>(() => {
@@ -102,7 +137,6 @@ const nodeStyle = computed(() => {
   if (count <= 1) return {}
   return { minHeight: `${headerOffset.value + count * ROW_HEIGHT + 10}px` }
 })
-
 </script>
 
 <style scoped>

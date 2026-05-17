@@ -1,5 +1,6 @@
 import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
 import { NODE_DIMENSIONS, getDescriptor, computeExitCount, type LayoutNodeData } from './nodes/node-dimensions'
+import { isTriggerNode } from './nodes/node-config'
 
 export const LAYOUT_CONFIG = {
   nodeWidth: NODE_DIMENSIONS.default.width,
@@ -70,18 +71,18 @@ export function partitionIntoComponents(
   nodes: LayoutNode[],
   edges: LayoutEdge[]
 ): LayoutComponents {
-  // Pre-compute listener exit counts from ALL edges (before filtering)
-  const listenerNodeIds = new Set(
-    nodes.filter(n => n.nodeType === 'listener').map(n => n.id)
+  // Pre-compute exit counts for trigger nodes (listener, schedule) from ALL edges (before filtering)
+  const triggerNodeIds = new Set(
+    nodes.filter(n => isTriggerNode(n.nodeType)).map(n => n.id)
   )
   const listenerExitCounts = new Map<string, number>()
-  for (const nodeId of listenerNodeIds) {
+  for (const nodeId of triggerNodeIds) {
     const count = computeExitCount(nodeId, edges)
     if (count !== undefined) listenerExitCounts.set(nodeId, count)
   }
 
-  // Filter out edges targeting listener nodes (listeners have no input port)
-  const filteredEdges = edges.filter(e => !listenerNodeIds.has(e.target))
+  // Filter out edges targeting trigger nodes (they have no input port)
+  const filteredEdges = edges.filter(e => !triggerNodeIds.has(e.target))
 
   // Detect connected components via BFS on filtered edges
   const adj = new Map<string, Set<string>>()

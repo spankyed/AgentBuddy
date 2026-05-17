@@ -229,7 +229,7 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     bgColor: 'bg-orange-500/10',
     hoverBgColor: 'group-hover:bg-orange-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
-    component: 'ListenerNode',
+    component: 'ScheduleNode',
     isImplemented: true
   },
   query: {
@@ -510,6 +510,16 @@ export const getNodeStatusClasses = (
  */
 export const getNodeConfig = (nodeType: NodeKind | string): NodeConfig | undefined => {
   return nodeConfigs[nodeType as NodeKind]
+}
+
+/**
+ * Returns true for trigger nodes (no inputs, dynamic outputs).
+ * Derived from connection rules so new trigger types work automatically.
+ */
+export const isTriggerNode = (nodeType: NodeKind | string | undefined): boolean => {
+  if (!nodeType) return false
+  const config = getNodeConfig(nodeType)
+  return config?.connectionRules.inputs === 0 && config?.connectionRules.outputs === -1
 }
 
 /**

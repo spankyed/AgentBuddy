@@ -16,7 +16,7 @@ import type {
   FlowsConnectedData
 } from '../config/types';
 import { availableModels } from '../config/available-models';
-import { createNodeDefaults } from '../config/node-config';
+import { createNodeDefaults, nodeMetadata } from '../config/node-config';
 import { repository } from '@/repository';
 import { settingsCommands } from '@/systems/settings/repository';
 import type { CompiledRows } from '../dsl/compiler';
@@ -363,9 +363,10 @@ export const flowsCommands = {
     targetId: EARS.EntityId,
     options?: { sourceHandle?: string; targetHandle?: string }
   ): { relId: EARS.EntityId } => {
-    // Validate: source handle must not already have an outgoing edge (except listener nodes)
+    // Validate: source handle must not already have an outgoing edge (except trigger nodes)
     const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
-    if (sourceAttrs?.nodeType !== 'listener') {
+    const isTrigger = sourceAttrs?.nodeType && nodeMetadata[sourceAttrs.nodeType as NodeKind]?.category === 'trigger';
+    if (!isTrigger) {
       const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
       const handleOccupied = existingEdges.some(rel => {
         const relHandle = (rel.info as any)?.sourceHandle;
