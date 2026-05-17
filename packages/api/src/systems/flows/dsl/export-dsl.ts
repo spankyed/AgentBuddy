@@ -31,6 +31,7 @@ import type {
   EdgeEntity,
   FlowEntity,
   ListenerNode,
+  ScheduleNode,
   ActionNode,
   LLMNode,
   SwitchNode,
@@ -140,7 +141,7 @@ function getFlowEdges(flowId: EARS.EntityId): EdgeEntity[] {
 interface DecompileGraphCtx {
   nodes: NodeEntity[];
   edges: EdgeEntity[];
-  listenerNodeIds: Set<string>;
+  triggerNodeIds: Set<string>;
   inlinedNodeIds: Set<string>;
   incomingEdges: Map<string, string[]>;   // target -> [sources]
   outgoingEdges: Map<string, string[]>;   // source -> [targets]
@@ -159,14 +160,14 @@ function isExclusiveChain(
   sourceNodeId: string,
   graphCtx: DecompileGraphCtx,
 ): { exclusive: boolean; chain: string[] } {
-  const { incomingEdges, outgoingEdges, listenerNodeIds } = graphCtx;
+  const { incomingEdges, outgoingEdges, triggerNodeIds } = graphCtx;
 
   const chain: string[] = [];
   let current = startNodeId;
   let prevId = sourceNodeId;
 
   while (true) {
-    if (listenerNodeIds.has(current)) break;
+    if (triggerNodeIds.has(current)) break;
 
     // Each node must have exactly one incoming edge from the expected predecessor
     const incoming = incomingEdges.get(current) || [];
@@ -182,7 +183,7 @@ function isExclusiveChain(
 
     const nextId = outgoing[0];
     if (chain.includes(nextId)) break;
-    if (listenerNodeIds.has(nextId)) break;
+    if (triggerNodeIds.has(nextId)) break;
 
     prevId = current;
     current = nextId;
@@ -511,8 +512,9 @@ function buildTracksFromGraph(
   promptMap: Map<string, string>,
   flowMap: Map<string, string>
 ): Track[] {
-  // Find all listener nodes
+  // Find all trigger nodes (listeners and schedules)
   const listenerNodes = nodes.filter(n => n.nodeType === 'listener') as ListenerNode[];
+  const scheduleNodes = nodes.filter(n => n.nodeType === 'schedule') as ScheduleNode[];
 
   // Build edge maps once for use in chain detection and step collection
   const incomingEdges = new Map<string, string[]>();
@@ -527,13 +529,16 @@ function buildTracksFromGraph(
     outgoingEdges.set(edge.source, targets);
   }
 
-  const listenerNodeIds = new Set(listenerNodes.map(n => n.id as string));
+  const triggerNodeIds = new Set([
+    ...listenerNodes.map(n => n.id as string),
+    ...scheduleNodes.map(n => n.id as string),
+  ]);
 
   // Graph context for inline branch detection during decompilation
   const graphCtx: DecompileGraphCtx = {
     nodes,
     edges,
-    listenerNodeIds,
+    triggerNodeIds,
     inlinedNodeIds: new Set(),
     incomingEdges,
     outgoingEdges,
@@ -542,18 +547,18 @@ function buildTracksFromGraph(
     flowMap,
   };
 
-  // Build tracks by following edges from each listener node
+  // Build tracks by following edges from each trigger node
   const tracks: Track[] = [];
 
   // Track used labels to ensure uniqueness
   const usedLabels = new Set<string>();
 
-  for (const listenerNode of listenerNodes) {
-    const listenerId = listenerNode.id as string;
-    const listenerEdges = edges.filter(e => e.source === listenerId);
+  /** Build exit chains from a trigger node's outgoing edges */
+  function buildExits(triggerNodeId: string): DSLStepNode[][] {
+    const triggerEdges = edges.filter(e => e.source === triggerNodeId);
 
     // Sort edges by exit index for deterministic ordering
-    const sortedExitEdges = [...listenerEdges].sort((a, b) => {
+    const sortedExitEdges = [...triggerEdges].sort((a, b) => {
       const aIdx = parseInt(((a.info as any)?.sourceHandle || 'exit-0').replace('exit-', ''));
       const bIdx = parseInt(((b.info as any)?.sourceHandle || 'exit-0').replace('exit-', ''));
       return aIdx - bIdx;
@@ -561,11 +566,10 @@ function buildTracksFromGraph(
 
     const exits: DSLStepNode[][] = [];
     for (const exitEdge of sortedExitEdges) {
-      // Follow sequential chain from this exit's target
       const chainSteps: NodeEntity[] = [];
       const visited = new Set<string>();
       function followChain(nodeId: string) {
-        if (visited.has(nodeId) || listenerNodeIds.has(nodeId)) return;
+        if (visited.has(nodeId) || triggerNodeIds.has(nodeId)) return;
         visited.add(nodeId);
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return;
@@ -585,32 +589,49 @@ function buildTracksFromGraph(
       exits.push(dslSteps);
     }
 
-    // If no edges, single empty exit
     if (exits.length === 0) exits.push([]);
+    return exits;
+  }
 
-    // Build track
-    const track: Track = {
-      event: listenerNode.eventType || listenerNode.label || 'unknown',
-      exits,
-    };
-
-    // Determine the label - use node label if set, otherwise derive from event
-    let label = listenerNode.label || listenerNode.eventType;
-
-    // Ensure label uniqueness by appending suffix if needed
-    let uniqueLabel = label;
+  /** Ensure label uniqueness by appending suffix if needed */
+  function uniqueLabel(label: string): string {
+    let unique = label;
     let counter = 2;
-    while (usedLabels.has(uniqueLabel)) {
-      uniqueLabel = `${label} ${counter}`;
+    while (usedLabels.has(unique)) {
+      unique = `${label} ${counter}`;
       counter++;
     }
-    usedLabels.add(uniqueLabel);
+    usedLabels.add(unique);
+    return unique;
+  }
 
-    // Always set an explicit label to avoid validator deriving duplicates
-    track.label = uniqueLabel;
+  // Build tracks from listener nodes
+  for (const listenerNode of listenerNodes) {
+    const track: Track = {
+      event: listenerNode.eventType || listenerNode.label || 'unknown',
+      exits: buildExits(listenerNode.id as string),
+    };
+
+    track.label = uniqueLabel(listenerNode.label || listenerNode.eventType);
 
     if (listenerNode.description) {
       track.description = listenerNode.description;
+    }
+
+    tracks.push(track);
+  }
+
+  // Build tracks from schedule nodes
+  for (const scheduleNode of scheduleNodes) {
+    const track: Track = {
+      schedule: (scheduleNode as ScheduleNode).cronExpression,
+      exits: buildExits(scheduleNode.id as string),
+    };
+
+    track.label = uniqueLabel(scheduleNode.label || `Schedule`);
+
+    if (scheduleNode.description) {
+      track.description = scheduleNode.description;
     }
 
     tracks.push(track);

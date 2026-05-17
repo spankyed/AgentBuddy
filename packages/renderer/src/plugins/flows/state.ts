@@ -86,6 +86,9 @@ function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
   if (nodeData.nodeType === 'switch') {
     nodeData.conditions = [{ ...DEFAULT_ELSE_CONDITION }]
   }
+  if (nodeData.nodeType === 'schedule') {
+    nodeData.cronExpression = '0 * * * *'
+  }
 }
 
 /* ─────────────────────────────────────────────────────────── */
