@@ -223,8 +223,8 @@ function validateTrack(
   }
   if (hasSchedule) {
     const cronParts = (t.schedule as string).trim().split(/\s+/);
-    if (cronParts.length !== 5) {
-      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5-field cron expression' });
+    if (cronParts.length < 5 || cronParts.length > 6) {
+      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5 or 6 field cron expression' });
     } else {
       try {
         new Cron(t.schedule as string);

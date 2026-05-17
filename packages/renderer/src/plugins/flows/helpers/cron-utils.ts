@@ -1,7 +1,10 @@
 /**
  * Standalone cron expression validation.
  *
- * Mirrors croner's core validation logic for 5-field expressions.
+ * Mirrors croner's core validation logic for 5-field and 6-field expressions.
+ * 6-field format: second minute hour day month weekday
+ * 5-field format: minute hour day month weekday (treated as second=0)
+ *
  * This function is intentionally duplicated in:
  *   - packages/default-setup/build/cron-utils.ts
  *   - packages/renderer/src/plugins/flows/helpers/cron-utils.ts (here)
@@ -15,6 +18,7 @@ const MONTH_NAMES: Record<string, number> = { jan:1,feb:2,mar:3,apr:4,may:5,jun:
 const DOW_NAMES: Record<string, number> = { sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6 }
 
 const FIELD_RANGES: { min: number; max: number; names?: Record<string, number> }[] = [
+  { min: 0, max: 59 },                     // second
   { min: 0, max: 59 },                     // minute
   { min: 0, max: 23 },                     // hour
   { min: 1, max: 31 },                     // day of month
@@ -22,14 +26,17 @@ const FIELD_RANGES: { min: number; max: number; names?: Record<string, number> }
   { min: 0, max: 7, names: DOW_NAMES },   // day of week (0 and 7 both = Sunday)
 ]
 
-const FIELD_LABELS = ['minute', 'hour', 'day-of-month', 'month', 'day-of-week']
+const FIELD_LABELS = ['second', 'minute', 'hour', 'day-of-month', 'month', 'day-of-week']
 
 /** Returns an error message string, or null if the expression is valid. */
 export function validateCronExpression(expr: string): string | null {
-  const fields = expr.trim().split(/\s+/)
-  if (fields.length !== 5) return 'Must be a 5-field cron expression (minute hour day month weekday)'
+  const raw = expr.trim().split(/\s+/)
+  if (raw.length < 5 || raw.length > 6) return 'Must be a 5 or 6 field cron expression (second minute hour day month weekday)'
 
-  for (let i = 0; i < 5; i++) {
+  // Normalize 5-field to 6-field by prepending second=0
+  const fields = raw.length === 5 ? ['0', ...raw] : raw
+
+  for (let i = 0; i < 6; i++) {
     const field = fields[i]
     const { min, max, names } = FIELD_RANGES[i]
     const label = FIELD_LABELS[i]
@@ -73,4 +80,47 @@ export function validateCronExpression(expr: string): string | null {
   }
 
   return null
+}
+
+const DAY_NAMES: Record<string, string> = { '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat', '7': 'Sun' }
+
+/** Convert a cron expression to a human-readable string. */
+export function cronToHuman(expr: string): string {
+  const parts = expr.trim().split(/\s+/)
+  if (parts.length < 5 || parts.length > 6) return expr
+
+  let sec: string | undefined
+  let min: string, hour: string, dom: string, mon: string, dow: string
+  if (parts.length === 6) {
+    [sec, min, hour, dom, mon, dow] = parts
+  } else {
+    [min, hour, dom, mon, dow] = parts
+  }
+
+  // Seconds-based patterns (6-field only)
+  if (sec !== undefined && sec !== '0') {
+    const secStep = sec.match(/^\*\/(\d+)$/)
+    if (secStep && min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${secStep[1]} sec`
+    if (sec === '*' && min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every second'
+    return expr
+  }
+
+  if (min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every minute'
+
+  const minStep = min.match(/^\*\/(\d+)$/)
+  if (minStep && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${minStep[1]} min`
+  const hourStep = hour.match(/^\*\/(\d+)$/)
+  if (min !== '*' && hourStep && dom === '*' && mon === '*' && dow === '*') return `Every ${hourStep[1]}h at :${min.padStart(2, '0')}`
+
+  if (hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Hourly at :${min.padStart(2, '0')}`
+  if (dom === '*' && mon === '*' && dow === '*') return `Daily at ${hour}:${min.padStart(2, '0')}`
+
+  if (dom === '*' && mon === '*' && dow !== '*') {
+    const days = dow.split(',').map(d => DAY_NAMES[d] || d).join(', ')
+    return `${days} at ${hour}:${min.padStart(2, '0')}`
+  }
+
+  if (mon === '*' && dow === '*') return `Day ${dom} at ${hour}:${min.padStart(2, '0')}`
+
+  return expr
 }

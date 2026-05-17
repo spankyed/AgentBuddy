@@ -49,6 +49,7 @@ import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { NODE_DIMENSIONS } from './node-dimensions'
+import { cronToHuman } from '../../helpers/cron-utils'
 
 interface NodeData {
   label: string
@@ -71,33 +72,6 @@ defineEmits<{
 
 const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listener
 
-/** Convert a cron expression to a human-readable string. */
-function cronToHuman(expr: string): string {
-  const parts = expr.trim().split(/\s+/)
-  if (parts.length !== 5) return expr
-
-  const [min, hour, dom, mon, dow] = parts
-
-  if (min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every minute'
-
-  const minStep = min.match(/^\*\/(\d+)$/)
-  if (minStep && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${minStep[1]} min`
-  const hourStep = hour.match(/^\*\/(\d+)$/)
-  if (min !== '*' && hourStep && dom === '*' && mon === '*' && dow === '*') return `Every ${hourStep[1]}h at :${min.padStart(2, '0')}`
-
-  if (hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Hourly at :${min.padStart(2, '0')}`
-  if (dom === '*' && mon === '*' && dow === '*') return `Daily at ${hour}:${min.padStart(2, '0')}`
-
-  const dayNames: Record<string, string> = { '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat', '7': 'Sun' }
-  if (dom === '*' && mon === '*' && dow !== '*') {
-    const days = dow.split(',').map(d => dayNames[d] || d).join(', ')
-    return `${days} at ${hour}:${min.padStart(2, '0')}`
-  }
-
-  if (mon === '*' && dow === '*') return `Day ${dom} at ${hour}:${min.padStart(2, '0')}`
-
-  return expr
-}
 
 const subtitle = computed(() => {
   if (props.data.cronExpression) return cronToHuman(props.data.cronExpression)

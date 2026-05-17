@@ -7,9 +7,31 @@
   >
     <!-- Frequency selector -->
     <div>
-      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
-        FREQUENCY
-      </label>
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-medium uppercase tracking-wider text-neutral-400">
+          FREQUENCY
+        </label>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] text-neutral-500">Custom</span>
+          <button
+            @click="toggleCustomMode"
+            :class="[
+              'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
+              customMode
+                ? 'bg-orange-500/60'
+                : 'bg-neutral-700'
+            ]"
+            type="button"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-3 w-3 transform rounded-full bg-neutral-200 shadow transition duration-200 mt-0.5',
+                customMode ? 'translate-x-3.5 ml-[-1px]' : 'translate-x-0.5'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
       <div class="grid grid-cols-3 gap-1 rounded-lg border border-neutral-700 p-1">
         <button
           v-for="option in frequencyOptions"
@@ -25,6 +47,37 @@
         >
           {{ option.label }}
         </button>
+      </div>
+    </div>
+
+    <!-- Second selector (every_second) -->
+    <div v-if="frequency === 'every_second'">
+      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
+        INTERVAL (SECONDS)
+      </label>
+      <div class="flex gap-2">
+        <select
+          :value="useCustomSeconds ? 'custom' : secondInterval"
+          @change="handleSecondPresetChange(($event.target as HTMLSelectElement).value)"
+          class="flex-1 px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+        >
+          <option
+            v-for="n in SECOND_PRESETS"
+            :key="n"
+            :value="n"
+          >{{ n === 1 ? 'Every second' : `Every ${n} seconds` }}</option>
+          <option value="custom">Custom...</option>
+        </select>
+        <input
+          v-if="useCustomSeconds"
+          :value="secondInterval"
+          @input="handleCustomSecondsInput(($event.target as HTMLInputElement).value)"
+          type="number"
+          min="1"
+          max="59"
+          placeholder="n"
+          class="w-20 px-3 py-2 text-sm font-mono border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+        />
       </div>
     </div>
 
@@ -121,10 +174,7 @@
     </div>
 
     <!-- Raw cron input (custom mode) -->
-    <div v-if="frequency === 'custom'">
-      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
-        CRON EXPRESSION
-      </label>
+    <div v-if="customMode">
       <input
         :value="nodeData.cronExpression || ''"
         @input="handleRawCronChange(($event.target as HTMLInputElement).value)"
@@ -139,7 +189,7 @@
       />
       <p v-if="cronError" class="mt-1 text-[10px] text-red-400">{{ cronError }}</p>
       <p v-else class="mt-1 text-[10px] text-neutral-500">
-        minute hour day-of-month month day-of-week
+        [sec] min hour day month weekday
       </p>
     </div>
 
@@ -158,7 +208,7 @@ import type { NodeEntity } from '@app/api'
 import BaseForm from './BaseForm.vue'
 import { validateCronExpression } from '../../helpers/cron-utils'
 
-type Frequency = 'every_minute' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'custom'
+type Frequency = 'every_second' | 'every_minute' | 'hourly' | 'daily' | 'weekly' | 'monthly'
 
 const props = defineProps<{
   node: NodeEntity
@@ -171,13 +221,15 @@ const emit = defineEmits<{
 
 const nodeData = computed(() => props.node as any)
 
+const SECOND_PRESETS = [1, 5, 10, 15, 30] as const
+
 const frequencyOptions: Array<{ value: Frequency; label: string }> = [
+  { value: 'every_second', label: 'Seconds' },
   { value: 'every_minute', label: 'Minute' },
   { value: 'hourly', label: 'Hourly' },
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
-  { value: 'custom', label: 'Custom' },
 ]
 
 const dayOptions = [
@@ -198,18 +250,45 @@ const daysOfWeek = ref<number[]>([]) // empty = every day (daily mode)
 const selfEmitted = ref(false) // guard: skip re-parsing cron changes we triggered ourselves
 const dayOfWeek = ref(1) // 0=Sun, 1=Mon, ..., 6=Sat (weekly mode)
 const dayOfMonth = ref(1)
+const secondInterval = ref(5) // seconds interval for every_second mode
+const useCustomSeconds = ref(false) // show custom number input for seconds
 const cronError = ref<string | null>(null)
+const customMode = ref(false)
 
 const showMinute = computed(() => ['hourly', 'daily', 'weekly', 'monthly'].includes(frequency.value))
 const showHour = computed(() => ['daily', 'weekly', 'monthly'].includes(frequency.value))
 
 /**
  * Parse a cron expression back into visual fields.
- * Returns the frequency type, or 'custom' if unparseable.
+ * Returns the frequency type, or falls back to 'every_minute' if unparseable
+ * (custom mode handles display independently).
  */
 function parseCron(expr: string): Frequency {
-  const parts = expr.trim().split(/\s+/)
-  if (parts.length !== 5) return 'custom'
+  let parts = expr.trim().split(/\s+/)
+
+  // 6-field: check for seconds-based patterns before stripping
+  if (parts.length === 6) {
+    const [secP, ...rest] = parts
+    const restAllWild = rest.every(p => p === '*')
+
+    if (secP === '*' && restAllWild) {
+      secondInterval.value = 1
+      useCustomSeconds.value = false
+      return 'every_second'
+    }
+    const secStep = secP.match(/^\*\/(\d+)$/)
+    if (secStep && restAllWild) {
+      const n = parseInt(secStep[1])
+      secondInterval.value = n
+      useCustomSeconds.value = !(SECOND_PRESETS as readonly number[]).includes(n)
+      return 'every_second'
+    }
+
+    // Strip seconds for standard preset detection
+    parts = rest
+  }
+
+  if (parts.length !== 5) return 'every_minute'
 
   const [minP, hourP, domP, monP, dowP] = parts
 
@@ -221,7 +300,7 @@ function parseCron(expr: string): Frequency {
   const parsedMin = parseInt(minP)
   const parsedHour = parseInt(hourP)
 
-  if (isNaN(parsedMin) || minP.includes('/') || minP.includes(',') || minP.includes('-')) return 'custom'
+  if (isNaN(parsedMin) || minP.includes('/') || minP.includes(',') || minP.includes('-')) return 'every_minute'
 
   // Hourly: N * * * *
   if (hourP === '*' && domP === '*' && monP === '*' && dowP === '*') {
@@ -229,13 +308,13 @@ function parseCron(expr: string): Frequency {
     return 'hourly'
   }
 
-  if (isNaN(parsedHour) || hourP.includes('/') || hourP.includes(',') || hourP.includes('-')) return 'custom'
+  if (isNaN(parsedHour) || hourP.includes('/') || hourP.includes(',') || hourP.includes('-')) return 'every_minute'
 
   // Daily (with optional day filter): N N * * (* | DOW,DOW,...)
   if (domP === '*' && monP === '*' && dowP !== '*') {
     // Multi-day → daily with day filter
     const days = dowP.split(',').map(Number).filter(n => !isNaN(n))
-    if (days.length === 0 || dowP.includes('-') || dowP.includes('/')) return 'custom'
+    if (days.length === 0 || dowP.includes('-') || dowP.includes('/')) return 'every_minute'
 
     minute.value = parsedMin
     hour.value = parsedHour
@@ -268,7 +347,7 @@ function parseCron(expr: string): Frequency {
     return 'monthly'
   }
 
-  return 'custom'
+  return 'every_minute'
 }
 
 /** Build a cron expression from visual fields. */
@@ -277,6 +356,11 @@ function buildCron(): string {
   const hr = String(hour.value)
 
   switch (frequency.value) {
+    case 'every_second': {
+      return secondInterval.value === 1
+        ? '* * * * * *'
+        : `*/${secondInterval.value} * * * * *`
+    }
     case 'every_minute': return '* * * * *'
     case 'hourly': return `${min} * * * *`
     case 'daily': {
@@ -292,7 +376,7 @@ function buildCron(): string {
 }
 
 function emitCron() {
-  if (frequency.value !== 'custom') {
+  if (!customMode.value) {
     selfEmitted.value = true
     emit('update-node', { cronExpression: buildCron() })
   }
@@ -315,9 +399,20 @@ watch(() => nodeData.value.cronExpression, (expr) => {
 
 function handleFrequencyChange(newFrequency: Frequency) {
   frequency.value = newFrequency
+  customMode.value = false
   cronError.value = null
-  if (newFrequency !== 'custom') {
-    emitCron()
+  emitCron()
+}
+
+function toggleCustomMode() {
+  customMode.value = !customMode.value
+  cronError.value = null
+  if (!customMode.value) {
+    // Leaving custom mode: re-parse to show nearest preset UI, but don't
+    // overwrite the stored cron — it may be a valid expression that doesn't
+    // map to any preset (e.g. */5 * * * *, 0 9-17 * * *)
+    const expr = nodeData.value.cronExpression
+    if (expr) frequency.value = parseCron(expr)
   }
 }
 
@@ -351,6 +446,23 @@ function handleDayOfMonthChange(val: number) {
   emitCron()
 }
 
+function handleSecondPresetChange(val: string) {
+  if (val === 'custom') {
+    useCustomSeconds.value = true
+  } else {
+    useCustomSeconds.value = false
+    secondInterval.value = Number(val)
+    emitCron()
+  }
+}
+
+function handleCustomSecondsInput(val: string) {
+  const n = parseInt(val)
+  if (!isNaN(n) && n >= 1 && n <= 59) {
+    secondInterval.value = n
+    emitCron()
+  }
+}
 
 function handleRawCronChange(val: string) {
   const err = validateCronExpression(val)
