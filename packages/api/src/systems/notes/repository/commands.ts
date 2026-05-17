@@ -180,6 +180,14 @@ export const noteCommands = {
     if (!existing || !existing.deleted) return [];
     const restoredIds: string[] = [id];
     updateEntity(id, { deleted: false, deletedAt: 0 });
+    // If parent is still deleted, detach so note restores at root
+    const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
+    if (parentIds.length > 0) {
+      const parent = findByIdRaw<NoteEntity>(parentIds[0]);
+      if (parent?.deleted) {
+        removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
+      }
+    }
     const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {
       restoredIds.push(...noteCommands.restore(childId));
