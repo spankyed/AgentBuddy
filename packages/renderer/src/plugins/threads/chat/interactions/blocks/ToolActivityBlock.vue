@@ -137,13 +137,22 @@ watch(() => props.state, (next, prev) => {
 // Wrap isOpen mutation so we can flag user intent.
 watch(isOpen, () => { userHasToggled = true })
 
-// Auto-scroll to the bottom as new rows stream in, so the latest tool
+// When the block is opened, reset scroll tracking and scroll to bottom.
+watch(isOpen, async (open) => {
+  if (!open) return
+  userHasScrolled = false
+  await nextTick()
+  const el = listEl.value
+  if (el) el.scrollTop = el.scrollHeight
+})
+
+// Auto-scroll to the bottom as new rows arrive, so the latest tool
 // stays visible in the capped viewport. Stop tracking once the user
 // manually scrolls — then they're in charge of the scroll position.
 watch(
   () => props.entries.length,
   async () => {
-    if (!isOpen.value || props.state !== 'streaming' || userHasScrolled) return
+    if (!isOpen.value || userHasScrolled) return
     await nextTick()
     const el = listEl.value
     if (el) el.scrollTop = el.scrollHeight
