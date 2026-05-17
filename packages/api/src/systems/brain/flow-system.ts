@@ -68,7 +68,7 @@ type TNodeFlowMachineContext = {
   entryData?: any;
   // Whether this flow node itself is marked as final
   isFinalStep?: boolean;
-  // Whether this flow should wait for future listener/schedule events after a track drains
+  // Whether this flow should wait for future schedule events after a track drains
   hasPersistentTriggers: boolean;
   // Flow hierarchy tracking
   hasParent: boolean; // Whether this flow has a parent flow
@@ -394,8 +394,8 @@ export function createFlowNodeSystem(
           // Per-track live-child bookkeeping (single source of truth):
           //   -1 for the child that just finished, +1 if a nextNode takes its place.
           // When a track reaches 0 the event TNode is completed. Finite entry-only
-          // flows complete once all active tracks drain; schedule/listener flows stay
-          // active for future triggers unless an explicit final step completes.
+          // flows complete once all active tracks drain; schedule-triggered flows
+          // stay active for future ticks unless an explicit final step completes.
           const prevTrackCount = context.eventTrackChildCounts[typedEv.eventTNodeId] ?? 0;
           const newTrackCount = Math.max(0, prevTrackCount - 1) + (nextNode ? 1 : 0);
           const eventTrackCompleted = newTrackCount === 0;
