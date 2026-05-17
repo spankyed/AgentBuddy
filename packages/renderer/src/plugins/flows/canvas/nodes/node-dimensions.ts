@@ -31,6 +31,8 @@ export interface NodeLayoutDescriptor {
   getHeight(node: LayoutNodeData, context: DescriptorContext): number
   getPorts(node: LayoutNodeData, context: DescriptorContext): ElkPort[]
   hasInput: boolean
+  /** When true, computeMaxBottom derives exit count from edges for this descriptor */
+  usesExitCount?: boolean
 }
 
 const { default: defaults } = NODE_DIMENSIONS
@@ -66,7 +68,9 @@ const switchDescriptor: NodeLayoutDescriptor = {
   hasInput: true,
 }
 
-const listenerDescriptor: NodeLayoutDescriptor = {
+/** Trigger nodes: no input handle, dynamic exit handles derived from edges */
+const triggerDescriptor: NodeLayoutDescriptor = {
+  usesExitCount: true,
   getHeight: (node, ctx) => {
     const exitCount = ctx.exitCount
     if (exitCount === undefined) return defaults.height
@@ -105,8 +109,8 @@ const fireDescriptor: NodeLayoutDescriptor = {
 
 const nodeLayoutDescriptors = new Map<string, NodeLayoutDescriptor>([
   ['switch', switchDescriptor],
-  ['listener', listenerDescriptor],
-  ['schedule', listenerDescriptor],
+  ['listener', triggerDescriptor],
+  ['schedule', triggerDescriptor],
   ['fire', fireDescriptor],
 ])
 
@@ -136,8 +140,9 @@ export function computeMaxBottom(
   for (const node of nodes) {
     const pos = positions[node.id]
     if (!pos) continue
-    const exitCount = (node.nodeType === 'listener' || node.nodeType === 'schedule') ? computeExitCount(node.id, edges) : undefined
-    const height = getDescriptor(node.nodeType).getHeight(node, { exitCount })
+    const descriptor = getDescriptor(node.nodeType)
+    const exitCount = descriptor.usesExitCount ? computeExitCount(node.id, edges) : undefined
+    const height = descriptor.getHeight(node, { exitCount })
     const bottom = pos.y + height
     if (bottom > maxBottom) maxBottom = bottom
   }
