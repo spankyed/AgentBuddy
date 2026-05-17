@@ -13,6 +13,7 @@ import type {
   ValidationResult,
 } from './types';
 import { isFlowConfig, resolveTracks } from './types';
+import { Cron } from 'croner';
 
 // Step node types (excludes 'listener' - that's implicit in track.event)
 const STEP_TYPES = [
@@ -211,9 +212,10 @@ function validateTrack(
     errors.push({ path, message: 'Track cannot have both "event" and "schedule"' });
   }
   if (hasSchedule) {
-    const parts = (t.schedule as string).trim().split(/\s+/);
-    if (parts.length !== 5) {
-      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5-field cron expression' });
+    try {
+      new Cron(t.schedule as string);
+    } catch {
+      errors.push({ path: `${path}.schedule`, message: 'Invalid cron expression' });
     }
   }
 

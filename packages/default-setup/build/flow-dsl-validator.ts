@@ -12,6 +12,7 @@ import type {
   ValidationResult,
 } from '../defs/default-setup-defs';
 import { isFlowConfig, resolveTracks } from './flow-dsl-utils';
+import { validateCronExpression } from './cron-utils';
 
 // Step node types (excludes 'listener' - that's implicit in track.event)
 const STEP_TYPES = [
@@ -210,9 +211,9 @@ function validateTrack(
     errors.push({ path, message: 'Track cannot have both "event" and "schedule"' });
   }
   if (hasSchedule) {
-    const parts = (t.schedule as string).trim().split(/\s+/);
-    if (parts.length !== 5) {
-      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5-field cron expression' });
+    const cronErr = validateCronExpression(t.schedule as string);
+    if (cronErr) {
+      errors.push({ path: `${path}.schedule`, message: cronErr });
     }
   }
 
@@ -561,6 +562,7 @@ function collectStepLabels(
     }
   }
 }
+
 
 function getTrackLabel(track: Record<string, unknown>, index: number): string {
   if (typeof track.label === 'string') return track.label;

@@ -130,9 +130,15 @@
         @input="handleRawCronChange(($event.target as HTMLInputElement).value)"
         @keydown.enter="$emit('close')"
         placeholder="* * * * *"
-        class="w-full px-3 py-2 text-sm font-mono border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+        :class="[
+          'w-full px-3 py-2 text-sm font-mono border rounded-md bg-neutral-800 text-neutral-200 placeholder-neutral-500 focus:outline-none focus:ring-1',
+          cronError
+            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+            : 'border-neutral-700 focus:border-orange-500 focus:ring-orange-500'
+        ]"
       />
-      <p class="mt-1 text-[10px] text-neutral-500">
+      <p v-if="cronError" class="mt-1 text-[10px] text-red-400">{{ cronError }}</p>
+      <p v-else class="mt-1 text-[10px] text-neutral-500">
         minute hour day-of-month month day-of-week
       </p>
     </div>
@@ -150,6 +156,7 @@
 import { computed, ref, watch } from 'vue'
 import type { NodeEntity } from '@app/api'
 import BaseForm from './BaseForm.vue'
+import { validateCronExpression } from '../../helpers/cron-utils'
 
 type Frequency = 'every_minute' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'custom'
 
@@ -191,6 +198,7 @@ const daysOfWeek = ref<number[]>([]) // empty = every day (daily mode)
 const selfEmitted = ref(false) // guard: skip re-parsing cron changes we triggered ourselves
 const dayOfWeek = ref(1) // 0=Sun, 1=Mon, ..., 6=Sat (weekly mode)
 const dayOfMonth = ref(1)
+const cronError = ref<string | null>(null)
 
 const showMinute = computed(() => ['hourly', 'daily', 'weekly', 'monthly'].includes(frequency.value))
 const showHour = computed(() => ['daily', 'weekly', 'monthly'].includes(frequency.value))
@@ -234,12 +242,12 @@ function parseCron(expr: string): Frequency {
 
     // Single day → weekly mode
     if (days.length === 1) {
-      dayOfWeek.value = days[0]
+      dayOfWeek.value = days[0] === 7 ? 0 : days[0]
       return 'weekly'
     }
 
-    // Multiple days → daily with day filter
-    daysOfWeek.value = days
+    // Multiple days → daily with day filter (normalize 7 → 0 for Sunday)
+    daysOfWeek.value = days.map(d => d === 7 ? 0 : d)
     return 'daily'
   }
 
@@ -342,7 +350,12 @@ function handleDayOfMonthChange(val: number) {
   emitCron()
 }
 
+
 function handleRawCronChange(val: string) {
-  emit('update-node', { cronExpression: val })
+  const err = validateCronExpression(val)
+  cronError.value = err
+  if (!err) {
+    emit('update-node', { cronExpression: val })
+  }
 }
 </script>

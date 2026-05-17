@@ -38,8 +38,9 @@ export function unregisterSchedule(key: string): void {
  * Used to clean up all jobs for a specific flow actor.
  */
 export function unregisterByPrefix(prefix: string): void {
+  const prefixWithSep = prefix + ':';
   for (const [key, job] of activeJobs) {
-    if (key.startsWith(prefix)) {
+    if (key.startsWith(prefixWithSep)) {
       job.stop();
       activeJobs.delete(key);
     }
