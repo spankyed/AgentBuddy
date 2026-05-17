@@ -265,9 +265,9 @@ export async function getReviewThreads(cwd: string, number: number, repo?: { own
       pullRequest(number:$number){
         reviewThreads(first:100){
           nodes{
-            id isResolved isOutdated path line
+            id isResolved isOutdated path line startLine originalLine originalStartLine diffSide startDiffSide subjectType
             comments(first:50){
-              nodes{ id databaseId body author{login} createdAt viewerDidAuthor }
+              nodes{ id databaseId body author{login} createdAt viewerDidAuthor path line startLine originalLine originalStartLine diffHunk }
             }
           }
         }
@@ -283,21 +283,38 @@ export async function getReviewThreads(cwd: string, number: number, repo?: { own
   ], cwd)
   const data = parseJson<any>(output, 'review threads')
   const nodes = data?.data?.repository?.pullRequest?.reviewThreads?.nodes || []
-  return nodes.map((t: any) => ({
-    id: t.id,
-    isResolved: t.isResolved,
-    isOutdated: t.isOutdated,
-    path: t.path,
-    line: t.line,
-    comments: (t.comments?.nodes || []).map((c: any) => ({
+  return nodes.map((t: any) => {
+    const comments = (t.comments?.nodes || []).map((c: any) => ({
       id: c.id,
       databaseId: c.databaseId,
       body: c.body,
       author: c.author,
       createdAt: c.createdAt,
       viewerDidAuthor: c.viewerDidAuthor ?? false,
-    })),
-  }))
+      path: c.path ?? null,
+      line: c.line ?? null,
+      startLine: c.startLine ?? null,
+      originalLine: c.originalLine ?? null,
+      originalStartLine: c.originalStartLine ?? null,
+      diffHunk: c.diffHunk ?? null,
+    }))
+    const firstDiffHunk = comments.find((c: any) => c.diffHunk)?.diffHunk ?? null
+    return {
+      id: t.id,
+      isResolved: t.isResolved,
+      isOutdated: t.isOutdated,
+      path: t.path,
+      line: t.line,
+      startLine: t.startLine ?? null,
+      originalLine: t.originalLine ?? null,
+      originalStartLine: t.originalStartLine ?? null,
+      diffSide: t.diffSide ?? null,
+      startDiffSide: t.startDiffSide ?? null,
+      subjectType: t.subjectType ?? null,
+      diffHunk: firstDiffHunk,
+      comments,
+    }
+  })
 }
 
 export async function replyToReviewThread(cwd: string, prNumber: number, commentDatabaseId: number, body: string): Promise<void> {

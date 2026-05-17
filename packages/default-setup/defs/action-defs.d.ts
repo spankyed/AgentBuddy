@@ -986,6 +986,8 @@ interface TNodeEntity extends BaseEntity {
     startedAt: TimestampMs;
     completedAt?: TimestampMs;
     eventType?: string;
+    triggerType?: 'listener' | 'schedule';
+    cronExpression?: string;
     stepNodeType?: string;
     final?: boolean;
     nodeAttributes?: Record<string, unknown>;
@@ -1003,7 +1005,9 @@ interface EventListenerEntity {
     nodeId: EARS.EntityId;
     eventType: string;
     label: string;
-    scope: 'global' | 'local' | 'entry';
+    triggerType: 'listener' | 'schedule';
+    scope?: 'global' | 'local' | 'entry';
+    cronExpression?: string;
 }
 interface FlowTNodeData {
     flowTNodeId: EARS.EntityId;
@@ -4295,6 +4299,13 @@ interface GhReviewThread {
     isOutdated: boolean;
     path: string;
     line: number | null;
+    startLine?: number | null;
+    originalLine?: number | null;
+    originalStartLine?: number | null;
+    diffSide?: 'LEFT' | 'RIGHT' | null;
+    startDiffSide?: 'LEFT' | 'RIGHT' | null;
+    subjectType?: 'LINE' | 'FILE' | null;
+    diffHunk?: string | null;
     comments: GhReviewComment[];
 }
 interface GhReviewComment {
@@ -4306,6 +4317,12 @@ interface GhReviewComment {
     };
     createdAt: string;
     viewerDidAuthor: boolean;
+    path?: string | null;
+    line?: number | null;
+    startLine?: number | null;
+    originalLine?: number | null;
+    originalStartLine?: number | null;
+    diffHunk?: string | null;
 }
 interface TerminalInfo {
     id: EARS.EntityId;
@@ -5892,9 +5909,13 @@ declare const services: {
             readonly rootData: () => FlowTNodeData;
         };
         readonly brainCommands: {
-            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType">, flowTNodeId: EARS.EntityId) => TNodeEntity;
+            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType"> & {
+                triggerType?: "listener" | "schedule";
+                cronExpression?: string;
+            }, flowTNodeId: EARS.EntityId) => TNodeEntity;
             readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
                 flowTNode: TNodeEntity;
+                flowId: EARS.EntityId;
                 eventNodes: ListenerNode[];
             };
             readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {
@@ -5905,7 +5926,7 @@ declare const services: {
                 rootFlow: FlowEntity;
                 rootFlowTNode: TNodeEntity;
                 eventNodes: ListenerNode[];
-                entryNode: ListenerNode;
+                entryNode?: ListenerNode;
             };
             readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
             readonly updateTNodeResult: (tNodeId: EARS.EntityId, result: any) => void;

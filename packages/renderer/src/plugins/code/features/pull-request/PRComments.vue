@@ -136,9 +136,14 @@
             class="shrink-0 text-neutral-500 transition-transform"
             :class="{ 'rotate-90': expandedThreads.has(thread.id) }"
           />
-          <span class="text-xs text-neutral-400 truncate flex-1" :title="thread.path">
-            {{ thread.path.split('/').pop() }}{{ thread.line ? `:${thread.line}` : '' }}
-          </span>
+          <div class="min-w-0 flex-1">
+            <div class="text-xs text-neutral-300 truncate" :title="thread.path">
+              {{ thread.path }}
+            </div>
+            <div class="text-[11px] text-neutral-500 truncate">
+              {{ getThreadLocationLabel(thread) }}
+            </div>
+          </div>
           <span
             class="text-[11px] px-1.5 py-0.5 rounded-full shrink-0"
             :class="thread.isResolved
@@ -149,6 +154,15 @@
 
         <!-- Thread comments (collapsible) -->
         <div v-if="expandedThreads.has(thread.id)" class="border-t border-neutral-800">
+          <div v-if="getThreadDiffLines(thread).length" class="px-3 py-2 border-b border-neutral-800/50 bg-neutral-950/35 overflow-x-auto">
+            <pre class="text-[11px] leading-5 font-mono whitespace-pre min-w-max"><span
+              v-for="(line, lineIndex) in getThreadDiffLines(thread)"
+              :key="lineIndex"
+              class="block"
+              :class="getDiffLineClass(line)"
+            >{{ line.text }}</span></pre>
+          </div>
+
           <div
             v-for="(comment, i) in thread.comments"
             :key="comment.id"
@@ -386,6 +400,47 @@ function handleResolveToggle(thread: GhReviewThread) {
     expandedThreads.value.delete(thread.id)
     emit('resolve-thread', thread.id)
   }
+}
+
+type DiffLine = {
+  text: string
+  kind: 'context' | 'added' | 'removed' | 'meta'
+}
+
+function getThreadLocationLabel(thread: GhReviewThread): string {
+  if (thread.subjectType === 'FILE') return 'Comment on file'
+
+  const startLine = thread.startLine ?? thread.originalStartLine ?? null
+  const endLine = thread.line ?? thread.originalLine ?? null
+  if (startLine && endLine && startLine !== endLine) {
+    return `Comment on lines +${startLine} to +${endLine}`
+  }
+  if (endLine) return `Comment on line +${endLine}`
+  return 'Comment on file'
+}
+
+function getThreadDiffLines(thread: GhReviewThread): DiffLine[] {
+  const diffHunk = thread.diffHunk || thread.comments.find(comment => comment.diffHunk)?.diffHunk
+  if (!diffHunk) return []
+
+  return diffHunk.split('\n').map(text => ({
+    text,
+    kind: getDiffLineKind(text),
+  }))
+}
+
+function getDiffLineKind(text: string): DiffLine['kind'] {
+  if (text.startsWith('@@')) return 'meta'
+  if (text.startsWith('+') && !text.startsWith('+++')) return 'added'
+  if (text.startsWith('-') && !text.startsWith('---')) return 'removed'
+  return 'context'
+}
+
+function getDiffLineClass(line: DiffLine): string {
+  if (line.kind === 'added') return 'text-green-300 bg-green-950/30'
+  if (line.kind === 'removed') return 'text-red-300 bg-red-950/30'
+  if (line.kind === 'meta') return 'text-blue-300'
+  return 'text-neutral-400'
 }
 
 function formatDate(dateStr: string): string {
