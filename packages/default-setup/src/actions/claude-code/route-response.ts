@@ -60,11 +60,6 @@ export async function action(
     return { success: false, reason: 'no matching pending control request' };
   }
 
-  const handle = (services.cli as any).claudeCode.getHandle(threadId);
-  if (!handle) {
-    return { success: false, reason: 'no active CLI handle for thread' };
-  }
-
   const denied = response?.approved === false || response?.cancelled === true;
 
   // When denied, clear toolName for tools that have their own non-deny
