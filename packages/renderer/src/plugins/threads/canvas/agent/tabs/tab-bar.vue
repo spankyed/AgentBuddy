@@ -28,13 +28,13 @@
           :is-pinned="true"
           :is-drag-over="dragOverGroupId === group.id"
           :tab-count="groupTabs.length"
-          @toggle="$emit('toggle-group-collapse', group.id)"
-          @rename="(name: string) => $emit('rename-group', group.id, name)"
-          @change-color="(color: string) => $emit('change-group-color', group.id, color)"
-          @ungroup-all="$emit('ungroup-all', group.id)"
-          @close-all="$emit('close-all-in-group', group.id)"
-          @pin-group="$emit('pin-group', group.id)"
-          @unpin-group="$emit('unpin-group', group.id)"
+          @toggle="actor.send({ type: 'TOGGLE_TAB_GROUP_COLLAPSE', groupId: group.id })"
+          @rename="(name: string) => actor.send({ type: 'RENAME_TAB_GROUP', groupId: group.id, name })"
+          @change-color="(color: string) => actor.send({ type: 'CHANGE_TAB_GROUP_COLOR', groupId: group.id, color: color as TabGroupColor })"
+          @ungroup-all="actor.send({ type: 'UNGROUP_ALL_IN_GROUP', groupId: group.id })"
+          @close-all="actor.send({ type: 'CLOSE_ALL_IN_GROUP', groupId: group.id })"
+          @pin-group="actor.send({ type: 'PIN_TAB_GROUP', groupId: group.id })"
+          @unpin-group="actor.send({ type: 'UNPIN_TAB_GROUP', groupId: group.id })"
           @group-drag-over="(e: DragEvent) => handleGroupDragOver(e, group.id)"
           @group-drag-leave="(e: DragEvent) => handleGroupDragLeave(e, group.id)"
           @group-drop="(e: DragEvent) => handleGroupDrop(e, group.id)"
@@ -49,18 +49,18 @@
             :groupId="group.id"
             :tabGroups="tabGroups"
             :isDragging="draggedTab?.id === tab.id"
-            @select="$emit('select-tab', tab.id)"
-            @close="$emit('close-tab', tab.id)"
-            @edit-details="$emit('edit-details', tab.id)"
-            @delete-thread="$emit('delete-thread', tab.id)"
-            @archive-thread="$emit('archive-thread', tab.id)"
-            @unpin-thread="$emit('unpin-thread', tab.id)"
-            @pin-thread="$emit('pin-thread', tab.id)"
+            @select="selectTab(tab.id)"
+            @close="actor.send({ type: 'CLOSE_TAB', tabId: tab.id })"
+            @edit-details="actor.send({ type: 'SELECT_THREAD', id: tab.id })"
+            @delete-thread="actor.send({ type: 'DELETE_THREAD', threadId: tab.id })"
+            @archive-thread="actor.send({ type: 'ARCHIVE_THREAD', threadId: tab.id })"
+            @unpin-thread="actor.send({ type: 'UNPIN_THREAD', threadId: tab.id })"
+            @pin-thread="actor.send({ type: 'PIN_THREAD', threadId: tab.id })"
             @dragstart="handleDragStart(tab, $event)"
             @dragend="handleDragEnd"
-            @add-to-group="(groupId: string) => $emit('add-tab-to-group', tab.id, groupId)"
-            @remove-from-group="$emit('remove-tab-from-group', tab.id)"
-            @create-group="$emit('create-group', [tab.id])"
+            @add-to-group="(gId: string) => actor.send({ type: 'ADD_TAB_TO_GROUP', tabId: tab.id, groupId: gId })"
+            @remove-from-group="actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId: tab.id })"
+            @create-group="actor.send({ type: 'CREATE_TAB_GROUP', tabIds: [tab.id] })"
           />
         </template>
       </template>
@@ -74,18 +74,18 @@
         :isPinned="true"
         :tabGroups="tabGroups"
         :isDragging="draggedTab?.id === tab.id"
-        @select="$emit('select-tab', tab.id)"
-        @close="$emit('close-tab', tab.id)"
-        @edit-details="$emit('edit-details', tab.id)"
-        @delete-thread="$emit('delete-thread', tab.id)"
-        @archive-thread="$emit('archive-thread', tab.id)"
-        @unpin-thread="$emit('unpin-thread', tab.id)"
-        @pin-thread="$emit('pin-thread', tab.id)"
+        @select="selectTab(tab.id)"
+        @close="actor.send({ type: 'CLOSE_TAB', tabId: tab.id })"
+        @edit-details="actor.send({ type: 'SELECT_THREAD', id: tab.id })"
+        @delete-thread="actor.send({ type: 'DELETE_THREAD', threadId: tab.id })"
+        @archive-thread="actor.send({ type: 'ARCHIVE_THREAD', threadId: tab.id })"
+        @unpin-thread="actor.send({ type: 'UNPIN_THREAD', threadId: tab.id })"
+        @pin-thread="actor.send({ type: 'PIN_THREAD', threadId: tab.id })"
         @dragstart="handleDragStart(tab, $event)"
         @dragend="handleDragEnd"
-        @add-to-group="(groupId: string) => $emit('add-tab-to-group', tab.id, groupId)"
-        @remove-from-group="$emit('remove-tab-from-group', tab.id)"
-        @create-group="$emit('create-group', [tab.id])"
+        @add-to-group="(gId: string) => actor.send({ type: 'ADD_TAB_TO_GROUP', tabId: tab.id, groupId: gId })"
+        @remove-from-group="actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId: tab.id })"
+        @create-group="actor.send({ type: 'CREATE_TAB_GROUP', tabIds: [tab.id] })"
       />
     </div>
 
@@ -116,13 +116,13 @@
           :is-pinned="false"
           :is-drag-over="dragOverGroupId === groupId"
           :tab-count="groupTabs.length"
-          @toggle="$emit('toggle-group-collapse', groupId)"
-          @rename="(name: string) => $emit('rename-group', groupId, name)"
-          @change-color="(color: string) => $emit('change-group-color', groupId, color)"
-          @ungroup-all="$emit('ungroup-all', groupId)"
-          @close-all="$emit('close-all-in-group', groupId)"
-          @pin-group="$emit('pin-group', groupId)"
-          @unpin-group="$emit('unpin-group', groupId)"
+          @toggle="actor.send({ type: 'TOGGLE_TAB_GROUP_COLLAPSE', groupId })"
+          @rename="(name: string) => actor.send({ type: 'RENAME_TAB_GROUP', groupId, name })"
+          @change-color="(color: string) => actor.send({ type: 'CHANGE_TAB_GROUP_COLOR', groupId, color: color as TabGroupColor })"
+          @ungroup-all="actor.send({ type: 'UNGROUP_ALL_IN_GROUP', groupId })"
+          @close-all="actor.send({ type: 'CLOSE_ALL_IN_GROUP', groupId })"
+          @pin-group="actor.send({ type: 'PIN_TAB_GROUP', groupId })"
+          @unpin-group="actor.send({ type: 'UNPIN_TAB_GROUP', groupId })"
           @group-drag-over="(e: DragEvent) => handleGroupDragOver(e, groupId)"
           @group-drag-leave="(e: DragEvent) => handleGroupDragLeave(e, groupId)"
           @group-drop="(e: DragEvent) => handleGroupDrop(e, groupId)"
@@ -137,18 +137,18 @@
             :groupId="groupId"
             :tabGroups="tabGroups"
             :isDragging="draggedTab?.id === tab.id"
-            @select="$emit('select-tab', tab.id)"
-            @close="$emit('close-tab', tab.id)"
-            @edit-details="$emit('edit-details', tab.id)"
-            @delete-thread="$emit('delete-thread', tab.id)"
-            @archive-thread="$emit('archive-thread', tab.id)"
-            @unpin-thread="$emit('unpin-thread', tab.id)"
-            @pin-thread="$emit('pin-thread', tab.id)"
+            @select="selectTab(tab.id)"
+            @close="actor.send({ type: 'CLOSE_TAB', tabId: tab.id })"
+            @edit-details="actor.send({ type: 'SELECT_THREAD', id: tab.id })"
+            @delete-thread="actor.send({ type: 'DELETE_THREAD', threadId: tab.id })"
+            @archive-thread="actor.send({ type: 'ARCHIVE_THREAD', threadId: tab.id })"
+            @unpin-thread="actor.send({ type: 'UNPIN_THREAD', threadId: tab.id })"
+            @pin-thread="actor.send({ type: 'PIN_THREAD', threadId: tab.id })"
             @dragstart="handleDragStart(tab, $event)"
             @dragend="handleDragEnd"
-            @add-to-group="(gId: string) => $emit('add-tab-to-group', tab.id, gId)"
-            @remove-from-group="$emit('remove-tab-from-group', tab.id)"
-            @create-group="$emit('create-group', [tab.id])"
+            @add-to-group="(gId: string) => actor.send({ type: 'ADD_TAB_TO_GROUP', tabId: tab.id, groupId: gId })"
+            @remove-from-group="actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId: tab.id })"
+            @create-group="actor.send({ type: 'CREATE_TAB_GROUP', tabIds: [tab.id] })"
           />
         </template>
       </template>
@@ -162,18 +162,18 @@
         :isPinned="false"
         :tabGroups="tabGroups"
         :isDragging="draggedTab?.id === tab.id"
-        @select="$emit('select-tab', tab.id)"
-        @close="$emit('close-tab', tab.id)"
-        @edit-details="$emit('edit-details', tab.id)"
-        @delete-thread="$emit('delete-thread', tab.id)"
-        @archive-thread="$emit('archive-thread', tab.id)"
-        @unpin-thread="$emit('unpin-thread', tab.id)"
-        @pin-thread="$emit('pin-thread', tab.id)"
+        @select="selectTab(tab.id)"
+        @close="actor.send({ type: 'CLOSE_TAB', tabId: tab.id })"
+        @edit-details="actor.send({ type: 'SELECT_THREAD', id: tab.id })"
+        @delete-thread="actor.send({ type: 'DELETE_THREAD', threadId: tab.id })"
+        @archive-thread="actor.send({ type: 'ARCHIVE_THREAD', threadId: tab.id })"
+        @unpin-thread="actor.send({ type: 'UNPIN_THREAD', threadId: tab.id })"
+        @pin-thread="actor.send({ type: 'PIN_THREAD', threadId: tab.id })"
         @dragstart="handleDragStart(tab, $event)"
         @dragend="handleDragEnd"
-        @add-to-group="(groupId: string) => $emit('add-tab-to-group', tab.id, groupId)"
-        @remove-from-group="$emit('remove-tab-from-group', tab.id)"
-        @create-group="$emit('create-group', [tab.id])"
+        @add-to-group="(gId: string) => actor.send({ type: 'ADD_TAB_TO_GROUP', tabId: tab.id, groupId: gId })"
+        @remove-from-group="actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId: tab.id })"
+        @create-group="actor.send({ type: 'CREATE_TAB_GROUP', tabIds: [tab.id] })"
       />
     </div>
   </div>
@@ -184,9 +184,13 @@ import { computed, ref } from 'vue';
 import TabItem from './tab-item.vue';
 import GroupLabel from './group-label.vue';
 import type { Tab } from '@app/api';
-import type { ThreadTabGroup } from './types';
+import type { ThreadTabGroup, TabGroupColor } from './types';
 import { categorizeThreadTabs } from './tab-utils';
 import { useTabDragDrop } from './useTabDragDrop';
+import { applicationState } from '@/main';
+import { id, type ThreadsState } from '@/plugins/threads/state';
+
+const actor: ThreadsState = applicationState.system.get(id);
 
 const props = defineProps<{
   tabs: Tab[];
@@ -194,29 +198,10 @@ const props = defineProps<{
   tabGroups: ThreadTabGroup[];
 }>();
 
-const emit = defineEmits<{
-  'select-tab': [tabId: string];
-  'close-tab': [tabId: string];
-  'edit-details': [tabId: string];
-  'delete-thread': [tabId: string];
-  'archive-thread': [tabId: string];
-  'unpin-thread': [tabId: string];
-  'pin-thread': [tabId: string];
-  'reorder': [fromIndex: number, toIndex: number];
-  'pin-tab-at': [tabId: string, targetTabId: string, side: 'left' | 'right'];
-  'unpin-tab-at': [tabId: string, targetTabId: string, side: 'left' | 'right'];
-  'create-group': [tabIds: string[]];
-  'rename-group': [groupId: string, name: string];
-  'change-group-color': [groupId: string, color: string];
-  'delete-group': [groupId: string];
-  'toggle-group-collapse': [groupId: string];
-  'add-tab-to-group': [tabId: string, groupId: string];
-  'remove-tab-from-group': [tabId: string];
-  'ungroup-all': [groupId: string];
-  'close-all-in-group': [groupId: string];
-  'pin-group': [groupId: string];
-  'unpin-group': [groupId: string];
-}>();
+function selectTab(tabId: string) {
+  actor.send({ type: 'SELECT_TAB', tabId });
+  actor.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId });
+}
 
 const pinnedContainer = ref<HTMLElement | null>(null);
 const mainContainer = ref<HTMLElement | null>(null);
@@ -262,13 +247,13 @@ const {
   tabGroups: computed(() => props.tabGroups),
   pinnedContainer,
   mainContainer,
-  onPinTab: (tabId) => emit('pin-thread', tabId),
-  onUnpinTab: (tabId) => emit('unpin-thread', tabId),
-  onPinTabAt: (tabId, targetTabId, side) => emit('pin-tab-at', tabId, targetTabId, side),
-  onUnpinTabAt: (tabId, targetTabId, side) => emit('unpin-tab-at', tabId, targetTabId, side),
-  onAddToGroup: (tabId, groupId) => emit('add-tab-to-group', tabId, groupId),
-  onRemoveFromGroup: (tabId) => emit('remove-tab-from-group', tabId),
-  onReorder: (from, to) => emit('reorder', from, to),
+  onPinTab: (tabId) => actor.send({ type: 'PIN_THREAD', threadId: tabId }),
+  onUnpinTab: (tabId) => actor.send({ type: 'UNPIN_THREAD', threadId: tabId }),
+  onPinTabAt: (tabId, targetTabId, side) => actor.send({ type: 'PIN_TAB_AT', tabId, targetTabId, side }),
+  onUnpinTabAt: (tabId, targetTabId, side) => actor.send({ type: 'UNPIN_TAB_AT', tabId, targetTabId, side }),
+  onAddToGroup: (tabId, groupId) => actor.send({ type: 'ADD_TAB_TO_GROUP', tabId, groupId }),
+  onRemoveFromGroup: (tabId) => actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId }),
+  onReorder: (from, to) => actor.send({ type: 'REORDER_TABS', fromIndex: from, toIndex: to }),
 });
 
 // Group drag-over state
@@ -283,7 +268,7 @@ function handleGroupDragOver(event: DragEvent, groupId: string) {
   // Auto-expand collapsed group when dragging over it
   const group = getGroup(groupId);
   if (group?.isCollapsed) {
-    emit('toggle-group-collapse', groupId);
+    actor.send({ type: 'TOGGLE_TAB_GROUP_COLLAPSE', groupId });
   }
 
   // Set drop position to sentinel for empty group drop
@@ -310,9 +295,9 @@ function handleGroupDrop(event: DragEvent, groupId: string) {
   // Add to group
   if (sourceTab.groupId !== groupId) {
     if (sourceTab.groupId) {
-      emit('remove-tab-from-group', sourceTab.id);
+      actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId: sourceTab.id });
     }
-    emit('add-tab-to-group', sourceTab.id, groupId);
+    actor.send({ type: 'ADD_TAB_TO_GROUP', tabId: sourceTab.id, groupId });
   }
 
   handleDragEnd();
