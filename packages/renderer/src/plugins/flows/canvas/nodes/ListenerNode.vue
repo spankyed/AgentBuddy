@@ -75,6 +75,13 @@ function cronToHuman(expr: string): string {
   const [min, hour, dom, mon, dow] = parts
 
   if (min === '*' && hour === '*' && dom === '*' && mon === '*' && dow === '*') return 'Every minute'
+
+  // Step expressions: */N * * * * or */N in hour field
+  const minStep = min.match(/^\*\/(\d+)$/)
+  if (minStep && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Every ${minStep[1]} min`
+  const hourStep = hour.match(/^\*\/(\d+)$/)
+  if (min !== '*' && hourStep && dom === '*' && mon === '*' && dow === '*') return `Every ${hourStep[1]}h at :${min.padStart(2, '0')}`
+
   if (hour === '*' && dom === '*' && mon === '*' && dow === '*') return `Hourly at :${min.padStart(2, '0')}`
   if (dom === '*' && mon === '*' && dow === '*') return `Daily at ${hour}:${min.padStart(2, '0')}`
 
