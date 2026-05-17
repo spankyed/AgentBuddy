@@ -3,11 +3,15 @@
     <ContextMenuTrigger as-child>
       <div
         draggable="true"
-        class="tab-item relative flex items-center px-4 py-1 text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
+        class="tab-item relative flex items-center px-4 h-[30px] text-sm transition-colors cursor-pointer group border-r border-neutral-800 max-w-[200px]"
         :class="[
           isActive
-            ? 'bg-neutral-850 text-white border-t border-blue-500'
-            : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200',
+            ? groupId
+              ? 'text-white'
+              : 'bg-neutral-850 text-white border-t border-blue-500'
+            : groupId
+              ? 'text-neutral-400 hover:text-neutral-200 hover:brightness-110'
+              : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200',
           isDragging && 'opacity-50'
         ]"
         :style="groupColorStyle"
@@ -196,10 +200,11 @@ const groupColorStyle = computed(() => {
   const group = props.tabGroups.find(g => g.id === props.groupId)
   if (!group) return {}
   return {
+    borderTop: props.isActive ? `2px solid var(--color-${group.color})` : 'none',
     borderBottom: `2px solid var(--color-${group.color})`,
     backgroundColor: props.isActive
-      ? `color-mix(in srgb, var(--color-${group.color}) 15%, rgb(28, 28, 30))`
-      : undefined
+      ? `color-mix(in srgb, var(--color-${group.color}) 20%, rgb(28, 28, 30))`
+      : `color-mix(in srgb, var(--color-${group.color}) 10%, transparent)`
   }
 })
 

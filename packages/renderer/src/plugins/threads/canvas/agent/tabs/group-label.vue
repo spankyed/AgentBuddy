@@ -2,7 +2,7 @@
   <ContextMenuRoot v-model:open="contextMenuOpen">
     <ContextMenuTrigger as-child>
       <div
-        class="flex items-center gap-1.5 px-2 py-0 min-h-[2.5rem] cursor-pointer group-label flex-shrink-0 transition-all hover:brightness-110"
+        class="flex items-center gap-1.5 px-2 h-[30px] cursor-pointer group-label flex-shrink-0 transition-all hover:brightness-110"
         :style="{
           backgroundColor: (isDragOver || !isCollapsed) ? `var(--color-${color})` : `color-mix(in srgb, var(--color-${color}) 10%, transparent)`,
           borderBottom: !isCollapsed ? `2px solid var(--color-${color})` : 'none',
