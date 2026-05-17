@@ -530,6 +530,8 @@ export const pullRequestState = setup({
         selectedPR: null,
         viewMode: 'pr' as const,
         prError: null,
+        prComments: [],
+        reviewThreads: [],
         createTitle: '',
         createBody: '',
         createDraft: false,
