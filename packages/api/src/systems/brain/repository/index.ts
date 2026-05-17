@@ -212,6 +212,7 @@ export const brainQueries = {
         nodeId: node.id!,
         eventType: `schedule.${node.id}`,
         label: node.label || 'Schedule',
+        scope: 'local' as const,
       })),
     ];
   },

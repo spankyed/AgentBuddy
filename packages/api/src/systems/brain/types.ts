@@ -47,7 +47,7 @@ export interface EventListenerEntity {
   nodeId: EARS.EntityId;
   eventType: string;
   label: string;
-  scope?: 'global' | 'local' | 'entry';
+  scope: 'global' | 'local' | 'entry';
 }
 
 export interface FlowTNodeData {
