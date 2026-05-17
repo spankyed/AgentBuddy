@@ -232,8 +232,8 @@ const switchToFile = (filePath: string, content: string) => {
     editorInstance.value.setModel(model)
   }
   
-  // Restore view state
-  if (props.preserveViewState && model) {
+  // Restore view state (skip when transitioning from diff — pendingScrollLine takes priority)
+  if (props.preserveViewState && model && pendingScrollLine === null) {
     const savedState = viewStates.get(model.uri.toString())
     if (savedState) {
       editorInstance.value.restoreViewState(savedState)
@@ -242,10 +242,7 @@ const switchToFile = (filePath: string, content: string) => {
 
   // Apply scroll position carried over from diff editor
   if (pendingScrollLine !== null) {
-    const savedState = viewStates.get(model.uri.toString())
-    if (!savedState) {
-      editorInstance.value.revealLineInCenter(pendingScrollLine)
-    }
+    editorInstance.value.revealLineInCenter(pendingScrollLine)
     pendingScrollLine = null
   }
 
@@ -450,6 +447,15 @@ watch(() => props.mode, (newMode, oldMode) => {
 // causing "TextModel got disposed before DiffEditorWidget model got reset".
 watch(() => props.filePath, (newPath, oldPath) => {
   if (props.mode === 'diff' && newPath !== oldPath && diffEditorInstance.value) {
+    // Capture scroll position before destroying (for "open file from diff" navigation)
+    try {
+      const modifiedEditor = diffEditorInstance.value.getModifiedEditor()
+      const visibleRanges = modifiedEditor.getVisibleRanges()
+      if (visibleRanges.length > 0) {
+        pendingScrollLine = visibleRanges[0].startLineNumber
+      }
+    } catch {}
+
     diffUpdateDisposable?.dispose()
     diffUpdateDisposable = null
     try { diffEditorInstance.value.setModel(null) } catch {}
