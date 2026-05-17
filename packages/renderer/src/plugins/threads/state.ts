@@ -15,6 +15,9 @@ import { contextMenuFn } from '@/core/context-menu';
 import type { Simplify } from '@/core/types/type-helpers';
 import { application } from '@/core/actors/application';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@/core/utils/hotkeys';
+import type { ThreadTabGroup, TabGroupColor } from '@/plugins/threads/canvas/agent/tabs/types';
+import { getNextAvailableColor } from '@/plugins/threads/canvas/agent/tabs/types';
+import { saveThreadTabGroups, loadThreadTabGroups } from '@/plugins/threads/canvas/agent/tabs/tab-groups';
 
 export const id = 'threads' as const;
 
@@ -37,14 +40,14 @@ function getInitialView(): 'list' | 'kanban' | 'dashboard' {
 const THREADS_TABS_KEY = 'threads-open-tabs';
 
 interface StoredTabData {
-  tabs: { id: string; label: string }[];
+  tabs: { id: string; label: string; groupId?: string }[];
   activeTabId: string;
 }
 
 function saveTabsToStorage(tabs: Tab[], activeTabId: string) {
   try {
     localStorage.setItem(THREADS_TABS_KEY, JSON.stringify({
-      tabs: tabs.filter(t => !t.pinned).map(t => ({ id: t.id, label: t.label })),
+      tabs: tabs.filter(t => !t.pinned).map(t => ({ id: t.id, label: t.label, ...(t.groupId && { groupId: t.groupId }) })),
       activeTabId,
     } satisfies StoredTabData));
   } catch {}
@@ -212,6 +215,21 @@ type UIEvent =
   | { type: 'TOKEN_STREAM'; token: string }
   | { type: 'LLM_DONE' }
   | { type: 'RENAME_THREAD'; threadId: string; topic: string }
+  // Tab reorder & group events
+  | { type: 'REORDER_TABS'; fromIndex: number; toIndex: number }
+  | { type: 'PIN_TAB_AT'; tabId: string; targetTabId: string; side: 'left' | 'right' }
+  | { type: 'UNPIN_TAB_AT'; tabId: string; targetTabId: string; side: 'left' | 'right' }
+  | { type: 'CREATE_TAB_GROUP'; tabIds?: string[] }
+  | { type: 'RENAME_TAB_GROUP'; groupId: string; name: string }
+  | { type: 'CHANGE_TAB_GROUP_COLOR'; groupId: string; color: TabGroupColor }
+  | { type: 'DELETE_TAB_GROUP'; groupId: string }
+  | { type: 'TOGGLE_TAB_GROUP_COLLAPSE'; groupId: string }
+  | { type: 'ADD_TAB_TO_GROUP'; tabId: string; groupId: string }
+  | { type: 'REMOVE_TAB_FROM_GROUP'; tabId: string }
+  | { type: 'UNGROUP_ALL_IN_GROUP'; groupId: string }
+  | { type: 'CLOSE_ALL_IN_GROUP'; groupId: string }
+  | { type: 'PIN_TAB_GROUP'; groupId: string }
+  | { type: 'UNPIN_TAB_GROUP'; groupId: string }
 
 type ThreadEvents =
   | UIEvent
@@ -261,6 +279,7 @@ interface ThreadsContext {
   chatStateOverrides: Record<string, { id: string; expiresAt: number }>;
   tabs: Tab[];
   activeTabId: string;
+  tabGroups: ThreadTabGroup[];
   mode: string;
   phase: string;
   phaseByMode: Record<string, string | undefined>;
@@ -940,14 +959,26 @@ const threadsState = setup({
 
       // Create tab entries for stored tabs not already in backend tabs
       let allTabs = [...backendTabs];
+      const storedGroupIdMap = new Map<string, string>();
       if (stored) {
         for (const storedTab of stored.tabs) {
+          if (storedTab.groupId) storedGroupIdMap.set(storedTab.id, storedTab.groupId);
           if (!backendTabIds.has(storedTab.id)) {
             const label = threadLabelMap.get(storedTab.id) || storedTab.label || 'Thread';
-            allTabs.push({ id: storedTab.id, label, artifacts: [] });
+            allTabs.push({ id: storedTab.id, label, artifacts: [], ...(storedTab.groupId && { groupId: storedTab.groupId }) });
           }
         }
       }
+      // Restore groupId on backend tabs from stored data
+      if (storedGroupIdMap.size > 0) {
+        allTabs = allTabs.map(t => {
+          const gId = storedGroupIdMap.get(t.id);
+          return gId && !t.groupId ? { ...t, groupId: gId } : t;
+        });
+      }
+
+      // Load tab groups from localStorage
+      const restoredTabGroups = loadThreadTabGroups();
 
       const activeTabId = (stored?.activeTabId && allTabs.some(t => t.id === stored.activeTabId))
         ? stored.activeTabId
@@ -958,6 +989,7 @@ const threadsState = setup({
         recentThreads: (typedEvent.data.recentThreads || []) as ThreadEntity[],
         tabs: allTabs,
         activeTabId,
+        tabGroups: restoredTabGroups,
         ...extracted,
         hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
@@ -1060,6 +1092,139 @@ const threadsState = setup({
       return { tabs: newTabs, activeTabId: newActiveTabId };
     }),
     persistTabs: ({ context }) => saveTabsToStorage(context.tabs, context.activeTabId),
+    persistTabGroups: ({ context }) => saveThreadTabGroups(context.tabGroups),
+
+    // ---- Tab reorder & group actions ----
+    reorderTabs: assign(({ context, event }) => {
+      const { fromIndex, toIndex } = typeOf('REORDER_TABS', event);
+      const tabs = [...context.tabs];
+      const [moved] = tabs.splice(fromIndex, 1);
+      tabs.splice(toIndex, 0, moved);
+      return { tabs };
+    }),
+    pinTabAt: assign(({ context, event }) => {
+      const { tabId, targetTabId, side } = typeOf('PIN_TAB_AT', event);
+      const tabs = context.tabs.map(t => t.id === tabId ? { ...t, pinned: true, groupId: undefined } : t);
+      const sourceIdx = tabs.findIndex(t => t.id === tabId);
+      const [moved] = tabs.splice(sourceIdx, 1);
+      const targetIdx = tabs.findIndex(t => t.id === targetTabId);
+      const insertIdx = side === 'left' ? targetIdx : targetIdx + 1;
+      tabs.splice(insertIdx, 0, moved);
+      return { tabs };
+    }),
+    unpinTabAt: assign(({ context, event }) => {
+      const { tabId, targetTabId, side } = typeOf('UNPIN_TAB_AT', event);
+      const tabs = context.tabs.map(t => t.id === tabId ? { ...t, pinned: false, groupId: undefined } : t);
+      const sourceIdx = tabs.findIndex(t => t.id === tabId);
+      const [moved] = tabs.splice(sourceIdx, 1);
+      const targetIdx = tabs.findIndex(t => t.id === targetTabId);
+      const insertIdx = side === 'left' ? targetIdx : targetIdx + 1;
+      tabs.splice(insertIdx, 0, moved);
+      return { tabs };
+    }),
+    createTabGroup: assign(({ context, event }) => {
+      const { tabIds } = typeOf('CREATE_TAB_GROUP', event) as { type: string; tabIds?: string[] };
+      const firstTab = tabIds?.[0] ? context.tabs.find(t => t.id === tabIds[0]) : undefined;
+      const isPinned = firstTab?.pinned || false;
+      const color = getNextAvailableColor(context.tabGroups, isPinned);
+      const newGroup: ThreadTabGroup = {
+        id: crypto.randomUUID(),
+        name: 'New Group',
+        color,
+        isCollapsed: false,
+        order: context.tabGroups.length,
+        isPinned: isPinned || undefined,
+      };
+      const tabs = tabIds
+        ? context.tabs.map(t => tabIds.includes(t.id) ? { ...t, groupId: newGroup.id } : t)
+        : context.tabs;
+      return { tabGroups: [...context.tabGroups, newGroup], tabs };
+    }),
+    renameTabGroup: assign(({ context, event }) => {
+      const { groupId, name } = typeOf('RENAME_TAB_GROUP', event);
+      return {
+        tabGroups: context.tabGroups.map(g => g.id === groupId ? { ...g, name } : g),
+      };
+    }),
+    changeTabGroupColor: assign(({ context, event }) => {
+      const { groupId, color } = typeOf('CHANGE_TAB_GROUP_COLOR', event);
+      return {
+        tabGroups: context.tabGroups.map(g => g.id === groupId ? { ...g, color } : g),
+      };
+    }),
+    deleteTabGroup: assign(({ context, event }) => {
+      const { groupId } = typeOf('DELETE_TAB_GROUP', event);
+      return {
+        tabGroups: context.tabGroups.filter(g => g.id !== groupId),
+        tabs: context.tabs.map(t => t.groupId === groupId ? { ...t, groupId: undefined } : t),
+      };
+    }),
+    toggleTabGroupCollapse: assign(({ context, event }) => {
+      const { groupId } = typeOf('TOGGLE_TAB_GROUP_COLLAPSE', event);
+      return {
+        tabGroups: context.tabGroups.map(g => g.id === groupId ? { ...g, isCollapsed: !g.isCollapsed } : g),
+      };
+    }),
+    addTabToGroup: assign(({ context, event }) => {
+      const { tabId, groupId } = typeOf('ADD_TAB_TO_GROUP', event);
+      const group = context.tabGroups.find(g => g.id === groupId);
+      if (!group) return {};
+      return {
+        tabs: context.tabs.map(t => t.id === tabId ? { ...t, groupId, pinned: group.isPinned || false } : t),
+      };
+    }),
+    removeTabFromGroup: assign(({ context, event }) => {
+      const { tabId } = typeOf('REMOVE_TAB_FROM_GROUP', event);
+      return {
+        tabs: context.tabs.map(t => t.id === tabId ? { ...t, groupId: undefined } : t),
+      };
+    }),
+    ungroupAllInGroup: assign(({ context, event }) => {
+      const { groupId } = typeOf('UNGROUP_ALL_IN_GROUP', event);
+      return {
+        tabGroups: context.tabGroups.filter(g => g.id !== groupId),
+        tabs: context.tabs.map(t => t.groupId === groupId ? { ...t, groupId: undefined } : t),
+      };
+    }),
+    closeAllInGroup: enqueueActions(({ enqueue, context, event, self }) => {
+      const { groupId } = typeOf('CLOSE_ALL_IN_GROUP', event);
+      const tabsInGroup = context.tabs.filter(t => t.groupId === groupId);
+      const remainingTabs = context.tabs.filter(t => t.groupId !== groupId);
+      const needNewActive = tabsInGroup.some(t => t.id === context.activeTabId);
+      const newActiveTabId = needNewActive
+        ? (remainingTabs[remainingTabs.length - 1]?.id ?? '')
+        : context.activeTabId;
+
+      enqueue(assign({
+        tabs: remainingTabs,
+        activeTabId: newActiveTabId,
+        tabGroups: context.tabGroups.filter(g => g.id !== groupId),
+      }));
+
+      if (needNewActive && newActiveTabId) {
+        enqueue(() => self.send({ type: 'OPEN_THREAD_CHAT', threadId: newActiveTabId }));
+      }
+    }),
+    pinTabGroup: assign(({ context, event }) => {
+      const { groupId } = typeOf('PIN_TAB_GROUP', event);
+      return {
+        tabGroups: context.tabGroups.map(g => g.id === groupId ? { ...g, isPinned: true } : g),
+        tabs: context.tabs.map(t => t.groupId === groupId ? { ...t, pinned: true } : t),
+      };
+    }),
+    unpinTabGroup: assign(({ context, event }) => {
+      const { groupId } = typeOf('UNPIN_TAB_GROUP', event);
+      return {
+        tabGroups: context.tabGroups.map(g => g.id === groupId ? { ...g, isPinned: undefined } : g),
+        tabs: context.tabs.map(t => t.groupId === groupId ? { ...t, pinned: false } : t),
+      };
+    }),
+    cleanupEmptyGroups: assign(({ context }) => {
+      const tabGroupIds = new Set(context.tabs.map(t => t.groupId).filter(Boolean));
+      const tabGroups = context.tabGroups.filter(g => tabGroupIds.has(g.id));
+      return { tabGroups };
+    }),
+
     selectArtifact: assign(({ context, event }) => {
       const artifactId = typeOf('SELECT_ARTIFACT', event).artifactId;
       const tabs = context.tabs.map(tab =>
@@ -1293,6 +1458,7 @@ const threadsState = setup({
     chatStateOverrides: {} as Record<string, { id: string; expiresAt: number }>,
     tabs: [],
     activeTabId: '',
+    tabGroups: [],
     mode: '',
     phase: '',
     phaseByMode: {},
@@ -1357,7 +1523,7 @@ const threadsState = setup({
       actions: 'setArchivedThreads',
     },
     ARCHIVE_THREAD: {
-      actions: ['archiveThread', 'removeArchivedThread', 'persistTabs'],
+      actions: ['archiveThread', 'removeArchivedThread', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'],
       target: '.list',
     },
     UNARCHIVE_THREAD: {
@@ -1370,7 +1536,7 @@ const threadsState = setup({
       actions: 'pinThread',
     },
     THREAD_DELETED: {
-      actions: ['removeThreadFromList', 'persistTabs'],
+      actions: ['removeThreadFromList', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'],
       target: '.list',
     },
 
@@ -1388,7 +1554,7 @@ const threadsState = setup({
       actions: 'handleThreadsImportFailed',
     },
     THREAD_CHAT_ERROR: {
-      actions: ['removeStaleTab', 'persistTabs'],
+      actions: ['removeStaleTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'],
     },
     'THREADS.EXPORT': {
       actions: ['setExportingThreads', 'sendExportThreads'],
@@ -1499,8 +1665,23 @@ const threadsState = setup({
     },
     SELECT_TAB: { actions: ['selectTab', 'persistTabs'] },
     OPEN_THREAD_TAB: { actions: ['openThreadTab', 'persistTabs'] },
-    CLOSE_TAB: { actions: ['closeTab', 'persistTabs'] },
-    CLOSE_ACTIVE_TAB: { actions: ['closeActiveTab', 'persistTabs'] },
+    CLOSE_TAB: { actions: ['closeTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'] },
+    CLOSE_ACTIVE_TAB: { actions: ['closeActiveTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'] },
+    // Tab reorder & group events
+    REORDER_TABS: { actions: ['reorderTabs', 'persistTabs'] },
+    PIN_TAB_AT: { actions: ['pinTabAt', 'persistTabs'] },
+    UNPIN_TAB_AT: { actions: ['unpinTabAt', 'persistTabs'] },
+    CREATE_TAB_GROUP: { actions: ['createTabGroup', 'persistTabs', 'persistTabGroups'] },
+    RENAME_TAB_GROUP: { actions: ['renameTabGroup', 'persistTabGroups'] },
+    CHANGE_TAB_GROUP_COLOR: { actions: ['changeTabGroupColor', 'persistTabGroups'] },
+    DELETE_TAB_GROUP: { actions: ['deleteTabGroup', 'persistTabs', 'persistTabGroups'] },
+    TOGGLE_TAB_GROUP_COLLAPSE: { actions: ['toggleTabGroupCollapse', 'persistTabGroups'] },
+    ADD_TAB_TO_GROUP: { actions: ['addTabToGroup', 'persistTabs', 'persistTabGroups'] },
+    REMOVE_TAB_FROM_GROUP: { actions: ['removeTabFromGroup', 'persistTabs'] },
+    UNGROUP_ALL_IN_GROUP: { actions: ['ungroupAllInGroup', 'persistTabs', 'persistTabGroups'] },
+    CLOSE_ALL_IN_GROUP: { actions: ['closeAllInGroup', 'persistTabs', 'persistTabGroups'] },
+    PIN_TAB_GROUP: { actions: ['pinTabGroup', 'persistTabs', 'persistTabGroups'] },
+    UNPIN_TAB_GROUP: { actions: ['unpinTabGroup', 'persistTabs', 'persistTabGroups'] },
     SELECT_ARTIFACT: { actions: 'selectArtifact' },
     ARTIFACT_ADDED: { actions: 'addArtifact' },
     ARTIFACT_UPDATED: { actions: 'updateArtifact' },

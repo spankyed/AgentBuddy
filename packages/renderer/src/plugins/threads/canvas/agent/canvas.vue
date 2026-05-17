@@ -4,17 +4,7 @@
       <ThreadsHeader />
       <!-- Tab Bar -->
       <div class="flex items-center border-b border-neutral-800 bg-neutral-900 overflow-hidden" data-onboarding-id="agent-thread-tabs">
-        <TabBar
-          :tabs="tabs"
-          :activeTabId="activeTabId"
-          @select-tab="selectTab"
-          @close-tab="closeTab"
-          @edit-details="editDetails"
-          @delete-thread="deleteThread"
-          @archive-thread="archiveThread"
-          @unpin-thread="unpinThread"
-          @pin-thread="pinThread"
-        />
+        <TabBar :tabs="tabs" :activeTabId="activeTabId" :tabGroups="tabGroups" />
       </div>
     </template>
 
@@ -25,7 +15,7 @@
       :artifacts="currentTab?.artifacts || []"
       :selectedArtifactId="currentTab?.selectedArtifactId"
       :compact="inline"
-      @select-artifact="selectArtifact"
+      @select-artifact="(artifactId: string) => actor.send({ type: 'SELECT_ARTIFACT', artifactId })"
     />
   </div>
 </template>
@@ -47,39 +37,7 @@ const actor: ThreadsState = applicationState.system.get(id);
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);
+const tabGroups = useSelector(actor, (state) => state.context.tabGroups);
 
 const currentTab = computed(() => tabs.value.find(tab => tab.id === activeTabId.value));
-
-function selectTab(tabId: string) {
-  actor.send({ type: 'SELECT_TAB', tabId });
-  actor.send({ type: 'OPEN_THREAD_CHAT', threadId: tabId });
-}
-
-function closeTab(tabId: string) {
-  actor.send({ type: 'CLOSE_TAB', tabId });
-}
-
-function editDetails(tabId: string) {
-  actor.send({ type: 'SELECT_THREAD', id: tabId });
-}
-
-function archiveThread(tabId: string) {
-  actor.send({ type: 'ARCHIVE_THREAD', threadId: tabId });
-}
-
-function deleteThread(tabId: string) {
-  actor.send({ type: 'DELETE_THREAD', threadId: tabId });
-}
-
-function unpinThread(tabId: string) {
-  actor.send({ type: 'UNPIN_THREAD', threadId: tabId });
-}
-
-function pinThread(tabId: string) {
-  actor.send({ type: 'PIN_THREAD', threadId: tabId });
-}
-
-function selectArtifact(artifactId: string) {
-  actor.send({ type: 'SELECT_ARTIFACT', artifactId });
-}
 </script>
