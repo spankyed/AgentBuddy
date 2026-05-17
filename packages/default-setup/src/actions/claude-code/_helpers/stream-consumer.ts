@@ -422,7 +422,9 @@ export async function consumeStream(
           if (questions.length > 0) {
             const questionMsg = (services.chat as any).sendQuestionBlock({
               threadId,
-              text: questions[0].question,
+              text: questions.length > 1
+                ? (questions[0].header || 'Select an option')
+                : questions[0].question,
               prompt: questions[0].header || 'Select an option',
               questions: questions.map(q => ({
                 question: q.question,
