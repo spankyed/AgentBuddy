@@ -5,7 +5,8 @@
         class="w-full px-4 py-1.5 text-left cursor-pointer select-none transition-all duration-200 hover:bg-neutral-800"
         :class="[
           isSelected ? 'bg-neutral-800/50' : '',
-          isMultiSelected ? 'bg-blue-500/10' : ''
+          isMultiSelected ? 'bg-blue-500/10' : '',
+          isFocused && !isSelected ? 'bg-neutral-800/30' : ''
         ]"
         :data-onboarding-id="isRoot ? 'flow-root-item' : undefined"
         @click="$emit('click', $event)"
@@ -84,6 +85,7 @@ interface Props {
   isSelected?: boolean
   isMultiSelected?: boolean
   isRoot?: boolean
+  isFocused?: boolean
 }
 
 const props = defineProps<Props>()

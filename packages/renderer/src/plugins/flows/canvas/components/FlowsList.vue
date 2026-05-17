@@ -48,15 +48,23 @@
         </div>
       </div>
     
-      <div v-if="filteredFlows.length > 0" class="flex-1 overflow-y-auto pb-3">
+      <div
+        v-if="filteredFlows.length > 0"
+        ref="listContainer"
+        class="flex-1 overflow-y-auto pb-3 outline-none"
+        tabindex="0"
+        @keydown="handleKeydown"
+      >
           <FlowItem
-            v-for="flow in filteredFlows"
+            v-for="(flow, index) in filteredFlows"
             :key="flow.id"
+            :ref="(el: any) => setItemRef(index, el)"
             :flow="flow"
             :is-selected="flow.id === selectedFlowId"
             :is-multi-selected="multiSelectedFlowIds?.has(flow.id!)"
             :is-root="flow.id === rootFlowId"
-            @click="$emit('flow-click', flow, $event)"
+            :is-focused="index === focusedIndex"
+            @click="handleItemClick(flow, $event, index)"
             @dblclick="$emit('flow-dblclick', flow)"
             @request-delete="$emit('request-delete', $event)"
             @request-edit-label="$emit('request-edit-label', $event)"
@@ -84,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import { ref, computed, nextTick, watch } from 'vue'
 import { Workflow, Search, X } from 'lucide-vue-next'
 import type { FlowEntity } from '@app/api'
@@ -112,6 +121,47 @@ const emit = defineEmits<{
 const isSearchMode = ref(false)
 const searchQuery = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
+const listContainer = ref<HTMLElement | null>(null)
+
+// Keyboard navigation
+const focusedIndex = ref(-1)
+const itemRefs = new Map<number, ComponentPublicInstance>()
+
+const setItemRef = (index: number, el: ComponentPublicInstance | null) => {
+  if (el) itemRefs.set(index, el)
+  else itemRefs.delete(index)
+}
+
+const scrollFocusedIntoView = () => {
+  const el = itemRefs.get(focusedIndex.value)
+  if (el?.$el) {
+    el.$el.scrollIntoView({ block: 'nearest' })
+  }
+}
+
+const handleKeydown = (e: KeyboardEvent) => {
+  const len = filteredFlows.value.length
+  if (!len) return
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    focusedIndex.value = Math.min(focusedIndex.value + 1, len - 1)
+    scrollFocusedIntoView()
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    focusedIndex.value = Math.max(focusedIndex.value - 1, 0)
+    scrollFocusedIntoView()
+  } else if (e.key === 'Enter' && focusedIndex.value >= 0) {
+    e.preventDefault()
+    const flow = filteredFlows.value[focusedIndex.value]
+    if (flow) emit('flow-click', flow, new MouseEvent('click'))
+  }
+}
+
+const handleItemClick = (flow: Partial<FlowEntity>, event: MouseEvent, index: number) => {
+  focusedIndex.value = index
+  emit('flow-click', flow, event)
+}
 
 // Initialize uFuzzy instance
 const fuzzy = new uFuzzy({
@@ -171,6 +221,11 @@ const filteredFlows = computed(() => {
   }
   
   return order.map(i => props.flows[matchedIndexes[i]])
+})
+
+// Reset focused index when filtered list changes
+watch(filteredFlows, () => {
+  focusedIndex.value = -1
 })
 </script>
 
