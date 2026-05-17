@@ -1,10 +1,10 @@
 <template>
-  <div class="min-w-0 flex flex-col flex-shrink-0">
+  <div class="min-w-0 w-full flex flex-col flex-shrink-0">
     <!-- Pinned row -->
     <div
       v-if="categorized.pinnedTabs.length > 0 || categorized.pinnedGroups.length > 0"
       ref="pinnedContainer"
-      class="tab-container relative flex items-center overflow-x-auto overflow-y-visible border-b border-neutral-800"
+      class="tab-container relative flex items-center min-w-full overflow-x-auto overflow-y-visible border-b border-neutral-800"
       data-container="pinned"
       @dragover="handleDragOver"
       @drop="handleDrop"
@@ -92,7 +92,7 @@
     <!-- Main/unpinned row -->
     <div
       ref="mainContainer"
-      class="tab-container relative flex items-center overflow-x-auto overflow-y-visible"
+      class="tab-container relative flex items-center min-w-full overflow-x-auto overflow-y-visible"
       data-container="main"
       @dragover="handleDragOver"
       @drop="handleDrop"
