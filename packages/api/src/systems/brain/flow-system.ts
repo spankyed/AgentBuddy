@@ -7,6 +7,9 @@ import { safeEvents } from '@/core/helpers/actor-helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
+import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
+import { sendToBrainSystem } from '@/services/event-emitter';
+import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 
 /**
  * Flow Actor Registry
@@ -51,14 +54,13 @@ type TNodeFlowMachineContext = {
   flowStepNodeId?: EARS.EntityId;  // The original flow step node ID (for completion tracking)
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
-  eventNodes: ListenerNode[];
+  eventNodes: FlowTriggerNode[];
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Per-event-track live child counter, keyed by eventTNodeId.
   // Decrements as children in the track complete; when a track reaches 0
-  // the event TNode itself is marked completed. The flow completes once
-  // every track's count is 0 (single source of truth for "anything still
-  // running in this flow").
+  // the event TNode itself is marked completed. Finite entry-only flows complete
+  // once all active tracks drain; persistent trigger flows stay alive.
   eventTrackChildCounts: Record<EARS.EntityId, number>;
   // Final result when a step completes with final flag
   finalResult?: any;
@@ -66,6 +68,8 @@ type TNodeFlowMachineContext = {
   entryData?: any;
   // Whether this flow node itself is marked as final
   isFinalStep?: boolean;
+  // Whether this flow should wait for future schedule events after a track drains
+  hasPersistentTriggers: boolean;
   // Flow hierarchy tracking
   hasParent: boolean; // Whether this flow has a parent flow
   isRootFlow: boolean; // Flag to identify root flow
@@ -78,6 +82,12 @@ type TNodeFlowMachineContext = {
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
+};
+
+type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
+  triggerType: 'listener' | 'schedule';
+  scope?: ListenerNode['scope'];
+  cronExpression?: string;
 };
 
 type ChildCompletedEvent =
@@ -152,13 +162,13 @@ export function createFlowNodeSystem(
       };
     })()
     : (() => {
-      const { flowTNode, eventNodes } = repository.brainCommands.createFlowTNode(
+      const { flowTNode, flowId: referencedFlowId, eventNodes } = repository.brainCommands.createFlowTNode(
         flowId,
         parentTNodeId ?? eventTNodeId,
         executionContext
       );
       return {
-        actualFlowId: flowId,
+        actualFlowId: referencedFlowId,
         flowTNodeId: flowTNode.id,
         flowTNode,
         eventNodes
@@ -167,15 +177,33 @@ export function createFlowNodeSystem(
 
   const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
 
-  const eventHandlers: Record<string, any> = {};
+  // Query schedule nodes and merge them into eventNodes as trigger handlers
+  const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
+  const allTriggerNodes: FlowTriggerNode[] = [
+    ...eventNodes.map((n): FlowTriggerNode => ({
+      id: n.id,
+      label: n.label,
+      eventType: n.eventType,
+      scope: n.scope,
+      triggerType: 'listener' as const,
+    })),
+    ...scheduleNodes.map((n): FlowTriggerNode => ({
+      id: n.id,
+      label: n.label,
+      eventType: `schedule.${n.id}`,
+      triggerType: 'schedule',
+      cronExpression: n.cronExpression,
+    })),
+  ];
 
-  // Add event listeners
-  eventNodes.forEach((node) => {
+  const eventHandlers: Record<string, any> = {};
+  allTriggerNodes.forEach((node) => {
     if (!node.eventType) return;
     eventHandlers[node.eventType] = {
       actions: ['handleTrackEvent'],
     };
   });
+  const hasPersistentTriggers = isPersistentTriggerFlow(allTriggerNodes);
 
   return {
     tNodeId: flowTNodeId,
@@ -196,11 +224,19 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
-          // brainInspect(`Registered flow actor: ${flowTNodeId}`);
+
+          // Register cron jobs for schedule nodes
+          for (const sn of scheduleNodes) {
+            registerSchedule(`${flowTNodeId}:${sn.id}`, sn.cronExpression, () => {
+              sendToBrainSystem({ eventType: `schedule.${sn.id}`, targetFlowId: flowTNodeId });
+            });
+          }
         },
         unregisterFlowActor: () => {
           // Clean up this flow actor from the registry
           flowActorRegistry.delete(flowTNodeId);
+          // Clean up all cron jobs for this flow actor
+          unregisterByPrefix(flowTNodeId);
           brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
@@ -357,8 +393,9 @@ export function createFlowNodeSystem(
 
           // Per-track live-child bookkeeping (single source of truth):
           //   -1 for the child that just finished, +1 if a nextNode takes its place.
-          // When a track reaches 0 the listener TNode is completed. When every track is
-          // at 0 the flow itself completes.
+          // When a track reaches 0 the event TNode is completed. Finite entry-only
+          // flows complete once all active tracks drain; schedule-triggered flows
+          // stay active for future ticks unless an explicit final step completes.
           const prevTrackCount = context.eventTrackChildCounts[typedEv.eventTNodeId] ?? 0;
           const newTrackCount = Math.max(0, prevTrackCount - 1) + (nextNode ? 1 : 0);
           const eventTrackCompleted = newTrackCount === 0;
@@ -367,7 +404,12 @@ export function createFlowNodeSystem(
             ...context.eventTrackChildCounts,
             [typedEv.eventTNodeId]: newTrackCount,
           };
-          const shouldComplete = typedEv.final || Object.values(nextTrackCounts).every(c => c === 0);
+          const allTracksDrained = Object.values(nextTrackCounts).every(c => c === 0);
+          const shouldComplete = shouldCompleteFlow({
+            final: !!typedEv.final,
+            allTracksDrained,
+            hasPersistentTriggers: context.hasPersistentTriggers,
+          });
 
           enqueue.assign({
             eventTrackContexts: {
@@ -521,12 +563,13 @@ export function createFlowNodeSystem(
         flowStepNodeId: flowTNode?.blueprint?.nodeId,  // Store the original flow step node ID
         flowStepLabel: flowTNode?.label,  // Store the flow step node label for references
         eventTNodeId: eventTNodeId,
-        eventNodes: eventNodes,
+        eventNodes: allTriggerNodes,
         eventTrackContexts: {},
         eventTrackChildCounts: {},
         finalResult: undefined,
         entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
         isFinalStep: flowTNode?.final || false,
+        hasPersistentTriggers,
         hasParent: hasParent,
         isRootFlow: isRootFlow,
         pendingNextSteps: [],
@@ -575,4 +618,3 @@ export function createFlowNodeSystem(
     })
   }
 }
-

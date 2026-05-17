@@ -43,17 +43,21 @@ export function resolveTracks(entry: Track[] | FlowConfig): Track[] {
 export const ROOT_FLOW_ROLE = 'root_flow';
 
 /**
- * A track represents an event listener + its sequential response steps.
- * The event field creates an implicit listener node.
+ * A track represents a trigger node + its sequential response steps.
+ * Exactly one of `event` or `schedule` must be set.
+ * - `event` creates an implicit listener node
+ * - `schedule` creates an implicit schedule node (cron-based trigger)
  */
 export interface Track {
-  /** Event type to listen for (creates a listener node) */
-  event: string;
-  /** Optional label for the listener node (defaults to event type) */
+  /** Event type to listen for (creates a listener node). Mutually exclusive with `schedule`. */
+  event?: string;
+  /** Cron expression (creates a schedule node). Mutually exclusive with `event`. */
+  schedule?: string;
+  /** Optional label for the trigger node (defaults to event type or cron expression) */
   label?: string;
-  /** Optional description for the listener node */
+  /** Optional description for the trigger node */
   description?: string;
-  /** Exit paths from this listener — each inner array is an independent sequential step chain.
+  /** Exit paths from this trigger — each inner array is an independent sequential step chain.
    *  Single-exit: exits: [[step1, step2]]. Parallel: exits: [[chainA...], [chainB...]] */
   exits: DSLStepNode[][];
 }

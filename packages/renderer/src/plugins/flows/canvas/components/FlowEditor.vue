@@ -122,6 +122,7 @@ import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
 import type { LayoutDirection } from '@/plugins/flows/canvas/layout-utils'
+import { isTriggerNode } from '../nodes/node-config'
 
 interface Props {
   nodes: VueFlowNode[]
@@ -261,6 +262,7 @@ function isValidConnection(
   elements: { edges: GraphEdge[]; nodes: GraphNode[]; sourceNode: GraphNode; targetNode: GraphNode }
 ): boolean {
   if (connection.source === connection.target) return false
+  if (isTriggerNode(elements.targetNode?.data?.nodeType)) return false
   return true
 }
 </script>

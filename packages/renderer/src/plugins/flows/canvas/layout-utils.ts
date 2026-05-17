@@ -1,5 +1,6 @@
 import ELK, { type ElkNode, type ElkExtendedEdge, type ElkPort } from 'elkjs/lib/elk.bundled.js'
 import { NODE_DIMENSIONS, getDescriptor, computeExitCount, type LayoutNodeData } from './nodes/node-dimensions'
+import { isTriggerNode } from './nodes/node-config'
 
 export const LAYOUT_CONFIG = {
   nodeWidth: NODE_DIMENSIONS.default.width,
@@ -63,25 +64,25 @@ const getHandleIndex = (handle?: string): number => {
 interface LayoutComponents {
   components: LayoutNode[][]
   filteredEdges: LayoutEdge[]
-  listenerExitCounts: Map<string, number>
+  triggerExitCounts: Map<string, number>
 }
 
 export function partitionIntoComponents(
   nodes: LayoutNode[],
   edges: LayoutEdge[]
 ): LayoutComponents {
-  // Pre-compute listener exit counts from ALL edges (before filtering)
-  const listenerNodeIds = new Set(
-    nodes.filter(n => n.nodeType === 'listener').map(n => n.id)
+  // Pre-compute exit counts for trigger nodes (listener, schedule) from ALL edges (before filtering)
+  const triggerNodeIds = new Set(
+    nodes.filter(n => isTriggerNode(n.nodeType)).map(n => n.id)
   )
-  const listenerExitCounts = new Map<string, number>()
-  for (const nodeId of listenerNodeIds) {
+  const triggerExitCounts = new Map<string, number>()
+  for (const nodeId of triggerNodeIds) {
     const count = computeExitCount(nodeId, edges)
-    if (count !== undefined) listenerExitCounts.set(nodeId, count)
+    if (count !== undefined) triggerExitCounts.set(nodeId, count)
   }
 
-  // Filter out edges targeting listener nodes (listeners have no input port)
-  const filteredEdges = edges.filter(e => !listenerNodeIds.has(e.target))
+  // Filter out edges targeting trigger nodes (they have no input port)
+  const filteredEdges = edges.filter(e => !triggerNodeIds.has(e.target))
 
   // Detect connected components via BFS on filtered edges
   const adj = new Map<string, Set<string>>()
@@ -112,7 +113,7 @@ export function partitionIntoComponents(
     components.push(component)
   }
 
-  return { components, filteredEdges, listenerExitCounts }
+  return { components, filteredEdges, triggerExitCounts }
 }
 
 // --- ELK graph construction (node-type-agnostic via descriptors) ---
@@ -121,13 +122,13 @@ export function buildElkGraph(
   nodes: LayoutNode[],
   edges: LayoutEdge[],
   direction: LayoutDirection = 'LR',
-  listenerExitCounts: Map<string, number> = new Map()
+  triggerExitCounts: Map<string, number> = new Map()
 ): ElkNode {
   const { nodeWidth, layerGap, nodeGap, chainGap } = LAYOUT_CONFIG
 
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const descriptor = getDescriptor(node.nodeType)
-    const exitCount = listenerExitCounts.has(node.id) ? listenerExitCounts.get(node.id) : undefined
+    const exitCount = triggerExitCounts.has(node.id) ? triggerExitCounts.get(node.id) : undefined
     const ctx = { exitCount }
 
     const height = descriptor.getHeight(node, ctx)
@@ -194,7 +195,7 @@ export async function calculateLayoutAsync(
   const direction = options.direction
 
   try {
-    const { components, filteredEdges, listenerExitCounts } =
+    const { components, filteredEdges, triggerExitCounts } =
       partitionIntoComponents(input.nodes, input.edges)
 
     // Layout each component independently and stack vertically
@@ -202,7 +203,7 @@ export async function calculateLayoutAsync(
 
     if (components.length <= 1) {
       const graph = await elk.layout(
-        buildElkGraph(input.nodes, filteredEdges, direction, listenerExitCounts)
+        buildElkGraph(input.nodes, filteredEdges, direction, triggerExitCounts)
       )
       for (const child of graph.children ?? []) {
         if (child.id && child.x !== undefined && child.y !== undefined) {
@@ -217,7 +218,7 @@ export async function calculateLayoutAsync(
           e => compNodeIds.has(e.source) || compNodeIds.has(e.target)
         )
         const graph = await elk.layout(
-          buildElkGraph(comp, compEdges, direction, listenerExitCounts)
+          buildElkGraph(comp, compEdges, direction, triggerExitCounts)
         )
         let maxBottom = 0
         for (const child of graph.children ?? []) {

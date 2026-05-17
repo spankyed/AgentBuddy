@@ -22,14 +22,14 @@ import type {
   OutgoingBrainEvents,
 } from '@app/api'
 import { trpc } from '@/core/trpc'
-import { getNodeConfig } from './canvas/nodes'
+import { getNodeConfig, isTriggerNode } from './canvas/nodes'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
 import { computeMaxBottom, type LayoutNodeData } from './canvas/nodes/node-dimensions'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
 /** Check if a source handle already has an outgoing edge (single-connection-per-handle rule).
- *  Listener nodes are exempt — they support unlimited parallel exits. */
+ *  Trigger nodes (listener, schedule) are exempt — they support unlimited parallel exits. */
 function isHandleOccupied(
   edges: EdgeEntity[],
   nodes: any[],
@@ -37,7 +37,7 @@ function isHandleOccupied(
   sourceHandle?: string,
 ): boolean {
   const sourceNode = nodes.find((n: any) => n.id === sourceNodeId)
-  if (sourceNode?.nodeType === 'listener') return false
+  if (isTriggerNode(sourceNode?.nodeType)) return false
 
   return edges.some(e => {
     if (e.source !== sourceNodeId) return false
@@ -85,6 +85,9 @@ const DEFAULT_ELSE_CONDITION = { predicate: undefined, label: 'Else' }
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
   if (nodeData.nodeType === 'switch') {
     nodeData.conditions = [{ ...DEFAULT_ELSE_CONDITION }]
+  }
+  if (nodeData.nodeType === 'schedule') {
+    nodeData.cronExpression = '0 * * * *'
   }
 }
 
@@ -423,6 +426,9 @@ const flowsState = setup({
         (e) => e.source === ev.src && e.target === ev.tgt
       )
       if (alreadyConnected) return {}
+      // Guard: target is a trigger node (no inputs)
+      const targetNode = context.graph.nodes.find(n => n.id === ev.tgt)
+      if (isTriggerNode(targetNode?.nodeType)) return {}
       // Guard: source handle already occupied (except listeners)
       if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.src, ev.sourceHandle)) return { canvasError: HANDLE_OCCUPIED_ERROR }
       const id = `Edge-${randId()}`
@@ -590,6 +596,10 @@ const flowsState = setup({
       );
       if (alreadyConnected) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
 
+      // Don't connect to trigger nodes (no inputs)
+      const clickedNode = context.graph.nodes.find(n => n.id === ev.nodeId);
+      if (isTriggerNode(clickedNode?.nodeType)) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
+
       // Don't connect if source handle already has an outgoing edge (except listeners)
       if (isHandleOccupied(context.graph.edges, context.graph.nodes, handle.nodeId, handle.handleId)) {
         return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined, canvasError: HANDLE_OCCUPIED_ERROR };
@@ -694,10 +704,10 @@ const flowsState = setup({
         ? computeMaxBottom(context.graph.nodes as LayoutNodeData[], positions, context.graph.edges)
         : 0
 
-      // Use the x-position of an existing listener so the new node aligns with
+      // Use the x-position of an existing trigger node so the new node aligns with
       // ELK-laid-out tracks (ELK may add internal padding, so x is often non-zero).
       const existingListenerX = context.graph.nodes
-        .find(n => n.nodeType === 'listener' && positions[n.id])
+        .find(n => isTriggerNode(n.nodeType) && positions[n.id])
       const alignX = existingListenerX ? positions[existingListenerX.id].x : 0
 
       const belowAllPos = maxBottom > 0
@@ -821,7 +831,7 @@ const flowsState = setup({
         const sourceNode = context.graph.nodes.find(n => n.id === ev.sourceNodeId)
         if (sourceNode?.nodeType === 'switch') {
           resolvedSourceHandle = `branch-${nextBranchIndex(context.graph.edges, ev.sourceNodeId)}`
-        } else if (sourceNode?.nodeType === 'listener') {
+        } else if (isTriggerNode(sourceNode?.nodeType)) {
           const existingExits = context.graph.edges
             .filter(e => e.source === ev.sourceNodeId && e.sourceHandle)
             .map(e => {

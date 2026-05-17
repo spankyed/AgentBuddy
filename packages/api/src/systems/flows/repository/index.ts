@@ -16,13 +16,25 @@ import type {
   FlowsConnectedData
 } from '../config/types';
 import { availableModels } from '../config/available-models';
-import { createNodeDefaults } from '../config/node-config';
+import { createNodeDefaults, nodeMetadata, validateNode } from '../config/node-config';
 import { repository } from '@/repository';
 import { settingsCommands } from '@/systems/settings/repository';
 import type { CompiledRows } from '../dsl/compiler';
 import { ROOT_FLOW_ROLE } from '../dsl/types';
 
 const logger = createLogger('flows-repository');
+
+function validatePersistableNode(node: NodeEntity): void {
+  if (node.nodeType !== 'schedule') return;
+
+  const validation = validateNode(node);
+  if (!validation.valid) {
+    throw new RepositoryError(
+      `Invalid ${node.nodeType} node: ${validation.errors.join(', ')}`,
+      RepositoryErrorCode.VALIDATION_ERROR
+    );
+  }
+}
 
 /**
  * Flow Repository - Manages flow, node, and edge operations
@@ -344,6 +356,8 @@ export const flowsCommands = {
       updatedAt: ts,
     } as Omit<NodeEntity, 'id'>;
 
+    validatePersistableNode(newNode as NodeEntity);
+
     // Create the node
     const nodeId = tx(EARS.Entity.Node)
       .batchPut(newNode)
@@ -363,9 +377,20 @@ export const flowsCommands = {
     targetId: EARS.EntityId,
     options?: { sourceHandle?: string; targetHandle?: string }
   ): { relId: EARS.EntityId } => {
-    // Validate: source handle must not already have an outgoing edge (except listener nodes)
+    // Validate: target node must accept inputs (trigger nodes don't)
+    const targetAttrs = qx(targetId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
+    const isTargetTrigger = targetAttrs?.nodeType && nodeMetadata[targetAttrs.nodeType as NodeKind]?.category === 'trigger';
+    if (isTargetTrigger) {
+      throw new RepositoryError(
+        'Trigger nodes cannot receive incoming connections',
+        RepositoryErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    // Validate: source handle must not already have an outgoing edge (except trigger nodes)
     const sourceAttrs = qx(sourceId).pickOne(['nodeType'] as const) as { nodeType?: string } | undefined;
-    if (sourceAttrs?.nodeType !== 'listener') {
+    const isTrigger = sourceAttrs?.nodeType && nodeMetadata[sourceAttrs.nodeType as NodeKind]?.category === 'trigger';
+    if (!isTrigger) {
       const existingEdges = edgeStore.find({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
       const handleOccupied = existingEdges.some(rel => {
         const relHandle = (rel.info as any)?.sourceHandle;
@@ -415,7 +440,7 @@ export const flowsCommands = {
     const ts = getTimestamp();
     
     // Get the current node to determine its type
-    const currentNode = qx(nodeId).pickOne(['nodeType']) as { nodeType: NodeKind } | undefined;
+    const currentNode = qx(nodeId).pickAll()[0] as unknown as NodeEntity | undefined;
     if (!currentNode) {
       throw new RepositoryError(`Node ${nodeId} not found`, RepositoryErrorCode.NOT_FOUND);
     }
@@ -423,11 +448,17 @@ export const flowsCommands = {
     // Extract relations and attributes based on node type
     const { relations, attributes } = extractNodeRelations(currentNode.nodeType, updates);
     
-    // Update node-specific relationships
-    updateNodeRelations(currentNode.nodeType, nodeId, relations);
-    
     // Filter out system fields and build updates
     const fieldsToUpdate = filterSystemFields(attributes);
+
+    validatePersistableNode({
+      ...currentNode,
+      ...fieldsToUpdate,
+      updatedAt: ts,
+    } as NodeEntity);
+
+    // Update node-specific relationships
+    updateNodeRelations(currentNode.nodeType, nodeId, relations);
     
     // Build the transaction for node attributes
     const transaction = tx(nodeId);

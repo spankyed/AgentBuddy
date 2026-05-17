@@ -11,8 +11,8 @@
     @remove-handle="(nodeId, handleId) => $emit('remove-handle', nodeId, handleId)"
     v-slot="{ dividerClass }"
   >
-    <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
-      <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
+    <div v-if="subtitle" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
+      <span class="text-[10px] text-neutral-400 font-mono truncate">{{ subtitle }}</span>
     </div>
 
     <!-- Exit rows — only shown when multiple exits exist -->
@@ -36,16 +36,26 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Shared canvas component for trigger nodes (listener, schedule).
+ *
+ * Trigger nodes share identical structure: no input handle, dynamic exit
+ * handles, and an optional subtitle below the label. The only difference
+ * is the subtitle source — eventType for listeners, cronExpression for
+ * schedules. Both are configured as `component: 'TriggerNode'` in
+ * node-config.ts.
+ */
 import { computed } from 'vue'
 import type { NodeProps } from '@vue-flow/core'
-import type { ListenerNode } from '@app/api'
 import BaseNode, { type HandleConfig } from './BaseNode.vue'
 import { NODE_DIMENSIONS } from './node-dimensions'
+import { cronToHuman } from '../../helpers/cron-utils'
 
-interface NodeData extends Partial<ListenerNode> {
+interface NodeData {
   label: string
-  scope?: 'global' | 'local' | 'entry'
   eventType?: string
+  cronExpression?: string
+  [key: string]: any
 }
 
 interface Props extends NodeProps<NodeData> {
@@ -62,8 +72,14 @@ defineEmits<{
 
 const { rowHeight: ROW_HEIGHT, baseHeaderOffset: BASE_HEADER_OFFSET, eventTypeHeight: EVENT_TYPE_HEIGHT } = NODE_DIMENSIONS.listener
 
-const hasEventType = computed(() => !!props.data.eventType)
-const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasEventType.value ? EVENT_TYPE_HEIGHT : 0))
+
+const subtitle = computed(() => {
+  if (props.data.cronExpression) return cronToHuman(props.data.cronExpression)
+  return props.data.eventType || ''
+})
+
+const hasSubtitle = computed(() => !!subtitle.value)
+const headerOffset = computed(() => BASE_HEADER_OFFSET + (hasSubtitle.value ? EVENT_TYPE_HEIGHT : 0))
 
 // Compute dynamic exit handles from connected edges
 const exitHandles = computed<HandleConfig[]>(() => {
@@ -83,11 +99,9 @@ const exitHandles = computed<HandleConfig[]>(() => {
   const count = maxIndex + 2 // at least 1
 
   if (count === 1) {
-    // Single handle — no offsetY, BaseNode centers it at 50%
     return [{ id: 'exit-0', label: 'Exit 1' }]
   }
 
-  // Pixel-based positioning aligned with exit rows
   const offset = headerOffset.value
   return Array.from({ length: count }, (_, i) => ({
     id: `exit-${i}`,
@@ -96,13 +110,11 @@ const exitHandles = computed<HandleConfig[]>(() => {
   }))
 })
 
-// Grow the node to fit exit rows
 const nodeStyle = computed(() => {
   const count = exitHandles.value.length
   if (count <= 1) return {}
   return { minHeight: `${headerOffset.value + count * ROW_HEIGHT + 10}px` }
 })
-
 </script>
 
 <style scoped>

@@ -21,6 +21,7 @@ export interface LayoutNodeData {
   nodeType?: string
   conditions?: Array<{ predicate?: unknown; label?: string }>
   eventType?: string
+  cronExpression?: string
 }
 
 export interface DescriptorContext {
@@ -31,6 +32,8 @@ export interface NodeLayoutDescriptor {
   getHeight(node: LayoutNodeData, context: DescriptorContext): number
   getPorts(node: LayoutNodeData, context: DescriptorContext): ElkPort[]
   hasInput: boolean
+  /** When true, computeMaxBottom derives exit count from edges for this descriptor */
+  usesExitCount?: boolean
 }
 
 const { default: defaults } = NODE_DIMENSIONS
@@ -66,14 +69,17 @@ const switchDescriptor: NodeLayoutDescriptor = {
   hasInput: true,
 }
 
-const listenerDescriptor: NodeLayoutDescriptor = {
+/** Trigger nodes: no input handle, dynamic exit handles derived from edges */
+const triggerDescriptor: NodeLayoutDescriptor = {
+  usesExitCount: true,
   getHeight: (node, ctx) => {
     const exitCount = ctx.exitCount
     if (exitCount === undefined) return defaults.height
-    // +1 matches ListenerNode.vue which always renders one extra exit slot (maxIndex + 2)
+    // +1 matches TriggerNode.vue which always renders one extra exit slot (maxIndex + 2)
     const visualExitCount = exitCount + 1
     const { baseHeaderOffset, eventTypeHeight, rowHeight, bottomPadding } = NODE_DIMENSIONS.listener
-    const headerOffset = baseHeaderOffset + (node.eventType ? eventTypeHeight : 0)
+    const hasSubtitle = !!(node.eventType || node.cronExpression)
+    const headerOffset = baseHeaderOffset + (hasSubtitle ? eventTypeHeight : 0)
     return Math.max(defaults.height, headerOffset + visualExitCount * rowHeight + bottomPadding)
   },
   getPorts: (node, ctx) => {
@@ -105,7 +111,8 @@ const fireDescriptor: NodeLayoutDescriptor = {
 
 const nodeLayoutDescriptors = new Map<string, NodeLayoutDescriptor>([
   ['switch', switchDescriptor],
-  ['listener', listenerDescriptor],
+  ['listener', triggerDescriptor],
+  ['schedule', triggerDescriptor],
   ['fire', fireDescriptor],
 ])
 
@@ -135,8 +142,9 @@ export function computeMaxBottom(
   for (const node of nodes) {
     const pos = positions[node.id]
     if (!pos) continue
-    const exitCount = node.nodeType === 'listener' ? computeExitCount(node.id, edges) : undefined
-    const height = getDescriptor(node.nodeType).getHeight(node, { exitCount })
+    const descriptor = getDescriptor(node.nodeType)
+    const exitCount = descriptor.usesExitCount ? computeExitCount(node.id, edges) : undefined
+    const height = descriptor.getHeight(node, { exitCount })
     const bottom = pos.y + height
     if (bottom > maxBottom) maxBottom = bottom
   }

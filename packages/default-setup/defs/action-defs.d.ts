@@ -1200,6 +1200,10 @@ interface KeepAliveNode extends NodeBase {
 interface KillNode extends NodeBase {
     nodeType: 'kill';
 }
+interface ScheduleNode extends NodeBase {
+    nodeType: 'schedule';
+    cronExpression: string;
+}
 interface LLMNode extends NodeBase {
     nodeType: 'llm';
     prompt?: string;
@@ -1226,7 +1230,7 @@ interface ActionNode extends NodeBase {
         default?: any;
     }>;
 }
-type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode;
+type NodeEntity = QueryNode | CreateNode | UpdateNode | ActionNode | SwitchNode | FireNode | ListenerNode | TransformNode | FlowNode | KeepAliveNode | KillNode | LLMNode | ScheduleNode;
 /** Literal union of all nodeType strings (keeps Base clean) */
 type NodeKind = NodeEntity['nodeType'];
 type NodeCreateInput = Partial<NodeEntity> & {
@@ -3012,8 +3016,6 @@ type AgentThreadData = {
     pinned?: boolean;
     chatState?: string;
     context?: ThreadContext;
-    nextCursor?: string | null;
-    hasMore?: boolean;
 };
 type RecentThreadRefreshData = {
     recentThreads: Partial<ThreadEntity>[];
@@ -3210,12 +3212,6 @@ type OutgoingThreadsEvents = {
     type: 'THREAD_CHAT_ERROR';
     threadId: string;
     error: string;
-} | {
-    type: 'MESSAGES_PAGE_LOADED';
-    threadId: string;
-    messages: Partial<MessageEntity>[];
-    nextCursor: string | null;
-    hasMore: boolean;
 };
 interface ThreadsContext {
 }
@@ -3444,10 +3440,6 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "GET_ARCHIVED_THREADS";
 } | {
     type: "REFRESH_THREADS";
-} | {
-    type: "LOAD_MORE_MESSAGES";
-    threadId: string;
-    cursor: string;
 }) | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>, SystemDefinition<"flows", ({
     type: "FLOW_SELECT";
     flowId: string;
@@ -5784,11 +5776,6 @@ declare const services: {
         readonly chatQueries: {
             readonly hasRequiredApiKeys: () => boolean;
             readonly threadArtifacts: (threadId: EARS.EntityId) => ArtifactItem[];
-            readonly threadMessages: (threadId: EARS.EntityId, pageSize?: number, cursor?: string | null) => {
-                messages: Partial<MessageEntity>[];
-                nextCursor: string | null;
-                hasMore: boolean;
-            };
             readonly threadData: (threadId: EARS.EntityId) => AgentThreadData;
             readonly refreshThreadsData: () => RecentThreadRefreshData;
             readonly connectedData: () => AgentConnectedData;
@@ -5890,6 +5877,7 @@ declare const services: {
             readonly rootFlowTNode: () => EARS.EntityId | undefined;
             readonly tNodeById: (id: EARS.EntityId) => TNodeEntity | null;
             readonly flowEventNodes: (flowId: EARS.EntityId) => ListenerNode[];
+            readonly flowScheduleNodes: (flowId: EARS.EntityId) => ScheduleNode[];
             readonly eventFirstStep: (eventNodeId: EARS.EntityId) => NodeEntity | undefined;
             readonly eventAllSteps: (eventNodeId: EARS.EntityId) => NodeEntity[];
             readonly nextNodeInFlowTrack: (nodeId: EARS.EntityId) => NodeEntity;
@@ -5904,7 +5892,7 @@ declare const services: {
             readonly rootData: () => FlowTNodeData;
         };
         readonly brainCommands: {
-            readonly createEventTNode: (eventNode: ListenerNode, flowTNodeId: EARS.EntityId) => TNodeEntity;
+            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType">, flowTNodeId: EARS.EntityId) => TNodeEntity;
             readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
                 flowTNode: TNodeEntity;
                 eventNodes: ListenerNode[];

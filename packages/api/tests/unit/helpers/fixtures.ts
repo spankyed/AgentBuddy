@@ -179,4 +179,19 @@ export const flows = {
       exits: [[{ type: 'action', action: 'welcome' }]],
     }],
   } as FlowDSL,
+
+  scheduleFlow: {
+    'Scheduled': [{
+      schedule: '0 9 * * 1-5',
+      label: 'Weekday Morning',
+      exits: [[{ type: 'action', action: 'report' }]],
+    }],
+  } as FlowDSL,
+
+  mixedFlow: {
+    'Mixed': [
+      { event: 'start', exits: [[{ type: 'action', action: 'init' }]] },
+      { schedule: '*/15 * * * *', label: 'Poll', exits: [[{ type: 'action', action: 'poll' }]] },
+    ],
+  } as FlowDSL,
 };

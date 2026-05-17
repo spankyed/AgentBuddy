@@ -13,6 +13,7 @@ import type {
   ValidationResult,
 } from './types';
 import { isFlowConfig, resolveTracks } from './types';
+import { Cron } from 'croner';
 
 // Step node types (excludes 'listener' - that's implicit in track.event)
 const STEP_TYPES = [
@@ -111,6 +112,7 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
 
     const flowErrors = validateFlow(flowName, tracks, ctx, options);
     errors.push(...flowErrors);
+
   }
 
   return {
@@ -200,9 +202,27 @@ function validateTrack(
 
   const t = track as Record<string, unknown>;
 
-  // Validate event field (required)
-  if (!t.event || typeof t.event !== 'string') {
-    errors.push({ path, message: 'Track must have an "event" string' });
+  // Validate trigger field: exactly one of event or schedule
+  const hasEvent = typeof t.event === 'string' && t.event.length > 0;
+  const hasSchedule = typeof t.schedule === 'string' && (t.schedule as string).length > 0;
+
+  if (!hasEvent && !hasSchedule) {
+    errors.push({ path, message: 'Track must have an "event" string or a "schedule" cron expression' });
+  }
+  if (hasEvent && hasSchedule) {
+    errors.push({ path, message: 'Track cannot have both "event" and "schedule"' });
+  }
+  if (hasSchedule) {
+    const cronParts = (t.schedule as string).trim().split(/\s+/);
+    if (cronParts.length < 5 || cronParts.length > 6) {
+      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5 or 6 field cron expression' });
+    } else {
+      try {
+        new Cron(t.schedule as string);
+      } catch {
+        errors.push({ path: `${path}.schedule`, message: 'Invalid cron expression' });
+      }
+    }
   }
 
   // Validate exits array (required, at least one exit path)
@@ -253,12 +273,13 @@ function validateStep(
     return errors;
   }
 
-  // Disallow 'listener' type in steps (listener is implicit in track.event)
+  // Disallow trigger types in steps (they are implicit in track fields)
   if (s.type === 'listener') {
-    errors.push({
-      path,
-      message: 'Steps cannot have type "listener". Use track.event instead.',
-    });
+    errors.push({ path, message: 'Steps cannot have type "listener". Use track.event instead.' });
+    return errors;
+  }
+  if (s.type === 'schedule') {
+    errors.push({ path, message: 'Steps cannot have type "schedule". Use track.schedule instead.' });
     return errors;
   }
 
@@ -553,6 +574,7 @@ function collectStepLabels(
 function getTrackLabel(track: Record<string, unknown>, index: number): string {
   if (typeof track.label === 'string') return track.label;
   if (typeof track.event === 'string') return track.event;
+  if (typeof track.schedule === 'string') return `Schedule ${index}`;
   return `Track ${index}`;
 }
 

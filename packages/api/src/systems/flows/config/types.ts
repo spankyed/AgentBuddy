@@ -127,6 +127,11 @@ export interface KillNode extends NodeBase {
   nodeType: 'kill';
 }
 
+export interface ScheduleNode extends NodeBase {
+  nodeType: 'schedule';
+  cronExpression: string; // 5- or 6-field cron, e.g. '0 9 * * 1-5' or '*/5 * * * * *'
+}
+
 export interface LLMNode extends NodeBase {
   nodeType: 'llm';
   
@@ -175,7 +180,8 @@ export type NodeEntity =
   | FlowNode
   | KeepAliveNode
   | KillNode
-  | LLMNode;
+  | LLMNode
+  | ScheduleNode;
 
 /** Literal union of all nodeType strings (keeps Base clean) */
 export type NodeKind = NodeEntity['nodeType'];
