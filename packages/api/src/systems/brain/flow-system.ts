@@ -9,6 +9,7 @@ import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
 import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
 import { sendToBrainSystem } from '@/services/event-emitter';
+import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 
 /**
  * Flow Actor Registry
@@ -58,9 +59,8 @@ type TNodeFlowMachineContext = {
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Per-event-track live child counter, keyed by eventTNodeId.
   // Decrements as children in the track complete; when a track reaches 0
-  // the event TNode itself is marked completed. The flow completes once
-  // every track's count is 0 (single source of truth for "anything still
-  // running in this flow").
+  // the event TNode itself is marked completed. Finite entry-only flows complete
+  // once all active tracks drain; persistent trigger flows stay alive.
   eventTrackChildCounts: Record<EARS.EntityId, number>;
   // Final result when a step completes with final flag
   finalResult?: any;
@@ -68,6 +68,8 @@ type TNodeFlowMachineContext = {
   entryData?: any;
   // Whether this flow node itself is marked as final
   isFinalStep?: boolean;
+  // Whether this flow should wait for future listener/schedule events after a track drains
+  hasPersistentTriggers: boolean;
   // Flow hierarchy tracking
   hasParent: boolean; // Whether this flow has a parent flow
   isRootFlow: boolean; // Flag to identify root flow
@@ -201,6 +203,7 @@ export function createFlowNodeSystem(
       actions: ['handleTrackEvent'],
     };
   });
+  const hasPersistentTriggers = isPersistentTriggerFlow(allTriggerNodes);
 
   return {
     tNodeId: flowTNodeId,
@@ -390,8 +393,9 @@ export function createFlowNodeSystem(
 
           // Per-track live-child bookkeeping (single source of truth):
           //   -1 for the child that just finished, +1 if a nextNode takes its place.
-          // When a track reaches 0 the listener TNode is completed. When every track is
-          // at 0 the flow itself completes.
+          // When a track reaches 0 the event TNode is completed. Finite entry-only
+          // flows complete once all active tracks drain; schedule/listener flows stay
+          // active for future triggers unless an explicit final step completes.
           const prevTrackCount = context.eventTrackChildCounts[typedEv.eventTNodeId] ?? 0;
           const newTrackCount = Math.max(0, prevTrackCount - 1) + (nextNode ? 1 : 0);
           const eventTrackCompleted = newTrackCount === 0;
@@ -400,7 +404,12 @@ export function createFlowNodeSystem(
             ...context.eventTrackChildCounts,
             [typedEv.eventTNodeId]: newTrackCount,
           };
-          const shouldComplete = typedEv.final || Object.values(nextTrackCounts).every(c => c === 0);
+          const allTracksDrained = Object.values(nextTrackCounts).every(c => c === 0);
+          const shouldComplete = shouldCompleteFlow({
+            final: !!typedEv.final,
+            allTracksDrained,
+            hasPersistentTriggers: context.hasPersistentTriggers,
+          });
 
           enqueue.assign({
             eventTrackContexts: {
@@ -560,6 +569,7 @@ export function createFlowNodeSystem(
         finalResult: undefined,
         entryData: flowTNode?.nodeAttributes,  // Use full nodeAttributes, not just params
         isFinalStep: flowTNode?.final || false,
+        hasPersistentTriggers,
         hasParent: hasParent,
         isRootFlow: isRootFlow,
         pendingNextSteps: [],
