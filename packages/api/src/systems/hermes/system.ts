@@ -72,6 +72,8 @@ export const hermesSystem = setup({
   types: hermesDef.types,
   actions: {
     sendConnectedData: ({ system }) => {
+      // Proactively resolve hermes-agent so the frontend gets accurate install status
+      hermesService.checkInstall();
       const bridge = hermesService.info;
 
       if (bridge.status !== 'ready') {

@@ -198,6 +198,18 @@ export class HermesBridgeClient {
       throw new Error('Installation already in progress')
     }
 
+    // Check if hermes-agent is already available (e.g. on PATH) before reinstalling
+    const existing = resolveHermesPython()
+    if (existing) {
+      this._resolvedPython = existing
+      this._installStatus = 'installed'
+      this._source = existing.source
+      this._version = getInstalledVersion(existing.python)
+      logger.info(`hermes-agent already available: ${existing.source} — skipping install`)
+      onProgress?.(`hermes-agent already available (${existing.source})`)
+      return
+    }
+
     this._installStatus = 'installing'
     this._error = undefined
 
