@@ -8,22 +8,44 @@
 
   <!-- Commits Section -->
   <div v-if="commitLog.length > 0" class="flex-shrink-0 border-t border-neutral-800">
-    <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="isCommitsExpanded = !isCommitsExpanded">
+    <div class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors" @click="toggleCommitsExpanded">
       <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
         <ChevronRight v-if="!isCommitsExpanded" class="w-3 h-3" />
         <ChevronDown v-else class="w-3 h-3" />
-        COMMITS ({{ commitLog.length }})
+        COMMITS ({{ commitSearchQuery.trim() ? `${filteredCommits.length}/` : '' }}{{ commitLog.length }})
       </div>
       <div class="flex items-center gap-1" @click.stop>
+        <button @click="toggleCommitSearch" class="p-1 hover:bg-neutral-700 rounded transition-colors" :class="showCommitSearch ? 'bg-neutral-700' : ''" title="Search Commits">
+          <Search class="w-3.5 h-3.5 text-neutral-400" />
+        </button>
         <button @click="refreshCommitLog" class="p-1 hover:bg-neutral-700 rounded transition-colors" title="Refresh Commit Log">
           <RefreshCw class="w-3.5 h-3.5 text-neutral-400" />
         </button>
       </div>
     </div>
     <div v-if="isCommitsExpanded" class="overflow-y-auto pb-3" :style="{ maxHeight: commitsHeight + 'px' }">
+      <div v-if="showCommitSearch" class="pl-5 pr-3 mb-1.5">
+        <div class="relative">
+        <Search :size="12" class="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+        <input
+          ref="commitSearchInput"
+          v-model="commitSearchQuery"
+          placeholder="Search commits..."
+          class="w-full pl-7 pr-7 py-1 text-xs bg-neutral-900 border border-neutral-700 rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-neutral-600"
+          @click.stop
+        />
+        <button
+          v-if="commitSearchQuery"
+          @click.stop="commitSearchQuery = ''"
+          class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-neutral-700 rounded"
+        >
+          <X :size="12" class="text-neutral-400" />
+        </button>
+        </div>
+      </div>
       <div class="space-y-0.5 pl-3">
         <div
-          v-for="entry in commitLog"
+          v-for="entry in filteredCommits"
           :key="entry.hash"
           class="group px-2 py-1.5 rounded hover:bg-neutral-800/50 transition-colors"
         >
@@ -72,12 +94,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
 import type { CommitLogEntry } from '@/plugins/code/features/commit/state'
-import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy, Search, X } from 'lucide-vue-next'
 import RevertDialog from '@/plugins/code/features/commit/RevertDialog.vue'
 import ResetDialog from '@/plugins/code/features/commit/ResetDialog.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
@@ -91,6 +113,11 @@ const commitActor = codeActor.system.get('commit')!
 
 const commitLog = useSelector(commitActor, (state: any) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>
 
+// Search state
+const showCommitSearch = ref(false)
+const commitSearchQuery = ref('')
+const commitSearchInput = ref<HTMLInputElement | null>(null)
+
 // Local state
 const isCommitsExpanded = ref(false)
 const MIN_COMMITS_HEIGHT = 80
@@ -103,6 +130,14 @@ const pendingCommitShortHash = ref('')
 
 const onCommitsResize = (delta: number) => {
   commitsHeight.value = Math.max(MIN_COMMITS_HEIGHT, Math.min(MAX_COMMITS_HEIGHT, commitsHeight.value - delta))
+}
+
+const toggleCommitsExpanded = () => {
+  isCommitsExpanded.value = !isCommitsExpanded.value
+  if (!isCommitsExpanded.value && showCommitSearch.value) {
+    showCommitSearch.value = false
+    commitSearchQuery.value = ''
+  }
 }
 
 const refreshCommitLog = () => {
@@ -154,6 +189,26 @@ const cancelResetCommit = () => {
 const copyCommitHash = (entry: CommitLogEntry) => {
   navigator.clipboard.writeText(entry.hash)
   props.toast?.success('Copied', 'Commit hash copied to clipboard')
+}
+
+const filteredCommits = computed(() => {
+  const query = commitSearchQuery.value.trim()
+  if (!query) return commitLog.value
+  const lowerQuery = query.toLowerCase()
+  return commitLog.value.filter((entry: CommitLogEntry) => {
+    const text = `${entry.subject} ${entry.shortHash} ${entry.authorName} ${entry.refs}`.toLowerCase()
+    return text.includes(lowerQuery)
+  })
+})
+
+const toggleCommitSearch = async () => {
+  showCommitSearch.value = !showCommitSearch.value
+  if (showCommitSearch.value) {
+    await nextTick()
+    commitSearchInput.value?.focus()
+  } else {
+    commitSearchQuery.value = ''
+  }
 }
 
 const formatCommitDate = (dateStr: string) => {
