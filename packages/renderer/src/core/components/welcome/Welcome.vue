@@ -1,5 +1,5 @@
 <template>
-  <div class="welcome-container">
+  <div class="welcome-container" @click.self="closeDevLetter">
     <div class="welcome-content">
       <div class="welcome-header">
         <h1 class="title">A Letter from the Dev</h1>
@@ -81,6 +81,7 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.7);
   z-index: 9999;
   padding: 2rem;
+  cursor: pointer;
 }
 
 .welcome-content {
@@ -90,6 +91,7 @@ onUnmounted(() => {
   max-width: 800px;
   width: 100%;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  cursor: default;
 }
 
 .welcome-header {
