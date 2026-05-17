@@ -105,7 +105,7 @@
     <template v-else>
       <div class="flex-1 overflow-y-auto overflow-x-hidden">
       <!-- Favorites -->
-      <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
+      <div v-if="showFavorites && favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
         <button
           class="group flex items-center gap-2 px-1.5 w-full text-left ml-2.5"
           :class="favoritesExpanded && 'mb-1'"
@@ -219,10 +219,12 @@ const actor: NotesState = applicationState.system.get(id)
 
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)
+const showFavorites = ref(true)
 useTrackedMenuOpen(dropdownOpen)
 
 const createMenuItems = computed<MenuItem[]>(() => [
   { label: 'New TaskList', icon: ListChecks, class: 'text-neutral-300', action: () => handleCreateTaskList() },
+  { label: showFavorites.value ? 'Hide Favorites' : 'Show Favorites', icon: Star, class: 'text-neutral-300', iconClass: 'text-yellow-500/60', action: () => { showFavorites.value = !showFavorites.value } },
   { label: 'Trash', icon: Trash2, class: 'text-neutral-300', action: () => handleShowTrash() },
 ])
 const notes = useSelector(actor, (s) => s.context.notes)
