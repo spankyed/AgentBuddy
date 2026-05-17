@@ -106,6 +106,7 @@ const fireDescriptor: NodeLayoutDescriptor = {
 const nodeLayoutDescriptors = new Map<string, NodeLayoutDescriptor>([
   ['switch', switchDescriptor],
   ['listener', listenerDescriptor],
+  ['schedule', listenerDescriptor],
   ['fire', fireDescriptor],
 ])
 
@@ -135,7 +136,7 @@ export function computeMaxBottom(
   for (const node of nodes) {
     const pos = positions[node.id]
     if (!pos) continue
-    const exitCount = node.nodeType === 'listener' ? computeExitCount(node.id, edges) : undefined
+    const exitCount = (node.nodeType === 'listener' || node.nodeType === 'schedule') ? computeExitCount(node.id, edges) : undefined
     const height = getDescriptor(node.nodeType).getHeight(node, { exitCount })
     const bottom = pos.y + height
     if (bottom > maxBottom) maxBottom = bottom

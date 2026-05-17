@@ -45,6 +45,15 @@ export function executeNode(
       switchNodeHandler(tNode, node as SwitchNode, executionContext, actor);
       break;
 
+    case 'schedule':
+      // Schedule nodes are triggers — they should never be executed as step nodes.
+      // If we get here, complete immediately as a safety net.
+      logger.warn(`Schedule node "${node.label}" executed as step — this shouldn't happen`);
+      setTimeout(() => {
+        actor.send({ type: 'COMPLETE', result: { executed: true } });
+      }, 100);
+      break;
+
     default:
       // For unknown node types, complete immediately
       logger.warn(`Unknown node type: ${node.nodeType}`);

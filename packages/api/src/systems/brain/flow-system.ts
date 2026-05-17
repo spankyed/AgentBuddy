@@ -1,5 +1,5 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
-import type { ListenerNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, ScheduleNode, NodeEntity } from '@/systems/flows/config/types';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
@@ -7,6 +7,8 @@ import { safeEvents } from '@/core/helpers/actor-helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
+import { registerSchedule, unregisterByPrefix } from '@/services/scheduler';
+import { sendToBrainSystem } from '@/services/event-emitter';
 
 /**
  * Flow Actor Registry
@@ -52,6 +54,7 @@ type TNodeFlowMachineContext = {
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
   eventNodes: ListenerNode[];
+  scheduleNodes: ScheduleNode[];
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Per-event-track live child counter, keyed by eventTNodeId.
@@ -167,12 +170,22 @@ export function createFlowNodeSystem(
 
   const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
 
+  // Query schedule nodes for this flow
+  const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
+
   const eventHandlers: Record<string, any> = {};
 
   // Add event listeners
   eventNodes.forEach((node) => {
     if (!node.eventType) return;
     eventHandlers[node.eventType] = {
+      actions: ['handleTrackEvent'],
+    };
+  });
+
+  // Add schedule node handlers (synthetic event types)
+  scheduleNodes.forEach((node) => {
+    eventHandlers[`schedule.${node.id}`] = {
       actions: ['handleTrackEvent'],
     };
   });
@@ -196,11 +209,19 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
-          // brainInspect(`Registered flow actor: ${flowTNodeId}`);
+
+          // Register cron jobs for schedule nodes
+          for (const sn of scheduleNodes) {
+            registerSchedule(`${flowTNodeId}:${sn.id}`, sn.cronExpression, () => {
+              sendToBrainSystem({ eventType: `schedule.${sn.id}`, targetFlowId: flowTNodeId });
+            });
+          }
         },
         unregisterFlowActor: () => {
           // Clean up this flow actor from the registry
           flowActorRegistry.delete(flowTNodeId);
+          // Clean up all cron jobs for this flow actor
+          unregisterByPrefix(flowTNodeId);
           brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system, self }) => {
@@ -217,9 +238,23 @@ export function createFlowNodeSystem(
           }
 
           // Get ALL event nodes matching this event type (not just the first)
-          const matchingEventNodes = context.eventNodes.filter(
+          // Also check schedule nodes (synthetic event type: schedule.<nodeId>)
+          const matchingListenerNodes = context.eventNodes.filter(
             (n) => n.eventType === eventType,
           );
+          const matchingScheduleNodes = context.scheduleNodes.filter(
+            (n) => `schedule.${n.id}` === eventType,
+          );
+
+          // Normalize schedule nodes to have eventType for downstream processing
+          const matchingEventNodes: Array<Pick<ListenerNode, 'id' | 'label' | 'eventType'>> = [
+            ...matchingListenerNodes,
+            ...matchingScheduleNodes.map(n => ({
+              id: n.id,
+              label: n.label,
+              eventType,
+            })),
+          ];
 
           if (matchingEventNodes.length === 0) return;
 
@@ -522,6 +557,7 @@ export function createFlowNodeSystem(
         flowStepLabel: flowTNode?.label,  // Store the flow step node label for references
         eventTNodeId: eventTNodeId,
         eventNodes: eventNodes,
+        scheduleNodes: scheduleNodes,
         eventTrackContexts: {},
         eventTrackChildCounts: {},
         finalResult: undefined,

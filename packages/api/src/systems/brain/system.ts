@@ -11,6 +11,7 @@ import { settings } from '../settings/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from '@/services/brain';
+import { clearAllSchedules } from '@/services/scheduler';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }
@@ -167,6 +168,9 @@ export const brainSystem = setup({
         // Clear all ad-hoc brain event listeners
         removeAllAdHocListeners();
 
+        // Clear all cron schedules
+        clearAllSchedules();
+
         // Defensive: drop any lingering flow actor references. Exit actions
         // on the stopped actor should unregister themselves, but if pending
         // async work interrupted that path, stale entries would leak here.
@@ -208,6 +212,9 @@ export const brainSystem = setup({
 
       // Clear all ad-hoc brain event listeners
       removeAllAdHocListeners();
+
+      // Clear all cron schedules
+      clearAllSchedules();
 
       // Defensive: drop any lingering flow actor references. Exit actions
       // on the stopped actor should unregister themselves, but if pending

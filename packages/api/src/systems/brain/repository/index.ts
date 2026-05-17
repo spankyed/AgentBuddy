@@ -10,7 +10,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { ListenerNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, ScheduleNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
@@ -69,6 +69,10 @@ function isListenerNode(node: Partial<NodeEntity>): node is ListenerNode {
   return node.nodeType === 'listener';
 }
 
+function isScheduleNode(node: Partial<NodeEntity>): node is ScheduleNode {
+  return node.nodeType === 'schedule';
+}
+
 
 // Queries
 export const brainQueries = {
@@ -90,7 +94,17 @@ export const brainQueries = {
       )
       .filter(isListenerNode);
   },
-  
+
+  flowScheduleNodes: (flowId: EARS.EntityId): ScheduleNode[] => {
+    return qx(flowId)
+      .linksPick(
+        EARS.RelKind.CONTAINS,
+        ["id", "nodeType", "label", "cronExpression"] as const,
+        [EARS.Entity.Node]
+      )
+      .filter(isScheduleNode);
+  },
+
   eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
     const transitionLinks = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
@@ -257,7 +271,7 @@ export const brainQueries = {
 // Commands
 export const brainCommands = {
   createEventTNode: (
-    eventNode: ListenerNode,
+    eventNode: Pick<ListenerNode, 'id' | 'label' | 'eventType'>,
     flowTNodeId: EARS.EntityId
   ): TNodeEntity => {
     const now = Date.now();

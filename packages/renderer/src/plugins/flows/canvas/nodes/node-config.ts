@@ -10,7 +10,8 @@ import {
   Shuffle,
   Activity,
   Sparkle,
-  Plug
+  Plug,
+  Clock
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 import type { NodeKind } from '@app/api'
@@ -177,7 +178,8 @@ const NODE_COLOR_MAP: Record<string, keyof typeof NODE_STYLE_CLASSES.gradient> =
   event: 'blue',
   keep_alive: 'emerald',
   kill: 'red',
-  action: 'neutral'
+  action: 'neutral',
+  schedule: 'orange'
 } as const
 
 // Node configuration registry
@@ -214,6 +216,18 @@ export const nodeConfigs: Partial<Record<NodeKind, NodeConfig>> = {
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
     hoverBgColor: 'group-hover:bg-blue-500/15',
+    connectionRules: { inputs: 0, outputs: -1 },
+    component: 'ListenerNode',
+    isImplemented: true
+  },
+  schedule: {
+    type: 'schedule',
+    label: 'Schedule',
+    defaultLabel: 'On schedule',
+    icon: Clock,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10',
+    hoverBgColor: 'group-hover:bg-orange-500/15',
     connectionRules: { inputs: 0, outputs: -1 },
     component: 'ListenerNode',
     isImplemented: true

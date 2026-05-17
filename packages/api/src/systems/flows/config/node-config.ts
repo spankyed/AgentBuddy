@@ -156,6 +156,18 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
       maxTokens: 1000,
     } as any,
   },
+  schedule: {
+    nodeType: 'schedule',
+    label: 'Schedule',
+    description: 'Trigger flow on a cron schedule',
+    category: 'trigger',
+    validation: {
+      requiredFields: ['cronExpression'],
+    },
+    defaults: {
+      cronExpression: '0 * * * *',
+    } as any,
+  },
 };
 
 // Helper functions
