@@ -112,6 +112,16 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
 
     const flowErrors = validateFlow(flowName, tracks, ctx, options);
     errors.push(...flowErrors);
+
+    // Root flows must have at least one event track (schedule-only root flows
+    // crash at startup because createRootFlowTNode requires an entry listener)
+    const isRoot = isFlowConfig(entry as Track[] | FlowConfig) && (entry as FlowConfig).root;
+    if (isRoot && Array.isArray(tracks)) {
+      const hasEventTrack = tracks.some(t => typeof (t as any)?.event === 'string' && (t as any).event.length > 0);
+      if (!hasEventTrack) {
+        errors.push({ path: flowName, message: 'Root flow must have at least one event track (schedule-only root flows are not supported)' });
+      }
+    }
   }
 
   return {
@@ -212,10 +222,15 @@ function validateTrack(
     errors.push({ path, message: 'Track cannot have both "event" and "schedule"' });
   }
   if (hasSchedule) {
-    try {
-      new Cron(t.schedule as string);
-    } catch {
-      errors.push({ path: `${path}.schedule`, message: 'Invalid cron expression' });
+    const cronParts = (t.schedule as string).trim().split(/\s+/);
+    if (cronParts.length !== 5) {
+      errors.push({ path: `${path}.schedule`, message: 'Schedule must be a 5-field cron expression' });
+    } else {
+      try {
+        new Cron(t.schedule as string);
+      } catch {
+        errors.push({ path: `${path}.schedule`, message: 'Invalid cron expression' });
+      }
     }
   }
 

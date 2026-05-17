@@ -196,23 +196,24 @@ export const brainQueries = {
     
     const flowId = flowLinks[0].id;
     
-    // Get all listener nodes in the flow blueprint
-    const listenerNodes = qx(flowId)
-      .linksPick(
-        EARS.RelKind.CONTAINS,
-        ['id', 'label', 'nodeType', 'eventType', 'mode'] as const,
-        [EARS.Entity.Node]
-      )
-      .filter(isListenerNode);
+    const listeners = brainQueries.flowEventNodes(flowId);
+    const schedules = brainQueries.flowScheduleNodes(flowId);
 
-    // Convert to EventListenerEntity format
-    return listenerNodes.map(node => ({
-      id: `Event-${node.id}` as EARS.EntityId,
-      nodeId: node.id!,
-      eventType: node.eventType,
-      label: node.label,
-      scope: node.scope
-    }));
+    return [
+      ...listeners.map(node => ({
+        id: `Event-${node.id}` as EARS.EntityId,
+        nodeId: node.id!,
+        eventType: node.eventType,
+        label: node.label,
+        scope: node.scope,
+      })),
+      ...schedules.map(node => ({
+        id: `Event-${node.id}` as EARS.EntityId,
+        nodeId: node.id!,
+        eventType: `schedule.${node.id}`,
+        label: node.label || 'Schedule',
+      })),
+    ];
   },
 
   /**

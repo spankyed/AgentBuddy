@@ -111,6 +111,16 @@ export function validate(dsl: unknown, options: ValidateOptions = {}): Validatio
 
     const flowErrors = validateFlow(flowName, tracks, ctx, options);
     errors.push(...flowErrors);
+
+    // Root flows must have at least one event track (schedule-only root flows
+    // crash at startup because createRootFlowTNode requires an entry listener)
+    const isRoot = isFlowConfig(entry as Track[] | FlowConfig) && (entry as FlowConfig).root;
+    if (isRoot && Array.isArray(tracks)) {
+      const hasEventTrack = tracks.some(t => typeof (t as any)?.event === 'string' && (t as any).event.length > 0);
+      if (!hasEventTrack) {
+        errors.push({ path: flowName, message: 'Root flow must have at least one event track (schedule-only root flows are not supported)' });
+      }
+    }
   }
 
   return {

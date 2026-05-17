@@ -385,6 +385,33 @@ describe('round-trip', () => {
     });
   });
 
+  describe('schedule tracks', () => {
+    it('schedule track: round-trips with schedule field and no event', () => {
+      const exported = rt.roundTrip(flows.scheduleFlow);
+
+      expect(exported['Scheduled']).toHaveLength(1);
+      const track = exported['Scheduled'][0];
+      expect(track.schedule).toBe('0 9 * * 1-5');
+      expect(track.event).toBeUndefined();
+      expect(track.exits[0]).toHaveLength(1);
+      expect(track.exits[0][0].type).toBe('action');
+      expect(track.exits[0][0].action).toBe('report');
+    });
+
+    it('mixed flow: both event and schedule tracks preserved', () => {
+      const exported = rt.roundTrip(flows.mixedFlow);
+
+      expect(exported['Mixed']).toHaveLength(2);
+      const eventTrack = exported['Mixed'].find((t: any) => t.event);
+      const scheduleTrack = exported['Mixed'].find((t: any) => t.schedule);
+
+      expect(eventTrack).toBeDefined();
+      expect(eventTrack.event).toBe('start');
+      expect(scheduleTrack).toBeDefined();
+      expect(scheduleTrack.schedule).toBe('*/15 * * * *');
+    });
+  });
+
   describe('field mappings', () => {
     it('round-trips correctly (record -> array -> record)', () => {
       const dsl = wrapInFlow([steps.actionFieldMap]);

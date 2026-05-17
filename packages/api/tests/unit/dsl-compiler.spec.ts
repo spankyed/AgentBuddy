@@ -410,6 +410,49 @@ describe('compile', () => {
     });
   });
 
+  describe('schedule tracks', () => {
+    it('creates schedule node with cronExpression', () => {
+      const result = compile(flows.scheduleFlow);
+      const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
+
+      expect(scheduleNode).toBeDefined();
+      expect(scheduleNode.cronExpression).toBe('0 9 * * 1-5');
+      expect(scheduleNode.label).toBe('Weekday Morning');
+    });
+
+    it('does not assign entry_event role to schedule track', () => {
+      const result = compile(flows.scheduleFlow);
+      const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
+
+      const entryRole = result.role.find(r => r.entityId === scheduleNode.id && r.role === 'entry_event');
+      expect(entryRole).toBeUndefined();
+    });
+
+    it('wires schedule node to first exit step via TRANSITIONS_TO', () => {
+      const result = compile(flows.scheduleFlow);
+      const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
+      const actionNode = findEntity(result.entity, (e: any) => e.nodeType === 'action');
+      const edge = filterRelations(result.relation, (r) =>
+        r.kind === EARS.RelKind.TRANSITIONS_TO && r.source === scheduleNode.id && r.target === actionNode.id
+      );
+
+      expect(edge).toHaveLength(1);
+    });
+
+    it('mixed flow: entry_event role goes to listener, not schedule', () => {
+      const result = compile(flows.mixedFlow);
+      const listenerNode = findEntity(result.entity, (e: any) => e.nodeType === 'listener');
+      const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
+
+      expect(result.role).toHaveLength(1);
+      expect(result.role[0].entityId).toBe(listenerNode.id);
+      expect(result.role[0].role).toBe('entry_event');
+
+      const scheduleRole = result.role.find(r => r.entityId === scheduleNode.id);
+      expect(scheduleRole).toBeUndefined();
+    });
+  });
+
   describe('expression parsing (via switch conditions)', () => {
     it('"$.key == value" -> operator EQUALS', () => {
       const pred = parsedPredicate('$.key == value');

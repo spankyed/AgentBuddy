@@ -181,13 +181,13 @@ const frequencyOptions: Array<{ value: Frequency; label: string }> = [
 ]
 
 const dayOptions = [
-  { value: 1, label: 'M' },
-  { value: 2, label: 'T' },
-  { value: 3, label: 'W' },
-  { value: 4, label: 'T' },
-  { value: 5, label: 'F' },
-  { value: 6, label: 'S' },
-  { value: 0, label: 'S' },
+  { value: 1, label: 'Mo' },
+  { value: 2, label: 'Tu' },
+  { value: 3, label: 'We' },
+  { value: 4, label: 'Th' },
+  { value: 5, label: 'Fr' },
+  { value: 6, label: 'Sa' },
+  { value: 0, label: 'Su' },
 ]
 
 // Internal visual state
@@ -315,6 +315,7 @@ watch(() => nodeData.value.cronExpression, (expr) => {
 
 function handleFrequencyChange(newFrequency: Frequency) {
   frequency.value = newFrequency
+  cronError.value = null
   if (newFrequency !== 'custom') {
     emitCron()
   }

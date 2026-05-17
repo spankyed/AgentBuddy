@@ -242,7 +242,7 @@ describe('partitionIntoComponents', () => {
     ]
     const result = partitionIntoComponents(nodes, edges)
     // Max index is 2, so count = 2+1 = 3
-    expect(result.listenerExitCounts.get('listen1')).toBe(3)
+    expect(result.triggerExitCounts.get('listen1')).toBe(3)
   })
 
   it('handles nodes with no edges', () => {
