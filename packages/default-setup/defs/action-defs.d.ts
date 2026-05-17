@@ -986,8 +986,6 @@ interface TNodeEntity extends BaseEntity {
     startedAt: TimestampMs;
     completedAt?: TimestampMs;
     eventType?: string;
-    triggerType?: 'listener' | 'schedule';
-    cronExpression?: string;
     stepNodeType?: string;
     final?: boolean;
     nodeAttributes?: Record<string, unknown>;
@@ -1005,9 +1003,7 @@ interface EventListenerEntity {
     nodeId: EARS.EntityId;
     eventType: string;
     label: string;
-    triggerType: 'listener' | 'schedule';
-    scope?: 'global' | 'local' | 'entry';
-    cronExpression?: string;
+    scope: 'global' | 'local' | 'entry';
 }
 interface FlowTNodeData {
     flowTNodeId: EARS.EntityId;
@@ -5909,13 +5905,9 @@ declare const services: {
             readonly rootData: () => FlowTNodeData;
         };
         readonly brainCommands: {
-            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType"> & {
-                triggerType?: "listener" | "schedule";
-                cronExpression?: string;
-            }, flowTNodeId: EARS.EntityId) => TNodeEntity;
+            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType">, flowTNodeId: EARS.EntityId) => TNodeEntity;
             readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
                 flowTNode: TNodeEntity;
-                flowId: EARS.EntityId;
                 eventNodes: ListenerNode[];
             };
             readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {
@@ -5926,7 +5918,7 @@ declare const services: {
                 rootFlow: FlowEntity;
                 rootFlowTNode: TNodeEntity;
                 eventNodes: ListenerNode[];
-                entryNode?: ListenerNode;
+                entryNode: ListenerNode;
             };
             readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
             readonly updateTNodeResult: (tNodeId: EARS.EntityId, result: any) => void;
