@@ -426,6 +426,9 @@ const flowsState = setup({
         (e) => e.source === ev.src && e.target === ev.tgt
       )
       if (alreadyConnected) return {}
+      // Guard: target is a trigger node (no inputs)
+      const targetNode = context.graph.nodes.find(n => n.id === ev.tgt)
+      if (isTriggerNode(targetNode?.nodeType)) return {}
       // Guard: source handle already occupied (except listeners)
       if (isHandleOccupied(context.graph.edges, context.graph.nodes, ev.src, ev.sourceHandle)) return { canvasError: HANDLE_OCCUPIED_ERROR }
       const id = `Edge-${randId()}`
@@ -592,6 +595,10 @@ const flowsState = setup({
         (e) => e.source === handle.nodeId && e.target === ev.nodeId
       );
       if (alreadyConnected) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
+
+      // Don't connect to trigger nodes (no inputs)
+      const clickedNode = context.graph.nodes.find(n => n.id === ev.nodeId);
+      if (isTriggerNode(clickedNode?.nodeType)) return { selectedNodeId: ev.nodeId as EARS.EntityId, selectedHandle: undefined };
 
       // Don't connect if source handle already has an outgoing edge (except listeners)
       if (isHandleOccupied(context.graph.edges, context.graph.nodes, handle.nodeId, handle.handleId)) {
