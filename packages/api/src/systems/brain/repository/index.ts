@@ -477,7 +477,7 @@ export const brainCommands = {
     rootFlow: FlowEntity;
     rootFlowTNode: TNodeEntity;
     eventNodes: ListenerNode[];
-    entryNode: ListenerNode;
+    entryNode?: ListenerNode;
   } => {
     const now = Date.now();
     const rootId = ROOT_TNODE_ID;
@@ -499,13 +499,6 @@ export const brainCommands = {
 
     // Find the entry event node
     const entryNode = eventNodes.find(node => node.scope === ENTRY_EVENT_MODE);
-
-    if (!entryNode) {
-      throw new Error(
-        `Cannot create root flow TNode: No entry event node found in root flow. ` +
-        `Found ${eventNodes.length} event nodes but none with scope='entry'`
-      );
-    }
 
     tx(rootId)
       .batchPut({

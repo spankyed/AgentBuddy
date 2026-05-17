@@ -451,6 +451,37 @@ describe('compile', () => {
       const scheduleRole = result.role.find(r => r.entityId === scheduleNode.id);
       expect(scheduleRole).toBeUndefined();
     });
+
+    it('root schedule-only flow compiles with root role and no entry_event role', () => {
+      const result = compile({
+        'Scheduled Root': {
+          root: true,
+          tracks: [
+            { schedule: '0 * * * *', exits: [[{ type: 'action', action: 'report' }]] },
+          ],
+        },
+      } as FlowDSL);
+      const rootFlow = findEntity(result.entity, (e: any) => e.label === 'Scheduled Root');
+      const scheduleNode = findEntity(result.entity, (e: any) => e.nodeType === 'schedule');
+
+      expect(result.role).toContainEqual({ entityId: rootFlow.id, role: 'root_flow' });
+      expect(result.role.find(r => r.role === 'entry_event')).toBeUndefined();
+      expect(scheduleNode).toBeDefined();
+    });
+
+    it('root schedule-first flow does not promote later event track to entry_event', () => {
+      const result = compile({
+        'Schedule First Root': {
+          root: true,
+          tracks: [
+            { schedule: '0 * * * *', exits: [[{ type: 'action', action: 'poll' }]] },
+            { event: 'manual.start', exits: [[{ type: 'action', action: 'start' }]] },
+          ],
+        },
+      } as FlowDSL);
+
+      expect(result.role.find(r => r.role === 'entry_event')).toBeUndefined();
+    });
   });
 
   describe('expression parsing (via switch conditions)', () => {
