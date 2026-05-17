@@ -1,0 +1,50 @@
+/**
+ * Module-level store for active Codex query handles, keyed by thread ID.
+ *
+ * The Codex chat action stores the handle when starting a query so that
+ * other actions (e.g. pause-turn) can abort the running turn. The store
+ * survives across compiled-action invocations within the same Node process.
+ *
+ * Callers MUST call `clearHandle` when the query ends (success or error)
+ * to avoid leaking references to dead child processes.
+ */
+
+import type { CodexHandle } from './types'
+import { createLogger } from '@/core/helpers/debug/logger'
+import { registerCleanup } from '../threads'
+
+const logger = createLogger('codex-handle-store')
+const activeHandles = new Map<string, CodexHandle>()
+const cleanupUnsubs = new Map<string, () => void>()
+
+export function storeHandle(key: string, handle: CodexHandle): void {
+  const existing = activeHandles.get(key)
+  if (existing) {
+    try { existing.abort() } catch { /* already gone */ }
+    logger.warn('overwriting active handle — aborted previous', { key })
+  }
+  // Unregister previous cleanup before registering new one
+  cleanupUnsubs.get(key)?.()
+
+  activeHandles.set(key, handle)
+
+  const unsub = registerCleanup(`codex-handle:${key}`, (threadId: string) => {
+    if (threadId !== key) return
+    const h = activeHandles.get(key)
+    if (h) {
+      try { h.abort() } catch { /* already gone */ }
+      activeHandles.delete(key)
+    }
+  })
+  cleanupUnsubs.set(key, unsub)
+}
+
+export function getHandle(key: string): CodexHandle | undefined {
+  return activeHandles.get(key)
+}
+
+export function clearHandle(key: string): void {
+  activeHandles.delete(key)
+  cleanupUnsubs.get(key)?.()
+  cleanupUnsubs.delete(key)
+}
