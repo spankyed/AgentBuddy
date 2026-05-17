@@ -1,6 +1,7 @@
 import { createRoundTrip } from './helpers/round-trip';
 import { wrapInFlow } from './helpers/dsl-factories';
 import { steps, ctx, flows } from './helpers/fixtures';
+import { compile } from '@/systems/flows/dsl/compiler';
 
 /*─────────────────────────────────────────────────────────────────
  * Setup
@@ -409,6 +410,26 @@ describe('round-trip', () => {
       expect(eventTrack.event).toBe('start');
       expect(scheduleTrack).toBeDefined();
       expect(scheduleTrack.schedule).toBe('*/15 * * * *');
+    });
+
+    it('preserves schedule-first trigger order so later listeners are not promoted to entry', () => {
+      const exported = rt.roundTrip({
+        'Schedule First Root': {
+          root: true,
+          tracks: [
+            { schedule: '*/15 * * * *', label: 'Poll', exits: [[{ type: 'action', action: 'poll' }]] },
+            { event: 'manual.start', label: 'Manual Start', exits: [[{ type: 'action', action: 'start' }]] },
+          ],
+        },
+      });
+
+      const entry = exported['Schedule First Root'] as any;
+      expect(entry.root).toBe(true);
+      expect(entry.tracks[0].schedule).toBe('*/15 * * * *');
+      expect(entry.tracks[1].event).toBe('manual.start');
+
+      const recompiled = compile(exported);
+      expect(recompiled.role.find(role => role.role === 'entry_event')).toBeUndefined();
     });
   });
 

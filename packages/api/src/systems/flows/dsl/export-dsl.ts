@@ -605,33 +605,37 @@ function buildTracksFromGraph(
     return unique;
   }
 
-  // Build tracks from listener nodes
-  for (const listenerNode of listenerNodes) {
-    const track: Track = {
-      event: listenerNode.eventType || listenerNode.label || 'unknown',
-      exits: buildExits(listenerNode.id as string),
-    };
+  const triggerNodes = nodes.filter(
+    (node): node is ListenerNode | ScheduleNode =>
+      node.nodeType === 'listener' || node.nodeType === 'schedule'
+  );
 
-    track.label = uniqueLabel(listenerNode.label || listenerNode.eventType);
+  for (const triggerNode of triggerNodes) {
+    if (triggerNode.nodeType === 'listener') {
+      const track: Track = {
+        event: triggerNode.eventType || triggerNode.label || 'unknown',
+        exits: buildExits(triggerNode.id as string),
+      };
 
-    if (listenerNode.description) {
-      track.description = listenerNode.description;
+      track.label = uniqueLabel(triggerNode.label || triggerNode.eventType);
+
+      if (triggerNode.description) {
+        track.description = triggerNode.description;
+      }
+
+      tracks.push(track);
+      continue;
     }
 
-    tracks.push(track);
-  }
-
-  // Build tracks from schedule nodes
-  for (const scheduleNode of scheduleNodes) {
     const track: Track = {
-      schedule: (scheduleNode as ScheduleNode).cronExpression,
-      exits: buildExits(scheduleNode.id as string),
+      schedule: triggerNode.cronExpression,
+      exits: buildExits(triggerNode.id as string),
     };
 
-    track.label = uniqueLabel(scheduleNode.label || `Schedule`);
+    track.label = uniqueLabel(triggerNode.label || `Schedule`);
 
-    if (scheduleNode.description) {
-      track.description = scheduleNode.description;
+    if (triggerNode.description) {
+      track.description = triggerNode.description;
     }
 
     tracks.push(track);

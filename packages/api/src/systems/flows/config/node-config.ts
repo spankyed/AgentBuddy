@@ -1,5 +1,6 @@
 import { NodeKind, NodeEntity } from './types';
 import { EARS } from '@/core/types';
+import { Cron } from 'croner';
 
 export interface NodeMetadata {
   nodeType: NodeKind;
@@ -163,6 +164,24 @@ export const nodeMetadata: Record<NodeKind, NodeMetadata> = {
     category: 'trigger',
     validation: {
       requiredFields: ['cronExpression'],
+      customValidator: (node) => {
+        const cronExpression = (node as any).cronExpression;
+        if (typeof cronExpression !== 'string' || cronExpression.trim().length === 0) {
+          return false;
+        }
+
+        const parts = cronExpression.trim().split(/\s+/);
+        if (parts.length < 5 || parts.length > 6) {
+          return false;
+        }
+
+        try {
+          new Cron(cronExpression);
+          return true;
+        } catch {
+          return false;
+        }
+      },
     },
     defaults: {
       cronExpression: '0 * * * *',

@@ -56,7 +56,7 @@ export function validateCronExpression(expr: string): string | null {
       if (stepPart !== undefined) {
         const step = Number(stepPart)
         if (!Number.isInteger(step) || step < 1) return `Invalid step "${stepPart}" in ${label} field`
-        if (step > max - min) return `Step ${step} exceeds range in ${label} field`
+        if (step > max - min + 1) return `Step ${step} exceeds range in ${label} field`
       }
 
       if (rangePart === '*') continue
