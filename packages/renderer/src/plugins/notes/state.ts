@@ -251,15 +251,10 @@ const notesState = setup({
 
     updateLocalContent: assign(({ context, event }) => {
       const ev = typeOf('NOTE.UPDATE_CONTENT', event)
-      const updatedNotes = context.notes.map(n =>
-        n.id === ev.noteId ? { ...n, content: ev.content } : n
-      )
       return {
-        notes: updatedNotes,
-        currentNote:
-          context.currentNoteId === ev.noteId && context.currentNote
-            ? { ...context.currentNote, content: ev.content }
-            : context.currentNote,
+        notes: context.notes.map(n =>
+          n.id === ev.noteId ? { ...n, content: ev.content } : n
+        ),
       }
     }),
 
@@ -387,18 +382,10 @@ const notesState = setup({
       const updatedNotes = context.notes.map(n =>
         n.id === ev.note.id ? ev.note : n
       )
-      // Preserve local content for the active note to prevent backend echo
-      // from resetting the editor (the editor holds the freshest content)
-      const isEditingNote = context.currentNoteId === ev.note.id
-      const mergedNote = isEditingNote && context.currentNote
-        ? { ...ev.note, content: context.currentNote.content }
-        : ev.note
       return {
         notes: updatedNotes,
-        currentNote: isEditingNote ? mergedNote : context.currentNote,
-        selectedTask: context.selectedTaskId === ev.note.id
-          ? { ...ev.note, content: context.selectedTask?.content ?? ev.note.content }
-          : context.selectedTask,
+        currentNote: context.currentNoteId === ev.note.id ? ev.note : context.currentNote,
+        selectedTask: context.selectedTaskId === ev.note.id ? ev.note : context.selectedTask,
       }
     }),
 
@@ -569,15 +556,10 @@ const notesState = setup({
 
     updateLocalTaskContent: assign(({ context, event }) => {
       const ev = typeOf('TASK.UPDATE_CONTENT', event)
-      const updatedNotes = context.notes.map(n =>
-        n.id === ev.taskId ? { ...n, content: ev.content } : n
-      )
       return {
-        notes: updatedNotes,
-        selectedTask:
-          context.selectedTaskId === ev.taskId && context.selectedTask
-            ? { ...context.selectedTask, content: ev.content }
-            : context.selectedTask,
+        notes: context.notes.map(n =>
+          n.id === ev.taskId ? { ...n, content: ev.content } : n
+        ),
       }
     }),
 
