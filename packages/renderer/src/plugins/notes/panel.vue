@@ -103,6 +103,7 @@
 
     <!-- Normal View -->
     <template v-else>
+      <div class="flex-1 overflow-y-auto">
       <!-- Favorites -->
       <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
         <button
@@ -149,7 +150,7 @@
 
       <!-- Tree -->
       <div
-        class="flex-1 overflow-y-auto p-3 px-2"
+        class="p-3 px-2"
         @click="handleOutsideClick"
         @dragover.prevent="handleRootDragOver"
         @drop="handleRootDrop"
@@ -185,6 +186,7 @@
           @create-tasklist="handleCreateTaskList"
           @toggle-favorite="handleToggleFavorite"
         />
+      </div>
       </div>
     </template>
   </div>
