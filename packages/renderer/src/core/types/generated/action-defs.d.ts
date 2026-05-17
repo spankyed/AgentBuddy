@@ -988,6 +988,8 @@ interface TNodeEntity extends BaseEntity {
     startedAt: TimestampMs;
     completedAt?: TimestampMs;
     eventType?: string;
+    triggerType?: 'listener' | 'schedule';
+    cronExpression?: string;
     stepNodeType?: string;
     final?: boolean;
     nodeAttributes?: Record<string, unknown>;
@@ -1005,7 +1007,9 @@ interface EventListenerEntity {
     nodeId: EARS.EntityId;
     eventType: string;
     label: string;
-    scope: 'global' | 'local' | 'entry';
+    triggerType: 'listener' | 'schedule';
+    scope?: 'global' | 'local' | 'entry';
+    cronExpression?: string;
 }
 interface FlowTNodeData {
     flowTNodeId: EARS.EntityId;

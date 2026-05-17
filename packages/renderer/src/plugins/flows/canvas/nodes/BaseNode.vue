@@ -30,9 +30,9 @@
 
       <!-- Custom content slot or auto-rendered content -->
       <slot :divider-class="dividerClass">
-        <!-- Auto-render eventType if present -->
-        <div v-if="data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
-          <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.eventType }}</span>
+        <!-- Auto-render subtitle/eventType if present -->
+        <div v-if="data.subtitle || data.eventType" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">
+          <span class="text-[10px] text-neutral-400 font-mono truncate">{{ data.subtitle || data.eventType }}</span>
         </div>
         <!-- Auto-render params count if present -->
         <div v-else-if="data.params && Object.keys(data.params).length > 0" :class="['mt-1.5 pt-1.5 border-t flex items-center justify-center', dividerClass]">

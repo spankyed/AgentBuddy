@@ -44,6 +44,8 @@ const TNODE_COLUMNS = [
   "completedAt", 
   "createdAt", 
   "eventType", 
+  "triggerType",
+  "cronExpression",
   "stepNodeType", 
   "nodeAttributes",
   "blueprint"
@@ -200,19 +202,21 @@ export const brainQueries = {
     const schedules = brainQueries.flowScheduleNodes(flowId);
 
     return [
-      ...listeners.map(node => ({
+      ...listeners.map((node): EventListenerEntity => ({
         id: `Event-${node.id}` as EARS.EntityId,
         nodeId: node.id!,
         eventType: node.eventType,
         label: node.label,
+        triggerType: 'listener',
         scope: node.scope,
       })),
-      ...schedules.map(node => ({
+      ...schedules.map((node): EventListenerEntity => ({
         id: `Event-${node.id}` as EARS.EntityId,
         nodeId: node.id!,
         eventType: `schedule.${node.id}`,
         label: node.label || 'Schedule',
-        scope: 'local' as const,
+        triggerType: 'schedule',
+        cronExpression: node.cronExpression,
       })),
     ];
   },
@@ -273,15 +277,24 @@ export const brainQueries = {
 // Commands
 export const brainCommands = {
   createEventTNode: (
-    eventNode: Pick<ListenerNode, 'id' | 'label' | 'eventType'>,
+    eventNode: Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
+      triggerType?: 'listener' | 'schedule';
+      cronExpression?: string;
+    },
     flowTNodeId: EARS.EntityId
   ): TNodeEntity => {
     const now = Date.now();
+    const triggerType = eventNode.triggerType || 'listener';
+    const triggerAttrs = {
+      eventType: eventNode.eventType!,
+      triggerType,
+      ...(eventNode.cronExpression && { cronExpression: eventNode.cronExpression }),
+    };
     const tNodeId = tx(EARS.Entity.TNode)
       .batchPut({
         tNodeType: 'event',
         label: eventNode.label,
-        eventType: eventNode.eventType!,
+        ...triggerAttrs,
         status: 'active',
         startedAt: now,
       })
@@ -295,7 +308,7 @@ export const brainCommands = {
       entityType: EARS.Entity.TNode,
       tNodeType: 'event',
       label: eventNode.label,
-      eventType: eventNode.eventType,
+      ...triggerAttrs,
       status: 'active',
       startedAt: now,
       createdAt: now,

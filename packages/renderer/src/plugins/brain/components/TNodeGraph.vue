@@ -89,6 +89,7 @@ import type { TrackEntity } from '@app/api'
 import { BaseNode } from '@/plugins/flows/canvas/nodes';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport';
+import { cronToHuman } from '@/plugins/flows/helpers/cron-utils';
 
 interface Props {
   tnodeTree?: TrackEntity[];
@@ -161,18 +162,22 @@ const clearStalePan = (event: MouseEvent) => {
 };
 
 // Helper functions
-const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number }): VueFlowNode => ({
-  id: tnode.id,
-  type: 'tnode',
-  position,
-  data: {
-    label: tnode.label,
-    nodeType: tnode.stepNodeType || tnode.tNodeType,
-    tNodeType: tnode.tNodeType, // Keep for click handling logic
-    status: tnode.status,
-    eventType: tnode.eventType, // For listen/event nodes
-  },
-});
+const createVueFlowNode = (tnode: TrackEntity, position: { x: number; y: number }): VueFlowNode => {
+  const isSchedule = tnode.triggerType === 'schedule';
+  return {
+    id: tnode.id,
+    type: 'tnode',
+    position,
+    data: {
+      label: tnode.label,
+      nodeType: isSchedule ? 'schedule' : tnode.stepNodeType || tnode.tNodeType,
+      tNodeType: tnode.tNodeType, // Keep for click handling logic
+      status: tnode.status,
+      eventType: tnode.eventType, // For listen/event nodes
+      subtitle: isSchedule && tnode.cronExpression ? cronToHuman(tnode.cronExpression) : tnode.eventType,
+    },
+  };
+};
 
 const subtreeLeafCount = (tnode: TrackEntity): number => {
   if (tnode.children.length === 0) return 1;

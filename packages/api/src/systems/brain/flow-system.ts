@@ -53,7 +53,7 @@ type TNodeFlowMachineContext = {
   flowStepNodeId?: EARS.EntityId;  // The original flow step node ID (for completion tracking)
   flowStepLabel?: string;  // The flow step node label (for $.steps[label] references)
   eventTNodeId?: EARS.EntityId;
-  eventNodes: ListenerNode[];
+  eventNodes: FlowTriggerNode[];
   // Map of event track execution contexts by eventTNodeId
   eventTrackContexts: Record<EARS.EntityId, ExecutionContext>;
   // Per-event-track live child counter, keyed by eventTNodeId.
@@ -80,6 +80,12 @@ type TNodeFlowMachineContext = {
   }>;
   // Deferred events when brain is paused (replayed on resume)
   pendingEvents: Array<Record<string, any>>;
+};
+
+type FlowTriggerNode = Pick<ListenerNode, 'id' | 'label' | 'eventType'> & {
+  triggerType: 'listener' | 'schedule';
+  scope?: ListenerNode['scope'];
+  cronExpression?: string;
 };
 
 type ChildCompletedEvent =
@@ -169,15 +175,22 @@ export function createFlowNodeSystem(
 
   const { actualFlowId, flowTNodeId, flowTNode, eventNodes } = result;
 
-  // Query schedule nodes and merge them into eventNodes as synthetic listeners
+  // Query schedule nodes and merge them into eventNodes as trigger handlers
   const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
-  const allTriggerNodes: ListenerNode[] = [
-    ...eventNodes,
-    ...scheduleNodes.map(n => ({
-      ...n,
-      nodeType: 'listener' as const,
+  const allTriggerNodes: FlowTriggerNode[] = [
+    ...eventNodes.map((n): FlowTriggerNode => ({
+      id: n.id,
+      label: n.label,
+      eventType: n.eventType,
+      scope: n.scope,
+      triggerType: 'listener' as const,
+    })),
+    ...scheduleNodes.map((n): FlowTriggerNode => ({
+      id: n.id,
+      label: n.label,
       eventType: `schedule.${n.id}`,
-      scope: 'local' as const,
+      triggerType: 'schedule',
+      cronExpression: n.cronExpression,
     })),
   ];
 
@@ -595,4 +608,3 @@ export function createFlowNodeSystem(
     })
   }
 }
-
