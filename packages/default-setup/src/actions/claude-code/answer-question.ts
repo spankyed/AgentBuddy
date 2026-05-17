@@ -32,7 +32,21 @@ export async function action(
   if (!threadId || !requestId) return { success: false, reason: 'missing threadId or requestId' };
 
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
-  if (!handle) return { success: false, reason: 'no active CLI handle' };
+
+  // Post-restart fallback: CLI process is gone but the user answered the
+  // pending question. Resume the session with the answer as prompt text.
+  if (!handle) {
+    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
+    const answerText = typeof response === 'string' ? response
+      : Array.isArray(response) ? response.join(', ')
+      : typeof response === 'object' ? Object.values(response).join(', ')
+      : String(response ?? '');
+    await services.action.getAndExecute('Claude Code Chat', {
+      threadId,
+      text: answerText || 'continue',
+    });
+    return { success: true, resumed: true };
+  }
 
   // Build the answers Record from the response.
   const isMultiAnswer = typeof response === 'object' && response !== null && !Array.isArray(response);
