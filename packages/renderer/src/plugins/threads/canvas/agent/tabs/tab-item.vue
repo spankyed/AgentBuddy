@@ -35,7 +35,17 @@
             <X :size="14" />
           </button>
         </span>
-        <span class="truncate">{{ tab.label }}</span>
+        <input
+          v-if="isRenaming"
+          ref="renameInput"
+          v-model="renamingName"
+          class="truncate text-sm bg-neutral-800 border border-blue-500 rounded px-1 py-0 outline-none w-full min-w-0"
+          @keydown.enter="confirmRename"
+          @keydown.escape="cancelRename"
+          @blur="confirmRename"
+          @click.stop
+        />
+        <span v-else class="truncate">{{ tab.label }}</span>
         <Pin
           :size="12"
           class="shrink-0 ml-1.5 cursor-pointer transition-opacity"
@@ -71,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, nextTick } from 'vue';
 import { X, SquarePen, Pin } from 'lucide-vue-next';
 import { ContextMenuRoot, ContextMenuTrigger, ContextMenuItem } from 'reka-ui';
 import ThreadContextMenu from '@/plugins/threads/canvas/components/thread-context-menu.vue';
@@ -116,10 +127,31 @@ function isThreadBusy(threadId: string): boolean {
   return getThreadStateConfig(threadId)?.busy ?? false;
 }
 
+const isRenaming = ref(false)
+const renamingName = ref('')
+const renameInput = ref<HTMLInputElement | null>(null)
+
 function handleRename() {
-  const newName = prompt('Rename thread', props.tab.label || '');
-  if (newName !== null && newName.trim()) {
-    threadsActor.send({ type: 'RENAME_THREAD', threadId: props.tab.id, topic: newName.trim() });
+  isRenaming.value = true
+  renamingName.value = props.tab.label || ''
+  nextTick(() => {
+    renameInput.value?.focus()
+    renameInput.value?.select()
+  })
+}
+
+function confirmRename() {
+  if (!isRenaming.value) return
+  const trimmed = renamingName.value.trim()
+  if (trimmed) {
+    threadsActor.send({ type: 'RENAME_THREAD', threadId: props.tab.id, topic: trimmed });
   }
+  isRenaming.value = false
+  renamingName.value = ''
+}
+
+function cancelRename() {
+  isRenaming.value = false
+  renamingName.value = ''
 }
 </script>

@@ -7,6 +7,10 @@
         :settings="settings"
         :chat-states="chatStates"
         :chat-state-overrides="chatStateOverrides"
+        :renaming-name="renamingName"
+        @rename-input="$emit('rename-input', $event)"
+        @rename-confirm="$emit('rename-confirm', thread.id)"
+        @rename-cancel="$emit('rename-cancel')"
         :class="[
           'cursor-pointer group thread-row',
           { 'animate-highlight': thread.isNew },
@@ -170,6 +174,7 @@ const props = defineProps<{
   isSelected?: boolean;
   dragClass?: string;
   showArchived?: boolean;
+  renamingName?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -183,6 +188,9 @@ const emit = defineEmits<{
   'unpin-click': [id: string]
   'pin-click': [id: string]
   'rename-click': [id: string]
+  'rename-input': [value: string]
+  'rename-confirm': [id: string]
+  'rename-cancel': []
   'drag-start': [e: DragEvent, id: string]
   'drag-over': [e: DragEvent, id: string]
   'drag-leave': [e: DragEvent]

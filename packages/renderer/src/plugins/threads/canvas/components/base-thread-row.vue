@@ -24,7 +24,19 @@
             class="absolute inset-0 rounded-full scale-[2] mosaic-glow"
           />
         </span>
+        <input
+          v-if="renamingName != null"
+          ref="renameInput"
+          :value="renamingName"
+          class="text-sm font-medium text-neutral-100 bg-neutral-800 border border-blue-500 rounded px-1.5 py-0.5 outline-none w-full min-w-0"
+          @input="$emit('rename-input', ($event.target as HTMLInputElement).value)"
+          @keydown.enter="$emit('rename-confirm')"
+          @keydown.escape="$emit('rename-cancel')"
+          @blur="$emit('rename-confirm')"
+          @click.stop
+        />
         <span
+          v-else
           class="text-sm font-medium text-neutral-100 line-clamp-1 hover:underline hover:text-blue-400 transition-colors cursor-pointer"
           :title="thread.topic || 'Untitled thread'"
           @click.stop="$emit('select', thread.id)"
@@ -76,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import type { ThreadTagOption, ThreadsSettings } from '@app/api'
 
 export interface BaseThreadData {
@@ -93,6 +105,7 @@ const props = defineProps<{
   settings?: ThreadsSettings | null
   chatStates?: Record<string, string>
   chatStateOverrides?: Record<string, { id: string; expiresAt: number }>
+  renamingName?: string | null
 }>()
 
 defineEmits<{
@@ -102,7 +115,21 @@ defineEmits<{
   'drag-over': [e: DragEvent, id: string]
   'drag-leave': [e: DragEvent]
   'drop': [e: DragEvent, id: string]
+  'rename-input': [value: string]
+  'rename-confirm': []
+  'rename-cancel': []
 }>()
+
+const renameInput = ref<HTMLInputElement | null>(null)
+
+watch(() => props.renamingName, (val) => {
+  if (val != null) {
+    nextTick(() => {
+      renameInput.value?.focus()
+      renameInput.value?.select()
+    })
+  }
+})
 
 const MAX_VISIBLE_TAGS = 3
 const allTags = computed(() => props.thread.tags || [])

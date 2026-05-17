@@ -34,7 +34,11 @@
               @unarchive-click="(threadId) => actor.send({ type: 'UNARCHIVE_THREAD', threadId })"
               @delete-click="handleDeleteThread"
               @unpin-click="handleUnpinThread"
+              :renaming-name="renamingThreadId === thread.id ? renamingName : null"
               @rename-click="handleRenameThread"
+              @rename-input="renamingName = $event"
+              @rename-confirm="handleRenameConfirm"
+              @rename-cancel="handleRenameCancel"
               @pin-click="handlePinThread"
               @drag-start="handleDragStart"
               @drag-over="handleDragOver"
@@ -232,13 +236,28 @@ const handlePinThread = (threadId: string) => {
   actor.send({ type: 'PIN_THREAD', threadId });
 };
 
+const renamingThreadId = ref<string | null>(null)
+const renamingName = ref('')
+
 const handleRenameThread = (threadId: string) => {
   const thread = threads.value.find(t => t.id === threadId);
   if (!thread) return;
-  const newName = prompt('Rename thread', thread.topic || '');
-  if (newName !== null && newName.trim()) {
-    actor.send({ type: 'RENAME_THREAD', threadId, topic: newName.trim() });
+  renamingThreadId.value = threadId;
+  renamingName.value = thread.topic || '';
+};
+
+const handleRenameConfirm = (threadId: string) => {
+  const trimmed = renamingName.value.trim();
+  if (trimmed && renamingThreadId.value) {
+    actor.send({ type: 'RENAME_THREAD', threadId, topic: trimmed });
   }
+  renamingThreadId.value = null;
+  renamingName.value = '';
+};
+
+const handleRenameCancel = () => {
+  renamingThreadId.value = null;
+  renamingName.value = '';
 };
 
 const handleDeleteThread = (threadId: string) => {
