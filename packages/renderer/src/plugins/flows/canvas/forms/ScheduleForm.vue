@@ -188,6 +188,7 @@ const frequency = ref<Frequency>('hourly')
 const minute = ref(0)
 const hour = ref(9)
 const daysOfWeek = ref<number[]>([]) // empty = every day (daily mode)
+const selfEmitted = ref(false) // guard: skip re-parsing cron changes we triggered ourselves
 const dayOfWeek = ref(1) // 0=Sun, 1=Mon, ..., 6=Sat (weekly mode)
 const dayOfMonth = ref(1)
 
@@ -284,12 +285,18 @@ function buildCron(): string {
 
 function emitCron() {
   if (frequency.value !== 'custom') {
+    selfEmitted.value = true
     emit('update-node', { cronExpression: buildCron() })
   }
 }
 
-// Initialize visual state from existing cronExpression
+// Initialize visual state from existing cronExpression.
+// Skip re-parsing when we triggered the change ourselves (selfEmitted guard).
 watch(() => nodeData.value.cronExpression, (expr) => {
+  if (selfEmitted.value) {
+    selfEmitted.value = false
+    return
+  }
   if (expr) {
     frequency.value = parseCron(expr)
   } else {
