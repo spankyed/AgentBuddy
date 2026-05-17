@@ -387,10 +387,18 @@ const notesState = setup({
       const updatedNotes = context.notes.map(n =>
         n.id === ev.note.id ? ev.note : n
       )
+      // Preserve local content for the active note to prevent backend echo
+      // from resetting the editor (the editor holds the freshest content)
+      const isEditingNote = context.currentNoteId === ev.note.id
+      const mergedNote = isEditingNote && context.currentNote
+        ? { ...ev.note, content: context.currentNote.content }
+        : ev.note
       return {
         notes: updatedNotes,
-        currentNote: context.currentNoteId === ev.note.id ? ev.note : context.currentNote,
-        selectedTask: context.selectedTaskId === ev.note.id ? ev.note : context.selectedTask,
+        currentNote: isEditingNote ? mergedNote : context.currentNote,
+        selectedTask: context.selectedTaskId === ev.note.id
+          ? { ...ev.note, content: context.selectedTask?.content ?? ev.note.content }
+          : context.selectedTask,
       }
     }),
 
