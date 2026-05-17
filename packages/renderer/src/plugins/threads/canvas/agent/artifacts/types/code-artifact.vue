@@ -5,27 +5,19 @@
         <pre class="p-6 overflow-x-auto font-mono text-sm text-white rounded-lg bg-neutral-900">
           <code>{{ artifact.content }}</code>
         </pre>
-        <button 
-          @click="copyToClipboard"
-          class="absolute p-2 transition-colors rounded top-3 right-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white"
-          title="Copy to clipboard"
-        >
-          <Copy :size="16" />
-        </button>
+        <div class="absolute top-3 right-3">
+          <CopyButton :text="typeof artifact.content === 'string' ? artifact.content : ''" />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Copy } from 'lucide-vue-next';
 import type { ArtifactItem } from '@app/api';
+import CopyButton from '@/core/components/design/CopyButton.vue'
 
-const props = defineProps<{
+defineProps<{
   artifact: ArtifactItem;
 }>();
-
-function copyToClipboard() {
-  navigator.clipboard.writeText(props.artifact.content);
-}
 </script>

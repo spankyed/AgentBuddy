@@ -9,6 +9,7 @@
             {{ note?.title || artifact.title || 'Note' }}
           </h3>
         </div>
+        <CopyButton :text="noteContent" />
       </div>
 
       <!-- Note body -->
@@ -32,6 +33,7 @@ import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import CopyButton from '@/core/components/design/CopyButton.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 

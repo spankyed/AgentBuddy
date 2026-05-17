@@ -9,6 +9,7 @@
             {{ artifact.title || 'Markdown' }}
           </h3>
         </div>
+        <CopyButton :text="content" />
       </div>
 
       <!-- Markdown body — rendered via TiptapEditor in viewer mode -->
@@ -32,6 +33,7 @@ import { computed } from 'vue'
 import { BookText } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import CopyButton from '@/core/components/design/CopyButton.vue'
 
 const props = defineProps<{
   artifact: ArtifactItem

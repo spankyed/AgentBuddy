@@ -23,13 +23,7 @@
           The pill now passively reflects whatever the backend says.
         -->
         <div class="flex items-center gap-2">
-          <button
-            @click="copyToClipboard"
-            class="p-1 transition-colors rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700"
-            title="Copy to clipboard"
-          >
-            <component :is="copied ? Check : Copy" :size="14" />
-          </button>
+          <CopyButton :text="notes" />
           <span
             class="text-xs px-2 py-0.5 rounded"
             :class="statusPillClass"
@@ -56,10 +50,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { ClipboardList, Copy, Check } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { ClipboardList } from 'lucide-vue-next'
 import type { ArtifactItem } from '@app/api'
 import TiptapEditor from '@/core/components/tiptap/TiptapEditor.vue'
+import CopyButton from '@/core/components/design/CopyButton.vue'
 
 type PlanStatus = 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected'
 
@@ -95,14 +90,6 @@ const statusLabel = computed(() => {
     default: return status.value
   }
 })
-
-const copied = ref(false)
-
-function copyToClipboard() {
-  navigator.clipboard.writeText(notes.value)
-  copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
-}
 
 const statusPillClass = computed(() => {
   switch (status.value) {
