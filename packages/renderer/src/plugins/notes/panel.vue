@@ -103,7 +103,7 @@
 
     <!-- Normal View -->
     <template v-else>
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden">
       <!-- Favorites -->
       <div v-if="favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
         <button
