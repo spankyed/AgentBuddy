@@ -5883,6 +5883,7 @@ declare const services: {
             readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType">, flowTNodeId: EARS.EntityId) => TNodeEntity;
             readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
                 flowTNode: TNodeEntity;
+                flowId: EARS.EntityId;
                 eventNodes: ListenerNode[];
             };
             readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {

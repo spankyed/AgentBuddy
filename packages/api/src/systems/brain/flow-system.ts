@@ -160,13 +160,13 @@ export function createFlowNodeSystem(
       };
     })()
     : (() => {
-      const { flowTNode, eventNodes } = repository.brainCommands.createFlowTNode(
+      const { flowTNode, flowId: referencedFlowId, eventNodes } = repository.brainCommands.createFlowTNode(
         flowId,
         parentTNodeId ?? eventTNodeId,
         executionContext
       );
       return {
-        actualFlowId: flowId,
+        actualFlowId: referencedFlowId,
         flowTNodeId: flowTNode.id,
         flowTNode,
         eventNodes

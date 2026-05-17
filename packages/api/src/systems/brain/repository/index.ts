@@ -321,7 +321,7 @@ export const brainCommands = {
     flowStepId: EARS.EntityId,
     eventTrackId?: EARS.EntityId,
     executionContext?: ExecutionContext
-  ): { flowTNode: TNodeEntity; eventNodes: ListenerNode[] } => {
+  ): { flowTNode: TNodeEntity; flowId: EARS.EntityId; eventNodes: ListenerNode[] } => {
     // Get the flow reference from the flow node (get all fields for attributes)
     const flowStepNode = qx(flowStepId)
       .pickAll()[0] as Partial<FlowNode> | undefined;
@@ -406,6 +406,7 @@ export const brainCommands = {
     
     return {
       flowTNode: flowTNode as TNodeEntity,
+      flowId: flowStepNode.flowRef as EARS.EntityId,
       eventNodes,
     };
   },
