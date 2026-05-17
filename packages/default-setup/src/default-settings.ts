@@ -49,6 +49,7 @@ const settings: SettingsData = {
         brain: false,
         database: false,
         logs: false,
+        hermes: false,
         settings: true,
         // blank: false,
       }
