@@ -1,5 +1,74 @@
 -e # Changelog
 
+## v0.2.23 (2026-05-17)
+
+### Features
+- threads): add full-width styling to tab bar containers
+- threads): add tab grouping support with drag-and-drop reordering
+- ui): add copy-to-clipboard buttons to plan blocks and text-based artifacts
+- default-setup): add hermes module to default settings with disabled state
+- code): enrich PR review thread data with line range, diff context, and improved UI
+- flows): add keyboard navigation to flows list
+- welcome): allow closing dev letter by clicking backdrop
+- flows): add 6-field cron support and improve schedule form UX
+- flows): add schedule node support with cron-based triggers
+- flows): add schedule track support with cron-based triggers
+- flows): add multi-day filter to daily schedule frequency
+- fix(flows): replace hardcoded listener checks with generic trigger node helper
+- flows): add cron step expression support to human-readable formatter
+- scheduler): add cron-based schedule node support for flows
+- commit): add search functionality to commit log section
+- notes): add toggle to show/hide favorites section
+- notes): wire up drag-and-drop events and drop indicator to tree component
+
+### Fixes
+- editor): restore scroll position when opening file from diff view
+- ui): auto-scroll tool activity block to bottom on open and stay pinned
+- code): simplify git reset to skip modal and execute directly
+- claude-code): unblock post-restart plan approvals and question answers
+- claude-code): remove unnecessary CLI handle check in route-response
+- pull-request): initialize prComments and reviewThreads in state reset
+- notes): preserve local editor content when backend echoes note updates
+- threads): replace window.prompt() with inline editing for thread rename
+- flows): address second round of PR review comments
+- flows): address PR review comments for schedule node support
+- flows): prevent daily single-day selection from switching to weekly
+- flows): prevent daily single-day selection from switching to weekly
+- flows): change weekly schedule from multi-day picker to single day dropdown
+- flows): replace hardcoded listener checks with generic trigger node helper
+- notes): detach restored note from deleted parent to prevent orphaning
+- claude-code): use header text for multi-question blocks instead of first question
+- notes): hide horizontal overflow in notes panel
+- notes): wrap favorites and tree sections in single scrollable container
+
+### Refactors
+- commit): convert async/await handlers to promise chains
+- notes): simplify state update actions by removing redundant content preservation
+- threads): move tab event handling from parent emit to direct actor calls
+- flows): merge ListenerNode and ScheduleNode into shared TriggerNode
+- flows): make node layout descriptors self-describing for exit count
+
+### Other
+- Revert "chore(release): v0.2.23"
+- perf(hermes): skip hermes-agent install when already available on PATH
+- Merge pull request #150 from spankyed/AS/threads-tab-grouping-reordering
+- style(threads): refine tab and group label sizing and color styles
+- update defs
+- Merge pull request #149 from spankyed/AS/scheduling-step
+- Fix schedule export and cron validation
+- Document flow runtime semantics
+- Update tests and comments
+- code cleanup
+- Keep schedule-triggered flows alive
+- Fix subflow schedule registration
+- Implement the schedule-specific Brain UI/model path.
+- Set local scope for schedule events
+- Allow schedule-only root flows
+- Prevent connections into trigger nodes
+- update defs
+
+-e # Changelog
+
 ## v0.2.22 (2026-05-16)
 
 ### Features
