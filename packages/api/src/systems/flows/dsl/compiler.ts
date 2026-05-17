@@ -642,7 +642,7 @@ function compileFlow(
   // First pass: generate all node IDs
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
-    const listenerLabel = track.label || track.event;
+    const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
     const listenerId = generateId('Node', `${flowName}-${listenerLabel}-t${trackIdx}`);
     globalLabelMap.set(listenerLabel, listenerId);
 
@@ -701,30 +701,41 @@ function compileTrack(
 } {
   const trackRoles: Array<{ entityId: string; role: string }> = [];
 
-  const listenerLabel = track.label || track.event;
+  const isScheduleTrack = !!track.schedule;
+  const listenerLabel = track.label || track.event || `Schedule ${trackIdx}`;
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
 
-  // Create listener node from track.event
-  const listenerEntity = {
-    id: listenerId,
-    entityType: EARS.Entity.Node,
-    createdAt: fCtx.ts,
-    nodeType: 'listener',
-    label: listenerLabel,
-    description: track.description,
-    scope: isFirstTrack ? 'entry' : 'global',
-    eventType: track.event,
-  };
+  // Create trigger node (listener or schedule) from track
+  const listenerEntity = isScheduleTrack
+    ? {
+        id: listenerId,
+        entityType: EARS.Entity.Node,
+        createdAt: fCtx.ts,
+        nodeType: 'schedule',
+        label: listenerLabel,
+        description: track.description,
+        cronExpression: track.schedule,
+      }
+    : {
+        id: listenerId,
+        entityType: EARS.Entity.Node,
+        createdAt: fCtx.ts,
+        nodeType: 'listener',
+        label: listenerLabel,
+        description: track.description,
+        scope: isFirstTrack ? 'entry' : 'global',
+        eventType: track.event!,
+      };
 
-  // Add CONTAINS for listener node
+  // Add CONTAINS for trigger node
   trackRelations.push({
     source: fCtx.flowId,
     kind: EARS.RelKind.CONTAINS,
     target: listenerId,
   });
 
-  // Add entry role for first track's listener node
-  if (isFirstTrack) {
+  // Add entry role for first track's listener node (not schedule tracks)
+  if (isFirstTrack && !isScheduleTrack) {
     trackRoles.push({
       entityId: listenerId,
       role: 'entry_event',

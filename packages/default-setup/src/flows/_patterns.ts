@@ -72,3 +72,8 @@ export function fire(event: string, opts?: { label?: string; scope?: 'local' | '
 export function subflow(flow: string, opts?: { label?: string; map?: Record<string, string> }): DSLStepNode {
   return { type: 'flow', flow, ...opts };
 }
+
+/** Schedule track: fires downstream steps on a cron schedule */
+export function every(cron: string, exits: DSLStepNode[][], label?: string): Track {
+  return { schedule: cron, label: label ?? `Schedule (${cron})`, exits };
+}
