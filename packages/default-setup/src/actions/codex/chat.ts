@@ -111,7 +111,7 @@ export async function action(params: Record<string, any>, services: Services, _z
       const result = await codex.startThread({
         cwd: sessionCwd,
         model,
-        sandbox: 'workspaceWrite',
+        sandbox: 'workspace-write',
         approvalsReviewer: 'user',
       });
       activeThreadId = result.threadId;

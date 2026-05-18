@@ -21,7 +21,7 @@ export type ApprovalDecision = 'accept' | 'acceptForSession' | 'decline' | 'canc
 export interface ThreadStartParams {
   cwd?: string
   model?: string
-  sandbox?: 'readOnly' | 'workspaceWrite' | 'dangerFullAccess'
+  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access'
   approvalsReviewer?: 'user' | 'auto_review'
 }
 
