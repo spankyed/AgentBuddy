@@ -1,9 +1,7 @@
 /**
- * Maps Codex SDK ThreadItem types to writer/toolActivity calls.
- *
- * The SDK delivers full text snapshots in `item.updated` events (not deltas).
- * This module handles delta extraction by diffing against previous snapshots
- * and dispatching to the appropriate writer.
+ * Maps Codex SDK ThreadItem events to writer/toolActivity calls.
+ * Handles delta extraction from full text snapshots (SDK delivers complete
+ * text, not deltas).
  */
 
 import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activity-writer';
@@ -11,25 +9,15 @@ import type { StreamWriter } from '../../claude-code/_helpers/stream-writer';
 import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer';
 
 export interface EventMapperState {
-  /** Last seen full text for agent_message — for delta extraction. */
   lastAgentText: string;
-  /** Last seen full text for reasoning — for delta extraction. */
   lastReasoningText: string;
-  /** File paths mutated by file_change items (for diff artifact). */
   mutatedPaths: string[];
   mutatedPathsSet: Set<string>;
-  /** Total tool calls in this turn (for rolling counter). */
   toolCallCount: number;
 }
 
 export function createEventMapperState(): EventMapperState {
-  return {
-    lastAgentText: '',
-    lastReasoningText: '',
-    mutatedPaths: [],
-    mutatedPathsSet: new Set(),
-    toolCallCount: 0,
-  };
+  return { lastAgentText: '', lastReasoningText: '', mutatedPaths: [], mutatedPathsSet: new Set(), toolCallCount: 0 };
 }
 
 export interface Writers {
@@ -38,231 +26,143 @@ export interface Writers {
   thinking: ThinkingWriter;
 }
 
+export interface ToolInfo { name: string; summary: string }
+
+/** Extract delta from a full text snapshot vs previous snapshot. */
+function extractDelta(newText: string, prev: string): string | null {
+  return newText.length > prev.length ? newText.slice(prev.length) : null;
+}
+
+/** Prepare writers for tool activity (finalize thinking, flush text). */
+function prepareForTool(writers: Writers) {
+  writers.thinking.finalise();
+  writers.thinking.stopDirectWrites();
+  writers.writer.flush();
+}
+
+/** Clear the "Thinking…" placeholder on first content. */
+function clearPlaceholderIfNeeded(thinking: ThinkingWriter, prev: string, services: any, messageId: any) {
+  if (!prev && !thinking.hasContent) {
+    services.chat.updateMessageState(messageId, { text: '' });
+  }
+}
+
 /**
- * Handle an item.started event. Sets up toolActivity entries for tool items.
+ * Handle item.started. Returns tool info for recentTools tracking, or null
+ * for non-tool items.
  */
-export function handleItemStarted(
-  item: any,
-  writers: Writers,
-  state: EventMapperState,
-): void {
-  const { toolActivity, thinking, writer } = writers;
+export function handleItemStarted(item: any, writers: Writers, state: EventMapperState): ToolInfo | null {
+  const { toolActivity } = writers;
 
   switch (item.type) {
     case 'agent_message':
-      // Reset delta tracking for new message
       state.lastAgentText = '';
-      break;
+      return null;
 
     case 'reasoning':
       state.lastReasoningText = '';
-      break;
+      return null;
 
     case 'command_execution':
       state.toolCallCount++;
-      thinking.finalise();
-      thinking.stopDirectWrites();
-      writer.flush();
-      toolActivity.append({
-        id: item.id,
-        tool: 'command',
-        summary: item.command || '',
-        status: 'running',
-        details: { input: { command: item.command } },
-      });
-      break;
-
-    case 'file_change':
-      // Wait for completion to get the full changes list
-      break;
+      prepareForTool(writers);
+      toolActivity.append({ id: item.id, tool: 'command', summary: item.command || '', status: 'running', details: { input: { command: item.command } } });
+      return { name: 'command', summary: item.command || '' };
 
     case 'mcp_tool_call':
       state.toolCallCount++;
-      thinking.finalise();
-      thinking.stopDirectWrites();
-      writer.flush();
-      toolActivity.append({
-        id: item.id,
-        tool: `${item.server}/${item.tool}`,
-        summary: item.tool || '',
-        status: 'running',
-        details: { input: item.arguments },
-      });
-      break;
+      prepareForTool(writers);
+      toolActivity.append({ id: item.id, tool: `${item.server}/${item.tool}`, summary: item.tool || '', status: 'running', details: { input: item.arguments } });
+      return { name: `${item.server}/${item.tool}`, summary: item.tool || '' };
 
     case 'web_search':
       state.toolCallCount++;
-      thinking.finalise();
-      thinking.stopDirectWrites();
-      writer.flush();
-      toolActivity.append({
-        id: item.id,
-        tool: 'web_search',
-        summary: item.query || '',
-        status: 'running',
-      });
-      break;
-
-    case 'todo_list':
-      // Could render as a toolActivity entry or custom block
-      break;
+      prepareForTool(writers);
+      toolActivity.append({ id: item.id, tool: 'web_search', summary: item.query || '', status: 'running' });
+      return { name: 'web_search', summary: item.query || '' };
 
     case 'error':
-      toolActivity.append({
-        id: item.id,
-        tool: 'error',
-        summary: item.message || 'Error',
-        status: 'error',
-      });
-      break;
+      toolActivity.append({ id: item.id, tool: 'error', summary: item.message || 'Error', status: 'error' });
+      return null;
+
+    default:
+      return null;
   }
 }
 
-/**
- * Handle an item.updated event. Extracts deltas from full text snapshots
- * and pushes to the appropriate writer.
- */
-export function handleItemUpdated(
-  item: any,
-  writers: Writers,
-  state: EventMapperState,
-  services: any,
-  messageId: any,
-): void {
-  const { writer, thinking } = writers;
-
+export function handleItemUpdated(item: any, writers: Writers, state: EventMapperState, services: any, messageId: any): void {
   switch (item.type) {
     case 'agent_message': {
-      const newText = item.text || '';
-      if (newText.length > state.lastAgentText.length) {
-        const delta = newText.slice(state.lastAgentText.length);
-        // Clear "Thinking…" placeholder on first text
-        if (!state.lastAgentText && !thinking.hasContent) {
-          services.chat.updateMessageState(messageId, { text: '' });
-        }
-        thinking.finalise();
-        writer.push(delta);
+      const delta = extractDelta(item.text || '', state.lastAgentText);
+      if (delta) {
+        clearPlaceholderIfNeeded(writers.thinking, state.lastAgentText, services, messageId);
+        writers.thinking.finalise();
+        writers.writer.push(delta);
       }
-      state.lastAgentText = newText;
+      state.lastAgentText = item.text || '';
       break;
     }
-
     case 'reasoning': {
-      const newText = item.text || '';
-      if (newText.length > state.lastReasoningText.length) {
-        const delta = newText.slice(state.lastReasoningText.length);
-        // Clear "Thinking…" placeholder on first reasoning
-        if (!state.lastReasoningText && !thinking.hasContent) {
-          services.chat.updateMessageState(messageId, { text: '' });
-        }
-        thinking.push(delta);
+      const delta = extractDelta(item.text || '', state.lastReasoningText);
+      if (delta) {
+        clearPlaceholderIfNeeded(writers.thinking, state.lastReasoningText, services, messageId);
+        writers.thinking.push(delta);
       }
-      state.lastReasoningText = newText;
+      state.lastReasoningText = item.text || '';
       break;
     }
-
     case 'command_execution': {
-      // Update toolActivity with output preview
       const output = item.aggregated_output || '';
       if (output) {
-        const preview = output.length > 200 ? output.slice(-200) : output;
-        writers.toolActivity.update(item.id, {
-          details: { input: { command: item.command }, output: preview },
-        });
+        writers.toolActivity.update(item.id, { details: { input: { command: item.command }, output: output.slice(-200) } });
       }
       break;
     }
   }
 }
 
-/**
- * Handle an item.completed event. Finalizes toolActivity entries and
- * tracks mutated file paths.
- */
-export function handleItemCompleted(
-  item: any,
-  writers: Writers,
-  state: EventMapperState,
-): void {
-  const { writer, toolActivity, thinking } = writers;
-
+export function handleItemCompleted(item: any, writers: Writers, state: EventMapperState): void {
   switch (item.type) {
     case 'agent_message': {
-      // Final flush of any remaining delta
-      const newText = item.text || '';
-      if (newText.length > state.lastAgentText.length) {
-        const delta = newText.slice(state.lastAgentText.length);
-        thinking.finalise();
-        writer.push(delta);
-      }
-      state.lastAgentText = newText;
+      const delta = extractDelta(item.text || '', state.lastAgentText);
+      if (delta) { writers.thinking.finalise(); writers.writer.push(delta); }
+      state.lastAgentText = item.text || '';
       break;
     }
-
     case 'reasoning': {
-      const newText = item.text || '';
-      if (newText.length > state.lastReasoningText.length) {
-        const delta = newText.slice(state.lastReasoningText.length);
-        thinking.push(delta);
-      }
-      state.lastReasoningText = newText;
-      thinking.finalise();
+      const delta = extractDelta(item.text || '', state.lastReasoningText);
+      if (delta) writers.thinking.push(delta);
+      state.lastReasoningText = item.text || '';
+      writers.thinking.finalise();
       break;
     }
-
     case 'command_execution': {
       const ok = item.status === 'completed' && (item.exit_code === 0 || item.exit_code === undefined);
-      toolActivity.update(item.id, {
-        status: ok ? 'ok' : 'error',
-        details: {
-          input: { command: item.command },
-          output: item.aggregated_output || '',
-        },
-      });
+      writers.toolActivity.update(item.id, { status: ok ? 'ok' : 'error', details: { input: { command: item.command }, output: item.aggregated_output || '' } });
       break;
     }
-
     case 'file_change': {
       state.toolCallCount++;
-      thinking.finalise();
-      thinking.stopDirectWrites();
-      writer.flush();
-      const changes = item.changes || [];
-      for (const change of changes) {
-        const p = change.path;
-        if (typeof p === 'string' && !state.mutatedPathsSet.has(p)) {
-          state.mutatedPathsSet.add(p);
-          state.mutatedPaths.push(p);
+      prepareForTool(writers);
+      for (const change of (item.changes || [])) {
+        if (typeof change.path === 'string' && !state.mutatedPathsSet.has(change.path)) {
+          state.mutatedPathsSet.add(change.path);
+          state.mutatedPaths.push(change.path);
         }
       }
-      // Append a summary toolActivity entry for the file change
-      const summary = changes.map((c: any) => `${c.kind}: ${c.path}`).join(', ');
-      toolActivity.append({
-        id: item.id,
-        tool: 'file_change',
-        summary: summary || 'File changes',
-        status: item.status === 'completed' ? 'ok' : 'error',
-      });
+      const summary = (item.changes || []).map((c: any) => `${c.kind}: ${c.path}`).join(', ');
+      writers.toolActivity.append({ id: item.id, tool: 'file_change', summary: summary || 'File changes', status: item.status === 'completed' ? 'ok' : 'error' });
       break;
     }
-
     case 'mcp_tool_call': {
-      const ok = item.status === 'completed';
-      toolActivity.update(item.id, {
-        status: ok ? 'ok' : 'error',
-        ...(item.error ? { details: { output: item.error.message } } : {}),
-      });
+      writers.toolActivity.update(item.id, { status: item.status === 'completed' ? 'ok' : 'error', ...(item.error ? { details: { output: item.error.message } } : {}) });
       break;
     }
-
-    case 'web_search': {
-      toolActivity.update(item.id, { status: 'ok' });
+    case 'web_search':
+      writers.toolActivity.update(item.id, { status: 'ok' });
       break;
-    }
-
-    case 'error': {
-      toolActivity.update(item.id, { status: 'error' });
+    case 'error':
+      writers.toolActivity.update(item.id, { status: 'error' });
       break;
-    }
   }
 }

@@ -1,10 +1,4 @@
-/**
- * CDX: Turn Completed — finalizes session stats and creates the diff
- * artifact after a streaming turn ends.
- *
- * Triggered by the `cdx.stream.completed` brain event emitted from the
- * stream consumer (both success and error paths).
- */
+/** CDX: Turn Completed — finalizes session stats and creates diff artifact. */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
 import { getCodexState, updateCodexState, updateChatState } from './_helpers/thread-context';
@@ -15,25 +9,16 @@ export const meta: ActionMeta = {
   description: 'Finalizes session stats and creates diff artifact after a Codex turn.',
   category: 'codex',
   input: {
-    threadId: { type: 'string', description: 'Thread ID', required: true },
-    usage: { type: 'object', description: 'Token usage { input, output, reasoning }', required: false },
-    toolCallCount: { type: 'number', description: 'Number of tool calls', required: false },
-    mutatedPaths: { type: 'array', description: 'File paths that were mutated', required: false },
-    hadErrors: { type: 'boolean', description: 'Whether errors occurred', required: false },
+    threadId: { type: 'string', required: true },
+    usage: { type: 'object', required: false },
+    toolCallCount: { type: 'number', required: false },
+    mutatedPaths: { type: 'array', required: false },
+    hadErrors: { type: 'boolean', required: false },
   },
 };
 
-export async function action(
-  params: Record<string, any>,
-  services: Services,
-) {
-  const {
-    threadId,
-    usage,
-    hadErrors,
-    mutatedPaths,
-    toolCallCount,
-  } = params as {
+export async function action(params: Record<string, any>, services: Services) {
+  const { threadId, usage, hadErrors, mutatedPaths, toolCallCount } = params as {
     threadId: string;
     usage?: { input: number; output: number; reasoning: number };
     hadErrors?: boolean;
@@ -41,11 +26,8 @@ export async function action(
     toolCallCount?: number;
   };
 
-  const log = services.logger;
-
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  // ─── Update session stats ──────────────────────────────────────────
   updateCodexState(services, threadId as EntityId, (prev) => ({
     turns: (prev.turns ?? 0) + 1,
     totalTokens: usage ? {
@@ -57,58 +39,29 @@ export async function action(
     lastTurnAt: Date.now(),
   }));
 
-  // Only transition chatState if no follow-up turn is in flight.
   const cdxState = getCodexState(services, threadId);
-  const running = cdxState?.isRunning === true;
-
-  if (!running) {
-    const currentChatState = cdxState?.chatState;
-    if (currentChatState !== 'error') {
-      const wasPaused = currentChatState === 'idle';
-      updateChatState(services, threadId as EntityId, !hadErrors && !wasPaused ? 'success' : 'idle');
-    }
+  if (!cdxState?.isRunning && cdxState?.chatState !== 'error') {
+    const wasPaused = cdxState?.chatState === 'idle';
+    updateChatState(services, threadId as EntityId, !hadErrors && !wasPaused ? 'success' : 'idle');
   }
 
-  // ─── Diff artifact ────────────────────────────────────────────────
+  // Diff artifact
   let artifactId: string | undefined;
-  try {
-    const paths = Array.isArray(mutatedPaths) ? mutatedPaths : [];
-    if (paths.length > 0) {
-      log.debug('[codex] collecting diff for mutated files', { paths });
-      const unified = await services.cli.git.getDiff(paths);
-      const parsed = parseUnifiedDiff(unified);
+  const paths = Array.isArray(mutatedPaths) ? mutatedPaths : [];
+  if (paths.length > 0) {
+    try {
+      const parsed = parseUnifiedDiff(await services.cli.git.getDiff(paths));
       if (parsed.files.length > 0) {
-        const diffTitle = deriveDiffTitle(parsed.files);
-        const result = services.artifact.createAndNotify({
-          artifactType: 'diff',
-          title: diffTitle,
-          content: parsed,
-          threadId: threadId as EntityId,
-        });
-        artifactId = result.artifactId;
-        log.debug('[codex] diff artifact created', { artifactId, fileCount: parsed.files.length });
+        const basenames = parsed.files.map(f => f.path.split('/').pop() ?? f.path);
+        const prefix = `[Diff][${parsed.files.length}] `;
+        let title = prefix + basenames.join(', ');
+        if (title.length > 80) title = prefix + basenames.slice(0, 3).join(', ') + '…';
+        artifactId = services.artifact.createAndNotify({ artifactType: 'diff', title, content: parsed, threadId: threadId as EntityId }).artifactId;
       }
+    } catch (e: any) {
+      services.logger.warn('[codex] diff failed', { message: e?.message });
     }
-  } catch (diffErr: any) {
-    log.warn('[codex] diff artifact assembly failed', { message: diffErr?.message });
   }
 
   return { success: true, hadErrors: !!hadErrors, artifactId };
-}
-
-function deriveDiffTitle(files: { path: string }[]): string {
-  if (files.length === 0) return '[Diff] No changes';
-  const basenames = files.map(f => f.path.split('/').pop() ?? f.path);
-  const prefix = `[Diff][${files.length}] `;
-  const joined = basenames.join(', ');
-  if (prefix.length + joined.length <= 80) return prefix + joined;
-  let result = '';
-  for (let i = 0; i < basenames.length; i++) {
-    const next = result ? result + ', ' + basenames[i] : basenames[i];
-    if (prefix.length + next.length + 1 > 80) {
-      return prefix + result + '…';
-    }
-    result = next;
-  }
-  return prefix + result;
 }

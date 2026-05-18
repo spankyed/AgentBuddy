@@ -71,31 +71,6 @@ export default {
     ),
     // ─── Stream lifecycle ────────────────────────────────────────────
     on(
-      "cdx.stream.started",
-      [[
-        action("CDX: Stream Started", {
-          label: "streaming",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-            codexThreadId: "$.event.data.payload.codexThreadId",
-          },
-        }),
-      ]],
-      "Stream started",
-    ),
-    on(
-      "cdx.stream.paused",
-      [[
-        action("CDX: Stream Paused", {
-          label: "awaiting-approval",
-          map: {
-            threadId: "$.event.data.payload.threadId",
-          },
-        }),
-      ]],
-      "Approval requested (Phase 2)",
-    ),
-    on(
       "cdx.stream.completed",
       [[
         action("CDX: Turn Completed", {
