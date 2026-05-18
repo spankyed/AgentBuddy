@@ -107,6 +107,7 @@ const settings: SettingsData = {
             ]
           },
           { id: 'hermes', name: 'Hermes', description: 'Hermes autonomous agent mode' },
+          { id: 'codex', name: 'Codex', description: 'OpenAI Codex agent mode' },
           { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents', hidden: true },
         ],
         hotkeys: {
