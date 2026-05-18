@@ -1,8 +1,53 @@
+import * as _openai_codex_sdk from '@openai/codex-sdk';
 import { z } from 'zod';
 export { z } from 'zod';
 import * as ai from 'ai';
 import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
+
+interface CodexQueryOptions {
+    /** User prompt text. */
+    prompt: string;
+    /** Working directory for the agent. */
+    cwd?: string;
+    /** Resume an existing Codex thread by ID. */
+    threadId?: string;
+    /** LLM model to use. */
+    model?: string;
+    /** Sandbox policy for command execution. */
+    sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
+    /** Tool approval policy. */
+    approvalPolicy?: 'never' | 'on-request' | 'on-failure' | 'untrusted';
+    /** Additional directories to include. */
+    additionalDirectories?: string[];
+    /** Reasoning effort level. */
+    reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+}
+interface CodexHandle {
+    /** Async generator of ThreadEvents from the SDK's runStreamed(). */
+    events: AsyncGenerator<_openai_codex_sdk.ThreadEvent>;
+    /** Resolves with the Codex thread ID after thread.started event. */
+    threadId: Promise<string>;
+    /** Abort the running turn via AbortController. */
+    abort(): void;
+}
+
+/**
+ * Codex CLI wrapper — public entry point.
+ *
+ * Thin wrapper around `@openai/codex-sdk` that exposes a typed Node API
+ * matching the same fire-once-per-turn pattern used by the Claude Code
+ * service. Each call to `query()` spawns a `codex exec` process via the
+ * SDK's `runStreamed()` and returns a `CodexHandle` with an async event
+ * generator and an abort function.
+ */
+
+interface CodexServiceType {
+    query(opts: CodexQueryOptions): Promise<CodexHandle>;
+    storeHandle(key: string, handle: CodexHandle): void;
+    getHandle(key: string): CodexHandle | undefined;
+    clearHandle(key: string): void;
+}
 
 interface HermesSession {
     id: string;
@@ -380,7 +425,7 @@ declare class GitRepository {
     }[]>;
     gitLog(count?: number): Promise<CommitLogEntry[]>;
     revertCommit(hash: string): Promise<void>;
-    resetToCommit(hash: string, mode?: 'soft' | 'mixed' | 'hard'): Promise<void>;
+    resetToCommit(hash: string): Promise<void>;
 }
 
 interface FileChangeInfo {
@@ -986,6 +1031,8 @@ interface TNodeEntity extends BaseEntity {
     startedAt: TimestampMs;
     completedAt?: TimestampMs;
     eventType?: string;
+    triggerType?: 'listener' | 'schedule';
+    cronExpression?: string;
     stepNodeType?: string;
     final?: boolean;
     nodeAttributes?: Record<string, unknown>;
@@ -1003,7 +1050,9 @@ interface EventListenerEntity {
     nodeId: EARS.EntityId;
     eventType: string;
     label: string;
-    scope: 'global' | 'local' | 'entry';
+    triggerType: 'listener' | 'schedule';
+    scope?: 'global' | 'local' | 'entry';
+    cronExpression?: string;
 }
 interface FlowTNodeData {
     flowTNodeId: EARS.EntityId;
@@ -1869,7 +1918,6 @@ type IncomingCommitEvents = {
 } | {
     type: 'commit.RESET_TO_COMMIT';
     hash: string;
-    mode: 'soft' | 'mixed' | 'hard';
 };
 type OutgoingCommitEvents = {
     type: 'commit.STATUS_RECEIVED';
@@ -2958,7 +3006,7 @@ interface ThreadEntity extends BaseEntity {
     shortCode?: string;
     status: string;
     tags?: string[];
-    forcedMode?: 'birth';
+    forcedMode?: string;
     pinned?: boolean;
     archived?: boolean;
     chatState?: string;
@@ -2987,7 +3035,7 @@ type ThreadLinkedFields = {
 };
 type ThreadCreateData = Simplify<ThreadEditFields & {
     role?: EARS.RoleKind;
-    forcedMode?: 'birth';
+    forcedMode?: string;
     pinned?: boolean;
 }>;
 type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & {
@@ -3070,6 +3118,7 @@ interface Tab {
     artifacts: ArtifactItem[];
     selectedArtifactId?: string;
     pinned?: boolean;
+    groupId?: string;
 }
 type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan' | 'note';
 interface ArtifactItem {
@@ -4619,6 +4668,10 @@ interface CliServiceType {
         renameSession(id: string, title: string, opts?: {
             cwd?: string;
         }): Promise<void>;
+        /** Check whether a session JSONL file exists under the given (or default) project directory. */
+        sessionExists(id: string, opts?: {
+            cwd?: string;
+        }): Promise<boolean>;
     };
 }
 
@@ -5905,9 +5958,13 @@ declare const services: {
             readonly rootData: () => FlowTNodeData;
         };
         readonly brainCommands: {
-            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType">, flowTNodeId: EARS.EntityId) => TNodeEntity;
+            readonly createEventTNode: (eventNode: Pick<ListenerNode, "id" | "label" | "eventType"> & {
+                triggerType?: "listener" | "schedule";
+                cronExpression?: string;
+            }, flowTNodeId: EARS.EntityId) => TNodeEntity;
             readonly createFlowTNode: (flowStepId: EARS.EntityId, eventTrackId?: EARS.EntityId, executionContext?: ExecutionContext) => {
                 flowTNode: TNodeEntity;
+                flowId: EARS.EntityId;
                 eventNodes: ListenerNode[];
             };
             readonly createStepTNode: (stepId: EARS.EntityId, eventTrackId: EARS.EntityId, executionContext?: ExecutionContext) => {
@@ -5918,7 +5975,7 @@ declare const services: {
                 rootFlow: FlowEntity;
                 rootFlowTNode: TNodeEntity;
                 eventNodes: ListenerNode[];
-                entryNode: ListenerNode;
+                entryNode?: ListenerNode;
             };
             readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
             readonly updateTNodeResult: (tNodeId: EARS.EntityId, result: any) => void;
@@ -6254,6 +6311,7 @@ declare const services: {
             list(): Promise<string[]>;
         };
     };
+    codex: CodexServiceType;
 };
 
 /**
