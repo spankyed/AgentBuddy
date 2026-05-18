@@ -1,4 +1,4 @@
-import type { ActionMeta, EntityId, Services, Z } from '../../../types';
+import type { ActionMeta, EntityId, Services } from '../../../types';
 import { getOnboardingState, persistOnboardingState, flashState, type OnboardingState } from '../onboarding-helpers';
 import { startCcImportStep } from './handle-projects-step';
 
@@ -60,7 +60,7 @@ export async function testCliAndAdvance(
       forkable: false,
     });
 
-    startCcImportStep(services, state, threadId);
+    await startCcImportStep(services, state, threadId);
   } else if (cliFound && !authenticated) {
     const detail = authErrorMsg ? ` (${authErrorMsg})` : '';
     const { messageId } = services.chat.sendChoiceBlock({
