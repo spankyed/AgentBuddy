@@ -21,8 +21,27 @@ export async function action(params: Record<string, any>, services: Services) {
   const state = getCodexState(services, threadId);
   if (!state) return { success: false, reason: 'no codex state' };
 
+  // Directory picker response
   if (state.pendingDirectorySelect) {
     return { success: true, threadId, response, directorySelect: true, pendingDirectorySelect: state.pendingDirectorySelect };
+  }
+
+  // Approval response
+  if (state.pendingApproval) {
+    const decision = response?.decision
+      || response?.flags?.decision
+      || (typeof response === 'string' ? response : undefined);
+    const denied = decision === 'decline' || decision === 'cancel';
+
+    return {
+      success: true,
+      threadId,
+      response,
+      approval: true,
+      denied,
+      requestId: state.pendingApproval.requestId,
+      decision: decision || 'accept',
+    };
   }
 
   return { success: true, threadId, response, noop: true };

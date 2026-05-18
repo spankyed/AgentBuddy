@@ -4,13 +4,14 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
 /**
  * Codex mode flow.
  *
- * Listens for `user.message` events and routes to the Codex Chat
- * action only when the user is in `codex` mode. Mirrors the Claude Code
- * flow structure with `cdx.*` event prefixes.
+ * Spawns the app-server on flow entry, then listens for user messages
+ * in codex mode, interactive responses (directory select + approvals),
+ * stream lifecycle events, and user controls (pause/unqueue).
  */
 export default {
   "Codex": [
     entry(
+      [action("CDX: Start Server", { label: "start-server" })],
       [keepAlive()],
     ),
     on(
@@ -18,7 +19,7 @@ export default {
       [[
         branch([
           {
-            if: "$.event.data.payload.mode == 'Codex'",
+            if: "$.event.data.payload.mode == 'codex'",
             steps: [
               action("Codex Chat", {
                 label: "codex-chat",
@@ -26,6 +27,7 @@ export default {
                   threadId: "$.event.data.payload.threadId",
                   text: "$.event.data.payload.text",
                   mode: "$.event.data.payload.mode",
+                  phase: "$.event.data.payload.phase",
                   model: "$.event.data.payload.model",
                   messageId: "$.event.data.payload.messageId",
                   references: "$.event.data.payload.references",
@@ -39,7 +41,7 @@ export default {
       ]],
       "Codex mode → Codex Chat",
     ),
-    // ─── Interactive responses (directory select, Phase 2 approvals) ──
+    // ─── Interactive responses (directory select + approvals) ──────────
     on(
       "interactive.message.response",
       [[
@@ -65,11 +67,48 @@ export default {
               }),
             ],
           },
+          {
+            if: "$.lastStep.result.denied == true",
+            steps: [
+              action("CDX: Deny Tool", {
+                label: "deny-tool",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                },
+              }),
+            ],
+          },
+          {
+            if: "$.lastStep.result.approval == true",
+            steps: [
+              action("CDX: Approve Tool", {
+                label: "approve-tool",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  requestId: "$.steps[label=route-response].result.requestId",
+                  decision: "$.steps[label=route-response].result.decision",
+                  response: "$.steps[label=route-response].result.response",
+                },
+              }),
+            ],
+          },
         ], undefined, "Response router"),
       ]],
       "Interactive response",
     ),
     // ─── Stream lifecycle ────────────────────────────────────────────
+    on(
+      "cdx.stream.paused",
+      [[
+        action("CDX: Stream Paused", {
+          label: "stream-paused",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+          },
+        }),
+      ]],
+      "Approval requested",
+    ),
     on(
       "cdx.stream.completed",
       [[

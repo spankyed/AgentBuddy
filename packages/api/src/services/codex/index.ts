@@ -1,61 +1,56 @@
-import { Codex } from '@openai/codex-sdk'
-import type { ThreadEvent } from '@openai/codex-sdk'
-import type { CodexQueryOptions, CodexHandle } from './types'
+/**
+ * Codex service — public entry point.
+ *
+ * Wraps the CodexAppServer (persistent `codex app-server` subprocess) and
+ * exposes thread/turn lifecycle, approval responses, consumer registration,
+ * and handle management to compiled actions via `services.codex`.
+ */
+
+import { CodexAppServer } from './app-server'
 import { storeHandle, getHandle, clearHandle } from './handle-store'
 import * as codexSessions from './sessions'
-import { createLogger } from '@/core/helpers/debug/logger'
+import type {
+  ServerStatus,
+  ThreadStartParams,
+  TurnStartParams,
+  ApprovalDecision,
+  ConsumerHandlers,
+  CodexTurnHandle,
+} from './types'
 
-const logger = createLogger('codex-service')
-
-export type { CodexQueryOptions, CodexHandle }
+export type { ServerStatus, ThreadStartParams, TurnStartParams, ApprovalDecision, ConsumerHandlers, CodexTurnHandle }
 export { storeHandle, getHandle, clearHandle }
 
-async function query(opts: CodexQueryOptions): Promise<CodexHandle> {
-  const { prompt, cwd, threadId, model, sandboxMode, approvalPolicy, additionalDirectories, reasoningEffort } = opts
-
-  const codex = new Codex()
-  const threadOptions = {
-    ...(model && { model }),
-    ...(sandboxMode && { sandboxMode }),
-    ...(approvalPolicy && { approvalPolicy }),
-    ...(additionalDirectories?.length && { additionalDirectories }),
-    ...(cwd && { workingDirectory: cwd }),
-    ...(reasoningEffort && { modelReasoningEffort: reasoningEffort }),
-  }
-
-  const thread = threadId
-    ? codex.resumeThread(threadId, threadOptions)
-    : codex.startThread(threadOptions)
-
-  const abortController = new AbortController()
-  const { events: rawEvents } = await thread.runStreamed(prompt, { signal: abortController.signal })
-
-  let resolveThreadId: (id: string) => void
-  let rejectThreadId: (err: unknown) => void
-  const threadIdPromise = new Promise<string>((resolve, reject) => {
-    resolveThreadId = resolve
-    rejectThreadId = reject
-  })
-
-  async function* wrapEvents(): AsyncGenerator<ThreadEvent> {
-    try {
-      for await (const event of rawEvents) {
-        if (event.type === 'thread.started') resolveThreadId(event.thread_id)
-        yield event
-      }
-    } catch (err) {
-      logger.error('Codex stream error', { error: err })
-      rejectThreadId(err)
-      throw err
-    }
-  }
-
-  return { events: wrapEvents(), threadId: threadIdPromise, abort: () => abortController.abort() }
-}
+const server = new CodexAppServer()
 
 export const codexService = {
-  query,
-  storeHandle, getHandle, clearHandle,
+  // Lifecycle
+  start: () => server.start(),
+  stop: () => server.stop(),
+  restart: () => server.restart(),
+  get status(): ServerStatus { return server.status },
+
+  // Thread management
+  startThread: (params: ThreadStartParams) => server.startThread(params),
+  resumeThread: (threadId: string, params?: Partial<ThreadStartParams>) => server.resumeThread(threadId, params),
+
+  // Turn management
+  startTurn: (params: TurnStartParams) => server.startTurn(params),
+  interruptTurn: (threadId: string, turnId: string) => server.interruptTurn(threadId, turnId),
+
+  // Approval response
+  respondToApproval: (requestId: number, decision: ApprovalDecision) => server.respondToApproval(requestId, decision),
+
+  // Consumer registration
+  registerConsumer: (codexThreadId: string, handlers: ConsumerHandlers) => server.registerConsumer(codexThreadId, handlers),
+  unregisterConsumer: (codexThreadId: string) => server.unregisterConsumer(codexThreadId),
+
+  // Handle store
+  storeHandle,
+  getHandle,
+  clearHandle,
+
+  // Session listing (reads ~/.codex/sessions/ JSONL files)
   listAllSessions: codexSessions.listAll,
   viewSessionByFile: codexSessions.viewByFile,
 }
