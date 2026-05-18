@@ -45,6 +45,7 @@ type IncomingThreadsEvents =
   | { type: 'FORWARD_BRAIN_EVENT'; eventType: string; payload?: any }
   | { type: 'GET_ARCHIVED_THREADS' }
   | { type: 'REFRESH_THREADS' }
+  | { type: 'SEARCH_MESSAGES'; query: string; threadId?: string; sender?: string; limit?: number }
 
 export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
@@ -83,6 +84,7 @@ export type OutgoingThreadsEvents =
   | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
+  | { type: 'SEARCH_RESULTS'; query: string; results: import('@/services/message-search').MessageSearchResult[] }
 
 export interface ThreadsContext {}
 
@@ -110,6 +112,15 @@ export const threadsSystem = setup({
         type: 'ARCHIVED_THREADS_DATA',
         threads: repository.threadQueries.archivedThreads(),
       }));
+    },
+    searchMessages: ({ system, event }) => {
+      const { query, threadId, sender, limit } = threadsDef.typeOf('SEARCH_MESSAGES', event);
+      const results = repository.chatQueries.searchMessages(query, {
+        threadId: threadId as EARS.EntityId | undefined,
+        sender,
+        limit,
+      });
+      system.get(bus).send(emit(threads, { type: 'SEARCH_RESULTS', query, results }));
     },
     createThread: ({ system, event }) => {
       const thread = threadsDef.typeOf('CREATE_THREAD', event);
@@ -871,6 +882,9 @@ export const threadsSystem = setup({
           },
           REFRESH_THREADS: {
             actions: 'sendThreadsConnectedData',
+          },
+          SEARCH_MESSAGES: {
+            actions: 'searchMessages',
           },
         },
       },

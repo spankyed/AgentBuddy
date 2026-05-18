@@ -20,6 +20,7 @@ import type {
 } from '../types';
 import type { ThreadsSettings } from '@/systems/settings/types';
 import { settingsQueries } from '@/systems/settings/repository';
+import * as messageSearch from '@/services/message-search';
 
 /**
  * Threads Repository
@@ -305,6 +306,7 @@ export const threadCommands = {
 
     // 1. Delete all messages linked to this thread
     const messages = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message).ids();
+    messageSearch.removeMessages(messages);
     for (const messageId of messages) {
       tx(messageId).destroy();
     }
@@ -541,7 +543,9 @@ export const chatQueries = {
     if (!message) return null;
 
     return { ...message, entityType: EARS.Entity.Message } as MessageEntity;
-  }
+  },
+
+  searchMessages: messageSearch.search,
 } as const;
 
 /**
@@ -637,6 +641,8 @@ export const chatCommands = {
         }
       }
     }
+
+    messageSearch.addMessage(messageId, text.trim(), sender, threadId, timestamp);
 
     return { id: messageId, threadId, text: text.trim(), sender, timestamp };
   },
@@ -862,6 +868,8 @@ export const chatCommands = {
         deletedIds.push(msg.id as string);
       }
     }
+
+    messageSearch.removeMessages(deletedIds as EARS.EntityId[]);
 
     return { deletedCount: deletedIds.length, deletedIds };
   },

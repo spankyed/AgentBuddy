@@ -9,6 +9,7 @@ import { createDefaultSettings } from '@/systems/settings/repository';
 import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { reconcileStaleClaudeState } from '@/setup/reconcile-claude-state';
+import { rebuildIndex as rebuildMessageSearchIndex } from '@/services/message-search';
 import { APP_VERSION } from '@/version';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -36,6 +37,9 @@ export async function setupBackend(): Promise<void> {
 
   // Seed compiled artifacts (runs once, skipped on subsequent startups)
   runBootSeed();
+
+  // Build full-text search index for messages
+  rebuildMessageSearchIndex();
 
   // Clear stale per-thread run-state left behind by the previous process
   // (CLI handles live in process memory, so isRunning/chatState from a
