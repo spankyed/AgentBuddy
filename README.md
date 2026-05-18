@@ -1,6 +1,6 @@
 # AgentBuddy
 
-A desktop app for building and running AI agent workflows using an actor-based architecture.
+A desktop app for building and running AI agent workflows using an actor-based architecture.test
 
 ## Features
 
@@ -49,7 +49,7 @@ packages/
 
 ## Prerequisites
 
-- Node.js >= 23
+- Node.js &gt;= 23
 - npm
 
 ## Getting Started
