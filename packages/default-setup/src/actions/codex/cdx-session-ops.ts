@@ -21,6 +21,8 @@ export const meta: ActionMeta = {
 type CommandResult = { text: string; data?: any; blocks?: any[]; skipMessage?: boolean };
 type Handler = (args: string[], services: Services, threadId?: string, cwdOverride?: string) => Promise<CommandResult>;
 
+const SESSION_SOURCE_KINDS = ['cli', 'vscode', 'appServer'];
+
 const handlers: Record<string, Handler> = {
   sessions: handleSessions,
   resume: handleResume,
@@ -92,10 +94,61 @@ async function listThreads(services: Services, cwd?: string, limit = 50): Promis
     limit,
     sortKey: 'updated_at',
     sortDirection: 'desc',
+    sourceKinds: SESSION_SOURCE_KINDS,
     archived: false,
     ...(cwd && { cwd }),
   });
   return response?.data ?? [];
+}
+
+function textFromUserContent(content: any): string {
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter((item: any) => item?.type === 'text' && item.text)
+    .map((item: any) => item.text)
+    .join('\n');
+}
+
+function importThreadMessages(services: Services, threadId: string, thread: any): number {
+  const messages: Array<{
+    text: string;
+    sender: 'user' | 'assistant';
+    forkable?: boolean;
+    context?: Record<string, unknown>;
+  }> = [];
+
+  for (const turn of thread?.turns ?? []) {
+    for (const item of turn?.items ?? []) {
+      if (item?.type === 'userMessage') {
+        const text = textFromUserContent(item.content);
+        if (!text) continue;
+        messages.push({
+          text,
+          sender: 'user',
+          forkable: false,
+          context: { codexItemId: item.id, codexTurnId: turn.id },
+        });
+      } else if (item?.type === 'agentMessage' || item?.type === 'plan') {
+        const text = item.text || '';
+        if (!text) continue;
+        messages.push({
+          text,
+          sender: 'assistant',
+          forkable: true,
+          context: { codexItemId: item.id, codexTurnId: turn.id },
+        });
+      }
+    }
+  }
+
+  if (messages.length > 0) {
+    services.chat.addMessagesToThread({
+      threadId: threadId as EntityId,
+      messages: messages as any,
+    });
+  }
+
+  return messages.length;
 }
 
 async function handleSessions(
@@ -151,12 +204,27 @@ async function handleResume(
   const resumed = await codex.resumeThread(match.id);
   const codexThreadId = resumed.threadId || match.id;
   const title = match.name || match.preview || `Codex ${String(codexThreadId).slice(0, 8)}`;
+  const read = await codex.readThread(codexThreadId, { includeTurns: true });
 
-  services.repository.threadCommands.update(threadId as EntityId, { topic: title });
-  ensureSessionMarker(services, threadId as EntityId);
-  persistCodexState(services, threadId, {
+  const existingMessages = services.repository.threadQueries.messages(threadId as EntityId);
+  const hasRealMessages = existingMessages?.some((m: any) =>
+    m.sender === 'user' && !m.isCommand
+  );
+  let targetThreadId = threadId;
+
+  if (hasRealMessages) {
+    const created = services.chat.createThreadAndNotify({ topic: title, instructions: '' });
+    targetThreadId = created.id as string;
+  } else {
+    services.repository.threadCommands.update(threadId as EntityId, { topic: title });
+  }
+
+  const importedCount = importThreadMessages(services, targetThreadId, read?.thread);
+
+  ensureSessionMarker(services, targetThreadId as EntityId);
+  persistCodexState(services, targetThreadId, {
     threadId: codexThreadId,
-    cwd: match.cwd || cwd,
+    cwd: read?.thread?.cwd || match.cwd || cwd,
     startedAt: Date.now(),
     chatState: 'idle',
     isRunning: false,
@@ -165,12 +233,24 @@ async function handleResume(
     turnId: undefined,
     activeMessageId: undefined,
   });
-  updateChatState(services, threadId as EntityId, 'idle');
+  updateChatState(services, targetThreadId as EntityId, 'idle');
+
+  const confirmText = `Codex session resumed: **${title}** (${importedCount} messages imported)\nSend a message to continue.`;
+
+  if (hasRealMessages) {
+    services.chat.sendBlockMessage({
+      threadId: targetThreadId as EntityId,
+      text: confirmText,
+      blocks: [],
+    });
+    services.chat.openThreadChatAndRefreshRecent(targetThreadId as EntityId);
+    return { text: confirmText, skipMessage: true };
+  }
 
   services.emitter.sendToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
-    data: services.repository.chatQueries.threadData(threadId as EntityId),
+    data: services.repository.chatQueries.threadData(targetThreadId as EntityId),
   });
 
-  return { text: `Codex session resumed: **${title}**\nSend a message to continue.` };
+  return { text: confirmText };
 }

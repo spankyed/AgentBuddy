@@ -39,6 +39,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   const prior = getCodexState(services, threadId);
   const codexThreadId = prior?.threadId;
+  const effectiveModel = model || prior?.model;
 
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
@@ -73,7 +74,7 @@ export async function action(params: Record<string, any>, services: Services, _z
       forkable: false, autoHide: true, asUser: true, asideContext: 'Project',
     });
     persistCodexState(services, threadId, {
-      pendingDirectorySelect: { pickerMessageId: picker.messageId as string, text, mode: params.mode, phase, model, messageId: userMessageId, references },
+      pendingDirectorySelect: { pickerMessageId: picker.messageId as string, text, mode: params.mode, phase, model: effectiveModel, messageId: userMessageId, references },
     });
     setRunning(services, threadId, false);
     return { success: true, awaitingDirectory: true };
@@ -86,7 +87,7 @@ export async function action(params: Record<string, any>, services: Services, _z
   const toolActivity = createToolActivityWriter(services, currentMessageId, { intervalMs: 250, getThinkingBlock: () => thinking.buildBlock() });
 
   ensureSessionMarker(services, threadId);
-  persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(model && { model }) });
+  persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(effectiveModel && { model: effectiveModel }) });
   persistCodexState(services, threadId, { activeMessageId: currentMessageId as string });
   updateChatState(services, threadId, 'working');
 
@@ -106,12 +107,14 @@ export async function action(params: Record<string, any>, services: Services, _z
 
     if (sessionCwd && !prior?.cwd) persistCodexState(services, threadId, { cwd: sessionCwd });
     if (codexThreadId) {
-      const result = await codex.resumeThread(codexThreadId);
+      const result = await codex.resumeThread(codexThreadId, {
+        ...(effectiveModel && { model: effectiveModel }),
+      });
       activeThreadId = result.threadId;
     } else {
       const result = await codex.startThread({
         cwd: sessionCwd,
-        model,
+        model: effectiveModel,
         sandbox: 'workspace-write',
         approvalsReviewer: 'user',
       });
@@ -136,7 +139,7 @@ export async function action(params: Record<string, any>, services: Services, _z
       threadId: activeThreadId,
       input: [{ type: 'text', text }],
       ...(sessionCwd && { cwd: sessionCwd }),
-      ...(model && { model }),
+      ...(effectiveModel && { model: effectiveModel }),
       ...(collaborationMode && { collaborationMode }),
       approvalsReviewer: 'user',
     });

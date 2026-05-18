@@ -29,7 +29,14 @@ export async function action(
   }
 
   try {
-    await services.action.getAndExecute('CDX: Handle Summarize', { threadId });
+    const result = await services.action.getAndExecute('CDX: Handle Summarize', { threadId });
+    if (!result?.success) {
+      return {
+        success: false,
+        command: 'cdx-compact',
+        text: result?.error || result?.reason || 'Compaction could not be started.',
+      };
+    }
     return { success: true, command: 'cdx-compact', text: 'Compaction started.' };
   } catch (error: any) {
     const text = `cdx-compact failed: ${error?.message || 'Unknown error'}`;
