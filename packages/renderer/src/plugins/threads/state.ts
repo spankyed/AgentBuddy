@@ -232,6 +232,7 @@ type UIEvent =
   | { type: 'DELETE_TAB_GROUP'; groupId: string }
   | { type: 'TOGGLE_TAB_GROUP_COLLAPSE'; groupId: string }
   | { type: 'ADD_TAB_TO_GROUP'; tabId: string; groupId: string }
+  | { type: 'ADD_TAB_TO_GROUP_AT'; tabId: string; groupId: string; targetTabId: string; side: 'left' | 'right' }
   | { type: 'REMOVE_TAB_FROM_GROUP'; tabId: string }
   | { type: 'UNGROUP_ALL_IN_GROUP'; groupId: string }
   | { type: 'CLOSE_ALL_IN_GROUP'; groupId: string }
@@ -1182,6 +1183,18 @@ const threadsState = setup({
         tabs: context.tabs.map(t => t.id === tabId ? { ...t, groupId, pinned: group.isPinned || false } : t),
       };
     }),
+    addTabToGroupAt: assign(({ context, event }) => {
+      const { tabId, groupId, targetTabId, side } = typeOf('ADD_TAB_TO_GROUP_AT', event);
+      const group = context.tabGroups.find(g => g.id === groupId);
+      if (!group) return {};
+      const tabs = context.tabs.map(t => t.id === tabId ? { ...t, groupId, pinned: group.isPinned || false } : t);
+      const sourceIdx = tabs.findIndex(t => t.id === tabId);
+      const [moved] = tabs.splice(sourceIdx, 1);
+      const targetIdx = tabs.findIndex(t => t.id === targetTabId);
+      const insertIdx = side === 'left' ? targetIdx : targetIdx + 1;
+      tabs.splice(insertIdx, 0, moved);
+      return { tabs };
+    }),
     removeTabFromGroup: assign(({ context, event }) => {
       const { tabId } = typeOf('REMOVE_TAB_FROM_GROUP', event);
       return {
@@ -1686,6 +1699,7 @@ const threadsState = setup({
     DELETE_TAB_GROUP: { actions: ['deleteTabGroup', 'persistTabs', 'persistTabGroups'] },
     TOGGLE_TAB_GROUP_COLLAPSE: { actions: ['toggleTabGroupCollapse', 'persistTabGroups'] },
     ADD_TAB_TO_GROUP: { actions: ['addTabToGroup', 'persistTabs', 'persistTabGroups'] },
+    ADD_TAB_TO_GROUP_AT: { actions: ['addTabToGroupAt', 'persistTabs', 'persistTabGroups'] },
     REMOVE_TAB_FROM_GROUP: { actions: ['removeTabFromGroup', 'persistTabs'] },
     UNGROUP_ALL_IN_GROUP: { actions: ['ungroupAllInGroup', 'persistTabs', 'persistTabGroups'] },
     CLOSE_ALL_IN_GROUP: { actions: ['closeAllInGroup', 'persistTabs', 'persistTabGroups'] },

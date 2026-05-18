@@ -252,6 +252,7 @@ const {
   onPinTabAt: (tabId, targetTabId, side) => actor.send({ type: 'PIN_TAB_AT', tabId, targetTabId, side }),
   onUnpinTabAt: (tabId, targetTabId, side) => actor.send({ type: 'UNPIN_TAB_AT', tabId, targetTabId, side }),
   onAddToGroup: (tabId, groupId) => actor.send({ type: 'ADD_TAB_TO_GROUP', tabId, groupId }),
+  onAddToGroupAt: (tabId, groupId, targetTabId, side) => actor.send({ type: 'ADD_TAB_TO_GROUP_AT', tabId, groupId, targetTabId, side }),
   onRemoveFromGroup: (tabId) => actor.send({ type: 'REMOVE_TAB_FROM_GROUP', tabId }),
   onReorder: (from, to) => actor.send({ type: 'REORDER_TABS', fromIndex: from, toIndex: to }),
 });

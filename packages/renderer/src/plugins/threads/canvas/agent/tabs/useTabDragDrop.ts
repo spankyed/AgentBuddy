@@ -17,6 +17,7 @@ interface UseTabDragDropOptions {
   onPinTabAt: (tabId: string, targetTabId: string, side: 'left' | 'right') => void
   onUnpinTabAt: (tabId: string, targetTabId: string, side: 'left' | 'right') => void
   onAddToGroup: (tabId: string, groupId: string) => void
+  onAddToGroupAt: (tabId: string, groupId: string, targetTabId: string, side: 'left' | 'right') => void
   onRemoveFromGroup: (tabId: string) => void
   onReorder: (fromIndex: number, toIndex: number) => void
 }
@@ -35,6 +36,7 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     onPinTabAt,
     onUnpinTabAt,
     onAddToGroup,
+    onAddToGroupAt,
     onRemoveFromGroup,
     onReorder
   } = options
@@ -272,6 +274,15 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
         onPinTabAt(sourceTab.id, targetTab.id, targetSide)
       } else if (sourceContext === 'pinned' && targetContext === 'ungrouped') {
         onUnpinTabAt(sourceTab.id, targetTab.id, targetSide)
+      } else if (targetContext !== 'pinned' && targetContext !== 'ungrouped') {
+        // Dropping into a group at a specific position
+        if (sourceContext !== 'ungrouped' && sourceContext !== 'pinned') {
+          onRemoveFromGroup(sourceTab.id)
+        }
+        if (sourceTab.pinned) {
+          onUnpinTab(sourceTab.id)
+        }
+        onAddToGroupAt(sourceTab.id, targetContext, targetTab.id, targetSide)
       } else {
         handleContextChange(sourceTab, sourceContext, targetContext)
       }
