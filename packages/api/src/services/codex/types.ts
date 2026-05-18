@@ -25,6 +25,19 @@ export interface ThreadStartParams {
   approvalsReviewer?: 'user' | 'auto_review'
 }
 
+export interface ThreadReadParams {
+  includeTurns?: boolean
+}
+
+export interface ThreadForkParams extends ThreadStartParams {
+  threadId: string
+}
+
+export interface ThreadRollbackParams {
+  threadId: string
+  numTurns: number
+}
+
 export interface TurnStartParams {
   threadId: string
   input: Array<{ type: 'text'; text: string }>

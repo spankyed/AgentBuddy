@@ -10,6 +10,10 @@ const cleanupUnsubs = new Map<string, () => void>()
 
 export function storeHandle(key: string, handle: CodexTurnHandle): void {
   const existing = activeHandles.get(key)
+  if (existing?.codexThreadId === handle.codexThreadId && existing.turnId === handle.turnId) {
+    activeHandles.set(key, handle)
+    return
+  }
   if (existing) {
     try { existing.abort() } catch { /* already gone */ }
     logger.warn('overwriting active handle — aborted previous', { key })

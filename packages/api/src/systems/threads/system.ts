@@ -636,6 +636,11 @@ export const threadsSystem = setup({
       if (!threadId) return;
 
       try {
+        const sourceMessages = repository.chatQueries.threadData(threadId as EARS.EntityId).messages ?? [];
+        const sourceIndex = sourceMessages.findIndex((m: any) => m.id === messageId);
+        const sourceUserMessagesAfterFork = sourceIndex >= 0
+          ? sourceMessages.slice(sourceIndex + 1).filter((m: any) => m.sender === 'user' && !m.deleted).length
+          : 0;
         const originalTopic = threadTopic || 'Untitled';
 
         const forkCount = repository.threadCommands.forkCount(threadId as EARS.EntityId);
@@ -661,6 +666,7 @@ export const threadsSystem = setup({
             sourceThreadId: threadId,
             sourceMessageId: messageId,
             newThreadId: result.id,
+            sourceUserMessagesAfterFork,
           },
         });
       } catch (err) {
@@ -669,15 +675,20 @@ export const threadsSystem = setup({
     },
     revertThread: ({ system, event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsDef.typeOf('REVERT_THREAD', event);
+      const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId).messages ?? [];
 
       // Stop active processes before soft-deleting so nothing races
       // against the deletion (e.g. a stream consumer writing to messages).
       services.threads.runCleanup(threadId);
 
-      repository.chatCommands.softDeleteMessagesAfter({
+      const deletion = repository.chatCommands.softDeleteMessagesAfter({
         threadId: threadId as EARS.EntityId,
         messageId: messageId as EARS.EntityId,
       });
+      const deletedIds = new Set(deletion.deletedIds);
+      const deletedUserMessageCount = beforeMessages.filter((m: any) =>
+        deletedIds.has(m.id) && m.sender === 'user'
+      ).length;
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
@@ -691,12 +702,15 @@ export const threadsSystem = setup({
           threadId,
           messageId,
           kind: restoreFiles ? 'rewind' : 'revert',
+          deletedMessageIds: deletion.deletedIds,
+          deletedUserMessageCount,
           ...(restoreFiles && userCliUuid ? { userCliUuid } : {}),
         },
       });
     },
     summarizeThread: ({ system, event }) => {
       const { messageId, threadId } = threadsDef.typeOf('SUMMARIZE_THREAD', event);
+      const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId).messages ?? [];
 
       // Stop active processes before soft-deleting (same as revert).
       services.threads.runCleanup(threadId);
@@ -704,10 +718,14 @@ export const threadsSystem = setup({
       // Matches Claude Code's native `direction: 'from'` — the pivot and
       // everything after it disappear from the visible transcript, then a
       // synthetic `/compact` turn runs against the truncated session.
-      repository.chatCommands.softDeleteMessagesAfter({
+      const deletion = repository.chatCommands.softDeleteMessagesAfter({
         threadId: threadId as EARS.EntityId,
         messageId: messageId as EARS.EntityId,
       });
+      const deletedIds = new Set(deletion.deletedIds);
+      const deletedUserMessageCount = beforeMessages.filter((m: any) =>
+        deletedIds.has(m.id) && m.sender === 'user'
+      ).length;
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
@@ -715,7 +733,7 @@ export const threadsSystem = setup({
       brainActor.send({
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
-        payload: { threadId, messageId, kind: 'summarize' },
+        payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount },
       });
     },
     pauseTurn: ({ system, event }) => {

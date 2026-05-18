@@ -12,13 +12,16 @@ import * as codexSessions from './sessions'
 import type {
   ServerStatus,
   ThreadStartParams,
+  ThreadReadParams,
+  ThreadForkParams,
+  ThreadRollbackParams,
   TurnStartParams,
   ApprovalDecision,
   ConsumerHandlers,
   CodexTurnHandle,
 } from './types'
 
-export type { ServerStatus, ThreadStartParams, TurnStartParams, ApprovalDecision, ConsumerHandlers, CodexTurnHandle }
+export type { ServerStatus, ThreadStartParams, ThreadReadParams, ThreadForkParams, ThreadRollbackParams, TurnStartParams, ApprovalDecision, ConsumerHandlers, CodexTurnHandle }
 export { storeHandle, getHandle, clearHandle }
 
 const server = new CodexAppServer()
@@ -33,6 +36,10 @@ export const codexService = {
   // Thread management
   startThread: (params: ThreadStartParams) => server.startThread(params),
   resumeThread: (threadId: string, params?: Partial<ThreadStartParams>) => server.resumeThread(threadId, params),
+  readThread: (threadId: string, params?: ThreadReadParams) => server.readThread(threadId, params),
+  forkThread: (params: ThreadForkParams) => server.forkThread(params),
+  rollbackThread: (params: ThreadRollbackParams) => server.rollbackThread(params),
+  compactThread: (threadId: string) => server.compactThread(threadId),
 
   // Turn management
   startTurn: (params: TurnStartParams) => server.startTurn(params),

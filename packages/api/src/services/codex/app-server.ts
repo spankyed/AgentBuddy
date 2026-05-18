@@ -17,6 +17,9 @@ import type {
   ServerStatus,
   ApprovalDecision,
   ThreadStartParams,
+  ThreadForkParams,
+  ThreadReadParams,
+  ThreadRollbackParams,
   TurnStartParams,
   ConsumerHandlers,
 } from './types'
@@ -171,6 +174,42 @@ export class CodexAppServer {
       ...(params?.model && { model: params.model }),
     })
     return { threadId: result.thread?.id ?? threadId }
+  }
+
+  async readThread(threadId: string, params: ThreadReadParams = {}): Promise<{ thread: any }> {
+    const result = await this._request('thread/read', {
+      threadId,
+      includeTurns: params.includeTurns ?? true,
+    })
+    return { thread: result.thread }
+  }
+
+  async forkThread(params: ThreadForkParams): Promise<{ threadId: string; model: string; cwd: string; thread: any }> {
+    const result = await this._request('thread/fork', {
+      threadId: params.threadId,
+      ...(params.cwd && { cwd: params.cwd }),
+      ...(params.model && { model: params.model }),
+      ...(params.sandbox && { sandbox: params.sandbox }),
+      ...(params.approvalsReviewer && { approvalsReviewer: params.approvalsReviewer }),
+    })
+    return {
+      threadId: result.thread?.id ?? '',
+      model: result.model ?? '',
+      cwd: result.cwd ?? result.thread?.cwd ?? '',
+      thread: result.thread,
+    }
+  }
+
+  async rollbackThread(params: ThreadRollbackParams): Promise<{ thread: any }> {
+    const result = await this._request('thread/rollback', {
+      threadId: params.threadId,
+      numTurns: params.numTurns,
+    }, 60_000)
+    return { thread: result.thread }
+  }
+
+  async compactThread(threadId: string): Promise<void> {
+    await this._request('thread/compact/start', { threadId })
   }
 
   // ── Turn management ───────────────────────────────────────────────────

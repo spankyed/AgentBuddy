@@ -1,7 +1,7 @@
 /** CDX: Pause Turn — interrupts the running Codex turn on user pause. */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { getCodexState, killTurn, updateChatState } from './_helpers/thread-context';
+import { getCodexState, requestTurnInterrupt, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CDX: Pause Turn',
@@ -17,7 +17,7 @@ export async function action(params: Record<string, any>, services: Services) {
   const prior = getCodexState(services, threadId);
   if (!prior?.isRunning && !prior?.pendingApproval) return { success: true, noop: true };
 
-  killTurn(services, threadId);
+  requestTurnInterrupt(services, threadId);
   updateChatState(services, threadId as EntityId, 'idle');
   return { success: true };
 }

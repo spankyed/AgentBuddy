@@ -87,6 +87,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
   ensureSessionMarker(services, threadId);
   persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(model && { model }) });
+  persistCodexState(services, threadId, { activeMessageId: currentMessageId as string });
   updateChatState(services, threadId, 'working');
 
   const codex = services.codex as any;
@@ -142,7 +143,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
     // Store handle for pause/abort
     const turnId = turnResult.turnId;
-    persistCodexState(services, threadId, { turnId });
+    persistCodexState(services, threadId, { turnId, activeMessageId: currentMessageId as string });
     codex.storeHandle(threadId, {
       codexThreadId: activeThreadId,
       turnId,

@@ -129,41 +129,95 @@ export default {
     on(
       "user.thread.pause",
       [[
-        branch([
-          {
-            if: "$.event.data.payload.mode == 'codex'",
-            steps: [
-              action("CDX: Pause Turn", {
-                label: "pause",
-                map: {
-                  threadId: "$.event.data.payload.threadId",
-                },
-              }),
-            ],
+        action("CDX: Pause Turn", {
+          label: "pause",
+          map: {
+            threadId: "$.event.data.payload.threadId",
           },
-        ], undefined, "Pause gate"),
+        }),
       ]],
       "Pause turn",
     ),
     on(
       "user.thread.unqueue",
       [[
+        action("CDX: Unqueue Message", {
+          label: "unqueue",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            messageId: "$.event.data.payload.messageId",
+          },
+        }),
+      ]],
+      "Unqueue message",
+    ),
+    on(
+      "thread.revert",
+      [[
+        action("CDX: Pause Turn", {
+          label: "pause-before-revert",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+          },
+        }),
         branch([
           {
-            if: "$.event.data.payload.mode == 'codex'",
+            if: "$.event.data.payload.kind == 'revert'",
             steps: [
-              action("CDX: Unqueue Message", {
-                label: "unqueue",
+              action("CDX: Handle Revert", {
+                label: "revert",
                 map: {
                   threadId: "$.event.data.payload.threadId",
                   messageId: "$.event.data.payload.messageId",
+                  deletedUserMessageCount: "$.event.data.payload.deletedUserMessageCount",
                 },
               }),
             ],
           },
-        ], undefined, "Unqueue gate"),
+          {
+            if: "$.event.data.payload.kind == 'summarize'",
+            steps: [
+              action("CDX: Handle Summarize", {
+                label: "summarize",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                  messageId: "$.event.data.payload.messageId",
+                  deletedUserMessageCount: "$.event.data.payload.deletedUserMessageCount",
+                },
+              }),
+            ],
+          },
+          {
+            if: "$.event.data.payload.kind == 'rewind'",
+            steps: [
+              action("CDX: Handle Rewind Unsupported", {
+                label: "rewind-unsupported",
+                map: {
+                  threadId: "$.event.data.payload.threadId",
+                  messageId: "$.event.data.payload.messageId",
+                  deletedUserMessageCount: "$.event.data.payload.deletedUserMessageCount",
+                },
+              }),
+            ],
+          },
+        ], undefined, "Route Revert Kind"),
       ]],
-      "Unqueue message",
+      "Thread reverted",
+    ),
+    on(
+      "thread.fork",
+      [[
+        action("CDX: Handle Fork", {
+          label: "fork",
+          map: {
+            sourceThreadId: "$.event.data.payload.sourceThreadId",
+            sourceMessageId: "$.event.data.payload.sourceMessageId",
+            newThreadId: "$.event.data.payload.newThreadId",
+            sourceUserMessagesAfterFork: "$.event.data.payload.sourceUserMessagesAfterFork",
+          },
+        }),
+      ]],
+      "Thread forked",
     ),
   ],
 } satisfies FlowDSL;

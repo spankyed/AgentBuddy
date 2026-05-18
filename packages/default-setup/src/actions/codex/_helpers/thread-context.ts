@@ -30,12 +30,14 @@ export interface CodexThreadState {
   threadId?: string;
   /** Active turn ID — for interrupt. */
   turnId?: string;
+  /** Current AgentBuddy assistant message receiving Codex stream updates. */
+  activeMessageId?: string;
   lastTurnAt?: number;
   cwd?: string;
   model?: string;
   startedAt?: number;
   turns?: number;
-  totalTokens?: { input: number; output: number };
+  totalTokens?: { input: number; output: number; reasoning?: number };
   chatState?: ChatState;
   toolCallCount?: number;
   recentTools?: Array<{ name: string; summary: string; at: number }>;
@@ -94,7 +96,7 @@ export function updateCodexState(
 }
 
 export function ensureSessionMarker(services: Services, threadId: EntityId): EntityId {
-  return services.artifact.findOrCreateByType(threadId, 'codex-session', { title: 'Codex session', content: {} }).artifactId;
+  return services.artifact.findOrCreateByType(threadId, 'codex-session' as any, { title: 'Codex session', content: {} }).artifactId;
 }
 
 export function updateChatState(services: Services, threadId: EntityId, chatState: ChatState): void {
@@ -120,6 +122,34 @@ export function dequeueMessage(services: Services, threadId: string): QueuedMess
   const msg = prior?.queuedMessage;
   if (msg) persistCodexState(services, threadId, { queuedMessage: undefined });
   return msg;
+}
+
+/** Request interruption while leaving the stream consumer registered to receive turn/completed. */
+export function requestTurnInterrupt(services: Services, threadId: string): boolean {
+  const prior = getCodexState(services, threadId);
+  if (!prior?.threadId || !prior?.turnId) return false;
+
+  try {
+    if (prior.pendingApproval?.requestId) {
+      try { (services.codex as any).respondToApproval(prior.pendingApproval.requestId, 'cancel'); } catch { /* best effort */ }
+    }
+    if (prior.pendingApproval?.approvalMessageId) {
+      services.chat.updateMessageState(prior.pendingApproval.approvalMessageId as any, {
+        responseTimestamp: Date.now(),
+        blockResponse: { cancelled: true },
+      } as any);
+    }
+    (services.codex as any).interruptTurn(prior.threadId, prior.turnId);
+    persistCodexState(services, threadId, {
+      isRunning: false,
+      pendingApproval: undefined,
+      chatState: 'idle',
+    });
+    return true;
+  } catch (error: any) {
+    services.logger.warn('[codex] failed to interrupt turn', { threadId, error: error?.message });
+    return false;
+  }
 }
 
 /**
@@ -163,6 +193,7 @@ export function killTurn(services: Services, threadId: string): void {
   persistCodexState(services, threadId, {
     isRunning: false,
     turnId: undefined,
+    activeMessageId: undefined,
     pendingApproval: undefined,
   });
 }

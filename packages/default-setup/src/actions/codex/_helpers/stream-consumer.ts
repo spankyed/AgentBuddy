@@ -13,6 +13,7 @@ import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activit
 import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer';
 import {
   persistCodexState,
+  getCodexState,
   dequeueMessage,
   updateChatState,
 } from './thread-context';
@@ -53,7 +54,7 @@ export function createStreamConsumer(
 
   // Ownership check — prevents stale consumers from corrupting state
   const stillCurrent = () =>
-    (services.codex as any).getHandle(threadId) !== undefined;
+    getCodexState(services, threadId as string)?.activeMessageId === (messageId as string);
 
   const mutatedPaths: string[] = [];
   const mutatedPathsSet = new Set<string>();
@@ -182,11 +183,25 @@ export function createStreamConsumer(
       }
 
       case 'turn/started': {
+        const turnId = params.turn?.id;
+        if (turnId) {
+          persistCodexState(services, threadId as string, { turnId });
+          (services.codex as any).storeHandle(threadId, {
+            codexThreadId,
+            turnId,
+            abort: () => (services.codex as any).interruptTurn(codexThreadId, turnId),
+          });
+        }
         updateChatState(services, threadId, 'working');
         break;
       }
 
       case 'turn/completed': {
+        if (params.turn?.status === 'interrupted') {
+          hadErrors = false;
+        } else if (params.turn?.status === 'failed') {
+          hadErrors = true;
+        }
         finalize();
         break;
       }
@@ -297,7 +312,7 @@ export function createStreamConsumer(
       });
     }
 
-    persistCodexState(services, threadId as string, { isRunning: false, turnId: undefined });
+    persistCodexState(services, threadId as string, { isRunning: false, turnId: undefined, activeMessageId: undefined });
 
     services.emitter.sendToBrainSystem({
       eventType: 'cdx.stream.completed',
