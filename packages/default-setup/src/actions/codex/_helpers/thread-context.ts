@@ -54,6 +54,19 @@ export interface CodexThreadState {
   isRunning?: boolean;
   /** Message waiting to be processed after the current turn ends. */
   queuedMessage?: QueuedMessage;
+  /**
+   * Set when the chat action detects no CWD is configured and sends a
+   * directory-picker block. Stores the original message params so the
+   * query can be retried after the user picks a directory.
+   */
+  pendingDirectorySelect?: {
+    pickerMessageId: string;
+    text: string;
+    mode?: string;
+    model?: string;
+    messageId?: string;
+    references?: any;
+  };
   /** Additional working directories. Passed as additionalDirectories on every query. */
   additionalDirs?: string[];
   /** Pre-set CWD from "new thread in project" menu. Consumed on first message, then cleared. */

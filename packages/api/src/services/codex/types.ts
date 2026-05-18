@@ -4,6 +4,8 @@
  * Re-exports SDK types and defines the service-specific handle/options shapes.
  */
 
+import type { ThreadEvent as _ThreadEvent } from '@openai/codex-sdk'
+
 export type {
   ThreadEvent,
   ThreadStartedEvent,
@@ -53,7 +55,7 @@ export interface CodexQueryOptions {
 
 export interface CodexHandle {
   /** Async generator of ThreadEvents from the SDK's runStreamed(). */
-  events: AsyncGenerator<import('@openai/codex-sdk').ThreadEvent>
+  events: AsyncGenerator<_ThreadEvent>
   /** Resolves with the Codex thread ID after thread.started event. */
   threadId: Promise<string>
   /** Abort the running turn via AbortController. */

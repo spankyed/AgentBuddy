@@ -18,7 +18,6 @@ import {
   persistCodexState,
   setRunning,
   enqueueMessage,
-  killTurn,
   ensureSessionMarker,
   updateChatState,
 } from './_helpers/thread-context';
@@ -115,9 +114,15 @@ export async function action(
       asideContext: 'Project',
     });
     persistCodexState(services, threadId, {
-      // Store the directory picker state so the response can be routed
-      // (reuse pendingDirectorySelect-like pattern at thread context level)
-    } as any);
+      pendingDirectorySelect: {
+        pickerMessageId: picker.messageId as string,
+        text,
+        mode: params.mode,
+        model,
+        messageId: userMessageId,
+        references,
+      },
+    });
     setRunning(services, threadId, false);
     return { success: true, awaitingDirectory: true };
   }
@@ -137,7 +142,7 @@ export async function action(
 
   // Upsert the thread's codex-session artifact (type marker only).
   ensureSessionMarker(services, threadId);
-  persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined });
+  persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(model && { model }) });
   updateChatState(services, threadId, 'working');
 
   // ─── Fire the query ─────────────────────────────────────────────────

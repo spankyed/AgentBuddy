@@ -39,6 +39,36 @@ export default {
       ]],
       "Codex mode → Codex Chat",
     ),
+    // ─── Interactive responses (directory select, Phase 2 approvals) ──
+    on(
+      "interactive.message.response",
+      [[
+        action("CDX: Route Response", {
+          label: "route-response",
+          map: {
+            messageId: "$.event.data.payload.messageId",
+            threadId: "$.event.data.payload.threadId",
+            response: "$.event.data.payload.response",
+          },
+        }),
+        branch([
+          {
+            if: "$.lastStep.result.directorySelect == true",
+            steps: [
+              action("CDX: Handle Directory Select", {
+                label: "directory-select",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  response: "$.steps[label=route-response].result.response",
+                  pendingDirectorySelect: "$.steps[label=route-response].result.pendingDirectorySelect",
+                },
+              }),
+            ],
+          },
+        ], undefined, "Response router"),
+      ]],
+      "Interactive response",
+    ),
     // ─── Stream lifecycle ────────────────────────────────────────────
     on(
       "cdx.stream.started",

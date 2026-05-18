@@ -60,8 +60,10 @@ async function query(opts: CodexQueryOptions): Promise<CodexHandle> {
 
   // Wrap the generator to intercept thread.started and resolve the thread ID
   let resolveThreadId: (id: string) => void
-  const threadIdPromise = new Promise<string>(resolve => {
+  let rejectThreadId: (err: unknown) => void
+  const threadIdPromise = new Promise<string>((resolve, reject) => {
     resolveThreadId = resolve
+    rejectThreadId = reject
   })
 
   async function* wrapEvents(): AsyncGenerator<ThreadEvent> {
@@ -74,6 +76,7 @@ async function query(opts: CodexQueryOptions): Promise<CodexHandle> {
       }
     } catch (err) {
       logger.error('Codex stream error', { error: err })
+      rejectThreadId(err)
       throw err
     }
   }

@@ -26,6 +26,7 @@ import {
   setRunning,
   dequeueMessage,
   updateChatState,
+  updateCodexState,
 } from './thread-context';
 import {
   createEventMapperState,
@@ -114,6 +115,20 @@ export async function consumeStream(
 
         case 'item.started': {
           handleItemStarted(ev.item, writers, mapperState);
+          // Update recentTools rolling window for tool-type items.
+          const toolTypes = new Set(['command_execution', 'file_change', 'mcp_tool_call', 'web_search']);
+          if (toolTypes.has(ev.item?.type)) {
+            const toolName = ev.item.type === 'mcp_tool_call'
+              ? `${ev.item.server}/${ev.item.tool}`
+              : ev.item.type === 'command_execution'
+                ? 'command'
+                : ev.item.type;
+            const summary = ev.item.command || ev.item.query || ev.item.tool || ev.item.type;
+            updateCodexState(services, threadId, (prev) => {
+              const recent = [...(prev.recentTools ?? []), { name: toolName, summary, at: Date.now() }];
+              return { recentTools: recent.slice(-3) };
+            });
+          }
           break;
         }
 
