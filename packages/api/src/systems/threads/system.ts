@@ -173,6 +173,11 @@ export const threadsSystem = setup({
             settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
           },
         }));
+        // Also refresh archived threads list so the change is visible immediately
+        system.get(bus).send(emit(threads, {
+          type: 'ARCHIVED_THREADS_DATA',
+          threads: repository.threadQueries.archivedThreads(),
+        }));
         services.chat.sendRecentThreadsRefresh();
       }
 

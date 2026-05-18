@@ -1542,6 +1542,7 @@ const threadsState = setup({
       target: '.list',
     },
     ARCHIVED_THREADS_DATA: {
+      guard: ({ context }) => context.showArchived,
       actions: 'setArchivedThreads',
     },
     ARCHIVE_THREAD: {
