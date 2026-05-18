@@ -1,10 +1,10 @@
 import type { EntityId, Services } from '../../types';
 
 export interface OnboardingState {
-  step: 'welcome' | 'cli-test-ask' | 'projects' | 'import-threads' | 'pick-thread' | 'hermes-setup' | 'complete';
+  step: 'welcome' | 'projects' | 'import-threads' | 'pick-thread' | 'complete';
   threadId: EntityId;
   pendingMessageId: EntityId;
-  data: { cliFound?: boolean; authenticated?: boolean };
+  data: { cliFound?: boolean; authenticated?: boolean; codexFound?: boolean };
 }
 
 export function getOnboardingState(services: Services, threadId: EntityId): OnboardingState | null {
@@ -32,37 +32,12 @@ export function flashState(services: Services, threadId: EntityId, stateId: stri
   });
 }
 
-/**
- * Finish onboarding. On first call, shows the Hermes setup prompt.
- * On second call (from hermes-setup handler), actually completes.
- */
 export function finishOnboarding(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
   options?: { skipCompletionMessage?: boolean },
 ) {
-  // If not yet past hermes-setup, show the prompt first
-  if (state.step !== 'hermes-setup') {
-    const { messageId } = services.chat.sendChoiceBlock({
-      threadId,
-      text: 'Would you like to set up Hermes Agent? Hermes is an autonomous AI agent framework that supports 200+ models from OpenAI, Anthropic, and more.',
-      prompt: 'Set up Hermes?',
-      choices: [
-        { id: 'yes', label: 'Yes, set up Hermes', description: '' },
-        { id: 'skip', label: 'Skip for now', description: '' },
-      ],
-      allowCustom: false,
-      forkable: false,
-      autoHide: true,
-      asUser: true,
-    } as any);
-    state.step = 'hermes-setup';
-    state.pendingMessageId = messageId as EntityId;
-    return;
-  }
-
-  // Actually complete
   state.step = 'complete';
 
   services.settings.updateInternalSetting(['hasOnboarded'], true);
@@ -111,9 +86,11 @@ export function finishOnboarding(
 
   services.emitter.sendToSystem('threads', { type: 'REFRESH_THREADS' });
 
+  // Default to Claude Code mode; switch to Codex if only Codex was found
+  const defaultMode = (!state.data.cliFound && state.data.codexFound) ? 'Codex' : 'Claude Code';
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
-    mode: 'Claude Code',
+    mode: defaultMode,
   });
 
   (services.emitter as any).sendToPlugin('application', { type: 'RESTORE_CHAT' });

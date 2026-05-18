@@ -1,10 +1,10 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, flashState, type OnboardingState } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, finishOnboarding, flashState, type OnboardingState } from '../onboarding-helpers';
 import { startCcImportStep } from './handle-projects-step';
 
 export const meta: ActionMeta = {
   label: 'Handle Welcome Step',
-  description: 'Tests CLI availability and advances to cc-import or asks about CLI setup',
+  description: 'Detects Claude Code + Codex CLIs and advances onboarding',
   category: 'onboarding',
   input: {
     threadId: { type: 'string', required: true },
@@ -21,80 +21,73 @@ export async function action(
   if (!state) return { success: false, reason: 'no-state' };
 
   flashState(services, threadId);
-  await testCliAndAdvance(services, state, threadId);
+  await detectAllClis(services, state, threadId);
   persistOnboardingState(services, threadId, state);
 
   return { success: true, step: state.step };
 }
 
-export async function testCliAndAdvance(
+/**
+ * Detect both Claude Code and Codex CLIs in parallel, show a unified
+ * status message, then advance based on what was found.
+ */
+async function detectAllClis(
   services: Services,
   state: OnboardingState,
   threadId: EntityId,
 ) {
-  const cliResult = await services.cli.testCli('claude-code');
-  const cliFound = cliResult.success;
+  // Test both CLIs in parallel
+  const [ccResult, codexResult] = await Promise.all([
+    services.cli.testCli('claude-code'),
+    services.cli.testCli('codex'),
+  ]);
 
-  let authenticated = false;
-  let authErrorMsg = '';
-  if (cliFound) {
+  const ccFound = ccResult.success;
+  const codexFound = codexResult.success;
+
+  // Check CC auth if found
+  let ccAuthenticated = false;
+  if (ccFound) {
     try {
       const auth = await services.cli.claudeCode.authStatus();
-      authenticated = auth.authenticated === true || auth.loggedIn === true;
-      if (!authenticated) {
-        authErrorMsg = 'Claude Code reports it is not authenticated.';
-      }
-    } catch (err: any) {
-      authErrorMsg = err?.message || 'Auth status check failed.';
-    }
+      ccAuthenticated = (auth as any).authenticated === true || (auth as any).loggedIn === true;
+    } catch { /* auth check failed */ }
   }
 
-  state.data.cliFound = cliFound;
-  state.data.authenticated = authenticated;
+  state.data.cliFound = ccFound;
+  state.data.authenticated = ccAuthenticated;
+  state.data.codexFound = codexFound;
 
-  if (cliFound && authenticated) {
-    services.chat.sendBlockMessage({
-      threadId,
-      text: 'Claude Code CLI detected and working!',
-      blocks: [],
-      forkable: false,
-    });
+  // Build unified status message
+  const lines: string[] = [];
 
-    await startCcImportStep(services, state, threadId);
-  } else if (cliFound && !authenticated) {
-    const detail = authErrorMsg ? ` (${authErrorMsg})` : '';
-    const { messageId } = services.chat.sendChoiceBlock({
-      threadId,
-      text: `Claude Code CLI found, but authentication failed${detail}. Please run \`claude\` in your terminal to sign in, then come back and re-test.`,
-      prompt: 'What would you like to do?',
-      choices: [
-        { id: 'retest', label: 'Re-test CLI', description: 'Try detecting Claude Code again' },
-        { id: 'skip', label: 'Skip for now', description: "I'll set this up later" },
-      ],
-      allowCustom: false,
-      forkable: false,
-      autoHide: true,
-      asUser: true,
-    });
-
-    state.step = 'cli-test-ask';
-    state.pendingMessageId = messageId;
+  if (ccFound && ccAuthenticated) {
+    lines.push('**Claude Code** — detected and authenticated');
+  } else if (ccFound) {
+    lines.push('**Claude Code** — detected but not authenticated. Run `claude` in your terminal to sign in.');
   } else {
-    const { messageId } = services.chat.sendChoiceBlock({
-      threadId,
-      text: "I wasn't able to detect the Claude Code CLI. Do you already have Claude Code CLI installed with an active subscription?",
-      prompt: 'Claude Code CLI status',
-      choices: [
-        { id: 'yes', label: 'Yes, I have it', description: 'I have Claude Code installed and subscribed' },
-        { id: 'no', label: "No, I don't", description: "I haven't set up Claude Code yet" },
-      ],
-      allowCustom: false,
-      forkable: false,
-      autoHide: true,
-      asUser: true,
-    });
+    lines.push('**Claude Code** — not found. Install with `npm i -g @anthropic-ai/claude-code`');
+  }
 
-    state.step = 'cli-test-ask';
-    state.pendingMessageId = messageId;
+  if (codexFound) {
+    lines.push('**Codex** — detected');
+  } else {
+    lines.push('**Codex** — not found. Install with `npm i -g @openai/codex`');
+  }
+
+  services.chat.sendBlockMessage({
+    threadId,
+    text: lines.join('\n'),
+    blocks: [],
+    forkable: false,
+  });
+
+  // Advance based on what we found
+  if (ccFound && ccAuthenticated) {
+    // CC is ready — proceed to session import flow
+    await startCcImportStep(services, state, threadId);
+  } else {
+    // Nothing to import — go straight to hermes/finish
+    finishOnboarding(services, state, threadId);
   }
 }

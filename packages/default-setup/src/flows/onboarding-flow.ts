@@ -30,18 +30,6 @@ export default {
           ],
         },
         {
-          if: "$.lastStep.result.step == 'cli-test-ask'",
-          steps: [
-            action("Handle CLI Test Step", {
-              label: "cli-test",
-              map: {
-                threadId: "$.steps[label=route-response].result.threadId",
-                response: "$.steps[label=route-response].result.response",
-              },
-            }),
-          ],
-        },
-        {
           if: "$.lastStep.result.step == 'projects'",
           steps: [
             action("Handle Projects Step", {
@@ -70,18 +58,6 @@ export default {
           steps: [
             action("Handle Pick Thread Step", {
               label: "pick-thread",
-              map: {
-                threadId: "$.steps[label=route-response].result.threadId",
-                response: "$.steps[label=route-response].result.response",
-              },
-            }),
-          ],
-        },
-        {
-          if: "$.lastStep.result.step == 'hermes-setup'",
-          steps: [
-            action("Handle Hermes Setup Step", {
-              label: "hermes-setup",
               map: {
                 threadId: "$.steps[label=route-response].result.threadId",
                 response: "$.steps[label=route-response].result.response",
