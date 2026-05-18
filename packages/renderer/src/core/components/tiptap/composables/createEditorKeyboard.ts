@@ -100,6 +100,7 @@ export function createKeyboardHandler({ cfg, getEditor, getInHistoryMode, getPau
     // so keyboard-only users can move focus past read-only content.
     if (event.key === 'Tab') {
       if (!cfg.editable) return false
+      if (event.shiftKey) return true // stop ProseMirror list handling, let event bubble to form
       event.preventDefault()
       return false
     }
