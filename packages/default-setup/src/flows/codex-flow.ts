@@ -19,7 +19,7 @@ export default {
       [[
         branch([
           {
-            if: "$.event.data.payload.mode == 'codex'",
+            if: "$.event.data.payload.mode == 'Codex'",
             steps: [
               action("Codex Chat", {
                 label: "codex-chat",
