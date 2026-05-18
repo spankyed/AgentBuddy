@@ -55,8 +55,8 @@ export function showChooseModeOrFinish(
   if (state.data.cliFound && state.data.codexFound) {
     const { messageId } = services.chat.sendChoiceBlock({
       threadId,
-      text: 'Which mode would you like as your default?',
-      prompt: 'Default mode',
+      text: 'Which agent would you like to use by default?',
+      prompt: 'Default agent',
       choices: [
         { id: 'Claude Code', label: 'Claude Code', description: 'Anthropic Claude' },
         { id: 'Codex', label: 'Codex', description: 'OpenAI Codex' },
