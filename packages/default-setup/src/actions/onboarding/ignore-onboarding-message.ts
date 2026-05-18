@@ -22,7 +22,14 @@ export async function action(
     return { success: true, skipped: true };
   }
 
-  const { messageId } = params;
+  // Only cancel messages on the birth thread — never touch other threads
+  const { threadId, messageId } = params;
+  if (threadId) {
+    const thread = services.repository.threadQueries.byId(threadId) as any;
+    if (thread?.forcedMode !== 'Birth') {
+      return { success: true, skipped: true };
+    }
+  }
 
   if (messageId) {
     services.chat.updateMessageState(messageId, { status: 'cancelled' });
