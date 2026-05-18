@@ -44,7 +44,7 @@ export default {
         {
           if: "$.lastStep.result.step == 'import-threads'",
           steps: [
-            action("Handle CC Import Threads Step", {
+            action("Handle Import Threads Step", {
               label: "import-threads",
               map: {
                 threadId: "$.steps[label=route-response].result.threadId",
@@ -58,6 +58,18 @@ export default {
           steps: [
             action("Handle Pick Thread Step", {
               label: "pick-thread",
+              map: {
+                threadId: "$.steps[label=route-response].result.threadId",
+                response: "$.steps[label=route-response].result.response",
+              },
+            }),
+          ],
+        },
+        {
+          if: "$.lastStep.result.step == 'choose-mode'",
+          steps: [
+            action("Handle Choose Mode Step", {
+              label: "choose-mode",
               map: {
                 threadId: "$.steps[label=route-response].result.threadId",
                 response: "$.steps[label=route-response].result.response",

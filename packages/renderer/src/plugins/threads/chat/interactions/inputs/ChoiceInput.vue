@@ -63,8 +63,8 @@
       </div>
     </div>
 
-    <!-- Skip Button (separate from choices) -->
-    <div v-if="skipOption && !disabled" class="pt-1">
+    <!-- Skip text link (single-select only — multi-select uses the action button) -->
+    <div v-if="skipOption && !multiSelect && !disabled" class="pt-1">
       <button
         @click="handleSkip"
         class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors duration-200"
@@ -97,8 +97,9 @@
         v-if="multiSelect"
         :buttons="['submit', 'cancel']"
         :submit-disabled="!canSubmit || disabled"
+        :cancel-label="skipOption ? skipOption.label : 'Cancel'"
         @submit="submitResponse"
-        @cancel="$emit('cancel')"
+        @cancel="skipOption ? handleSkip() : $emit('cancel')"
       />
     </template>
   </div>

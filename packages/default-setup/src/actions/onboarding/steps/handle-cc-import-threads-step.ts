@@ -1,9 +1,9 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, finishOnboarding, flashState } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState, getRecentImportedThreads } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
-  label: 'Handle CC Import Threads Step',
-  description: 'Imports Claude Code sessions as threads if user opted in',
+  label: 'Handle Import Threads Step',
+  description: 'Imports sessions from Claude Code and Codex as threads',
   category: 'onboarding',
   input: {
     threadId: { type: 'string', required: true },
@@ -16,27 +16,23 @@ export async function action(
   services: Services,
 ) {
   const threadId = params.threadId as EntityId;
-  const response = typeof params.response === 'string' ? params.response : '';
+  const response = params.response;
   const state = getOnboardingState(services, threadId);
   if (!state) return { success: false, reason: 'no-state' };
 
   flashState(services, threadId);
 
-  if (response === 'yes') {
+  // Response is an array of provider IDs (['cc', 'codex']) or 'skip'
+  const selected = Array.isArray(response) ? response : typeof response === 'string' && response !== 'skip' ? [response] : [];
+  const importCc = selected.includes('cc');
+  const importCodex = selected.includes('codex');
+
+  if (importCc || importCodex) {
     services.threads.updateChatState(threadId, 'working');
-    await importSessions(services);
+    await importSelectedSessions(services, { cc: importCc, codex: importCodex });
   }
 
-  // Show recent imported threads to continue, or finish
-  const allThreads = services.repository.threadQueries.all();
-  const recentThreads = allThreads
-    .filter((t: any) => t.tags?.includes('claude-code') && t.id !== threadId)
-    .sort((a: any, b: any) => {
-      const aTime = a.lastMessageTimestamp || a.timestamp;
-      const bTime = b.lastMessageTimestamp || b.timestamp;
-      return bTime - aTime;
-    })
-    .slice(0, 7);
+  const recentThreads = getRecentImportedThreads(services, threadId);
 
   if (recentThreads.length > 0) {
     const choices = recentThreads.map((t: any) => ({
@@ -60,134 +56,225 @@ export async function action(
     state.step = 'pick-thread';
     state.pendingMessageId = messageId;
   } else {
-    finishOnboarding(services, state, threadId);
+    showChooseModeOrFinish(services, state, threadId);
   }
 
   persistOnboardingState(services, threadId, state);
   return { success: true, step: state.step };
 }
 
-async function importSessions(services: Services) {
+// ─── Unified import from both providers ─────────────────────────────────────
+
+async function importSelectedSessions(services: Services, providers: { cc: boolean; codex: boolean }) {
   try {
-    // Only import sessions for user-selected project directories
     const projects = services.repository.settingsQueries.getSettings().general.projects ?? [];
     const selectedDirs = new Set((projects as any[]).flatMap((p: any) => p.directories ?? []));
-    if (!selectedDirs.size) return;
 
-    const sessions = await services.cli.claudeCode.listAllSessions({ limit: 50 });
-    if (!sessions.length) return;
-
-    const existingSessionIds = new Set<string>();
+    // Build dedup sets from existing threads
+    const existingCcIds = new Set<string>();
+    const existingCodexIds = new Set<string>();
     for (const thread of services.repository.threadQueries.all()) {
-      const sid = (thread as any)?.context?.claudeCode?.sessionId;
-      if (sid) existingSessionIds.add(sid);
+      const ccSid = (thread as any)?.context?.claudeCode?.sessionId;
+      if (ccSid) existingCcIds.add(ccSid);
+      const cdxTid = (thread as any)?.context?.codex?.threadId;
+      if (cdxTid) existingCodexIds.add(cdxTid);
     }
 
-    const toImport = sessions
-      .filter((s: any) => s.cwd && selectedDirs.has(s.cwd))
-      .filter((s: any) => !existingSessionIds.has(s.id));
-    if (!toImport.length) return;
-
-    // Read all transcripts in parallel (bounded concurrency to avoid fd exhaustion)
-    const CONCURRENCY = 8;
-    const loaded: Array<{ session: any; transcript: any[] }> = [];
-    for (let i = 0; i < toImport.length; i += CONCURRENCY) {
-      const batch = toImport.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(
-        batch.map(async (session: any) => {
-          try {
-            const transcript = session.file
-              ? await services.cli.claudeCode.viewSessionByFile(session.file)
-              : await services.cli.claudeCode.viewSession(session.id, { cwd: session.cwd });
-            return { session, transcript };
-          } catch {
-            return null;
-          }
-        })
-      );
-      for (const r of results) { if (r) loaded.push(r); }
+    // Fetch and import only the selected providers
+    if (providers.cc) {
+      const ccSessions = await services.cli.claudeCode.listAllSessions({ limit: 50 }).catch(() => [] as any[]);
+      const ccToImport = ccSessions
+        .filter((s: any) => !selectedDirs.size || (s.cwd && selectedDirs.has(s.cwd)))
+        .filter((s: any) => !existingCcIds.has(s.id));
+      if (ccToImport.length) await importCcSessions(services, ccToImport);
     }
 
-    // Write threads sequentially (LMDB writes are synchronous)
-    for (const { session, transcript } of loaded) {
-      try {
-        const cwd = session.cwd || '';
-        const segments = cwd.split('/').filter(Boolean);
-        const dirName = segments[segments.length - 1];
-        const prefix = dirName ? `[${dirName}] ` : '';
-        // Title: session title > first user message with text (truncated) > session ID
-        let sessionTitle = session.title;
-        if (!sessionTitle) {
-          for (const e of transcript) {
-            if ((e as any).type === 'user' && (e as any).message?.role === 'user') {
-              const text = extractText((e as any).message.content);
-              if (text) { sessionTitle = text.slice(0, 60); break; }
-            }
-          }
-          if (!sessionTitle) sessionTitle = `Session ${session.id.slice(0, 8)}`;
-        }
-
-        const { id: newThreadId } = services.repository.threadCommands.create({
-          topic: `${prefix}${sessionTitle}`,
-          instructions: '',
-          tags: ['imported'],
-        });
-
-        const messages: Array<{ text: string; sender: 'user' | 'assistant'; forkable?: boolean; context?: Record<string, unknown> }> = [];
-        for (const entry of transcript) {
-          const msg = (entry as any).message;
-          const uuid = (entry as any).uuid;
-          if ((entry as any).type === 'user' && msg?.role === 'user') {
-            const text = extractText(msg.content);
-            if (!text) continue;
-            messages.push({ text, sender: 'user', forkable: false, ...(uuid && { context: { cliUuid: uuid } }) });
-          } else if ((entry as any).type === 'assistant') {
-            const text = extractText(msg?.content) || '(tool use only)';
-            messages.push({ text, sender: 'assistant', forkable: true, ...(uuid && { context: { cliUuid: uuid } }) });
-          }
-        }
-
-        if (messages.length > 0) {
-          services.chat.addMessagesToThread({ threadId: newThreadId as any, messages: messages as any });
-        }
-
-        const thread = services.repository.threadQueries.byId(newThreadId) as any;
-        services.repository.threadCommands.update(newThreadId, {
-          context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id, cwd: cwd || undefined } },
-          tags: [...(thread?.tags || ['imported']), 'claude-code'],
-        });
-
-        const now = Date.now();
-        services.repository.chatCommands.createArtifact({
-          artifactType: 'claude-session',
-          title: 'Claude Code session',
-          content: {
-            sessionId: session.id, model: '', cwd,
-            startedAt: now, lastTurnAt: now, turns: 0,
-            totalCostUsd: 0, chatState: 'idle',
-            toolCallCount: 0, permissionMode: 'default',
-          },
-          threadId: newThreadId,
-        });
-      } catch {
-        // Skip individual write failures
-      }
+    if (providers.codex) {
+      const codexSessions = await (services.codex as any).listAllSessions({ limit: 50 }).catch(() => [] as any[]);
+      const codexToImport = codexSessions
+        .filter((s: any) => !selectedDirs.size || (s.cwd && selectedDirs.has(s.cwd)))
+        .filter((s: any) => !existingCodexIds.has(s.id));
+      if (codexToImport.length) await importCodexSessions(services, codexToImport);
     }
 
-    // Lightweight refresh — don't send full connectedData (all threads + messages)
-    // which would crash with hundreds of imported threads. The full list loads
-    // when the user navigates to the thread manager.
     services.chat.sendRecentThreadsRefresh();
   } catch {
     // Best-effort
   }
 }
 
-function extractText(content: any): string {
+// ─── CC import ──────────────────────────────────────────────────────────────
+
+async function importCcSessions(services: Services, toImport: any[]) {
+  const CONCURRENCY = 8;
+  const loaded: Array<{ session: any; transcript: any[] }> = [];
+  for (let i = 0; i < toImport.length; i += CONCURRENCY) {
+    const batch = toImport.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (session: any) => {
+        try {
+          const transcript = session.file
+            ? await services.cli.claudeCode.viewSessionByFile(session.file)
+            : await services.cli.claudeCode.viewSession(session.id, { cwd: session.cwd });
+          return { session, transcript };
+        } catch { return null; }
+      })
+    );
+    for (const r of results) { if (r) loaded.push(r); }
+  }
+
+  for (const { session, transcript } of loaded) {
+    try {
+      const cwd = session.cwd || '';
+      const dirName = cwd.split('/').filter(Boolean).pop();
+      const prefix = dirName ? `[${dirName}] ` : '';
+      let sessionTitle = session.title;
+      if (!sessionTitle) {
+        for (const e of transcript) {
+          if ((e as any).type === 'user' && (e as any).message?.role === 'user') {
+            const text = extractCcText((e as any).message.content);
+            if (text) { sessionTitle = text.slice(0, 60); break; }
+          }
+        }
+        if (!sessionTitle) sessionTitle = `Session ${session.id.slice(0, 8)}`;
+      }
+
+      const { id: newThreadId } = services.repository.threadCommands.create({
+        topic: `${prefix}${sessionTitle}`,
+        instructions: '',
+        tags: ['imported'],
+      });
+
+      const messages: Array<{ text: string; sender: 'user' | 'assistant'; forkable?: boolean; context?: Record<string, unknown> }> = [];
+      for (const entry of transcript) {
+        const msg = (entry as any).message;
+        const uuid = (entry as any).uuid;
+        if ((entry as any).type === 'user' && msg?.role === 'user') {
+          const text = extractCcText(msg.content);
+          if (!text) continue;
+          messages.push({ text, sender: 'user', forkable: false, ...(uuid && { context: { cliUuid: uuid } }) });
+        } else if ((entry as any).type === 'assistant') {
+          const text = extractCcText(msg?.content) || '(tool use only)';
+          messages.push({ text, sender: 'assistant', forkable: true, ...(uuid && { context: { cliUuid: uuid } }) });
+        }
+      }
+
+      if (messages.length > 0) {
+        services.chat.addMessagesToThread({ threadId: newThreadId as any, messages: messages as any });
+      }
+
+      const thread = services.repository.threadQueries.byId(newThreadId) as any;
+      services.repository.threadCommands.update(newThreadId, {
+        context: { ...(thread?.context || {}), claudeCode: { sessionId: session.id, cwd: cwd || undefined } },
+        tags: [...(thread?.tags || ['imported']), 'claude-code'],
+      });
+
+      services.repository.chatCommands.createArtifact({
+        artifactType: 'claude-session',
+        title: 'Claude Code session',
+        content: {
+          sessionId: session.id, model: '', cwd,
+          startedAt: Date.now(), lastTurnAt: Date.now(), turns: 0,
+          totalCostUsd: 0, chatState: 'idle',
+          toolCallCount: 0, permissionMode: 'default',
+        },
+        threadId: newThreadId,
+      });
+    } catch { /* skip individual failures */ }
+  }
+}
+
+// ─── Codex import ───────────────────────────────────────────────────────────
+
+async function importCodexSessions(services: Services, toImport: any[]) {
+  const CONCURRENCY = 8;
+  const loaded: Array<{ session: any; transcript: any[] }> = [];
+  for (let i = 0; i < toImport.length; i += CONCURRENCY) {
+    const batch = toImport.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (session: any) => {
+        try {
+          const transcript = await (services.codex as any).viewSessionByFile(session.file);
+          return { session, transcript };
+        } catch { return null; }
+      })
+    );
+    for (const r of results) { if (r) loaded.push(r); }
+  }
+
+  for (const { session, transcript } of loaded) {
+    try {
+      const cwd = session.cwd || '';
+      const dirName = cwd.split('/').filter(Boolean).pop();
+      const prefix = dirName ? `[${dirName}] ` : '';
+      const sessionTitle = session.title || `Session ${session.id.slice(0, 8)}`;
+
+      const { id: newThreadId } = services.repository.threadCommands.create({
+        topic: `${prefix}${sessionTitle}`,
+        instructions: '',
+        tags: ['imported'],
+      });
+
+      const messages: Array<{ text: string; sender: 'user' | 'assistant'; forkable?: boolean }> = [];
+      for (const entry of transcript) {
+        const payload = (entry as any).payload;
+        if ((entry as any).type !== 'response_item' || !payload) continue;
+
+        if (payload.role === 'user') {
+          const text = extractCodexText(payload.content);
+          if (!text) continue;
+          messages.push({ text, sender: 'user', forkable: false });
+        } else if (payload.role === 'assistant') {
+          const text = extractCodexText(payload.content);
+          if (!text) continue;
+          messages.push({ text, sender: 'assistant', forkable: true });
+        }
+      }
+
+      if (messages.length > 0) {
+        services.chat.addMessagesToThread({ threadId: newThreadId as any, messages: messages as any });
+      }
+
+      const thread = services.repository.threadQueries.byId(newThreadId) as any;
+      services.repository.threadCommands.update(newThreadId, {
+        context: { ...(thread?.context || {}), codex: { threadId: session.id, cwd: cwd || undefined } },
+        tags: [...(thread?.tags || ['imported']), 'codex'],
+      });
+
+      services.repository.chatCommands.createArtifact({
+        artifactType: 'claude-session',
+        title: 'Codex session',
+        content: {
+          sessionId: session.id, model: '', cwd,
+          startedAt: Date.now(), lastTurnAt: Date.now(), turns: 0,
+          totalCostUsd: 0, chatState: 'idle',
+          toolCallCount: 0, permissionMode: 'default',
+          provider: 'codex',
+        },
+        threadId: newThreadId,
+      });
+    } catch { /* skip individual failures */ }
+  }
+}
+
+// ─── Text extraction helpers ────────────────────────────────────────────────
+
+/** Extract text from Claude Code message content (string or text blocks). */
+function extractCcText(content: any): string {
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return '';
   return content
     .filter((b: any) => b.type === 'text' && b.text)
     .map((b: any) => b.text)
+    .join('\n');
+}
+
+/** Extract text from Codex response_item content (input_text/output_text blocks). */
+function extractCodexText(content: any): string {
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter((b: any) => (b.type === 'input_text' || b.type === 'output_text') && b.text)
+    .map((b: any) => b.text)
+    .filter((t: string) => !t.startsWith('<environment_context>'))
     .join('\n');
 }

@@ -2,6 +2,7 @@ import { Codex } from '@openai/codex-sdk'
 import type { ThreadEvent } from '@openai/codex-sdk'
 import type { CodexQueryOptions, CodexHandle } from './types'
 import { storeHandle, getHandle, clearHandle } from './handle-store'
+import * as codexSessions from './sessions'
 import { createLogger } from '@/core/helpers/debug/logger'
 
 const logger = createLogger('codex-service')
@@ -52,4 +53,9 @@ async function query(opts: CodexQueryOptions): Promise<CodexHandle> {
   return { events: wrapEvents(), threadId: threadIdPromise, abort: () => abortController.abort() }
 }
 
-export const codexService = { query, storeHandle, getHandle, clearHandle }
+export const codexService = {
+  query,
+  storeHandle, getHandle, clearHandle,
+  listAllSessions: codexSessions.listAll,
+  viewSessionByFile: codexSessions.viewByFile,
+}

@@ -1,9 +1,9 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, finishOnboarding, flashState } from '../onboarding-helpers';
+import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle Projects Step',
-  description: 'Saves selected project directory, then offers CC session import if available',
+  description: 'Saves selected project directories and offers per-provider import',
   category: 'onboarding',
   input: {
     threadId: { type: 'string', required: true },
@@ -22,17 +22,21 @@ export async function action(
 
   flashState(services, threadId);
 
-  // ── Save project directory if user picked one ─────────────────────
-  const dir = typeof response === 'string' ? response.trim() : '';
-  if (dir && dir !== 'skip' && dir !== '') {
-    const name = dir.split('/').filter(Boolean).pop() || 'Project';
-    services.repository.settingsCommands.updateSettings('general', 'projects', [], [{
-      name,
+  // ── Save selected directories ─────────────────────────────────────
+  const selected = Array.isArray(response) ? response : typeof response === 'string' ? [response] : [];
+  const dirs = selected.filter((d: string) => d && d !== 'skip' && d !== '');
+
+  if (dirs.length > 0) {
+    const projectEntries = dirs.map((dir: string) => ({
+      name: dir.split('/').filter(Boolean).pop() || 'Project',
       directories: [dir],
       color: '#3B82F6',
-    }]);
+    }));
 
-    services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], dir);
+    services.repository.settingsCommands.updateSettings('general', 'projects', [], projectEntries);
+
+    // Set first directory as default CWD
+    services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], dirs[0]);
 
     services.emitter.sendToPlugin('settings', {
       type: 'SETTINGS_UPDATED',
@@ -41,43 +45,42 @@ export async function action(
 
     services.chat.sendBlockMessage({
       threadId,
-      text: `Project "${name}" added.`,
+      text: `Added ${projectEntries.length} project${projectEntries.length === 1 ? '' : 's'}.`,
       blocks: [],
       forkable: false,
     });
   }
 
-  // ── If CC is authenticated, offer session import ──────────────────
-  if (state.data.cliFound && state.data.authenticated) {
-    let sessions: any[] = [];
-    try {
-      sessions = await services.cli.claudeCode.listAllSessions({ limit: 50 });
-    } catch { /* listing failed */ }
+  // ── Show per-provider import prompt ───────────────────────────────
+  const ccCount = state.data.ccSessionCount || 0;
+  const codexCount = state.data.codexSessionCount || 0;
 
-    if (sessions.length > 0) {
-      const { messageId } = services.chat.sendChoiceBlock({
-        threadId,
-        text: `Found ${sessions.length} Claude Code session${sessions.length === 1 ? '' : 's'}. Would you like to import them as threads?`,
-        prompt: 'Import threads',
-        choices: [
-          { id: 'yes', label: 'Yes, import threads', description: 'Import recent sessions as threads' },
-          { id: 'no', label: 'No, skip', description: "I'll start fresh" },
-        ],
-        allowCustom: false,
-        forkable: false,
-        autoHide: true,
-        asUser: true,
-      });
+  if (ccCount > 0 || codexCount > 0) {
+    const choices: any[] = [];
+    if (ccCount > 0) choices.push({ id: 'cc', label: `Claude Code threads (${ccCount} sessions)` });
+    if (codexCount > 0) choices.push({ id: 'codex', label: `Codex threads (${codexCount} sessions)` });
 
-      state.step = 'import-threads';
-      state.pendingMessageId = messageId;
-      persistOnboardingState(services, threadId, state);
-      return { success: true, step: state.step };
-    }
+    const { messageId } = services.chat.sendChoiceBlock({
+      threadId,
+      text: 'Which sessions would you like to import as threads?',
+      prompt: 'Import threads',
+      choices,
+      multiSelect: true,
+      skipOption: { id: 'skip', label: 'Skip' },
+      allowCustom: false,
+      forkable: false,
+      autoHide: true,
+      asUser: true,
+    });
+
+    state.step = 'import-threads';
+    state.pendingMessageId = messageId;
+    persistOnboardingState(services, threadId, state);
+    return { success: true, step: state.step };
   }
 
-  // ── No sessions to import — finish ────────────────────────────────
-  finishOnboarding(services, state, threadId);
+  // ── No sessions — skip to mode chooser or finish ──────────────────
+  showChooseModeOrFinish(services, state, threadId);
   persistOnboardingState(services, threadId, state);
   return { success: true, step: state.step };
 }
