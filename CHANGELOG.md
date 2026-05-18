@@ -1,20 +1,5 @@
 -e # Changelog
 
-## v0.3.0 (2026-05-17)
-
-### Features
-- api): add migration to insert codex agent mode into chat modes
-- codex): add Codex CLI integration with SDK wrapper and handle management
-
-### Other
-- chore(migrations): rename migration version from 0.2.24 to 0.3.0
-- Validate duplicate mode and phase names
-- use name instead of ID as source of truth for modes and phases
-- never manually update version
-- Merge pull request #151 from spankyed/AS/codex-cli-integration
-
--e # Changelog
-
 ## v0.2.23 (2026-05-17)
 
 ### Features
