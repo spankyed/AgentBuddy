@@ -14,6 +14,10 @@ AgentBuddy is an Electron desktop app with an actor-based architecture. Both fro
 
 Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
+## Release metadata
+
+Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
+
 ## Commands
 
 ```bash
