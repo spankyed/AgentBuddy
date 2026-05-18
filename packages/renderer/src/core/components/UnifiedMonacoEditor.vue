@@ -234,9 +234,14 @@ const switchToFile = (filePath: string, content: string) => {
   
   // Restore view state (skip when transitioning from diff — pendingScrollLine takes priority)
   if (props.preserveViewState && model && pendingScrollLine === null) {
-    const savedState = viewStates.get(model.uri.toString())
+    const uri = model.uri.toString()
+    const savedState = viewStates.get(uri)
     if (savedState) {
-      editorInstance.value.restoreViewState(savedState)
+      try {
+        editorInstance.value.restoreViewState(savedState)
+      } catch {
+        viewStates.delete(uri)
+      }
     }
   }
 
