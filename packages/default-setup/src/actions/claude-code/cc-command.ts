@@ -287,7 +287,8 @@ async function generateTitle(services: Services, threadId: string): Promise<stri
   if (messages.length === 0) return 'Untitled';
 
   const serialized = messages
-    .filter((m: any) => !m.compacted && m.status !== 'cancelled' && !m.deleted && m.text)
+    .filter((m: any) => !m.compacted && m.status !== 'cancelled' && !m.deleted && m.text
+      && !(m.sender === 'user' && /^\/\S+/.test(m.text)))
     .slice(-10)
     .map((m: any) => {
       const role = m.sender === 'user' ? 'User' : 'Assistant';
@@ -298,7 +299,7 @@ async function generateTitle(services: Services, threadId: string): Promise<stri
   if (!serialized) return 'Untitled';
 
   const handle = await services.cli.claudeCode.query({
-    prompt: `Generate a short, descriptive title (3-6 words, no quotes) for this conversation:\n\n${serialized}`,
+    prompt: `Generate a short, descriptive title (3-6 words, no quotes) for this conversation. Respond with ONLY the title text, nothing else.\n\n${serialized}`,
     permissionMode: 'plan',
     allowedTools: [],
     noSessionPersistence: true,
@@ -307,5 +308,9 @@ async function generateTitle(services: Services, threadId: string): Promise<stri
 
   for await (const _ev of handle.events) { /* drain */ }
   const result = await handle.result;
-  return result.text?.trim().replace(/^["']|["']$/g, '') || 'Untitled';
+  const title = result.text?.trim().replace(/^["']|["']$/g, '') || '';
+
+  // Reject obviously bad titles (too long or LLM went off-script)
+  if (!title || title.length > 60 || title.includes('\n')) return 'Untitled';
+  return title;
 }
