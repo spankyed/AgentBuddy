@@ -1272,18 +1272,18 @@ export class GitRepository {
     }
   }
 
-  async pushBranch(branchName?: string): Promise<void> {
+  async pushBranch(): Promise<void> {
     return this.withWriteFlag(async () => {
-      // Get current branch if not specified
-      const branch = branchName || await this.getCurrentBranch()
-
       // Check if branch is published
       const isPublished = await this.isCurrentBranchPublished()
 
       // Use appropriate push command
+      // Use HEAD instead of branch name for unpublished branches to avoid
+      // case-sensitivity issues on macOS (git push -u origin <name> fails
+      // when the ref case doesn't match the filesystem case)
       const args = isPublished
-        ? ['push'] // Regular push for already published branches
-        : ['push', '-u', 'origin', branch] // Set upstream for new branches
+        ? ['push']
+        : ['push', '-u', 'origin', 'HEAD']
 
       const result = await this.executeGitCommand(args)
 
