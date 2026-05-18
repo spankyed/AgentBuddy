@@ -82,6 +82,8 @@ export interface CliServiceType {
     listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
     /** Rename a Claude Code session by appending a metadata entry to its JSONL file. */
     renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
+    /** Check whether a session JSONL file exists under the given (or default) project directory. */
+    sessionExists(id: string, opts?: { cwd?: string }): Promise<boolean>
   }
 }
 
@@ -279,6 +281,11 @@ function createCliService(): CliServiceType {
       async renameSession(id, title, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
         await claudeCode.sessions._experimental_rename(id, title, { cwd })
+      },
+      async sessionExists(id, opts) {
+        const cwd = opts?.cwd ?? resolveCwd()
+        const info = await claudeCode.sessions.get(id, { cwd })
+        return info !== null
       },
     },
   }

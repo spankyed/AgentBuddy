@@ -575,7 +575,7 @@ export async function consumeStream(
         forkCliUuid: ctx.forkCliUuid ?? null,
       });
 
-      finalizeSessionError(services, threadId, writer, errorText);
+      finalizeSessionError(services, threadId, writer, errorText, undefined, { isRevert: !!ctx.revertCliUuid });
 
       finaliseThinking();
       toolActivity.finalise('error');
@@ -728,7 +728,7 @@ export async function consumeStream(
     toolActivity.finalise('error');
 
     // Session-not-found mid-stream: clear stale session and mark broken.
-    finalizeSessionError(services, threadId, writer, message, writer.text);
+    finalizeSessionError(services, threadId, writer, message, writer.text, { isRevert: !!ctx.revertCliUuid });
     services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
 
     // Kill the CLI subprocess on error (it may be in a bad state).
@@ -762,11 +762,17 @@ export function finalizeSessionError(
   writer: ReturnType<typeof createStreamWriter>,
   errorText: string,
   prefix?: string,
+  context?: { isRevert?: boolean },
 ): void {
   const staleId = extractStaleSessionId(errorText);
-  const warning = staleId
-    ? '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session in the same project directory. Previous messages are still visible for reference.'
-    : `⚠️ ${errorText}`;
+  let warning: string;
+  if (staleId && context?.isRevert) {
+    warning = '⚠️ Could not revert — the session file was deleted or moved. Your conversation history is preserved but the CLI session cannot be resumed. Your next message will start a fresh session.';
+  } else if (staleId) {
+    warning = '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session in the same project directory. Previous messages are still visible for reference.';
+  } else {
+    warning = `⚠️ ${errorText}`;
+  }
   writer.finalize(prefix ? `${prefix}\n\n${warning}`.trim() : warning);
   markSessionBroken(services, threadId, staleId ? `Session ${staleId} not found` : errorText);
 }

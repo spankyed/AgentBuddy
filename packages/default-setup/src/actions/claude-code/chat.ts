@@ -18,7 +18,7 @@ import type { ActionMeta, Services, Z, EntityId } from '../../types';
 import { createStreamWriter } from './_helpers/stream-writer';
 import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { createThinkingWriter } from './_helpers/thinking-writer';
-import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId } from './_helpers/thread-context';
+import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
 import { consumeStream, finalizeSessionError } from './_helpers/stream-consumer';
 
 export const meta: ActionMeta = {
@@ -315,19 +315,64 @@ export async function action(
     // For new sessions, use cwdOverride if provided (from "new thread in project" menu).
     sessionCwd = resumeSessionId ? prior?.cwd : (cwdOverride || undefined);
 
-    // Fallback: if resuming but prior.cwd is missing, try project settings
-    // so the CLI doesn't fall back to its own cwd (wrong directory).
+    // Fallback: if resuming but prior.cwd is missing, try project settings —
+    // but only if the session file actually exists under that directory.
+    // Blindly using defaultBaseDirectory when it differs from the thread's
+    // original cwd causes "session not found" (wrong project bucket).
     if (resumeSessionId && !sessionCwd) {
-      sessionCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined;
-      log.warn('[resume] sessionId exists but sessionCwd is missing — falling back to project settings', {
-        threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null, fallbackCwd: sessionCwd ?? 'NONE',
-      });
+      const fallbackCwd = codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined;
+      if (fallbackCwd) {
+        const exists = await services.cli.claudeCode.sessionExists(resumeSessionId, { cwd: fallbackCwd });
+        if (exists) {
+          sessionCwd = fallbackCwd;
+          persistClaudeState(services, threadId, { cwd: fallbackCwd });
+          log.info('[resume] recovered sessionCwd via fallback check', { threadId, fallbackCwd });
+        } else {
+          log.warn('[resume] session not found under fallback CWD either', {
+            threadId, resumeSessionId, fallbackCwd,
+          });
+        }
+      }
+      if (!sessionCwd) {
+        log.warn('[resume] cannot determine session CWD — aborting resume', {
+          threadId, resumeSessionId, revertTo: revertTo?.cliUuid ?? null,
+        });
+        const isRevert = !!revertTo;
+        toolActivity.finalise('error');
+        setRunning(services, threadId, false);
+        updateChatState(services, threadId, 'idle');
+        writer.finalize(isRevert
+          ? '⚠️ Could not revert — the project directory for this session is unknown. The session may predate directory tracking.'
+          : '⚠️ Could not resume — the project directory for this session is unknown.');
+        return { success: false, error: 'session CWD unknown', messageId: currentMessageId };
+      }
     }
 
     // Eager persist: store CWD before the query fires so it survives if
     // the turn is killed before the CLI's system/init event arrives.
     if (sessionCwd && !prior?.cwd) {
       persistClaudeState(services, threadId, { cwd: sessionCwd });
+    }
+
+    // Pre-flight: verify the session JSONL exists before spawning the CLI.
+    // Catches externally-deleted sessions (CLI cleanup, manual removal)
+    // with a clear error instead of the generic "session not found" from
+    // the CLI's stderr.
+    if (resumeSessionId && sessionCwd) {
+      const sessionValid = await services.cli.claudeCode.sessionExists(resumeSessionId, { cwd: sessionCwd });
+      if (!sessionValid) {
+        log.warn('[pre-flight] session file missing on disk', {
+          threadId, resumeSessionId, sessionCwd, isRevert: !!revertTo,
+        });
+        const isRevert = !!revertTo;
+        toolActivity.finalise('error');
+        setRunning(services, threadId, false);
+        writer.finalize(isRevert
+          ? '⚠️ Could not revert — the CLI session file no longer exists on disk. It may have been cleaned up by the Claude CLI.'
+          : '⚠️ Could not resume — the CLI session file no longer exists on disk.');
+        markSessionBroken(services, threadId, `Session ${resumeSessionId} file missing`);
+        return { success: false, error: 'session file missing', messageId: currentMessageId };
+      }
     }
 
     const handle = await services.cli.claudeCode.query({
@@ -390,7 +435,7 @@ export async function action(
 
     // ─── Session-not-found: clear stale sessionId, mark session broken ──
     if (extractStaleSessionId(message)) {
-      finalizeSessionError(services, threadId as EntityId, writer, message);
+      finalizeSessionError(services, threadId as EntityId, writer, message, undefined, { isRevert: !!revertTo });
       return { success: false, error: message, messageId: currentMessageId };
     }
 
