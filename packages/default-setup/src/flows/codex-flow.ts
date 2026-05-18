@@ -219,5 +219,27 @@ export default {
       ]],
       "Thread forked",
     ),
+    // ─── CDX commands ─────────────────────────────────────────────────
+    on(
+      "user.command",
+      [[
+        branch([
+          {
+            if: "$.event.data.payload.command starts_with 'cdx-'",
+            steps: [
+              branch([
+                { if: "$.event.data.payload.command == 'cdx-sessions'", steps: [action("CDX: Session Ops", { label: "cdx-sessions", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references", cwdOverride: "$.event.data.payload.cwdOverride" } })] },
+                { if: "$.event.data.payload.command == 'cdx-resume'", steps: [action("CDX: Session Ops", { label: "cdx-resume", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references", cwdOverride: "$.event.data.payload.cwdOverride" } })] },
+                { if: "$.event.data.payload.command == 'cdx-compact'", steps: [action("CDX: Compact", { label: "cdx-compact", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+                { if: "$.event.data.payload.command == 'cdx-fork'", steps: [action("CDX: Fork", { label: "cdx-fork", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } })] },
+              ], [
+                action("CDX: Run Command", { label: "cdx-command", map: { command: "$.event.data.payload.command", text: "$.event.data.payload.text", threadId: "$.event.data.payload.threadId", references: "$.event.data.payload.references" } }),
+              ], "CDX Command Router"),
+            ],
+          },
+        ], undefined, "CDX Command Gate"),
+      ]],
+      "CDX command",
+    ),
   ],
 } satisfies FlowDSL;

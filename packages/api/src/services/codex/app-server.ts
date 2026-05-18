@@ -20,6 +20,9 @@ import type {
   ThreadForkParams,
   ThreadReadParams,
   ThreadRollbackParams,
+  ThreadListParams,
+  ConfigReadParams,
+  ConfigValueWriteParams,
   TurnStartParams,
   ConsumerHandlers,
 } from './types'
@@ -210,6 +213,46 @@ export class CodexAppServer {
 
   async compactThread(threadId: string): Promise<void> {
     await this._request('thread/compact/start', { threadId })
+  }
+
+  async listThreads(params: ThreadListParams = {}): Promise<{ data: any[]; nextCursor: string | null; backwardsCursor: string | null }> {
+    return await this._request('thread/list', params)
+  }
+
+  async setThreadName(threadId: string, name: string): Promise<void> {
+    await this._request('thread/name/set', { threadId, name })
+  }
+
+  // ── Metadata/config helpers ───────────────────────────────────────────
+
+  async readConfig(params: ConfigReadParams = { includeLayers: false }): Promise<any> {
+    return await this._request('config/read', params)
+  }
+
+  async writeConfigValue(params: ConfigValueWriteParams): Promise<any> {
+    return await this._request('config/value/write', {
+      keyPath: params.keyPath,
+      value: params.value,
+      mergeStrategy: params.mergeStrategy ?? 'replace',
+      ...(params.filePath !== undefined && { filePath: params.filePath }),
+      ...(params.expectedVersion !== undefined && { expectedVersion: params.expectedVersion }),
+    })
+  }
+
+  async listModels(params: { cursor?: string | null; limit?: number | null; includeHidden?: boolean } = {}): Promise<any> {
+    return await this._request('model/list', params)
+  }
+
+  async readAccount(params: { refreshToken: boolean } = { refreshToken: false }): Promise<any> {
+    return await this._request('account/read', params)
+  }
+
+  async listSkills(params: { cwds?: string[]; forceReload?: boolean } = {}): Promise<any> {
+    return await this._request('skills/list', params)
+  }
+
+  async listMcpServers(params: { cursor?: string | null; limit?: number | null; detail?: 'full' | 'toolsAndAuthOnly' | null } = {}): Promise<any> {
+    return await this._request('mcpServerStatus/list', params)
   }
 
   // ── Turn management ───────────────────────────────────────────────────
