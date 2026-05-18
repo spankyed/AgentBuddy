@@ -345,7 +345,7 @@ export async function consumeStream(
         }
 
         // Auto-approve plan-file writes during plan phase.
-        if (phase === 'plan' && req.subtype === 'can_use_tool' && isPlanFileWrite(req.tool_name, req.input)) {
+        if (phase === 'Plan' && req.subtype === 'can_use_tool' && isPlanFileWrite(req.tool_name, req.input)) {
           log.debug('auto-approved plan-file write', { tool: req.tool_name });
           handle.respond(requestId, { behavior: 'allow', updatedInput: req.input });
           continue;
@@ -477,7 +477,7 @@ export async function consumeStream(
 
         splitOnNextMessageStart = true;
         // After plan approval, the agent transitions to the edit phase.
-        if (req.tool_name === 'ExitPlanMode') phase = 'edit';
+        if (req.tool_name === 'ExitPlanMode') phase = 'Edit';
         // Emit to flow → CC: Stream Paused action updates artifact status.
         services.emitter.sendToBrainSystem({
           eventType: 'cc.stream.paused',

@@ -5,13 +5,13 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
  * Claude Code mode flow.
  *
  * Listens for `user.message` events and routes to the Claude Code Chat
- * action only when the user is in `claude-code` mode. Any other mode (`chat`,
- * `note`, `birth`, …) flows past this track untouched — the switch node
+ * action only when the user is in `Claude Code` mode. Any other mode (`chat`,
+ * `note`, `Birth`, …) flows past this track untouched — the switch node
  * emits a `noMatch` completion and the chain ends without firing any
  * action. See `packages/api/src/systems/brain/node-handlers/switch-node.ts`
  * for the runtime semantics of "no condition matched, no else".
  *
- * The `phase` sub-value (`plan` / `edit` / `review`) is passed through so
+ * The `phase` sub-value (`Plan` / `Edit` / `review`) is passed through so
  * the chat action can prefix a phase-aware system prompt hint.
  */
 export default {
@@ -24,7 +24,7 @@ export default {
       [[
         branch([
           {
-            if: "$.event.data.payload.mode == 'claude-code'",
+            if: "$.event.data.payload.mode == 'Claude Code'",
             steps: [
               action("Claude Code Chat", {
                 label: "claude-code",

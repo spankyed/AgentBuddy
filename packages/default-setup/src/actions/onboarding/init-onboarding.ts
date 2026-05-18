@@ -32,7 +32,7 @@ export async function action(
     instructions: '',
     tags: [],
     role: ASSISTANT_BIRTH_ROLE,
-    forcedMode: 'birth',
+    forcedMode: 'Birth',
     pinned: true,
   });
 

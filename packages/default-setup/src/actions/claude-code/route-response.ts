@@ -37,7 +37,7 @@ export async function action(
 
   // Skip threads that aren't Claude Code threads (e.g. onboarding birth thread)
   const thread = services.repository.threadQueries.byId(threadId as any);
-  if (thread?.forcedMode === 'birth') {
+  if (thread?.forcedMode === 'Birth') {
     return { success: false, reason: 'birth thread — not a claude-code response' };
   }
 

@@ -253,7 +253,7 @@ export interface ThreadEntity extends BaseEntity {
   shortCode?: string;
   status: string; // Dynamic statuses from settings
   tags?: string[]; // Tag names from settings
-  forcedMode?: 'birth'; // Force a specific mode for this thread
+  forcedMode?: string; // Forced mode name for this thread
   pinned?: boolean; // Thread tab should stay pinned in the UI
   archived?: boolean; // Thread is archived and hidden from lists
   chatState?: string; // Chat state indicator (idle, working, paused, error, success)
@@ -290,7 +290,7 @@ export type ThreadCreateData = Simplify<
   ThreadEditFields
   & {
     role?: EARS.RoleKind;  // Optional role to grant (e.g., for special threads like birth)
-    forcedMode?: 'birth';  // Optional forced mode for special threads
+    forcedMode?: string;  // Optional forced mode name for special threads
     pinned?: boolean;  // Pin the thread tab in the UI
   }
 >;

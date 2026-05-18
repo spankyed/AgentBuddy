@@ -124,13 +124,13 @@
         <div class="mb-4">
           <label class="block text-sm text-neutral-400 mb-2">Select mode to configure phases:</label>
           <select
-            v-model="selectedModeId"
+            v-model="selectedModeName"
             class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
           >
             <option
               v-for="mode in modes.filter(m => !m.hidden)"
               :key="mode.id"
-              :value="mode.id"
+              :value="mode.name"
             >
               {{ mode.name }}
             </option>
@@ -202,7 +202,7 @@
               <option
                 v-for="mode in selectableDefaultModes"
                 :key="mode.id"
-                :value="mode.id"
+                :value="mode.name"
               >
                 {{ mode.name }}
               </option>
@@ -219,7 +219,7 @@
               <option
                 v-for="phase in defaultModePhases"
                 :key="phase.id"
-                :value="phase.id"
+                :value="phase.name"
               >
                 {{ phase.name }}
               </option>
@@ -741,8 +741,8 @@ const chatSettings = props.settings?.chat
 const skipRevertConfirm = ref(chatSettings?.skipRevertConfirm ?? false)
 const quickPromptNumberKeyInserts = ref(chatSettings?.quickPromptNumberKeyInserts ?? true)
 const modes = ref<AgentMode[]>(chatSettings?.modes ? chatSettings.modes.map(m => ({ ...m, phases: m.phases ? [...m.phases] : undefined })) : [])
-const selectedModeId = ref<string>(modes.value.find(m => !m.hidden)?.id || '')
-const selectedMode = computed(() => modes.value.find(m => m.id === selectedModeId.value))
+const selectedModeName = ref<string>(modes.value.find(m => !m.hidden)?.name || '')
+const selectedMode = computed(() => modes.value.find(m => m.name === selectedModeName.value))
 const quickPrompts = ref<QuickPrompt[]>(chatSettings?.quickPrompts ? [...chatSettings.quickPrompts] : [])
 const hotkeys = reactive<AgentSettings['hotkeys']>({
   textToSpeech: chatSettings?.hotkeys?.textToSpeech || null,
@@ -756,7 +756,7 @@ const selectableDefaultModes = computed(() =>
 )
 
 const defaultModePhases = computed(() => {
-  const mode = modes.value.find(m => m.id === defaultMode.value)
+  const mode = modes.value.find(m => m.name === defaultMode.value)
   return mode?.phases ?? []
 })
 
@@ -867,7 +867,7 @@ const saveDefaultPhase = () => {
 const onDefaultModeChange = () => {
   // Clear phase if it doesn't belong to the newly-selected mode
   const phases = defaultModePhases.value
-  if (defaultPhase.value && !phases.some(p => p.id === defaultPhase.value)) {
+  if (defaultPhase.value && !phases.some(p => p.name === defaultPhase.value)) {
     defaultPhase.value = ''
     saveDefaultPhase()
   }
@@ -918,8 +918,8 @@ const removeMode = (index: number) => {
   if (modes.value.length <= 1) return
   const removed = modes.value[index]
   modes.value.splice(index, 1)
-  if (removed.id === selectedModeId.value) {
-    selectedModeId.value = modes.value.find(m => !m.hidden)?.id || ''
+  if (removed.name === selectedModeName.value) {
+    selectedModeName.value = modes.value.find(m => !m.hidden)?.name || ''
   }
   saveModes()
 }

@@ -79,24 +79,31 @@ function extractChatSettings(chatSettings: AgentSettings) {
   return { chatSettings, hotkeys, modes: chatSettings.modes || [] };
 }
 
-function resolveDefaultModePhase(
+export function resolveDefaultModePhase(
   settings: AgentSettings | undefined,
   modes: AgentModeConfig[],
   fallbackMode: string,
   fallbackPhase: string | undefined,
 ): { mode: string; phase: string | undefined } {
-  const preferred = settings?.defaultMode;
-  const modeOk = !!preferred && modes.some(m => m.id === preferred && !m.hidden && !m.disabled);
-  const mode = modeOk ? preferred! : fallbackMode;
+  const preferredMode = settings?.defaultMode
+    ? modes.find(m => m.name === settings.defaultMode)
+    : undefined;
+  const fallbackModeConfig = modes.find(m => m.name === fallbackMode);
+  const modeConfig = preferredMode && !preferredMode.hidden && !preferredMode.disabled
+    ? preferredMode
+    : fallbackModeConfig;
+  const mode = modeConfig?.name ?? fallbackMode;
 
-  const modeConfig = modes.find(m => m.id === mode);
   const hasPhases = !!modeConfig?.phases?.length;
-  const preferredPhase = settings?.defaultPhase;
-  const phaseOk = hasPhases && !!preferredPhase
-    && modeConfig!.phases!.some(p => p.id === preferredPhase);
-  const phase = phaseOk
-    ? preferredPhase!
-    : (hasPhases ? modeConfig!.phases![0].id : fallbackPhase);
+  const preferredPhase = settings?.defaultPhase
+    ? modeConfig?.phases?.find(p => p.name === settings.defaultPhase)
+    : undefined;
+  const fallbackPhaseConfig = fallbackPhase
+    ? modeConfig?.phases?.find(p => p.name === fallbackPhase)
+    : undefined;
+  const phase = hasPhases
+    ? (preferredPhase?.name ?? fallbackPhaseConfig?.name ?? modeConfig!.phases![0].name)
+    : fallbackPhase;
 
   return { mode, phase };
 }
@@ -282,7 +289,7 @@ interface ThreadsContext {
   tabGroups: ThreadTabGroup[];
   mode: string;
   phase: string;
-  phaseByMode: Record<string, string | undefined>;
+  phaseByModeName: Record<string, string | undefined>;
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   chatSettings: AgentSettings;
@@ -733,20 +740,20 @@ const threadsState = setup({
     }),
     setMode: assign(({ context, event }) => {
       const newMode = typeOf('SET_MODE', event).mode;
-      const modeConfig = context.modes.find(m => m.id === newMode);
+      const modeConfig = context.modes.find(m => m.name === newMode);
 
-      const updatedPhaseByMode = { ...context.phaseByMode, [context.mode]: context.phase };
+      const updatedPhaseByModeName = { ...context.phaseByModeName, [context.mode]: context.phase };
       const newPhase = modeConfig?.phases?.length
-        ? (newMode in updatedPhaseByMode ? updatedPhaseByMode[newMode] : modeConfig.phases[0].id)
+        ? (newMode in updatedPhaseByModeName ? updatedPhaseByModeName[newMode] : modeConfig.phases[0].name)
         : undefined;
 
-      return { mode: newMode, phase: newPhase, phaseByMode: updatedPhaseByMode };
+      return { mode: newMode, phase: newPhase, phaseByModeName: updatedPhaseByModeName };
     }),
     setPhase: assign(({ context, event }) => {
       const newPhase = typeOf('SET_PHASE', event).phase;
       return {
         phase: newPhase,
-        phaseByMode: { ...context.phaseByMode, [context.mode]: newPhase }
+        phaseByModeName: { ...context.phaseByModeName, [context.mode]: newPhase }
       };
     }),
     navigateToSecrets: ({ system }) => {
@@ -802,7 +809,7 @@ const threadsState = setup({
         currentThread: { ...defaultChatThread, messages: [] },
         mode,
         phase: phase ?? '',
-        phaseByMode: { ...context.phaseByMode, [mode]: phase },
+        phaseByModeName: { ...context.phaseByModeName, [mode]: phase },
         pendingThreadCwd: undefined,
         pendingForceDirectoryPicker: undefined,
       };
@@ -816,7 +823,7 @@ const threadsState = setup({
         currentThread: { ...defaultChatThread, messages: [] },
         mode,
         phase: phase ?? '',
-        phaseByMode: { ...context.phaseByMode, [mode]: phase },
+        phaseByModeName: { ...context.phaseByModeName, [mode]: phase },
         pendingThreadCwd: directory,
         pendingForceDirectoryPicker: undefined,
       };
@@ -829,7 +836,7 @@ const threadsState = setup({
         currentThread: { ...defaultChatThread, messages: [] },
         mode,
         phase: phase ?? '',
-        phaseByMode: { ...context.phaseByMode, [mode]: phase },
+        phaseByModeName: { ...context.phaseByModeName, [mode]: phase },
         pendingThreadCwd: undefined,
         pendingForceDirectoryPicker: true,
       };
@@ -901,11 +908,12 @@ const threadsState = setup({
       }
 
       if (thread.forcedMode) {
-        const modeConfig = context.modes.find(m => m.id === thread.forcedMode);
+        const modeName = thread.forcedMode;
+        const modeConfig = context.modes.find(m => m.name === modeName);
         const newPhase = modeConfig?.phases?.length
-          ? (thread.forcedMode in context.phaseByMode ? context.phaseByMode[thread.forcedMode] : modeConfig.phases[0].id)
+          ? (modeName in context.phaseByModeName ? context.phaseByModeName[modeName] : modeConfig.phases[0].name)
           : undefined;
-        return { ...base, mode: thread.forcedMode, phase: newPhase };
+        return { ...base, mode: modeName, phase: newPhase };
       }
 
       return base;
@@ -928,15 +936,16 @@ const threadsState = setup({
       const forcedMode = currentThread?.forcedMode;
       let modeUpdate = {};
       if (forcedMode) {
-        const modeConfig = extracted.modes.find(m => m.id === forcedMode);
+        const modeName = forcedMode;
+        const modeConfig = extracted.modes.find(m => m.name === modeName);
         const newPhase = modeConfig?.phases?.length
-          ? (forcedMode in context.phaseByMode ? context.phaseByMode[forcedMode] : modeConfig.phases[0].id)
+          ? (modeName in context.phaseByModeName ? context.phaseByModeName[modeName] : modeConfig.phases[0].name)
           : undefined;
-        modeUpdate = { mode: forcedMode, phase: newPhase };
+        modeUpdate = { mode: modeName, phase: newPhase };
       } else {
         const visibleModes = extracted.modes.filter(m => !m.hidden);
-        const fallbackMode = visibleModes[0]?.id ?? context.mode;
-        const fallbackPhase = visibleModes[0]?.phases?.[0]?.id;
+        const fallbackMode = visibleModes[0]?.name ?? context.mode;
+        const fallbackPhase = visibleModes[0]?.phases?.[0]?.name;
         const { mode, phase } = resolveDefaultModePhase(
           extracted.chatSettings, extracted.modes, fallbackMode, fallbackPhase,
         );
@@ -1461,7 +1470,7 @@ const threadsState = setup({
     tabGroups: [],
     mode: '',
     phase: '',
-    phaseByMode: {},
+    phaseByModeName: {},
     modes: [],
     hotkeys: {},
     chatSettings: { modes: [], hotkeys: {} },

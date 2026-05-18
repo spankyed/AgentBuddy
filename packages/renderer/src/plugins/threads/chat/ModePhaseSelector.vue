@@ -33,7 +33,7 @@
               v-for="mode in visibleModes"
               :key="mode.id"
               :disabled="mode.disabled"
-              @select="handleModeSelect(mode.id)"
+              @select="handleModeSelect(mode.name)"
               class="relative flex items-center justify-between px-3 py-2 text-sm transition-colors focus:outline-none"
               :class="mode.disabled
                 ? 'opacity-50 cursor-not-allowed text-neutral-500'
@@ -41,7 +41,7 @@
             >
               <span class="font-medium">{{ mode.name }}</span>
               <Check
-                v-if="currentMode === mode.id"
+                v-if="isCurrentMode(mode)"
                 :size="16"
                 class="text-blue-400"
               />
@@ -84,9 +84,9 @@
             <DropdownMenuItem
               v-for="phase in currentModePhases"
               :key="phase.id"
-              @select="handlePhaseSelect(phase.id)"
+              @select="handlePhaseSelect(phase.name)"
               class="relative flex items-center justify-between px-3 py-2 text-sm transition-colors cursor-pointer text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-              :class="{ 'bg-neutral-800/50': currentPhase === phase.id }"
+              :class="{ 'bg-neutral-800/50': currentPhase === phase.name }"
               :style="{ backgroundColor: phase.color ? `${phase.color}33` : undefined }"
             >
               <span class="flex items-center gap-2">
@@ -98,7 +98,7 @@
                 {{ phase.name }}
               </span>
               <Check
-                v-if="currentPhase === phase.id"
+                v-if="isCurrentPhase(phase)"
                 :size="16"
                 class="text-blue-400"
               />
@@ -134,6 +134,7 @@ const props = defineProps<{
   modes: AgentMode[]
   currentMode: string
   currentPhase?: string
+  /** Forced mode name for special threads. */
   forcedMode?: string
   disabled?: boolean
 }>()
@@ -148,8 +149,11 @@ const isPhaseOpen = ref(false)
 
 const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
 
+const isCurrentMode = (mode: AgentMode) => props.currentMode === mode.name
+const isCurrentPhase = (phase: NonNullable<AgentMode['phases']>[number]) => props.currentPhase === phase.name
+
 const currentModeData = computed(() => {
-  return props.modes.find(m => m.id === props.currentMode)
+  return props.modes.find(m => m.name === props.currentMode)
 })
 
 const currentModePhases = computed(() => {
@@ -165,12 +169,12 @@ const currentModeName = computed(() => {
 })
 
 const currentPhaseName = computed(() => {
-  const phase = currentModePhases.value.find(p => p.id === props.currentPhase)
+  const phase = currentModePhases.value.find(p => p.name === props.currentPhase)
   return phase?.name || 'Select phase'
 })
 
 const currentPhaseColor = computed(() => {
-  const phase = currentModePhases.value.find(p => p.id === props.currentPhase)
+  const phase = currentModePhases.value.find(p => p.name === props.currentPhase)
   return phase?.color
 })
 
@@ -182,7 +186,7 @@ const phaseButtonStyle = computed(() => {
 })
 
 const forcedModeName = computed(() => {
-  const mode = props.modes.find(m => m.id === props.forcedMode)
+  const mode = props.modes.find(m => m.name === props.forcedMode)
   return mode?.name || 'Birth'
 })
 
@@ -198,15 +202,15 @@ const phaseButtonClasses = computed(() => {
   return `${hover} ${disabled}`
 })
 
-const handleModeSelect = (modeId: string) => {
-  const mode = props.modes.find(m => m.id === modeId)
+const handleModeSelect = (modeName: string) => {
+  const mode = props.modes.find(m => m.name === modeName)
   if (mode?.disabled) return
-  emit('mode-change', modeId)
+  emit('mode-change', modeName)
   isModeOpen.value = false
 }
 
-const handlePhaseSelect = (phaseId: string) => {
-  emit('phase-change', phaseId)
+const handlePhaseSelect = (phaseName: string) => {
+  emit('phase-change', phaseName)
   isPhaseOpen.value = false
 }
 </script>

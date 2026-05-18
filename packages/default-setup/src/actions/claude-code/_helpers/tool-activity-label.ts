@@ -100,7 +100,7 @@ export function computeLabel(
   state: 'streaming' | 'done' | 'error',
   phase?: string,
 ): string {
-  const streamingLabel = phase === 'plan' ? 'Planning' : 'Working';
+  const streamingLabel = phase === 'Plan' ? 'Planning' : 'Working';
   if (entries.length === 0) {
     return state === 'streaming' ? streamingLabel : 'No activity';
   }

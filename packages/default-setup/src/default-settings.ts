@@ -93,8 +93,8 @@ const settings: SettingsData = {
     },
     threads: {
       chat: {
-        defaultMode: 'claude-code',
-        defaultPhase: 'plan',
+        defaultMode: 'Claude Code',
+        defaultPhase: 'Plan',
         modes: [
           { id: 'birth', name: 'Birth', description: 'Assistant onboarding and setup mode', hidden: true },
           {

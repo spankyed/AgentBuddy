@@ -11,7 +11,7 @@
  * `_helpers/stream-consumer.ts`.
  *
  * Triggered from the "Claude Code" flow when a user.message arrives with
- * `mode === 'claude-code'`.
+ * `mode === 'Claude Code'`.
  */
 
 import type { ActionMeta, Services, Z, EntityId } from '../../types';
@@ -29,7 +29,7 @@ export const meta: ActionMeta = {
     threadId: { type: 'string', description: 'Target thread', required: true },
     text: { type: 'string', description: 'User message text', required: true },
     mode: { type: 'string', description: 'Agent mode (passed through from user.message)', required: false },
-    phase: { type: 'string', description: 'Sub-phase within mode (plan/edit/review)', required: false },
+    phase: { type: 'string', description: 'Sub-phase within mode (Plan/Edit/review)', required: false },
     model: { type: 'string', description: 'Override Claude model (alias or full id)', required: false },
     allowedTools: { type: 'array', description: 'Tools allowed without prompting', required: false },
     disallowedTools: { type: 'array', description: 'Tools always denied', required: false },
@@ -63,9 +63,12 @@ const DEFAULT_ALLOWED_TOOLS = [
 ];
 
 const PHASE_TIP_PROMPTS: Record<string, string> = {
-  plan: 'Plan Phase Tips System',
-  edit: 'Edit Phase Tips System',
+  Plan: 'Plan Phase Tips System',
+  Edit: 'Edit Phase Tips System',
 };
+
+export const phaseTipPromptLabel = (phase: string | undefined) =>
+  phase ? PHASE_TIP_PROMPTS[phase] : undefined;
 
 export async function action(
   params: Record<string, any>,
@@ -258,12 +261,12 @@ export async function action(
 
   // Read the user's current permission-mode and worktree choices.
   const activePermissionMode = prior?.permissionMode ?? 'acceptEdits';
-  const effectivePermissionMode = phase === 'plan' ? 'plan' : activePermissionMode;
+  const effectivePermissionMode = phase === 'Plan' ? 'plan' : activePermissionMode;
   const useWorktree = prior?.useWorktree ?? false;
   log.debug('active settings', { permissionMode: effectivePermissionMode, worktree: useWorktree });
 
   // Phase-aware system-prompt nudging (plan/edit/review).
-  const tipLabel = phase ? PHASE_TIP_PROMPTS[phase] : undefined;
+  const tipLabel = phaseTipPromptLabel(phase);
   const phaseTip = tipLabel ? services.prompt.usePrompt(tipLabel, {}) : undefined;
   const composedSystemPrompt = [phaseTip, systemPrompt].filter(Boolean).join('\n\n') || undefined;
 

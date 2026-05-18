@@ -4,7 +4,7 @@ import { entry, on, keepAlive, action, branch } from './_patterns';
 /**
  * Hermes Agent flow.
  *
- * Routes user messages in hermes mode to the chat action, stream lifecycle
+ * Routes user messages in Hermes mode to the chat action, stream lifecycle
  * events to a unified lifecycle handler, and /h-* commands to the command
  * router.
  */
@@ -17,7 +17,7 @@ export default {
       "user.message",
       [[
         branch([{
-          if: "$.event.data.payload.mode == 'hermes'",
+          if: "$.event.data.payload.mode == 'Hermes'",
           steps: [action("Hermes Chat", {
             label: "hermes-chat",
             map: {

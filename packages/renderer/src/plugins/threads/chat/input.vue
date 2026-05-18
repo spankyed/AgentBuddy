@@ -557,8 +557,8 @@ const visibleModes = computed(() => props.modes.filter(m => !m.hidden))
 
 // Reset to first visible mode when switching from forced-mode thread, and focus editor
 watch(() => props.currentThread?.id, () => {
-  if (props.currentMode && !props.currentThread?.forcedMode && !visibleModes.value.some(m => m.id === props.currentMode)) {
-    emit('mode-change', visibleModes.value[0].id)
+  if (props.currentMode && !props.currentThread?.forcedMode && !visibleModes.value.some(m => m.name === props.currentMode)) {
+    emit('mode-change', visibleModes.value[0].name)
   }
   nextTick(() => tiptapRef.value?.editor?.commands.focus('end'))
 })
@@ -599,18 +599,18 @@ const cycleMode = () => {
   if (props.disabled) return
   const modes = visibleModes.value
   if (!modes.length) return
-  const currentIndex = modes.findIndex(m => m.id === props.currentMode)
+  const currentIndex = modes.findIndex(m => m.name === props.currentMode)
   const nextMode = modes[(currentIndex + 1) % modes.length]
-  emit('mode-change', nextMode.id)
+  emit('mode-change', nextMode.name)
 }
 
 const cyclePhase = () => {
   if (props.disabled) return
-  const phases = visibleModes.value.find(m => m.id === props.currentMode)?.phases ?? []
+  const phases = visibleModes.value.find(m => m.name === props.currentMode)?.phases ?? []
   if (!phases.length) return
-  const currentIndex = phases.findIndex(p => p.id === props.currentPhase)
+  const currentIndex = phases.findIndex(p => p.name === props.currentPhase)
   const nextPhase = phases[(currentIndex + 1) % phases.length]
-  emit('phase-change', nextPhase.id)
+  emit('phase-change', nextPhase.name)
 }
 
 const handleModeChange = (newMode: string) => {

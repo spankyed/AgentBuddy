@@ -41,14 +41,14 @@ export async function action(
   if (!handle) {
     if (toolName === 'ExitPlanMode') {
       resolvePlanDraft(services, threadId as EntityId, 'approved');
-      services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'edit' });
+      services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'Edit' });
     }
     persistClaudeState(services, threadId, { pendingControlRequest: undefined });
     // Start a new turn that resumes the session — mirrors replayQueuedMessage.
     await services.action.getAndExecute('Claude Code Chat', {
       threadId,
       text: 'continue',
-      phase: toolName === 'ExitPlanMode' ? 'edit' : undefined,
+      phase: toolName === 'ExitPlanMode' ? 'Edit' : undefined,
     });
     return { success: true, resumed: true };
   }
@@ -57,7 +57,7 @@ export async function action(
 
   if (toolName === 'ExitPlanMode') {
     resolvePlanDraft(services, threadId as EntityId, 'approved');
-    services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'edit' });
+    services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'Edit' });
   }
 
   // If the user checked "auto-accept file edits", switch for current + future turns.

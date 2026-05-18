@@ -113,7 +113,7 @@ export function finishOnboarding(
 
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',
-    mode: 'claude-code',
+    mode: 'Claude Code',
   });
 
   (services.emitter as any).sendToPlugin('application', { type: 'RESTORE_CHAT' });
