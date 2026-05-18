@@ -2,7 +2,7 @@ import { settingsQueries, settingsCommands } from '@/systems/settings/repository
 import type { Migration } from './index';
 
 export const migration: Migration = {
-  target: '0.2.24',
+  target: '0.3.0',
   description: 'Add codex agent mode if missing',
   up: () => {
     const data = settingsQueries.getSettings();
