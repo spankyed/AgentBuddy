@@ -3,8 +3,8 @@
     <!-- Left section: Title and subtitle -->
     <div class="hidden @4xl:flex items-center gap-6">
       <div class="flex items-center gap-2">
-        <History class="w-4 h-4 text-neutral-500" />
-        <p class="text-sm text-neutral-400">Manage agent threads</p>
+        <component :is="showArchived ? Archive : History" class="w-4 h-4 text-neutral-500" />
+        <p class="text-sm text-neutral-400">{{ showArchived ? 'Viewing archived threads' : 'Manage agent threads' }}</p>
       </div>
     </div>
 
@@ -115,7 +115,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Search, Filter, List, Columns3, PanelLeft, History, X } from 'lucide-vue-next'
+import { Search, Filter, List, Columns3, PanelLeft, History, Archive, X } from 'lucide-vue-next'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
