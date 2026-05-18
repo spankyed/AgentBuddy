@@ -113,7 +113,7 @@ const settings: SettingsData = {
             description: 'OpenAI Codex agent mode',
             phases: [
               { id: 'plan', name: 'Plan', description: 'Strategic planning and exploration', color: '#3B82F6' },
-              { id: 'default', name: 'Code', description: 'Implementation and development', color: '#6B7280' },
+              { id: 'default', name: 'Default', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
           { id: 'manager', name: 'Manager', description: 'Delegate tasks and coordinate agents', hidden: true },

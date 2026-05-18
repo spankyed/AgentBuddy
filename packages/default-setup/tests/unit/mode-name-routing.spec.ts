@@ -9,6 +9,13 @@ describe('mode name routing', () => {
     expect(settings.plugins.threads.chat.defaultPhase).toBe('Plan')
   })
 
+  it('uses Default as the Codex default phase display name', () => {
+    const codexMode = settings.plugins.threads.chat.modes.find(mode => mode.id === 'codex')
+    const defaultPhase = codexMode?.phases?.find(phase => phase.id === 'default')
+
+    expect(defaultPhase?.name).toBe('Default')
+  })
+
   it('routes Claude Code user messages by mode name', () => {
     const userMessageTrack = claudeCodeFlow['Claude Code'].find((track: any) => track.event === 'user.message') as any
     const condition = userMessageTrack.exits[0][0].conditions[0].if

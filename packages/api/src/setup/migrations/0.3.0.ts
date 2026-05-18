@@ -11,7 +11,7 @@ export const migration: Migration = {
 
     const codexPhases = [
       { id: 'plan', name: 'Plan', description: 'Strategic planning and exploration', color: '#3B82F6' },
-      { id: 'default', name: 'Code', description: 'Implementation and development', color: '#6B7280' },
+      { id: 'default', name: 'Default', description: 'Implementation and development', color: '#6B7280' },
     ];
 
     if (!modes.some(m => m.id === 'codex')) {
