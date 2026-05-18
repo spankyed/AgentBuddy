@@ -7,28 +7,47 @@ export type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 export interface QueuedMessage {
   text: string;
   mode?: string;
+  phase?: string;
   messageId?: string;
   references?: any;
 }
 
+export interface PendingApproval {
+  /** JSON-RPC request ID from the app-server — needed for respondToApproval. */
+  requestId: number;
+  /** The approval method (item/commandExecution/requestApproval or item/fileChange/requestApproval). */
+  method: string;
+  /** The messageId of the approval block shown to the user. */
+  approvalMessageId: string;
+  /** Human-readable summary (command line or file path). */
+  summary?: string;
+  /** Reason from the server. */
+  reason?: string;
+}
+
 export interface CodexThreadState {
+  /** Codex app-server thread ID — for resume. */
   threadId?: string;
+  /** Active turn ID — for interrupt. */
+  turnId?: string;
   lastTurnAt?: number;
   cwd?: string;
   model?: string;
   startedAt?: number;
   turns?: number;
-  totalTokens?: { input: number; output: number; reasoning: number };
+  totalTokens?: { input: number; output: number };
   chatState?: ChatState;
   toolCallCount?: number;
   recentTools?: Array<{ name: string; summary: string; at: number }>;
   sessionError?: string;
   isRunning?: boolean;
   queuedMessage?: QueuedMessage;
+  pendingApproval?: PendingApproval;
   pendingDirectorySelect?: {
     pickerMessageId: string;
     text: string;
     mode?: string;
+    phase?: string;
     model?: string;
     messageId?: string;
     references?: any;
@@ -103,17 +122,47 @@ export function dequeueMessage(services: Services, threadId: string): QueuedMess
   return msg;
 }
 
+/**
+ * Interrupt the active turn, unregister the consumer, invalidate pending
+ * approval blocks, and clear all mid-turn flags.
+ */
 export function killTurn(services: Services, threadId: string): void {
+  const prior = getCodexState(services, threadId);
+
+  // Interrupt the turn via app-server
+  if (prior?.threadId && prior?.turnId) {
+    try { (services.codex as any).interruptTurn(prior.threadId, prior.turnId); } catch { /* best effort */ }
+  }
+
+  // Unregister consumer so stale notifications don't route
+  if (prior?.threadId) {
+    try { (services.codex as any).unregisterConsumer(prior.threadId); } catch { /* ok */ }
+  }
+
+  // Clear handle
   const handle = (services.codex as any).getHandle(threadId);
   if (handle) {
     try { handle.abort(); } catch { /* already gone */ }
     (services.codex as any).clearHandle(threadId);
   }
 
+  // Invalidate pending approval block
+  if (prior?.pendingApproval?.approvalMessageId) {
+    services.chat.updateMessageState(prior.pendingApproval.approvalMessageId as any, {
+      responseTimestamp: Date.now(),
+      blockResponse: { cancelled: true },
+    } as any);
+  }
+
+  // Invalidate queued message
   const queued = dequeueMessage(services, threadId);
   if (queued?.messageId) {
     services.chat.updateMessageState(queued.messageId as any, { status: 'cancelled' } as any);
   }
 
-  persistCodexState(services, threadId, { isRunning: false });
+  persistCodexState(services, threadId, {
+    isRunning: false,
+    turnId: undefined,
+    pendingApproval: undefined,
+  });
 }

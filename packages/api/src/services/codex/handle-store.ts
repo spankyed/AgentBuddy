@@ -1,14 +1,14 @@
-/** Per-thread handle store for active Codex queries. Callers must call clearHandle on completion. */
+/** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
 
-import type { CodexHandle } from './types'
+import type { CodexTurnHandle } from './types'
 import { createLogger } from '@/core/helpers/debug/logger'
 import { registerCleanup } from '../threads'
 
 const logger = createLogger('codex-handle-store')
-const activeHandles = new Map<string, CodexHandle>()
+const activeHandles = new Map<string, CodexTurnHandle>()
 const cleanupUnsubs = new Map<string, () => void>()
 
-export function storeHandle(key: string, handle: CodexHandle): void {
+export function storeHandle(key: string, handle: CodexTurnHandle): void {
   const existing = activeHandles.get(key)
   if (existing) {
     try { existing.abort() } catch { /* already gone */ }
@@ -28,7 +28,7 @@ export function storeHandle(key: string, handle: CodexHandle): void {
   cleanupUnsubs.set(key, unsub)
 }
 
-export function getHandle(key: string): CodexHandle | undefined {
+export function getHandle(key: string): CodexTurnHandle | undefined {
   return activeHandles.get(key)
 }
 

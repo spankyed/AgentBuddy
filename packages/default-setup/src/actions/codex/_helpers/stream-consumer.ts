@@ -1,125 +1,312 @@
 /**
- * Fire-and-forget stream consumer for the Codex SDK event stream.
- * Processes events, manages writers, and emits cdx.stream.completed.
+ * Callback-based stream consumer for the Codex app-server.
+ *
+ * Unlike the exec-based consumer (which used `for await` over an AsyncGenerator),
+ * the app-server routes notifications to registered consumers via callbacks.
+ * This module creates the handlers that process notifications and approval
+ * requests, driving the writers and emitting brain events.
  */
 
 import type { Services, EntityId } from '../../../types';
-import { createStreamWriter } from '../../claude-code/_helpers/stream-writer';
-import { createToolActivityWriter } from '../../claude-code/_helpers/tool-activity-writer';
-import { createThinkingWriter } from '../../claude-code/_helpers/thinking-writer';
-import { persistCodexState, setRunning, dequeueMessage, updateChatState, updateCodexState } from './thread-context';
-import { createEventMapperState, handleItemStarted, handleItemUpdated, handleItemCompleted } from './event-mapper';
-import type { Writers } from './event-mapper';
+import type { StreamWriter } from '../../claude-code/_helpers/stream-writer';
+import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activity-writer';
+import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer';
+import {
+  persistCodexState,
+  dequeueMessage,
+  updateChatState,
+} from './thread-context';
 
 export interface ConsumerContext {
   services: Services;
+  /** App-level thread entity ID (not Codex thread ID). */
   threadId: EntityId;
+  /** Codex app-server thread ID. */
+  codexThreadId: string;
+  /** Original user message text. */
   text: string;
 }
 
 export interface ConsumerWriters {
-  writer: ReturnType<typeof createStreamWriter>;
-  toolActivity: ReturnType<typeof createToolActivityWriter>;
-  thinking: ReturnType<typeof createThinkingWriter>;
+  writer: StreamWriter;
+  toolActivity: ToolActivityWriter;
+  thinking: ThinkingWriter;
   messageId: EntityId;
 }
 
-export async function consumeStream(handle: any, ctx: ConsumerContext, initialWriters: ConsumerWriters): Promise<void> {
-  const { services, threadId, text } = ctx;
+interface ConsumerHandlers {
+  onNotification(method: string, params: any): void;
+  onApproval(method: string, requestId: number, params: any): void;
+}
+
+/**
+ * Create a callback-based stream consumer. Returns handlers to register
+ * with the app-server and a finalize function for cleanup.
+ */
+export function createStreamConsumer(
+  ctx: ConsumerContext,
+  writers: ConsumerWriters,
+): { handlers: ConsumerHandlers; finalize(): void } {
+  const { services, threadId, codexThreadId, text } = ctx;
+  const { writer, toolActivity, thinking, messageId } = writers;
   const log = services.logger;
 
-  const stillCurrent = () => (services.codex as any).getHandle(threadId) === handle;
+  // Ownership check — prevents stale consumers from corrupting state
+  const stillCurrent = () =>
+    (services.codex as any).getHandle(threadId) !== undefined;
 
-  const { messageId: currentMessageId, writer, toolActivity, thinking } = initialWriters;
-  const finaliseThinking = () => { if (thinking.isStreaming) thinking.finalise(); };
-  const mapperState = createEventMapperState();
-  const writers: Writers = { writer, toolActivity, thinking };
-
-  let usage: { input: number; output: number; reasoning: number } | undefined;
+  const mutatedPaths: string[] = [];
+  const mutatedPathsSet = new Set<string>();
+  let toolCallCount = 0;
   let hadErrors = false;
+  let usage: { input: number; output: number } | undefined;
+  let placeholderCleared = false;
 
-  try {
-    for await (const event of handle.events) {
-      const ev = event as any;
+  const clearPlaceholder = () => {
+    if (!placeholderCleared) {
+      placeholderCleared = true;
+      services.chat.updateMessageState(messageId as any, { text: '' });
+    }
+  };
 
-      switch (ev.type) {
-        case 'thread.started':
-          if (ev.thread_id) {
-            persistCodexState(services, threadId, { threadId: ev.thread_id, lastTurnAt: Date.now() });
-          }
-          break;
+  const finaliseThinking = () => { if (thinking.isStreaming) thinking.finalise(); };
 
-        case 'turn.started':
-          updateChatState(services, threadId, 'working');
-          break;
+  // ─── Notification handler ───────────────────────────────────────────
 
-        case 'item.started': {
-          const toolInfo = handleItemStarted(ev.item, writers, mapperState);
-          if (toolInfo) {
-            updateCodexState(services, threadId, (prev) => ({
-              recentTools: [...(prev.recentTools ?? []), { ...toolInfo, at: Date.now() }].slice(-3),
-            }));
-          }
-          break;
+  const onNotification = (method: string, params: any): void => {
+    switch (method) {
+      case 'item/agentMessage/delta': {
+        const { delta, phase } = params;
+        if (!delta) break;
+        if (phase === 'reasoning') {
+          clearPlaceholder();
+          thinking.push(delta);
+        } else {
+          clearPlaceholder();
+          finaliseThinking();
+          writer.push(delta);
         }
+        break;
+      }
 
-        case 'item.updated':
-          handleItemUpdated(ev.item, writers, mapperState, services, currentMessageId);
-          break;
+      case 'item/started': {
+        const item = params.item;
+        if (!item) break;
 
-        case 'item.completed':
-          handleItemCompleted(ev.item, writers, mapperState);
-          break;
+        switch (item.type) {
+          case 'commandExecution':
+            toolCallCount++;
+            finaliseThinking();
+            thinking.stopDirectWrites();
+            writer.flush();
+            toolActivity.append({
+              id: item.id,
+              tool: 'command',
+              summary: item.command || '',
+              status: 'running',
+              details: { input: { command: item.command, cwd: item.cwd } },
+            });
+            break;
 
-        case 'turn.completed':
-          if (ev.usage) {
-            usage = {
-              input: ev.usage.input_tokens || 0,
-              output: ev.usage.output_tokens || 0,
-              reasoning: ev.usage.reasoning_output_tokens || 0,
-            };
+          case 'fileChange':
+            toolCallCount++;
+            finaliseThinking();
+            thinking.stopDirectWrites();
+            writer.flush();
+            toolActivity.append({
+              id: item.id,
+              tool: 'file_change',
+              summary: 'File changes',
+              status: 'running',
+            });
+            break;
+
+          case 'mcpToolCall':
+            toolCallCount++;
+            finaliseThinking();
+            thinking.stopDirectWrites();
+            writer.flush();
+            toolActivity.append({
+              id: item.id,
+              tool: `${item.server || 'mcp'}/${item.tool || '?'}`,
+              summary: item.tool || '',
+              status: 'running',
+              details: { input: item.arguments },
+            });
+            break;
+        }
+        break;
+      }
+
+      case 'item/completed': {
+        const item = params.item;
+        if (!item) break;
+
+        switch (item.type) {
+          case 'commandExecution': {
+            const ok = item.status === 'completed' && (item.exitCode === 0 || item.exitCode == null);
+            toolActivity.update(item.id, {
+              status: ok ? 'ok' : 'error',
+              details: { input: { command: item.command }, output: item.aggregatedOutput || '' },
+            });
+            if (!ok) hadErrors = true;
+            break;
           }
-          break;
 
-        case 'turn.failed':
-          hadErrors = true;
-          log.error('[codex] turn failed', { error: ev.error?.message });
-          break;
+          case 'fileChange': {
+            const changes = item.changes || [];
+            for (const change of changes) {
+              if (typeof change.path === 'string' && !mutatedPathsSet.has(change.path)) {
+                mutatedPathsSet.add(change.path);
+                mutatedPaths.push(change.path);
+              }
+            }
+            const summary = changes.map((c: any) => `${c.kind}: ${c.path}`).join(', ');
+            toolActivity.update(item.id, {
+              summary: summary || 'File changes',
+              status: item.status === 'completed' ? 'ok' : 'error',
+            });
+            if (item.status !== 'completed') hadErrors = true;
+            break;
+          }
 
-        case 'error':
-          hadErrors = true;
-          log.error('[codex] fatal error', { message: ev.message });
-          break;
+          case 'mcpToolCall': {
+            toolActivity.update(item.id, {
+              status: item.status === 'completed' ? 'ok' : 'error',
+              ...(item.error ? { details: { output: item.error.message } } : {}),
+            });
+            break;
+          }
+        }
+        break;
+      }
+
+      case 'turn/started': {
+        updateChatState(services, threadId, 'working');
+        break;
+      }
+
+      case 'turn/completed': {
+        finalize();
+        break;
+      }
+
+      case 'thread/tokenUsage/updated': {
+        if (params.tokenUsage) {
+          usage = {
+            input: params.tokenUsage.inputTokens || 0,
+            output: params.tokenUsage.outputTokens || 0,
+          };
+        }
+        break;
+      }
+
+      case 'error': {
+        hadErrors = true;
+        log.error('[codex consumer] error notification', { message: params.message || params.error?.message });
+        finalize();
+        break;
       }
     }
-  } catch (err) {
-    hadErrors = true;
-    log.error('[codex] consumer error', { error: err });
-  } finally {
+  };
+
+  // ─── Approval handler ───────────────────────────────────────────────
+
+  const onApproval = (method: string, requestId: number, params: any): void => {
+    log.info('[codex consumer] approval request', { method, requestId, threadId });
+
+    // Freeze writers
+    toolActivity.flush();
+    finaliseThinking();
+
+    const isCommand = method === 'item/commandExecution/requestApproval';
+    const summary = isCommand ? params.command : 'File changes';
+    const reason = params.reason || '';
+
+    // Send approval block to chat
+    const approvalMsg = services.chat.sendBlockMessage({
+      threadId,
+      text: isCommand
+        ? `Codex wants to run: \`${params.command || '?'}\``
+        : 'Codex wants to modify files',
+      blocks: [{
+        type: 'approval',
+        props: {
+          content: reason,
+          options: [
+            { label: 'Allow', variant: 'primary', flags: { decision: 'accept' } },
+            { label: 'Allow for session', variant: 'neutral', flags: { decision: 'acceptForSession' } },
+            { label: 'Deny', variant: 'danger', flags: { decision: 'decline' } },
+          ],
+        },
+      }],
+      forkable: false,
+    });
+
+    // Persist pending approval state
+    persistCodexState(services, threadId as string, {
+      pendingApproval: {
+        requestId,
+        method,
+        approvalMessageId: approvalMsg.messageId as string,
+        summary,
+        reason,
+      },
+      isRunning: false,
+    });
+
+    // Notify flow
+    services.emitter.sendToBrainSystem({
+      eventType: 'cdx.stream.paused',
+      payload: { threadId, method, requestId },
+    });
+  };
+
+  // ─── Finalize ───────────────────────────────────────────────────────
+
+  let finalized = false;
+  function finalize(): void {
+    if (finalized) return;
+    finalized = true;
+
+    // Always finalize writers (safe even if superseded)
     finaliseThinking();
     writer.finalize(writer.text);
     toolActivity.finalise(hadErrors ? 'error' : 'done');
-    services.chat.updateMessageState(currentMessageId as any, { forkable: true } as any);
+    services.chat.updateMessageState(messageId as any, { forkable: true } as any);
 
-    if (stillCurrent()) {
-      (services.codex as any).clearHandle(threadId);
+    // Guard: only mutate shared state if we still own the handle.
+    // If a new turn was started, our handle was replaced and we must
+    // not clear it or overwrite isRunning/turnId.
+    if (!stillCurrent()) return;
 
-      const queued = dequeueMessage(services, threadId as string);
-      if (queued) {
-        if (queued.messageId) {
-          services.chat.updateMessageState(queued.messageId as any, { status: undefined } as any);
-        }
-        services.action.executeAction('Codex Chat', {
-          threadId, text: queued.text, mode: queued.mode || 'codex',
-          messageId: queued.messageId, references: queued.references,
-        });
+    // Unregister consumer
+    try { (services.codex as any).unregisterConsumer(codexThreadId); } catch { /* ok */ }
+    (services.codex as any).clearHandle(threadId);
+
+    // Dequeue and replay before emitting completion
+    const queued = dequeueMessage(services, threadId as string);
+    if (queued) {
+      log.info('[codex consumer] replaying queued message', { threadId });
+      if (queued.messageId) {
+        services.chat.updateMessageState(queued.messageId as any, { status: undefined } as any);
       }
-
-      setRunning(services, threadId as string, false);
-      services.emitter.sendToBrainSystem({
-        eventType: 'cdx.stream.completed',
-        payload: { threadId, text, usage, hadErrors, mutatedPaths: mapperState.mutatedPaths, toolCallCount: mapperState.toolCallCount },
+      services.action.executeAction('Codex Chat', {
+        threadId, text: queued.text, mode: queued.mode || 'codex',
+        phase: queued.phase, messageId: queued.messageId, references: queued.references,
       });
     }
+
+    persistCodexState(services, threadId as string, { isRunning: false, turnId: undefined });
+
+    services.emitter.sendToBrainSystem({
+      eventType: 'cdx.stream.completed',
+      payload: {
+        threadId, text, usage, hadErrors,
+        mutatedPaths, toolCallCount,
+      },
+    });
   }
+
+  return { handlers: { onNotification, onApproval }, finalize };
 }
