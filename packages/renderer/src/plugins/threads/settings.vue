@@ -64,6 +64,9 @@
         <p class="text-sm text-neutral-500 mb-4">
           Configure different conversation modes for the AI agent
         </p>
+        <p v-if="modesValidationMessage" class="text-sm text-red-400 mb-4">
+          {{ modesValidationMessage }}
+        </p>
         <div class="space-y-4">
           <div
             v-for="(mode, index) in modes"
@@ -750,6 +753,7 @@ const hotkeys = reactive<AgentSettings['hotkeys']>({
 })
 const defaultMode = ref<string>(chatSettings?.defaultMode ?? '')
 const defaultPhase = ref<string>(chatSettings?.defaultPhase ?? '')
+const modesValidationMessage = ref('')
 
 const selectableDefaultModes = computed(() =>
   modes.value.filter(m => !m.hidden && !m.disabled)
@@ -844,7 +848,31 @@ const saveQuickPromptNumberKeyInserts = () => {
   emit('update-setting', { path: ['chat', 'quickPromptNumberKeyInserts'], value: quickPromptNumberKeyInserts.value })
 }
 
+const duplicateName = (names: string[]) => {
+  const seen = new Set<string>()
+  return names.find(name => {
+    if (seen.has(name)) return true
+    seen.add(name)
+    return false
+  })
+}
+
+const validateModeNames = () => {
+  const duplicateMode = duplicateName(modes.value.map(mode => mode.name.trim()).filter(Boolean))
+  if (duplicateMode) return `Duplicate mode name: ${duplicateMode}`
+
+  for (const mode of modes.value) {
+    const duplicatePhase = duplicateName((mode.phases || []).map(phase => phase.name.trim()).filter(Boolean))
+    if (duplicatePhase) return `Duplicate phase name in ${mode.name || 'unnamed mode'}: ${duplicatePhase}`
+  }
+
+  return ''
+}
+
 const saveModes = () => {
+  modesValidationMessage.value = validateModeNames()
+  if (modesValidationMessage.value) return
+
   emit('update-setting', { path: ['chat', 'modes'], value: modes.value })
 }
 
