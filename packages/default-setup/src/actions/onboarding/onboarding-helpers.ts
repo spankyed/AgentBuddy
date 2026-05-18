@@ -51,7 +51,7 @@ export function finishOnboarding(
   if (!options?.skipCompletionMessage) {
     const allThreads = services.repository.threadQueries.all();
     const ccThreads = allThreads
-      .filter((t: any) => t.tags?.includes('claude-code') && t.id !== threadId)
+      .filter((t: any) => (t.tags?.includes('claude-code') || t.tags?.includes('codex')) && t.id !== threadId)
       .sort((a: any, b: any) => {
         const aTime = a.lastMessageTimestamp || a.timestamp;
         const bTime = b.lastMessageTimestamp || b.timestamp;

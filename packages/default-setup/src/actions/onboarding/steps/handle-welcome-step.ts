@@ -1,10 +1,9 @@
 import type { ActionMeta, EntityId, Services } from '../../../types';
-import { getOnboardingState, persistOnboardingState, finishOnboarding, flashState, type OnboardingState } from '../onboarding-helpers';
-import { startCcImportStep } from './handle-projects-step';
+import { getOnboardingState, persistOnboardingState, flashState } from '../onboarding-helpers';
 
 export const meta: ActionMeta = {
   label: 'Handle Welcome Step',
-  description: 'Detects Claude Code + Codex CLIs and advances onboarding',
+  description: 'Detects Claude Code + Codex CLIs, shows status, then presents project directory picker',
   category: 'onboarding',
   input: {
     threadId: { type: 'string', required: true },
@@ -21,22 +20,8 @@ export async function action(
   if (!state) return { success: false, reason: 'no-state' };
 
   flashState(services, threadId);
-  await detectAllClis(services, state, threadId);
-  persistOnboardingState(services, threadId, state);
 
-  return { success: true, step: state.step };
-}
-
-/**
- * Detect both Claude Code and Codex CLIs in parallel, show a unified
- * status message, then advance based on what was found.
- */
-async function detectAllClis(
-  services: Services,
-  state: OnboardingState,
-  threadId: EntityId,
-) {
-  // Test both CLIs in parallel
+  // ── Detect both CLIs in parallel ──────────────────────────────────
   const [ccResult, codexResult] = await Promise.all([
     services.cli.testCli('claude-code'),
     services.cli.testCli('codex'),
@@ -45,7 +30,6 @@ async function detectAllClis(
   const ccFound = ccResult.success;
   const codexFound = codexResult.success;
 
-  // Check CC auth if found
   let ccAuthenticated = false;
   if (ccFound) {
     try {
@@ -58,21 +42,21 @@ async function detectAllClis(
   state.data.authenticated = ccAuthenticated;
   state.data.codexFound = codexFound;
 
-  // Build unified status message
+  // ── Warm status message ───────────────────────────────────────────
   const lines: string[] = [];
 
   if (ccFound && ccAuthenticated) {
-    lines.push('**Claude Code** — detected and authenticated');
+    lines.push('**Claude Code** — ready to go');
   } else if (ccFound) {
-    lines.push('**Claude Code** — detected but not authenticated. Run `claude` in your terminal to sign in.');
+    lines.push('**Claude Code** — installed but needs authentication. Run `claude` in your terminal to sign in.');
   } else {
-    lines.push('**Claude Code** — not found. Install with `npm i -g @anthropic-ai/claude-code`');
+    lines.push('**Claude Code** — not installed. You can add it later with `npm i -g @anthropic-ai/claude-code`');
   }
 
   if (codexFound) {
-    lines.push('**Codex** — detected');
+    lines.push('**Codex** — ready to go');
   } else {
-    lines.push('**Codex** — not found. Install with `npm i -g @openai/codex`');
+    lines.push('**Codex** — not installed. You can add it later with `npm i -g @openai/codex`');
   }
 
   services.chat.sendBlockMessage({
@@ -82,12 +66,25 @@ async function detectAllClis(
     forkable: false,
   });
 
-  // Advance based on what we found
-  if (ccFound && ccAuthenticated) {
-    // CC is ready — proceed to session import flow
-    await startCcImportStep(services, state, threadId);
-  } else {
-    // Nothing to import — go straight to hermes/finish
-    finishOnboarding(services, state, threadId);
-  }
+  // ── Always show project directory picker ──────────────────────────
+  const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+  const { messageId } = services.chat.sendBlockMessage({
+    threadId,
+    text: 'Pick a project directory to get started.',
+    blocks: [
+      { type: 'prompt', props: { content: 'Select a project directory' } },
+      ...(projects.length > 0 ? [{ type: 'project-select', props: { projects } }] : []),
+      { type: 'file-picker', props: { fileType: 'directory' } },
+    ],
+    forkable: false,
+    autoHide: true,
+    asUser: true,
+    asideContext: 'Project',
+  } as any);
+
+  state.step = 'projects';
+  state.pendingMessageId = messageId;
+  persistOnboardingState(services, threadId, state);
+
+  return { success: true, step: state.step };
 }
