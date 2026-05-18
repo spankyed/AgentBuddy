@@ -32,6 +32,7 @@
           </button>
         </div>
       </div>
+      <template v-if="!customMode">
       <div class="grid grid-cols-3 gap-1 rounded-lg border border-neutral-700 p-1">
         <button
           v-for="option in frequencyOptions"
@@ -48,10 +49,11 @@
           {{ option.label }}
         </button>
       </div>
+    </template>
     </div>
 
     <!-- Second selector (every_second) -->
-    <div v-if="frequency === 'every_second'">
+    <div v-if="!customMode && frequency === 'every_second'">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         INTERVAL (SECONDS)
       </label>
@@ -82,7 +84,7 @@
     </div>
 
     <!-- Minute selector (hourly+) -->
-    <div v-if="showMinute">
+    <div v-if="!customMode && showMinute">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         AT MINUTE
       </label>
@@ -98,7 +100,7 @@
     </div>
 
     <!-- Hour selector (daily+) -->
-    <div v-if="showHour">
+    <div v-if="!customMode && showHour">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         AT HOUR
       </label>
@@ -114,7 +116,7 @@
     </div>
 
     <!-- Day filter (daily) -->
-    <div v-if="frequency === 'daily'">
+    <div v-if="!customMode && frequency === 'daily'">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         ON DAYS
       </label>
@@ -140,7 +142,7 @@
     </div>
 
     <!-- Day of week selector (weekly) -->
-    <div v-if="frequency === 'weekly'">
+    <div v-if="!customMode && frequency === 'weekly'">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         ON DAY
       </label>
@@ -160,7 +162,7 @@
     </div>
 
     <!-- Day of month selector (monthly) -->
-    <div v-if="frequency === 'monthly'">
+    <div v-if="!customMode && frequency === 'monthly'">
       <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
         ON DAY
       </label>
