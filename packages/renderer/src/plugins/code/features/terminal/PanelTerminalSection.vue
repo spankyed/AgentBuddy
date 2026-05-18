@@ -13,6 +13,14 @@
       <div class="flex items-center gap-1" @click.stop>
         <RunScriptPopover :scripts="terminalScripts" @run="runScript" @run-new="runScriptInNewTerminal" @update="updateScripts" />
         <button
+          @click="stopTerminal"
+          class="p-1 hover:bg-neutral-700 rounded transition-colors"
+          title="Stop (Ctrl+C)"
+          :disabled="!panelTerminalId"
+        >
+          <Square class="w-3 h-3 text-neutral-400 fill-neutral-400" :class="{ 'opacity-30': !panelTerminalId }" />
+        </button>
+        <button
           @click="createTerminal"
           class="p-1 hover:bg-neutral-700 rounded transition-colors"
           title="New Terminal"
@@ -149,7 +157,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis } from 'lucide-vue-next'
+import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square } from 'lucide-vue-next'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -291,6 +299,11 @@ const sendResize = (terminalId: string) => {
 }
 
 // Actions
+const stopTerminal = () => {
+  if (!panelTerminalId.value) return
+  terminalActor?.send({ type: 'terminal.INPUT', terminalId: panelTerminalId.value, data: '\x03' })
+}
+
 const createTerminal = () => {
   terminalActor?.send({ type: 'terminal.CREATE' })
   if (!isExpanded.value) {
