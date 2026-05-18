@@ -151,6 +151,8 @@ export const explorerState = setup({
         content: ev.data.content,
         originalContent: ev.data.content,
         modified: false,
+        isRichText,
+        _richTextBaselineSet: false,
         ...(existingFile ? {
           externallyModified: false,
           externalModificationTime: undefined,
@@ -158,7 +160,6 @@ export const explorerState = setup({
         } : {}),
         ...(isImageFile && { isImage: true }),
         ...(ev.data.isBinary && { isBinary: true }),
-        ...(isRichText && { isRichText: true }),
       }
       addTabToParent(self, tab, false, {
         isLoading: false,
