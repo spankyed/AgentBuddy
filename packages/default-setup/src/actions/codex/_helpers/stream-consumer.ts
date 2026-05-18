@@ -13,7 +13,6 @@ import type { ToolActivityWriter } from '../../claude-code/_helpers/tool-activit
 import type { ThinkingWriter } from '../../claude-code/_helpers/thinking-writer';
 import {
   persistCodexState,
-  setRunning,
   dequeueMessage,
   updateChatState,
 } from './thread-context';
@@ -51,6 +50,10 @@ export function createStreamConsumer(
   const { services, threadId, codexThreadId, text } = ctx;
   const { writer, toolActivity, thinking, messageId } = writers;
   const log = services.logger;
+
+  // Ownership check — prevents stale consumers from corrupting state
+  const stillCurrent = () =>
+    (services.codex as any).getHandle(threadId) !== undefined;
 
   const mutatedPaths: string[] = [];
   const mutatedPathsSet = new Set<string>();
@@ -266,10 +269,16 @@ export function createStreamConsumer(
     if (finalized) return;
     finalized = true;
 
+    // Always finalize writers (safe even if superseded)
     finaliseThinking();
     writer.finalize(writer.text);
     toolActivity.finalise(hadErrors ? 'error' : 'done');
     services.chat.updateMessageState(messageId as any, { forkable: true } as any);
+
+    // Guard: only mutate shared state if we still own the handle.
+    // If a new turn was started, our handle was replaced and we must
+    // not clear it or overwrite isRunning/turnId.
+    if (!stillCurrent()) return;
 
     // Unregister consumer
     try { (services.codex as any).unregisterConsumer(codexThreadId); } catch { /* ok */ }
@@ -288,7 +297,7 @@ export function createStreamConsumer(
       });
     }
 
-    setRunning(services, threadId as string, false);
+    persistCodexState(services, threadId as string, { isRunning: false, turnId: undefined });
 
     services.emitter.sendToBrainSystem({
       eventType: 'cdx.stream.completed',

@@ -21,7 +21,11 @@ export async function action(params: Record<string, any>, services: Services) {
   if (!pending) return { success: false, reason: 'no pending approval' };
 
   // Send decline to app-server
-  (services.codex as any).respondToApproval(pending.requestId, 'decline');
+  try {
+    (services.codex as any).respondToApproval(pending.requestId, 'decline');
+  } catch (err: any) {
+    services.logger.warn('[codex] failed to send decline — app-server may have crashed', { error: err?.message });
+  }
 
   // Mark approval block as responded
   services.chat.updateMessageState(pending.approvalMessageId as EntityId, {

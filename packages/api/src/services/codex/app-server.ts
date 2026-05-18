@@ -51,7 +51,8 @@ export class CodexAppServer {
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
   async start(): Promise<void> {
-    if (this.process && this._status === 'ready') return
+    if (this._status === 'ready') return
+    if (this._status === 'starting') return
 
     this._status = 'starting'
     this._error = undefined
@@ -102,6 +103,12 @@ export class CodexAppServer {
       logger.error('App-server process error', { error: err.message })
       this._status = 'error'
       this._error = err.message
+      // Reject init if pending so start() doesn't hang on spawn failure
+      if (this._initReject) {
+        this._initReject(new Error(`App-server spawn failed: ${err.message}`))
+        this._initResolve = null
+        this._initReject = null
+      }
     })
 
     // Initialize handshake

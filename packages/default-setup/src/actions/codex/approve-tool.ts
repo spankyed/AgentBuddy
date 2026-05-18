@@ -33,7 +33,12 @@ export async function action(params: Record<string, any>, services: Services) {
     || 'accept';
 
   // Send approval to app-server
-  (services.codex as any).respondToApproval(pending.requestId, decision);
+  try {
+    (services.codex as any).respondToApproval(pending.requestId, decision);
+  } catch (err: any) {
+    services.logger.warn('[codex] failed to send approval — app-server may have crashed', { error: err?.message });
+    return { success: false, reason: 'app-server unavailable' };
+  }
 
   // Mark approval block as responded
   services.chat.updateMessageState(pending.approvalMessageId as EntityId, {

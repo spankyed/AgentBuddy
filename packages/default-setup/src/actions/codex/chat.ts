@@ -89,9 +89,11 @@ export async function action(params: Record<string, any>, services: Services, _z
   persistCodexState(services, threadId, { startedAt: prior?.startedAt ?? Date.now(), sessionError: undefined, ...(model && { model }) });
   updateChatState(services, threadId, 'working');
 
+  const codex = services.codex as any;
+  let activeThreadId: string | undefined;
+
   try {
     // Ensure app-server is running
-    const codex = services.codex as any;
     if (codex.status !== 'ready') {
       await codex.start();
     }
@@ -102,9 +104,6 @@ export async function action(params: Record<string, any>, services: Services, _z
       : (cwdOverride || codeSettings?.defaultBaseDirectory || codeSettings?.lastDirectoryOpened || undefined);
 
     if (sessionCwd && !prior?.cwd) persistCodexState(services, threadId, { cwd: sessionCwd });
-
-    // Start or resume thread
-    let activeThreadId: string;
     if (codexThreadId) {
       const result = await codex.resumeThread(codexThreadId);
       activeThreadId = result.threadId;
@@ -154,6 +153,10 @@ export async function action(params: Record<string, any>, services: Services, _z
   } catch (err: any) {
     const message = err?.message || 'Codex query failed to start';
     log.error('[codex] chat failed', { message, stack: err?.stack });
+    // Clean up consumer if it was registered
+    if (activeThreadId) {
+      try { codex.unregisterConsumer(activeThreadId); } catch { /* may not exist */ }
+    }
     toolActivity.finalise('error');
     setRunning(services, threadId, false);
     updateChatState(services, threadId, 'idle');
