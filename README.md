@@ -1,21 +1,29 @@
 # AgentBuddy
 
-A desktop app for building and running AI agent workflows using an actor-based architecture.
+AgentBuddy is an Electron desktop app for building and running AI agent workflows. It combines a Vue-based visual workspace with an actor-driven backend, plugin-defined tools, local persistence, and model integrations.
 
 ## Features
 
-- **Actor-based architecture** — XState state machines drive both frontend and backend, communicating through a typed event bus
-- **Plugin system** — extend the app with plugins that register their own canvas views, panels, and state machines
-- **LLM integration** — connect to Anthropic, OpenAI, and Google models via the Vercel AI SDK
-- **Graph database** — custom entity-attribute-relation store (EARS) backed by LMDB for fast, in-memory data access
-- **Visual node editor** — design agent flows with a drag-and-drop canvas powered by Vue Flow
-- **Embedded terminal** — run commands directly inside the app with xterm.js and node-pty
-- **Rich text editing** — author prompts and documentation with a Tiptap-based editor
-- **Cross-platform** — runs on macOS, Windows, and Linux
+- **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
+- **Plugin system**: Plugins can register canvas views, panels, machines, and workflow-specific UI.
+- **Model integrations**: Anthropic, OpenAI, and Google providers are wired through the Vercel AI SDK.
+- **Local graph store**: The EARS entity-attribute-relation store is backed by LMDB for fast local access.
+- **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
+- **Embedded terminal**: xterm.js and node-pty provide command execution inside the app.
+- **Rich text editing**: Tiptap supports prompt and documentation authoring.
+- **Desktop packaging**: Electron targets macOS, Windows, and Linux.
 
 ## Tech Stack
 
-Electron, Vue 3, XState v5, tRPC v11, Tailwind CSS, Vite, LMDB, Monaco Editor, Vercel AI SDK, Zod
+- Electron
+- Vue 3
+- XState v5
+- tRPC v11
+- Tailwind CSS
+- Vite
+- LMDB
+- Monaco Editor
+- Vercel AI SDK
 
 ## Project Structure
 
@@ -49,8 +57,8 @@ packages/
 
 ## Prerequisites
 
-- Node.js >= 23
-- npm
+- Node.js 23 or newer
+- npm 10 or newer
 
 ## Getting Started
 
@@ -60,11 +68,15 @@ cd AgentBuddy
 npm install
 ```
 
+The repository uses npm workspaces under `packages/*`. The root scripts coordinate builds, tests, type checking, DSL compilation, database tasks, and Electron development mode.
+
 ### Development
 
 ```sh
 npm start                # Dev mode (skips DSL generation)
 npm run start:gen        # Dev mode with DSL generation
+npm run start:inspect    # Dev mode with Electron inspection enabled
+npm run start:no-build   # Start dev mode without rebuilding first
 ```
 
 ### Build
@@ -73,6 +85,7 @@ npm run start:gen        # Dev mode with DSL generation
 npm run build            # Build all workspaces
 npm run build:be         # Build backend only
 npm run build-prod       # Full production build
+npm run package:all      # Package for macOS, Windows, and Linux
 ```
 
 ### Test
@@ -80,16 +93,36 @@ npm run build-prod       # Full production build
 ```sh
 npm test                 # Playwright E2E tests
 npm run test:unit        # Unit tests
+npm run typecheck        # Frontend and backend type checks
 ```
 
-### Other Commands
+### DSL Compilation
+
+AgentBuddy stores default setup content as DSL source files and compiles them into generated assets.
 
 ```sh
-npm run typecheck        # Type check all workspaces
 npm run compile          # Compile all DSLs (actions, prompts, flows, library)
+npm run compile:actions  # Compile actions only
+npm run compile:prompts  # Compile prompts only
+npm run compile:flows    # Compile flows only
+npm run compile:library  # Compile library content only
+```
+
+### Database Tools
+
+```sh
 npm run db:cli           # Database CLI
+npm run db:exec          # Execute a database CLI command
+npm run db:script        # Run a database script
 npm run db:reset         # Reset database
 ```
+
+## Development Notes
+
+- `npm start` sets `SKIP_DEFS_GEN=1`, builds the backend, and launches `packages/dev-mode.js`.
+- `npm run start:gen` performs the same startup path without skipping generated definition output.
+- Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
+- Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.
 
 ## License
 
