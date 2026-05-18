@@ -20,6 +20,7 @@ import type {
   DSLCreateNode,
   DSLUpdateNode,
   DSLKeepAliveNode,
+  DSLKillNode,
   CompilerContext,
 } from './types';
 import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './types';
@@ -355,6 +356,20 @@ function compileKeepAliveNode(node: DSLKeepAliveNode, nodeId: string, ts: number
       label: node.label || 'Keep Alive',
       description: node.description,
       final: node.final,
+    },
+    relations: [],
+  };
+}
+
+function compileKillNode(node: DSLKillNode, nodeId: string, ts: number): StepResult {
+  return {
+    entity: {
+      id: nodeId,
+      entityType: EARS.Entity.Node,
+      createdAt: ts,
+      nodeType: 'kill',
+      label: node.label || 'Kill Flow',
+      description: node.description,
     },
     relations: [],
   };
@@ -783,6 +798,7 @@ function getStepLabel(step: DSLStepNode, index: number): string {
     case 'create': return `Create ${step.entity}`;
     case 'update': return `Update ${index}`;
     case 'keep_alive': return `Keep Alive ${index}`;
+    case 'kill': return `Kill Flow ${index}`;
     default: return `Step ${index}`;
   }
 }
@@ -809,6 +825,8 @@ function compileStep(step: DSLStepNode, stepId: string, ts: number, ctx: Compile
       return compileUpdateNode(step, stepId, ts);
     case 'keep_alive':
       return compileKeepAliveNode(step, stepId, ts);
+    case 'kill':
+      return compileKillNode(step, stepId, ts);
   }
 }
 

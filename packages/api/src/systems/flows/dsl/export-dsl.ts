@@ -25,6 +25,7 @@ import type {
   DSLCreateNode,
   DSLUpdateNode,
   DSLKeepAliveNode,
+  DSLKillNode,
 } from './types';
 import type {
   NodeEntity,
@@ -488,6 +489,13 @@ function decompileStepNode(
       if (node.description) dsl.description = node.description;
       if (node.final) dsl.final = true;
 
+      return dsl;
+    }
+
+    case 'kill': {
+      const dsl: DSLKillNode = { type: 'kill' };
+      if (node.label) dsl.label = node.label;
+      if (node.description) dsl.description = node.description;
       return dsl;
     }
 

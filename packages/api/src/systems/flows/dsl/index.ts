@@ -24,6 +24,7 @@ export type {
   DSLCreateNode,
   DSLUpdateNode,
   DSLKeepAliveNode,
+  DSLKillNode,
   CompilerContext,
   ValidationError,
   ValidationResult,

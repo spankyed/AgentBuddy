@@ -157,6 +157,11 @@ export interface DSLKeepAliveNode extends DSLNodeBase {
   type: 'keep_alive';
 }
 
+/** Terminate the containing flow immediately */
+export interface DSLKillNode extends DSLNodeBase {
+  type: 'kill';
+}
+
 /**
  * Union of all step node types (excludes listener - that's implicit in Track.event)
  */
@@ -170,7 +175,8 @@ export type DSLStepNode =
   | DSLFlowNode
   | DSLCreateNode
   | DSLUpdateNode
-  | DSLKeepAliveNode;
+  | DSLKeepAliveNode
+  | DSLKillNode;
 
 /** Step node type discriminator */
 export type DSLStepNodeType = DSLStepNode['type'];

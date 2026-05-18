@@ -1,5 +1,5 @@
 import type { FlowDSL } from '../types';
-import { entry, on, keepAlive, action, branch } from './_patterns';
+import { entry, on, keepAlive, action, branch, killFlow } from './_patterns';
 
 export default {
   "Onboarding Flow": [
@@ -75,6 +75,13 @@ export default {
                 response: "$.steps[label=route-response].result.response",
               },
             }),
+            killFlow(),
+          ],
+        },
+        {
+          if: "$.lastStep.result.step == 'complete'",
+          steps: [
+            killFlow('Onboarding Complete'),
           ],
         },
       ]),

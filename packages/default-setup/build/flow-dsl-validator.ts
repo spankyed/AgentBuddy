@@ -26,6 +26,7 @@ const STEP_TYPES = [
   'create',
   'update',
   'keep_alive',
+  'kill',
 ] as const;
 
 type StepType = typeof STEP_TYPES[number];
@@ -324,6 +325,7 @@ function validateStep(
       errors.push(...validateUpdateStep(s, path, ctx));
       break;
     case 'keep_alive':
+    case 'kill':
       // No specific validation needed
       break;
   }
@@ -586,6 +588,7 @@ function getStepLabel(step: Record<string, unknown>, index: number): string {
     case 'create': return `Create ${step.entity || index}`;
     case 'update': return `Update ${index}`;
     case 'keep_alive': return `Keep Alive ${index}`;
+    case 'kill': return `Kill Flow ${index}`;
     default: return `Step ${index}`;
   }
 }

@@ -29,7 +29,7 @@ export async function action(
   }
 
   if (state.step === 'complete') {
-    return { success: false, reason: 'already-complete' };
+    return { success: true, step: 'complete', threadId, response };
   }
 
   if (params.messageId !== state.pendingMessageId) {
