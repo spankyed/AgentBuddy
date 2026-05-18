@@ -28,6 +28,21 @@
           </button>
         </template>
         <template v-else>
+          <button
+            class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+            title="New Document"
+            @click="handleCreateNote()"
+          >
+            <Plus :size="16" />
+          </button>
+          <button
+            class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
+            :class="searchActive && 'text-neutral-200 bg-neutral-700'"
+            title="Search notes"
+            @click="toggleSearch"
+          >
+            <Search :size="16" />
+          </button>
           <DropdownMenuRoot v-model:open="dropdownOpen">
             <DropdownMenuTrigger as-child>
               <button
@@ -35,7 +50,7 @@
                 title="More actions"
                 @click.stop
               >
-                <MoreHorizontal :size="16" />
+                <MoreVertical :size="16" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuPortal>
@@ -56,13 +71,6 @@
               </DropdownMenuContent>
             </DropdownMenuPortal>
           </DropdownMenuRoot>
-          <button
-            class="flex items-center justify-center w-6 h-6 text-neutral-400 hover:text-neutral-200 transition-colors rounded"
-            title="New Document"
-            @click="handleCreateNote()"
-          >
-            <Plus :size="16" />
-          </button>
         </template>
       </div>
     </div>
@@ -103,7 +111,47 @@
 
     <!-- Normal View -->
     <template v-else>
-      <div class="flex-1 overflow-y-auto overflow-x-hidden">
+      <!-- Search Input -->
+      <div v-if="searchActive" class="px-3 py-2 border-b border-neutral-800">
+        <div class="relative">
+          <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+          <input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            placeholder="Search notes..."
+            class="w-full pl-8 pr-7 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded text-neutral-200 placeholder-neutral-500 outline-none focus:border-neutral-500"
+            @keydown.escape="toggleSearch"
+          />
+          <button
+            v-if="searchQuery"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+            @click="searchQuery = ''"
+          >
+            <X :size="14" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Search Results -->
+      <div v-if="searchActive && searchQuery.trim()" class="flex-1 overflow-y-auto overflow-x-hidden p-2">
+        <div v-if="filteredNotes.length === 0" class="px-3 py-4 text-sm text-neutral-500 text-center">
+          No notes found
+        </div>
+        <button
+          v-for="note in filteredNotes"
+          :key="note.id"
+          class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm text-neutral-300 hover:bg-neutral-800 transition-colors text-left"
+          @click="handleSelectNote(note.id)"
+        >
+          <span v-if="note.icon" class="shrink-0 text-xs">{{ note.icon }}</span>
+          <ListChecks v-else-if="note.noteType === 'tasklist'" :size="14" class="text-neutral-500 shrink-0" />
+          <CircleCheck v-else-if="note.noteType === 'task'" :size="14" class="text-neutral-500 shrink-0" />
+          <FileText v-else :size="14" class="text-neutral-500 shrink-0" />
+          <span class="truncate">{{ note.title || 'Untitled' }}</span>
+        </button>
+      </div>
+
+      <div v-else class="flex-1 overflow-y-auto overflow-x-hidden">
       <!-- Favorites -->
       <div v-if="showFavorites && favoriteNotes.length > 0" class="border-b border-neutral-800 px-2 py-3">
         <button
@@ -198,12 +246,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
 import NoteTreeItem from './components/NoteTreeItem.vue'
-import { Plus, ListChecks, MoreHorizontal, Star, ChevronRight, Trash2, ArrowLeft, Undo2 } from 'lucide-vue-next'
+import { Plus, ListChecks, MoreVertical, Star, ChevronRight, Trash2, ArrowLeft, Undo2, Search, X, FileText, CircleCheck } from 'lucide-vue-next'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -220,6 +268,9 @@ const actor: NotesState = applicationState.system.get(id)
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)
 const showFavorites = ref(true)
+const searchActive = ref(false)
+const searchQuery = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 useTrackedMenuOpen(dropdownOpen)
 
 const createMenuItems = computed<MenuItem[]>(() => [
@@ -241,6 +292,21 @@ const rootNotes = computed(() =>
 )
 
 const favoriteNotes = computed(() => notes.value.filter(n => n.favorite))
+
+const filteredNotes = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return []
+  return notes.value.filter(n => n.title?.toLowerCase().includes(q))
+})
+
+function toggleSearch() {
+  searchActive.value = !searchActive.value
+  if (searchActive.value) {
+    nextTick(() => searchInputRef.value?.focus())
+  } else {
+    searchQuery.value = ''
+  }
+}
 
 function handleToggleFavorite(noteId: string) {
   actor.send({ type: 'NOTE.TOGGLE_FAVORITE', noteId })
