@@ -16,7 +16,8 @@ import * as media from './media';
 import { cliService } from './cli';
 import { filesystemService } from './filesystem';
 import * as threads from './threads';
-import { hermes } from './hermes';
+import { hermes } from './hermes'
+import { codexService } from './codex';
 
 const services = {
   logger: loggerService,
@@ -38,6 +39,7 @@ const services = {
   filesystem: filesystemService,
   threads,
   hermes,
+  codex: codexService,
 }
 
 export default services;
