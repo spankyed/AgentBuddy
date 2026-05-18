@@ -38,7 +38,12 @@ export function runMigrations(): void {
     // Run only if target is ahead of stored version AND not ahead of current app version
     if (compareVersions(m.target, current) > 0 && compareVersions(m.target, APP_VERSION) <= 0) {
       console.log(`[migration] Running ${m.target}: ${m.description}`);
-      m.up();
+      try {
+        m.up();
+      } catch (error) {
+        console.error(`[migration] FAILED ${m.target}: ${(error as Error).message}`);
+        console.error((error as Error).stack);
+      }
     }
   }
 

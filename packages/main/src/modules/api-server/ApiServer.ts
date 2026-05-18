@@ -95,6 +95,7 @@ export class ApiServer implements AppModule {
     if (this.processManager.isRunning()) return;
 
     this.lastError = undefined; // Clear stale error so getStatus() doesn't report old crashes during restart
+    this.serverReady = this.createReadyPromise(); // Reset promise so waitForReady() works across restarts
     logInfo('[MAIN] Starting API server...');
     broadcastEvent(API_EVENTS.STARTING);
 

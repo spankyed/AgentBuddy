@@ -13,6 +13,4 @@ export const WINDOW_CONFIG = {
   // Timing
   SPLASH_CLOSE_DELAY: 200, // ms
   
-  // Error display duration
-  ERROR_DISPLAY_TIME: 5000, // ms
 } as const;

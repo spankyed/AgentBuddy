@@ -7,7 +7,6 @@ import type {ApiServer} from '../api-server/ApiServer.ts';
 import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
 import {join} from 'node:path';
 import {WINDOW_CONFIG} from './constants.js';
-import {SPLASH_CONFIG} from '../splash-screen/constants.js';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import os from 'node:os';
@@ -56,21 +55,30 @@ class WindowManager implements AppModule {
         await this.#apiServer.waitForReady();
       } catch (error) {
         console.error('[MAIN] API server failed to start:', error);
-        
+
         // Update splash screen with error message
         if (this.#splashScreen) {
           this.#splashScreen.updateStatus('Failed to start API server. Please restart the application.');
         }
-        
-        // Wait a few seconds to show the error, then close
-        await new Promise(resolve => setTimeout(resolve, WINDOW_CONFIG.ERROR_DISPLAY_TIME));
-        
-        // Close splash and exit
+
+        // Show dialog so user can retry or quit
+        const { response } = await dialog.showMessageBox({
+          type: 'error',
+          title: 'Startup Error',
+          message: 'Failed to start API server',
+          detail: (error as Error)?.message || 'The backend process could not start. You can relaunch to try again.',
+          buttons: ['Relaunch', 'Quit'],
+          defaultId: 0,
+        });
+
         if (this.#splashScreen) {
           await this.#splashScreen.close();
         }
-        
-        app.quit();
+
+        if (response === 0) {
+          app.relaunch();
+        }
+        app.exit(0);
         return;
       }
     }
