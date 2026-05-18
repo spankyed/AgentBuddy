@@ -902,12 +902,7 @@ export class GitRepository {
     const result = await this.executeGitCommand(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
 
     if (!result.success) {
-      if (result.error?.includes('no upstream configured') ||
-          result.error?.includes('@{u}') ||
-          result.error?.includes('HEAD has no upstream')) {
-        return null
-      }
-      throw new Error(`Failed to get upstream branch: ${result.error}`)
+      return null
     }
 
     if (result.output) {
@@ -1178,8 +1173,11 @@ export class GitRepository {
       const result = await this.executeGitCommand(['checkout', branchName])
 
       if (!result.success) {
-        // Check if it's because the branch doesn't exist locally
-        if (result.error?.includes('pathspec') && result.error?.includes('did not match')) {
+        // Check if it's because the branch doesn't exist locally or can't be resolved
+        if (
+          (result.error?.includes('pathspec') && result.error?.includes('did not match')) ||
+          result.error?.includes('cannot be resolved')
+        ) {
           // Try to create a new branch tracking the remote
           const remoteResult = await this.executeGitCommand(['checkout', '-b', branchName, `origin/${branchName}`])
           if (!remoteResult.success) {
