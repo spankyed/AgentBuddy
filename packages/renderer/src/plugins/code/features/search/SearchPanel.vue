@@ -94,8 +94,15 @@
     <!-- Search Results Section -->
     <div class="flex-1 overflow-auto">
       <!-- Results summary -->
-      <div v-if="searchResults.length > 0" class="px-3 py-1.5 text-xs text-neutral-500 text-center border-b border-neutral-800 shrink-0">
-        {{ totalMatches }} results in {{ searchResults.length }} files
+      <div v-if="searchResults.length > 0" class="flex items-center justify-center px-3 py-1.5 text-xs text-neutral-500 border-b border-neutral-800 shrink-0">
+        <span class="flex-1 text-center">{{ totalMatches }} results in {{ searchResults.length }} files</span>
+        <button
+          @click="collapseAll"
+          class="p-0.5 rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700/50 transition-colors"
+          title="Collapse All"
+        >
+          <ChevronsDownUp class="w-3.5 h-3.5" />
+        </button>
       </div>
 
       <!-- Progress -->
@@ -184,7 +191,7 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import { id as codeId, type CodeState } from '@/plugins/code/state'
-import { ChevronRight, Search } from 'lucide-vue-next'
+import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/plugins/code/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/plugins/code/features/NoDirectoryState.vue'
 import EmptyState from '@/plugins/code/features/EmptyState.vue'
@@ -325,6 +332,10 @@ const updateOptions = () => {
       excludePattern: excludePattern.value
     }
   })
+}
+
+const collapseAll = () => {
+  expandedResults.value.clear()
 }
 
 const toggleResultExpanded = (path: string) => {
