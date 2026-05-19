@@ -62,6 +62,7 @@ export function createStreamConsumer(
   let hadErrors = false;
   let usage: { input: number; output: number } | undefined;
   let placeholderCleared = false;
+  let activeAgentMessageItemId: string | undefined;
 
   const clearPlaceholder = () => {
     if (!placeholderCleared) {
@@ -77,7 +78,7 @@ export function createStreamConsumer(
   const onNotification = (method: string, params: any): void => {
     switch (method) {
       case 'item/agentMessage/delta': {
-        const { delta, phase } = params;
+        const { delta, phase, itemId } = params;
         if (!delta) break;
         if (phase === 'reasoning') {
           clearPlaceholder();
@@ -85,6 +86,10 @@ export function createStreamConsumer(
         } else {
           clearPlaceholder();
           finaliseThinking();
+          if (itemId && activeAgentMessageItemId && itemId !== activeAgentMessageItemId && writer.text.trim()) {
+            writer.push(writer.text.endsWith('\n') ? '\n' : '\n\n');
+          }
+          if (itemId) activeAgentMessageItemId = itemId;
           writer.push(delta);
         }
         break;
