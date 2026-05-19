@@ -68,6 +68,18 @@ export default {
             ],
           },
           {
+            if: "$.lastStep.result.planFeedback == true",
+            steps: [
+              action("CDX: Refine Plan", {
+                label: "refine-plan",
+                map: {
+                  threadId: "$.steps[label=route-response].result.threadId",
+                  feedbackText: "$.steps[label=route-response].result.feedbackText",
+                },
+              }),
+            ],
+          },
+          {
             if: "$.lastStep.result.denied == true",
             steps: [
               action("CDX: Deny Tool", {

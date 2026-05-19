@@ -379,13 +379,14 @@ export function createStreamConsumer(
     try { (services.codex as any).unregisterConsumer(codexThreadId); } catch { /* ok */ }
     (services.codex as any).clearHandle(threadId);
 
-    // Send plan approval block
+    // Send plan approval block with feedback input
     const approvalMsg = services.chat.sendBlockMessage({
       threadId,
-      text: 'Codex has a plan — review and approve to start implementation.',
+      text: 'Codex has a plan — review and approve, or provide feedback to refine it.',
       blocks: [
         { type: 'markdown', props: { content: planText.trim(), label: 'Plan' } },
-        { type: 'prompt', props: { content: 'Approve this plan and start implementing?' } },
+        { type: 'prompt', props: { content: 'Approve this plan, or suggest changes.' } },
+        { type: 'text', props: { placeholder: 'Suggest changes to the plan...', multiline: true } },
         { type: 'approval', props: {
           options: [
             { label: 'Approve', variant: 'primary', flags: { decision: 'accept' } },
