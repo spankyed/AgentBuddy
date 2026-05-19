@@ -3,9 +3,9 @@ import type { CoreMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
-import { getApiKey, resolveProvider, type ProviderName } from './api-keys';
+import { getApiKey, resolveProvider, type ProviderName } from './auth';
 
-export type { ProviderName } from './api-keys';
+export type { ProviderName } from './auth';
 export type Provider = ProviderName | 'openai.responses' | string;
 export type ModelConfig = {
   provider: Provider;

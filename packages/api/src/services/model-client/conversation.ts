@@ -9,7 +9,7 @@
 import { streamText as aiStreamText, generateText as aiGenerateText } from 'ai'
 import type { CoreMessage, LanguageModelUsage, ToolSet } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { getCredentials } from '../api-keys'
+import { getCredentials } from '../auth'
 import { adaptStream } from './streaming'
 import { compact as compactApi } from './compact'
 import type {

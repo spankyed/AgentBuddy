@@ -6,7 +6,7 @@
  * preserving a valid previousResponseId chain.
  */
 
-import { getCredentials } from '../api-keys'
+import { getCredentials } from '../auth'
 import type { CompactParams, CompactResult, ModelClientConfig } from './types'
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
