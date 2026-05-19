@@ -1,5 +1,69 @@
 -e # Changelog
 
+## v0.3.0 (2026-05-18)
+
+### Features
+- code): add stop button to terminal panel toolbar
+- flows): hide schedule form selectors when custom mode is active
+- threads): update header to reflect archived view state
+- codex): migrate to persistent app-server with approval flow and plan/code phases
+- flows): add kill node type to flow DSL for immediate flow termination
+- search): add collapse all button to search results panel
+- notes): add search functionality to notes panel
+- onboarding): per-provider import, mode chooser, session-based project discovery
+- default-setup): add Codex CLI agent mode to default settings
+- default-setup): add Codex flow, actions, and helpers
+- api): add migration to insert codex agent mode into chat modes
+- codex): add Codex CLI integration with SDK wrapper and handle management
+
+### Fixes
+-  switch open markdown tabs to plain text mode properly
+- default-setup): fix case-sensitive mode check for Codex in branch condition
+- git): use HEAD ref for unpublished branch push to avoid macOS case mismatch
+- git): improve error handling for upstream branch and checkout resolution
+- threads): refresh archived threads list immediately after archiving
+- threads): remove forced list transition on archive thread event
+- codex): harden app-server lifecycle, consumer ownership, and approval error handling
+- onboarding): restrict message cancellation to birth thread only
+- codex-flow): capitalize 'Codex' in mode comparison string
+- tiptap): stop Shift+Tab from outdenting bullets in chat input
+- tabs): preserve drop position when dragging tabs into groups
+- onboarding): await startCcImportStep call and remove unused import
+- claude-code): improve thread title generation reliability
+- api-server): improve startup error handling and restart reliability
+- monaco): catch stale viewState restore on external file change
+- codex): address PR review bugs
+
+### Refactors
+- codex): update sandbox enum values to kebab-case format
+- onboarding): rename "mode" to "agent" in default selection prompt
+- onboarding): always show project picker, warmer status messaging
+- onboarding): simplify flow by removing CLI test and Hermes setup steps
+- codex): simplify integration code
+
+### Other
+- Merge pull request #153 from spankyed/AS/remove-hermes
+- remove Hermes integration
+- Fix Codex cdx command behavior
+- Add Codex cdx slash commands
+- remove 0.2.24 migrations
+- Fix Codex pause and thread lifecycle flow
+- Rename Codex default phase to Default
+- update readme
+- remove .env example
+- style(canvas): change schedule node color from orange to cyan
+- Merge pull request #152 from spankyed/AS/codex-refactor-1
+- Revert "chore(release): v0.3.0"
+- update defs
+- Fix revert "session expired" when base directory differs from thread's project
+- chore(migrations): rename migration version from 0.2.24 to 0.3.0
+- Validate duplicate mode and phase names
+- use name instead of ID as source of truth for modes and phases
+- never manually update version
+- Merge pull request #151 from spankyed/AS/codex-cli-integration
+
+-e # Changelog
+
 ## v0.2.23 (2026-05-17)
 
 ### Features
