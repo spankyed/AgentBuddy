@@ -22,7 +22,7 @@ import { Conversation } from './conversation'
 import { adaptStream } from './streaming'
 import { defineTool, webSearchTool } from './tools'
 import { compact } from './compact'
-import { shellTool, readFileTool, writeFileTool, grepTool, listDirTool, patchTool } from './agent-tools'
+import { shellTool, readFileTool, writeFileTool, grepTool, listDirTool, patchTool, planTool, goalTool, userInputTool, viewImageTool } from './agent-tools'
 import { createChatApprover } from './approval'
 import { codingAgentTools } from './tool-presets'
 import type {
@@ -41,7 +41,7 @@ export { Conversation } from './conversation'
 export { adaptStream } from './streaming'
 export { defineTool, webSearchTool } from './tools'
 export { compact } from './compact'
-export { shellTool, readFileTool, writeFileTool, grepTool, listDirTool, patchTool } from './agent-tools'
+export { shellTool, readFileTool, writeFileTool, grepTool, listDirTool, patchTool, planTool, goalTool, userInputTool, viewImageTool } from './agent-tools'
 export { createChatApprover } from './approval'
 export { codingAgentTools } from './tool-presets'
 export type {
@@ -56,6 +56,10 @@ export type {
   CompactResult,
   ApproveFn,
   ToolOptions,
+  RequestInputFn,
+  UserInputQuestion,
+  PlanStep,
+  GoalState,
 } from './types'
 
 // ─── Stateless helpers ───────────────────────────────────────────────────────
@@ -180,6 +184,14 @@ export const modelClientService = {
   listDirTool,
   /** Unified diff patch tool (supports approval). */
   patchTool,
+  /** Plan/checklist management tool. */
+  planTool,
+  /** Goal tracking tool (create/get/update). */
+  goalTool,
+  /** Request user input mid-turn. */
+  userInputTool,
+  /** Load and return image files as data URLs. */
+  viewImageTool,
   /** Pre-assembled tool set for coding agents. */
   codingAgentTools,
   /** Create an approval callback wired to the chat UI. */

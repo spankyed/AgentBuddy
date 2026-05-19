@@ -169,12 +169,41 @@ interface CompactResult {
  * Returns 'approved' to proceed or 'denied' to skip execution.
  */
 type ApproveFn = (description: string, detail?: string) => Promise<'approved' | 'denied'>;
+/** Callback to request freeform or multiple-choice input from the user mid-turn. */
+type RequestInputFn = (questions: UserInputQuestion[]) => Promise<Record<string, string>>;
+interface UserInputQuestion {
+    id: string;
+    header: string;
+    question: string;
+    options?: Array<{
+        label: string;
+        description: string;
+    }>;
+}
+interface PlanStep {
+    step: string;
+    status: 'pending' | 'in_progress' | 'completed';
+}
+interface GoalState {
+    objective: string;
+    status: 'active' | 'paused' | 'complete';
+    tokenBudget?: number;
+    tokensUsed?: number;
+}
 /** Common options for tool factory functions. */
 interface ToolOptions {
     /** Working directory — all paths resolved relative to this. */
     cwd: string;
     /** Optional approval callback for user confirmation before execution. */
     approve?: ApproveFn;
+    /** Called when the model updates its plan. */
+    onPlanUpdate?: (plan: PlanStep[], explanation?: string) => void;
+    /** Called when the model creates or updates a goal. */
+    onGoalUpdate?: (goal: GoalState) => void;
+    /** Returns the current goal state (for get_goal). */
+    getGoal?: () => GoalState | null;
+    /** Callback to request user input mid-turn. */
+    requestInput?: RequestInputFn;
 }
 
 /**
@@ -333,6 +362,138 @@ declare function patchTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
         patch: string;
     }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
 };
+declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.ZodObject<{
+    plan: z.ZodArray<z.ZodObject<{
+        step: z.ZodString;
+        status: z.ZodEnum<["pending", "in_progress", "completed"]>;
+    }, "strip", z.ZodTypeAny, {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }, {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }>, "many">;
+    explanation: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    plan: {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }[];
+    explanation?: string | undefined;
+}, {
+    plan: {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }[];
+    explanation?: string | undefined;
+}>, string> & {
+    execute: (args: {
+        plan: {
+            status: "completed" | "pending" | "in_progress";
+            step: string;
+        }[];
+        explanation?: string | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): ai.Tool<z.ZodObject<{
+    action: z.ZodEnum<["create", "get", "update"]>;
+    objective: z.ZodOptional<z.ZodString>;
+    token_budget: z.ZodOptional<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
+}, "strip", z.ZodTypeAny, {
+    action: "create" | "get" | "update";
+    status?: "active" | "paused" | "complete" | undefined;
+    objective?: string | undefined;
+    token_budget?: number | undefined;
+}, {
+    action: "create" | "get" | "update";
+    status?: "active" | "paused" | "complete" | undefined;
+    objective?: string | undefined;
+    token_budget?: number | undefined;
+}>, string> & {
+    execute: (args: {
+        action: "create" | "get" | "update";
+        status?: "active" | "paused" | "complete" | undefined;
+        objective?: string | undefined;
+        token_budget?: number | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool<z.ZodObject<{
+    questions: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        header: z.ZodString;
+        question: z.ZodString;
+        options: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            description: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            description: string;
+        }, {
+            label: string;
+            description: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }, {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    questions: {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }[];
+}, {
+    questions: {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }[];
+}>, string> & {
+    execute: (args: {
+        questions: {
+            id: string;
+            header: string;
+            question: string;
+            options?: {
+                label: string;
+                description: string;
+            }[] | undefined;
+        }[];
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function viewImageTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+}, {
+    path: string;
+}>, string> & {
+    execute: (args: {
+        path: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
 
 /**
  * Approval gate for tool execution.
@@ -387,13 +548,12 @@ declare function createChatApprover(opts: ChatApproverOptions): ApproveFn;
 /**
  * Standard tool set for coding agents.
  *
- * Includes file operations, shell execution, search, and web search.
- * Mutating tools (shell, write, patch) use the provided `approve` callback.
+ * Includes file operations, shell execution, search, planning, goals,
+ * image viewing, and web search. Mutating tools (shell, write, patch)
+ * use the provided `approve` callback. User input tool is only included
+ * if `requestInput` is provided.
  */
-declare function codingAgentTools(opts: {
-    cwd: string;
-    approve?: ApproveFn;
-}): ToolSet;
+declare function codingAgentTools(opts: ToolOptions): ToolSet;
 
 interface CodexSessionInfo {
     id: string;
@@ -6543,6 +6703,10 @@ declare const services: {
         grepTool: typeof grepTool;
         listDirTool: typeof listDirTool;
         patchTool: typeof patchTool;
+        planTool: typeof planTool;
+        goalTool: typeof goalTool;
+        userInputTool: typeof userInputTool;
+        viewImageTool: typeof viewImageTool;
         codingAgentTools: typeof codingAgentTools;
         createChatApprover: typeof createChatApprover;
     };

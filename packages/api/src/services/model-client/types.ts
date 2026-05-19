@@ -121,7 +121,7 @@ export interface CompactResult {
   summary?: string
 }
 
-// ─── Tool approval ───────────────────────────────────────────────────────────
+// ─── Tool types ──────────────────────────────────────────────────────────────
 
 /**
  * Approval callback for tools that modify state.
@@ -129,10 +129,40 @@ export interface CompactResult {
  */
 export type ApproveFn = (description: string, detail?: string) => Promise<'approved' | 'denied'>
 
+/** Callback to request freeform or multiple-choice input from the user mid-turn. */
+export type RequestInputFn = (questions: UserInputQuestion[]) => Promise<Record<string, string>>
+
+export interface UserInputQuestion {
+  id: string
+  header: string
+  question: string
+  options?: Array<{ label: string; description: string }>
+}
+
+export interface PlanStep {
+  step: string
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
+export interface GoalState {
+  objective: string
+  status: 'active' | 'paused' | 'complete'
+  tokenBudget?: number
+  tokensUsed?: number
+}
+
 /** Common options for tool factory functions. */
 export interface ToolOptions {
   /** Working directory — all paths resolved relative to this. */
   cwd: string
   /** Optional approval callback for user confirmation before execution. */
   approve?: ApproveFn
+  /** Called when the model updates its plan. */
+  onPlanUpdate?: (plan: PlanStep[], explanation?: string) => void
+  /** Called when the model creates or updates a goal. */
+  onGoalUpdate?: (goal: GoalState) => void
+  /** Returns the current goal state (for get_goal). */
+  getGoal?: () => GoalState | null
+  /** Callback to request user input mid-turn. */
+  requestInput?: RequestInputFn
 }
