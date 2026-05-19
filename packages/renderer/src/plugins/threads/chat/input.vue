@@ -9,7 +9,7 @@
       <div
         ref="inputCardRef"
         class="relative flex flex-col border rounded-lg bg-neutral-800 overflow-visible"
-        :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight, [$style.inputDropActive]: isDraggingFile }]"
+        :class="[$style.input, { 'opacity-50': disabled, [$style.inputCommandActive]: commandHighlight, [$style.inputDropActive]: isDraggingFile, [$style.inputRecording]: isListening }]"
         data-onboarding-id="agent-chat-input"
         @paste.capture="handlePaste"
         @dragenter="onDragEnter"
@@ -696,5 +696,9 @@ const handleSubmit = async () => {
 .inputDropActive {
   border-color: rgba(100, 180, 255, 0.6);
   box-shadow: 0 0 0 1px rgba(100, 180, 255, 0.15), 0 0 12px -2px rgba(100, 180, 255, 0.2);
+}
+.inputRecording {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15), 0 0 12px -2px rgba(239, 68, 68, 0.2);
 }
 </style>
