@@ -1,21 +1,39 @@
 <template>
   <div class="flex h-full">
     <!-- Navigation Sidebar -->
-    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
-      <button
-        v-for="item in navItems"
-        :key="item.id"
-        @click="selectNavItem(item.id)"
-        :class="[
-          'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
-          generalNavItem === item.id
-            ? 'bg-blue-500/20 text-blue-400'
-            : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
-        ]"
-      >
-        <component :is="item.icon" class="w-4 h-4" />
-        {{ item.label }}
-      </button>
+    <div class="w-48 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto flex flex-col">
+      <div class="flex-1">
+        <button
+          v-for="item in navItems"
+          :key="item.id"
+          @click="selectNavItem(item.id)"
+          :class="[
+            'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
+            generalNavItem === item.id
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+          ]"
+        >
+          <component :is="item.icon" class="w-4 h-4" />
+          {{ item.label }}
+        </button>
+      </div>
+      <div class="border-t border-neutral-800 pt-2 mt-2">
+        <button
+          v-for="item in bottomNavItems"
+          :key="item.id"
+          @click="selectNavItem(item.id)"
+          :class="[
+            'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors mb-0.5',
+            generalNavItem === item.id
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+          ]"
+        >
+          <component :is="item.icon" class="w-4 h-4" />
+          {{ item.label }}
+        </button>
+      </div>
     </div>
 
     <!-- Content Area -->
@@ -45,11 +63,12 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
-import { User, Key, Settings, CheckCircle, Briefcase } from 'lucide-vue-next'
+import { User, Key, Settings, CheckCircle, Briefcase, FileJson } from 'lucide-vue-next'
 import PersonalInfo from '../components/GeneralSettings/PersonalInfo.vue'
 import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
+import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
 import { useSettingsSaveStatus } from '@/core/composables/useSettingsSaveStatus'
 
 const actor = applicationState.system.get('settings')
@@ -79,7 +98,8 @@ const componentMap: Record<string, any> = {
   personal: PersonalInfo,
   secrets: Secrets,
   projects: Projects,
-  application: App
+  application: App,
+  json: SettingsJsonEditor,
 }
 
 const navItems = [
@@ -89,8 +109,12 @@ const navItems = [
   { id: 'personal', label: 'Personal', icon: User },
 ]
 
+const bottomNavItems = [
+  { id: 'json', label: 'JSON', icon: FileJson },
+]
+
 const selectNavItem = (itemId: string) => {
-  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'projects' | 'application' })
+  actor.send({ type: 'GENERAL_NAV.SELECT', item: itemId as 'personal' | 'secrets' | 'projects' | 'application' | 'json' })
 }
 
 // Handle update events from child components

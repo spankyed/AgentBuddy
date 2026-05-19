@@ -65,7 +65,7 @@ export interface SettingsContext {
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   setupPackImport: SetupPackImport;
   activeTab: 'general' | 'plugins' | 'help';
-  generalNavItem: 'personal' | 'secrets' | 'projects' | 'application';
+  generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
   selectedPluginId: string | null;
   isLoading: boolean;
   /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
@@ -73,9 +73,10 @@ export interface SettingsContext {
 }
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
-  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' }
+  | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
+  | { type: 'SETTINGS.REPLACE'; data: SettingsData }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
@@ -192,6 +193,15 @@ const settingsState = setup({
         label: ev.label,
         path: ev.path,
         value: ev.value,
+      });
+    },
+
+    replaceSettings: ({ event }) => {
+      const ev = typeOf('SETTINGS.REPLACE', event);
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'REPLACE_SETTINGS',
+        data: ev.data,
       });
     },
 
@@ -451,6 +461,9 @@ const settingsState = setup({
         },
         'SETTINGS.UPDATE': {
           actions: 'updateSettings',
+        },
+        'SETTINGS.REPLACE': {
+          actions: 'replaceSettings',
         },
         'SETTINGS.RESET': {
           actions: 'resetSettings',

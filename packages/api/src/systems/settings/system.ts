@@ -54,6 +54,7 @@ type IncomingSettingsEvents =
   | { type: 'TEST_CLI_PROVIDER'; provider: string }
   | { type: 'PREVIEW_SETUP_PACK'; directory: string }
   | { type: 'IMPORT_SETUP_PACK'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
+  | { type: 'REPLACE_SETTINGS'; data: SettingsData }
   | { type: 'RESET_APP' }
 
 type SettingsInternalEvents =
@@ -221,6 +222,23 @@ export const settingsSystem = setup({
       }
     },
     
+    replaceSettings: ({ system, event }) => {
+      const ev = settingsDef.typeOf('REPLACE_SETTINGS', event);
+      settingsCommands.replaceSettings(ev.data);
+
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, {
+        type: 'SETTINGS_UPDATED',
+        data
+      }));
+
+      // Re-send hotkeys in case they changed
+      system.get(bus).send(emit('application', {
+        type: 'APPLICATION_HOTKEYS',
+        hotkeys: data.general.application.hotkeys
+      }));
+    },
+
     resetSettings: ({ system, event }) => {
       settingsCommands.resetSettings();
       
@@ -402,6 +420,9 @@ export const settingsSystem = setup({
             actions: 'updateSettings',
           }
         ],
+        REPLACE_SETTINGS: {
+          actions: 'replaceSettings',
+        },
         RESET_SETTINGS: {
           actions: 'resetSettings',
         },

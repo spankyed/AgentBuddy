@@ -108,6 +108,13 @@ export const settingsCommands = {
       .put('updatedAt', Date.now());
   },
 
+  replaceSettings(data: SettingsData): void {
+    const entity = getSettingsEntity();
+    tx(entity.id)
+      .put('data', data)
+      .put('updatedAt', Date.now());
+  },
+
   resetSettings: () => {
     const entity = getSettingsEntity();
     tx(entity.id).put('data', defaultSettings);
