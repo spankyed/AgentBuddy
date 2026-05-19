@@ -29,7 +29,7 @@ function openBrowser(url: string): void {
   if (process.platform === 'darwin') {
     execFile('open', [url], onError)
   } else if (process.platform === 'win32') {
-    execFile('cmd', ['/c', 'start', '', url], onError)
+    execFile('rundll32', ['url.dll,FileProtocolHandler', url], onError)
   } else {
     execFile('xdg-open', [url], onError)
   }
