@@ -40,8 +40,17 @@ function formatReviewThreads(threads: any[]): string {
 
   for (const thread of threads) {
     const status = thread.isResolved ? 'resolved' : 'active';
-    const location = thread.line ? `${thread.path}:${thread.line}` : thread.path;
+    const location = thread.startLine && thread.line
+      ? `${thread.path}:${thread.startLine}-${thread.line}`
+      : thread.line
+        ? `${thread.path}:${thread.line}`
+        : thread.path;
     lines.push(`### ${location} (${status})`);
+
+    const diffHunk = thread.diffHunk || thread.comments?.find((c: any) => c.diffHunk)?.diffHunk;
+    if (diffHunk) {
+      lines.push('', '```diff', diffHunk, '```', '');
+    }
 
     for (let i = 0; i < thread.comments.length; i++) {
       const c = thread.comments[i];
