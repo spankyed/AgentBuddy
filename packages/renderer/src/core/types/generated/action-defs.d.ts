@@ -1,117 +1,200 @@
 declare module "@app/defs/action" {
 
+import * as ai from 'ai';
+import { ToolSet, LanguageModelUsage, CoreMessage, FinishReason } from 'ai';
 import { z } from 'zod';
 export { z } from 'zod';
-import * as ai from 'ai';
-import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
-interface CodexSessionInfo {
-    id: string;
-    file: string;
-    cwd?: string;
-    title?: string;
-    modifiedAt: Date;
-    size: number;
-    provider: 'codex';
+/**
+ * Type definitions for the model-client service.
+ *
+ * Maps OpenAI Responses API concepts to a typed service interface,
+ * built on top of the Vercel AI SDK.
+ */
+
+/** Model + provider configuration for API calls. */
+interface ModelClientConfig {
+    /** Provider name (e.g. 'openai'). */
+    provider: string;
+    /** Model ID (e.g. 'gpt-4o', 'o3'). */
+    model: string;
+    /** Explicit API key (overrides settings/env). */
+    apiKey?: string;
+    /** Custom base URL for the API. */
+    baseURL?: string;
 }
-/** List all Codex sessions across all date directories. */
-declare function listAll(opts?: {
-    limit?: number;
-}): Promise<CodexSessionInfo[]>;
-/** Parse a Codex JSONL file into an array of entries. */
-declare function viewByFile(filePath: string, opts?: {
-    limit?: number;
-    offset?: number;
-}): Promise<any[]>;
+/** Configuration for a conversation (persists across turns). */
+interface ConversationConfig extends ModelClientConfig {
+    /** System instructions for the model. */
+    instructions?: string;
+    /** Reasoning configuration for reasoning models. */
+    reasoning?: ReasoningConfig;
+    /** Tools available to the model across all turns. */
+    tools?: ToolSet;
+    /** Whether to store the conversation for analytics. */
+    store?: boolean;
+    /** Arbitrary metadata attached to requests. */
+    metadata?: Record<string, string>;
+    /** Maximum agentic tool-use steps per turn. */
+    maxSteps?: number;
+}
+/** Reasoning configuration for reasoning models (o3, etc). */
+interface ReasoningConfig {
+    effort: 'low' | 'medium' | 'high';
+    summary?: 'auto' | 'concise' | 'detailed';
+}
+/** Parameters for a single turn. */
+interface TurnParams {
+    /** User input — string prompt or structured messages. */
+    input: string | CoreMessage[];
+    /** Per-turn tool overrides (merged with conversation tools). */
+    tools?: ToolSet;
+    /** Per-turn instruction overrides. */
+    instructions?: string;
+    /** Per-turn reasoning overrides. */
+    reasoning?: ReasoningConfig;
+    /** Max agentic steps for this turn (overrides conversation config). */
+    maxSteps?: number;
+    /** AbortSignal for cancellation. */
+    signal?: AbortSignal;
+}
+/** Result of a completed turn. */
+interface TurnResult {
+    /** The response ID from the Responses API. */
+    responseId: string | undefined;
+    /** Final generated text. */
+    text: string;
+    /** Reasoning text (if reasoning model). */
+    reasoning: string | undefined;
+    /** Tool calls made during the turn. */
+    toolCalls: unknown[];
+    /** Tool results returned during the turn. */
+    toolResults: unknown[];
+    /** Token usage for this turn. */
+    usage: LanguageModelUsage;
+    /** Number of agentic steps taken. */
+    steps: number;
+    /** Why the turn finished. */
+    finishReason: FinishReason;
+}
+type StreamEvent = {
+    type: 'text-delta';
+    textDelta: string;
+} | {
+    type: 'reasoning';
+    textDelta: string;
+} | {
+    type: 'tool-call-start';
+    toolCallId: string;
+    toolName: string;
+} | {
+    type: 'tool-call-delta';
+    toolCallId: string;
+    toolName: string;
+    argsTextDelta: string;
+} | {
+    type: 'tool-call';
+    toolCallId: string;
+    toolName: string;
+    args: unknown;
+} | {
+    type: 'tool-result';
+    toolCallId: string;
+    toolName: string;
+    result: unknown;
+} | {
+    type: 'step-complete';
+    usage: LanguageModelUsage;
+    finishReason: FinishReason;
+    isContinued: boolean;
+} | {
+    type: 'turn-complete';
+    usage: LanguageModelUsage;
+    finishReason: FinishReason;
+    responseId: string | undefined;
+} | {
+    type: 'error';
+    error: unknown;
+};
+interface ConversationState {
+    /** Previous response ID for threading. */
+    previousResponseId: string | null;
+    /** Number of turns completed. */
+    turnCount: number;
+    /** Cumulative token usage across all turns. */
+    cumulativeUsage: LanguageModelUsage;
+}
+interface CompactParams {
+    /** The response ID to compact up to. */
+    previousResponseId: string;
+    /** Model to use for compaction (defaults to conversation model). */
+    model?: string;
+}
+interface CompactResult {
+    /** New response ID after compaction. */
+    newResponseId: string;
+    /** Summary text (if returned). */
+    summary?: string;
+}
 
 /**
- * Type definitions for the Codex app-server integration.
+ * Conversation manager — tracks previous_response_id chains for the
+ * OpenAI Responses API's built-in conversation threading.
  *
- * The app-server uses JSON-RPC 2.0 (jsonrpc field omitted on wire)
- * over JSONL on stdin/stdout. Three message types on the wire:
- * 1. Responses to our requests (id, result/error, no method)
- * 2. Server-initiated requests (id AND method) — approval requests
- * 3. Notifications (method, no id) — streaming events
+ * Each Conversation instance is stateful: it tracks the previousResponseId
+ * and cumulative usage across turns. State is purely in-memory.
  */
-type ServerStatus = 'stopped' | 'starting' | 'ready' | 'error';
-type ApprovalDecision = 'accept' | 'acceptForSession' | 'decline' | 'cancel';
-interface ThreadStartParams {
-    cwd?: string;
-    model?: string;
-    sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
-    approvalsReviewer?: 'user' | 'auto_review';
+
+declare class Conversation {
+    private _config;
+    private _previousResponseId;
+    private _turnCount;
+    private _cumulativeUsage;
+    constructor(config: ConversationConfig);
+    get state(): ConversationState;
+    get previousResponseId(): string | null;
+    /** Execute a turn with streaming events. */
+    streamTurn(params: TurnParams): AsyncGenerator<StreamEvent>;
+    /** Execute a turn and return the complete result (non-streaming). */
+    generateTurn(params: TurnParams): Promise<TurnResult>;
+    /** Compact the conversation history via the Responses API. */
+    compact(): Promise<CompactResult>;
+    /** Reset conversation state (clear previousResponseId chain). */
+    reset(): void;
 }
-interface ThreadReadParams {
-    includeTurns?: boolean;
-}
-interface ThreadForkParams extends ThreadStartParams {
-    threadId: string;
-}
-interface ThreadRollbackParams {
-    threadId: string;
-    numTurns: number;
-}
-interface ThreadListParams {
-    cursor?: string | null;
-    limit?: number | null;
-    sortKey?: string | null;
-    sortDirection?: 'asc' | 'desc' | null;
-    modelProviders?: string[] | null;
-    sourceKinds?: string[] | null;
-    archived?: boolean | null;
-    cwd?: string | string[] | null;
-    useStateDbOnly?: boolean;
-    searchTerm?: string | null;
-}
-interface ConfigReadParams {
-    includeLayers: boolean;
-    cwd?: string | null;
-}
-interface ConfigValueWriteParams {
-    keyPath: string;
-    value: any;
-    mergeStrategy?: 'replace' | 'upsert';
-    filePath?: string | null;
-    expectedVersion?: string | null;
-}
-interface TurnStartParams {
-    threadId: string;
-    input: Array<{
-        type: 'text';
-        text: string;
-    }>;
-    cwd?: string;
-    collaborationMode?: {
-        mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming';
-        settings: {
-            model: string;
-            developer_instructions?: string | null;
-        };
+
+/**
+ * Define a tool for the model to call.
+ *
+ * Thin wrapper around the AI SDK's `tool()` for ergonomic definitions.
+ */
+declare function defineTool<T extends z.ZodType>(opts: {
+    description: string;
+    parameters: T;
+    execute: (args: z.infer<T>) => Promise<string>;
+}): ai.Tool<T, string> & {
+    execute: (args: T extends ai.Schema<any> ? T["_type"] : T extends z.ZodTypeAny ? z.TypeOf<T> : never, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+/**
+ * Pre-configured OpenAI web search tool.
+ *
+ * Uses the Responses API's built-in `web_search_preview` tool.
+ */
+declare function webSearchTool(opts?: {
+    searchContextSize?: 'low' | 'medium' | 'high';
+    userLocation?: {
+        type: 'approximate';
+        city?: string;
+        state?: string;
+        country?: string;
     };
-    approvalsReviewer?: 'user' | 'auto_review';
-    model?: string;
-}
-interface ConsumerHandlers {
-    /** Called for streaming notifications (item/started, item/completed, item/agentMessage/delta, turn/completed, etc.) */
-    onNotification(method: string, params: any): void;
-    /** Called for server-initiated approval requests. Response sent separately via respondToApproval. */
-    onApproval(method: string, requestId: number, params: any): void;
-}
-interface CodexTurnHandle {
-    /** Codex app-server thread ID */
-    codexThreadId: string;
-    /** Active turn ID */
-    turnId: string;
-    /** Interrupt the running turn */
-    abort(): Promise<void>;
-}
-
-/** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
-
-declare function storeHandle(key: string, handle: CodexTurnHandle): void;
-declare function getHandle(key: string): CodexTurnHandle | undefined;
-declare function clearHandle(key: string): void;
+}): {
+    type: "provider-defined";
+    id: "openai.web_search_preview";
+    args: {};
+    parameters: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
+};
 
 interface FileEntry {
     name: string;
@@ -911,16 +994,16 @@ declare const LogEntry: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     timestamp: number;
-    message: string;
     level: "debug" | "info" | "warn" | "error";
+    message: string;
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
 }, {
     id: string;
     timestamp: number;
-    message: string;
     level: "debug" | "info" | "warn" | "error";
+    message: string;
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -3257,6 +3340,9 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
     restartBrain?: boolean;
 } | {
+    type: "REPLACE_SETTINGS";
+    data: SettingsData;
+} | {
     type: "RESET_APP";
 }) | SecretsOutputEvents, OutgoingSettingsEvents, {}>, SystemDefinition<"brain", ({
     type: "OPEN_TNODE";
@@ -4686,7 +4772,13 @@ declare class PromptService {
     usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
 }
 
+/**
+ * Shared API key resolution for LLM providers.
+ *
+ * Priority: explicit param > settings/secrets store > env vars.
+ */
 type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
+
 type Provider = ProviderName | 'openai.responses' | string;
 type ModelConfig = {
     provider: Provider;
@@ -5915,6 +6007,7 @@ declare const services: {
         };
         readonly settingsCommands: {
             updateSettings(type: string, label: string | null, path: string[], value: any): void;
+            replaceSettings(data: SettingsData): void;
             resetSettings: () => void;
         };
         readonly secretsQueries: {
@@ -6061,69 +6154,13 @@ declare const services: {
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
     threads: typeof threads;
-    codex: {
-        start: () => Promise<void>;
-        stop: () => Promise<void>;
-        restart: () => Promise<void>;
-        readonly status: ServerStatus;
-        startThread: (params: ThreadStartParams) => Promise<{
-            threadId: string;
-            model: string;
-            cwd: string;
-        }>;
-        resumeThread: (threadId: string, params?: Partial<ThreadStartParams>) => Promise<{
-            threadId: string;
-        }>;
-        readThread: (threadId: string, params?: ThreadReadParams) => Promise<{
-            thread: any;
-        }>;
-        forkThread: (params: ThreadForkParams) => Promise<{
-            threadId: string;
-            model: string;
-            cwd: string;
-            thread: any;
-        }>;
-        rollbackThread: (params: ThreadRollbackParams) => Promise<{
-            thread: any;
-        }>;
-        compactThread: (threadId: string) => Promise<void>;
-        listThreads: (params?: ThreadListParams) => Promise<{
-            data: any[];
-            nextCursor: string | null;
-            backwardsCursor: string | null;
-        }>;
-        setThreadName: (threadId: string, name: string) => Promise<void>;
-        readConfig: (params?: ConfigReadParams) => Promise<any>;
-        writeConfigValue: (params: ConfigValueWriteParams) => Promise<any>;
-        listModels: (params?: {
-            cursor?: string | null;
-            limit?: number | null;
-            includeHidden?: boolean;
-        }) => Promise<any>;
-        readAccount: (params?: {
-            refreshToken: boolean;
-        }) => Promise<any>;
-        listSkills: (params?: {
-            cwds?: string[];
-            forceReload?: boolean;
-        }) => Promise<any>;
-        listMcpServers: (params?: {
-            cursor?: string | null;
-            limit?: number | null;
-            detail?: "full" | "toolsAndAuthOnly" | null;
-        }) => Promise<any>;
-        startTurn: (params: TurnStartParams) => Promise<{
-            turnId: string;
-        }>;
-        interruptTurn: (threadId: string, turnId: string) => Promise<void>;
-        respondToApproval: (requestId: number, decision: ApprovalDecision) => void;
-        registerConsumer: (codexThreadId: string, handlers: ConsumerHandlers) => void;
-        unregisterConsumer: (codexThreadId: string) => void;
-        storeHandle: typeof storeHandle;
-        getHandle: typeof getHandle;
-        clearHandle: typeof clearHandle;
-        listAllSessions: typeof listAll;
-        viewSessionByFile: typeof viewByFile;
+    modelClient: {
+        createConversation(config: ConversationConfig): Conversation;
+        streamTurn: (params: TurnParams & ModelClientConfig) => AsyncGenerator<StreamEvent>;
+        generateTurn: (params: TurnParams & ModelClientConfig) => Promise<TurnResult>;
+        defineTool: typeof defineTool;
+        webSearchTool: typeof webSearchTool;
+        compact(params: CompactParams, config: ModelClientConfig): Promise<CompactResult>;
     };
 };
 

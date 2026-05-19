@@ -3,34 +3,16 @@ import type { CoreMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
-import { repository } from '@/repository';
-import { EARS } from '@/core/types';
+import { getApiKey, resolveProvider, type ProviderName } from './api-keys';
 
-export type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
-export type Provider = ProviderName | 'openai.responses' | string; // Allow string for flexibility
+export type { ProviderName } from './api-keys';
+export type Provider = ProviderName | 'openai.responses' | string;
 export type ModelConfig = {
   provider: Provider;
   model: string;
-  apiKey?: string; // Optional explicit API key
+  apiKey?: string;
 };
 
-// Provider aliases - more maintainable structure
-const PROVIDER_ALIASES: Record<ProviderName, string[]> = {
-  anthropic: [],
-  google: [],
-  openai: ['openai.responses'],
-  groq: [],
-  mistral: [],
-  cohere: [],
-};
-
-// Build reverse mapping for fast lookups
-const ALIASES = Object.entries(PROVIDER_ALIASES).reduce((acc, [base, aliases]) => {
-  aliases.forEach(alias => acc[alias] = base as ProviderName);
-  return acc;
-}, {} as Record<string, ProviderName>);
-
-// Provider configuration map
 const PROVIDER_CONFIGS = {
   anthropic: (apiKey: string) => createAnthropic({ apiKey }),
   google: (apiKey: string) => createGoogleGenerativeAI({ apiKey }),
@@ -48,50 +30,14 @@ const PROVIDER_CONFIGS = {
   }
 } as const;
 
-/**
- * Get API key for a provider
- * Priority: explicitApiKey > production settings > env vars
- */
-function getApiKey(providerName: string, explicitApiKey?: string): string {
-  const baseProvider = (ALIASES[providerName] || providerName) as ProviderName;
-  // Use explicit API key if provided
-  if (explicitApiKey) return explicitApiKey;
-
-  // Check if we're in production
-  const isProd = true;
-  // const isProd = process.env.NODE_ENV === 'production' && !!process.env.USER_DATA_PATH;
-
-  if (isProd) {
-    // Get API key from settings/secrets
-    const settings = repository.settingsQueries.getGeneralSettings();
-    const secretId = settings.secrets?.[baseProvider] as EARS.EntityId | undefined;
-
-    if (secretId) {
-      const secret = repository.secretsQueries.getSecret(secretId);
-      if (secret?.encryptedValue) return secret.encryptedValue;
-    }
-  } else {
-    // Fallback to environment variables
-    const envKey = process.env[`${baseProvider.toUpperCase()}_API_KEY`];
-    if (envKey) return envKey;
-  }
-
-  throw new Error(`API key not found for provider: ${baseProvider}`);
-}
-
-/**
- * Get a configured provider instance
- */
 function getProvider(providerName: string, explicitApiKey?: string): any {
   const apiKey = getApiKey(providerName, explicitApiKey);
 
-  // Special case for openai.responses
   if (providerName === 'openai.responses') {
     return (modelId: string) => createOpenAI({ apiKey }).responses(modelId);
   }
 
-  // Regular providers
-  const baseProvider = (ALIASES[providerName] || providerName) as ProviderName;
+  const baseProvider = resolveProvider(providerName);
   const createFn = PROVIDER_CONFIGS[baseProvider];
   if (!createFn) throw new Error(`Unknown provider: ${providerName}`);
 
