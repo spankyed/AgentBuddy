@@ -29,7 +29,7 @@ export async function action(params: Record<string, any>, services: Services) {
   // Approval response
   if (state.pendingApproval) {
     // Plan feedback — user submitted text input instead of clicking approve/deny
-    if (typeof response === 'string' && response.trim()) {
+    if (state.pendingApproval.method === 'plan/approval' && typeof response === 'string' && response.trim()) {
       return {
         success: true, threadId, response,
         planFeedback: true,

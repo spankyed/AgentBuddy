@@ -70,7 +70,7 @@ export function createStreamConsumer(
   const recentTools: Array<{ name: string; summary: string; at: number }> = [];
   let placeholderCleared = false;
   let activeAgentMessageItemId: string | undefined;
-  const commandOutputBuffers = new Map<string, string>();
+  const commandOutputBuffers = new Map<string, { output: string; command?: string; cwd?: string }>();
 
   // Plan mode state — accumulate plan text from item/plan/delta
   let planText = '';
@@ -120,12 +120,13 @@ export function createStreamConsumer(
       case 'item/commandExecution/delta': {
         const { delta, itemId } = params;
         if (!delta || !itemId) break;
-        const existing = commandOutputBuffers.get(itemId) || '';
-        const accumulated = existing + delta;
-        commandOutputBuffers.set(itemId, accumulated);
-        toolActivity.update(itemId, {
-          details: { output: accumulated },
-        });
+        const buf = commandOutputBuffers.get(itemId);
+        if (buf) {
+          buf.output += delta;
+          toolActivity.update(itemId, {
+            details: { input: { command: buf.command, cwd: buf.cwd }, output: buf.output },
+          });
+        }
         break;
       }
 
@@ -139,6 +140,7 @@ export function createStreamConsumer(
             finaliseThinking();
             thinking.stopDirectWrites();
             writer.flush();
+            commandOutputBuffers.set(item.id, { output: '', command: item.command, cwd: item.cwd });
             toolActivity.append({
               id: item.id,
               tool: 'command',
@@ -442,6 +444,11 @@ export function createStreamConsumer(
     toolActivity.finalise(hadErrors ? 'error' : 'done');
     services.chat.updateMessageState(messageId as any, { forkable: true } as any);
 
+    // Guard: only mutate shared state if we still own the handle.
+    // If a new turn was started, our handle was replaced and we must
+    // not clear it or overwrite isRunning/turnId.
+    if (!stillCurrent()) return;
+
     // Compaction: create marker with summary text (hides all prior messages)
     if (isCompaction && writer.text.trim() && !hadErrors) {
       services.chat.createMarkerMessage({
@@ -449,11 +456,6 @@ export function createStreamConsumer(
         text: writer.text.trim(),
       });
     }
-
-    // Guard: only mutate shared state if we still own the handle.
-    // If a new turn was started, our handle was replaced and we must
-    // not clear it or overwrite isRunning/turnId.
-    if (!stillCurrent()) return;
 
     // Unregister consumer
     try { (services.codex as any).unregisterConsumer(codexThreadId); } catch { /* ok */ }
