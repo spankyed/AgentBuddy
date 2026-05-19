@@ -6,7 +6,7 @@
  * preserving a valid previousResponseId chain.
  */
 
-import { getApiKey } from '../api-keys'
+import { getCredentials } from '../api-keys'
 import type { CompactParams, CompactResult, ModelClientConfig } from './types'
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
@@ -21,14 +21,15 @@ export async function compact(
   params: CompactParams,
   config: ModelClientConfig,
 ): Promise<CompactResult> {
-  const apiKey = getApiKey(config.provider, config.apiKey)
+  const creds = await getCredentials(config.provider, config.apiKey)
   const baseUrl = config.baseURL || DEFAULT_BASE_URL
 
   const response = await fetch(`${baseUrl}/responses/compact`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${creds.token}`,
+      ...(creds.headers ?? {}),
     },
     body: JSON.stringify({
       model: params.model || config.model,

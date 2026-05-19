@@ -9,7 +9,7 @@
 import { streamText as aiStreamText, generateText as aiGenerateText } from 'ai'
 import type { CoreMessage, LanguageModelUsage, ToolSet } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { getApiKey } from '../api-keys'
+import { getCredentials } from '../api-keys'
 import { adaptStream } from './streaming'
 import { compact as compactApi } from './compact'
 import type {
@@ -59,9 +59,13 @@ function buildReasoningOptions(reasoning: ReasoningConfig) {
   }
 }
 
-function getModel(config: ConversationConfig) {
-  const apiKey = getApiKey(config.provider, config.apiKey)
-  const provider = createOpenAI({ apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
+async function getModel(config: ConversationConfig) {
+  const creds = await getCredentials(config.provider, config.apiKey)
+  const provider = createOpenAI({
+    apiKey: creds.token,
+    ...(creds.headers && { headers: creds.headers }),
+    ...(config.baseURL && { baseURL: config.baseURL }),
+  })
   return provider.responses(config.model)
 }
 
@@ -94,7 +98,7 @@ export class Conversation {
 
   /** Execute a turn with streaming events. */
   async *streamTurn(params: TurnParams): AsyncGenerator<StreamEvent> {
-    const model = getModel(this._config)
+    const model = await getModel(this._config)
     const { prompt, messages } = normalizeInput(params.input)
     const tools = { ...this._config.tools, ...params.tools } as ToolSet
 
@@ -129,7 +133,7 @@ export class Conversation {
 
   /** Execute a turn and return the complete result (non-streaming). */
   async generateTurn(params: TurnParams): Promise<TurnResult> {
-    const model = getModel(this._config)
+    const model = await getModel(this._config)
     const { prompt, messages } = normalizeInput(params.input)
     const tools = { ...this._config.tools, ...params.tools } as ToolSet
 

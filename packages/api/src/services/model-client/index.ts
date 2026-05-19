@@ -16,7 +16,7 @@
 import { streamText as aiStreamText, generateText as aiGenerateText } from 'ai'
 import type { CoreMessage, ToolSet } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { getApiKey } from '../api-keys'
+import { getCredentials } from '../api-keys'
 import { Conversation } from './conversation'
 import { adaptStream } from './streaming'
 import { defineTool, webSearchTool } from './tools'
@@ -51,9 +51,13 @@ export type {
 
 // ─── Stateless helpers ───────────────────────────────────────────────────────
 
-function getModel(config: ModelClientConfig) {
-  const apiKey = getApiKey(config.provider, config.apiKey)
-  const provider = createOpenAI({ apiKey, ...(config.baseURL && { baseURL: config.baseURL }) })
+async function getModel(config: ModelClientConfig) {
+  const creds = await getCredentials(config.provider, config.apiKey)
+  const provider = createOpenAI({
+    apiKey: creds.token,
+    ...(creds.headers && { headers: creds.headers }),
+    ...(config.baseURL && { baseURL: config.baseURL }),
+  })
   return provider.responses(config.model)
 }
 
@@ -66,7 +70,7 @@ function normalizeInput(input: string | CoreMessage[]): { prompt?: string; messa
 async function* streamTurn(
   params: TurnParams & ModelClientConfig,
 ): AsyncGenerator<StreamEvent> {
-  const model = getModel(params)
+  const model = await getModel(params)
   const { prompt, messages } = normalizeInput(params.input)
   const tools = params.tools ?? {} as ToolSet
 
@@ -97,7 +101,7 @@ async function* streamTurn(
 async function generateTurn(
   params: TurnParams & ModelClientConfig,
 ): Promise<TurnResult> {
-  const model = getModel(params)
+  const model = await getModel(params)
   const { prompt, messages } = normalizeInput(params.input)
   const tools = params.tools ?? {} as ToolSet
 

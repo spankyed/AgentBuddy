@@ -7,6 +7,33 @@ export { z } from 'zod';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
 /**
+ * Type definitions for the OpenAI ChatGPT OAuth auth service.
+ *
+ * Mirrors the auth flow used by Codex CLI — browser OAuth with PKCE
+ * to auth.openai.com, storing tokens in ~/.codex/auth.json.
+ */
+type AuthMode = 'chatgpt' | 'api-key';
+interface ChatGPTTokens {
+    /** JWT with claims (plan type, account ID, email, etc.) */
+    idToken: string;
+    /** Bearer token for API requests. */
+    accessToken: string;
+    /** For token refresh when access_token expires. */
+    refreshToken: string;
+    /** ChatGPT account/workspace ID (from JWT claims). Used as ChatGPT-Account-ID header. */
+    accountId: string;
+}
+interface AuthState {
+    mode: AuthMode;
+    /** Present when mode === 'chatgpt'. */
+    tokens?: ChatGPTTokens;
+    /** Present when mode === 'api-key'. */
+    apiKey?: string;
+    /** ISO timestamp of last token refresh. */
+    lastRefresh?: string;
+}
+
+/**
  * Type definitions for the model-client service.
  *
  * Maps OpenAI Responses API concepts to a typed service interface,
@@ -994,16 +1021,16 @@ declare const LogEntry: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     timestamp: number;
-    level: "debug" | "info" | "warn" | "error";
     message: string;
+    level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
 }, {
     id: string;
     timestamp: number;
-    level: "debug" | "info" | "warn" | "error";
     message: string;
+    level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -4773,9 +4800,13 @@ declare class PromptService {
 }
 
 /**
- * Shared API key resolution for LLM providers.
+ * Unified auth credential resolution for LLM providers.
  *
- * Priority: explicit param > settings/secrets store > env vars.
+ * Supports two auth modes:
+ * 1. ChatGPT OAuth — access token + ChatGPT-Account-ID header (Pro subscribers)
+ * 2. API key — traditional API key auth
+ *
+ * Priority: ChatGPT OAuth tokens > explicit API key > settings/secrets > env vars.
  */
 type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
@@ -6161,6 +6192,17 @@ declare const services: {
         defineTool: typeof defineTool;
         webSearchTool: typeof webSearchTool;
         compact(params: CompactParams, config: ModelClientConfig): Promise<CompactResult>;
+    };
+    openaiAuth: {
+        login(): Promise<AuthState>;
+        logout(): Promise<void>;
+        getCredentials(): Promise<{
+            accessToken: string;
+            accountId: string;
+        } | null>;
+        status(): Promise<AuthState | null>;
+        isAuthenticated(): Promise<boolean>;
+        clearAuth(): Promise<void>;
     };
 };
 
