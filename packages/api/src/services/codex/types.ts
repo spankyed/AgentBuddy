@@ -70,7 +70,7 @@ export interface TurnStartParams {
   cwd?: string
   collaborationMode?: {
     mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming'
-    settings: { model: string; developer_instructions?: string | null }
+    settings: { model?: string; developer_instructions?: string | null }
   }
   approvalsReviewer?: 'user' | 'auto_review'
   model?: string
@@ -83,6 +83,8 @@ export interface ConsumerHandlers {
   onNotification(method: string, params: any): void
   /** Called for server-initiated approval requests. Response sent separately via respondToApproval. */
   onApproval(method: string, requestId: number, params: any): void
+  /** Called when the app-server process exits unexpectedly. Consumer should clean up thread state. */
+  onCrash?(error: string): void
 }
 
 // ─── Turn handle (stored per app thread for pause/abort) ────────────────────

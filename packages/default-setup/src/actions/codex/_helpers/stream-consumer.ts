@@ -40,6 +40,7 @@ export interface ConsumerWriters {
 interface ConsumerHandlers {
   onNotification(method: string, params: any): void;
   onApproval(method: string, requestId: number, params: any): void;
+  onCrash?(error: string): void;
 }
 
 /**
@@ -67,6 +68,7 @@ export function createStreamConsumer(
   const recentTools: Array<{ name: string; summary: string; at: number }> = [];
   let placeholderCleared = false;
   let activeAgentMessageItemId: string | undefined;
+  const commandOutputBuffers = new Map<string, string>();
 
   // Plan mode state — accumulate plan text from item/plan/delta
   let planText = '';
@@ -110,6 +112,18 @@ export function createStreamConsumer(
           finaliseThinking();
           writer.push(delta);
         }
+        break;
+      }
+
+      case 'item/commandExecution/delta': {
+        const { delta, itemId } = params;
+        if (!delta || !itemId) break;
+        const existing = commandOutputBuffers.get(itemId) || '';
+        const accumulated = existing + delta;
+        commandOutputBuffers.set(itemId, accumulated);
+        toolActivity.update(itemId, {
+          details: { output: accumulated },
+        });
         break;
       }
 
@@ -168,6 +182,7 @@ export function createStreamConsumer(
 
         switch (item.type) {
           case 'commandExecution': {
+            commandOutputBuffers.delete(item.id);
             const ok = item.status === 'completed' && (item.exitCode === 0 || item.exitCode == null);
             toolActivity.update(item.id, {
               status: ok ? 'ok' : 'error',
@@ -269,15 +284,48 @@ export function createStreamConsumer(
     finaliseThinking();
 
     const isCommand = method === 'item/commandExecution/requestApproval';
-    const summary = isCommand ? params.command : 'File changes';
     const reason = params.reason || '';
+
+    // Build approval text with details
+    let approvalText: string;
+    let summary: string;
+    if (isCommand) {
+      approvalText = `Codex wants to run: \`${params.command || '?'}\``;
+      summary = params.command || '';
+    } else {
+      // Extract file paths from params for file change approvals
+      const files: string[] = [];
+      if (Array.isArray(params.changes)) {
+        for (const c of params.changes) {
+          if (typeof c?.path === 'string') files.push(c.path);
+          else if (typeof c === 'string') files.push(c);
+        }
+      } else if (Array.isArray(params.files)) {
+        for (const f of params.files) {
+          if (typeof f === 'string') files.push(f);
+          else if (typeof f?.path === 'string') files.push(f.path);
+        }
+      } else if (typeof params.path === 'string') {
+        files.push(params.path);
+      }
+
+      if (files.length > 0) {
+        const fileList = files.map(f => `\`${f}\``).join(', ');
+        approvalText = `Codex wants to modify: ${fileList}`;
+        summary = files.join(', ');
+      } else {
+        approvalText = 'Codex wants to modify files';
+        summary = 'File changes';
+      }
+    }
+
+    // Append reason if present
+    if (reason) approvalText += `\n\n**Reason:** ${reason}`;
 
     // Send approval block to chat
     const approvalMsg = services.chat.sendBlockMessage({
       threadId,
-      text: isCommand
-        ? `Codex wants to run: \`${params.command || '?'}\``
-        : 'Codex wants to modify files',
+      text: approvalText,
       blocks: [{
         type: 'approval',
         props: {
@@ -367,6 +415,17 @@ export function createStreamConsumer(
     });
   }
 
+  // ─── Crash handler ─────────────────────────────────────────────────
+
+  const onCrash = (error: string): void => {
+    log.error('[codex consumer] app-server crashed', { threadId, error });
+    hadErrors = true;
+    clearPlaceholder();
+    finaliseThinking();
+    writer.push(`\n\n--- App-server crashed: ${error} ---`);
+    finalize();
+  };
+
   // ─── Finalize ───────────────────────────────────────────────────────
 
   let finalized = false;
@@ -414,5 +473,5 @@ export function createStreamConsumer(
     });
   }
 
-  return { handlers: { onNotification, onApproval }, finalize };
+  return { handlers: { onNotification, onApproval, onCrash }, finalize };
 }

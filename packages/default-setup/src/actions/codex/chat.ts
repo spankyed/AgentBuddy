@@ -135,7 +135,7 @@ export async function action(params: Record<string, any>, services: Services, _z
 
     // Map collaboration mode from phase
     const collaborationMode = phase === 'plan'
-      ? { mode: 'plan' as const, settings: { model: effectiveModel || 'gpt-5.5', developer_instructions: null } }
+      ? { mode: 'plan' as const, settings: { model: effectiveModel, developer_instructions: null } }
       : undefined;
 
     // Start turn

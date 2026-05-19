@@ -45,6 +45,7 @@ export class CodexAppServer {
   private _status: ServerStatus = 'stopped'
   private _error: string | undefined
   private _counter = 0
+  private _stopping = false
   private _initResolve: ((result: any) => void) | null = null
   private _initReject: ((err: Error) => void) | null = null
   private _initTimeout: ReturnType<typeof setTimeout> | null = null
@@ -95,6 +96,19 @@ export class CodexAppServer {
       }
       this.pending.clear()
 
+      // Notify consumers of unexpected crash (skip during graceful stop)
+      if (wasReady && !this._stopping) {
+        const errorMsg = `App-server exited unexpectedly (code=${code}, signal=${signal})`
+        for (const [threadId, consumer] of this.consumers) {
+          try {
+            consumer.onCrash?.(errorMsg)
+          } catch (err) {
+            logger.warn('Consumer onCrash handler failed', { threadId, error: (err as Error).message })
+          }
+        }
+      }
+      this.consumers.clear()
+
       // Reject init if pending
       if (this._initReject) {
         this._initReject(new Error(`App-server exited during init (code=${code})`))
@@ -122,6 +136,7 @@ export class CodexAppServer {
   async stop(): Promise<void> {
     if (!this.process) return
 
+    this._stopping = true
     logger.info('Stopping codex app-server', { pid: this.process.pid })
 
     // Close stdin to signal graceful shutdown
@@ -144,6 +159,7 @@ export class CodexAppServer {
     })
 
     this._status = 'stopped'
+    this._stopping = false
     this.process = null
     this.readline = null
   }
