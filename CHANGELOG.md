@@ -1,5 +1,33 @@
 -e # Changelog
 
+## v0.3.1 (2026-05-18)
+
+### Features
+-  handle auto-approval notifications from Codex app-server
+-  handle item/agentMessage/completed notification
+-  add JSON editor to general settings for viewing/editing raw settings
+-  add multi-turn plan refinement to codex-flow
+-  add multi-turn plan refinement to codex-flow
+-  add compact marker to codex compaction with message hiding
+-  improve codex-flow approval UX, crash recovery, and streaming
+-  pass plan mode reasoning effort to Codex sessions
+
+### Fixes
+-  show "Unarchive" in context menu for archived threads
+-  add FLASH_CHAT_STATE for success indicator after edit-mode turns
+-  address review bugs in codex-flow changes
+-  correct token usage double-counting and add session resume fallback
+-  focus rename input after context menu closes on thread tabs
+- default-setup): show Claude usage limit in commit errors
+
+### Other
+- Codex session artifact fixes
+- Codex session artifacts parity
+- Concat Codex messages with a new line
+- Shorten Codex resume session titles
+
+-e # Changelog
+
 ## v0.3.0 (2026-05-18)
 
 ### Features
