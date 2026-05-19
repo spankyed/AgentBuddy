@@ -91,7 +91,16 @@ export async function action(
       // user (pause-turn sets 'idle' before this action fires). Skip the
       // success state — the turn didn't complete, it was interrupted.
       const wasPaused = currentChatState === 'idle';
-      updateChatState(services, threadId as EntityId, !hadErrors && !wasPaused ? 'success' : 'idle');
+      const nextState = !hadErrors && !wasPaused ? 'success' : 'idle';
+      log.debug('turn-completed chatState decision', {
+        threadId, hadErrors, currentChatState, wasPaused, nextState,
+      });
+      updateChatState(services, threadId as EntityId, nextState);
+      if (nextState === 'success') {
+        services.emitter.sendToPlugin('threads', {
+          type: 'FLASH_CHAT_STATE', threadId, stateId: 'success', durationMs: 3000,
+        });
+      }
     }
   }
 
