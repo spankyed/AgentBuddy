@@ -1,7 +1,7 @@
-/** CDX: Approve Tool — sends an approval decision back to the app-server. */
+/** CDX: Approve Tool — sends an approval decision back to the app-server, or starts an execute turn after plan approval. */
 
 import type { ActionMeta, Services, EntityId } from '../../types';
-import { persistCodexState, getCodexState, setRunning } from './_helpers/thread-context';
+import { persistCodexState, getCodexState, setRunning, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CDX: Approve Tool',
@@ -32,19 +32,38 @@ export async function action(params: Record<string, any>, services: Services) {
     || (response?.flags?.decision)
     || 'accept';
 
-  // Send approval to app-server
+  // Mark approval block as responded
+  services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
+    responseTimestamp: Date.now(),
+    blockResponse: { decision },
+  } as any);
+
+  // Plan approval — start a new execute turn instead of responding to app-server
+  if (pending.method === 'plan/approval') {
+    persistCodexState(services, threadId, { pendingApproval: undefined });
+
+    if (decision === 'accept' || decision === 'acceptForSession') {
+      // Start a new turn in execute mode — the plan context is already in the thread
+      updateChatState(services, threadId as EntityId, 'working');
+      services.action.executeAction('Codex Chat', {
+        threadId,
+        text: 'Approved. Implement the plan now.',
+        mode: 'Codex',
+        // phase undefined → no collaborationMode → default execution mode
+      });
+    } else {
+      updateChatState(services, threadId as EntityId, 'idle');
+    }
+    return { success: true, decision, planApproval: true };
+  }
+
+  // Tool approval — respond to the app-server's approval request
   try {
     (services.codex as any).respondToApproval(pending.requestId, decision);
   } catch (err: any) {
     services.logger.warn('[codex] failed to send approval — app-server may have crashed', { error: err?.message });
     return { success: false, reason: 'app-server unavailable' };
   }
-
-  // Mark approval block as responded
-  services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
-    responseTimestamp: Date.now(),
-    blockResponse: { decision },
-  } as any);
 
   // Clear pending state and resume running
   persistCodexState(services, threadId, { pendingApproval: undefined });

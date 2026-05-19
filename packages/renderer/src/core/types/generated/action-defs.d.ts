@@ -83,9 +83,10 @@ interface TurnStartParams {
     }>;
     cwd?: string;
     collaborationMode?: {
-        name: string;
-        settings?: {
-            developerInstructions?: string | null;
+        mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming';
+        settings: {
+            model: string;
+            developer_instructions?: string | null;
         };
     };
     approvalsReviewer?: 'user' | 'auto_review';

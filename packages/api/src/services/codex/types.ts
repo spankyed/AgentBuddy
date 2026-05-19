@@ -69,8 +69,8 @@ export interface TurnStartParams {
   input: Array<{ type: 'text'; text: string }>
   cwd?: string
   collaborationMode?: {
-    name: string
-    settings?: { developerInstructions?: string | null }
+    mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming'
+    settings: { model: string; developer_instructions?: string | null }
   }
   approvalsReviewer?: 'user' | 'auto_review'
   model?: string

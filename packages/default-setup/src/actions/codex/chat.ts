@@ -128,14 +128,14 @@ export async function action(params: Record<string, any>, services: Services, _z
 
     // Create stream consumer + register
     const { handlers } = createStreamConsumer(
-      { services, threadId, codexThreadId: activeThreadId, text },
+      { services, threadId, codexThreadId: activeThreadId, text, phase },
       { writer, toolActivity, thinking, messageId: currentMessageId as EntityId },
     );
     codex.registerConsumer(activeThreadId, handlers);
 
     // Map collaboration mode from phase
     const collaborationMode = phase === 'plan'
-      ? { name: 'Plan', settings: { developerInstructions: null } }
+      ? { mode: 'plan' as const, settings: { model: effectiveModel || 'gpt-5.5', developer_instructions: null } }
       : undefined;
 
     // Start turn

@@ -26,6 +26,8 @@ export interface ConsumerContext {
   codexThreadId: string;
   /** Original user message text. */
   text: string;
+  /** Current phase — 'plan' triggers plan approval flow on turn completion. */
+  phase?: string;
 }
 
 export interface ConsumerWriters {
@@ -48,9 +50,10 @@ export function createStreamConsumer(
   ctx: ConsumerContext,
   writers: ConsumerWriters,
 ): { handlers: ConsumerHandlers; finalize(): void } {
-  const { services, threadId, codexThreadId, text } = ctx;
+  const { services, threadId, codexThreadId, text, phase } = ctx;
   const { writer, toolActivity, thinking, messageId } = writers;
   const log = services.logger;
+  const isPlanMode = phase === 'plan';
 
   // Ownership check — prevents stale consumers from corrupting state
   const stillCurrent = () =>
@@ -64,6 +67,9 @@ export function createStreamConsumer(
   const recentTools: Array<{ name: string; summary: string; at: number }> = [];
   let placeholderCleared = false;
   let activeAgentMessageItemId: string | undefined;
+
+  // Plan mode state — accumulate plan text from item/plan/delta
+  let planText = '';
 
   const clearPlaceholder = () => {
     if (!placeholderCleared) {
@@ -91,6 +97,17 @@ export function createStreamConsumer(
             writer.push(writer.text.endsWith('\n') ? '\n' : '\n\n');
           }
           if (itemId) activeAgentMessageItemId = itemId;
+          writer.push(delta);
+        }
+        break;
+      }
+
+      case 'item/plan/delta': {
+        const delta = params.delta as string | undefined;
+        if (delta) {
+          planText += delta;
+          clearPlaceholder();
+          finaliseThinking();
           writer.push(delta);
         }
         break;
@@ -212,7 +229,13 @@ export function createStreamConsumer(
         } else if (params.turn?.status === 'failed') {
           hadErrors = true;
         }
-        finalize();
+
+        // Plan mode: show plan approval block instead of immediately finalizing
+        if (isPlanMode && planText.trim() && !hadErrors && params.turn?.status !== 'interrupted') {
+          finalizePlan();
+        } else {
+          finalize();
+        }
         break;
       }
 
@@ -287,6 +310,62 @@ export function createStreamConsumer(
       payload: { threadId, method, requestId },
     });
   };
+
+  // ─── Plan approval gate ────────────────────────────────────────────
+
+  function finalizePlan(): void {
+    if (finalized) return;
+    finalized = true;
+
+    // Finalize writers — plan text was already streamed to the message
+    finaliseThinking();
+    writer.finalize(writer.text);
+    toolActivity.finalise('done');
+    services.chat.updateMessageState(messageId as any, { forkable: true } as any);
+
+    if (!stillCurrent()) return;
+
+    // Unregister consumer — the plan turn is fully complete
+    try { (services.codex as any).unregisterConsumer(codexThreadId); } catch { /* ok */ }
+    (services.codex as any).clearHandle(threadId);
+
+    // Send plan approval block
+    const approvalMsg = services.chat.sendBlockMessage({
+      threadId,
+      text: 'Codex has a plan — review and approve to start implementation.',
+      blocks: [
+        { type: 'markdown', props: { content: planText.trim(), label: 'Plan' } },
+        { type: 'prompt', props: { content: 'Approve this plan and start implementing?' } },
+        { type: 'approval', props: {
+          options: [
+            { label: 'Approve', variant: 'primary', flags: { decision: 'accept' } },
+            { label: 'Deny', variant: 'neutral', flags: { decision: 'decline' } },
+          ],
+        } },
+      ],
+      forkable: false,
+      autoHide: true,
+      asUser: true,
+    });
+
+    // Store as a pending plan approval (reuse pendingApproval with requestId = -1 sentinel)
+    persistCodexState(services, threadId as string, {
+      isRunning: false,
+      turnId: undefined,
+      activeMessageId: undefined,
+      pendingApproval: {
+        requestId: -1, // sentinel: plan approval, not a server-side request
+        method: 'plan/approval',
+        approvalMessageId: approvalMsg.messageId as string,
+        summary: 'Plan approval',
+      },
+    });
+
+    services.emitter.sendToBrainSystem({
+      eventType: 'cdx.stream.paused',
+      payload: { threadId, method: 'plan/approval', requestId: -1 },
+    });
+  }
 
   // ─── Finalize ───────────────────────────────────────────────────────
 
