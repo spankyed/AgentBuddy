@@ -231,10 +231,14 @@ interface DSLUpdateNode extends DSLNodeBase {
 interface DSLKeepAliveNode extends DSLNodeBase {
     type: 'keep_alive';
 }
+/** Terminate the containing flow immediately */
+interface DSLKillNode extends DSLNodeBase {
+    type: 'kill';
+}
 /**
  * Union of all step node types (excludes listener - that's implicit in Track.event)
  */
-type DSLStepNode = DSLActionNode | DSLLLMNode | DSLSwitchNode | DSLFireNode | DSLTransformNode | DSLQueryNode | DSLFlowNode | DSLCreateNode | DSLUpdateNode | DSLKeepAliveNode;
+type DSLStepNode = DSLActionNode | DSLLLMNode | DSLSwitchNode | DSLFireNode | DSLTransformNode | DSLQueryNode | DSLFlowNode | DSLCreateNode | DSLUpdateNode | DSLKeepAliveNode | DSLKillNode;
 interface CompiledFlow {
     entity: CompiledEntity[];
     relation: CompiledRelation[];

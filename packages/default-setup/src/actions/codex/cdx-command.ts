@@ -1,0 +1,292 @@
+/**
+ * CDX: Run Command - dispatcher for lightweight cdx- commands.
+ */
+
+import type { ActionMeta, EntityId, Services, Z } from '../../types';
+import { getCodexState, persistCodexState } from './_helpers/thread-context';
+
+export const meta: ActionMeta = {
+  label: 'CDX: Run Command',
+  description: 'Unified dispatcher for cdx- prefixed chat commands.',
+  category: 'codex',
+  input: {
+    command: { type: 'string', description: 'Full command name (e.g. cdx-status)', required: true },
+    text: { type: 'string', description: 'Arguments after the command', required: false },
+    threadId: { type: 'string', description: 'Thread ID for response', required: false },
+    references: { type: 'object', description: 'Attached references', required: false },
+  },
+};
+
+type CommandResult = { text: string; data?: any; blocks?: any[]; skipMessage?: boolean };
+type Handler = (args: string[], services: Services, threadId?: string) => Promise<CommandResult>;
+
+const handlers: Record<string, Handler> = {
+  status: handleStatus,
+  model: handleModel,
+  models: handleModels,
+  config: handleConfig,
+  context: handleContext,
+  rename: handleRename,
+  skills: handleSkills,
+  mcp: handleMcp,
+};
+
+export async function action(
+  params: Record<string, any>,
+  services: Services,
+  _z: Z,
+  _flowId: string,
+) {
+  const { command, text, threadId } = params;
+  const name = (command as string).replace(/^cdx-/, '');
+  const args = text?.trim() ? text.trim().split(/\s+/) : [];
+  const handler = handlers[name];
+
+  let result: CommandResult;
+  if (handler) {
+    try {
+      result = await handler(args, services, threadId);
+    } catch (error: any) {
+      result = { text: `cdx-${name} failed: ${error?.message || 'Unknown error'}` };
+    }
+  } else {
+    const available = Object.keys(handlers).map(k => `cdx-${k}`).join(', ');
+    result = { text: `Unknown command: cdx-${name}\nAvailable: ${available}` };
+  }
+
+  if (threadId && !result.skipMessage) {
+    services.chat.sendBlockMessage({
+      threadId,
+      text: result.text,
+      blocks: result.blocks ?? [],
+    });
+  }
+
+  return { success: !!handler, command: `cdx-${name}`, text: result.text, data: result.data };
+}
+
+async function ensureServer(services: Services): Promise<any> {
+  const codex = services.codex as any;
+  if (codex.status !== 'ready') await codex.start();
+  return codex;
+}
+
+function effectiveCwd(services: Services, threadId?: string): string | undefined {
+  const state = threadId ? getCodexState(services, threadId) : undefined;
+  const codeSettings = services.repository.settingsQueries.getPluginSettings('code') as any;
+  return state?.cwdOverride
+    || state?.cwd
+    || codeSettings?.defaultBaseDirectory
+    || codeSettings?.lastDirectoryOpened
+    || undefined;
+}
+
+function getPath(obj: any, path: string): any {
+  return path.split('.').reduce((value, segment) => value == null ? undefined : value[segment], obj);
+}
+
+function parseValue(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function display(value: any): string {
+  if (value === undefined) return '(unset)';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value, null, 2);
+}
+
+async function handleStatus(
+  _args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  const codex = await ensureServer(services);
+  const state = threadId ? getCodexState(services, threadId) : undefined;
+  let accountText = 'unavailable';
+  let account: any;
+
+  try {
+    const response = await codex.readAccount({ refreshToken: false });
+    account = response?.account;
+    if (!account) accountText = response?.requiresOpenaiAuth ? 'not authenticated' : 'none';
+    else if (account.type === 'chatgpt') accountText = `chatgpt (${account.email || 'unknown'})`;
+    else accountText = account.type || 'authenticated';
+  } catch (error: any) {
+    accountText = `unavailable (${error?.message || 'unknown error'})`;
+  }
+
+  const lines = [
+    `App-server: ${codex.status}`,
+    `Auth: ${accountText}`,
+    `Thread: ${state?.threadId || '(none)'}`,
+    `CWD: ${state?.cwd || effectiveCwd(services, threadId) || '(unset)'}`,
+    `Model: ${state?.model || '(default)'}`,
+    `State: ${state?.isRunning ? 'running' : state?.pendingApproval ? 'paused' : state?.chatState || 'idle'}`,
+  ];
+
+  return { text: lines.join('\n'), data: { state, account } };
+}
+
+async function handleModel(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  const codex = await ensureServer(services);
+  const cwd = effectiveCwd(services, threadId);
+
+  if (args.length === 0) {
+    const config = await codex.readConfig({ includeLayers: false, ...(cwd && { cwd }) });
+    return { text: display(config?.config?.model), data: config };
+  }
+
+  const model = args[0];
+  await codex.writeConfigValue({ keyPath: 'model', value: model, mergeStrategy: 'replace' });
+  if (threadId) persistCodexState(services, threadId, { model });
+  return { text: `Model set to: ${model}` };
+}
+
+async function handleModels(
+  args: string[],
+  services: Services,
+): Promise<CommandResult> {
+  const includeHidden = args.includes('--hidden') || args.includes('hidden');
+  const codex = await ensureServer(services);
+  const response = await codex.listModels({ limit: 100, includeHidden });
+  const models = response?.data ?? [];
+  if (!models.length) return { text: 'No Codex models found.', data: response };
+
+  const lines = models.map((model: any) => {
+    const marker = model.isDefault ? ' (default)' : '';
+    const hidden = model.hidden ? ' [hidden]' : '';
+    return `${model.id || model.model}${marker}${hidden} - ${model.displayName || model.model || model.id}`;
+  });
+
+  return { text: lines.join('\n'), data: response };
+}
+
+async function handleConfig(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  const [subcommand, key, ...rest] = args;
+  if (!subcommand) return { text: 'Usage: /cdx-config get <key> | set <key> <value>' };
+
+  const codex = await ensureServer(services);
+  const cwd = effectiveCwd(services, threadId);
+
+  switch (subcommand) {
+    case 'get': {
+      if (!key) return { text: 'Usage: /cdx-config get <key>' };
+      const config = await codex.readConfig({ includeLayers: true, ...(cwd && { cwd }) });
+      const value = getPath(config?.config, key);
+      return { text: display(value), data: value };
+    }
+    case 'set': {
+      if (!key || !rest.length) return { text: 'Usage: /cdx-config set <key> <value>' };
+      const raw = rest.join(' ');
+      const value = parseValue(raw);
+      await codex.writeConfigValue({ keyPath: key, value, mergeStrategy: 'replace' });
+      if (threadId && key === 'model' && typeof value === 'string') persistCodexState(services, threadId, { model: value });
+      return { text: `Set ${key} = ${display(value)}`, data: value };
+    }
+    default:
+      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cdx-config get <key> | set <key> <value>` };
+  }
+}
+
+async function handleContext(
+  _args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  if (!threadId) return { text: 'No active thread - run a Codex turn first.' };
+  const state = getCodexState(services, threadId);
+  if (!state?.threadId) return { text: 'No active Codex thread - run a Codex turn first.' };
+
+  const tokens = state.totalTokens;
+  const lines = [
+    `Thread: ${state.threadId}`,
+    `Turns: ${state.turns ?? 0}`,
+    `CWD: ${state.cwd || '(unset)'}`,
+    `Model: ${state.model || '(default)'}`,
+    `State: ${state.isRunning ? 'running' : state.pendingApproval ? 'paused' : state.chatState || 'idle'}`,
+  ];
+  if (tokens) {
+    lines.push(`Tokens: input ${tokens.input ?? 0}, output ${tokens.output ?? 0}, reasoning ${tokens.reasoning ?? 0}`);
+  }
+  if (state.queuedMessage) lines.push('Queue: 1 message queued');
+  if (state.recentTools?.length) {
+    lines.push('Recent tools:');
+    for (const tool of state.recentTools.slice(-5)) {
+      lines.push(`- ${tool.name}: ${tool.summary}`);
+    }
+  }
+
+  return { text: lines.join('\n'), data: state };
+}
+
+async function handleRename(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  if (!threadId) return { text: 'No active thread.' };
+
+  const state = getCodexState(services, threadId);
+  const title = args.join(' ').trim() || services.repository.chatQueries.threadData(threadId as EntityId)?.topic || 'Untitled';
+
+  services.repository.threadCommands.update(threadId as EntityId, { topic: title });
+
+  if (state?.threadId) {
+    const codex = await ensureServer(services);
+    await codex.setThreadName(state.threadId, title);
+  }
+
+  return { text: `Renamed to: ${title}` };
+}
+
+async function handleSkills(
+  args: string[],
+  services: Services,
+  threadId?: string,
+): Promise<CommandResult> {
+  const codex = await ensureServer(services);
+  const cwd = effectiveCwd(services, threadId);
+  const forceReload = args.includes('--reload') || args.includes('reload');
+  const response = await codex.listSkills({ ...(cwd && { cwds: [cwd] }), forceReload });
+  const entries = response?.data ?? [];
+  const skills = entries.flatMap((entry: any) => entry.skills ?? []);
+
+  if (!skills.length) return { text: 'No Codex skills found.', data: response };
+
+  const lines = skills.map((skill: any) => {
+    const name = skill.name || skill.id || '(unnamed)';
+    const source = skill.source || skill.path || '';
+    return source ? `${name}  ${source}` : name;
+  });
+  return { text: lines.join('\n'), data: response };
+}
+
+async function handleMcp(
+  _args: string[],
+  services: Services,
+): Promise<CommandResult> {
+  const codex = await ensureServer(services);
+  const response = await codex.listMcpServers({ limit: 100, detail: 'toolsAndAuthOnly' });
+  const servers = response?.data ?? [];
+
+  if (!servers.length) return { text: 'No Codex MCP servers found.', data: response };
+
+  const lines = servers.map((server: any) => {
+    const toolCount = server.tools ? Object.keys(server.tools).length : 0;
+    const auth = typeof server.authStatus === 'string' ? server.authStatus : server.authStatus?.status || 'unknown';
+    return `${server.name}: ${toolCount} tools, auth ${auth}`;
+  });
+  return { text: lines.join('\n'), data: response };
+}

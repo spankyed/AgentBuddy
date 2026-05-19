@@ -38,6 +38,32 @@ export interface ThreadRollbackParams {
   numTurns: number
 }
 
+export interface ThreadListParams {
+  cursor?: string | null
+  limit?: number | null
+  sortKey?: string | null
+  sortDirection?: 'asc' | 'desc' | null
+  modelProviders?: string[] | null
+  sourceKinds?: string[] | null
+  archived?: boolean | null
+  cwd?: string | string[] | null
+  useStateDbOnly?: boolean
+  searchTerm?: string | null
+}
+
+export interface ConfigReadParams {
+  includeLayers: boolean
+  cwd?: string | null
+}
+
+export interface ConfigValueWriteParams {
+  keyPath: string
+  value: any
+  mergeStrategy?: 'replace' | 'upsert'
+  filePath?: string | null
+  expectedVersion?: string | null
+}
+
 export interface TurnStartParams {
   threadId: string
   input: Array<{ type: 'text'; text: string }>
