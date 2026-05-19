@@ -136,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { X, SquarePen, Pin, FolderPlus, FolderMinus, ChevronRight } from 'lucide-vue-next';
 import {
   ContextMenuRoot, ContextMenuTrigger, ContextMenuItem,
@@ -215,7 +215,7 @@ const renameInput = ref<HTMLInputElement | null>(null)
 function handleRename() {
   isRenaming.value = true
   renamingName.value = props.tab.label || ''
-  nextTick(() => {
+  setTimeout(() => {
     renameInput.value?.focus()
     renameInput.value?.select()
   })
