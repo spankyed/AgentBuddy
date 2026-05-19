@@ -12,6 +12,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { execFile } from 'child_process'
+import { rgPath } from '@vscode/ripgrep'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import type { ApproveFn, ToolOptions, GoalState } from './types'
@@ -60,6 +61,24 @@ function exec(command: string, opts: { cwd: string; timeout: number; stdin?: str
       child.stdin?.write(opts.stdin)
       child.stdin?.end()
     }
+  })
+}
+
+/** Run a program with argv directly and return stdout+stderr. */
+function execArgs(command: string, args: string[], opts: { cwd: string; timeout: number }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return new Promise((resolve) => {
+    const child = execFile(command, args, {
+      cwd: opts.cwd,
+      timeout: opts.timeout,
+      maxBuffer: MAX_OUTPUT * 2,
+      env: { ...process.env, TERM: 'dumb' },
+    }, (error, stdout, stderr) => {
+      resolve({
+        stdout: truncate(stdout),
+        stderr: truncate(stderr),
+        exitCode: error ? (child.exitCode ?? 1) : 0,
+      })
+    })
   })
 }
 
@@ -157,7 +176,7 @@ export function writeFileTool(opts: ToolOptions) {
 
 export function grepTool(opts: Pick<ToolOptions, 'cwd'>) {
   return tool({
-    description: 'Search file contents using grep (regex). Returns matching lines with file paths and line numbers.',
+    description: 'Search file contents using ripgrep (regex). Returns matching lines with file paths and line numbers.',
     parameters: z.object({
       pattern: z.string().describe('Regex pattern to search for'),
       path: z.string().optional().describe('Directory or file to search in (relative to project root, defaults to root)'),
@@ -165,17 +184,15 @@ export function grepTool(opts: Pick<ToolOptions, 'cwd'>) {
     }),
     execute: async (args) => {
       const searchPath = args.path ? safePath(opts.cwd, args.path) : opts.cwd
-      const grepArgs = ['-rn', '--color=never']
-      if (args.include) grepArgs.push(`--include=${args.include}`)
-      grepArgs.push(args.pattern, searchPath)
+      const relativeSearchPath = path.relative(opts.cwd, searchPath) || '.'
+      const rgArgs = ['--line-number', '--with-filename', '--color=never']
+      if (args.include) rgArgs.push('-g', args.include)
+      rgArgs.push('--', args.pattern, relativeSearchPath)
 
-      const { stdout, stderr, exitCode } = await exec(
-        `grep ${grepArgs.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')}`,
-        { cwd: opts.cwd, timeout: DEFAULT_TIMEOUT },
-      )
+      const { stdout, stderr, exitCode } = await execArgs(rgPath, rgArgs, { cwd: opts.cwd, timeout: DEFAULT_TIMEOUT })
 
       if (exitCode === 1 && !stderr) return 'No matches found.'
-      if (stderr && exitCode !== 0) return `Grep error: ${stderr}`
+      if (stderr && exitCode !== 0) return `Ripgrep error: ${stderr}`
 
       // Relativize paths in output
       const relative = stdout.replace(new RegExp(opts.cwd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/', 'g'), '')
