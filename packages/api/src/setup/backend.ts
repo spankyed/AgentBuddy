@@ -9,6 +9,7 @@ import { createDefaultSettings } from '@/systems/settings/repository';
 import { runBootSeed } from '@/setup/seed/index';
 import { runMigrations } from '@/setup/migrations';
 import { reconcileStaleClaudeState } from '@/setup/reconcile-claude-state';
+import { backfillCodexSessionArtifacts } from '@/setup/reconcile-codex-state';
 import { APP_VERSION } from '@/version';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -41,6 +42,7 @@ export async function setupBackend(): Promise<void> {
   // (CLI handles live in process memory, so isRunning/chatState from a
   // crashed turn would otherwise strand the queue and UI indicator).
   reconcileStaleClaudeState();
+  backfillCodexSessionArtifacts();
 
   // Start backend actor
   backendActor = createActor(backendSystem, {

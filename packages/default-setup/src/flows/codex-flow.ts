@@ -118,6 +118,7 @@ export default {
             threadId: "$.event.data.payload.threadId",
             usage: "$.event.data.payload.usage",
             toolCallCount: "$.event.data.payload.toolCallCount",
+            recentTools: "$.event.data.payload.recentTools",
             mutatedPaths: "$.event.data.payload.mutatedPaths",
             hadErrors: "$.event.data.payload.hadErrors",
           },

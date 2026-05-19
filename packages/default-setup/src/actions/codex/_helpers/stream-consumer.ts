@@ -60,7 +60,8 @@ export function createStreamConsumer(
   const mutatedPathsSet = new Set<string>();
   let toolCallCount = 0;
   let hadErrors = false;
-  let usage: { input: number; output: number } | undefined;
+  let usage: { input: number; output: number; reasoning?: number } | undefined;
+  const recentTools: Array<{ name: string; summary: string; at: number }> = [];
   let placeholderCleared = false;
   let activeAgentMessageItemId: string | undefined;
 
@@ -155,6 +156,7 @@ export function createStreamConsumer(
               status: ok ? 'ok' : 'error',
               details: { input: { command: item.command }, output: item.aggregatedOutput || '' },
             });
+            recentTools.push({ name: 'command', summary: item.command || '', at: Date.now() });
             if (!ok) hadErrors = true;
             break;
           }
@@ -172,15 +174,18 @@ export function createStreamConsumer(
               summary: summary || 'File changes',
               status: item.status === 'completed' ? 'ok' : 'error',
             });
+            recentTools.push({ name: 'file_change', summary: summary || 'File changes', at: Date.now() });
             if (item.status !== 'completed') hadErrors = true;
             break;
           }
 
           case 'mcpToolCall': {
+            const toolName = `${item.server || 'mcp'}/${item.tool || '?'}`;
             toolActivity.update(item.id, {
               status: item.status === 'completed' ? 'ok' : 'error',
               ...(item.error ? { details: { output: item.error.message } } : {}),
             });
+            recentTools.push({ name: toolName, summary: item.tool || '', at: Date.now() });
             break;
           }
         }
@@ -216,6 +221,7 @@ export function createStreamConsumer(
           usage = {
             input: params.tokenUsage.inputTokens || 0,
             output: params.tokenUsage.outputTokens || 0,
+            reasoning: params.tokenUsage.reasoningTokens || 0,
           };
         }
         break;
@@ -324,6 +330,7 @@ export function createStreamConsumer(
       payload: {
         threadId, text, usage, hadErrors,
         mutatedPaths, toolCallCount,
+        recentTools: recentTools.slice(-5),
       },
     });
   }

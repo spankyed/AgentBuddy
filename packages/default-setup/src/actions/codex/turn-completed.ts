@@ -12,18 +12,20 @@ export const meta: ActionMeta = {
     threadId: { type: 'string', required: true },
     usage: { type: 'object', required: false },
     toolCallCount: { type: 'number', required: false },
+    recentTools: { type: 'array', required: false },
     mutatedPaths: { type: 'array', required: false },
     hadErrors: { type: 'boolean', required: false },
   },
 };
 
 export async function action(params: Record<string, any>, services: Services) {
-  const { threadId, usage, hadErrors, mutatedPaths, toolCallCount } = params as {
+  const { threadId, usage, hadErrors, mutatedPaths, toolCallCount, recentTools } = params as {
     threadId: string;
-    usage?: { input: number; output: number; reasoning: number };
+    usage?: { input: number; output: number; reasoning?: number };
     hadErrors?: boolean;
     mutatedPaths?: string[];
     toolCallCount?: number;
+    recentTools?: Array<{ name: string; summary?: string; at: number }>;
   };
 
   if (!threadId) return { success: false, reason: 'missing threadId' };
@@ -33,9 +35,16 @@ export async function action(params: Record<string, any>, services: Services) {
     totalTokens: usage ? {
       input: (prev.totalTokens?.input ?? 0) + usage.input,
       output: (prev.totalTokens?.output ?? 0) + usage.output,
-      reasoning: (prev.totalTokens?.reasoning ?? 0) + usage.reasoning,
+      reasoning: (prev.totalTokens?.reasoning ?? 0) + (usage.reasoning ?? 0),
     } : prev.totalTokens,
     toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
+    recentTools: Array.isArray(recentTools) && recentTools.length > 0
+      ? [...(prev.recentTools ?? []), ...recentTools.map(tool => ({
+        name: tool.name,
+        summary: tool.summary ?? '',
+        at: tool.at,
+      }))].slice(-5)
+      : prev.recentTools,
     lastTurnAt: Date.now(),
   }));
 
