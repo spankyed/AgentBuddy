@@ -22,6 +22,7 @@ type CommandResult = { text: string; data?: any; blocks?: any[]; skipMessage?: b
 type Handler = (args: string[], services: Services, threadId?: string, cwdOverride?: string) => Promise<CommandResult>;
 
 const SESSION_SOURCE_KINDS = ['cli', 'vscode', 'appServer'];
+const TITLE_MAX = 80;
 
 const handlers: Record<string, Handler> = {
   sessions: handleSessions,
@@ -78,10 +79,16 @@ function effectiveCwd(services: Services, threadId?: string, cwdOverride?: strin
     || undefined;
 }
 
+function titleFor(thread: any, fallbackPrefix = 'Session'): string {
+  const fallback = `${fallbackPrefix} ${String(thread?.id || '').slice(0, 8)}`;
+  const text = String(thread?.name || thread?.preview || fallback).replace(/\s+/g, ' ').trim();
+  return text.length > TITLE_MAX ? `${text.slice(0, TITLE_MAX - 3).trimEnd()}...` : text;
+}
+
 function formatSessionItem(thread: any) {
   return {
     id: thread.id,
-    title: thread.name || thread.preview || `Session ${String(thread.id).slice(0, 8)}`,
+    title: titleFor(thread),
     modifiedAt: thread.updatedAt ? new Date(thread.updatedAt * 1000).toISOString() : '',
     size: Array.isArray(thread.turns) ? thread.turns.length : 0,
     cwd: thread.cwd,
@@ -101,6 +108,26 @@ async function listThreads(services: Services, cwd?: string, limit = 50): Promis
   return response?.data ?? [];
 }
 
+function sessionListResult(threads: any[], text: string): CommandResult {
+  return {
+    text,
+    blocks: [{ type: 'session-list', props: { sessions: threads.map(formatSessionItem) } }],
+    data: threads,
+  };
+}
+
+function findThread(threads: any[], identifier: string): any | undefined {
+  const lower = identifier.toLowerCase();
+  return threads.find((t: any) => t.id === identifier || t.sessionId === identifier)
+    || threads.find((t: any) => String(t.name || '').toLowerCase() === lower)
+    || threads.find((t: any) => String(t.preview || '').toLowerCase().startsWith(lower));
+}
+
+function hasRealUserMessages(services: Services, threadId: string): boolean {
+  return !!services.repository.threadQueries.messages(threadId as EntityId)
+    ?.some((m: any) => m.sender === 'user' && !m.isCommand);
+}
+
 function textFromUserContent(content: any): string {
   if (!Array.isArray(content)) return '';
   return content
@@ -110,33 +137,24 @@ function textFromUserContent(content: any): string {
 }
 
 function importThreadMessages(services: Services, threadId: string, thread: any): number {
-  const messages: Array<{
+  const messages: {
     text: string;
     sender: 'user' | 'assistant';
     forkable?: boolean;
     context?: Record<string, unknown>;
-  }> = [];
+  }[] = [];
 
   for (const turn of thread?.turns ?? []) {
     for (const item of turn?.items ?? []) {
+      const context = { codexItemId: item?.id, codexTurnId: turn.id };
       if (item?.type === 'userMessage') {
         const text = textFromUserContent(item.content);
         if (!text) continue;
-        messages.push({
-          text,
-          sender: 'user',
-          forkable: false,
-          context: { codexItemId: item.id, codexTurnId: turn.id },
-        });
+        messages.push({ text, sender: 'user', forkable: false, context });
       } else if (item?.type === 'agentMessage' || item?.type === 'plan') {
         const text = item.text || '';
         if (!text) continue;
-        messages.push({
-          text,
-          sender: 'assistant',
-          forkable: true,
-          context: { codexItemId: item.id, codexTurnId: turn.id },
-        });
+        messages.push({ text, sender: 'assistant', forkable: true, context });
       }
     }
   }
@@ -162,13 +180,7 @@ async function handleSessions(
   const threads = await listThreads(services, cwd, limit);
 
   if (!threads.length) return { text: 'No Codex sessions found.' };
-
-  const items = threads.map(formatSessionItem);
-  return {
-    text: `${threads.length} Codex sessions`,
-    blocks: [{ type: 'session-list', props: { sessions: items } }],
-    data: threads,
-  };
+  return sessionListResult(threads, `${threads.length} Codex sessions`);
 }
 
 async function handleResume(
@@ -183,33 +195,22 @@ async function handleResume(
   if (!identifier) {
     const threads = await listThreads(services, cwd, 50);
     if (!threads.length) return { text: 'No Codex sessions found.' };
-    return {
-      text: 'Pick a Codex session to resume (use `/cdx-resume <thread-id>`):',
-      blocks: [{ type: 'session-list', props: { sessions: threads.map(formatSessionItem) } }],
-      data: threads,
-    };
+    return sessionListResult(threads, 'Pick a Codex session to resume (use `/cdx-resume <thread-id>`):');
   }
 
   if (!threadId) return { text: 'No active thread.' };
 
   const threads = await listThreads(services, cwd, 100);
-  const lower = identifier.toLowerCase();
-  const match = threads.find((t: any) => t.id === identifier || t.sessionId === identifier)
-    || threads.find((t: any) => String(t.name || '').toLowerCase() === lower)
-    || threads.find((t: any) => String(t.preview || '').toLowerCase().startsWith(lower));
-
+  const match = findThread(threads, identifier);
   if (!match) return { text: `Codex session not found: ${identifier}` };
 
   const codex = await ensureServer(services);
   const resumed = await codex.resumeThread(match.id);
   const codexThreadId = resumed.threadId || match.id;
-  const title = match.name || match.preview || `Codex ${String(codexThreadId).slice(0, 8)}`;
+  const title = titleFor({ ...match, id: codexThreadId }, 'Codex');
   const read = await codex.readThread(codexThreadId, { includeTurns: true });
 
-  const existingMessages = services.repository.threadQueries.messages(threadId as EntityId);
-  const hasRealMessages = existingMessages?.some((m: any) =>
-    m.sender === 'user' && !m.isCommand
-  );
+  const hasRealMessages = hasRealUserMessages(services, threadId);
   let targetThreadId = threadId;
 
   if (hasRealMessages) {
