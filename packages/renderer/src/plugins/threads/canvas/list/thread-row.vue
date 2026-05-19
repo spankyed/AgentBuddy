@@ -121,11 +121,13 @@
 
     <ThreadContextMenu
       :is-pinned="!!thread.pinned"
+      :is-archived="!!showArchived"
       :copy-text="thread.shortCode || thread.id"
       @rename="$emit('rename-click', thread.id)"
       @pin="$emit('pin-click', thread.id)"
       @unpin="$emit('unpin-click', thread.id)"
       @archive="$emit('archive-click', thread.id)"
+      @unarchive="$emit('unarchive-click', thread.id)"
       @delete="$emit('delete-click', thread.id)"
     >
       <template #before="{ itemClass }">

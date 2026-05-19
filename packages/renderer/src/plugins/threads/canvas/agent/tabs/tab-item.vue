@@ -71,6 +71,7 @@
 
     <ThreadContextMenu
       :is-pinned="isPinned"
+      :is-archived="false"
       :copy-text="tab.id"
       @rename="handleRename"
       @pin="$emit('pin-thread')"

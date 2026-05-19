@@ -126,6 +126,7 @@
           </ContextMenuTrigger>
           <ThreadContextMenu
             :is-pinned="!!thread.pinned"
+            :is-archived="false"
             :copy-text="thread.shortCode || thread.id"
             @rename="startRename(thread.id, thread.topic)"
             @pin="handlePinThread(thread.id)"

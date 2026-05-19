@@ -26,7 +26,11 @@
         <Pin :size="14" class="text-neutral-400" />
         Pin
       </ContextMenuItem>
-      <ContextMenuItem v-if="!isPinned" :class="itemClass" @select="$emit('archive')">
+      <ContextMenuItem v-if="isArchived" :class="itemClass" @select="$emit('unarchive')">
+        <ArchiveRestore :size="14" class="text-amber-400" />
+        Unarchive
+      </ContextMenuItem>
+      <ContextMenuItem v-else-if="!isPinned" :class="itemClass" @select="$emit('archive')">
         <Archive :size="14" class="text-amber-400" />
         Archive
       </ContextMenuItem>
@@ -44,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { Archive, Copy, Pencil, Pin, Trash2 } from 'lucide-vue-next';
+import { Archive, ArchiveRestore, Copy, Pencil, Pin, Trash2 } from 'lucide-vue-next';
 import {
   ContextMenuPortal, ContextMenuContent,
   ContextMenuItem, ContextMenuSeparator,
@@ -52,6 +56,7 @@ import {
 
 const props = defineProps<{
   isPinned: boolean;
+  isArchived: boolean;
   copyText: string;
 }>();
 
@@ -60,6 +65,7 @@ defineEmits<{
   pin: [];
   unpin: [];
   archive: [];
+  unarchive: [];
   delete: [];
 }>();
 
