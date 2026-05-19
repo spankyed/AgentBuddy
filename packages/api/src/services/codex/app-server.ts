@@ -173,6 +173,8 @@ export class CodexAppServer {
     const result = await this._request('thread/resume', {
       threadId,
       ...(params?.model && { model: params.model }),
+      ...(params?.sandbox && { sandbox: params.sandbox }),
+      ...(params?.approvalsReviewer && { approvalsReviewer: params.approvalsReviewer }),
     })
     return { threadId: result.thread?.id ?? threadId }
   }

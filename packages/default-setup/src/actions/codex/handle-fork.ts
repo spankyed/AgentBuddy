@@ -32,8 +32,8 @@ export async function action(params: Record<string, any>, services: Services) {
       threadId: sourceState.threadId,
       cwd: sourceState.cwd,
       model: sourceState.model,
-      sandbox: 'workspace-write',
-      approvalsReviewer: 'user',
+      sandbox: sourceState.sandbox ?? 'workspace-write',
+      approvalsReviewer: sourceState.approvalMode ?? 'user',
     });
     const forkedCodexThreadId = fork.threadId;
     const rollbackTurns = Math.max(0, Number(sourceUserMessagesAfterFork ?? 0));
@@ -47,6 +47,8 @@ export async function action(params: Record<string, any>, services: Services) {
       threadId: forkedCodexThreadId,
       cwd: fork.cwd || sourceState.cwd,
       model: fork.model || sourceState.model,
+      approvalMode: sourceState.approvalMode ?? 'user',
+      sandbox: sourceState.sandbox ?? 'workspace-write',
       startedAt: Date.now(),
       lastTurnAt: sourceState.lastTurnAt,
       turns: sourceState.turns,

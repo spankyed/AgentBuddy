@@ -237,20 +237,23 @@ async function importCodexSessions(services: Services, toImport: any[]) {
 
       const thread = services.repository.threadQueries.byId(newThreadId) as any;
       services.repository.threadCommands.update(newThreadId, {
-        context: { ...(thread?.context || {}), codex: { threadId: session.id, cwd: cwd || undefined } },
+        context: {
+          ...(thread?.context || {}),
+          codex: {
+            threadId: session.id,
+            cwd: cwd || undefined,
+            approvalMode: 'user',
+            sandbox: 'workspace-write',
+            chatState: 'idle',
+          },
+        },
         tags: [...(thread?.tags || ['imported']), 'codex'],
       });
 
       services.repository.chatCommands.createArtifact({
-        artifactType: 'claude-session',
+        artifactType: 'codex-session',
         title: 'Codex session',
-        content: {
-          sessionId: session.id, model: '', cwd,
-          startedAt: Date.now(), lastTurnAt: Date.now(), turns: 0,
-          totalCostUsd: 0, chatState: 'idle',
-          toolCallCount: 0, permissionMode: 'default',
-          provider: 'codex',
-        },
+        content: {},
         threadId: newThreadId,
       });
     } catch { /* skip individual failures */ }

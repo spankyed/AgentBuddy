@@ -226,6 +226,8 @@ async function handleResume(
   persistCodexState(services, targetThreadId, {
     threadId: codexThreadId,
     cwd: read?.thread?.cwd || match.cwd || cwd,
+    approvalMode: 'user',
+    sandbox: 'workspace-write',
     startedAt: Date.now(),
     chatState: 'idle',
     isRunning: false,

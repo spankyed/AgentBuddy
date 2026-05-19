@@ -44,6 +44,7 @@ import TodoArtifact from './artifacts/types/todo-artifact.vue';
 import ProjectArtifact from './artifacts/types/project-artifact.vue';
 import JsonArtifact from './artifacts/types/json-artifact.vue';
 import ClaudeSessionArtifact from './artifacts/types/claude-session-artifact.vue';
+import CodexSessionArtifact from './artifacts/types/codex-session-artifact.vue';
 import DiffArtifact from './artifacts/types/diff-artifact.vue';
 import PlanArtifact from './artifacts/types/plan-artifact.vue';
 import MarkdownArtifact from './artifacts/types/markdown-artifact.vue';
@@ -74,6 +75,7 @@ function getArtifactComponent(type: string) {
     project: ProjectArtifact,
     json: JsonArtifact,
     'claude-session': ClaudeSessionArtifact,
+    'codex-session': CodexSessionArtifact,
     diff: DiffArtifact,
     plan: PlanArtifact,
     markdown: MarkdownArtifact,

@@ -151,6 +151,21 @@ export default {
       ]],
       "Unqueue message",
     ),
+    // ─── User setting toggles ───────────────────────────────────────
+    on(
+      "user.update.codexSessionSettings",
+      [[
+        action("CDX: Update Session Settings", {
+          label: "update-session-settings",
+          map: {
+            threadId: "$.event.data.payload.threadId",
+            approvalMode: "$.event.data.payload.approvalMode",
+            sandbox: "$.event.data.payload.sandbox",
+          },
+        }),
+      ]],
+      "Codex session settings updated",
+    ),
     on(
       "thread.revert",
       [[

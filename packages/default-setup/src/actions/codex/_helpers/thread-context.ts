@@ -35,6 +35,8 @@ export interface CodexThreadState {
   lastTurnAt?: number;
   cwd?: string;
   model?: string;
+  approvalMode?: 'user' | 'auto_review';
+  sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
   startedAt?: number;
   turns?: number;
   totalTokens?: { input: number; output: number; reasoning?: number };
@@ -96,7 +98,7 @@ export function updateCodexState(
 }
 
 export function ensureSessionMarker(services: Services, threadId: EntityId): EntityId {
-  return services.artifact.findOrCreateByType(threadId, 'codex-session' as any, { title: 'Codex session', content: {} }).artifactId;
+  return services.artifact.findOrCreateByType(threadId, 'codex-session', { title: 'Codex session', content: {} }).artifactId;
 }
 
 export function updateChatState(services: Services, threadId: EntityId, chatState: ChatState): void {

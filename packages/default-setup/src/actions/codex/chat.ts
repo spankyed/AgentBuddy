@@ -40,6 +40,8 @@ export async function action(params: Record<string, any>, services: Services, _z
   const prior = getCodexState(services, threadId);
   const codexThreadId = prior?.threadId;
   const effectiveModel = model || prior?.model;
+  const approvalMode = prior?.approvalMode ?? 'user';
+  const sandbox = prior?.sandbox ?? 'workspace-write';
 
   // ─── Concurrency guard ──────────────────────────────────────────────
   if (prior?.isRunning) {
@@ -109,17 +111,19 @@ export async function action(params: Record<string, any>, services: Services, _z
     if (codexThreadId) {
       const result = await codex.resumeThread(codexThreadId, {
         ...(effectiveModel && { model: effectiveModel }),
+        approvalsReviewer: approvalMode,
+        sandbox,
       });
       activeThreadId = result.threadId;
     } else {
       const result = await codex.startThread({
         cwd: sessionCwd,
         model: effectiveModel,
-        sandbox: 'workspace-write',
-        approvalsReviewer: 'user',
+        sandbox,
+        approvalsReviewer: approvalMode,
       });
       activeThreadId = result.threadId;
-      persistCodexState(services, threadId, { threadId: activeThreadId, cwd: result.cwd || sessionCwd });
+      persistCodexState(services, threadId, { threadId: activeThreadId, cwd: result.cwd || sessionCwd, approvalMode, sandbox });
     }
 
     // Create stream consumer + register
@@ -141,7 +145,7 @@ export async function action(params: Record<string, any>, services: Services, _z
       ...(sessionCwd && { cwd: sessionCwd }),
       ...(effectiveModel && { model: effectiveModel }),
       ...(collaborationMode && { collaborationMode }),
-      approvalsReviewer: 'user',
+      approvalsReviewer: approvalMode,
     });
 
     // Store handle for pause/abort

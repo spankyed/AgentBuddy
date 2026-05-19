@@ -417,6 +417,7 @@ export type ArtifactType =
   | 'markdown'
   // Claude Code artifacts (see packages/default-setup/src/actions/claude-code/ROADMAP.md)
   | 'claude-session'
+  | 'codex-session'
   | 'diff'
   | 'plan'
   | 'note';

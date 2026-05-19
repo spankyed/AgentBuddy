@@ -3061,7 +3061,7 @@ interface Tab {
     pinned?: boolean;
     groupId?: string;
 }
-type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'diff' | 'plan' | 'note';
+type ArtifactType = 'text' | 'code' | 'review' | 'image' | 'slack' | 'todo' | 'project' | 'json' | 'graph' | 'table' | 'markdown' | 'claude-session' | 'codex-session' | 'diff' | 'plan' | 'note';
 interface ArtifactItem {
     id: string;
     type: ArtifactType;

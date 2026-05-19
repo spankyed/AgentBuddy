@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList, BookText, StickyNote } from 'lucide-vue-next';
+import { FileText, Code, CheckSquare, Image, MessageSquare, ListTodo, Layers, GitBranch, Wrench, Network, Table, ClipboardList, BookText, StickyNote, Bot } from 'lucide-vue-next';
 import type { ArtifactItem, ArtifactType } from '@app/api';
 
 defineProps<{
@@ -42,6 +42,7 @@ function getIcon(type: ArtifactType) {
     graph: Network,
     table: Table,
     'claude-session': Wrench,
+    'codex-session': Bot,
     diff: GitBranch,
     plan: ClipboardList,
     markdown: BookText,
