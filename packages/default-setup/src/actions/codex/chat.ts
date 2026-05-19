@@ -109,12 +109,25 @@ export async function action(params: Record<string, any>, services: Services, _z
 
     if (sessionCwd && !prior?.cwd) persistCodexState(services, threadId, { cwd: sessionCwd });
     if (codexThreadId) {
-      const result = await codex.resumeThread(codexThreadId, {
-        ...(effectiveModel && { model: effectiveModel }),
-        approvalsReviewer: approvalMode,
-        sandbox,
-      });
-      activeThreadId = result.threadId;
+      try {
+        const result = await codex.resumeThread(codexThreadId, {
+          ...(effectiveModel && { model: effectiveModel }),
+          approvalsReviewer: approvalMode,
+          sandbox,
+        });
+        activeThreadId = result.threadId;
+      } catch (resumeErr: any) {
+        // Session expired/deleted/corrupted — fall back to a fresh thread
+        log.warn('[codex] resume failed, starting fresh thread', { codexThreadId, error: resumeErr?.message });
+        const result = await codex.startThread({
+          cwd: sessionCwd || prior?.cwd,
+          model: effectiveModel,
+          sandbox,
+          approvalsReviewer: approvalMode,
+        });
+        activeThreadId = result.threadId;
+        persistCodexState(services, threadId, { threadId: activeThreadId, cwd: result.cwd || sessionCwd, approvalMode, sandbox });
+      }
     } else {
       const result = await codex.startThread({
         cwd: sessionCwd,

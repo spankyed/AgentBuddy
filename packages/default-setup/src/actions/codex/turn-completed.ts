@@ -32,11 +32,7 @@ export async function action(params: Record<string, any>, services: Services) {
 
   updateCodexState(services, threadId as EntityId, (prev) => ({
     turns: (prev.turns ?? 0) + 1,
-    totalTokens: usage ? {
-      input: (prev.totalTokens?.input ?? 0) + usage.input,
-      output: (prev.totalTokens?.output ?? 0) + usage.output,
-      reasoning: (prev.totalTokens?.reasoning ?? 0) + (usage.reasoning ?? 0),
-    } : prev.totalTokens,
+    totalTokens: usage ?? prev.totalTokens,
     toolCallCount: (prev.toolCallCount ?? 0) + (toolCallCount ?? 0),
     recentTools: Array.isArray(recentTools) && recentTools.length > 0
       ? [...(prev.recentTools ?? []), ...recentTools.map(tool => ({
