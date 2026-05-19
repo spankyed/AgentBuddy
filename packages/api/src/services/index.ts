@@ -17,6 +17,8 @@ import { cliService } from './cli';
 import { filesystemService } from './filesystem';
 import * as threads from './threads';
 import { codexService } from './codex';
+import { modelClientService } from './model-client';
+import { openaiAuthService } from './openai-auth';
 
 const services = {
   logger: loggerService,
@@ -38,6 +40,8 @@ const services = {
   filesystem: filesystemService,
   threads,
   codex: codexService,
+  modelClient: modelClientService,
+  openaiAuth: openaiAuthService,
 }
 
 export default services;

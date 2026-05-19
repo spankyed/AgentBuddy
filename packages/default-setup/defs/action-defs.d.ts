@@ -1,8 +1,557 @@
+import * as ai from 'ai';
+import { ToolSet, LanguageModelUsage, CoreMessage, FinishReason } from 'ai';
 import { z } from 'zod';
 export { z } from 'zod';
-import * as ai from 'ai';
-import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
+
+/**
+ * Type definitions for the OpenAI ChatGPT OAuth auth service.
+ *
+ * Mirrors the auth flow used by Codex CLI — browser OAuth with PKCE
+ * to auth.openai.com, storing tokens in ~/.codex/auth.json.
+ */
+type AuthMode = 'chatgpt' | 'api-key';
+interface ChatGPTTokens {
+    /** JWT with claims (plan type, account ID, email, etc.) */
+    idToken: string;
+    /** Bearer token for API requests. */
+    accessToken: string;
+    /** For token refresh when access_token expires. */
+    refreshToken: string;
+    /** ChatGPT account/workspace ID (from JWT claims). Used as ChatGPT-Account-ID header. */
+    accountId: string;
+}
+interface AuthState {
+    mode: AuthMode;
+    /** Present when mode === 'chatgpt'. */
+    tokens?: ChatGPTTokens;
+    /** Present when mode === 'api-key'. */
+    apiKey?: string;
+    /** ISO timestamp of last token refresh. */
+    lastRefresh?: string;
+}
+
+/**
+ * Type definitions for the model-client service.
+ *
+ * Maps OpenAI Responses API concepts to a typed service interface,
+ * built on top of the Vercel AI SDK.
+ */
+
+/** Model + provider configuration for API calls. Only OpenAI Responses API is supported. */
+interface ModelClientConfig {
+    /** Provider — must be 'openai' or 'openai.responses' (Responses API only). */
+    provider: 'openai' | 'openai.responses';
+    /** Model ID (e.g. 'gpt-4o', 'o3'). */
+    model: string;
+    /** Explicit API key (overrides settings/env). */
+    apiKey?: string;
+    /** Custom base URL for the API. */
+    baseURL?: string;
+}
+/** Configuration for a conversation (persists across turns). */
+interface ConversationConfig extends ModelClientConfig {
+    /** System instructions for the model. */
+    instructions?: string;
+    /** Reasoning configuration for reasoning models. */
+    reasoning?: ReasoningConfig;
+    /** Tools available to the model across all turns. */
+    tools?: ToolSet;
+    /** Whether to store the conversation for analytics. */
+    store?: boolean;
+    /** Arbitrary metadata attached to requests. */
+    metadata?: Record<string, string>;
+    /** Maximum agentic tool-use steps per turn. */
+    maxSteps?: number;
+}
+/** Reasoning configuration for reasoning models (o3, etc). */
+interface ReasoningConfig {
+    effort: 'low' | 'medium' | 'high';
+    summary?: 'auto' | 'concise' | 'detailed';
+}
+/** Parameters for a single turn. */
+interface TurnParams {
+    /** User input — string prompt or structured messages. */
+    input: string | CoreMessage[];
+    /** Per-turn tool overrides (merged with conversation tools). */
+    tools?: ToolSet;
+    /** Per-turn instruction overrides. */
+    instructions?: string;
+    /** Per-turn reasoning overrides. */
+    reasoning?: ReasoningConfig;
+    /** Max agentic steps for this turn (overrides conversation config). */
+    maxSteps?: number;
+    /** AbortSignal for cancellation. */
+    signal?: AbortSignal;
+}
+/** Result of a completed turn. */
+interface TurnResult {
+    /** The response ID from the Responses API. */
+    responseId: string | undefined;
+    /** Final generated text. */
+    text: string;
+    /** Reasoning text (if reasoning model). */
+    reasoning: string | undefined;
+    /** Tool calls made during the turn. */
+    toolCalls: unknown[];
+    /** Tool results returned during the turn. */
+    toolResults: unknown[];
+    /** Token usage for this turn. */
+    usage: LanguageModelUsage;
+    /** Number of agentic steps taken. */
+    steps: number;
+    /** Why the turn finished. */
+    finishReason: FinishReason;
+}
+type StreamEvent = {
+    type: 'text-delta';
+    textDelta: string;
+} | {
+    type: 'reasoning';
+    textDelta: string;
+} | {
+    type: 'tool-call-start';
+    toolCallId: string;
+    toolName: string;
+} | {
+    type: 'tool-call-delta';
+    toolCallId: string;
+    toolName: string;
+    argsTextDelta: string;
+} | {
+    type: 'tool-call';
+    toolCallId: string;
+    toolName: string;
+    args: unknown;
+} | {
+    type: 'tool-result';
+    toolCallId: string;
+    toolName: string;
+    result: unknown;
+} | {
+    type: 'step-complete';
+    usage: LanguageModelUsage;
+    finishReason: FinishReason;
+    isContinued: boolean;
+} | {
+    type: 'turn-complete';
+    usage: LanguageModelUsage;
+    finishReason: FinishReason;
+    responseId: string | undefined;
+} | {
+    type: 'error';
+    error: unknown;
+};
+interface ConversationState {
+    /** Previous response ID for threading. */
+    previousResponseId: string | null;
+    /** Number of turns completed. */
+    turnCount: number;
+    /** Cumulative token usage across all turns. */
+    cumulativeUsage: LanguageModelUsage;
+}
+interface CompactParams {
+    /** The response ID to compact up to. */
+    previousResponseId: string;
+    /** Model to use for compaction (defaults to conversation model). */
+    model?: string;
+}
+interface CompactResult {
+    /** New response ID after compaction. */
+    newResponseId: string;
+    /** Summary text (if returned). */
+    summary?: string;
+}
+/**
+ * Approval callback for tools that modify state.
+ * Returns 'approved' to proceed or 'denied' to skip execution.
+ */
+type ApproveFn = (description: string, detail?: string) => Promise<'approved' | 'denied'>;
+/** Callback to request freeform or multiple-choice input from the user mid-turn. */
+type RequestInputFn = (questions: UserInputQuestion[]) => Promise<Record<string, string>>;
+interface UserInputQuestion {
+    id: string;
+    header: string;
+    question: string;
+    options?: Array<{
+        label: string;
+        description: string;
+    }>;
+}
+interface PlanStep {
+    step: string;
+    status: 'pending' | 'in_progress' | 'completed';
+}
+interface GoalState {
+    objective: string;
+    status: 'active' | 'paused' | 'complete';
+    tokenBudget?: number;
+    tokensUsed?: number;
+}
+/** Common options for tool factory functions. */
+interface ToolOptions {
+    /** Working directory — all paths resolved relative to this. */
+    cwd: string;
+    /** Optional approval callback for user confirmation before execution. */
+    approve?: ApproveFn;
+    /** Called when the model updates its plan. */
+    onPlanUpdate?: (plan: PlanStep[], explanation?: string) => void;
+    /** Called when the model creates or updates a goal. */
+    onGoalUpdate?: (goal: GoalState) => void;
+    /** Returns the current goal state (for get_goal). */
+    getGoal?: () => GoalState | null;
+    /** Callback to request user input mid-turn. */
+    requestInput?: RequestInputFn;
+}
+
+/**
+ * Conversation manager — tracks previous_response_id chains for the
+ * OpenAI Responses API's built-in conversation threading.
+ *
+ * Each Conversation instance is stateful: it tracks the previousResponseId
+ * and cumulative usage across turns. State is purely in-memory.
+ */
+
+declare class Conversation {
+    private _config;
+    private _previousResponseId;
+    private _turnCount;
+    private _cumulativeUsage;
+    constructor(config: ConversationConfig);
+    get state(): ConversationState;
+    get previousResponseId(): string | null;
+    /** Execute a turn with streaming events. */
+    streamTurn(params: TurnParams): AsyncGenerator<StreamEvent>;
+    /** Execute a turn and return the complete result (non-streaming). */
+    generateTurn(params: TurnParams): Promise<TurnResult>;
+    /** Compact the conversation history via the Responses API. */
+    compact(): Promise<CompactResult>;
+    /** Reset conversation state (clear previousResponseId chain). */
+    reset(): void;
+}
+
+/**
+ * Define a tool for the model to call.
+ *
+ * Thin wrapper around the AI SDK's `tool()` for ergonomic definitions.
+ */
+declare function defineTool<T extends z.ZodType>(opts: {
+    description: string;
+    parameters: T;
+    execute: (args: z.infer<T>) => Promise<string>;
+}): ai.Tool<T, string> & {
+    execute: (args: T extends ai.Schema<any> ? T["_type"] : T extends z.ZodTypeAny ? z.TypeOf<T> : never, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+/**
+ * Pre-configured OpenAI web search tool.
+ *
+ * Uses the Responses API's built-in `web_search_preview` tool.
+ */
+declare function webSearchTool(opts?: {
+    searchContextSize?: 'low' | 'medium' | 'high';
+    userLocation?: {
+        type: 'approximate';
+        city?: string;
+        state?: string;
+        country?: string;
+    };
+}): {
+    type: "provider-defined";
+    id: "openai.web_search_preview";
+    args: {};
+    parameters: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
+};
+
+declare function shellTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
+    command: z.ZodString;
+    workdir: z.ZodOptional<z.ZodString>;
+    timeout_ms: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    command: string;
+    workdir?: string | undefined;
+    timeout_ms?: number | undefined;
+}, {
+    command: string;
+    workdir?: string | undefined;
+    timeout_ms?: number | undefined;
+}>, string> & {
+    execute: (args: {
+        command: string;
+        workdir?: string | undefined;
+        timeout_ms?: number | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function readFileTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+    offset: z.ZodOptional<z.ZodNumber>;
+    limit: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+    offset?: number | undefined;
+    limit?: number | undefined;
+}, {
+    path: string;
+    offset?: number | undefined;
+    limit?: number | undefined;
+}>, string> & {
+    execute: (args: {
+        path: string;
+        offset?: number | undefined;
+        limit?: number | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function writeFileTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+    content: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    content: string;
+    path: string;
+}, {
+    content: string;
+    path: string;
+}>, string> & {
+    execute: (args: {
+        content: string;
+        path: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function grepTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    pattern: z.ZodString;
+    path: z.ZodOptional<z.ZodString>;
+    include: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    pattern: string;
+    path?: string | undefined;
+    include?: string | undefined;
+}, {
+    pattern: string;
+    path?: string | undefined;
+    include?: string | undefined;
+}>, string> & {
+    execute: (args: {
+        pattern: string;
+        path?: string | undefined;
+        include?: string | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function listDirTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+}, {
+    path: string;
+}>, string> & {
+    execute: (args: {
+        path: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function patchTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+    patch: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+    patch: string;
+}, {
+    path: string;
+    patch: string;
+}>, string> & {
+    execute: (args: {
+        path: string;
+        patch: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function planTool(opts: Pick<ToolOptions, 'onPlanUpdate'>): ai.Tool<z.ZodObject<{
+    plan: z.ZodArray<z.ZodObject<{
+        step: z.ZodString;
+        status: z.ZodEnum<["pending", "in_progress", "completed"]>;
+    }, "strip", z.ZodTypeAny, {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }, {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }>, "many">;
+    explanation: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    plan: {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }[];
+    explanation?: string | undefined;
+}, {
+    plan: {
+        status: "completed" | "pending" | "in_progress";
+        step: string;
+    }[];
+    explanation?: string | undefined;
+}>, string> & {
+    execute: (args: {
+        plan: {
+            status: "completed" | "pending" | "in_progress";
+            step: string;
+        }[];
+        explanation?: string | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): ai.Tool<z.ZodObject<{
+    action: z.ZodEnum<["create", "get", "update"]>;
+    objective: z.ZodOptional<z.ZodString>;
+    token_budget: z.ZodOptional<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
+}, "strip", z.ZodTypeAny, {
+    action: "create" | "get" | "update";
+    status?: "active" | "paused" | "complete" | undefined;
+    objective?: string | undefined;
+    token_budget?: number | undefined;
+}, {
+    action: "create" | "get" | "update";
+    status?: "active" | "paused" | "complete" | undefined;
+    objective?: string | undefined;
+    token_budget?: number | undefined;
+}>, string> & {
+    execute: (args: {
+        action: "create" | "get" | "update";
+        status?: "active" | "paused" | "complete" | undefined;
+        objective?: string | undefined;
+        token_budget?: number | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function userInputTool(opts: Pick<ToolOptions, 'requestInput'>): ai.Tool<z.ZodObject<{
+    questions: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        header: z.ZodString;
+        question: z.ZodString;
+        options: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            label: z.ZodString;
+            description: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            label: string;
+            description: string;
+        }, {
+            label: string;
+            description: string;
+        }>, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }, {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    questions: {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }[];
+}, {
+    questions: {
+        id: string;
+        header: string;
+        question: string;
+        options?: {
+            label: string;
+            description: string;
+        }[] | undefined;
+    }[];
+}>, string> & {
+    execute: (args: {
+        questions: {
+            id: string;
+            header: string;
+            question: string;
+            options?: {
+                label: string;
+                description: string;
+            }[] | undefined;
+        }[];
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function viewImageTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+}, {
+    path: string;
+}>, string> & {
+    execute: (args: {
+        path: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+
+/**
+ * Approval gate for tool execution.
+ *
+ * Provides a factory that creates an `ApproveFn` wired to the chat UI's
+ * approval block system. When a tool needs approval, it sends a block
+ * message to the chat thread and awaits the user's decision.
+ *
+ * The service layer stays UI-agnostic — the `ApproveFn` is injected by
+ * the action/flow layer that owns the chat thread.
+ */
+
+interface ChatService {
+    sendBlockMessage(opts: {
+        threadId: string;
+        text: string;
+        blocks: Array<{
+            type: string;
+            props: Record<string, unknown>;
+        }>;
+        forkable?: boolean;
+    }): {
+        messageId: string;
+        response: Promise<unknown>;
+    };
+}
+interface ChatApproverOptions {
+    /** Chat service for sending approval blocks. */
+    chat: ChatService;
+    /** Thread ID to send approval blocks to. */
+    threadId: string;
+    /** Called when the tool is waiting for approval (e.g. to pause stream indicators). */
+    onPause?: () => void;
+    /** Called when approval is received (e.g. to resume stream indicators). */
+    onResume?: () => void;
+}
+/**
+ * Create an `ApproveFn` that sends approval blocks to the chat UI.
+ *
+ * Usage:
+ * ```ts
+ * const approve = createChatApprover({ chat: services.chat, threadId })
+ * const tools = codingAgentTools({ cwd: '/project', approve })
+ * ```
+ */
+declare function createChatApprover(opts: ChatApproverOptions): ApproveFn;
+
+/**
+ * Tool presets — pre-assembled tool sets for common agent patterns.
+ */
+
+/**
+ * Standard tool set for coding agents.
+ *
+ * Includes file operations, shell execution, search, planning, goals,
+ * image viewing, and web search. Mutating tools (shell, write, patch)
+ * use the provided `approve` callback. User input tool is only included
+ * if `requestInput` is provided.
+ */
+declare function codingAgentTools(opts: ToolOptions): ToolSet;
 
 interface CodexSessionInfo {
     id: string;
@@ -83,7 +632,7 @@ interface TurnStartParams {
     collaborationMode?: {
         mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming';
         settings: {
-            model: string;
+            model?: string;
             developer_instructions?: string | null;
         };
     };
@@ -95,6 +644,8 @@ interface ConsumerHandlers {
     onNotification(method: string, params: any): void;
     /** Called for server-initiated approval requests. Response sent separately via respondToApproval. */
     onApproval(method: string, requestId: number, params: any): void;
+    /** Called when the app-server process exits unexpectedly. Consumer should clean up thread state. */
+    onCrash?(error: string): void;
 }
 interface CodexTurnHandle {
     /** Codex app-server thread ID */
@@ -3255,6 +3806,9 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
     restartBrain?: boolean;
 } | {
+    type: "REPLACE_SETTINGS";
+    data: SettingsData;
+} | {
     type: "RESET_APP";
 }) | SecretsOutputEvents, OutgoingSettingsEvents, {}>, SystemDefinition<"brain", ({
     type: "OPEN_TNODE";
@@ -4684,7 +5238,17 @@ declare class PromptService {
     usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
 }
 
+/**
+ * Unified auth credential resolution for LLM providers.
+ *
+ * Supports two auth modes:
+ * 1. ChatGPT OAuth — access token + ChatGPT-Account-ID header (Pro subscribers)
+ * 2. API key — traditional API key auth
+ *
+ * Priority: ChatGPT OAuth tokens > explicit API key > settings/secrets > env vars.
+ */
 type ProviderName = 'anthropic' | 'google' | 'openai' | 'groq' | 'mistral' | 'cohere';
+
 type Provider = ProviderName | 'openai.responses' | string;
 type ModelConfig = {
     provider: Provider;
@@ -5931,6 +6495,7 @@ declare const services: {
         };
         readonly settingsCommands: {
             updateSettings(type: string, label: string | null, path: string[], value: any): void;
+            replaceSettings(data: SettingsData): void;
             resetSettings: () => void;
         };
         readonly secretsQueries: {
@@ -6140,6 +6705,37 @@ declare const services: {
         clearHandle: typeof clearHandle;
         listAllSessions: typeof listAll;
         viewSessionByFile: typeof viewByFile;
+    };
+    modelClient: {
+        createConversation(config: ConversationConfig): Conversation;
+        streamTurn: (params: TurnParams & ModelClientConfig) => AsyncGenerator<StreamEvent>;
+        generateTurn: (params: TurnParams & ModelClientConfig) => Promise<TurnResult>;
+        defineTool: typeof defineTool;
+        webSearchTool: typeof webSearchTool;
+        compact(params: CompactParams, config: ModelClientConfig): Promise<CompactResult>;
+        shellTool: typeof shellTool;
+        readFileTool: typeof readFileTool;
+        writeFileTool: typeof writeFileTool;
+        grepTool: typeof grepTool;
+        listDirTool: typeof listDirTool;
+        patchTool: typeof patchTool;
+        planTool: typeof planTool;
+        goalTool: typeof goalTool;
+        userInputTool: typeof userInputTool;
+        viewImageTool: typeof viewImageTool;
+        codingAgentTools: typeof codingAgentTools;
+        createChatApprover: typeof createChatApprover;
+    };
+    openaiAuth: {
+        login(): Promise<AuthState>;
+        logout(): Promise<void>;
+        getCredentials(): Promise<{
+            accessToken: string;
+            accountId: string;
+        } | null>;
+        status(): Promise<AuthState | null>;
+        isAuthenticated(): Promise<boolean>;
+        clearAuth(): Promise<void>;
     };
 };
 
