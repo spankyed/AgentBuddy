@@ -22,6 +22,9 @@ import { Conversation } from './conversation'
 import { adaptStream } from './streaming'
 import { defineTool, webSearchTool } from './tools'
 import { compact } from './compact'
+import { shellTool, readFileTool, writeFileTool, grepTool, listDirTool, patchTool } from './agent-tools'
+import { createChatApprover } from './approval'
+import { codingAgentTools } from './tool-presets'
 import type {
   ConversationConfig,
   ModelClientConfig,
@@ -38,6 +41,9 @@ export { Conversation } from './conversation'
 export { adaptStream } from './streaming'
 export { defineTool, webSearchTool } from './tools'
 export { compact } from './compact'
+export { shellTool, readFileTool, writeFileTool, grepTool, listDirTool, patchTool } from './agent-tools'
+export { createChatApprover } from './approval'
+export { codingAgentTools } from './tool-presets'
 export type {
   ModelClientConfig,
   ConversationConfig,
@@ -48,6 +54,8 @@ export type {
   StreamEvent,
   CompactParams,
   CompactResult,
+  ApproveFn,
+  ToolOptions,
 } from './types'
 
 // ─── Stateless helpers ───────────────────────────────────────────────────────
@@ -157,4 +165,23 @@ export const modelClientService = {
   compact(params: CompactParams, config: ModelClientConfig): Promise<CompactResult> {
     return compact(params, config)
   },
+
+  // ─── Agent tools ─────────────────────────────────────────────────────────
+
+  /** Shell command execution tool. */
+  shellTool,
+  /** File read tool. */
+  readFileTool,
+  /** File write tool (supports approval). */
+  writeFileTool,
+  /** Grep/search tool. */
+  grepTool,
+  /** Directory listing tool. */
+  listDirTool,
+  /** Unified diff patch tool (supports approval). */
+  patchTool,
+  /** Pre-assembled tool set for coding agents. */
+  codingAgentTools,
+  /** Create an approval callback wired to the chat UI. */
+  createChatApprover,
 }

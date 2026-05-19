@@ -164,6 +164,18 @@ interface CompactResult {
     /** Summary text (if returned). */
     summary?: string;
 }
+/**
+ * Approval callback for tools that modify state.
+ * Returns 'approved' to proceed or 'denied' to skip execution.
+ */
+type ApproveFn = (description: string, detail?: string) => Promise<'approved' | 'denied'>;
+/** Common options for tool factory functions. */
+interface ToolOptions {
+    /** Working directory — all paths resolved relative to this. */
+    cwd: string;
+    /** Optional approval callback for user confirmation before execution. */
+    approve?: ApproveFn;
+}
 
 /**
  * Conversation manager — tracks previous_response_id chains for the
@@ -222,6 +234,166 @@ declare function webSearchTool(opts?: {
     args: {};
     parameters: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
 };
+
+declare function shellTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
+    command: z.ZodString;
+    workdir: z.ZodOptional<z.ZodString>;
+    timeout_ms: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    command: string;
+    workdir?: string | undefined;
+    timeout_ms?: number | undefined;
+}, {
+    command: string;
+    workdir?: string | undefined;
+    timeout_ms?: number | undefined;
+}>, string> & {
+    execute: (args: {
+        command: string;
+        workdir?: string | undefined;
+        timeout_ms?: number | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function readFileTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+    offset: z.ZodOptional<z.ZodNumber>;
+    limit: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+    offset?: number | undefined;
+    limit?: number | undefined;
+}, {
+    path: string;
+    offset?: number | undefined;
+    limit?: number | undefined;
+}>, string> & {
+    execute: (args: {
+        path: string;
+        offset?: number | undefined;
+        limit?: number | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function writeFileTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+    content: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    content: string;
+    path: string;
+}, {
+    content: string;
+    path: string;
+}>, string> & {
+    execute: (args: {
+        content: string;
+        path: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function grepTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    pattern: z.ZodString;
+    path: z.ZodOptional<z.ZodString>;
+    include: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    pattern: string;
+    path?: string | undefined;
+    include?: string | undefined;
+}, {
+    pattern: string;
+    path?: string | undefined;
+    include?: string | undefined;
+}>, string> & {
+    execute: (args: {
+        pattern: string;
+        path?: string | undefined;
+        include?: string | undefined;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function listDirTool(opts: Pick<ToolOptions, 'cwd'>): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+}, {
+    path: string;
+}>, string> & {
+    execute: (args: {
+        path: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+declare function patchTool(opts: ToolOptions): ai.Tool<z.ZodObject<{
+    path: z.ZodString;
+    patch: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    path: string;
+    patch: string;
+}, {
+    path: string;
+    patch: string;
+}>, string> & {
+    execute: (args: {
+        path: string;
+        patch: string;
+    }, options: ai.ToolExecutionOptions) => PromiseLike<string>;
+};
+
+/**
+ * Approval gate for tool execution.
+ *
+ * Provides a factory that creates an `ApproveFn` wired to the chat UI's
+ * approval block system. When a tool needs approval, it sends a block
+ * message to the chat thread and awaits the user's decision.
+ *
+ * The service layer stays UI-agnostic — the `ApproveFn` is injected by
+ * the action/flow layer that owns the chat thread.
+ */
+
+interface ChatService {
+    sendBlockMessage(opts: {
+        threadId: string;
+        text: string;
+        blocks: Array<{
+            type: string;
+            props: Record<string, unknown>;
+        }>;
+        forkable?: boolean;
+    }): {
+        messageId: string;
+        response: Promise<unknown>;
+    };
+}
+interface ChatApproverOptions {
+    /** Chat service for sending approval blocks. */
+    chat: ChatService;
+    /** Thread ID to send approval blocks to. */
+    threadId: string;
+    /** Called when the tool is waiting for approval (e.g. to pause stream indicators). */
+    onPause?: () => void;
+    /** Called when approval is received (e.g. to resume stream indicators). */
+    onResume?: () => void;
+}
+/**
+ * Create an `ApproveFn` that sends approval blocks to the chat UI.
+ *
+ * Usage:
+ * ```ts
+ * const approve = createChatApprover({ chat: services.chat, threadId })
+ * const tools = codingAgentTools({ cwd: '/project', approve })
+ * ```
+ */
+declare function createChatApprover(opts: ChatApproverOptions): ApproveFn;
+
+/**
+ * Tool presets — pre-assembled tool sets for common agent patterns.
+ */
+
+/**
+ * Standard tool set for coding agents.
+ *
+ * Includes file operations, shell execution, search, and web search.
+ * Mutating tools (shell, write, patch) use the provided `approve` callback.
+ */
+declare function codingAgentTools(opts: {
+    cwd: string;
+    approve?: ApproveFn;
+}): ToolSet;
 
 interface CodexSessionInfo {
     id: string;
@@ -6365,6 +6537,14 @@ declare const services: {
         defineTool: typeof defineTool;
         webSearchTool: typeof webSearchTool;
         compact(params: CompactParams, config: ModelClientConfig): Promise<CompactResult>;
+        shellTool: typeof shellTool;
+        readFileTool: typeof readFileTool;
+        writeFileTool: typeof writeFileTool;
+        grepTool: typeof grepTool;
+        listDirTool: typeof listDirTool;
+        patchTool: typeof patchTool;
+        codingAgentTools: typeof codingAgentTools;
+        createChatApprover: typeof createChatApprover;
     };
     openaiAuth: {
         login(): Promise<AuthState>;

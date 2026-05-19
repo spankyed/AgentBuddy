@@ -120,3 +120,19 @@ export interface CompactResult {
   /** Summary text (if returned). */
   summary?: string
 }
+
+// ─── Tool approval ───────────────────────────────────────────────────────────
+
+/**
+ * Approval callback for tools that modify state.
+ * Returns 'approved' to proceed or 'denied' to skip execution.
+ */
+export type ApproveFn = (description: string, detail?: string) => Promise<'approved' | 'denied'>
+
+/** Common options for tool factory functions. */
+export interface ToolOptions {
+  /** Working directory — all paths resolved relative to this. */
+  cwd: string
+  /** Optional approval callback for user confirmation before execution. */
+  approve?: ApproveFn
+}
