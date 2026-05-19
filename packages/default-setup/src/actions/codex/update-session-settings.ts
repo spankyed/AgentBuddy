@@ -1,9 +1,10 @@
 /**
- * CDX: Update Session Settings - persists Codex approval/sandbox choices.
+ * CDX: Update Session Settings — persists Codex approval/sandbox choices
+ * and auto-approves pending tool requests when switching to auto_review.
  */
 
-import type { ActionMeta, Services } from '../../types';
-import { persistCodexState } from './_helpers/thread-context';
+import type { ActionMeta, Services, EntityId } from '../../types';
+import { getCodexState, persistCodexState, updateChatState } from './_helpers/thread-context';
 
 export const meta: ActionMeta = {
   label: 'CDX: Update Session Settings',
@@ -30,7 +31,7 @@ export async function action(
   };
   if (!threadId) return { success: false, reason: 'missing threadId' };
 
-  const patch: Record<string, string> = {};
+  const patch: Record<string, any> = {};
   if (approvalMode) {
     if (!APPROVAL_MODES.has(approvalMode)) return { success: false, reason: 'invalid approvalMode' };
     patch.approvalMode = approvalMode;
@@ -41,6 +42,32 @@ export async function action(
   }
   if (Object.keys(patch).length === 0) return { success: false, reason: 'nothing to update' };
 
+  // Auto-approve pending tool requests when switching to auto_review
+  if (approvalMode === 'auto_review') {
+    const prior = getCodexState(services, threadId);
+    const pending = prior?.pendingApproval;
+
+    // Only auto-approve tool approvals (requestId > 0), not plan approvals (sentinel -1)
+    if (pending?.requestId && pending.requestId !== -1) {
+      try {
+        (services.codex as any).respondToApproval(pending.requestId, 'acceptForSession');
+      } catch { /* app-server may be gone */ }
+
+      services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
+        responseTimestamp: Date.now(),
+        blockResponse: { decision: 'acceptForSession' },
+      } as any);
+
+      patch.pendingApproval = undefined;
+      patch.isRunning = true;
+    }
+  }
+
   persistCodexState(services, threadId, patch as any);
+
+  if (patch.isRunning) {
+    updateChatState(services, threadId as EntityId, 'working');
+  }
+
   return { success: true };
 }
