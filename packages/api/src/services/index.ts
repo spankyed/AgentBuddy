@@ -16,6 +16,7 @@ import * as media from './media';
 import { cliService } from './cli';
 import { filesystemService } from './filesystem';
 import * as threads from './threads';
+import { codexService } from './codex';
 import { modelClientService } from './model-client';
 import { openaiAuthService } from './openai-auth';
 
@@ -38,6 +39,7 @@ const services = {
   cli: cliService,
   filesystem: filesystemService,
   threads,
+  codex: codexService,
   modelClient: modelClientService,
   openaiAuth: openaiAuthService,
 }

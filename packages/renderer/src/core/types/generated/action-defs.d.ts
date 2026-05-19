@@ -223,6 +223,115 @@ declare function webSearchTool(opts?: {
     parameters: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
 };
 
+interface CodexSessionInfo {
+    id: string;
+    file: string;
+    cwd?: string;
+    title?: string;
+    modifiedAt: Date;
+    size: number;
+    provider: 'codex';
+}
+/** List all Codex sessions across all date directories. */
+declare function listAll(opts?: {
+    limit?: number;
+}): Promise<CodexSessionInfo[]>;
+/** Parse a Codex JSONL file into an array of entries. */
+declare function viewByFile(filePath: string, opts?: {
+    limit?: number;
+    offset?: number;
+}): Promise<any[]>;
+
+/**
+ * Type definitions for the Codex app-server integration.
+ *
+ * The app-server uses JSON-RPC 2.0 (jsonrpc field omitted on wire)
+ * over JSONL on stdin/stdout. Three message types on the wire:
+ * 1. Responses to our requests (id, result/error, no method)
+ * 2. Server-initiated requests (id AND method) — approval requests
+ * 3. Notifications (method, no id) — streaming events
+ */
+type ServerStatus = 'stopped' | 'starting' | 'ready' | 'error';
+type ApprovalDecision = 'accept' | 'acceptForSession' | 'decline' | 'cancel';
+interface ThreadStartParams {
+    cwd?: string;
+    model?: string;
+    sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
+    approvalsReviewer?: 'user' | 'auto_review';
+}
+interface ThreadReadParams {
+    includeTurns?: boolean;
+}
+interface ThreadForkParams extends ThreadStartParams {
+    threadId: string;
+}
+interface ThreadRollbackParams {
+    threadId: string;
+    numTurns: number;
+}
+interface ThreadListParams {
+    cursor?: string | null;
+    limit?: number | null;
+    sortKey?: string | null;
+    sortDirection?: 'asc' | 'desc' | null;
+    modelProviders?: string[] | null;
+    sourceKinds?: string[] | null;
+    archived?: boolean | null;
+    cwd?: string | string[] | null;
+    useStateDbOnly?: boolean;
+    searchTerm?: string | null;
+}
+interface ConfigReadParams {
+    includeLayers: boolean;
+    cwd?: string | null;
+}
+interface ConfigValueWriteParams {
+    keyPath: string;
+    value: any;
+    mergeStrategy?: 'replace' | 'upsert';
+    filePath?: string | null;
+    expectedVersion?: string | null;
+}
+interface TurnStartParams {
+    threadId: string;
+    input: Array<{
+        type: 'text';
+        text: string;
+    }>;
+    cwd?: string;
+    collaborationMode?: {
+        mode: 'plan' | 'code' | 'execute' | 'default' | 'custom' | 'pair_programming';
+        settings: {
+            model?: string;
+            developer_instructions?: string | null;
+        };
+    };
+    approvalsReviewer?: 'user' | 'auto_review';
+    model?: string;
+}
+interface ConsumerHandlers {
+    /** Called for streaming notifications (item/started, item/completed, item/agentMessage/delta, turn/completed, etc.) */
+    onNotification(method: string, params: any): void;
+    /** Called for server-initiated approval requests. Response sent separately via respondToApproval. */
+    onApproval(method: string, requestId: number, params: any): void;
+    /** Called when the app-server process exits unexpectedly. Consumer should clean up thread state. */
+    onCrash?(error: string): void;
+}
+interface CodexTurnHandle {
+    /** Codex app-server thread ID */
+    codexThreadId: string;
+    /** Active turn ID */
+    turnId: string;
+    /** Interrupt the running turn */
+    abort(): Promise<void>;
+}
+
+/** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
+
+declare function storeHandle(key: string, handle: CodexTurnHandle): void;
+declare function getHandle(key: string): CodexTurnHandle | undefined;
+declare function clearHandle(key: string): void;
+
 interface FileEntry {
     name: string;
     isDirectory: boolean;
@@ -6185,6 +6294,70 @@ declare const services: {
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
     threads: typeof threads;
+    codex: {
+        start: () => Promise<void>;
+        stop: () => Promise<void>;
+        restart: () => Promise<void>;
+        readonly status: ServerStatus;
+        startThread: (params: ThreadStartParams) => Promise<{
+            threadId: string;
+            model: string;
+            cwd: string;
+        }>;
+        resumeThread: (threadId: string, params?: Partial<ThreadStartParams>) => Promise<{
+            threadId: string;
+        }>;
+        readThread: (threadId: string, params?: ThreadReadParams) => Promise<{
+            thread: any;
+        }>;
+        forkThread: (params: ThreadForkParams) => Promise<{
+            threadId: string;
+            model: string;
+            cwd: string;
+            thread: any;
+        }>;
+        rollbackThread: (params: ThreadRollbackParams) => Promise<{
+            thread: any;
+        }>;
+        compactThread: (threadId: string) => Promise<void>;
+        listThreads: (params?: ThreadListParams) => Promise<{
+            data: any[];
+            nextCursor: string | null;
+            backwardsCursor: string | null;
+        }>;
+        setThreadName: (threadId: string, name: string) => Promise<void>;
+        readConfig: (params?: ConfigReadParams) => Promise<any>;
+        writeConfigValue: (params: ConfigValueWriteParams) => Promise<any>;
+        listModels: (params?: {
+            cursor?: string | null;
+            limit?: number | null;
+            includeHidden?: boolean;
+        }) => Promise<any>;
+        readAccount: (params?: {
+            refreshToken: boolean;
+        }) => Promise<any>;
+        listSkills: (params?: {
+            cwds?: string[];
+            forceReload?: boolean;
+        }) => Promise<any>;
+        listMcpServers: (params?: {
+            cursor?: string | null;
+            limit?: number | null;
+            detail?: "full" | "toolsAndAuthOnly" | null;
+        }) => Promise<any>;
+        startTurn: (params: TurnStartParams) => Promise<{
+            turnId: string;
+        }>;
+        interruptTurn: (threadId: string, turnId: string) => Promise<void>;
+        respondToApproval: (requestId: number, decision: ApprovalDecision) => void;
+        registerConsumer: (codexThreadId: string, handlers: ConsumerHandlers) => void;
+        unregisterConsumer: (codexThreadId: string) => void;
+        storeHandle: typeof storeHandle;
+        getHandle: typeof getHandle;
+        clearHandle: typeof clearHandle;
+        listAllSessions: typeof listAll;
+        viewSessionByFile: typeof viewByFile;
+    };
     modelClient: {
         createConversation(config: ConversationConfig): Conversation;
         streamTurn: (params: TurnParams & ModelClientConfig) => AsyncGenerator<StreamEvent>;
