@@ -235,6 +235,17 @@ export function createStreamConsumer(
         break;
       }
 
+      case 'item/autoApprovalReview/completed': {
+        const review = params.review;
+        if (review?.status !== 'approved') hadErrors = true;
+        break;
+      }
+
+      case 'guardianWarning': {
+        log.info('[codex consumer] guardian warning', { message: params.message });
+        break;
+      }
+
       case 'turn/started': {
         const turnId = params.turn?.id;
         if (turnId) {
