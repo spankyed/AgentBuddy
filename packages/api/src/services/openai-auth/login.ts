@@ -13,7 +13,7 @@
  */
 
 import * as http from 'http'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { OAUTH_CONFIG, type AuthState, type ChatGPTTokens } from './types'
 import { generateVerifier, generateChallenge, generateState } from './pkce'
 import { decodeJwtPayload, saveAuth, clearAuth } from './storage'
@@ -21,14 +21,18 @@ import { createLogger } from '@/core/helpers/debug/logger'
 
 const logger = createLogger('openai-auth-login')
 
-/** Open a URL in the default browser. */
+/** Open a URL in the default browser using execFile (no shell injection). */
 function openBrowser(url: string): void {
-  const cmd = process.platform === 'darwin' ? 'open'
-    : process.platform === 'win32' ? 'start'
-    : 'xdg-open'
-  exec(`${cmd} "${url}"`, err => {
+  const onError = (err: Error | null) => {
     if (err) logger.warn('Failed to open browser', { error: err.message })
-  })
+  }
+  if (process.platform === 'darwin') {
+    execFile('open', [url], onError)
+  } else if (process.platform === 'win32') {
+    execFile('cmd', ['/c', 'start', '', url], onError)
+  } else {
+    execFile('xdg-open', [url], onError)
+  }
 }
 
 /** Build the full authorization URL. */
@@ -84,11 +88,36 @@ async function exchangeCode(code: string, verifier: string, port: number): Promi
 }
 
 /**
- * Start the local callback server and wait for the OAuth callback.
- * Returns the authorization code from the callback URL.
+ * Start an HTTP server on the given port. Resolves when listening, rejects on error.
  */
-function waitForCallback(port: number, expectedState: string): Promise<{ code: string; server: http.Server }> {
+function startServer(server: http.Server, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(new Error(`Port ${port} is in use — cannot start OAuth callback server`))
+      } else {
+        reject(err)
+      }
+    })
+    server.listen(port, '127.0.0.1', () => {
+      logger.debug(`OAuth callback server listening on localhost:${port}`)
+      resolve()
+    })
+  })
+}
+
+/**
+ * Start a callback server on the given port, open the browser, and wait for
+ * the OAuth callback. Returns the authorization code.
+ */
+async function startCallbackAndWait(
+  port: number,
+  expectedState: string,
+  verifier: string,
+): Promise<{ code: string; server: http.Server }> {
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>
+
     const server = http.createServer((req, res) => {
       const url = new URL(req.url || '/', `http://localhost:${port}`)
 
@@ -108,6 +137,7 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
         res.writeHead(200, { 'Content-Type': 'text/html' })
         res.end(`<html><body><h2>Login failed</h2><p>${safeDesc}</p><p>You can close this tab.</p></body></html>`)
+        clearTimeout(timer)
         server.close()
         reject(new Error(`OAuth error: ${desc}`))
         return
@@ -116,6 +146,7 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
       if (!code || state !== expectedState) {
         res.writeHead(400)
         res.end('Invalid callback — state mismatch or missing code.')
+        clearTimeout(timer)
         server.close()
         reject(new Error('Invalid OAuth callback: state mismatch or missing code'))
         return
@@ -128,24 +159,19 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
       resolve({ code, server })
     })
 
-    server.on('error', (err: NodeJS.ErrnoException) => {
-      clearTimeout(timer)
-      if (err.code === 'EADDRINUSE') {
-        reject(new Error(`Port ${port} is in use — cannot start OAuth callback server`))
-      } else {
-        reject(err)
-      }
-    })
+    // Start the server — if it fails (EADDRINUSE), reject immediately
+    startServer(server, port).then(() => {
+      // Server is listening — open the browser
+      const authUrl = buildAuthUrl(verifier, expectedState, port)
+      logger.info('Opening browser for OpenAI login...')
+      openBrowser(authUrl)
 
-    server.listen(port, '127.0.0.1', () => {
-      logger.debug(`OAuth callback server listening on localhost:${port}`)
-    })
-
-    // Timeout after 5 minutes
-    const timer = setTimeout(() => {
-      server.close()
-      reject(new Error('Login timed out — no callback received within 5 minutes'))
-    }, 5 * 60 * 1000)
+      // Timeout after 5 minutes
+      timer = setTimeout(() => {
+        server.close()
+        reject(new Error('Login timed out — no callback received within 5 minutes'))
+      }, 5 * 60 * 1000)
+    }).catch(reject)
   })
 }
 
@@ -158,17 +184,23 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
 export async function login(): Promise<AuthState> {
   const verifier = generateVerifier()
   const state = generateState()
-  const port = OAUTH_CONFIG.callbackPort
 
-  // Start callback server and open browser
-  const callbackPromise = waitForCallback(port, state)
-  const authUrl = buildAuthUrl(verifier, state, port)
+  // Try primary port, fall back to secondary if in use
+  let port: number = OAUTH_CONFIG.callbackPort
+  let callbackResult: { code: string; server: http.Server }
+  try {
+    callbackResult = await startCallbackAndWait(port, state, verifier)
+  } catch (err) {
+    if ((err as Error).message.includes('in use')) {
+      logger.info(`Port ${port} in use, trying fallback port ${OAUTH_CONFIG.fallbackPort}`)
+      port = OAUTH_CONFIG.fallbackPort
+      callbackResult = await startCallbackAndWait(port, state, verifier)
+    } else {
+      throw err
+    }
+  }
 
-  logger.info('Opening browser for OpenAI login...')
-  openBrowser(authUrl)
-
-  // Wait for the callback
-  const { code, server } = await callbackPromise
+  const { code, server } = callbackResult
 
   try {
     // Exchange code for tokens

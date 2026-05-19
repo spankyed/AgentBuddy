@@ -73,20 +73,21 @@ export function getApiKey(providerName: string, explicitApiKey?: string): string
   return getApiKeyFromStore(baseProvider)
 }
 
-/** Resolve API key from settings/secrets or env vars. */
+/** Resolve API key from settings/secrets store, then env vars. */
 function getApiKeyFromStore(baseProvider: ProviderName): string {
-  const isProd = true
-  if (isProd) {
+  // Try settings/secrets store first
+  try {
     const settings = repository.settingsQueries.getGeneralSettings()
     const secretId = settings.secrets?.[baseProvider] as EARS.EntityId | undefined
     if (secretId) {
       const secret = repository.secretsQueries.getSecret(secretId)
       if (secret?.encryptedValue) return secret.encryptedValue
     }
-  } else {
-    const envKey = process.env[`${baseProvider.toUpperCase()}_API_KEY`]
-    if (envKey) return envKey
-  }
+  } catch { /* settings not available — fall through to env */ }
+
+  // Fall back to environment variables
+  const envKey = process.env[`${baseProvider.toUpperCase()}_API_KEY`]
+  if (envKey) return envKey
 
   throw new Error(`API key not found for provider: ${baseProvider}`)
 }

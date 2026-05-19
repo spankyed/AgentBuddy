@@ -38,10 +38,10 @@ interface AuthState {
  * built on top of the Vercel AI SDK.
  */
 
-/** Model + provider configuration for API calls. */
+/** Model + provider configuration for API calls. Only OpenAI Responses API is supported. */
 interface ModelClientConfig {
-    /** Provider name (e.g. 'openai'). */
-    provider: string;
+    /** Provider — must be 'openai' or 'openai.responses' (Responses API only). */
+    provider: 'openai' | 'openai.responses';
     /** Model ID (e.g. 'gpt-4o', 'o3'). */
     model: string;
     /** Explicit API key (overrides settings/env). */
@@ -399,18 +399,18 @@ declare function goalTool(opts: Pick<ToolOptions, 'onGoalUpdate' | 'getGoal'>): 
     token_budget: z.ZodOptional<z.ZodNumber>;
     status: z.ZodOptional<z.ZodEnum<["active", "paused", "complete"]>>;
 }, "strip", z.ZodTypeAny, {
-    action: "create" | "update" | "get";
+    action: "create" | "get" | "update";
     status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }, {
-    action: "create" | "update" | "get";
+    action: "create" | "get" | "update";
     status?: "active" | "paused" | "complete" | undefined;
     objective?: string | undefined;
     token_budget?: number | undefined;
 }>, string> & {
     execute: (args: {
-        action: "create" | "update" | "get";
+        action: "create" | "get" | "update";
         status?: "active" | "paused" | "complete" | undefined;
         objective?: string | undefined;
         token_budget?: number | undefined;

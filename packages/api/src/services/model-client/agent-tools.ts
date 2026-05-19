@@ -21,8 +21,9 @@ const DEFAULT_TIMEOUT = 30_000 // 30 seconds
 
 /** Resolve and sandbox a path within cwd. Throws if it escapes. */
 function safePath(cwd: string, relativePath: string): string {
+  const resolvedCwd = path.resolve(cwd)
   const resolved = path.resolve(cwd, relativePath)
-  if (!resolved.startsWith(path.resolve(cwd))) {
+  if (resolved !== resolvedCwd && !resolved.startsWith(resolvedCwd + path.sep)) {
     throw new Error(`Path escapes working directory: ${relativePath}`)
   }
   return resolved
@@ -36,8 +37,12 @@ function truncate(output: string): string {
 
 /** Run a command and return stdout+stderr. */
 function exec(command: string, opts: { cwd: string; timeout: number; stdin?: string }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const isWin = process.platform === 'win32'
+  const shellCmd = isWin ? 'cmd.exe' : '/bin/sh'
+  const shellArgs = isWin ? ['/c', command] : ['-c', command]
+
   return new Promise((resolve) => {
-    const child = execFile('/bin/sh', ['-c', command], {
+    const child = execFile(shellCmd, shellArgs, {
       cwd: opts.cwd,
       timeout: opts.timeout,
       maxBuffer: MAX_OUTPUT * 2,

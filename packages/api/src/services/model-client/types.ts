@@ -9,10 +9,10 @@ import type { CoreMessage, FinishReason, LanguageModelUsage, ToolSet } from 'ai'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-/** Model + provider configuration for API calls. */
+/** Model + provider configuration for API calls. Only OpenAI Responses API is supported. */
 export interface ModelClientConfig {
-  /** Provider name (e.g. 'openai'). */
-  provider: string
+  /** Provider — must be 'openai' or 'openai.responses' (Responses API only). */
+  provider: 'openai' | 'openai.responses'
   /** Model ID (e.g. 'gpt-4o', 'o3'). */
   model: string
   /** Explicit API key (overrides settings/env). */

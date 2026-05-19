@@ -40,10 +40,10 @@ interface AuthState {
  * built on top of the Vercel AI SDK.
  */
 
-/** Model + provider configuration for API calls. */
+/** Model + provider configuration for API calls. Only OpenAI Responses API is supported. */
 interface ModelClientConfig {
-    /** Provider name (e.g. 'openai'). */
-    provider: string;
+    /** Provider — must be 'openai' or 'openai.responses' (Responses API only). */
+    provider: 'openai' | 'openai.responses';
     /** Model ID (e.g. 'gpt-4o', 'o3'). */
     model: string;
     /** Explicit API key (overrides settings/env). */

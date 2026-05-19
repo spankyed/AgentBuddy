@@ -13,9 +13,10 @@ const logger = createLogger('openai-auth-refresh')
 
 /** Check if an id_token JWT is expired (or will expire within skewMs). */
 export function isTokenExpired(idToken: string, skewMs = OAUTH_CONFIG.refreshSkewMs): boolean {
+  if (!idToken) return true // Empty token — force refresh
   try {
     const claims = decodeJwtPayload(idToken)
-    if (!claims.exp) return false // No expiry claim — treat as not expired
+    if (!claims.exp) return true // No expiry claim — force refresh to be safe
     const expiresAt = claims.exp * 1000 // Convert seconds to ms
     return Date.now() + skewMs >= expiresAt
   } catch {
@@ -44,6 +45,10 @@ export async function refreshTokens(currentRefreshToken: string): Promise<ChatGP
   const idToken = (data.id_token as string) ?? ''
   const accessToken = (data.access_token as string) ?? ''
   const refreshToken = (data.refresh_token as string) || currentRefreshToken
+
+  if (!accessToken) {
+    throw new Error('Token refresh returned empty access_token')
+  }
 
   // Extract account ID from id_token claims
   const claims = decodeJwtPayload(idToken)
