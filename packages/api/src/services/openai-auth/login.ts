@@ -16,7 +16,7 @@ import * as http from 'http'
 import { exec } from 'child_process'
 import { OAUTH_CONFIG, type AuthState, type ChatGPTTokens } from './types'
 import { generateVerifier, generateChallenge, generateState } from './pkce'
-import { decodeJwtPayload, saveAuth } from './storage'
+import { decodeJwtPayload, saveAuth, clearAuth } from './storage'
 import { createLogger } from '@/core/helpers/debug/logger'
 
 const logger = createLogger('openai-auth-login')
@@ -103,7 +103,8 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
       const error = url.searchParams.get('error')
 
       if (error) {
-        const desc = url.searchParams.get('error_description') || error
+        const desc = (url.searchParams.get('error_description') || error)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
         res.writeHead(200, { 'Content-Type': 'text/html' })
         res.end(`<html><body><h2>Login failed</h2><p>${desc}</p><p>You can close this tab.</p></body></html>`)
         server.close()
@@ -122,10 +123,12 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
       res.writeHead(200, { 'Content-Type': 'text/html' })
       res.end('<html><body><h2>Login successful!</h2><p>You can close this tab and return to the app.</p></body></html>')
 
+      clearTimeout(timer)
       resolve({ code, server })
     })
 
     server.on('error', (err: NodeJS.ErrnoException) => {
+      clearTimeout(timer)
       if (err.code === 'EADDRINUSE') {
         reject(new Error(`Port ${port} is in use — cannot start OAuth callback server`))
       } else {
@@ -138,7 +141,7 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
     })
 
     // Timeout after 5 minutes
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       server.close()
       reject(new Error('Login timed out — no callback received within 5 minutes'))
     }, 5 * 60 * 1000)
@@ -204,7 +207,6 @@ export async function logout(refreshToken?: string): Promise<void> {
     }
   }
 
-  const { clearAuth } = await import('./storage')
   await clearAuth()
   logger.info('Logged out')
 }

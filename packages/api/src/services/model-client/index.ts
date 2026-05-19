@@ -15,6 +15,7 @@
 
 import { streamText as aiStreamText, generateText as aiGenerateText } from 'ai'
 import type { CoreMessage, ToolSet } from 'ai'
+import type { JSONValue, LanguageModelV1ProviderMetadata } from '@ai-sdk/provider'
 import { createOpenAI } from '@ai-sdk/openai'
 import { getCredentials } from '../auth'
 import { Conversation } from './conversation'
@@ -66,6 +67,17 @@ function normalizeInput(input: string | CoreMessage[]): { prompt?: string; messa
   return { messages: input }
 }
 
+/** Build merged providerOptions for stateless streamTurn/generateTurn. */
+function buildStatelessProviderOptions(params: TurnParams): LanguageModelV1ProviderMetadata | undefined {
+  const openai: Record<string, JSONValue> = {}
+  if (params.instructions) openai.instructions = params.instructions
+  if (params.reasoning) {
+    openai.reasoningEffort = params.reasoning.effort
+    if (params.reasoning.summary) openai.reasoningSummary = params.reasoning.summary
+  }
+  return Object.keys(openai).length > 0 ? { openai } : undefined
+}
+
 /** One-shot streaming turn (no conversation state). */
 async function* streamTurn(
   params: TurnParams & ModelClientConfig,
@@ -74,6 +86,8 @@ async function* streamTurn(
   const { prompt, messages } = normalizeInput(params.input)
   const tools = params.tools ?? {} as ToolSet
 
+  const providerOptions = buildStatelessProviderOptions(params)
+
   const result = aiStreamText({
     model,
     ...(prompt && { prompt }),
@@ -81,17 +95,7 @@ async function* streamTurn(
     ...(Object.keys(tools).length > 0 && { tools }),
     maxSteps: params.maxSteps ?? 1,
     ...(params.signal && { abortSignal: params.signal }),
-    ...(params.instructions && {
-      providerOptions: { openai: { instructions: params.instructions } },
-    }),
-    ...(params.reasoning && {
-      providerOptions: {
-        openai: {
-          reasoningEffort: params.reasoning.effort,
-          ...(params.reasoning.summary && { reasoningSummary: params.reasoning.summary }),
-        },
-      },
-    }),
+    ...(providerOptions && { providerOptions }),
   })
 
   yield* adaptStream(result)
@@ -104,6 +108,7 @@ async function generateTurn(
   const model = await getModel(params)
   const { prompt, messages } = normalizeInput(params.input)
   const tools = params.tools ?? {} as ToolSet
+  const providerOptions = buildStatelessProviderOptions(params)
 
   const result = await aiGenerateText({
     model,
@@ -112,17 +117,7 @@ async function generateTurn(
     ...(Object.keys(tools).length > 0 && { tools }),
     maxSteps: params.maxSteps ?? 1,
     ...(params.signal && { abortSignal: params.signal }),
-    ...(params.instructions && {
-      providerOptions: { openai: { instructions: params.instructions } },
-    }),
-    ...(params.reasoning && {
-      providerOptions: {
-        openai: {
-          reasoningEffort: params.reasoning.effort,
-          ...(params.reasoning.summary && { reasoningSummary: params.reasoning.summary }),
-        },
-      },
-    }),
+    ...(providerOptions && { providerOptions }),
   })
 
   const openaiMeta = result.providerMetadata?.openai as Record<string, unknown> | undefined

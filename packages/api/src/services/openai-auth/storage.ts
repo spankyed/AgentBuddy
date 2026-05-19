@@ -20,10 +20,14 @@ export function authFilePath(): string {
 
 /** Decode a JWT payload without verifying the signature. */
 export function decodeJwtPayload(jwt: string): IdTokenClaims {
-  const parts = jwt.split('.')
-  if (parts.length !== 3) return {}
-  const payload = Buffer.from(parts[1], 'base64url').toString('utf8')
-  return JSON.parse(payload) as IdTokenClaims
+  try {
+    const parts = jwt.split('.')
+    if (parts.length !== 3) return {}
+    const payload = Buffer.from(parts[1], 'base64url').toString('utf8')
+    return JSON.parse(payload) as IdTokenClaims
+  } catch {
+    return {}
+  }
 }
 
 /** Load auth state from ~/.codex/auth.json. Returns null if not found. */
