@@ -114,21 +114,25 @@ export class Conversation {
 
     let lastResponseId: string | undefined
     let turnUsage: LanguageModelUsage = emptyUsage()
+    let completed = false
 
     for await (const event of adaptStream(result)) {
       if (event.type === 'turn-complete') {
         lastResponseId = event.responseId ?? lastResponseId
         turnUsage = event.usage
+        completed = true
       }
       yield event
     }
 
-    // Update conversation state
-    if (lastResponseId) {
-      this._previousResponseId = lastResponseId
+    // Only update conversation state on successful completion
+    if (completed) {
+      if (lastResponseId) {
+        this._previousResponseId = lastResponseId
+      }
+      this._turnCount++
+      this._cumulativeUsage = addUsage(this._cumulativeUsage, turnUsage)
     }
-    this._turnCount++
-    this._cumulativeUsage = addUsage(this._cumulativeUsage, turnUsage)
   }
 
   /** Execute a turn and return the complete result (non-streaming). */

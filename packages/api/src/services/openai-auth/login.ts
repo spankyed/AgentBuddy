@@ -103,10 +103,11 @@ function waitForCallback(port: number, expectedState: string): Promise<{ code: s
       const error = url.searchParams.get('error')
 
       if (error) {
-        const desc = (url.searchParams.get('error_description') || error)
+        const desc = url.searchParams.get('error_description') || error
+        const safeDesc = desc
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
         res.writeHead(200, { 'Content-Type': 'text/html' })
-        res.end(`<html><body><h2>Login failed</h2><p>${desc}</p><p>You can close this tab.</p></body></html>`)
+        res.end(`<html><body><h2>Login failed</h2><p>${safeDesc}</p><p>You can close this tab.</p></body></html>`)
         server.close()
         reject(new Error(`OAuth error: ${desc}`))
         return

@@ -43,8 +43,12 @@ export async function compact(
   }
 
   const data = await response.json() as Record<string, unknown>
+  const newResponseId = (data.id ?? data.response_id) as string | undefined
+  if (!newResponseId) {
+    throw new Error(`Compact API returned no response ID. Response: ${JSON.stringify(data).slice(0, 500)}`)
+  }
   return {
-    newResponseId: (data.id ?? data.response_id ?? '') as string,
+    newResponseId,
     summary: data.summary as string | undefined,
   }
 }

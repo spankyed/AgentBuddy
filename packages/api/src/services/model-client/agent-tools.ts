@@ -35,20 +35,26 @@ function truncate(output: string): string {
 }
 
 /** Run a command and return stdout+stderr. */
-function exec(command: string, opts: { cwd: string; timeout: number }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+function exec(command: string, opts: { cwd: string; timeout: number; stdin?: string }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
-    execFile('/bin/sh', ['-c', command], {
+    const child = execFile('/bin/sh', ['-c', command], {
       cwd: opts.cwd,
       timeout: opts.timeout,
       maxBuffer: MAX_OUTPUT * 2,
       env: { ...process.env, TERM: 'dumb' },
     }, (error, stdout, stderr) => {
+      // error.code is the errno string (e.g. 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'),
+      // not the exit code. The actual exit code lives on the ChildProcess object.
       resolve({
         stdout: truncate(stdout),
         stderr: truncate(stderr),
-        exitCode: error ? (error as any).code ?? 1 : 0,
+        exitCode: error ? (child.exitCode ?? 1) : 0,
       })
     })
+    if (opts.stdin !== undefined) {
+      child.stdin?.write(opts.stdin)
+      child.stdin?.end()
+    }
   })
 }
 
@@ -220,11 +226,11 @@ export function patchTool(opts: ToolOptions) {
           return `Error: File not found: ${args.path}`
         }
 
-        // Apply patch using git apply
+        // Apply patch using git apply via stdin (avoids shell injection)
         const patchContent = `--- a/${args.path}\n+++ b/${args.path}\n${args.patch}`
         const { stdout, stderr, exitCode } = await exec(
-          `echo ${JSON.stringify(patchContent)} | git apply --stat && echo ${JSON.stringify(patchContent)} | git apply`,
-          { cwd: opts.cwd, timeout: DEFAULT_TIMEOUT },
+          'git apply',
+          { cwd: opts.cwd, timeout: DEFAULT_TIMEOUT, stdin: patchContent },
         )
 
         if (exitCode !== 0) {
