@@ -68,7 +68,7 @@ export async function action(params: Record<string, any>, services: Services) {
 
   try {
     const { handlers } = createStreamConsumer(
-      { services, threadId: threadId as EntityId, codexThreadId: state.threadId, text: '/compact' },
+      { services, threadId: threadId as EntityId, codexThreadId: state.threadId, text: '/compact', isCompaction: true },
       { writer, toolActivity, thinking, messageId: currentMessageId },
     );
     (services.codex as any).registerConsumer(state.threadId, handlers);

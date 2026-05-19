@@ -28,6 +28,8 @@ export interface ConsumerContext {
   text: string;
   /** Current phase — 'plan' triggers plan approval flow on turn completion. */
   phase?: string;
+  /** When true, finalize creates a compact marker instead of a normal completion. */
+  isCompaction?: boolean;
 }
 
 export interface ConsumerWriters {
@@ -51,7 +53,7 @@ export function createStreamConsumer(
   ctx: ConsumerContext,
   writers: ConsumerWriters,
 ): { handlers: ConsumerHandlers; finalize(): void } {
-  const { services, threadId, codexThreadId, text, phase } = ctx;
+  const { services, threadId, codexThreadId, text, phase, isCompaction } = ctx;
   const { writer, toolActivity, thinking, messageId } = writers;
   const log = services.logger;
   const isPlanMode = phase === 'plan';
@@ -438,6 +440,14 @@ export function createStreamConsumer(
     writer.finalize(writer.text);
     toolActivity.finalise(hadErrors ? 'error' : 'done');
     services.chat.updateMessageState(messageId as any, { forkable: true } as any);
+
+    // Compaction: create marker with summary text (hides all prior messages)
+    if (isCompaction && writer.text.trim() && !hadErrors) {
+      services.chat.createMarkerMessage({
+        threadId,
+        text: writer.text.trim(),
+      });
+    }
 
     // Guard: only mutate shared state if we still own the handle.
     // If a new turn was started, our handle was replaced and we must
