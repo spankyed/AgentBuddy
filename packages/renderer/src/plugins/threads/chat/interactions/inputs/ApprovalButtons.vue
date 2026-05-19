@@ -149,21 +149,27 @@ const emit = defineEmits<Emits>()
 const reason = ref(props.modelValue)
 const autoAcceptChecked = ref(false)
 
+const isApprovedResponse = (response: any): boolean => {
+  if (response?.approved !== undefined) return !!response.approved
+  if (response === true) return true
+  return response?.decision === 'accept' || response?.decision === 'acceptForSession'
+}
+
 // Response display handling
 const approvalClasses = computed(() => {
-  const approved = props.response?.approved ?? props.response === true
+  const approved = isApprovedResponse(props.response)
   return approved
     ? 'bg-green-900/20 border-green-600/30 text-green-200'
     : 'bg-red-900/20 border-red-600/30 text-red-200'
 })
 
 const approvalIcon = computed(() => {
-  const approved = props.response?.approved ?? props.response === true
+  const approved = isApprovedResponse(props.response)
   return approved ? CheckCircle : XCircle
 })
 
 const approvalText = computed(() => {
-  const approved = props.response?.approved ?? props.response === true
+  const approved = isApprovedResponse(props.response)
   return approved ? 'Approved' : 'Denied'
 })
 

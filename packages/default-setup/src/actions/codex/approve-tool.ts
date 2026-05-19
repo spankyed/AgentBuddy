@@ -35,7 +35,7 @@ export async function action(params: Record<string, any>, services: Services) {
   // Mark approval block as responded
   services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
     responseTimestamp: Date.now(),
-    blockResponse: { decision },
+    blockResponse: { approved: true, decision },
   } as any);
 
   // Plan approval — start a new execute turn instead of responding to app-server

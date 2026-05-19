@@ -23,7 +23,7 @@ export async function action(params: Record<string, any>, services: Services) {
   // Mark approval block as responded
   services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
     responseTimestamp: Date.now(),
-    blockResponse: { decision: 'decline' },
+    blockResponse: { approved: false, decision: 'decline' },
   } as any);
 
   // Plan approval denial — no active turn to kill, just clean up

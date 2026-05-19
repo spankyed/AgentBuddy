@@ -55,7 +55,7 @@ export async function action(
 
       services.chat.updateMessageState(pending.approvalMessageId as EntityId, {
         responseTimestamp: Date.now(),
-        blockResponse: { decision: 'acceptForSession' },
+        blockResponse: { approved: true, decision: 'acceptForSession' },
       } as any);
 
       patch.pendingApproval = undefined;
