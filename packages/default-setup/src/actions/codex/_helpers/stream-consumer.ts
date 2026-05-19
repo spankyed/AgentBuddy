@@ -106,6 +106,13 @@ export function createStreamConsumer(
         break;
       }
 
+      case 'item/agentMessage/completed': {
+        finaliseThinking();
+        writer.flush();
+        activeAgentMessageItemId = undefined;
+        break;
+      }
+
       case 'item/plan/delta': {
         const delta = params.delta as string | undefined;
         if (delta) {
