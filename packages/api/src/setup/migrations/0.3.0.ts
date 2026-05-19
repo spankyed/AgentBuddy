@@ -3,7 +3,7 @@ import type { Migration } from './index';
 
 export const migration: Migration = {
   target: '0.3.0',
-  description: 'Add codex agent mode if missing',
+  description: 'Add codex agent mode if missing; remove Hermes settings',
   up: () => {
     const data = settingsQueries.getSettings();
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> =
@@ -32,6 +32,21 @@ export const migration: Migration = {
       }
     }
 
-    settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], modes);
+    const nextModes = modes.filter(mode => mode.id !== 'hermes');
+    settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], nextModes);
+
+    const plugins = (data.plugins as any) ?? {};
+    const visibility = plugins._meta?.visibility;
+    if (visibility && Object.prototype.hasOwnProperty.call(visibility, 'hermes')) {
+      const nextVisibility = { ...visibility };
+      delete nextVisibility.hermes;
+      settingsCommands.updateSettings('plugin', '_meta', ['visibility'], nextVisibility);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(plugins, 'hermes')) {
+      const nextPlugins = { ...plugins };
+      delete nextPlugins.hermes;
+      settingsCommands.updateSettings('plugins', null, [], nextPlugins);
+    }
   },
 };

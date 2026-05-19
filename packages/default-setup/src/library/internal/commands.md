@@ -32,14 +32,3 @@
 **cdx-skills**: List installed Codex skills
 **cdx-mcp**: List Codex MCP servers
 **instructions**: Thread instructions text
-**h-approve**: Approve pending Hermes agent action
-**h-deny**: Deny pending Hermes agent action
-**h-compact**: Compress Hermes context (optional instructions)
-**h-undo**: Undo last Hermes message
-**h-retry**: Retry last Hermes turn
-**h-model**: List available Hermes models
-**h-tools**: List Hermes tools and their status
-**h-memory**: Show Hermes memory files summary
-**h-persona**: Show Hermes SOUL.md persona
-**h-skills**: List installed Hermes skills
-**h-status**: Show Hermes bridge connection status

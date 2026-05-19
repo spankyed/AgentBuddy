@@ -9,7 +9,6 @@ export default {
         // Long-running subflows: each spawns independently on flow.entry.
         [subflow("Command Listener", { label: "start command listener" })],
         [subflow("Claude Code", { label: "start claude code work mode" })],
-        [subflow("Hermes Agent", { label: "start hermes agent mode" })],
         [subflow("Codex", { label: "start codex work mode" })],
         // Dedicated wedge: keeps the root flow alive for listener tracks.
         // The subflow branches above are already long-running in practice,

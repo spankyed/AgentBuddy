@@ -49,7 +49,6 @@ const settings: SettingsData = {
         brain: false,
         database: false,
         logs: false,
-        hermes: false,
         settings: true,
         // blank: false,
       }
@@ -106,7 +105,6 @@ const settings: SettingsData = {
               { id: 'edit', name: 'Edit', description: 'Implementation and development', color: '#6B7280' },
             ]
           },
-          { id: 'hermes', name: 'Hermes', description: 'Hermes autonomous agent mode' },
           {
             id: 'codex',
             name: 'Codex',

@@ -6,8 +6,6 @@
  * 1. Responses to our requests (request correlation via id)
  * 2. Server-initiated requests (approval flow — bidirectional)
  * 3. Notifications (streaming events — routed to per-thread consumers)
- *
- * Template: packages/api/src/services/hermes/bridge-client.ts
  */
 
 import { spawn, type ChildProcess } from 'child_process'

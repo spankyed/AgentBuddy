@@ -1,152 +1,114 @@
-import * as _openai_codex_sdk from '@openai/codex-sdk';
 import { z } from 'zod';
 export { z } from 'zod';
 import * as ai from 'ai';
 import { CoreMessage } from 'ai';
 import { BrowserType, ElementHandle, Page, Browser, BrowserContext, chromium, firefox, webkit } from 'playwright';
 
-interface CodexQueryOptions {
-    /** User prompt text. */
-    prompt: string;
-    /** Working directory for the agent. */
-    cwd?: string;
-    /** Resume an existing Codex thread by ID. */
-    threadId?: string;
-    /** LLM model to use. */
-    model?: string;
-    /** Sandbox policy for command execution. */
-    sandboxMode?: 'read-only' | 'workspace-write' | 'danger-full-access';
-    /** Tool approval policy. */
-    approvalPolicy?: 'never' | 'on-request' | 'on-failure' | 'untrusted';
-    /** Additional directories to include. */
-    additionalDirectories?: string[];
-    /** Reasoning effort level. */
-    reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
-}
-interface CodexHandle {
-    /** Async generator of ThreadEvents from the SDK's runStreamed(). */
-    events: AsyncGenerator<_openai_codex_sdk.ThreadEvent>;
-    /** Resolves with the Codex thread ID after thread.started event. */
-    threadId: Promise<string>;
-    /** Abort the running turn via AbortController. */
-    abort(): void;
-}
-
-/**
- * Codex CLI wrapper — public entry point.
- *
- * Thin wrapper around `@openai/codex-sdk` that exposes a typed Node API
- * matching the same fire-once-per-turn pattern used by the Claude Code
- * service. Each call to `query()` spawns a `codex exec` process via the
- * SDK's `runStreamed()` and returns a `CodexHandle` with an async event
- * generator and an abort function.
- */
-
-interface CodexServiceType {
-    query(opts: CodexQueryOptions): Promise<CodexHandle>;
-    storeHandle(key: string, handle: CodexHandle): void;
-    getHandle(key: string): CodexHandle | undefined;
-    clearHandle(key: string): void;
-}
-
-interface HermesSession {
+interface CodexSessionInfo {
     id: string;
-    model: string;
-    source: string;
-    message_count: number;
-    updated_at: number;
-    title: string;
-    started_at: number;
+    file: string;
+    cwd?: string;
+    title?: string;
+    modifiedAt: Date;
+    size: number;
+    provider: 'codex';
 }
-interface HermesModel {
-    name: string;
-    provider: string;
-    model: string;
-}
-interface HermesSkill {
-    name: string;
-    category: string;
-    path: string;
-    content: string;
-}
-interface HermesTool {
-    name: string;
-    enabled: boolean;
-    description: string;
-}
-type HermesMemoryFiles = Record<string, string>;
-interface HermesConfig {
-    /** HERMES_HOME directory (defaults to ~/.hermes). */
-    hermesHome?: string;
-    /** Default model for new sessions. */
-    defaultModel?: string;
-    /** Default workspace directory. */
-    defaultWorkspace?: string;
-    /** Auto-start bridge on app launch. */
-    autoStart?: boolean;
-    /** LLM provider API key. */
-    apiKey?: string;
-    /** LLM provider (openai, anthropic). */
-    provider?: string;
-}
-type BridgeStatus = 'stopped' | 'starting' | 'ready' | 'error';
-type InstallStatus = 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error';
-interface BridgeInfo {
-    status: BridgeStatus;
-    installStatus: InstallStatus;
-    version: string | null;
-    pid: number | null;
-    error?: string;
-    /** How hermes-agent was detected (e.g. 'PATH', 'managed venv', 'curl installer', 'sibling repo'). */
-    source?: string;
-}
+/** List all Codex sessions across all date directories. */
+declare function listAll(opts?: {
+    limit?: number;
+}): Promise<CodexSessionInfo[]>;
+/** Parse a Codex JSONL file into an array of entries. */
+declare function viewByFile(filePath: string, opts?: {
+    limit?: number;
+    offset?: number;
+}): Promise<any[]>;
 
 /**
- * Hermes Agent Bridge Client — manages the Python subprocess lifecycle.
+ * Type definitions for the Codex app-server integration.
  *
- * Spawns `hermes-bridge.py` as a child process and communicates via JSONL
- * over stdin/stdout. Provides both request/response and streaming APIs.
- *
- * Detects existing hermes-agent installations (PATH, curl installer, pipx,
- * repo clone) before falling back to a managed venv at ~/.agentbuddy/hermes-venv/.
+ * The app-server uses JSON-RPC 2.0 (jsonrpc field omitted on wire)
+ * over JSONL on stdin/stdout. Three message types on the wire:
+ * 1. Responses to our requests (id, result/error, no method)
+ * 2. Server-initiated requests (id AND method) — approval requests
+ * 3. Notifications (method, no id) — streaming events
  */
-
-declare class HermesBridgeClient {
-    private process;
-    private readline;
-    private pending;
-    private _status;
-    private _installStatus;
-    private _version;
-    private _source;
-    private _error;
-    private _config;
-    private _resolvedPython;
-    private _readyResolve;
-    private _readyTimeout;
-    constructor(config?: HermesConfig);
-    get status(): BridgeStatus;
-    get installStatus(): InstallStatus;
-    get info(): BridgeInfo;
-    /**
-     * Install hermes-agent into the managed venv (fallback when no existing install detected).
-     * Calls `onProgress` with status messages for UI feedback.
-     */
-    install(onProgress?: (msg: string) => void): Promise<void>;
-    /**
-     * Check installation status by resolving an existing hermes-agent Python.
-     * Returns 'installed' if found anywhere, 'not_installed' otherwise.
-     */
-    checkInstall(): InstallStatus;
-    start(): Promise<BridgeInfo>;
-    stop(): Promise<void>;
-    restart(): Promise<BridgeInfo>;
-    updateConfig(config: Partial<HermesConfig>): void;
-    send<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>): Promise<T>;
-    sendStreaming(method: string, params: Record<string, unknown>, onEvent: (type: string, data: Record<string, unknown>) => void): Promise<Record<string, unknown>>;
-    private _write;
-    private _handleLine;
+type ServerStatus = 'stopped' | 'starting' | 'ready' | 'error';
+type ApprovalDecision = 'accept' | 'acceptForSession' | 'decline' | 'cancel';
+interface ThreadStartParams {
+    cwd?: string;
+    model?: string;
+    sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
+    approvalsReviewer?: 'user' | 'auto_review';
 }
+interface ThreadReadParams {
+    includeTurns?: boolean;
+}
+interface ThreadForkParams extends ThreadStartParams {
+    threadId: string;
+}
+interface ThreadRollbackParams {
+    threadId: string;
+    numTurns: number;
+}
+interface ThreadListParams {
+    cursor?: string | null;
+    limit?: number | null;
+    sortKey?: string | null;
+    sortDirection?: 'asc' | 'desc' | null;
+    modelProviders?: string[] | null;
+    sourceKinds?: string[] | null;
+    archived?: boolean | null;
+    cwd?: string | string[] | null;
+    useStateDbOnly?: boolean;
+    searchTerm?: string | null;
+}
+interface ConfigReadParams {
+    includeLayers: boolean;
+    cwd?: string | null;
+}
+interface ConfigValueWriteParams {
+    keyPath: string;
+    value: any;
+    mergeStrategy?: 'replace' | 'upsert';
+    filePath?: string | null;
+    expectedVersion?: string | null;
+}
+interface TurnStartParams {
+    threadId: string;
+    input: Array<{
+        type: 'text';
+        text: string;
+    }>;
+    cwd?: string;
+    collaborationMode?: {
+        name: string;
+        settings?: {
+            developerInstructions?: string | null;
+        };
+    };
+    approvalsReviewer?: 'user' | 'auto_review';
+    model?: string;
+}
+interface ConsumerHandlers {
+    /** Called for streaming notifications (item/started, item/completed, item/agentMessage/delta, turn/completed, etc.) */
+    onNotification(method: string, params: any): void;
+    /** Called for server-initiated approval requests. Response sent separately via respondToApproval. */
+    onApproval(method: string, requestId: number, params: any): void;
+}
+interface CodexTurnHandle {
+    /** Codex app-server thread ID */
+    codexThreadId: string;
+    /** Active turn ID */
+    turnId: string;
+    /** Interrupt the running turn */
+    abort(): Promise<void>;
+}
+
+/** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
+
+declare function storeHandle(key: string, handle: CodexTurnHandle): void;
+declare function getHandle(key: string): CodexTurnHandle | undefined;
+declare function clearHandle(key: string): void;
 
 interface FileEntry {
     name: string;
@@ -276,27 +238,6 @@ interface BaseEntity {
     updatedAt?: number;
 }
 
-/**
- * Hermes management system types — events and data shapes.
- */
-
-interface HermesConnectedData {
-    bridge: BridgeInfo;
-    skills: HermesSkill[];
-    models: HermesModel[];
-    tools: {
-        tools: HermesTool[];
-        enabledToolsets: string[];
-    };
-    persona: {
-        content: string;
-        path: string;
-    };
-    memory: HermesMemoryFiles;
-    workspaces: string[];
-    sessions: HermesSession[];
-}
-
 type TokenSource = 'GITHUB_TOKEN' | 'keyring' | 'unknown';
 type TokenKind = 'fine-grained-pat' | 'classic-pat' | 'oauth' | 'unknown';
 interface ActiveTokenInfo {
@@ -407,7 +348,7 @@ declare class GitRepository {
         ahead: number;
         behind: number;
     }>;
-    pushBranch(branchName?: string): Promise<void>;
+    pushBranch(): Promise<void>;
     pullBranch(): Promise<void>;
     stashPush(message?: string, stagedOnly?: boolean): Promise<string>;
     stashList(): Promise<StashEntry[]>;
@@ -968,7 +909,7 @@ declare const LogEntry: z.ZodObject<{
     id: string;
     timestamp: number;
     message: string;
-    level: "error" | "debug" | "info" | "warn";
+    level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -976,7 +917,7 @@ declare const LogEntry: z.ZodObject<{
     id: string;
     timestamp: number;
     message: string;
-    level: "error" | "debug" | "info" | "warn";
+    level: "debug" | "info" | "warn" | "error";
     meta?: Record<string, any> | undefined;
     source?: string | undefined;
     stack?: string | undefined;
@@ -3823,105 +3764,7 @@ declare const allDefs: readonly [SystemDefinition<"settings", ({
     type: "EXPORT_NOTES";
     directory: string;
     format: "markdown" | "json";
-}, OutgoingNotesEvents, {}>, SystemDefinition<"hermes", {
-    type: "HERMES_INSTALL";
-} | {
-    type: "HERMES_START_BRIDGE";
-} | {
-    type: "HERMES_STOP_BRIDGE";
-} | {
-    type: "HERMES_CHECK_CONNECTION";
-} | {
-    type: "HERMES_GET_SKILLS";
-} | {
-    type: "HERMES_SAVE_SKILL";
-    name: string;
-    category?: string;
-    content: string;
-} | {
-    type: "HERMES_DELETE_SKILL";
-    path: string;
-} | {
-    type: "HERMES_GET_PERSONA";
-} | {
-    type: "HERMES_UPDATE_PERSONA";
-    content: string;
-} | {
-    type: "HERMES_GET_MEMORY";
-} | {
-    type: "HERMES_WRITE_MEMORY";
-    filename: string;
-    content: string;
-} | {
-    type: "HERMES_GET_TOOLS";
-} | {
-    type: "HERMES_GET_MODELS";
-} | {
-    type: "HERMES_GET_WORKSPACES";
-} | {
-    type: "HERMES_UPDATE_CONFIG";
-    provider?: string;
-    apiKey?: string;
-    model?: string;
-}, {
-    type: "HERMES_CONNECTED";
-    data: HermesConnectedData;
-} | {
-    type: "HERMES_INSTALL_STATUS";
-    installStatus: string;
-    version: string | null;
-    source?: string;
-    error?: string;
-} | {
-    type: "HERMES_BRIDGE_STATUS";
-    bridge: BridgeInfo;
-} | {
-    type: "HERMES_SKILLS_DATA";
-    skills: HermesSkill[];
-} | {
-    type: "HERMES_SKILL_SAVED";
-    saved: boolean;
-    path: string;
-} | {
-    type: "HERMES_SKILL_DELETED";
-    deleted: boolean;
-} | {
-    type: "HERMES_PERSONA_DATA";
-    content: string;
-    path: string;
-} | {
-    type: "HERMES_PERSONA_UPDATED";
-    written: boolean;
-} | {
-    type: "HERMES_MEMORY_DATA";
-    files: Record<string, string>;
-} | {
-    type: "HERMES_MEMORY_WRITTEN";
-    written: boolean;
-    filename: string;
-} | {
-    type: "HERMES_TOOLS_DATA";
-    tools: Array<{
-        name: string;
-        enabled: boolean;
-        description: string;
-    }>;
-    enabledToolsets: string[];
-} | {
-    type: "HERMES_MODELS_DATA";
-    models: Array<{
-        name: string;
-        provider: string;
-        model: string;
-    }>;
-} | {
-    type: "HERMES_WORKSPACES_DATA";
-    workspaces: string[];
-} | {
-    type: "HERMES_ERROR";
-    message: string;
-    method: string;
-}, {}>];
+}, OutgoingNotesEvents, {}>];
 type AllDefs = (typeof allDefs)[number];
 type IncomingSystemEvents = AllDefs['_incoming'];
 type OutgoingSystemEvents = AllDefs['_outgoing'];
@@ -6233,85 +6076,70 @@ declare const services: {
     cli: CliServiceType;
     filesystem: FilesystemServiceType;
     threads: typeof threads;
-    hermes: {
-        readonly bridge: HermesBridgeClient;
-        readonly installStatus: InstallStatus;
-        checkInstall(): InstallStatus;
-        install(onProgress?: (msg: string) => void): Promise<void>;
-        start(config?: HermesConfig): Promise<BridgeInfo>;
-        stop(): Promise<void>;
-        updateConfig(config: {
-            provider?: string;
-            apiKey?: string;
-            model?: string;
-        }): Promise<void>;
-        restart(config?: HermesConfig): Promise<BridgeInfo>;
-        readonly info: BridgeInfo;
-        health(): Promise<{
-            status: string;
-            agent_available: boolean;
+    codex: {
+        start: () => Promise<void>;
+        stop: () => Promise<void>;
+        restart: () => Promise<void>;
+        readonly status: ServerStatus;
+        startThread: (params: ThreadStartParams) => Promise<{
+            threadId: string;
+            model: string;
+            cwd: string;
         }>;
-        sessions: {
-            list(): Promise<HermesSession[]>;
-            get(sessionId: string): Promise<Record<string, unknown>>;
-            create(opts?: {
-                model?: string;
-                workspace?: string;
-                title?: string;
-            }): Promise<Record<string, unknown>>;
-        };
-        chat(params: {
-            sessionId?: string;
-            message: string;
-            model?: string;
-            workspace?: string;
-        }, onEvent: (type: string, data: Record<string, unknown>) => void): Promise<Record<string, unknown>>;
-        cancelStream(streamId: string): Promise<{
-            cancelled: boolean;
+        resumeThread: (threadId: string, params?: Partial<ThreadStartParams>) => Promise<{
+            threadId: string;
         }>;
-        models: {
-            list(): Promise<HermesModel[]>;
-        };
-        skills: {
-            list(): Promise<HermesSkill[]>;
-            save(skill: {
-                name: string;
-                category?: string;
-                content: string;
-            }): Promise<{
-                saved: boolean;
-                path: string;
-            }>;
-            delete(skillPath: string): Promise<{
-                deleted: boolean;
-            }>;
-        };
-        memory: {
-            get(): Promise<HermesMemoryFiles>;
-            write(filename: string, content: string): Promise<{
-                written: boolean;
-            }>;
-        };
-        tools: {
-            list(): Promise<{
-                tools: HermesTool[];
-                enabledToolsets: string[];
-            }>;
-        };
-        persona: {
-            get(): Promise<{
-                content: string;
-                path: string;
-            }>;
-            update(content: string): Promise<{
-                written: boolean;
-            }>;
-        };
-        workspaces: {
-            list(): Promise<string[]>;
-        };
+        readThread: (threadId: string, params?: ThreadReadParams) => Promise<{
+            thread: any;
+        }>;
+        forkThread: (params: ThreadForkParams) => Promise<{
+            threadId: string;
+            model: string;
+            cwd: string;
+            thread: any;
+        }>;
+        rollbackThread: (params: ThreadRollbackParams) => Promise<{
+            thread: any;
+        }>;
+        compactThread: (threadId: string) => Promise<void>;
+        listThreads: (params?: ThreadListParams) => Promise<{
+            data: any[];
+            nextCursor: string | null;
+            backwardsCursor: string | null;
+        }>;
+        setThreadName: (threadId: string, name: string) => Promise<void>;
+        readConfig: (params?: ConfigReadParams) => Promise<any>;
+        writeConfigValue: (params: ConfigValueWriteParams) => Promise<any>;
+        listModels: (params?: {
+            cursor?: string | null;
+            limit?: number | null;
+            includeHidden?: boolean;
+        }) => Promise<any>;
+        readAccount: (params?: {
+            refreshToken: boolean;
+        }) => Promise<any>;
+        listSkills: (params?: {
+            cwds?: string[];
+            forceReload?: boolean;
+        }) => Promise<any>;
+        listMcpServers: (params?: {
+            cursor?: string | null;
+            limit?: number | null;
+            detail?: "full" | "toolsAndAuthOnly" | null;
+        }) => Promise<any>;
+        startTurn: (params: TurnStartParams) => Promise<{
+            turnId: string;
+        }>;
+        interruptTurn: (threadId: string, turnId: string) => Promise<void>;
+        respondToApproval: (requestId: number, decision: ApprovalDecision) => void;
+        registerConsumer: (codexThreadId: string, handlers: ConsumerHandlers) => void;
+        unregisterConsumer: (codexThreadId: string) => void;
+        storeHandle: typeof storeHandle;
+        getHandle: typeof getHandle;
+        clearHandle: typeof clearHandle;
+        listAllSessions: typeof listAll;
+        viewSessionByFile: typeof viewByFile;
     };
-    codex: CodexServiceType;
 };
 
 /**

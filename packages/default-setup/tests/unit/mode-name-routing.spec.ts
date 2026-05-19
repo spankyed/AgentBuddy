@@ -1,6 +1,5 @@
 import settings from '../../src/default-settings'
 import claudeCodeFlow from '../../src/flows/claude-code-flow'
-import hermesFlow from '../../src/flows/hermes-flow'
 import { phaseTipPromptLabel } from '../../src/actions/claude-code/chat'
 
 describe('mode name routing', () => {
@@ -21,13 +20,6 @@ describe('mode name routing', () => {
     const condition = userMessageTrack.exits[0][0].conditions[0].if
 
     expect(condition).toBe("$.event.data.payload.mode == 'Claude Code'")
-  })
-
-  it('routes Hermes user messages by mode name', () => {
-    const userMessageTrack = hermesFlow['Hermes Agent'].find((track: any) => track.event === 'user.message') as any
-    const condition = userMessageTrack.exits[0][0].conditions[0].if
-
-    expect(condition).toBe("$.event.data.payload.mode == 'Hermes'")
   })
 
   it('uses phase names for Claude Code phase tips', () => {

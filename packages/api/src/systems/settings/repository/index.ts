@@ -42,6 +42,8 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
 
 // Helper to update nested values
 const setNestedValue = (obj: any, path: string[], value: any): any => {
+  if (path.length === 0) return value;
+
   const newObj = JSON.parse(JSON.stringify(obj)); // Deep clone
   let current = newObj;
 
