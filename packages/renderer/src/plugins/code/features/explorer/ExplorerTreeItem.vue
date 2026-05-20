@@ -132,18 +132,59 @@
         </ContextMenuItem>
 
         <!-- Project menu items - only for directories -->
-        <ProjectMenuItems
-          v-if="file.type === 'directory'"
-          :directory-path="file.path"
-          :ItemComponent="ContextMenuItem"
-          :SeparatorComponent="ContextMenuSeparator"
-          :SubComponent="ContextMenuSub"
-          :SubTriggerComponent="ContextMenuSubTrigger"
-          :SubContentComponent="ContextMenuSubContent"
-          :PortalComponent="ContextMenuPortal"
-          :CheckboxItemComponent="ContextMenuCheckboxItem"
-          :ItemIndicatorComponent="ContextMenuItemIndicator"
-        />
+        <template v-if="file.type === 'directory'">
+          <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
+
+          <ContextMenuItem @select="() => createProject(file.path)" :class="MENU_ITEM_CLASS">
+            <FolderPlus class="w-4 h-4" />
+            New Project
+          </ContextMenuItem>
+
+          <ContextMenuSub v-if="allProjects.length > 0">
+            <ContextMenuSubTrigger :class="MENU_ITEM_CLASS">
+              <Folder class="w-4 h-4" />
+              <span class="flex-1">Add to Project</span>
+              <ChevronRight class="w-3 h-3 text-neutral-500" />
+            </ContextMenuSubTrigger>
+            <ContextMenuPortal>
+              <ContextMenuSubContent class="w-fit max-h-[300px] overflow-auto bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 z-50" :side-offset="4">
+                <ContextMenuCheckboxItem
+                  v-for="({ project, pIndex }) in allProjects"
+                  :key="`${pIndex}`"
+                  :model-value="isDirectoryInProject(project.directories, file.path)"
+                  @select="() => { if (!isDirectoryInProject(project.directories, file.path)) addDirectoryToProject(file.path, pIndex) }"
+                  :class="MENU_ITEM_CLASS"
+                >
+                  <ContextMenuItemIndicator class="flex items-center justify-center w-4 h-4">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </ContextMenuItemIndicator>
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="w-2 h-2 rounded-full flex-shrink-0"
+                      :style="{ backgroundColor: project.color }"
+                    ></span>
+                    <span class="truncate">{{ project.name }}</span>
+                  </div>
+                </ContextMenuCheckboxItem>
+              </ContextMenuSubContent>
+            </ContextMenuPortal>
+          </ContextMenuSub>
+
+          <ContextMenuItem
+            v-if="allProjects.length === 0"
+            disabled
+            :class="MENU_DISABLED_CLASS"
+          >
+            No projects available
+          </ContextMenuItem>
+
+          <ContextMenuItem @select="navigateToProjects" :class="MENU_ITEM_CLASS">
+            <Settings class="w-4 h-4" />
+            Manage Projects
+          </ContextMenuItem>
+        </template>
 
         <ContextMenuSeparator :class="MENU_SEPARATOR_CLASS" />
 
@@ -190,6 +231,7 @@ import {
   FileText,
   FolderOpen,
   FolderPlus,
+  Settings,
 } from 'lucide-vue-next'
 import {
   ContextMenuTrigger,
@@ -203,8 +245,8 @@ import {
   ContextMenuCheckboxItem,
   ContextMenuItemIndicator,
 } from 'reka-ui'
-import ProjectMenuItems from './components/ProjectMenuItems.vue'
-import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS } from './constants'
+import { useProjectActions } from './composables/useProjectActions'
+import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_SEPARATOR_CLASS, MENU_DISABLED_CLASS } from './constants'
 import { getFileIcon } from '../../utils/file-icons'
 import TrackedContextMenuRoot from '@/core/components/design/TrackedContextMenuRoot.vue'
 import type { FileInfo } from './state'
@@ -213,6 +255,15 @@ const props = defineProps<{
   file: FileInfo
   depth: number
 }>()
+
+// Project actions
+const {
+  allProjects,
+  isDirectoryInProject,
+  addDirectoryToProject,
+  createProject,
+  navigateToProjects
+} = useProjectActions()
 
 // Injected callbacks from ExplorerPanel
 const selectItem = inject<(path: string, event: MouseEvent) => void>('explorer-select-item')!
