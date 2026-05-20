@@ -309,6 +309,14 @@ export type ThreadExtended = Simplify<ThreadEntity & ThreadExtendedData & { pare
 export type ThreadExtendedData = ThreadLinkedFields & {
   messages?: Partial<MessageEntity>[];
   tags?: string[];  // Tag names from thread entity
+  // Core fields included so SET_VIEW_DATA can populate the view even when
+  // the thread isn't in the frontend's context.threads list.
+  topic?: string;
+  instructions?: string;
+  status?: string;
+  pinned?: boolean;
+  shortCode?: string;
+  timestamp?: number;
 }
 
 export type ThreadTypeShortCode = `T-${number}`;

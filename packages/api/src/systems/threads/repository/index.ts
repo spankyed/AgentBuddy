@@ -70,6 +70,14 @@ export const threadQueries = {
     return {
       messages: want("messages") ? threadQueries.messages(threadId) : [],
       linkedThreads: want("linkedThreads") ? threadQueries.linkedThreads(threadId) : [],
+      // Core thread fields so SET_VIEW_DATA can populate the view fully
+      topic: thread?.topic,
+      instructions: thread?.instructions,
+      status: thread?.status,
+      pinned: thread?.pinned,
+      shortCode: thread?.shortCode,
+      timestamp: thread?.timestamp,
+      tags: thread?.tags as string[] | undefined,
     };
   },
 

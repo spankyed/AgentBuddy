@@ -418,8 +418,18 @@ const threadsState = setup({
       const typedEvent = typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event);
       const selectedThread = context.threads.find(t => t.id === typedEvent.id);
       if (!selectedThread) {
-        console.warn(`Selected thread with id ${typedEvent.id} not found in context.`);
-        return {};
+        // Thread not in context.threads (e.g. archived, or tab restored from storage).
+        // Reset view to defaults with the target id so SET_VIEW_DATA can populate it.
+        return {
+          selectedThreadCode: undefined,
+          view: {
+            ...defaultThread,
+            id: typedEvent.id as ThreadEntity['id'],
+            shortCode: '',
+            status: '',
+            timestamp: 0,
+          },
+        };
       }
 
       const { id, shortCode, status, timestamp, topic, instructions, tags, pinned } = selectedThread;
@@ -1523,6 +1533,8 @@ const threadsState = setup({
       actions: ['setPluginData', 'refreshViewIfActive']
     },
     SET_VIEW_DATA: {
+      // Only apply if the response matches the currently viewed thread (prevents stale out-of-order responses)
+      guard: ({ event, context }) => typeOf('SET_VIEW_DATA', event).id === context.view.id,
       actions: 'setViewData',
     },
     THREAD_UPDATED: {
