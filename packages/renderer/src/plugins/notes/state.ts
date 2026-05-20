@@ -34,6 +34,7 @@ export interface NotesContext {
   showTrash: boolean
   trashedNotes: NoteDTO[]
   noteScrollPositions: Record<string, number>
+  panelSearchActive: boolean
 }
 
 type SystemEvent = OutgoingNotesEvents
@@ -83,6 +84,7 @@ type UIEvent =
   | { type: 'NOTE.PERMANENTLY_DELETE'; noteId: string }
   | { type: 'NOTE.EMPTY_TRASH' }
   | { type: 'NOTE.SAVE_SCROLL'; noteId: string; scrollTop: number }
+  | { type: 'NOTE.TOGGLE_PANEL_SEARCH' }
 
 type SettingsEvent =
   | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right' } }
@@ -774,6 +776,10 @@ const notesState = setup({
         noteScrollPositions: { ...context.noteScrollPositions, [ev.noteId]: ev.scrollTop },
       }
     }),
+
+    togglePanelSearch: assign(({ context }) => ({
+      panelSearchActive: !context.panelSearchActive,
+    })),
   },
   guards: { targetIs },
 }).createMachine({
@@ -797,6 +803,7 @@ const notesState = setup({
     showTrash: false,
     trashedNotes: [],
     noteScrollPositions: {},
+    panelSearchActive: false,
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
@@ -854,6 +861,7 @@ const notesState = setup({
     'NOTE.PERMANENTLY_DELETE': { actions: 'sendPermanentlyDelete' },
     'NOTE.EMPTY_TRASH': { actions: 'sendEmptyTrash' },
     'NOTE.SAVE_SCROLL': { actions: 'saveScroll' },
+    'NOTE.TOGGLE_PANEL_SEARCH': { actions: 'togglePanelSearch' },
     TRASHED_NOTES: { actions: 'setTrashedNotes' },
     TRAIL_CLICK: [
       {

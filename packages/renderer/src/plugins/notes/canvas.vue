@@ -576,6 +576,11 @@ function handleTitleEnter() {
 }
 
 function handleEditorKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
+    e.preventDefault()
+    actor.send({ type: 'NOTE.TOGGLE_PANEL_SEARCH' })
+    return
+  }
   if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
     e.preventDefault()
     searchBarRef.value?.open()

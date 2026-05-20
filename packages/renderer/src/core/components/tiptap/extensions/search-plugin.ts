@@ -119,7 +119,7 @@ export function searchPlugin(): Plugin<SearchPluginState> {
 
     props: {
       handleKeyDown(view, event) {
-        if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+        if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key === 'f') {
           event.preventDefault()
           view.dispatch(view.state.tr.setMeta(searchPluginKey, { open: true } as SearchMeta))
           return true

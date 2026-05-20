@@ -246,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
 import { applicationState } from '@/main'
@@ -268,7 +268,7 @@ const actor: NotesState = applicationState.system.get(id)
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)
 const showFavorites = ref(true)
-const searchActive = ref(false)
+const searchActive = useSelector(actor, (s) => s.context.panelSearchActive)
 const searchQuery = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 useTrackedMenuOpen(dropdownOpen)
@@ -300,13 +300,16 @@ const filteredNotes = computed(() => {
 })
 
 function toggleSearch() {
-  searchActive.value = !searchActive.value
-  if (searchActive.value) {
+  actor.send({ type: 'NOTE.TOGGLE_PANEL_SEARCH' })
+}
+
+watch(searchActive, (active) => {
+  if (active) {
     nextTick(() => searchInputRef.value?.focus())
   } else {
     searchQuery.value = ''
   }
-}
+})
 
 function handleToggleFavorite(noteId: string) {
   actor.send({ type: 'NOTE.TOGGLE_FAVORITE', noteId })
