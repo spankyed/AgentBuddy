@@ -2,7 +2,7 @@
   <div v-if="visible" class="shrink-0 bg-neutral-900" :class="$style.wrapper">
     <div class="flex items-center">
       <TabBar class="flex-1 min-w-0" :tabs="tabs" :activeTabId="activeTabId" :tabGroups="tabGroups" />
-      <div class="shrink-0 relative flex items-center self-stretch border-l border-neutral-800" :class="$style.closeContainer">
+      <div class="shrink-0 relative flex items-center self-stretch" :class="$style.closeContainer">
         <div class="absolute top-0 bottom-0 right-full w-16 bg-gradient-to-l from-neutral-900 to-transparent pointer-events-none z-10" />
         <button
           type="button"
