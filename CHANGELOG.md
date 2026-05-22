@@ -1,5 +1,39 @@
 -e # Changelog
 
+## v0.3.2 (2026-05-21)
+
+### Features
+- commit): add tooltip to commit log entries showing full commit body
+- commit): add button to stage all merge conflict files at once
+- threads): include core thread fields in extended data for robust view population
+- notes): add Ctrl+Shift+F shortcut to toggle panel search
+- services): add plan, goal, user input, and view image tools to model-client
+- services): add agent tools and approval flow to model-client
+- services): add OpenAI ChatGPT OAuth auth and low-level model-client service
+- services): replace codex subprocess wrapper with low-level model-client service
+
+### Fixes
+- tiptap): differentiate Shift+Tab behavior between chat input and editor modes
+- explorer): inline project menu items to fix unresponsive context menu actions
+- codex): tolerate missing app-server thread on revert
+- services): fix bugs found in model-client and openai-auth review
+- services): fix bugs found in model-client and openai-auth review
+- services): fix bugs found in model-client and openai-auth review
+
+### Refactors
+- services): rename api-keys.ts to auth.ts
+- services): rename api-keys.ts to auth.ts
+
+### Other
+- Add red outline to chat input during voice recording
+- Add diff hunks and line ranges to pr2md review thread output
+- Fix Codex approval response display
+- Merge pull request #154 from spankyed/AS/modelClient-service
+- Use ripgrep safely for agent grep tool
+- Fix Windows OAuth browser opener
+
+-e # Changelog
+
 ## v0.3.1 (2026-05-18)
 
 ### Features
