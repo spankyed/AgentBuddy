@@ -2,9 +2,10 @@ import { repository } from '@/repository';
 import type { ActionEntity } from '@/systems/actions/types';
 import { EARS } from '@/core/types';
 
-// Lazy services getter to avoid circular dependency
+// Lazy services getter — merges built-in + user-installed services
 function getServices() {
-  return require('./index').default;
+  const mod = require('./index');
+  return mod.getServicesWithUser(mod.default);
 }
 
 export class ActionService {

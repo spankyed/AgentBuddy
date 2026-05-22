@@ -3,6 +3,7 @@ import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/systems/backend';
 import { emit } from '@/core/helpers/actor-helpers';
 import { SettingsData, type FAQItem } from './types';
+import { installService, uninstallService, updateServiceEntry, invalidateServiceCache } from '@/core/framework/user-services';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
@@ -56,6 +57,10 @@ type IncomingSettingsEvents =
   | { type: 'IMPORT_SETUP_PACK'; directory: string; include?: { actions: string[] | null; prompts: string[] | null; flows: string[] | null; library: string[] | null; notes: string[] | null; settings: string[] | null }; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: SettingsData }
   | { type: 'RESET_APP' }
+  | { type: 'INSTALL_SERVICE'; url: string }
+  | { type: 'UNINSTALL_SERVICE'; key: string }
+  | { type: 'TOGGLE_SERVICE'; key: string; enabled: boolean }
+  | { type: 'UPDATE_SERVICE_CONFIG'; key: string; configValues: Record<string, any> }
 
 type SettingsInternalEvents =
   | SecretsOutputEvents // Events from child secrets actor
@@ -396,6 +401,55 @@ export const settingsSystem = setup({
       system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 
+    handleInstallService: ({ system, event }) => {
+      const ev = settingsDef.typeOf('INSTALL_SERVICE', event);
+      installService(ev.url).then(() => {
+        const data = settingsQueries.getSettings();
+        system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
+      }).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('[settings] Service install failed:', err);
+        // Store a transient error entry so the frontend can display it
+        const errorKey = `_failed_${Date.now()}`;
+        updateServiceEntry(errorKey, {
+          source: ev.url,
+          displayName: ev.url,
+          enabled: false,
+          status: 'error',
+          error: message,
+          installedAt: Date.now(),
+        });
+        const data = settingsQueries.getSettings();
+        system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
+      });
+    },
+
+    handleUninstallService: ({ system, event }) => {
+      const ev = settingsDef.typeOf('UNINSTALL_SERVICE', event);
+      uninstallService(ev.key).then(() => {
+        const data = settingsQueries.getSettings();
+        system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
+      }).catch((err) => {
+        console.error('[settings] Service uninstall failed:', err);
+      });
+    },
+
+    handleToggleService: ({ system, event }) => {
+      const ev = settingsDef.typeOf('TOGGLE_SERVICE', event);
+      updateServiceEntry(ev.key, { enabled: ev.enabled });
+      invalidateServiceCache();
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
+    },
+
+    handleUpdateServiceConfig: ({ system, event }) => {
+      const ev = settingsDef.typeOf('UPDATE_SERVICE_CONFIG', event);
+      updateServiceEntry(ev.key, { configValues: ev.configValues });
+      invalidateServiceCache();
+      const data = settingsQueries.getSettings();
+      system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
+    },
+
   },
 }).createMachine({
   id: settings,
@@ -437,6 +491,18 @@ export const settingsSystem = setup({
         },
         RESET_APP: {
           target: 'resetting',
+        },
+        INSTALL_SERVICE: {
+          actions: 'handleInstallService',
+        },
+        UNINSTALL_SERVICE: {
+          actions: 'handleUninstallService',
+        },
+        TOGGLE_SERVICE: {
+          actions: 'handleToggleService',
+        },
+        UPDATE_SERVICE_CONFIG: {
+          actions: 'handleUpdateServiceConfig',
         },
         // Forward incoming SECRETS.CMD.* events to secrets actor
         'SECRETS.CMD.*': {

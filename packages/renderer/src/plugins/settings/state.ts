@@ -64,7 +64,7 @@ export interface SettingsContext {
   secretsData: any[];
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   setupPackImport: SetupPackImport;
-  activeTab: 'general' | 'plugins' | 'help';
+  activeTab: 'general' | 'plugins' | 'services' | 'help';
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
   selectedPluginId: string | null;
   isLoading: boolean;
@@ -72,7 +72,7 @@ export interface SettingsContext {
   resetting: boolean;
 }
 type UIEvent =
-  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
+  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'services' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
   | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }

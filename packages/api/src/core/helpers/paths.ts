@@ -16,6 +16,7 @@ searchIndices: { prod: 'search-indices', dev: 'src/core/persistence/data/untrack
   volatileLmdb: { prod: 'ears-trace', dev: 'src/core/persistence/data/untracked/ears-trace' },
   secretsLmdb: { prod: 'ears-secrets', dev: 'src/core/persistence/data/untracked/ears-secrets' },
   media: { prod: 'media', dev: 'src/core/persistence/data/untracked/media' },
+  services: { prod: 'services', dev: 'src/core/persistence/data/untracked/services' },
 }
 
 // === Public API ===
@@ -27,6 +28,7 @@ export const getLmdbPath = (): string => resolvePath('lmdb')
 export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
 export const getSecretsLmdbPath = (): string => resolvePath('secretsLmdb')
 export const getMediaPath = (): string => resolvePath('media')
+export const getServicesPath = (): string => resolvePath('services')
 
 /**
  * Ensure a directory exists, creating it if necessary

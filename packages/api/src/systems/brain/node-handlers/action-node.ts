@@ -4,9 +4,10 @@ import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { repository } from '@/repository';
 import { z } from 'zod';
 
-// Lazy services getter to avoid circular dependency
+// Lazy services getter — merges built-in + user-installed services
 function getServices() {
-  return require('@/services').default;
+  const mod = require('@/services');
+  return mod.getServicesWithUser(mod.default);
 }
 
 interface ActionNodeConfig {
