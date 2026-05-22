@@ -52,7 +52,7 @@
           <div class="flex items-center gap-2 min-w-0">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <div class="text-xs text-neutral-200 truncate">{{ entry.subject }}</div>
+                <div class="text-xs text-neutral-200 truncate" :title="entry.body ? `${entry.subject}\n\n${entry.body}` : entry.subject">{{ entry.subject }}</div>
                 <span v-if="entry.refs" class="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-500/20 text-blue-400 whitespace-nowrap">{{ formatRefs(entry.refs) }}</span>
               </div>
               <div class="text-[11px] text-neutral-500 truncate">{{ entry.shortHash }} · {{ entry.authorName }} · {{ formatCommitDate(entry.date) }}</div>
