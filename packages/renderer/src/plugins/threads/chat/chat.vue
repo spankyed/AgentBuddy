@@ -44,6 +44,8 @@
             </div>
             <ScrollToBottomFob :visible="!isNearBottom && allMessages.length > 0" @click="scrollToBottom('smooth')" />
           </div>
+          <!-- Inline Tab Bar -->
+          <InlineTabBar :visible="showInlineTabs" />
           <!-- Input -->
           <div class="flex-shrink-0 w-full" :class="$style.inputContainer">
             <ChatInput
@@ -85,6 +87,7 @@
             @open-thread-chat="(threadId: string) => { expandChatIfCollapsed(); actor.send({ type: 'OPEN_THREAD_CHAT', threadId }) }"
             @view-dashboard="handleViewDashboard"
             @toggle-inline-dashboard="handleToggleInlineDashboard"
+            @toggle-inline-tabs="handleToggleInlineTabs"
             @view-artifacts="(threadId: string) => handleViewArtifacts(threadId)"
             @new-thread="() => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'CLEAR_THREAD' }) }"
             @new-thread-in-project="(dir: string) => { expandChatIfCollapsed(); rotateQuote(); actor.send({ type: 'NEW_THREAD_IN_PROJECT', directory: dir }) }"
@@ -144,6 +147,7 @@ function rotateQuote() {
 import ChatMessage from './message.vue'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
+import InlineTabBar from './inline-tab-bar.vue'
 import AgentCanvas from '@/plugins/threads/canvas/agent/canvas.vue'
 import PanelResizer from '@/core/components/layout/panel-resizer.vue'
 import ImageLightbox from '@/core/components/design/ImageLightbox.vue'
@@ -199,6 +203,7 @@ const statusLine = computed(() => {
 })
 
 const showInlineDashboard = ref(false)
+const showInlineTabs = ref(false)
 const chatContainerRef = ref<HTMLElement | null>(null)
 const dashboardWidth = ref(45)
 
@@ -303,6 +308,10 @@ function expandChatIfCollapsed() {
   if (snapshot.context.panelSizes.canvasHeight >= 93) {
     applicationState.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
   }
+}
+
+function handleToggleInlineTabs() {
+  showInlineTabs.value = !showInlineTabs.value
 }
 
 function handleToggleInlineDashboard() {

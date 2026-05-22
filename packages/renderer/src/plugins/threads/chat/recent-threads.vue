@@ -167,7 +167,7 @@
             @blur="confirmTitleBarRename"
             @click.stop
           />
-          <span v-else class="min-w-[3ch] truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleViewDashboard" @contextmenu.prevent="startTitleBarRename">{{ currentThread?.topic }}</span>
+          <span v-else class="min-w-[3ch] truncate cursor-pointer transition-colors hover:text-neutral-200 hover:underline underline-offset-4 decoration-neutral-600" title="Thread Artifacts" @click.stop="handleTitleClick" @contextmenu.prevent="startTitleBarRename">{{ currentThread?.topic }}</span>
         </span>
       </div>
 
@@ -419,6 +419,7 @@ const emit = defineEmits<{
   (e: 'open-thread-chat', threadId: string): void
   (e: 'view-dashboard'): void
   (e: 'toggle-inline-dashboard'): void
+  (e: 'toggle-inline-tabs'): void
   (e: 'view-artifacts', threadId: string): void
   (e: 'new-thread'): void
   (e: 'new-thread-as-child', parentThreadId: string): void
@@ -523,10 +524,23 @@ const handleViewArtifacts = (id: string | undefined) => {
   isOpen.value = false
 }
 
+const handleTitleClick = (event: MouseEvent) => {
+  if (event.metaKey || event.ctrlKey) {
+    handleToggleInlineTabs()
+  } else {
+    handleViewDashboard()
+  }
+}
+
 const handleViewDashboard = () => {
   if (!props.currentThread?.id) return
   emit('view-dashboard')
   isOpen.value = false
+}
+
+const handleToggleInlineTabs = () => {
+  if (!props.currentThread?.id) return
+  emit('toggle-inline-tabs')
 }
 
 const handleToggleInlineDashboard = () => {
