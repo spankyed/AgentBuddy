@@ -1,9 +1,10 @@
 <template>
-  <div class="flex-shrink-0 border-t border-neutral-800" @contextmenu.prevent="onSectionContextMenu">
+  <div class="flex-shrink-0 border-t border-neutral-800">
     <!-- Collapsible header -->
     <div
       class="flex items-center justify-between p-3 px-5 cursor-pointer hover:bg-neutral-800/60 transition-colors"
       @click="codeActor.send({ type: 'TOGGLE_PANEL_TERMINAL' })"
+      @contextmenu.prevent="onSectionContextMenu"
     >
       <div class="flex items-center gap-1 text-xs font-medium text-neutral-400">
         <ChevronRight v-if="!isExpanded" class="w-3 h-3" />
