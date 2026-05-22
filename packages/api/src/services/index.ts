@@ -45,3 +45,6 @@ const services = {
 }
 
 export default services;
+
+// Re-export user services merge for action execution
+export { getServicesWithUser, invalidateServiceCache } from '@/core/framework/user-services';

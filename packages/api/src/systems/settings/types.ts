@@ -176,11 +176,32 @@ export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }
 
+export interface ServiceConfigField {
+  type: 'string' | 'number' | 'boolean' | 'enum';
+  label: string;
+  default?: any;
+  secret?: boolean;
+  options?: string[];
+}
+
+export interface ServiceEntry {
+  source: string;
+  displayName: string;
+  description?: string;
+  enabled: boolean;
+  config?: Record<string, ServiceConfigField>;
+  configValues?: Record<string, any>;
+  status: 'ok' | 'error' | 'installing';
+  error?: string;
+  installedAt: number;
+}
+
 export interface InternalSettings {
   hasOnboarded: boolean;
   lastInteractionTimestamp: number | null;
   version: string;
   seedHash: string | null;
+  services: Record<string, ServiceEntry>;
 }
 
 export interface AssistantSettings {

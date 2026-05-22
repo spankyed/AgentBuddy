@@ -211,6 +211,7 @@ const settings: SettingsData = {
     // version is overridden with APP_VERSION at load time in packages/api/src/systems/settings/defaults.ts
     version: '',
     seedHash: null,
+    services: {},
   },
   assistant: {
     name: '',
