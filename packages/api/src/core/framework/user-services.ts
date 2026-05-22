@@ -76,20 +76,21 @@ async function readBuddyConfig(serviceDir: string): Promise<BuddyConfig> {
     return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   }
 
-  // Bundle TS/JS config via esbuild, then eval
+  // Bundle TS/JS config via esbuild to CJS, then eval
   const result = await esbuild.build({
     entryPoints: [configPath],
     bundle: true,
     write: false,
-    format: 'esm',
+    format: 'cjs',
     target: 'es2022',
     platform: 'neutral',
   });
   const code = result.outputFiles[0].text;
-  // Convert ESM default export to extractable value
-  const wrapped = code.replace(/export\s+default\s+/, 'return ');
-  const fn = new Function(wrapped);
-  const config = fn();
+  // CJS output assigns to module.exports — provide a module object and extract
+  const mod = { exports: {} as any };
+  const fn = new Function('module', 'exports', code);
+  fn(mod, mod.exports);
+  const config = mod.exports.default || mod.exports;
 
   if (!config?.key) throw new Error('buddy.config must have a "key" field');
   if (!config?.displayName) throw new Error('buddy.config must have a "displayName" field');

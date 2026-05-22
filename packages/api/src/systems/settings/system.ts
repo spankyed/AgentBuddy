@@ -407,7 +407,18 @@ export const settingsSystem = setup({
         const data = settingsQueries.getSettings();
         system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
       }).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
         console.error('[settings] Service install failed:', err);
+        // Store a transient error entry so the frontend can display it
+        const errorKey = `_failed_${Date.now()}`;
+        updateServiceEntry(errorKey, {
+          source: ev.url,
+          displayName: ev.url,
+          enabled: false,
+          status: 'error',
+          error: message,
+          installedAt: Date.now(),
+        });
         const data = settingsQueries.getSettings();
         system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
       });

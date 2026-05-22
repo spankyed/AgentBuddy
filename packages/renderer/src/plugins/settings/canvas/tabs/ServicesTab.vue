@@ -57,8 +57,9 @@
             </div>
 
             <div class="flex items-center gap-3 shrink-0">
-              <!-- Enable/disable toggle -->
+              <!-- Enable/disable toggle (hide for errored entries) -->
               <button
+                v-if="entry.status === 'ok'"
                 @click="handleToggle(key as string, !entry.enabled)"
                 class="relative w-9 h-5 rounded-full transition-colors"
                 :class="entry.enabled ? 'bg-blue-600' : 'bg-neutral-600'"
@@ -79,8 +80,8 @@
             </div>
           </div>
 
-          <!-- Config fields -->
-          <div v-if="entry.config && Object.keys(entry.config).length > 0" class="mt-4 pt-3 border-t border-neutral-700 space-y-3">
+          <!-- Config fields (only for non-errored services) -->
+          <div v-if="entry.status === 'ok' && entry.config && Object.keys(entry.config).length > 0" class="mt-4 pt-3 border-t border-neutral-700 space-y-3">
             <div v-for="(field, fieldKey) in entry.config" :key="fieldKey">
               <label class="block text-xs text-neutral-400 mb-1">{{ field.label }}</label>
               <input
@@ -90,6 +91,17 @@
                 @change="handleConfigChange(key as string, fieldKey as string, ($event.target as HTMLInputElement).value, entry)"
                 class="w-full px-3 py-1.5 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-100 focus:outline-none focus:border-blue-500"
               />
+              <button
+                v-else-if="field.type === 'boolean'"
+                @click="handleConfigChange(key as string, fieldKey as string, !(entry.configValues?.[fieldKey] ?? field.default ?? false), entry)"
+                class="relative w-9 h-5 rounded-full transition-colors"
+                :class="(entry.configValues?.[fieldKey] ?? field.default) ? 'bg-blue-600' : 'bg-neutral-600'"
+              >
+                <span
+                  class="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform"
+                  :class="(entry.configValues?.[fieldKey] ?? field.default) ? 'translate-x-4' : 'translate-x-0.5'"
+                />
+              </button>
               <select
                 v-else-if="field.type === 'enum'"
                 :value="entry.configValues?.[fieldKey] ?? field.default ?? ''"
@@ -113,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
@@ -129,14 +141,17 @@ const services = computed<Record<string, ServiceEntry>>(() => settings.value?.in
 const installUrl = ref('')
 const installing = ref(false)
 
+// Reset installing state when the registry changes (success or error entry added)
+watch(() => Object.keys(services.value).length, () => {
+  installing.value = false
+})
+
 function handleInstall() {
   const url = installUrl.value.trim()
   if (!url || installing.value) return
   installing.value = true
   trpc.bus.send.mutate({ systemId: id, type: 'INSTALL_SERVICE', url } as any)
   installUrl.value = ''
-  // installing state resets when SETTINGS_UPDATED arrives (service appears in list)
-  setTimeout(() => { installing.value = false }, 30_000) // safety timeout
 }
 
 function handleUninstall(key: string) {
