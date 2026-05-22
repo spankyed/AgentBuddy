@@ -332,6 +332,10 @@ const updateOptions = () => {
       excludePattern: excludePattern.value
     }
   })
+  // Re-run search with updated patterns if there's an active query
+  if (searchQuery.value) {
+    nextTick(() => performSearch())
+  }
 }
 
 const collapseAll = () => {
