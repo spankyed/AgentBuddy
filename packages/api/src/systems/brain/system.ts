@@ -1,6 +1,7 @@
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/core/system-ids';
+import './repository'; // side-effect: registers brainQueries/brainCommands
 import { emit, getActor } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';

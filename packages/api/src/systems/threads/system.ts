@@ -1,6 +1,7 @@
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus, brain } from '@/core/system-ids';
+import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
 import { emit, getActor, sendParentSafe } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
