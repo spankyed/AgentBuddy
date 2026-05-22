@@ -1,5 +1,5 @@
 import { BaseEntity } from "@/core/ears";
-import type { Simplify } from "@/core/helpers/type-helpers";
+import type { Simplify } from "@/core/shared/type-helpers";
 import type { EARS } from "@/types";
 import type { PermissionMode } from "@/services/claude-code/types";
 import type { AgentSettings, CommandItem, KeyboardShortcut, ThreadsSettings, ThreadTagOption } from './settings';

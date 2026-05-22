@@ -1,10 +1,10 @@
 import { BaseEntity, EARS } from '@/core/types';
 import type { ActionEntity } from './actions';
 import type { PromptEntity } from './prompts';
-import { BinaryOperator } from '@/core/helpers/binary-operator';
+import { BinaryOperator } from '@/core/shared/binary-operator';
 
 // Re-export BinaryOperator so consumers importing from shared-types get it
-export { BinaryOperator } from '@/core/helpers/binary-operator';
+export { BinaryOperator } from '@/core/shared/binary-operator';
 
 export interface FlowEntity extends BaseEntity {
   entityType: EARS.Entity.Flow;

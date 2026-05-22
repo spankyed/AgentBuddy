@@ -1,6 +1,6 @@
-import { safeEvents } from '@/core/helpers/actor-helpers';
+import { safeEvents } from '@/core/shared/actor-helpers';
 import type { SystemEvents } from '@/systems/backend';
-import type { Simplify } from '@/core/helpers/type-helpers';
+import type { Simplify } from '@/core/shared/type-helpers';
 
 /** Add `systemId` literal to every member of an incoming event union. */
 type WithSystemId<Id extends string, E extends { type: string }> =

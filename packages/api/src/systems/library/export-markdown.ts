@@ -7,8 +7,8 @@
 
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia } from '@/core/helpers/media'
-import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
+import { extractMediaRefs, rewriteMediaUrls, copyFlatMedia } from '@/core/shared/media'
+import { ensureDirectoryExists, createExportDir } from '@/core/shared/paths'
 import type { ExportedItem } from './export-types'
 import { buildExportTree } from './export-library'
 import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } from './utils'
@@ -16,7 +16,7 @@ import { toSlug, uniqueFilename, buildFrontmatter, serializeContentToMarkdown } 
 function escapeQuotes(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
-import { writeExportFile } from '@/core/helpers/export'
+import { writeExportFile } from '@/core/shared/export'
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   outputDir = createExportDir(outputDir, 'library')

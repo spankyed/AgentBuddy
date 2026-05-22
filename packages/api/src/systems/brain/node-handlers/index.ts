@@ -6,7 +6,7 @@ import { killNodeHandler } from './kill-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('node-executor');
 

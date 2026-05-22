@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { createLogger } from '@/core/helpers/debug/logger';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@/core/helpers/paths'; // getSearchIndicesPath removed [SEARCH_INDEX_FF]
+import { createLogger } from '@/core/shared/debug/logger';
+import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@/core/shared/paths'; // getSearchIndicesPath removed [SEARCH_INDEX_FF]
 import { closePersistence, reinitializeLmdb } from '@/core/ears/attribute-storage';
 
 const logger = createLogger('database:backup');

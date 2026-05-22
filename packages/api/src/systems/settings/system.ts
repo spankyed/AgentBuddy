@@ -1,7 +1,7 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus, threads } from '@/core/system-ids';
-import { emit } from '@/core/helpers/actor-helpers';
+import { emit } from '@/core/shared/actor-helpers';
 import { SettingsData, type FAQItem } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
@@ -11,7 +11,7 @@ import { detectAllArrayChanges } from './change-detection';
 import * as path from 'path';
 import { seedData, type SeedResult, type SeedInclude } from '@/setup/seed/index';
 import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '@/setup/seed/preview';
-import { testCli, isCliName, clearCliPathCache } from '@/core/helpers/resolve-cli';
+import { testCli, isCliName, clearCliPathCache } from '@/core/shared/resolve-cli';
 import { resetLmdbFiles } from '@/core/ears/attribute-storage';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@/setup/migrations';

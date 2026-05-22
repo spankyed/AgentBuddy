@@ -13,7 +13,7 @@
 import { EARS } from '@/core/types';
 import { sendToPlugin } from './event-emitter';
 import { repository } from '@/repository';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('threads-service');
 

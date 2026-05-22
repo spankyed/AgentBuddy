@@ -6,8 +6,8 @@
  */
 
 import { repository } from '@/repository';
-import { createExportDir } from '@/core/helpers/paths';
-import { stripInternalFields, writeExportJson } from '@/core/helpers/export';
+import { createExportDir } from '@/core/shared/paths';
+import { stripInternalFields, writeExportJson } from '@/core/shared/export';
 
 export function exportActions(outputDir: string): { filePath: string; actionCount: number } {
   outputDir = createExportDir(outputDir, 'actions');

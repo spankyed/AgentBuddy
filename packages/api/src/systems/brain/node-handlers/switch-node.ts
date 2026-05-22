@@ -1,5 +1,5 @@
 import type { SwitchNode, Condition, Predicate, BinaryOperator } from '@/core/shared-types/flows';
-import { BinaryOperator as Op } from '@/core/helpers/binary-operator';
+import { BinaryOperator as Op } from '@/core/shared/binary-operator';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { extractValueByPath } from '../repository/node-attribute-mappers';

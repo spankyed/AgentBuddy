@@ -9,7 +9,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/helpers/repository';
+} from '@/core/shared/repository';
 import type { ActionEntity } from '../types';
 
 /**

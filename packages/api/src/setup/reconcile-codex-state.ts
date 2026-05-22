@@ -1,5 +1,5 @@
 import { EARS } from '@/core/types';
-import { findAll } from '@/core/helpers/repository';
+import { findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { ArtifactEntity, ThreadEntity } from '@/systems/threads/types';

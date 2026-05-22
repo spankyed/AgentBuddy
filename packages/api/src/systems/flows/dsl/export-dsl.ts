@@ -5,8 +5,8 @@
  * Safe to import from the running server (no CLI side effects).
  */
 
-import { createExportDir, ensureDirectoryExists } from '@/core/helpers/paths';
-import { writeExportJson } from '@/core/helpers/export';
+import { createExportDir, ensureDirectoryExists } from '@/core/shared/paths';
+import { writeExportJson } from '@/core/shared/export';
 import { qx } from '@/core/ears/helpers/query';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { EARS } from '@/core/types';

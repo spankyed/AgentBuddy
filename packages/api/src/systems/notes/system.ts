@@ -1,7 +1,7 @@
 import { setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/core/system-ids';
-import { emit } from '@/core/helpers/actor-helpers';
+import { emit } from '@/core/shared/actor-helpers';
 import { EARS } from '@/core/types';
 import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/repository';
@@ -9,7 +9,7 @@ import { qx } from '@/core/ears/helpers/query';
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('notes');
 

@@ -3,7 +3,7 @@ import type { ListenerNode, NodeEntity, ScheduleNode } from '@/core/shared-types
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
-import { safeEvents } from '@/core/helpers/actor-helpers';
+import { safeEvents } from '@/core/shared/actor-helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';

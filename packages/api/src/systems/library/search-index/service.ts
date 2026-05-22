@@ -14,7 +14,7 @@ import {
   getIndexMetadataPath,
   getIndexMappingsPath,
   getSearchIndicesPath
-} from '@/core/helpers/paths'
+} from '@/core/shared/paths'
 
 // Lazy-loaded embedding models cache
 const embeddingModels = new Map<string, FlagEmbedding | null>()
@@ -412,4 +412,4 @@ export function deleteIndexFiles(indexId: EARS.EntityId): void {
 
 // Export commonly used functions
 export { getModelDimensions as getVectorDimensions } from './config/embedding-models'
-export { getIndexFilePath as getIndexPath } from '@/core/helpers/paths'
+export { getIndexFilePath as getIndexPath } from '@/core/shared/paths'

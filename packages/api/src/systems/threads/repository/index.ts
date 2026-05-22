@@ -6,7 +6,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/helpers/repository';
+} from '@/core/shared/repository';
 import { wouldCreateCycle } from '@/core/ears/helpers/graph';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';

@@ -1,5 +1,5 @@
 import { setup, assign, fromPromise } from 'xstate'
-import { emit } from '@/core/helpers/actor-helpers'
+import { emit } from '@/core/shared/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { terminalService } from '../services/terminal'
 import { TerminalInfo, CodeSettings } from '../types'

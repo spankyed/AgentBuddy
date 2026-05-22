@@ -21,7 +21,7 @@ import * as os from 'os'
 import * as readline from 'readline'
 import { randomUUID } from 'crypto'
 
-import { createLogger } from '@/core/helpers/debug/logger'
+import { createLogger } from '@/core/shared/debug/logger'
 
 const logger = createLogger('claude-code-sessions')
 

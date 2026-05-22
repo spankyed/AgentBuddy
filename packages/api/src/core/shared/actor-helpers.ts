@@ -1,11 +1,11 @@
 import type { ActorSystem, ActorRefFromLogic } from 'xstate';
 import type systems from '@/systems';
-import type { Simplify } from '@/core/helpers/type-helpers';
+import type { Simplify } from '@/core/shared/type-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from '@/core/router/events';
 import { bus } from '@/core/system-ids';
 import type { backendSystem } from '@/systems';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('actor-helpers');
 

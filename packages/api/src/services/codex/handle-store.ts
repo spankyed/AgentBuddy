@@ -1,7 +1,7 @@
 /** Per-thread handle store for active Codex turns. Callers must call clearHandle on completion. */
 
 import type { CodexTurnHandle } from './types'
-import { createLogger } from '@/core/helpers/debug/logger'
+import { createLogger } from '@/core/shared/debug/logger'
 import { registerCleanup } from '../threads'
 
 const logger = createLogger('codex-handle-store')

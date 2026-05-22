@@ -1,6 +1,6 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import { resolveForService } from '@/core/helpers/resolve-cli'
+import { resolveForService } from '@/core/shared/resolve-cli'
 
 const execFileAsync = promisify(execFile)
 

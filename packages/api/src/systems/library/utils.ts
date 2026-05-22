@@ -7,7 +7,7 @@
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
 
-export { toSlug, uniqueFilename } from '@/core/helpers/export'
+export { toSlug, uniqueFilename } from '@/core/shared/export'
 
 export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ')

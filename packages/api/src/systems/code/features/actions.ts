@@ -1,5 +1,5 @@
 import { setup } from 'xstate'
-import { emit } from '@/core/helpers/actor-helpers'
+import { emit } from '@/core/shared/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'

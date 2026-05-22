@@ -1,4 +1,4 @@
-import { extractMediaRefs, resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs } from '@/core/helpers/media'
+import { extractMediaRefs, resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs } from '@/core/shared/media'
 
 export { extractMediaRefs, resolveMedia, readMediaBuffer, extractAndResolveImages, stripMediaRefs }
 

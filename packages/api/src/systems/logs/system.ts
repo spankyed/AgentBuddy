@@ -1,10 +1,10 @@
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { emit, getActor } from '@/core/helpers/actor-helpers';
+import { emit, getActor } from '@/core/shared/actor-helpers';
 import type { LogsState, LogEntry } from './types';
-import { randomId } from '@/core/helpers/random-id';
+import { randomId } from '@/core/shared/random-id';
 import { rootEvents } from '@/core/router/bus-emitter';
-import { LogEvent } from '@/core/helpers/debug/logger';
+import { LogEvent } from '@/core/shared/debug/logger';
 import { IncomingSystemEvents } from '@/core/router/events';
 import { repository } from '@/repository';
 import type { LogsSettings } from '../settings/types';

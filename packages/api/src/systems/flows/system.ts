@@ -1,13 +1,13 @@
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/core/system-ids';
-import { emit, getActor, sendParentSafe } from '@/core/helpers/actor-helpers';
+import { emit, getActor, sendParentSafe } from '@/core/shared/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/core/types';
 import { repository } from '@/repository';
 import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 import type { ActionEntity } from '@/core/shared-types/actions';
 import type { PromptEntity } from '@/core/shared-types/prompts';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';

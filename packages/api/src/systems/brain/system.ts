@@ -2,11 +2,11 @@ import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
 import { bus } from '@/core/system-ids';
 import './repository'; // side-effect: registers brainQueries/brainCommands
-import { emit, getActor } from '@/core/helpers/actor-helpers';
+import { emit, getActor } from '@/core/shared/actor-helpers';
 import { EARS } from '@/core/types';
 import type { FlowTNodeData, TNodeEntity, TNodeUpdate } from './types';
 import { repository } from '@/repository';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
 import { settings } from '../settings/system';
 import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';

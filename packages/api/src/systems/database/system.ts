@@ -1,7 +1,7 @@
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@/core/framework/define-system';
-import { emit, getActor } from '@/core/helpers/actor-helpers';
+import { emit, getActor } from '@/core/shared/actor-helpers';
 import { bus, brain } from '@/core/system-ids';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
@@ -9,7 +9,7 @@ import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 import type { TNodeEntity } from '@/core/shared-types/brain';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
