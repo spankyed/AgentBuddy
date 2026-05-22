@@ -12,6 +12,9 @@ const entries: Record<string, any> = {};
  * Called by each system's repository module at import time.
  */
 export function registerRepository(name: string, value: any): void {
+  if (entries[name]) {
+    console.warn(`[repository] "${name}" registered twice — overwriting`);
+  }
   entries[name] = value;
 }
 
@@ -20,8 +23,15 @@ export function registerRepository(name: string, value: any): void {
  * Consumer code (`repository.threadQueries.byId()`) is unchanged.
  */
 export const repository = new Proxy({} as Record<string, any>, {
-  get(_, prop: string) {
-    return entries[prop];
+  get(_, prop) {
+    if (typeof prop === 'symbol') return undefined;
+    const value = entries[prop];
+    if (value === undefined) {
+      throw new Error(
+        `[repository] "${prop}" is not registered. Ensure the owning system's repository module is imported before access.`
+      );
+    }
+    return value;
   }
 }) as any;
 
