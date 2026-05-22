@@ -86,12 +86,12 @@ export class LibraryService {
 
   async getByName(name: string): Promise<DocumentDTO | undefined> {
     const allDocuments = repository.libraryQueries.getDocuments();
-    return allDocuments.find(doc => doc.name === name);
+    return allDocuments.find((doc: DocumentDTO) => doc.name === name);
   }
 
   async getByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined> {
     const allDocuments = repository.libraryQueries.getDocuments();
-    return allDocuments.find(doc => {
+    return allDocuments.find((doc: DocumentDTO) => {
       if (doc.name !== name) return false;
       const docPath = doc.collectionPath ?? [];
       if (docPath.length !== collectionPath.length) return false;
@@ -287,7 +287,7 @@ export class LibraryService {
 
     // Must be a collection
     const collections = repository.libraryQueries.getCollections()
-    const collection = collections.find(c => c.id === id)
+    const collection = collections.find((c: CollectionDTO) => c.id === id)
     if (collection) {
       repository.libraryCommands.updateCollection(
         id as EARS.EntityId,

@@ -8,14 +8,14 @@
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
 import { isRootCollection, findDocumentCollection } from './repository/helpers'
-import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
-import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
+import { extractMediaRefs, copyMediaByRef } from '@/core/shared/media'
+import { ensureDirectoryExists, createExportDir } from '@/core/shared/paths'
 import type { ContentSection } from './types'
 import type { ExportedItem } from './export-types'
 import type { ExportFormat } from './export-types'
 import { exportLibraryMarkdown } from './export-markdown'
 import { countExportedItems } from './utils'
-import { writeExportJson } from '@/core/helpers/export'
+import { writeExportJson } from '@/core/shared/export'
 
 function buildCollectionTree(collectionId: EARS.EntityId): ExportedItem {
   const entity = qx(collectionId).pickAll()[0]

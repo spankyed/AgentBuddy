@@ -1,4 +1,4 @@
-import { isPlainObject } from "@/core/helpers";
+import { isPlainObject } from "@/core/shared";
 import { getStyles, type internals } from "./styles";
 
 function formatTimestamp(date: Date) {

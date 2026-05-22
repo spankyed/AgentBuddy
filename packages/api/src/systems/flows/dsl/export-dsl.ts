@@ -5,8 +5,8 @@
  * Safe to import from the running server (no CLI side effects).
  */
 
-import { createExportDir, ensureDirectoryExists } from '@/core/helpers/paths';
-import { writeExportJson } from '@/core/helpers/export';
+import { createExportDir, ensureDirectoryExists } from '@/core/shared/paths';
+import { writeExportJson } from '@/core/shared/export';
 import { qx } from '@/core/ears/helpers/query';
 import { edgeStore } from '@/core/ears/helpers/edge-store';
 import { EARS } from '@/core/types';
@@ -43,8 +43,8 @@ import type {
   CreateNode,
   UpdateNode,
 } from '../config/types';
-import type { ActionEntity } from '@/systems/actions/types';
-import type { PromptEntity } from '@/systems/prompts/types';
+import type { ActionEntity } from '@/core/shared-types/actions';
+import type { PromptEntity } from '@/core/shared-types/prompts';
 
 // Edge kinds for flow transitions
 const FLOW_EDGE_KINDS = [EARS.RelKind.TRANSITIONS_TO] as const;

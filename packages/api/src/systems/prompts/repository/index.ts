@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import {
   findById,
@@ -8,7 +9,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/helpers/repository';
+} from '@/core/shared/repository';
 import type { PromptEntity } from '../types';
 
 /**
@@ -98,3 +99,6 @@ export const promptCommands = {
     updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 };
+
+registerRepository('promptQueries', promptQueries);
+registerRepository('promptCommands', promptCommands);

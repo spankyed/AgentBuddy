@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
 import { createContext } from '@/core/router/context';
-import { logger } from '@/core/helpers/debug/logger';
+import { logger } from '@/core/shared/debug/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
 import { backendActor } from '@/setup/backend';
 import { terminalService } from '@/systems/code/services/terminal';

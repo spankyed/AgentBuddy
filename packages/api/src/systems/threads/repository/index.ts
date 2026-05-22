@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import {
   findById,
@@ -5,7 +6,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/helpers/repository';
+} from '@/core/shared/repository';
 import { wouldCreateCycle } from '@/core/ears/helpers/graph';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
@@ -18,8 +19,8 @@ import type {
   ThreadTagOption,
   AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
 } from '../types';
-import type { ThreadsSettings } from '@/systems/settings/types';
-import { settingsQueries } from '@/systems/settings/repository';
+import type { ThreadsSettings } from '@/core/shared-types/settings';
+import { repository } from '@/repository';
 
 /**
  * Threads Repository
@@ -150,7 +151,7 @@ export const threadQueries = {
     });
 
     // Get tags from settings
-    const threadsSettings = settingsQueries.getPluginSettings('threads') as ThreadsSettings | undefined;
+    const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as ThreadsSettings | undefined;
     const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
 
     // Build chat states map from thread entities directly
@@ -185,7 +186,7 @@ export const threadCommands = {
       ? tx(input.id as EARS.EntityId, true).id()
       : tx(EARS.Entity.Thread).id();
 
-    const status = input.status || settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || '';
+    const status = input.status || repository.settingsQueries.getPluginSettings('threads')?.statuses[0]?.label || '';
     tx(id).updateBatch({
       status,
       shortCode: shortCode,
@@ -353,14 +354,14 @@ const THREAD_TOPIC_MAX_LENGTH = 40;
 const RECENT_THREADS_FALLBACK_LIMIT = 7;
 
 function getConfiguredRecentThreadsLimit(): number {
-  const configured = settingsQueries.getPluginSettings('threads')?.recentThreadsLimit;
+  const configured = repository.settingsQueries.getPluginSettings('threads')?.recentThreadsLimit;
   return typeof configured === 'number' && configured > 0
     ? configured
     : RECENT_THREADS_FALLBACK_LIMIT;
 }
 
 function getConfiguredSortOrder(): 'created' | 'visited' | 'message' {
-  const configured = settingsQueries.getPluginSettings('threads')?.recentThreadsSortOrder;
+  const configured = repository.settingsQueries.getPluginSettings('threads')?.recentThreadsSortOrder;
   return configured === 'visited' || configured === 'message' ? configured : 'created';
 }
 
@@ -451,7 +452,7 @@ function getThreadArtifacts(threadId: EARS.EntityId): ArtifactItem[] {
 
 export const chatQueries = {
   hasRequiredApiKeys: (): boolean => {
-    const secrets = settingsQueries.getGeneralSettings().secrets;
+    const secrets = repository.settingsQueries.getGeneralSettings().secrets;
     const required = ['openai', 'anthropic'];
     return required.some(provider => {
       const secretId = secrets[provider as keyof typeof secrets];
@@ -526,7 +527,7 @@ export const chatQueries = {
       });
     }
 
-    const allSettings = settingsQueries.getSettings();
+    const allSettings = repository.settingsQueries.getSettings();
     const chatSettings = allSettings?.plugins?.threads?.chat ?? allSettings?.plugins?.agent;
 
     return {
@@ -936,3 +937,8 @@ export const chatCommands = {
     return qx([first.id as EARS.EntityId]).pickAll()[0] as unknown as ArtifactEntity;
   },
 } as const;
+
+registerRepository('threadQueries', threadQueries);
+registerRepository('threadCommands', threadCommands);
+registerRepository('chatQueries', chatQueries);
+registerRepository('chatCommands', chatCommands);

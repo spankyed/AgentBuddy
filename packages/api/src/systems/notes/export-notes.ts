@@ -3,9 +3,9 @@ import * as path from 'node:path'
 import { repository } from '@/repository'
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
-import { ensureDirectoryExists, createExportDir } from '@/core/helpers/paths'
-import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/helpers/media'
-import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@/core/helpers/export'
+import { ensureDirectoryExists, createExportDir } from '@/core/shared/paths'
+import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@/core/shared/media'
+import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@/core/shared/export'
 import type { NoteEntity } from './types'
 import type { ExportedNote, NotesExportFormat } from './export-types'
 
@@ -53,8 +53,8 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
 
   // Root notes: no parent
   const rootNotes = allNotes
-    .filter(n => !hasParent.has(n.id))
-    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .filter((n: NoteEntity) => !hasParent.has(n.id))
+    .sort((a: NoteEntity, b: NoteEntity) => a.displayOrder - b.displayOrder)
 
   const notes = rootNotes.map(buildNode)
   return { notes, itemCount }

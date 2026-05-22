@@ -1,4 +1,4 @@
-import type { NodeEntity, SwitchNode } from '@/systems/flows/config/types';
+import type { NodeEntity, SwitchNode } from '@/core/shared-types/flows';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';
@@ -6,7 +6,7 @@ import { killNodeHandler } from './kill-node';
 import { llmNodeHandler } from './llm-node';
 import { actionNodeHandler } from './action-node';
 import { switchNodeHandler } from './switch-node';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('node-executor');
 

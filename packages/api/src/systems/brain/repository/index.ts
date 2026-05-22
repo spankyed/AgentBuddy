@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
@@ -10,7 +11,7 @@ import type {
   TNodeUpdate,
   ExecutionContext
 } from '../types';
-import type { ListenerNode, ScheduleNode, FlowEntity, FlowNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, ScheduleNode, FlowEntity, FlowNode, NodeEntity } from '@/core/shared-types/flows';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '../utils/result-truncator';
 import { brainLogger } from '../utils/brain-inspect';
@@ -603,3 +604,6 @@ export const brainCommands = {
     brainLogger.info(`Cleared ${allTNodes.length} volatile TNode entities from memory`);
   },
 } as const;
+
+registerRepository('brainQueries', brainQueries);
+registerRepository('brainCommands', brainCommands);

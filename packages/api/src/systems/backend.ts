@@ -1,18 +1,18 @@
 import { setup, enqueueActions, ActorRefFrom, assign, fromCallback, spawnChild } from 'xstate';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import systems from '@/systems';
-import { emit, safeEvents, type SystemId } from '@/core/helpers/actor-helpers';
-import { entries } from '@/core/helpers';
+import { emit, safeEvents, type SystemId } from '@/core/shared/actor-helpers';
+import { entries } from '@/core/shared';
 import { EARS } from '@/core/types';
 import { createEntity } from '@/core/ears';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
-import { settingsQueries } from '@/systems/settings/repository';
-import { threads } from '@/systems/threads/system';
+import { repository } from '@/repository';
+import { bus, threads } from '@/core/system-ids';
 
 const logger = createLogger('backend');
 
-export type BusEvent = 
+export type BusEvent =
   | { type: 'INCOMING'; event: IncomingSystemEvents }
   | { type: 'OUTGOING'; event: OutgoingSystemEvents }
 
@@ -26,8 +26,6 @@ export type BackendEvents =
 export interface BusContext {
   threads: string[];
 }
-
-export const bus = 'bus' as const;
 let birthFlowStarted = false;
 
 const typeOf = safeEvents<BackendEvents>();
@@ -75,7 +73,7 @@ export const backendSystem = setup({
         system.get(id).send({ type: 'CLIENT_CONNECTED' });
       }
 
-      const internalSettings = settingsQueries.getInternalSettings();
+      const internalSettings = repository.settingsQueries.getInternalSettings();
       system.get(bus).send({
         type: 'OUTGOING',
         event: {

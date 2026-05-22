@@ -27,7 +27,7 @@
  *     `{subtype:'error'}` control_responses so the conversation continues
  */
 
-import { createLogger } from '@/core/helpers/debug/logger'
+import { createLogger } from '@/core/shared/debug/logger'
 import type {
   CanUseToolRequest,
   ControlRequestHandler,

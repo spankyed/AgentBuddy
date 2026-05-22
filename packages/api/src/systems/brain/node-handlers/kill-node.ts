@@ -1,4 +1,4 @@
-import type { NodeEntity } from '@/systems/flows/config/types';
+import type { NodeEntity } from '@/core/shared-types/flows';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { getFlowActor } from '../flow-system';
 import { brainInspect } from '../utils/brain-inspect';

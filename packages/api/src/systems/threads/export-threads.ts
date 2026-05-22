@@ -7,10 +7,10 @@
 
 import { qx } from '@/core/ears/helpers/query'
 import { EARS } from '@/core/types'
-import { createExportDir } from '@/core/helpers/paths'
-import { extractMediaRefs, copyMediaByRef } from '@/core/helpers/media'
-import { writeExportJson } from '@/core/helpers/export'
-import type { MediaRef } from '@/core/helpers/media'
+import { createExportDir } from '@/core/shared/paths'
+import { extractMediaRefs, copyMediaByRef } from '@/core/shared/media'
+import { writeExportJson } from '@/core/shared/export'
+import type { MediaRef } from '@/core/shared/media'
 import { repository } from '@/repository'
 import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThreadLink, ExportedArtifact } from './export-types'
 import type { MessageEntity } from './types'
@@ -52,7 +52,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
     })
 
     const exportedLinks: ExportedThreadLink[] = linkedThreads
-      .map(link => ({
+      .map((link: { shortCode: string; relation: string; topic?: string; status?: string }) => ({
         shortCode: link.shortCode as string,
         relation: link.relation as ExportedThreadLink['relation'],
       }))

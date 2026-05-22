@@ -1,9 +1,9 @@
-import type { NodeEntity } from '@/systems/flows/config/types';
+import type { NodeEntity } from '@/core/shared-types/flows';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { repository } from '@/repository';
-import { executeTemplate } from '@/systems/brain/utils/template-executor';
-import { createPromptContext } from '@/systems/brain/utils/prompt-context';
+import { executeTemplate } from '@/core/shared/template-executor';
+import { createPromptContext } from '@/core/shared/prompt-context';
 import { EARS } from '@/core/types';
 import { generateText } from '@/services/llm';
 
@@ -54,7 +54,7 @@ function generatePrompt(
       brainInspect(`Using resolved params for ${node.label}:`, templateParams);
       
       // Create a prompt context that allows templates to reference other prompts
-      const promptContext = createPromptContext(executeTemplate);
+      const promptContext = createPromptContext(executeTemplate, (label: string) => repository.promptQueries.byLabel(label));
       
       // Execute the template function with the parameters and context
       const result = executeTemplate(prompt.templateFn, templateParams, promptContext);

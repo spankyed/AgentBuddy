@@ -15,8 +15,9 @@
  *   defaultBaseDirectory > lastDirectoryOpened > first workspace project > null
  */
 import { setup, enqueueActions, assign } from 'xstate'
-import { emit } from '@/core/helpers/actor-helpers'
+import { emit } from '@/core/shared/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
+import './repository' // side-effect: registers terminalQueries/terminalCommands
 import { defineSystem } from '@/core/framework/define-system'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'

@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import {
   findById,
@@ -8,7 +9,7 @@ import {
   updateEntity,
   RepositoryError,
   RepositoryErrorCode
-} from '@/core/helpers/repository';
+} from '@/core/shared/repository';
 import type { ActionEntity } from '../types';
 
 /**
@@ -106,3 +107,6 @@ export const actionCommands = {
     updateEntity(id, { deleted: true, deletedAt: Date.now() });
   },
 } as const;
+
+registerRepository('actionQueries', actionQueries);
+registerRepository('actionCommands', actionCommands);

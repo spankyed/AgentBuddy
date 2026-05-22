@@ -7,7 +7,7 @@
 
 import { OAUTH_CONFIG, type ChatGPTTokens } from './types'
 import { decodeJwtPayload, saveAuth, loadAuth } from './storage'
-import { createLogger } from '@/core/helpers/debug/logger'
+import { createLogger } from '@/core/shared/debug/logger'
 
 const logger = createLogger('openai-auth-refresh')
 

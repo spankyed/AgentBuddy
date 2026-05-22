@@ -1,5 +1,5 @@
 import { EARS } from '@/core/types';
-import { findById, findAll } from '@/core/helpers/repository';
+import { findById, findAll } from '@/core/shared/repository';
 import { qx } from '@/core/ears/helpers/query';
 import type { NoteEntity, NoteDTO } from '../types';
 import { REFERENCES } from '../types';

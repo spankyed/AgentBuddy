@@ -5,7 +5,7 @@ import type { OutgoingSystemEvents } from '@/core/router/events';
 import type { IncomingSystemEvents } from '@/systems';
 import { eventValidationMap } from '@/systems';
 import { procedure, router } from './trpc';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
 
 const logger = createLogger('app-events');

@@ -1,9 +1,9 @@
 import { setup } from 'xstate'
-import { emit } from '@/core/helpers/actor-helpers'
+import { emit } from '@/core/shared/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
-import type { ActionEntity } from '@/systems/actions/types'
+import type { ActionEntity } from '@/core/shared-types/actions'
 
 const pluginId = 'code' as const
 

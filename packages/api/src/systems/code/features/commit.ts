@@ -1,5 +1,5 @@
 import { assign, setup } from 'xstate'
-import { emit } from '@/core/helpers/actor-helpers'
+import { emit } from '@/core/shared/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'

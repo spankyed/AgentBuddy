@@ -17,7 +17,7 @@ import { execFile } from 'child_process'
 import { OAUTH_CONFIG, type AuthState, type ChatGPTTokens } from './types'
 import { generateVerifier, generateChallenge, generateState } from './pkce'
 import { decodeJwtPayload, saveAuth, clearAuth } from './storage'
-import { createLogger } from '@/core/helpers/debug/logger'
+import { createLogger } from '@/core/shared/debug/logger'
 
 const logger = createLogger('openai-auth-login')
 

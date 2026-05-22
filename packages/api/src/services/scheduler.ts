@@ -1,5 +1,5 @@
 import { Cron } from 'croner';
-import { createLogger } from '@/core/helpers/debug/logger';
+import { createLogger } from '@/core/shared/debug/logger';
 
 const logger = createLogger('scheduler');
 

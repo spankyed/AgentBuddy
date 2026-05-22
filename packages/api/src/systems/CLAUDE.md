@@ -7,7 +7,7 @@ Event-driven actor architecture built on XState. Each system is an independent a
 ```typescript
 import { setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { emit } from '@/core/helpers/actor-helpers';
+import { emit } from '@/core/shared/actor-helpers';
 
 type IncomingEvents =
   | { type: 'DO_SOMETHING'; param: string };
