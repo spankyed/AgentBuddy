@@ -14,7 +14,7 @@
       <!-- Chat column (right, or full width when dashboard hidden) -->
       <div class="flex flex-col flex-1 min-w-0 overflow-hidden" :class="{ 'pt-2': !showInlineTabs }" style="background-color: rgb(28 28 28)">
         <!-- Inline Tab Bar -->
-        <InlineTabBar :visible="showInlineTabs" />
+        <InlineTabBar :visible="showInlineTabs" @close="showInlineTabs = false" />
         <!-- Shrinkable content area -->
         <div class="flex flex-col flex-grow overflow-hidden min-h-0">
           <!-- Agent Chat Content -->
