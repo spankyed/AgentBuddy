@@ -198,112 +198,113 @@ function extractInlinedHelpers(jsSource: string, functionName: string): string {
 // --- Services parameter stripping ---
 
 /**
- * Compute the source range to delete when removing an item from a comma-separated
- * list (parameters or arguments). Handles first/middle/last/only positions.
+ * Compute the source range to delete when removing one item from a
+ * comma-separated list (parameters or arguments), including its comma.
  */
 function computeRemovalRange(
   items: ts.NodeArray<ts.Node>,
-  removeIndex: number,
+  index: number,
 ): { start: number; end: number } | null {
-  if (removeIndex < 0 || removeIndex >= items.length) return null;
-  const target = items[removeIndex];
+  if (index < 0 || index >= items.length) return null;
+  const target = items[index];
+  if (items.length === 1) return { start: target.getStart(), end: target.getEnd() };
+  // Not last → consume trailing comma; last → consume leading comma
+  return index < items.length - 1
+    ? { start: target.getStart(), end: items[index + 1].getStart() }
+    : { start: items[index - 1].getEnd(), end: target.getEnd() };
+}
 
-  if (items.length === 1) {
-    return { start: target.getStart(), end: target.getEnd() };
+/** Get the name and `services` param index for a function-like node, if any. */
+function getFunctionServicesInfo(
+  stmt: ts.Statement,
+): { name: string; params: ts.NodeArray<ts.ParameterDeclaration>; idx: number } | null {
+  // function foo(services, ...) {}
+  if (ts.isFunctionDeclaration(stmt) && stmt.name) {
+    const idx = stmt.parameters.findIndex(p => ts.isIdentifier(p.name) && p.name.text === 'services');
+    if (idx >= 0) return { name: stmt.name.text, params: stmt.parameters, idx };
   }
-  if (removeIndex < items.length - 1) {
-    // Not last: remove node + trailing comma/whitespace (up to next node start)
-    return { start: target.getStart(), end: items[removeIndex + 1].getStart() };
+  // var foo = (services, ...) => {} | var foo = function(services, ...) {}
+  if (ts.isVariableStatement(stmt)) {
+    for (const decl of stmt.declarationList.declarations) {
+      if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
+      const init = decl.initializer;
+      if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+        const idx = init.parameters.findIndex(p => ts.isIdentifier(p.name) && p.name.text === 'services');
+        if (idx >= 0) return { name: decl.name.text, params: init.parameters, idx };
+      }
+    }
   }
-  // Last: remove leading comma/whitespace + node (from prev node end)
-  return { start: items[removeIndex - 1].getEnd(), end: target.getEnd() };
+  return null;
+}
+
+/** True if `name` only appears as a direct call or its own declaration (no value references). */
+function isOnlyCalledDirectly(name: string, sourceFile: ts.SourceFile): boolean {
+  let safe = true;
+  function visit(node: ts.Node) {
+    if (!safe) return;
+    if (ts.isIdentifier(node) && node.text === name) {
+      const p = node.parent;
+      if (ts.isFunctionDeclaration(p) && p.name === node) return;          // own decl
+      if (ts.isCallExpression(p) && p.expression === node) return;         // direct call
+      if (ts.isPropertyAccessExpression(p) && p.name === node) return;     // obj.name
+      safe = false;
+    }
+    ts.forEachChild(node, visit);
+  }
+  ts.forEachChild(sourceFile, visit);
+  return safe;
 }
 
 /**
- * Find the `services` parameter index on a function-like node, if present.
- */
-function findServicesParamIndex(params: ts.NodeArray<ts.ParameterDeclaration>): number {
-  return params.findIndex(p => ts.isIdentifier(p.name) && p.name.text === 'services');
-}
-
-/**
- * Strip redundant `services` parameters from inlined helper functions and their
- * call sites. After inlining, `services` is already available in the outer scope
- * (from `new AsyncFunction('params', 'services', body)`), so the parameter just
- * shadows the typed global and breaks Monaco intellisense.
+ * Strip redundant `services` parameters from inlined helper functions and
+ * their call sites.  After inlining, `services` is already in the outer
+ * scope (from `new AsyncFunction('params', 'services', body)`), so the
+ * parameter just shadows the typed global and breaks Monaco intellisense.
+ *
+ * Functions referenced as values (e.g. dispatch tables) are left alone
+ * because we can't update their indirect call sites.
  */
 function stripServicesParam(code: string): string {
   const sourceFile = ts.createSourceFile('action.js', code, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
 
-  // Phase 1: collect functions that have a `services` parameter
-  const servicesMap = new Map<string, number>(); // functionName → paramIndex
-
+  // Build map: functionName → services param index (only for directly-called helpers)
+  const servicesMap = new Map<string, number>();
   for (const stmt of sourceFile.statements) {
-    if (ts.isFunctionDeclaration(stmt) && stmt.name) {
-      const idx = findServicesParamIndex(stmt.parameters);
-      if (idx >= 0) servicesMap.set(stmt.name.text, idx);
-    }
-    // Arrow / function-expression variables: `var foo = (services, ...) => {}`
-    if (ts.isVariableStatement(stmt)) {
-      for (const decl of stmt.declarationList.declarations) {
-        if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
-        const init = decl.initializer;
-        if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
-          const idx = findServicesParamIndex(init.parameters);
-          if (idx >= 0) servicesMap.set(decl.name.text, idx);
-        }
-      }
+    const info = getFunctionServicesInfo(stmt);
+    if (info && isOnlyCalledDirectly(info.name, sourceFile)) {
+      servicesMap.set(info.name, info.idx);
     }
   }
-
   if (servicesMap.size === 0) return code;
 
-  // Phase 2: collect all edit ranges (parameter removals + call-site argument removals)
+  // Collect edit ranges: parameter removals + call-site argument removals
   const edits: { start: number; end: number }[] = [];
 
-  function collectParameterEdits(node: ts.Node) {
-    // Function declarations
-    if (ts.isFunctionDeclaration(node) && node.name && servicesMap.has(node.name.text)) {
-      const range = computeRemovalRange(node.parameters, servicesMap.get(node.name.text)!);
+  for (const stmt of sourceFile.statements) {
+    const info = getFunctionServicesInfo(stmt);
+    if (info && servicesMap.has(info.name)) {
+      const range = computeRemovalRange(info.params, info.idx);
       if (range) edits.push(range);
-    }
-    // Variable-assigned functions/arrows
-    if (ts.isVariableStatement(node)) {
-      for (const decl of (node as ts.VariableStatement).declarationList.declarations) {
-        if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
-        const init = decl.initializer;
-        if ((ts.isArrowFunction(init) || ts.isFunctionExpression(init)) && servicesMap.has(decl.name.text)) {
-          const range = computeRemovalRange(init.parameters, servicesMap.get(decl.name.text)!);
-          if (range) edits.push(range);
-        }
-      }
     }
   }
 
   function collectCallEdits(node: ts.Node) {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
-      const name = node.expression.text;
-      const paramIdx = servicesMap.get(name);
-      if (paramIdx !== undefined && node.arguments.length > paramIdx) {
-        const range = computeRemovalRange(node.arguments, paramIdx);
+      const idx = servicesMap.get(node.expression.text);
+      if (idx !== undefined && node.arguments.length > idx) {
+        const range = computeRemovalRange(node.arguments, idx);
         if (range) edits.push(range);
       }
     }
     ts.forEachChild(node, collectCallEdits);
   }
-
-  // Collect parameter edits from top-level statements only
-  for (const stmt of sourceFile.statements) {
-    collectParameterEdits(stmt);
-  }
-  // Collect call-site edits from the entire AST
   ts.forEachChild(sourceFile, collectCallEdits);
 
-  // Phase 3: apply edits in reverse order to preserve positions
+  // Apply edits in reverse order to preserve positions
   edits.sort((a, b) => b.start - a.start);
   let result = code;
-  for (const edit of edits) {
-    result = result.substring(0, edit.start) + result.substring(edit.end);
+  for (const { start, end } of edits) {
+    result = result.substring(0, start) + result.substring(end);
   }
   return result;
 }
