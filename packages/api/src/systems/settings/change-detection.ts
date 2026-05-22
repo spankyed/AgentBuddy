@@ -1,7 +1,7 @@
-export * from '@/core/shared/change-detection';
+export * from '@/core/helpers/change-detection';
 
 // Backward-compat wrappers with settings-specific types
-import { detectChanges } from '@/core/shared/change-detection';
+import { detectChanges } from '@/core/helpers/change-detection';
 import type { ThreadStatusOption, ThreadTagOption, Category } from './types';
 
 export const detectStatusChanges = (prev?: ThreadStatusOption[], next?: ThreadStatusOption[]) =>

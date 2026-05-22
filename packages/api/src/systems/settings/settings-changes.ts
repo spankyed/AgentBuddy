@@ -1,1 +1,1 @@
-export * from '@/core/shared/settings-changes';
+export * from '@/core/helpers/settings-changes';

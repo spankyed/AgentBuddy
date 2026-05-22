@@ -2,8 +2,8 @@ import type { NodeEntity } from '@/core/shared-types/flows';
 import type { ExecutionContext, FieldMapping, TNodeEntity } from '@/systems/brain/types';
 import { brainInspect, brainLogger } from '../utils/brain-inspect';
 import { repository } from '@/repository';
-import { executeTemplate } from '@/core/shared/template-executor';
-import { createPromptContext } from '@/core/shared/prompt-context';
+import { executeTemplate } from '@/core/helpers/template-executor';
+import { createPromptContext } from '@/core/helpers/prompt-context';
 import { EARS } from '@/core/types';
 import { generateText } from '@/services/llm';
 

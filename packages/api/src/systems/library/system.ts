@@ -12,7 +12,7 @@ import * as fs from 'fs/promises'
 import { libraryService } from '@/services/library'
 import * as symlink from './repository/symlink'
 // [SEARCH_INDEX_FF] import { EMBEDDING_MODELS } from '@/systems/library/search-index/config/embedding-models'
-import { toMap, toIdentifierSet, mapArray } from '@/core/shared/settings-changes'
+import { toMap, toIdentifierSet, mapArray } from '@/core/helpers/settings-changes'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 

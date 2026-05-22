@@ -6,7 +6,7 @@ import { EARS } from '@/core/types';
 import { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@/core/shared/settings-changes';
+import { toMap, toIdentifierSet, mapScalar } from '@/core/helpers/settings-changes';
 import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');

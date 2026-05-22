@@ -6,7 +6,7 @@ import { EARS } from '@/core/types';
 import { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@/core/shared/settings-changes';
+import { toMap, toIdentifierSet, mapScalar } from '@/core/helpers/settings-changes';
 import { exportActions } from './repository/export-actions';
 
 const logger = createLogger('actions');

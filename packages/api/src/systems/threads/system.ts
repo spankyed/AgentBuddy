@@ -8,7 +8,7 @@ import { repository } from '@/repository';
 import { tx } from '@/core/ears/helpers/transaction';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, AgentSettings, RecentThreadRefreshData, CommandItem } from '@/types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
-import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/core/shared/settings-changes';
+import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@/core/helpers/settings-changes';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
 import services from '@/services';
