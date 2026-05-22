@@ -188,7 +188,18 @@ function extractInlinedHelpers(jsSource: string, functionName: string): string {
     // Everything else is an inlined helper
     const text = jsSource.substring(statement.getStart(), statement.getEnd()).trim();
     if (text) {
-      helpers.push(text);
+      // Add JSDoc @param for 'services' parameter in function declarations so
+      // Monaco intellisense works when the helper is inlined into the action body
+      // (esbuild strips TS type annotations, so without this the untyped parameter
+      // shadows the globally-declared typed `services` and breaks autocomplete).
+      if (
+        ts.isFunctionDeclaration(statement) &&
+        statement.parameters.some(p => ts.isIdentifier(p.name) && p.name.text === 'services')
+      ) {
+        helpers.push(`/** @param {import('@app/defs/action').Services} services */\n${text}`);
+      } else {
+        helpers.push(text);
+      }
     }
   }
 
