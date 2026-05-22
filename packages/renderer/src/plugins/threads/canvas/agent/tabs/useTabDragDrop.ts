@@ -121,20 +121,16 @@ export function useTabDragDrop(options: UseTabDragDropOptions) {
     for (let i = 0; i < validTabs.length; i++) {
       const el = validTabs[i]
       const rect = el.getBoundingClientRect()
+      const prevRect = validTabs[i - 1]?.getBoundingClientRect()
       const nextRect = validTabs[i + 1]?.getBoundingClientRect()
-      const endX = nextRect ? (rect.right + nextRect.left) / 2 : rect.right + 50
+      const startX = prevRect ? (prevRect.right + rect.left) / 2 : -Infinity
+      const endX = nextRect ? (rect.right + nextRect.left) / 2 : Infinity
 
-      if (mouseX >= rect.left && mouseX <= endX) {
+      if (mouseX >= startX && mouseX <= endX) {
         const side = mouseX < rect.left + rect.width / 2 ? 'left' : 'right'
         setDropPositionForElement(el, side)
         return true
       }
-    }
-
-    const lastTabRect = validTabs[validTabs.length - 1].getBoundingClientRect()
-    if (mouseX > lastTabRect.right) {
-      setDropPositionForElement(validTabs[validTabs.length - 1], 'right')
-      return true
     }
 
     return false
