@@ -2,8 +2,7 @@ import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@/core/framework/define-system';
 import { emit, getActor } from '@/core/helpers/actor-helpers';
-import { bus } from '@/systems/backend';
-import { brain } from '@/systems/brain/system';
+import { bus, brain } from '@/core/system-ids';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
@@ -11,10 +10,10 @@ import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
 import { exportDatabase, importDatabase, getBackupInfo } from './backup';
 import { createLogger } from '@/core/helpers/debug/logger';
-import type { TNodeEntity } from '@/systems/brain/types';
+import type { TNodeEntity } from '@/core/shared-types/brain';
 import { resetLmdbFiles, clearMemory, envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { flowsCommands } from '@/systems/flows/repository';
+import { repository } from '@/repository';
 
 const logger = createLogger('database');
 
@@ -284,11 +283,11 @@ export const databaseSystem = setup({
         await resetLmdbFiles();
 
         // Create new root flow
-        const { flow, entryNode } = flowsCommands.createFlowWithEntryNode({
+        const { flow, entryNode } = repository.flowsCommands.createFlowWithEntryNode({
           label: 'Root Flow',
           description: 'The root flow of the application',
         });
-        flowsCommands.grantRootFlowRole(flow.id);
+        repository.flowsCommands.grantRootFlowRole(flow.id);
 
         // Restart the brain with the new root flow
         getActor(system, brain).send({ type: 'RESTART_BRAIN' });

@@ -1,5 +1,3 @@
-export { bus } from "@/systems/backend";
-
 import { brain, brainSystem, brainDef } from '@/systems/brain/system';
 import { threads, threadsSystem, threadsDef } from '@/systems/threads/system';
 import { flows, flowsSystem, flowsDef } from '@/systems/flows/system';

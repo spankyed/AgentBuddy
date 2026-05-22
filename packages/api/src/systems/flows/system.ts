@@ -1,6 +1,6 @@
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/systems/backend';
+import { bus } from '@/core/system-ids';
 import { emit, getActor, sendParentSafe } from '@/core/helpers/actor-helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/core/types';
@@ -8,7 +8,8 @@ import { repository } from '@/repository';
 import { FlowsConnectedData, FlowEntity, NodeEntity } from './config/types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@/core/helpers/debug/logger';
-import type { ActionEntity } from '@/systems/actions/types';
+import type { ActionEntity } from '@/core/shared-types/actions';
+import type { PromptEntity } from '@/core/shared-types/prompts';
 import { compile, validate, exportFlowsDSL, type FlowDSL, type ValidationError } from './dsl';
 
 const logger = createLogger('flows');
@@ -347,14 +348,14 @@ export const flowsSystem = setup({
 
       // Validate DSL
       const validation = validate(dsl, {
-        actions: actions.map(a => a.label),
-        prompts: prompts.map(p => p.label),
+        actions: actions.map((a: ActionEntity) => a.label),
+        prompts: prompts.map((p: PromptEntity) => p.label),
       });
 
       if (!validation.valid) {
         const errors = formatValidationErrors(validation.errors, {
-          actions: actions.map(a => a.label),
-          prompts: prompts.map(p => p.label),
+          actions: actions.map((a: ActionEntity) => a.label),
+          prompts: prompts.map((p: PromptEntity) => p.label),
         });
         logger.warn('DSL validation failed', { errors });
 
@@ -366,8 +367,8 @@ export const flowsSystem = setup({
       }
 
       // Build lookup maps for compiler
-      const actionMap = new Map(actions.map(a => [a.label, a.id]));
-      const promptMap = new Map(prompts.map(p => [p.label, p.id]));
+      const actionMap = new Map<string, string>(actions.map((a: ActionEntity) => [a.label, a.id]));
+      const promptMap = new Map<string, string>(prompts.map((p: PromptEntity) => [p.label, p.id]));
 
       // Compile DSL
       const compiled = compile(dsl as FlowDSL, {

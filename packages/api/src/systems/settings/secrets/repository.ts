@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import { tx } from '@/core/ears/helpers/transaction';
 import { qx } from '@/core/ears/helpers/query';
@@ -92,8 +93,11 @@ export const secretsCommands = {
   deleteSecretByProvider: (provider: SecretProvider, customName?: string): boolean => {
     const secret = secretsQueries.getSecretByProvider(provider, customName);
     if (!secret) return false;
-    
+
     tx(secret.id).destroy();
     return true;
   }
 };
+
+registerRepository('secretsQueries', secretsQueries);
+registerRepository('secretsCommands', secretsCommands);

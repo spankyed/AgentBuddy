@@ -5,7 +5,7 @@ import { EARS } from '@/core/types'
 import { hasIdCollision, findWhere } from '@/core/helpers/repository'
 import { qx } from '@/core/ears/helpers/query'
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@/core/helpers/media'
-import { toDisplayName } from '@/systems/library/utils'
+import { toDisplayName } from '@/core/shared/display-name'
 import type { ExportedNote, ExportedNotes } from './export-types'
 import type { NoteEntity } from './types'
 

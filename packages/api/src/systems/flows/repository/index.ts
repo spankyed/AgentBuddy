@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import { RepositoryError, RepositoryErrorCode } from '@/core/helpers/repository';
 import { qx } from '@/core/ears/helpers/query';
@@ -18,7 +19,6 @@ import type {
 import { availableModels } from '../config/available-models';
 import { createNodeDefaults, nodeMetadata, validateNode } from '../config/node-config';
 import { repository } from '@/repository';
-import { settingsCommands } from '@/systems/settings/repository';
 import type { CompiledRows } from '../dsl/compiler';
 import { ROOT_FLOW_ROLE } from '../dsl/types';
 
@@ -599,7 +599,7 @@ export const flowsCommands = {
     }
 
     tx(flowId).grant(FLOW_ROLES.ROOT_FLOW);
-    settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], flowId);
+    repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], flowId);
   },
 
   revokeRootFlowRole: (flowId: EARS.EntityId): void => {
@@ -717,3 +717,6 @@ export const flowsCommands = {
     return { flowIds };
   },
 } as const;
+
+registerRepository('flowsQueries', flowsQueries);
+registerRepository('flowsCommands', flowsCommands);

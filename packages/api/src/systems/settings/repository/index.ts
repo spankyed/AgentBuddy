@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository';
 import { EARS } from '@/core/types';
 import { qx } from '@/core/ears/helpers/query';
 import { tx } from '@/core/ears/helpers/transaction';
@@ -124,3 +125,6 @@ export const settingsCommands = {
 // Re-export change detection utilities
 export { detectAllArrayChanges, detectChanges, detectStatusChanges, detectCategoryChanges } from '../change-detection';
 export type { DiffResult } from '../change-detection';
+
+registerRepository('settingsQueries', settingsQueries);
+registerRepository('settingsCommands', settingsCommands);

@@ -1,5 +1,5 @@
 import { setup, sendParent, assign, enqueueActions, log, raise } from 'xstate';
-import type { ListenerNode, NodeEntity } from '@/systems/flows/config/types';
+import type { ListenerNode, NodeEntity, ScheduleNode } from '@/core/shared-types/flows';
 import { repository } from '@/repository';
 import { createStepNodeSystem } from './step-system';
 import { EARS, ExecutionContext, TNodeEntity } from '@/types';
@@ -180,14 +180,14 @@ export function createFlowNodeSystem(
   // Query schedule nodes and merge them into eventNodes as trigger handlers
   const scheduleNodes = repository.brainQueries.flowScheduleNodes(actualFlowId);
   const allTriggerNodes: FlowTriggerNode[] = [
-    ...eventNodes.map((n): FlowTriggerNode => ({
+    ...eventNodes.map((n: ListenerNode): FlowTriggerNode => ({
       id: n.id,
       label: n.label,
       eventType: n.eventType,
       scope: n.scope,
       triggerType: 'listener' as const,
     })),
-    ...scheduleNodes.map((n): FlowTriggerNode => ({
+    ...scheduleNodes.map((n: ScheduleNode): FlowTriggerNode => ({
       id: n.id,
       label: n.label,
       eventType: `schedule.${n.id}`,

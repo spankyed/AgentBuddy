@@ -1,13 +1,12 @@
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/systems/backend';
+import { bus, flows } from '@/core/system-ids';
 import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { ActionsStartupData, ActionEntity } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
-import { flows } from '@/systems/flows/system';
+import { toMap, toIdentifierSet, mapScalar } from '@/core/shared/settings-changes';
 import { exportActions } from './repository/export-actions';
 
 const logger = createLogger('actions');

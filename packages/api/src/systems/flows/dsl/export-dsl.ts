@@ -43,8 +43,8 @@ import type {
   CreateNode,
   UpdateNode,
 } from '../config/types';
-import type { ActionEntity } from '@/systems/actions/types';
-import type { PromptEntity } from '@/systems/prompts/types';
+import type { ActionEntity } from '@/core/shared-types/actions';
+import type { PromptEntity } from '@/core/shared-types/prompts';
 
 // Edge kinds for flow transitions
 const FLOW_EDGE_KINDS = [EARS.RelKind.TRANSITIONS_TO] as const;

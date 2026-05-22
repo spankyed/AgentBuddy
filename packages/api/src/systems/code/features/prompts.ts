@@ -3,7 +3,7 @@ import { emit } from '@/core/helpers/actor-helpers'
 import { rootEvents } from '@/core/router/bus-emitter'
 import { repository } from '@/repository'
 import { EARS } from '@/core/types'
-import type { PromptEntity } from '@/systems/prompts/types'
+import type { PromptEntity } from '@/core/shared-types/prompts'
 
 const pluginId = 'code' as const
 

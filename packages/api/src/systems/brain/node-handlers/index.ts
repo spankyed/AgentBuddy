@@ -1,4 +1,4 @@
-import type { NodeEntity, SwitchNode } from '@/systems/flows/config/types';
+import type { NodeEntity, SwitchNode } from '@/core/shared-types/flows';
 import type { ExecutionContext, TNodeEntity } from '@/systems/brain/types';
 import { fireNodeHandler } from './fire-node';
 import { keepAliveNodeHandler } from './keep-alive-node';

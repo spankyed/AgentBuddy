@@ -52,7 +52,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
     })
 
     const exportedLinks: ExportedThreadLink[] = linkedThreads
-      .map(link => ({
+      .map((link: { shortCode: string; relation: string; topic?: string; status?: string }) => ({
         shortCode: link.shortCode as string,
         relation: link.relation as ExportedThreadLink['relation'],
       }))

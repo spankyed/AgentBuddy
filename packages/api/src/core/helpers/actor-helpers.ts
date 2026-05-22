@@ -3,7 +3,8 @@ import type systems from '@/systems';
 import type { Simplify } from '@/core/helpers/type-helpers';
 import { sendParent } from 'xstate';
 import type { OutgoingSystemEvents } from '@/core/router/events';
-import { bus, type backendSystem } from '@/systems';
+import { bus } from '@/core/system-ids';
+import type { backendSystem } from '@/systems';
 import { createLogger } from '@/core/helpers/debug/logger';
 
 const logger = createLogger('actor-helpers');

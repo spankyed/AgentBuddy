@@ -14,7 +14,7 @@ export class ActionService {
 
   getByLabel(label: string) {
     const allActions = repository.actionQueries.all();
-    return allActions.find(action => action.label === label);
+    return allActions.find((action: ActionEntity) => action.label === label);
   }
 
   getByCategory(category: string) {

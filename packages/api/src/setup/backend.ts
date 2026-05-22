@@ -1,7 +1,8 @@
 import { createActor } from 'xstate';
 import { logErrors } from '@/core/helpers/actor-helpers';
 import { logsSystem } from '@/systems/logs/system';
-import { backendSystem, bus } from '@/systems/backend';
+import { backendSystem } from '@/systems/backend';
+import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/helpers/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';

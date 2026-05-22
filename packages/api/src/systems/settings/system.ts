@@ -1,6 +1,6 @@
 import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/systems/backend';
+import { bus, threads } from '@/core/system-ids';
 import { emit } from '@/core/helpers/actor-helpers';
 import { SettingsData, type FAQItem } from './types';
 import { loadFaqs } from './faqs';
@@ -8,7 +8,6 @@ import { settingsQueries, settingsCommands } from './repository';
 import { secretsActor } from './secrets/system';
 import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from './change-detection';
-import { threads } from '@/systems/threads/system';
 import * as path from 'path';
 import { seedData, type SeedResult, type SeedInclude } from '@/setup/seed/index';
 import { previewSetupPack as readSetupPackPreview, type SetupPackPreview } from '@/setup/seed/preview';

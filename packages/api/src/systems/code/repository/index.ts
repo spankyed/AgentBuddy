@@ -1,3 +1,4 @@
+import { registerRepository } from '@/repository'
 import { EARS } from '@/core/types'
 import { tx } from '@/core/ears/helpers/transaction'
 import { qx } from '@/core/ears/helpers/query'
@@ -149,7 +150,7 @@ export const terminalCommands = {
       console.error(`Terminal ${id} not found`)
       return
     }
-    
+
     // Mark terminal as deleted instead of actually deleting
     const now = Date.now()
     tx(id).updateBatch({
@@ -160,3 +161,6 @@ export const terminalCommands = {
     })
   }
 }
+
+registerRepository('terminalQueries', terminalQueries)
+registerRepository('terminalCommands', terminalCommands)

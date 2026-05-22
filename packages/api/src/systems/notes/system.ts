@@ -1,6 +1,6 @@
 import { setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/systems/backend';
+import { bus } from '@/core/system-ids';
 import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
@@ -372,7 +372,7 @@ export const notesSystem = setup({
         return;
       }
       const allNotes = repository.noteQueries.allDTOs();
-      const results = allNotes.filter(n =>
+      const results = allNotes.filter((n: NoteDTO) =>
         (n.title || '').toLowerCase().includes(query)
       );
       system.get(bus).send(emit(notes, {

@@ -1,12 +1,12 @@
 import { setup } from 'xstate';
 import { defineSystem } from '@/core/framework/define-system';
-import { bus } from '@/systems/backend';
+import { bus } from '@/core/system-ids';
 import { emit } from '@/core/helpers/actor-helpers';
 import { EARS } from '@/core/types';
 import { PromptsConnectedData, PromptEntity } from './types';
 import { repository } from '@/repository';
 import { createLogger } from '@/core/helpers/debug/logger';
-import { toMap, toIdentifierSet, mapScalar } from '@/systems/settings/settings-changes';
+import { toMap, toIdentifierSet, mapScalar } from '@/core/shared/settings-changes';
 import { exportPrompts } from './repository/export-prompts';
 
 const logger = createLogger('prompts');

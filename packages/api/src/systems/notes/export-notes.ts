@@ -53,8 +53,8 @@ function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
 
   // Root notes: no parent
   const rootNotes = allNotes
-    .filter(n => !hasParent.has(n.id))
-    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .filter((n: NoteEntity) => !hasParent.has(n.id))
+    .sort((a: NoteEntity, b: NoteEntity) => a.displayOrder - b.displayOrder)
 
   const notes = rootNotes.map(buildNode)
   return { notes, itemCount }
