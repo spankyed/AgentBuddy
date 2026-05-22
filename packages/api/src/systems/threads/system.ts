@@ -496,7 +496,7 @@ export const threadsSystem = setup({
 
         system.get(bus).send(emit(threads, {
           type: 'LOAD_CHAT_THREAD',
-          data: repository.chatQueries.threadData(threadId)
+          data: repository.chatQueries.threadData(threadId)!
         }));
       } else {
         const userMessage: MessageEntity = {
@@ -590,7 +590,7 @@ export const threadsSystem = setup({
 
         system.get(bus).send(emit(threads, {
           type: 'LOAD_CHAT_THREAD',
-          data: repository.chatQueries.threadData(threadId)
+          data: repository.chatQueries.threadData(threadId)!
         }));
       } else {
         const userMessage: MessageEntity = {
@@ -636,7 +636,7 @@ export const threadsSystem = setup({
       if (!threadId) return;
 
       try {
-        const sourceMessages = repository.chatQueries.threadData(threadId as EARS.EntityId).messages ?? [];
+        const sourceMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
         const sourceIndex = sourceMessages.findIndex((m: any) => m.id === messageId);
         const sourceUserMessagesAfterFork = sourceIndex >= 0
           ? sourceMessages.slice(sourceIndex + 1).filter((m: any) => m.sender === 'user' && !m.deleted).length
@@ -675,7 +675,7 @@ export const threadsSystem = setup({
     },
     revertThread: ({ system, event }) => {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsDef.typeOf('REVERT_THREAD', event);
-      const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId).messages ?? [];
+      const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
       // Stop active processes before soft-deleting so nothing races
       // against the deletion (e.g. a stream consumer writing to messages).
@@ -710,7 +710,7 @@ export const threadsSystem = setup({
     },
     summarizeThread: ({ system, event }) => {
       const { messageId, threadId } = threadsDef.typeOf('SUMMARIZE_THREAD', event);
-      const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId).messages ?? [];
+      const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
 
       // Stop active processes before soft-deleting (same as revert).
       services.threads.runCleanup(threadId);

@@ -560,9 +560,14 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?
     threadsService.updateChatState(threadId, 'idle');
   }
 
+  const data = repository.chatQueries.threadData(threadId);
+  if (!data) {
+    throw new Error(`Thread ${threadId} not found`);
+  }
+
   sendToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
-    data: repository.chatQueries.threadData(threadId),
+    data,
     ...(restore && { restore }),
   });
 

@@ -464,11 +464,13 @@ export const chatQueries = {
     return getThreadArtifacts(threadId);
   },
 
-  threadData: (threadId: EARS.EntityId): AgentThreadData => {
+  threadData: (threadId: EARS.EntityId): AgentThreadData | null => {
     const thread = qx(threadId)
       .orderBy('timestamp', 'desc')
       .limit(4)
       .pick(["shortCode", "topic", "instructions", "status", "timestamp", "forcedMode", "pinned", "chatState", "context"] as const);
+
+    if (!thread[0]) return null;
 
     return {
       ...thread[0] as AgentThreadData,
@@ -821,6 +823,7 @@ export const chatCommands = {
   }): void => {
     const { sourceThreadId, targetThreadId, upToMessageId } = params;
     const sourceData = chatQueries.threadData(sourceThreadId);
+    if (!sourceData) return;
     const sourceMessages = sourceData.messages || [];
 
     const copyableKeys = ['blocks', 'forkable', 'references', 'isCommand', 'command', 'autoHide', 'asUser', 'asideText', 'asideContext', 'blockResponse', 'responseTimestamp', 'status', 'context', 'compacted'] as const;
