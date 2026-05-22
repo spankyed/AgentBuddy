@@ -188,22 +188,124 @@ function extractInlinedHelpers(jsSource: string, functionName: string): string {
     // Everything else is an inlined helper
     const text = jsSource.substring(statement.getStart(), statement.getEnd()).trim();
     if (text) {
-      // Add JSDoc @param for 'services' parameter in function declarations so
-      // Monaco intellisense works when the helper is inlined into the action body
-      // (esbuild strips TS type annotations, so without this the untyped parameter
-      // shadows the globally-declared typed `services` and breaks autocomplete).
-      if (
-        ts.isFunctionDeclaration(statement) &&
-        statement.parameters.some(p => ts.isIdentifier(p.name) && p.name.text === 'services')
-      ) {
-        helpers.push(`/** @param {import('@app/defs/action').Services} services */\n${text}`);
-      } else {
-        helpers.push(text);
-      }
+      helpers.push(text);
     }
   }
 
   return helpers.join('\n');
+}
+
+// --- Services parameter stripping ---
+
+/**
+ * Compute the source range to delete when removing an item from a comma-separated
+ * list (parameters or arguments). Handles first/middle/last/only positions.
+ */
+function computeRemovalRange(
+  items: ts.NodeArray<ts.Node>,
+  removeIndex: number,
+): { start: number; end: number } | null {
+  if (removeIndex < 0 || removeIndex >= items.length) return null;
+  const target = items[removeIndex];
+
+  if (items.length === 1) {
+    return { start: target.getStart(), end: target.getEnd() };
+  }
+  if (removeIndex < items.length - 1) {
+    // Not last: remove node + trailing comma/whitespace (up to next node start)
+    return { start: target.getStart(), end: items[removeIndex + 1].getStart() };
+  }
+  // Last: remove leading comma/whitespace + node (from prev node end)
+  return { start: items[removeIndex - 1].getEnd(), end: target.getEnd() };
+}
+
+/**
+ * Find the `services` parameter index on a function-like node, if present.
+ */
+function findServicesParamIndex(params: ts.NodeArray<ts.ParameterDeclaration>): number {
+  return params.findIndex(p => ts.isIdentifier(p.name) && p.name.text === 'services');
+}
+
+/**
+ * Strip redundant `services` parameters from inlined helper functions and their
+ * call sites. After inlining, `services` is already available in the outer scope
+ * (from `new AsyncFunction('params', 'services', body)`), so the parameter just
+ * shadows the typed global and breaks Monaco intellisense.
+ */
+function stripServicesParam(code: string): string {
+  const sourceFile = ts.createSourceFile('action.js', code, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
+
+  // Phase 1: collect functions that have a `services` parameter
+  const servicesMap = new Map<string, number>(); // functionName → paramIndex
+
+  for (const stmt of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(stmt) && stmt.name) {
+      const idx = findServicesParamIndex(stmt.parameters);
+      if (idx >= 0) servicesMap.set(stmt.name.text, idx);
+    }
+    // Arrow / function-expression variables: `var foo = (services, ...) => {}`
+    if (ts.isVariableStatement(stmt)) {
+      for (const decl of stmt.declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
+        const init = decl.initializer;
+        if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+          const idx = findServicesParamIndex(init.parameters);
+          if (idx >= 0) servicesMap.set(decl.name.text, idx);
+        }
+      }
+    }
+  }
+
+  if (servicesMap.size === 0) return code;
+
+  // Phase 2: collect all edit ranges (parameter removals + call-site argument removals)
+  const edits: { start: number; end: number }[] = [];
+
+  function collectParameterEdits(node: ts.Node) {
+    // Function declarations
+    if (ts.isFunctionDeclaration(node) && node.name && servicesMap.has(node.name.text)) {
+      const range = computeRemovalRange(node.parameters, servicesMap.get(node.name.text)!);
+      if (range) edits.push(range);
+    }
+    // Variable-assigned functions/arrows
+    if (ts.isVariableStatement(node)) {
+      for (const decl of (node as ts.VariableStatement).declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
+        const init = decl.initializer;
+        if ((ts.isArrowFunction(init) || ts.isFunctionExpression(init)) && servicesMap.has(decl.name.text)) {
+          const range = computeRemovalRange(init.parameters, servicesMap.get(decl.name.text)!);
+          if (range) edits.push(range);
+        }
+      }
+    }
+  }
+
+  function collectCallEdits(node: ts.Node) {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      const name = node.expression.text;
+      const paramIdx = servicesMap.get(name);
+      if (paramIdx !== undefined && node.arguments.length > paramIdx) {
+        const range = computeRemovalRange(node.arguments, paramIdx);
+        if (range) edits.push(range);
+      }
+    }
+    ts.forEachChild(node, collectCallEdits);
+  }
+
+  // Collect parameter edits from top-level statements only
+  for (const stmt of sourceFile.statements) {
+    collectParameterEdits(stmt);
+  }
+  // Collect call-site edits from the entire AST
+  ts.forEachChild(sourceFile, collectCallEdits);
+
+  // Phase 3: apply edits in reverse order to preserve positions
+  edits.sort((a, b) => b.start - a.start);
+  let result = code;
+  for (const edit of edits) {
+    result = result.substring(0, edit.start) + result.substring(edit.end);
+  }
+  return result;
 }
 
 // --- File scanning ---
@@ -270,10 +372,13 @@ async function compileSourceFile(
   // Extract inlined helper declarations
   const inlinedHelpers = extractInlinedHelpers(bundledJs, config.functionName);
 
-  // Assemble function body = helpers + body
-  const fnBody = inlinedHelpers
+  // Assemble function body = helpers + body, then strip redundant `services`
+  // params from inlined helpers (services is already in scope from the outer
+  // AsyncFunction wrapper, and keeping the param shadows the typed global).
+  const rawFnBody = inlinedHelpers
     ? `${inlinedHelpers}\n\n${body}`
     : body;
+  const fnBody = stripServicesParam(rawFnBody);
 
   const compiled: Record<string, any> = {
     label: meta.label,
