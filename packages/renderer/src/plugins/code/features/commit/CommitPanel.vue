@@ -337,6 +337,9 @@
               <button @click="showDiscardAllMergeDialog = true" class="p-0.5 hover:bg-neutral-700 rounded" title="Accept All Ours (HEAD)">
                 <RotateCcw class="w-3 h-3 text-red-400" />
               </button>
+              <button @click="markAllResolved" class="p-0.5 hover:bg-neutral-700 rounded" title="Stage All Merge Files">
+                <Plus class="w-3 h-3 text-neutral-400" />
+              </button>
             </div>
           </div>
           <div class="space-y-1">
@@ -908,6 +911,10 @@ const acceptTheirs = (file: GitStatusFile) => {
 
 const markResolved = (file: GitStatusFile) => {
   commitActor?.send({ type: 'commit.MARK_RESOLVED', path: file.path })
+}
+
+const markAllResolved = () => {
+  commitActor?.send({ type: 'commit.STAGE_FILES', paths: mergeConflictFiles.value.map((f: GitStatusFile) => f.path) })
 }
 
 const confirmDiscardAllMerge = () => {
