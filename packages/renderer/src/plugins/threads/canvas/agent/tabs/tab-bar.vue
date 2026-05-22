@@ -180,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';
 import GroupLabel from './group-label.vue';
 import type { Tab } from '@app/api';
@@ -205,6 +205,14 @@ function selectTab(tabId: string) {
 
 const pinnedContainer = ref<HTMLElement | null>(null);
 const mainContainer = ref<HTMLElement | null>(null);
+
+watch(() => props.activeTabId, () => {
+  nextTick(() => {
+    const el = pinnedContainer.value?.querySelector(`[data-tab-id="${props.activeTabId}"]`)
+      || mainContainer.value?.querySelector(`[data-tab-id="${props.activeTabId}"]`);
+    el?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  });
+});
 
 const categorized = computed(() => categorizeThreadTabs(props.tabs, props.tabGroups));
 
