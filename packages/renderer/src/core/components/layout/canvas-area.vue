@@ -10,11 +10,12 @@
       @wheel.prevent="($event.currentTarget as HTMLElement).scrollLeft += $event.deltaY"
     >
       <!-- ▸ Breadcrumbs with inline ⋮ menu trigger.
-           Keep this strip no-drag so wheel events work across its full height. -->
+           Keep the breadcrumb strip no-drag so wheel events work, while the
+           surrounding header remains draggable for window movement. -->
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="no-drag flex h-full items-center gap-1 ml-2 text-sm text-neutral-500 whitespace-nowrap min-w-max"
+        class="no-drag flex items-center gap-1 ml-2 py-2 text-sm text-neutral-500 whitespace-nowrap min-w-max"
         @contextmenu.prevent="menuItems.length > 0 && (menuOpen = true)"
       >
         <DropdownMenuRoot v-model:open="menuOpen">
