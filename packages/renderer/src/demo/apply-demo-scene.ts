@@ -1,6 +1,6 @@
 import {nextTick} from 'vue';
-import {applicationState} from '@/main';
 import {disableDemoAnimationVariance, getDemoFixture} from './adapters';
+import {DemoMockBackend} from './mock-backend';
 import type {DemoConfig} from './types';
 
 function waitForAnimationFrames(count: number): Promise<void> {
@@ -20,7 +20,7 @@ function waitForAnimationFrames(count: number): Promise<void> {
 export async function applyDemoScene(config: DemoConfig) {
   const fixture = getDemoFixture(config);
   const scene = fixture.scenes[config.scene];
-  const threadsActor = applicationState.system.get('threads');
+  const mockBackend = new DemoMockBackend(fixture);
 
   disableDemoAnimationVariance();
 
@@ -32,45 +32,7 @@ export async function applyDemoScene(config: DemoConfig) {
     activeTabId: fixture.thread.id,
   }));
 
-  applicationState.send({
-    type: 'DEMO.HYDRATE',
-    pluginId: 'threads',
-    targetView: 'dashboard',
-    panelSizes: scene.panelSizes,
-  });
-
-  threadsActor.send({
-    type: 'THREAD_CONNECTED',
-    data: {
-      threads: fixture.threads,
-      availableTags: fixture.settings.tags,
-      settings: fixture.settings,
-      chatStates: {[fixture.thread.id]: fixture.thread.chatState ?? 'idle'},
-    },
-  } as any);
-
-  threadsActor.send({
-    type: 'THREADS_SETTINGS_UPDATED',
-    settings: fixture.settings,
-  } as any);
-
-  threadsActor.send({
-    type: 'LOAD_CHAT_THREAD',
-    data: fixture.thread,
-    restore: true,
-  } as any);
-
-  threadsActor.send({
-    type: 'THREAD_TAB_REQUESTED',
-    threadId: fixture.thread.id,
-    topic: fixture.thread.topic,
-    artifacts: fixture.artifacts,
-    pinned: true,
-  } as any);
-
-  if (scene.selectedArtifactId) {
-    threadsActor.send({type: 'SELECT_ARTIFACT', artifactId: scene.selectedArtifactId} as any);
-  }
+  mockBackend.connectScene(config);
 
   await document.fonts?.ready;
   await nextTick();

@@ -96,16 +96,20 @@ const zoom = {
 
 // API status events (backend crash/restart notifications from main process)
 const apiStatus = {
-  getStatus: () => ipcRenderer.invoke('api:get-status') as Promise<{
-    running: boolean;
-    port?: number;
-    error?: { message: string; stack?: string };
-    restartAttempts: number;
-  }>,
-  relaunch: () => ipcRenderer.invoke('app:relaunch'),
-  reload: () => ipcRenderer.invoke('app:reload'),
-  openLogFile: () => ipcRenderer.invoke('api:open-log-file'),
+  getStatus: () => demo
+    ? Promise.resolve({running: true, restartAttempts: 0})
+    : ipcRenderer.invoke('api:get-status') as Promise<{
+      running: boolean;
+      port?: number;
+      error?: { message: string; stack?: string };
+      restartAttempts: number;
+    }>,
+  relaunch: () => demo ? Promise.resolve() : ipcRenderer.invoke('app:relaunch'),
+  reload: () => demo ? Promise.resolve() : ipcRenderer.invoke('app:reload'),
+  openLogFile: () => demo ? Promise.resolve() : ipcRenderer.invoke('api:open-log-file'),
   onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
+    if (demo) return () => {};
+
     const channels = ['api:stopped', 'api:error', 'api:restarting', 'api:started', 'api:fatal'];
     const handlers = channels.map(channel => {
       const handler = (_: Electron.IpcRendererEvent, data?: any) => {

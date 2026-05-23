@@ -245,6 +245,10 @@ export const createApplicationState = () => setup({
     }),
 
     backendListener: fromCallback(({ system, sendBack }) => {
+      if (window.electronAPI?.demo?.enabled) {
+        return () => {};
+      }
+
       console.log('connecting to backend');
 
       // Check if backend already failed before we started listening (race condition fix)
