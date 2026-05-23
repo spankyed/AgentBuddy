@@ -2,12 +2,17 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {bundle} from '@remotion/bundler';
 import {renderMedia, selectComposition} from '@remotion/renderer';
-import {demoCapturePath, demoOutputPath, videoPackageDir} from './paths';
+import {demoCaptureMetadataPath, demoCapturePath, demoOutputPath, videoPackageDir} from './paths';
 import {getDemoDefinition} from '../src/demo/product-intro';
 
 async function imageDataUrl(filePath: string) {
   const buffer = await fs.readFile(filePath);
   return `data:image/png;base64,${buffer.toString('base64')}`;
+}
+
+async function readMetadata(demoId: string, sceneId: string) {
+  const file = await fs.readFile(demoCaptureMetadataPath(demoId, sceneId), 'utf-8');
+  return JSON.parse(file);
 }
 
 export async function renderDemo(demoId: string) {
@@ -18,6 +23,7 @@ export async function renderDemo(demoId: string) {
   const scenes = await Promise.all(demo.scenes.map(async (scene) => ({
     ...scene,
     src: await imageDataUrl(demoCapturePath(demoId, scene.id)),
+    captureMetadata: await readMetadata(demoId, scene.id),
   })));
 
   await fs.mkdir(path.dirname(outputLocation), {recursive: true});

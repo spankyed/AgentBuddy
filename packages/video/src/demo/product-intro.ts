@@ -4,25 +4,29 @@ export const productIntroScenes: Array<{
   id: ProductIntroSceneId;
   filename: string;
   caption: string;
-  highlight: {x: number; y: number; width: number; height: number};
+  highlightTargetId: string;
+  highlightLabel: string;
 }> = [
   {
     id: 'workspace',
     filename: 'workspace.png',
     caption: 'Start from the real AgentBuddy workspace, seeded with deterministic project context.',
-    highlight: {x: 90, y: 75, width: 900, height: 535},
+    highlightTargetId: 'canvas-area',
+    highlightLabel: 'Threads canvas',
   },
   {
     id: 'chat',
     filename: 'chat.png',
     caption: 'Show the actual chat surface populated by fixture-backed app state.',
-    highlight: {x: 295, y: 155, width: 980, height: 560},
+    highlightTargetId: 'chat-area',
+    highlightLabel: 'Agent chat',
   },
   {
     id: 'artifact',
     filename: 'artifact.png',
     caption: 'Review generated artifacts from captured Electron UI, then compose the final video in Remotion.',
-    highlight: {x: 300, y: 90, width: 1020, height: 610},
+    highlightTargetId: 'agent-artifacts',
+    highlightLabel: 'Artifact viewer',
   },
 ];
 

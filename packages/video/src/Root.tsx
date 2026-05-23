@@ -31,6 +31,10 @@ export const RemotionRoot = () => {
           scenes: productIntroDemo.scenes.map(scene => ({
             ...scene,
             src: '',
+            captureMetadata: {
+              viewport: {width: productIntroDemo.width, height: productIntroDemo.height, devicePixelRatio: 1},
+              targets: {},
+            },
           })),
         }}
       />

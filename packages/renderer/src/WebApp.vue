@@ -14,6 +14,7 @@
             <!-- Canvas Area — always rendered; collapses to just its header when chat is maximized -->
             <CanvasArea
             data-onboarding-id="canvas-area"
+            data-targeting-id="canvas-area"
             :header-only="chatMaximized"
             @crumb-click="(target: string, info?: any) => send({ type: 'TRAIL_CLICK', target, info })"
             @canvas-toggle="send({ type: 'DEFAULT_TOGGLE', area: 'canvas' })"
@@ -43,6 +44,7 @@
             <!-- Chat Area — fills remaining space below the canvas header when maximized -->
             <ChatArea
                 data-onboarding-id="chat-area"
+                data-targeting-id="chat-area"
                 class="relative"
                 :style="chatMaximized
                     ? { flex: '1 1 0%', minHeight: 0 }
@@ -80,6 +82,7 @@
         <InspectionPanel
             v-if="canShowPanel && panelSizes.inspectionWidth > 0"
             data-onboarding-id="inspection-panel"
+            data-targeting-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
             <component v-if="activePlugin.panel" :is="activePlugin.panel" />

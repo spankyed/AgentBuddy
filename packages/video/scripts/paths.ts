@@ -17,6 +17,10 @@ export function demoCapturePath(demoId: string, sceneId: string) {
   return path.join(demoCaptureDir(demoId), `${sceneId}.png`);
 }
 
+export function demoCaptureMetadataPath(demoId: string, sceneId: string) {
+  return path.join(demoCaptureDir(demoId), `${sceneId}.json`);
+}
+
 export function demoOutputPath(demoId: string) {
   return path.join(demoOutDir(demoId), `${demoId}.mp4`);
 }
