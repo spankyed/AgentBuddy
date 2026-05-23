@@ -25,12 +25,38 @@ export const electronCaptureDemoSchema = z.object({
 type ElectronCaptureDemoProps = z.infer<typeof electronCaptureDemoSchema>;
 
 const sceneFrames = 120;
+const sourceWidth = 1440;
+const sourceHeight = 900;
+const appFrameScale = 0.92;
+
+function mapRectToAppFrame(
+  rect: {x: number; y: number; width: number; height: number},
+  videoWidth: number,
+  videoHeight: number,
+) {
+  const frameWidth = sourceWidth * appFrameScale;
+  const frameHeight = sourceHeight * appFrameScale;
+  const frameLeft = (videoWidth - frameWidth) / 2;
+  const frameTop = 30;
+
+  return {
+    x: frameLeft + rect.x * appFrameScale,
+    y: frameTop + rect.y * appFrameScale,
+    width: rect.width * appFrameScale,
+    height: rect.height * appFrameScale,
+    frameLeft,
+    frameTop,
+    frameWidth,
+    frameHeight,
+  };
+}
 
 export const ElectronCaptureDemo = ({scenes}: ElectronCaptureDemoProps) => {
   const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
+  const {fps, width, height} = useVideoConfig();
   const sceneIndex = Math.min(scenes.length - 1, Math.floor(frame / sceneFrames));
   const scene = scenes[sceneIndex];
+  const appFrame = mapRectToAppFrame(scene.highlight, width, height);
   const localFrame = frame - sceneIndex * sceneFrames;
   const enter = spring({frame: localFrame, fps, config: {damping: 22, stiffness: 120}});
   const captionOpacity = interpolate(localFrame, [8, 24, 100, 116], [0, 1, 1, 0], {
@@ -41,7 +67,7 @@ export const ElectronCaptureDemo = ({scenes}: ElectronCaptureDemoProps) => {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const zoom = interpolate(localFrame, [0, sceneFrames - 1], [1, 1.035], {
+  const zoom = interpolate(localFrame, [0, sceneFrames - 1], [1, 1.012], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
@@ -55,11 +81,18 @@ export const ElectronCaptureDemo = ({scenes}: ElectronCaptureDemoProps) => {
         overflow: 'hidden',
       }}
     >
-      <AbsoluteFill
+      <div
         style={{
+          position: 'absolute',
+          left: appFrame.frameLeft,
+          top: appFrame.frameTop,
+          width: appFrame.frameWidth,
+          height: appFrame.frameHeight,
           opacity: imageOpacity,
-          transform: `scale(${zoom})`,
-          transformOrigin: `${scene.highlight.x + scene.highlight.width / 2}px ${scene.highlight.y + scene.highlight.height / 2}px`,
+          overflow: 'hidden',
+          background: '#111',
+          border: '1px solid rgba(255, 255, 255, 0.14)',
+          boxShadow: '0 28px 90px rgba(0, 0, 0, 0.34)',
         }}
       >
         <Img
@@ -68,17 +101,19 @@ export const ElectronCaptureDemo = ({scenes}: ElectronCaptureDemoProps) => {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
+            transform: `scale(${zoom})`,
+            transformOrigin: `${scene.highlight.x + scene.highlight.width / 2}px ${scene.highlight.y + scene.highlight.height / 2}px`,
           }}
         />
-      </AbsoluteFill>
+      </div>
 
       <div
         style={{
           position: 'absolute',
-          left: scene.highlight.x,
-          top: scene.highlight.y,
-          width: scene.highlight.width,
-          height: scene.highlight.height,
+          left: appFrame.x,
+          top: appFrame.y,
+          width: appFrame.width,
+          height: appFrame.height,
           border: '3px solid rgba(20, 184, 166, 0.95)',
           boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.28), 0 0 34px rgba(20, 184, 166, 0.36)',
           opacity: interpolate(localFrame, [20, 36, 92, 110], [0, 1, 1, 0], {
