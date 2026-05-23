@@ -1,5 +1,21 @@
 -e # Changelog
 
+## v0.3.4 (2026-05-22)
+
+### Fixes
+- codex): auto-approve pending request when switching to auto
+
+### Refactors
+- fork): move openThreadChatAndRefreshRecent into handle-fork actions
+
+### Other
+- Revert "chore(release): v0.3.4"
+- Continue provider sessions from existing thread history
+- Normalize thread state storage
+- test(handle-fork): add stress tests for session state resolution and cliUuid lookup
+
+-e # Changelog
+
 ## v0.3.3 (2026-05-22)
 
 ### Features
