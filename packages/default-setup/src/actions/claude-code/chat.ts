@@ -20,6 +20,7 @@ import { createToolActivityWriter } from './_helpers/tool-activity-writer';
 import { createThinkingWriter } from './_helpers/thinking-writer';
 import { getClaudeState, persistClaudeState, setRunning, enqueueMessage, killTurn, ensureSessionMarker, updateChatState, extractStaleSessionId, markSessionBroken } from './_helpers/thread-context';
 import { consumeStream, finalizeSessionError } from './_helpers/stream-consumer';
+import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap';
 
 export const meta: ActionMeta = {
   label: 'Claude Code Chat',
@@ -287,11 +288,19 @@ export async function action(
     // lock the thread in isRunning=true.
     const resolved = await services.chat.resolveReferences(references);
     const fullText = resolved.textPrefix ? `${resolved.textPrefix}\n\n${text}` : text;
-    let prompt: any = fullText;
+    const promptText = !resumeSessionId && !forkFrom && !revertTo
+      ? buildSessionBootstrapPrompt(services, {
+        threadId,
+        currentMessageId: userMessageId,
+        currentText: fullText,
+        providerName: 'Claude Code',
+      })
+      : fullText;
+    let prompt: any = promptText;
     if (resolved.imageBlocks.length > 0) {
       prompt = {
         type: 'user',
-        message: { role: 'user', content: [{ type: 'text', text: fullText }, ...resolved.imageBlocks] },
+        message: { role: 'user', content: [{ type: 'text', text: promptText }, ...resolved.imageBlocks] },
         parent_tool_use_id: null,
       };
     }

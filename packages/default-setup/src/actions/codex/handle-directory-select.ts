@@ -18,7 +18,7 @@ export async function action(params: Record<string, any>, services: Services) {
   const { threadId, response, pendingDirectorySelect } = params as {
     threadId: string;
     response: any;
-    pendingDirectorySelect: { pickerMessageId: string; text: string; mode?: string; model?: string; messageId?: string; references?: any };
+    pendingDirectorySelect: { pickerMessageId: string; text: string; mode?: string; phase?: string; model?: string; messageId?: string; references?: any };
   };
 
   const selectedDir = typeof response === 'string' ? response
@@ -34,6 +34,7 @@ export async function action(params: Record<string, any>, services: Services) {
 
   await services.action.getAndExecute('Codex Chat', {
     threadId, text: pendingDirectorySelect.text, mode: pendingDirectorySelect.mode || 'codex',
+    phase: pendingDirectorySelect.phase,
     model: pendingDirectorySelect.model, messageId: pendingDirectorySelect.messageId, references: pendingDirectorySelect.references,
   });
 

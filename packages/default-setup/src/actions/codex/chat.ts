@@ -14,6 +14,7 @@ import {
   killTurn, ensureSessionMarker, updateChatState,
 } from './_helpers/thread-context';
 import { createStreamConsumer } from './_helpers/stream-consumer';
+import { buildSessionBootstrapPrompt } from '../_helpers/session-bootstrap';
 
 export const meta: ActionMeta = {
   label: 'Codex Chat',
@@ -151,10 +152,19 @@ export async function action(params: Record<string, any>, services: Services, _z
       ? { mode: 'plan' as const, settings: { model: effectiveModel, developer_instructions: null } }
       : undefined;
 
+    const turnText = !codexThreadId
+      ? buildSessionBootstrapPrompt(services, {
+        threadId,
+        currentMessageId: userMessageId,
+        currentText: text,
+        providerName: 'Codex',
+      })
+      : text;
+
     // Start turn
     const turnResult = await codex.startTurn({
       threadId: activeThreadId,
-      input: [{ type: 'text', text }],
+      input: [{ type: 'text', text: turnText }],
       ...(sessionCwd && { cwd: sessionCwd }),
       ...(effectiveModel && { model: effectiveModel }),
       ...(collaborationMode && { collaborationMode }),
