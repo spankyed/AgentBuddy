@@ -479,20 +479,15 @@ export function createStreamConsumer(
     try { (services.codex as any).unregisterConsumer(codexThreadId); } catch { /* ok */ }
     (services.codex as any).clearHandle(threadId);
 
-    // Dequeue and replay before emitting completion
+    // Dequeue before clearing isRunning to avoid a race where a new incoming
+    // message could interleave with the queued replay.
     const queued = dequeueMessage(services, threadId as string);
-    if (queued) {
-      log.info('[codex consumer] replaying queued message', { threadId });
-      if (queued.messageId) {
-        services.chat.updateMessageState(queued.messageId as any, { status: undefined } as any);
-      }
-      services.action.executeAction('Codex Chat', {
-        threadId, text: queued.text, mode: queued.mode || 'codex',
-        phase: queued.phase, messageId: queued.messageId, references: queued.references,
-      });
-    }
 
     persistCodexState(services, threadId as string, { isRunning: false, turnId: undefined, activeMessageId: undefined });
+
+    if (queued) {
+      void replayQueuedMessage(services, threadId, queued, log);
+    }
 
     services.emitter.sendToBrainSystem({
       eventType: 'cdx.stream.completed',
@@ -505,4 +500,38 @@ export function createStreamConsumer(
   }
 
   return { handlers: { onNotification, onApproval, onCrash }, finalize };
+}
+
+async function replayQueuedMessage(
+  services: Services,
+  threadId: EntityId,
+  queued: { text: string; mode?: string; phase?: string; messageId?: string; references?: any },
+  log: any,
+): Promise<void> {
+  log.info('[codex consumer] replaying queued message', { threadId });
+  if (queued.messageId) {
+    services.chat.updateMessageState(queued.messageId as any, { status: undefined } as any);
+  }
+
+  try {
+    await services.action.getAndExecute('Codex Chat', {
+      threadId,
+      text: queued.text,
+      mode: queued.mode || 'Codex',
+      phase: queued.phase,
+      messageId: queued.messageId,
+      references: queued.references,
+    });
+  } catch (drainErr: any) {
+    const message = drainErr?.message || 'Queued message replay failed';
+    log.error('[codex consumer] queued message drain failed', { message, stack: drainErr?.stack });
+    persistCodexState(services, threadId as string, { isRunning: false });
+    updateChatState(services, threadId, 'idle');
+    services.chat.sendBlockMessage({
+      threadId,
+      text: `⚠️ Couldn't handle queued message: ${message}`,
+      blocks: [],
+      forkable: false,
+    });
+  }
 }

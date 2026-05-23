@@ -45,7 +45,7 @@ export async function action(params: Record<string, any>, services: Services) {
     if (decision === 'accept' || decision === 'acceptForSession') {
       // Start a new turn in execute mode — the plan context is already in the thread
       updateChatState(services, threadId as EntityId, 'working');
-      services.action.executeAction('Codex Chat', {
+      await services.action.getAndExecute('Codex Chat', {
         threadId,
         text: 'Approved. Implement the plan now.',
         mode: 'Codex',
