@@ -6,6 +6,9 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "tsx scripts/render.ts",
+    "capture": "tsx scripts/capture-demo-scene.ts",
+    "render:demo": "tsx scripts/render-demo.ts",
+    "demo": "tsx scripts/demo.ts",
     "render:intro": "tsx scripts/render.ts AgentBuddyIntro out/agentbuddy-intro.mp4",
     "typecheck": "tsc --noEmit"
   },

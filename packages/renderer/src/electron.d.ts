@@ -47,6 +47,12 @@ declare global {
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
       };
       apiPort: number;
+      demo?: {
+        enabled: true;
+        id: string;
+        scene: string;
+      };
+      demoReady: () => Promise<void>;
     };
   }
 }

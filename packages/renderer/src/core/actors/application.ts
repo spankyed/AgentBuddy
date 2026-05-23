@@ -76,6 +76,12 @@ export type ApplicationEvent =
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
+  | {
+      type: 'DEMO.HYDRATE';
+      pluginId: string;
+      targetView: string;
+      panelSizes: Partial<ApplicationContext['panelSizes']>;
+    }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
@@ -321,6 +327,8 @@ export const createApplicationState = () => setup({
     }),
 
     syncLastActivePlugin: ({ event, self, context }) => {
+      if (window.electronAPI?.demo?.enabled) return;
+
       const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
 
       // Validate plugin exists before persisting — stale IDs (e.g., removed plugins) must not overwrite localStorage
@@ -462,6 +470,8 @@ export const createApplicationState = () => setup({
       // Persist the new active plugin if it changed
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(({ context }) => {
+          if (window.electronAPI?.demo?.enabled) return;
+
           const pluginId = newPlugin.id;
 
           // Save to localStorage for immediate access on next load
@@ -590,6 +600,28 @@ export const createApplicationState = () => setup({
       const newSizes = { ...context.panelSizes, canvasHeight: defaultCanvasHeight };
       localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
       return { panelSizes: newSizes };
+    }),
+    hydrateDemo: assign(({ context, event }) => {
+      const typedEvent = typeOf('DEMO.HYDRATE', event);
+      const activePlugin = context.plugins.find(plugin => plugin.id === typedEvent.pluginId) ?? context.activePlugin;
+
+      return {
+        activePlugin,
+        visiblePlugins: context.plugins,
+        pluginVisibility: context.plugins.reduce<Record<string, boolean>>((visibility, plugin) => {
+          visibility[plugin.id] = true;
+          return visibility;
+        }, {}),
+        pluginHistory: [activePlugin.id],
+        historyIndex: 0,
+        defaultToggles: {canvas: false},
+        targetView: typedEvent.targetView,
+        panelSizes: {
+          ...context.panelSizes,
+          ...typedEvent.panelSizes,
+        },
+        hotkeysDisabled: true,
+      };
     }),
   },
   guards: {
@@ -745,6 +777,10 @@ export const createApplicationState = () => setup({
         'setActivePlugin',
         'trailNewPlugin',
       ]
+    },
+    'DEMO.HYDRATE': {
+      actions: 'hydrateDemo',
+      target: '#application.running.connected',
     },
     RESIZE_PANEL: {
       actions: 'resizePanel'

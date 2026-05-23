@@ -18,6 +18,24 @@ function getApiPort(): number {
   return 3001;
 }
 
+function getArgValue(name: string): string | undefined {
+  const inlineArg = process.argv.find(arg => arg.startsWith(`${name}=`));
+  if (inlineArg) return inlineArg.slice(name.length + 1);
+
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function getDemoConfig(): {enabled: true; id: string; scene: string} | undefined {
+  if (getArgValue('--demo-enabled') !== 'true') return undefined;
+
+  const id = getArgValue('--demo-id');
+  const scene = getArgValue('--demo-scene');
+  if (!id || !scene) return undefined;
+
+  return {enabled: true, id, scene};
+}
+
 // Window controls API
 const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
@@ -39,6 +57,7 @@ const fileUtils = {
 
 // Get the API port
 const apiPort = getApiPort();
+const demo = getDemoConfig();
 
 // Shell utilities
 const shell = {
@@ -111,6 +130,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   zoom,
   apiStatus,
   apiPort,
+  demo,
+  demoReady: () => ipcRenderer.invoke('demo:ready'),
 });
 
 // Export the tRPC client and connection status

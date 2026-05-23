@@ -1,5 +1,7 @@
 import { Composition } from 'remotion';
 import { AgentBuddyIntro, agentBuddyIntroSchema } from './compositions/AgentBuddyIntro';
+import { ElectronCaptureDemo, electronCaptureDemoSchema } from './compositions/ElectronCaptureDemo';
+import { productIntroDemo } from './demo/product-intro';
 
 export const RemotionRoot = () => {
   return (
@@ -15,6 +17,21 @@ export const RemotionRoot = () => {
         defaultProps={{
           title: 'AgentBuddy',
           subtitle: 'Build and run AI agent workflows',
+        }}
+      />
+      <Composition
+        id="ElectronCaptureDemo"
+        component={ElectronCaptureDemo}
+        durationInFrames={productIntroDemo.durationInFrames}
+        fps={productIntroDemo.fps}
+        width={productIntroDemo.width}
+        height={productIntroDemo.height}
+        schema={electronCaptureDemoSchema}
+        defaultProps={{
+          scenes: productIntroDemo.scenes.map(scene => ({
+            ...scene,
+            src: '',
+          })),
         }}
       />
     </>
