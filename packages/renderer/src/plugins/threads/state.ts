@@ -255,8 +255,9 @@ export type ThreadListItem = Simplify<ThreadEntity & {
 // ---- Context ----
 
 interface ThreadsContext {
-  // Thread management
-  threads: ThreadListItem[];
+  // Thread management (normalized)
+  threadMap: Record<string, ThreadListItem>;
+  threadIds: string[];
   selectedThreadIds: string[];
   selectedThreadCode?: string;
   view: ThreadViewData;
@@ -280,7 +281,7 @@ interface ThreadsContext {
   threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
   // Chat/agent
   currentThread: AgentThreadData | null;
-  recentThreads: ThreadEntity[];
+  recentThreadIds: string[];
   messageInput: string;
   pendingActionId?: string;
   chatStates: Record<string, ChatState>;
@@ -303,11 +304,66 @@ interface ThreadsContext {
 
 // ---- Helpers ----
 
+type ThreadLike = Partial<ThreadEntity> & { id: string };
+
+export function threadsFromStore<T>(threadMap: Record<string, T>, threadIds: string[]): T[] {
+  return threadIds.map(id => threadMap[id]).filter((thread): thread is T => Boolean(thread));
+}
+
+function threadIdsFrom(threads: ThreadLike[]): string[] {
+  return threads.map(t => t.id);
+}
+
+function mergeThreadMap(threadMap: Record<string, ThreadListItem>, threads: ThreadLike[]): Record<string, ThreadListItem> {
+  const next = { ...threadMap };
+  for (const thread of threads) {
+    next[thread.id] = { ...(next[thread.id] || {}), ...thread } as ThreadListItem;
+  }
+  return next;
+}
+
+function appendThreadIds(threadIds: string[], threads: ThreadLike[]): string[] {
+  const seen = new Set(threadIds);
+  const next = [...threadIds];
+  for (const thread of threads) {
+    if (seen.has(thread.id)) continue;
+    seen.add(thread.id);
+    next.push(thread.id);
+  }
+  return next;
+}
+
+function threadStoreFrom(threads: ThreadLike[]): { threadMap: Record<string, ThreadListItem>; threadIds: string[] } {
+  return {
+    threadMap: mergeThreadMap({}, threads),
+    threadIds: threadIdsFrom(threads),
+  };
+}
+
+function visibleThreadStore(ctx: ThreadsContext, threads: ThreadLike[]): { threadMap: Record<string, ThreadListItem>; threadIds: string[] } {
+  return {
+    threadMap: mergeThreadMap(ctx.threadMap, threads),
+    threadIds: threadIdsFrom(threads),
+  };
+}
+
+/** Update a single thread in the map (no-op if not found) */
+function patchThread(ctx: ThreadsContext, threadId: string, patch: Partial<ThreadListItem>) {
+  const existing = ctx.threadMap[threadId];
+  if (!existing) return { threadMap: ctx.threadMap };
+  return { threadMap: { ...ctx.threadMap, [threadId]: { ...existing, ...patch } } };
+}
+
+/** Remove a thread from the map and id list */
+function removeThread(ctx: ThreadsContext, threadId: string) {
+  const { [threadId]: _, ...rest } = ctx.threadMap;
+  return { threadMap: rest, threadIds: ctx.threadIds.filter(id => id !== threadId) };
+}
+
 function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: string, value: unknown) {
   trpc.bus.send.mutate({ systemId: id, type: 'UPDATE_THREAD_FIELD', threadId, key, value });
   return {
-    recentThreads: context.recentThreads.map(t => t.id === threadId ? { ...t, [key]: value } : t),
-    threads: context.threads.map(t => t.id === threadId ? { ...t, [key]: value } : t),
+    ...patchThread(context, threadId, { [key]: value } as any),
     tabs: context.tabs.map(t => t.id === threadId ? { ...t, [key]: value, ...(key === 'topic' ? { label: value as string } : {}) } : t),
     ...(context.currentThread?.id === threadId ? { currentThread: { ...context.currentThread, [key]: value } } : {}),
     ...(context.view.id === threadId ? { view: { ...context.view, [key]: value } } : {}),
@@ -343,7 +399,7 @@ const threadsState = setup({
     },
     setupParentThread: assign(({ event, context }) => {
       const typedEvent = typeOf('SHOW_CREATE_FORM_AS_CHILD', event);
-      const parentThread = context.threads.find(t => t.id === typedEvent.parentThreadId);
+      const parentThread = context.threadMap[typedEvent.parentThreadId];
 
       if (!parentThread) {
         console.warn(`Parent thread with id ${typedEvent.parentThreadId} not found`);
@@ -362,7 +418,7 @@ const threadsState = setup({
       const typedEvent = typeOf('THREAD_CONNECTED', event);
 
       return {
-        threads: typedEvent.data.threads as ThreadListItem[],
+        ...threadStoreFrom(typedEvent.data.threads as ThreadListItem[]),
         selectedThreadIds: [],
         availableTags: typedEvent.data.availableTags,
         settings: typedEvent.data.settings,
@@ -382,7 +438,8 @@ const threadsState = setup({
       } as ThreadListItem;
 
       return {
-        threads: [newThread, ...context.threads],
+        threadMap: { ...context.threadMap, [newThread.id]: newThread },
+        threadIds: [newThread.id, ...context.threadIds],
         create: defaultThread,
       }
     }),
@@ -416,9 +473,9 @@ const threadsState = setup({
     }),
     setSelectedThread: assign(({ event, context }) => {
       const typedEvent = typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event);
-      const selectedThread = context.threads.find(t => t.id === typedEvent.id);
+      const selectedThread = context.threadMap[typedEvent.id];
       if (!selectedThread) {
-        // Thread not in context.threads (e.g. archived, or tab restored from storage).
+        // Thread not in threadMap (e.g. archived, or tab restored from storage).
         // Reset view to defaults with the target id so SET_VIEW_DATA can populate it.
         return {
           selectedThreadCode: undefined,
@@ -462,7 +519,7 @@ const threadsState = setup({
       (rest as any)[typedEvent.key] = typedEvent.value as any;
       const newThread = rest as ThreadListItem;
       return {
-        threads: context.threads.map(t => t.id === context.view.id ? newThread : t),
+        threadMap: { ...context.threadMap, [context.view.id]: { ...(context.threadMap[context.view.id] || {}), ...newThread } },
       };
     }),
     updateCurrentThread: assign(({ event, context }) => {
@@ -475,9 +532,10 @@ const threadsState = setup({
         },
       };
     }),
-    clearNewThreadFlag: assign(({ context, event }) => ({
-      threads: context.threads.map(t => t.id === typeOf('CLEAR_NEW_THREAD_FLAG', event).id ? { ...t, isNew: false } : t),
-    })),
+    clearNewThreadFlag: assign(({ context, event }) => {
+      const clearId = typeOf('CLEAR_NEW_THREAD_FLAG', event).id;
+      return patchThread(context, clearId, { isNew: false });
+    }),
     updateThreadStatus: ({ event }) => {
       const typedEvent = typeOf('UPDATE_THREAD_STATUS', event);
       trpc.bus.send.mutate({
@@ -491,18 +549,8 @@ const threadsState = setup({
       const typedEvent = typeOf('THREAD_UPDATED', event);
       const { threadId, updates } = typedEvent;
 
-      // Skip threads array rebuild for context-only updates. The `context`
-      // field (e.g. claudeCode session state) is not consumed by list/kanban
-      // views — only currentThread/view need it (always updated below).
-      // Using a blocklist so new fields are included by default.
-      const hasListChange = Object.keys(updates).some(k => k !== 'context');
-
       return {
-        ...(hasListChange ? {
-          threads: context.threads.map(t =>
-            t.id === threadId ? { ...t, ...updates } : t
-          ),
-        } : {}),
+        ...patchThread(context, threadId, updates as Partial<ThreadListItem>),
         view: context.view.id === threadId
           ? { ...context.view, ...updates }
           : context.view,
@@ -572,12 +620,12 @@ const threadsState = setup({
       }
       return {
         showArchived: newShowArchived,
-        threads: [] as ThreadListItem[],
+        threadIds: [] as string[],
       };
     }),
-    setArchivedThreads: assign(({ event }) => ({
-      threads: typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[],
-    })),
+    setArchivedThreads: assign(({ context, event }) => {
+      return visibleThreadStore(context, typeOf('ARCHIVED_THREADS_DATA', event).threads as ThreadListItem[]);
+    }),
     unarchiveThread: ({ event }) => {
       const { threadId } = typeOf('UNARCHIVE_THREAD', event);
       trpc.bus.send.mutate({
@@ -590,9 +638,7 @@ const threadsState = setup({
     },
     removeUnarchivedThread: assign(({ event, context }) => {
       const { threadId } = typeOf('UNARCHIVE_THREAD', event);
-      return {
-        threads: context.threads.filter(t => t.id !== threadId),
-      };
+      return removeThread(context, threadId);
     }),
     removeArchivedThread: assign(({ event, context }) => {
       const { threadId } = typeOf('ARCHIVE_THREAD', event);
@@ -601,7 +647,7 @@ const threadsState = setup({
         ? (tabs[tabs.length - 1]?.id ?? '')
         : context.activeTabId;
       return {
-        threads: context.threads.filter(t => t.id !== threadId),
+        ...removeThread(context, threadId),
         tabs,
         activeTabId,
       };
@@ -616,7 +662,7 @@ const threadsState = setup({
         ? (tabs[tabs.length - 1]?.id ?? '')
         : context.activeTabId;
       return {
-        threads: context.threads.filter(t => t.id !== threadId),
+        ...removeThread(context, threadId),
         tabs,
         activeTabId,
         view: context.view.id === threadId ? { ...defaultThread, id: '' as EARS.EntityId, shortCode: '', status: '', timestamp: 0 } as ThreadViewData : context.view,
@@ -903,6 +949,12 @@ const threadsState = setup({
       const chatState: ChatState = (thread.chatState as ChatState) ?? 'idle';
       const base = {
         currentThread: thread,
+        ...(thread.id ? {
+          threadMap: {
+            ...context.threadMap,
+            [thread.id]: { ...(context.threadMap[thread.id] || {}), ...thread } as ThreadListItem,
+          },
+        } : {}),
         chatStates: { ...context.chatStates, [thread.id as string]: chatState },
       };
 
@@ -929,9 +981,13 @@ const threadsState = setup({
 
       return base;
     }),
-    setRefreshThreadsData: assign(({ event }) => {
+    setRefreshThreadsData: assign(({ context, event }) => {
       const typedEvent = typeOf('REFRESH_RECENT_THREADS', event);
-      return { recentThreads: typedEvent.data.recentThreads as ThreadEntity[] };
+      const recentThreads = typedEvent.data.recentThreads as ThreadEntity[];
+      return {
+        threadMap: mergeThreadMap(context.threadMap, recentThreads),
+        recentThreadIds: threadIdsFrom(recentThreads),
+      };
     }),
     setStartupData: enqueueActions(({ enqueue, context, event, self }) => {
       const typedEvent = typeOf('AGENT_CONNECTED', event);
@@ -968,13 +1024,15 @@ const threadsState = setup({
       const stored = loadTabsFromStorage();
       const backendTabIds = new Set(backendTabs.map(t => t.id));
 
-      // Build lookup from recentThreads/threads for tab labels
-      const allKnownThreads = [
-        ...(typedEvent.data.recentThreads || []),
-        ...(typedEvent.data.threads || []),
-      ];
+      const recentThreadsData = (typedEvent.data.recentThreads || []) as ThreadEntity[];
+      const visibleThreadsData = (typedEvent.data.threads || []) as ThreadEntity[];
+      const startupThreadMap = mergeThreadMap(context.threadMap, [...recentThreadsData, ...visibleThreadsData]);
+      const startupThreadIds = appendThreadIds(context.threadIds, visibleThreadsData);
+      const recentThreadIds = threadIdsFrom(recentThreadsData);
+
+      // Build lookup for tab labels from threadMap
       const threadLabelMap = new Map<string, string>(
-        allKnownThreads.map(t => [t.id as string, t.topic || `Thread ${t.shortCode || ''}`])
+        Object.entries(startupThreadMap).map(([tid, t]) => [tid, t.topic || `Thread ${t.shortCode || ''}`])
       );
 
       // Create tab entries for stored tabs not already in backend tabs
@@ -1006,7 +1064,9 @@ const threadsState = setup({
 
       enqueue(assign({
         currentThread,
-        recentThreads: (typedEvent.data.recentThreads || []) as ThreadEntity[],
+        threadMap: startupThreadMap,
+        threadIds: startupThreadIds,
+        recentThreadIds,
         tabs: allTabs,
         activeTabId,
         tabGroups: restoredTabGroups,
@@ -1463,8 +1523,9 @@ const threadsState = setup({
   id,
   initial: getInitialView(),
   context: () => ({
-    // Thread management
-    threads: [],
+    // Thread management (normalized)
+    threadMap: {} as Record<string, ThreadListItem>,
+    threadIds: [] as string[],
     selectedThreadIds: [],
     selectedThreadCode: undefined,
     view: {
@@ -1483,7 +1544,7 @@ const threadsState = setup({
     threadsExport: { status: 'idle' as const, errors: [], filePath: '', threadCount: 0 },
     // Chat/agent
     currentThread: defaultChatThread,
-    recentThreads: [],
+    recentThreadIds: [] as string[],
     messageInput: "",
     pendingActionId: undefined,
     chatStates: {} as Record<string, ChatState>,

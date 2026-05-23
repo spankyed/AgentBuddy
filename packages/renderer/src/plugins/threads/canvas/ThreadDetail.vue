@@ -169,7 +169,7 @@ import { Plus, MessageSquare, Link } from 'lucide-vue-next'
 import Button from '@/core/components/design/button.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id, type ThreadsState } from '@/plugins/threads/state'
+import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/state'
 import type { ThreadEditFields } from '@app/api'
 import type { Ref } from 'vue'
 import NameSaveHeader from '@/core/components/design/NameSaveHeader.vue'
@@ -198,7 +198,9 @@ const linkedThreads = computed(() => contextSlice.value.linkedThreads || []);
 
 // Shared selectors
 const availableTags = useSelector(actor, (state) => state.context.availableTags);
-const threadsList = useSelector(actor, (state) => state.context.threads || []);
+const threadMap = useSelector(actor, (state) => state.context.threadMap);
+const threadIdsAll = useSelector(actor, (state) => state.context.threadIds);
+const threadsList = computed(() => threadsFromStore(threadMap.value, threadIdsAll.value));
 const settings = useSelector(actor, (state) => state.context.settings);
 
 // View-only selectors

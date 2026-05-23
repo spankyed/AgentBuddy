@@ -116,12 +116,14 @@ import { useSelector } from '@xstate/vue'
 import Button from '@/core/components/design/button.vue'
 import ThreadRow from './list/thread-row.vue'
 import ThreadsHeader from './components/ThreadsHeader.vue'
-import { id, type ThreadsState } from '@/plugins/threads/state'
+import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/state'
 import { useThreadSelection } from '@/plugins/threads/composables/useThreadSelection'
 import { useThreadDragDrop } from '@/plugins/threads/composables/useThreadDragDrop'
 
 const actor: ThreadsState = applicationState.system.get(id)
-const threads = useSelector(actor, s => s.context.threads)
+const threadMap = useSelector(actor, s => s.context.threadMap)
+const threadIds = useSelector(actor, s => s.context.threadIds)
+const threads = computed(() => threadsFromStore(threadMap.value, threadIds.value))
 const filters = useSelector(actor, s => s.context.filters)
 const settings = useSelector(actor, s => s.context.settings)
 const showArchived = useSelector(actor, s => s.context.showArchived)

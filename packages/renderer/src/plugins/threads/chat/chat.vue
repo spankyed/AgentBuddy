@@ -155,7 +155,7 @@ import ConfirmationDialog from '@/core/components/design/ConfirmationDialog.vue'
 import ScrollToBottomFob from '@/core/components/design/ScrollToBottomFob.vue'
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue'
-import { id, type ThreadsState } from '@/plugins/threads/state';
+import { id, threadsFromStore, type ThreadsState } from '@/plugins/threads/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@app/api'
 import { trpc } from '@/core/trpc'
 
@@ -172,7 +172,9 @@ function isTailMessage(msg: MessageEntity): boolean {
 }
 
 const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
-const recentThreads = useSelector(actor, (state) => (state.context.recentThreads || []) as ThreadEntity[])
+const recentThreadIds = useSelector(actor, (state) => state.context.recentThreadIds)
+const threadMap = useSelector(actor, (state) => state.context.threadMap)
+const recentThreads = computed(() => threadsFromStore(threadMap.value, recentThreadIds.value) as ThreadEntity[])
 const currentMode = useSelector(actor, (state) => state.context.mode)
 const currentPhase = useSelector(actor, (state) => state.context.phase)
 const modes = useSelector(actor, (state) => state.context.modes)

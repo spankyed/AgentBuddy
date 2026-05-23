@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { applicationState } from '@/main'
 import type { ThreadExtended, DocumentDTO, NoteDTO, CollectionDTO } from '@app/api'
+import { threadsFromStore } from '@/plugins/threads/state'
 import { CATEGORIES, NOTE_TYPE_TO_REF_TYPE, type ReferenceCategory, type ReferenceRefType } from './reference-config'
 
 export type { ReferenceCategory } from './reference-config'
@@ -30,7 +31,9 @@ export function useReferenceItems(category: Ref<ReferenceCategory | null>, query
   const libraryActor = applicationState.system.get('library')
   const notesActor = applicationState.system.get('notes')
 
-  const threads = useSelector(threadsActor, (state: any) => state.context.threads as ThreadExtended[])
+  const threadMap = useSelector(threadsActor, (state: any) => state.context.threadMap as Record<string, ThreadExtended>)
+  const threadIds = useSelector(threadsActor, (state: any) => state.context.threadIds as string[])
+  const threads = computed(() => threadsFromStore(threadMap.value, threadIds.value))
   const documents = useSelector(libraryActor, (state: any) => state.context.documents as DocumentDTO[])
   const collections = useSelector(libraryActor, (state: any) => state.context.collections as CollectionDTO[])
   const notes = useSelector(notesActor, (state: any) => state.context.notes as NoteDTO[])
