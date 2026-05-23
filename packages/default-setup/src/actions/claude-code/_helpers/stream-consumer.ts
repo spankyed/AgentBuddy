@@ -763,8 +763,14 @@ export function finalizeSessionError(
   context?: { isRevert?: boolean },
 ): void {
   const staleId = extractStaleSessionId(errorText);
+  // Distinguish "message UUID not found" (e.g. reverting past a compaction
+  // point) from "session file deleted" — the user-facing message should be
+  // specific so they understand what happened.
+  const isUuidNotFound = /No message found with message\.uuid/i.test(errorText);
   let warning: string;
-  if (staleId && context?.isRevert) {
+  if (staleId && context?.isRevert && isUuidNotFound) {
+    warning = '⚠️ Could not revert — the revert point no longer exists in the current session (likely due to compaction). Your conversation history is preserved. Your next message will start a fresh session.';
+  } else if (staleId && context?.isRevert) {
     warning = '⚠️ Could not revert — the session file was deleted or moved. Your conversation history is preserved but the CLI session cannot be resumed. Your next message will start a fresh session.';
   } else if (staleId) {
     warning = '⚠️ Session expired — the conversation file was deleted or is invalid. Your next message will start a fresh session in the same project directory. Previous messages are still visible for reference.';

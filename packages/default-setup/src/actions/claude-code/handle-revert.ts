@@ -75,15 +75,44 @@ export async function action(
       m => m.sender === 'assistant' && m.context?.cliUuid,
     );
     cliUuid = lastAssistant?.context?.cliUuid as string | undefined;
+
+    // Validate the cliUuid exists in the current session's JSONL.
+    // After compaction the sessionId changes but existing messages retain
+    // cliUuids from the old session. Passing a stale UUID to
+    // --resume-session-at would trigger a confusing "session file deleted"
+    // error. Check the transcript and fall back to a fresh session if the
+    // UUID doesn't exist in the current session.
+    if (cliUuid && state.sessionId) {
+      let uuidValid = false;
+      try {
+        const transcript = await services.cli.claudeCode.viewSession(
+          state.sessionId,
+          { cwd: state.cwd },
+        ) as Array<Record<string, unknown>>;
+        uuidValid = transcript.some(
+          (e: any) => e.type === 'assistant' && e.uuid === cliUuid,
+        );
+      } catch (err: any) {
+        log.warn('[revert] could not validate cliUuid against session JSONL', {
+          threadId, sessionId: state.sessionId, cliUuid, err: err?.message,
+        });
+        // Validation failed — treat as invalid to avoid a worse error later.
+      }
+      if (!uuidValid) {
+        log.info('[revert] cliUuid not found in current session (likely post-compaction) — starting fresh', {
+          threadId, cliUuid, sessionId: state.sessionId,
+        });
+        cliUuid = undefined;
+      }
+    }
   }
 
   // ── 3. Set revert flag ────────────────────────────────────────────
   persistClaudeState(services, threadId, {
-    ...(cliUuid ? { revertTo: { cliUuid } } : {
-      // No CLI UUID found (reverting to first message or no prior assistant).
-      // Clear sessionId and any stale one-shot flags so the next turn starts
-      // fresh. Without this, a leftover forkFrom or revertTo would cause
-      // --resume-session-at to be passed without --resume.
+    ...(cliUuid ? { revertTo: { cliUuid }, forkFrom: undefined } : {
+      // No CLI UUID found (reverting to first message, no prior assistant,
+      // or stale UUID from a compacted session). Clear sessionId and any
+      // stale one-shot flags so the next turn starts fresh.
       sessionId: undefined,
       forkFrom: undefined,
       revertTo: undefined,

@@ -104,8 +104,11 @@ export async function action(
 
   // Arm the one-shot revert flag. The next chat action consumes this and
   // passes `--fork-session --resume-session-at <cliUuid>` to the CLI.
+  // Clear forkFrom to prevent a stale fork UUID from overriding the
+  // revert's resumeSessionAt value.
   persistClaudeState(services, threadId, {
     revertTo: { cliUuid },
+    forkFrom: undefined,
   });
 
   // Create the synthetic user message. `autoHide: true` + `asideText`

@@ -436,6 +436,13 @@ export async function action(
     // ─── Session-not-found: clear stale sessionId, mark session broken ──
     if (extractStaleSessionId(message)) {
       finalizeSessionError(services, threadId as EntityId, writer, message, undefined, { isRevert: !!revertTo });
+      // Emit cc.stream.completed so CC: Turn Completed can run bookkeeping
+      // (turn counts, cost tracking). Without this, the turn is "lost" from
+      // the flow's perspective.
+      services.emitter.sendToBrainSystem({
+        eventType: 'cc.stream.completed',
+        payload: { threadId, hadErrors: true, error: message },
+      });
       return { success: false, error: message, messageId: currentMessageId };
     }
 
