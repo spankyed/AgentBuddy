@@ -4,14 +4,17 @@
     :class="$style.component"
   >
     <!-- HEADER ROW -->
-    <div class="flex items-center w-full h-header px-3 border-b border-neutral-800" :class="[headerClass, menuOpen ? '' : 'canvas-header']">
-      <!-- ▸ Breadcrumbs with inline ⋮ menu trigger
-           IMPORTANT: Do NOT add `no-drag` here — it blocks window dragging on the left half of the titlebar.
-           Interactive children (buttons, clickable spans) are already excluded via the CSS rules below. -->
+    <div
+      class="flex items-center w-full h-header px-3 border-b border-neutral-800 overflow-x-auto overflow-y-hidden scrollbar-none"
+      :class="[headerClass, menuOpen ? '' : 'canvas-header']"
+      @wheel.prevent="($event.currentTarget as HTMLElement).scrollLeft += $event.deltaY"
+    >
+      <!-- ▸ Breadcrumbs with inline ⋮ menu trigger.
+           Keep this strip no-drag so wheel events work across its full height. -->
       <nav
         v-if="breadcrumbs?.length"
         aria-label="Breadcrumb"
-        class="flex items-center gap-1 ml-2 text-sm text-neutral-500 whitespace-nowrap"
+        class="no-drag flex h-full items-center gap-1 ml-2 text-sm text-neutral-500 whitespace-nowrap min-w-max"
         @contextmenu.prevent="menuItems.length > 0 && (menuOpen = true)"
       >
         <DropdownMenuRoot v-model:open="menuOpen">

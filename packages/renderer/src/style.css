@@ -66,6 +66,16 @@
   @apply bg-neutral-500;
 }
 
+/* Hide native scrollbars while preserving wheel/trackpad scrolling. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Mosaic thinking-state animation (status indicator dot) */
 .mosaic-dot {
   background: conic-gradient(

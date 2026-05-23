@@ -344,18 +344,11 @@ function handleGroupDrop(event: DragEvent, groupId: string) {
   --color-gray-text: rgb(229, 231, 235);
 }
 
-/* Custom horizontal scrollbar for tab containers */
+/* Keep tab rows horizontally scrollable without exposing a scrollbar. */
+.tab-container {
+  scrollbar-width: none;
+}
 .tab-container::-webkit-scrollbar {
-  height: 6px;
-}
-.tab-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-.tab-container::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 100, 100, 0.3);
-  border-radius: 3px;
-}
-.tab-container::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(100, 100, 100, 0.5);
+  display: none;
 }
 </style>
