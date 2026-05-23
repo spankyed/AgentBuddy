@@ -52,6 +52,7 @@ packages/
 │       ├── core/         # App shell, router, event bus client
 │       ├── plugins/      # Frontend plugin actors (actions, flows, library, etc.)
 │       └── setup/        # Plugin registration
+├── video/                # Remotion compositions and render scripts
 └── electron-versions/    # Electron version management
 ```
 
@@ -94,6 +95,16 @@ npm run package:all      # Package for macOS, Windows, and Linux
 npm test                 # Playwright E2E tests
 npm run test:unit        # Unit tests
 npm run typecheck        # Frontend and backend type checks
+```
+
+### Video Rendering
+
+Remotion compositions live in `packages/video`.
+
+```sh
+npm run video:studio      # Open the Remotion studio
+npm run video:render:intro # Render the starter intro composition to packages/video/out/
+npm run video:render -- AgentBuddyIntro out/custom-name.mp4
 ```
 
 ### DSL Compilation
