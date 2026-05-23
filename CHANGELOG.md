@@ -1,12 +1,5 @@
 -e # Changelog
 
-## v0.3.4 (2026-05-22)
-
-### Refactors
-- fork): move openThreadChatAndRefreshRecent into handle-fork actions
-
--e # Changelog
-
 ## v0.3.3 (2026-05-22)
 
 ### Features
