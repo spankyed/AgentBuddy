@@ -1,5 +1,39 @@
 -e # Changelog
 
+## v0.3.3 (2026-05-22)
+
+### Features
+- search): re-run search automatically when options are updated
+- threads): add close button to inline tab bar
+- chat): add inline tab bar toggle via cmd+click on thread title
+- core): add shared utilities and system IDs for services rework
+
+### Fixes
+- revert): validate cliUuid against session JSONL before reverting
+- threads): extend tab drop zone hitbox to cover full pinned section
+- threads): prevent crash when deleting an errored thread
+- chat): deduplicate question text in AskUserQuestion interactive messages
+- terminal): move context menu handler to collapsible header element
+- tabs): scroll active thread tab into view on selection
+- default-setup): add JSDoc @param to inlined helpers for services parameter
+
+### Refactors
+- chat): move InlineTabBar from bottom to top of chat column
+- repository): add duplicate registration warning and strict access checks
+- core): rename `core/helpers/` to `core/shared/` and delete unused pagination files
+- core): reuse helpers shared directory for consistency
+-  register repository modules via side-effect imports in system files
+- core): decouple all cross-system dependencies
+- compile-utils): skip stripping services param from functions used as values
+- compile-utils): strip redundant `services` params via AST instead of adding JSDoc
+
+### Other
+- style(threads): remove left border from inline tab bar close container
+- Merge pull request #156 from spankyed/as/services-preliminary-rework
+- docs: add architecture document for user-defined services
+
+-e # Changelog
+
 ## v0.3.2 (2026-05-21)
 
 ### Features
