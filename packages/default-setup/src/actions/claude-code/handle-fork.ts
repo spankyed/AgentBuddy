@@ -39,6 +39,7 @@ export async function action(
   const log = services.logger;
   const sourceState = getClaudeState(services, sourceThreadId);
   if (!sourceState?.sessionId) {
+    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
     return { success: true, copied: false };
   }
 
@@ -67,6 +68,34 @@ export async function action(
     }
   }
 
+  // Validate cliUuid exists in current session JSONL (post-compaction guard).
+  // After compaction the sessionId changes but existing messages retain
+  // cliUuids from the old session. Passing a stale UUID to
+  // --resume-session-at would trigger "No message found" / "Session not found".
+  // Same pattern as handle-revert.ts:79-107.
+  if (cliUuid && sourceState.sessionId) {
+    let uuidValid = false;
+    try {
+      const transcript = await services.cli.claudeCode.viewSession(
+        sourceState.sessionId,
+        { cwd: sourceState.cwd },
+      ) as Array<Record<string, unknown>>;
+      uuidValid = transcript.some(
+        (e: any) => e.type === 'assistant' && e.uuid === cliUuid,
+      );
+    } catch (err: any) {
+      log.warn('[fork] could not validate cliUuid against session JSONL', {
+        sourceThreadId, sessionId: sourceState.sessionId, cliUuid, err: err?.message,
+      });
+    }
+    if (!uuidValid) {
+      log.info('[fork] cliUuid not found in current session (likely post-compaction) — forking from end', {
+        sourceThreadId, cliUuid, sessionId: sourceState.sessionId,
+      });
+      cliUuid = undefined;
+    }
+  }
+
   persistClaudeState(services, newThreadId, {
     sessionId: sourceState.sessionId,
     lastTurnAt: sourceState.lastTurnAt,
@@ -81,5 +110,6 @@ export async function action(
     cliUuid: cliUuid ?? 'none (will fork from end)',
   });
 
+  services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
   return { success: true, copied: true, sessionId: sourceState.sessionId, cliUuid };
 }

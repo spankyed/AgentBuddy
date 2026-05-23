@@ -68,6 +68,5 @@ async function handleFork(
     newThreadId,
   });
 
-  services.chat.openThreadChatAndRefreshRecent(newThreadId);
   return { text: `Forked to: ${forkTopic}`, skipMessage: true };
 }

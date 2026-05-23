@@ -25,7 +25,10 @@ export async function action(params: Record<string, any>, services: Services) {
   if (!sourceThreadId || !newThreadId) return { success: false, reason: 'missing sourceThreadId or newThreadId' };
 
   const sourceState = getCodexState(services, sourceThreadId);
-  if (!sourceState?.threadId) return { success: true, copied: false, reason: 'no codex thread' };
+  if (!sourceState?.threadId) {
+    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
+    return { success: true, copied: false, reason: 'no codex thread' };
+  }
 
   try {
     const fork = await (services.codex as any).forkThread({
@@ -61,6 +64,7 @@ export async function action(params: Record<string, any>, services: Services) {
       activeMessageId: undefined,
     });
     updateChatState(services, newThreadId as EntityId, 'idle');
+    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
 
     return { success: true, copied: true, codexThreadId: forkedCodexThreadId, rollbackTurns };
   } catch (error: any) {
@@ -71,6 +75,7 @@ export async function action(params: Record<string, any>, services: Services) {
       blocks: [],
       forkable: false,
     });
+    services.chat.openThreadChatAndRefreshRecent(newThreadId as EntityId);
     return { success: false, error: error?.message };
   }
 }

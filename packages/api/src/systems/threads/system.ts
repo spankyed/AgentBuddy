@@ -656,8 +656,6 @@ export const threadsSystem = setup({
           upToMessageId: messageId,
         });
 
-        services.chat.openThreadChatAndRefreshRecent(result.id);
-
         const brainActor = getActor(system, brain);
         brainActor.send({
           type: 'TRIGGER_BRAIN_EVENT',
