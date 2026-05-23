@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="relative z-20 flex items-center justify-between h-header px-4 border-b border-neutral-800"
+    <div
+      class="relative z-20 flex items-center justify-between h-header px-4 border-b border-neutral-800"
+      :class="{ 'panel-drag': !dropdownOpen }"
       @dragover.prevent="!showTrash && handleRootDragOver($event)"
       @drop="!showTrash && handleRootDrop($event)"
     >
@@ -466,3 +468,13 @@ function handleRootDrop(e: DragEvent) {
 }
 </script>
 
+<style scoped>
+.panel-drag {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.panel-drag button {
+  -webkit-app-region: no-drag;
+}
+</style>
