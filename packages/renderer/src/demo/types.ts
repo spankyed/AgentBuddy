@@ -1,9 +1,19 @@
-export type DemoSceneId = 'workspace' | 'chat' | 'artifact';
-
 export interface DemoConfig {
   enabled: true;
   id: string;
-  scene: DemoSceneId;
+  scene: string;
+}
+
+export interface DemoSceneConfig {
+  pluginId?: string;
+  targetView?: string;
+  threadView?: 'dashboard' | 'list' | 'kanban';
+  panelSizes: {
+    canvasHeight: number;
+    inspectionWidth: number;
+    chatMaximized?: boolean;
+  };
+  selectedArtifactId?: string;
 }
 
 export interface DemoFixture {
@@ -12,12 +22,5 @@ export interface DemoFixture {
   threads: any[];
   artifacts: any[];
   settings: any;
-  scenes: Record<DemoSceneId, {
-    panelSizes: {
-      canvasHeight: number;
-      inspectionWidth: number;
-      chatMaximized?: boolean;
-    };
-    selectedArtifactId?: string;
-  }>;
+  scenes: Record<string, DemoSceneConfig>;
 }

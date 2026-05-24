@@ -1,8 +1,10 @@
 import {productIntroFixture} from './fixtures/product-intro';
+import {cinematicProductDemoFixture} from './fixtures/cinematic-product-demo';
 import type {DemoConfig, DemoFixture} from './types';
 
 const fixtures: Record<string, DemoFixture> = {
   'product-intro': productIntroFixture,
+  'cinematic-product-demo': cinematicProductDemoFixture,
 };
 
 export function getDemoFixture(config: DemoConfig): DemoFixture {

@@ -24,13 +24,16 @@ export async function applyDemoScene(config: DemoConfig) {
 
   disableDemoAnimationVariance();
 
-  localStorage.setItem('agentbuddy-last-active-plugin', 'threads');
+  localStorage.setItem('agentbuddy-last-active-plugin', scene.pluginId ?? 'threads');
   localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(scene.panelSizes));
-  localStorage.setItem('threads-view-preference', 'dashboard');
-  localStorage.setItem('threads-open-tabs', JSON.stringify({
-    tabs: [{id: fixture.thread.id, label: fixture.thread.topic}],
-    activeTabId: fixture.thread.id,
-  }));
+
+  if ((scene.pluginId ?? 'threads') === 'threads') {
+    localStorage.setItem('threads-view-preference', scene.threadView ?? 'dashboard');
+    localStorage.setItem('threads-open-tabs', JSON.stringify({
+      tabs: [{id: fixture.thread.id, label: fixture.thread.topic}],
+      activeTabId: fixture.thread.id,
+    }));
+  }
 
   mockBackend.connectScene(config);
 

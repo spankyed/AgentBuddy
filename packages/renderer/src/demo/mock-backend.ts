@@ -10,14 +10,18 @@ export class DemoMockBackend {
 
   connectScene(config: DemoConfig) {
     const scene = this.#fixture.scenes[config.scene];
+    const pluginId = scene.pluginId ?? 'threads';
+    const targetView = scene.targetView ?? (pluginId === 'threads' ? 'dashboard' : '');
     const threadsActor = applicationState.system.get('threads');
 
     applicationState.send({
       type: 'DEMO.HYDRATE',
-      pluginId: 'threads',
-      targetView: 'dashboard',
+      pluginId,
+      targetView,
       panelSizes: scene.panelSizes,
     });
+
+    if (pluginId !== 'threads') return;
 
     threadsActor.send({
       type: 'THREAD_CONNECTED',
@@ -47,6 +51,14 @@ export class DemoMockBackend {
       artifacts: this.#fixture.artifacts,
       pinned: true,
     } as any);
+
+    if (scene.threadView === 'kanban') {
+      threadsActor.send({type: 'VIEW_KANBAN'} as any);
+    } else if (scene.threadView === 'list') {
+      threadsActor.send({type: 'VIEW_LIST'} as any);
+    } else {
+      threadsActor.send({type: 'VIEW_DASHBOARD'} as any);
+    }
 
     if (scene.selectedArtifactId) {
       threadsActor.send({type: 'SELECT_ARTIFACT', artifactId: scene.selectedArtifactId} as any);

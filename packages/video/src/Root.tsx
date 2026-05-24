@@ -1,7 +1,8 @@
 import { Composition } from 'remotion';
 import { AgentBuddyIntro, agentBuddyIntroSchema } from './compositions/AgentBuddyIntro';
 import { ElectronCaptureDemo, electronCaptureDemoSchema } from './compositions/ElectronCaptureDemo';
-import { productIntroDemo } from './demo/product-intro';
+import { CinematicProductDemo, cinematicProductDemoSchema } from './compositions/CinematicProductDemo';
+import { cinematicProductDemo, productIntroDemo } from './demo/product-intro';
 
 export const RemotionRoot = () => {
   return (
@@ -33,6 +34,25 @@ export const RemotionRoot = () => {
             src: '',
             captureMetadata: {
               viewport: {width: productIntroDemo.width, height: productIntroDemo.height, devicePixelRatio: 1},
+              targets: {},
+            },
+          })),
+        }}
+      />
+      <Composition
+        id="CinematicProductDemo"
+        component={CinematicProductDemo}
+        durationInFrames={cinematicProductDemo.durationInFrames}
+        fps={cinematicProductDemo.fps}
+        width={cinematicProductDemo.width}
+        height={cinematicProductDemo.height}
+        schema={cinematicProductDemoSchema}
+        defaultProps={{
+          scenes: cinematicProductDemo.scenes.map(scene => ({
+            ...scene,
+            src: '',
+            captureMetadata: {
+              viewport: {width: cinematicProductDemo.width, height: cinematicProductDemo.height, devicePixelRatio: 1},
               targets: {},
             },
           })),

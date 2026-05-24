@@ -56,8 +56,8 @@ class DemoCaptureController implements AppModule {
     const metadata = await window.webContents.executeJavaScript(`
       (() => {
         const targets = {};
-        for (const element of document.querySelectorAll('[data-targeting-id]')) {
-          const id = element.getAttribute('data-targeting-id');
+        for (const element of document.querySelectorAll('[data-targeting-id], [data-onboarding-id]')) {
+          const id = element.getAttribute('data-targeting-id') || element.getAttribute('data-onboarding-id');
           const rect = element.getBoundingClientRect();
           if (!id || rect.width <= 0 || rect.height <= 0) continue;
           targets[id] = {
