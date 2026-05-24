@@ -1,4 +1,4 @@
-export type ShotId = 'notes' | 'chat' | 'board' | 'code' | 'workflow' | 'montage' | 'final';
+export type ShotId = 'notes' | 'chat' | 'board' | 'code' | 'workflow' | 'final';
 
 export type FilmShot = {
   duration: number;
@@ -12,7 +12,6 @@ export const shots: FilmShot[] = [
   {id: 'board', duration: 270},
   {id: 'code', title: 'Ship from the same surface.', duration: 360},
   {id: 'workflow', title: 'Automate the system around you.', duration: 330},
-  {id: 'montage', duration: 420},
   {id: 'final', duration: 300},
 ];
 
@@ -32,4 +31,3 @@ export function mix(from: number, to: number, progress: number) {
 export function textReveal(text: string, local: number, from: number, to: number) {
   return text.slice(0, Math.floor(mix(0, text.length, ease(local, from, to))));
 }
-

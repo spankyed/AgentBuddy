@@ -9,14 +9,13 @@ import {
   FlowCanvasDemo,
   FlowNodeVariantsDemo,
   FlowPaletteDemo,
-  MontageSurfaceDemo,
   NotesSurfaceDemo,
   ToolbarDemo,
   WorkflowSurfaceDemo,
 } from './compositions/ComponentDemos';
 
 const fps = 30;
-const fullDuration = 2280;
+const fullDuration = 1860;
 const demoDuration = 240;
 
 export const RemotionRoot = () => {
@@ -35,7 +34,6 @@ export const RemotionRoot = () => {
       <Composition id="BoardSurfaceDemo" component={BoardSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="CodeSurfaceDemo" component={CodeSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="MontageSurfaceDemo" component={MontageSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
     </>
   );
 };

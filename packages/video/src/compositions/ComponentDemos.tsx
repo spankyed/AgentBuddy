@@ -10,7 +10,6 @@ import {ChatShot} from '../film/shots/ChatShot';
 import {BoardShot} from '../film/shots/BoardShot';
 import {CodeShot} from '../film/shots/CodeShot';
 import {WorkflowShot} from '../film/shots/WorkflowShot';
-import {MontageShot} from '../film/shots/MontageShot';
 import {SurfaceFrame} from '../film/SurfaceFrame';
 
 export const ToolbarDemo = () => <SurfaceFrame><AppWindow activePlugin="code" breadcrumbs={['Code', 'Demo']} composer={false}><div /></AppWindow></SurfaceFrame>;
@@ -65,9 +64,3 @@ export const WorkflowSurfaceDemo = () => {
   const frame = useCurrentFrame();
   return <SurfaceFrame><WorkflowShot frame={frame} /></SurfaceFrame>;
 };
-
-export const MontageSurfaceDemo = () => {
-  const frame = useCurrentFrame();
-  return <SurfaceFrame><MontageShot frame={frame} /></SurfaceFrame>;
-};
-

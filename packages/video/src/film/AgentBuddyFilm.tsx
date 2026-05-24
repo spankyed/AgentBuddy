@@ -5,7 +5,6 @@ import {BoardShot} from './shots/BoardShot';
 import {ChatShot} from './shots/ChatShot';
 import {CodeShot} from './shots/CodeShot';
 import {FinalShot} from './shots/FinalShot';
-import {MontageShot} from './shots/MontageShot';
 import {NotesShot} from './shots/NotesShot';
 import {WorkflowShot} from './shots/WorkflowShot';
 import {SurfaceFrame} from './SurfaceFrame';
@@ -49,7 +48,6 @@ function ShotSurface({id, variant}: {id: ShotId; variant: Variant}) {
   if (id === 'board') return <BoardShot frame={frame} variant={variant} />;
   if (id === 'code') return <CodeShot frame={frame} variant={variant} />;
   if (id === 'workflow') return <WorkflowShot frame={frame} variant={variant} />;
-  if (id === 'montage') return <MontageShot frame={frame} variant={variant} />;
   return <FinalShot frame={frame} variant={variant} />;
 }
 
@@ -79,4 +77,3 @@ function Caption({title, duration, variant}: {title: string; duration: number; v
     </div>
   );
 }
-
