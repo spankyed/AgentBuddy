@@ -1,5 +1,7 @@
 import {Icons} from '../primitives/Icon';
-import styles from './CanvasHeader.module.css';
+import './CanvasHeader.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('CanvasHeader');
 
 type CanvasHeaderProps = {
   breadcrumbs: string[];

@@ -1,6 +1,8 @@
 import {ease, mix} from '../../film/state/timeline';
 import {ThreadCard} from '../threads/ThreadCard';
-import styles from './CodeReview.module.css';
+import './CodeReview.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('CodeReview');
 
 export function CodeReview({frame}: {frame: number}) {
   const files = ['src/demo/timeline.ts', 'src/ui/AppShell.tsx', 'src/shots/Workflow.tsx'];

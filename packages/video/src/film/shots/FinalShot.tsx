@@ -1,7 +1,9 @@
 import {interpolate} from 'remotion';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {ease} from '../state/timeline';
-import styles from './FinalShot.module.css';
+import './FinalShot.module.css';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+const styles = makeStyles('FinalShot');
 
 export function FinalShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   return (

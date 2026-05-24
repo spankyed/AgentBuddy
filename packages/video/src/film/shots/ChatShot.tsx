@@ -5,7 +5,9 @@ import {AgentWorkList} from '../../agentbuddy-ui/threads/AgentWorkList';
 import {ThreadCard} from '../../agentbuddy-ui/threads/ThreadCard';
 import {textReveal} from '../state/timeline';
 import {Caret} from './Caret';
-import styles from './ChatShot.module.css';
+import './ChatShot.module.css';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+const styles = makeStyles('ChatShot');
 
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const prompt = textReveal('Turn this launch brief into tickets, notes, and a shippable PR plan.', frame, 24, 88);

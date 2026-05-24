@@ -1,12 +1,12 @@
-.root {
+.ModePhaseSelector_root {
   display: flex;
   min-width: 0;
   overflow: hidden;
   border-radius: 0.375rem;
 }
 
-.mode,
-.phase {
+.ModePhaseSelector_mode,
+.ModePhaseSelector_phase {
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -18,15 +18,15 @@
   padding: 0 0.75rem;
 }
 
-.mode {
+.ModePhaseSelector_mode {
   background: rgb(38 38 38);
 }
 
-.phase {
+.ModePhaseSelector_phase {
   background: rgb(30 58 138 / 70%);
 }
 
-.chevronDown {
+.ModePhaseSelector_chevronDown {
   transform: rotate(90deg);
   color: rgb(163 163 163);
 }

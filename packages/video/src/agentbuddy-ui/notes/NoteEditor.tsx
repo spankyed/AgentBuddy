@@ -1,5 +1,7 @@
 import type {ReactNode} from 'react';
-import styles from './NoteEditor.module.css';
+import './NoteEditor.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('NoteEditor');
 
 type NoteEditorProps = {
   afterLines: ReactNode[];

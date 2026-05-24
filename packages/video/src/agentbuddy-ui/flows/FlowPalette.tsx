@@ -1,6 +1,8 @@
 import {FlowPaletteItem} from './FlowPaletteItem';
 import type {FlowPaletteItemState} from './flowTypes';
-import styles from './FlowPalette.module.css';
+import './FlowPalette.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('FlowPalette');
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/components/NodePalette.vue.
 export function FlowPalette({items}: {items: FlowPaletteItemState[]}) {

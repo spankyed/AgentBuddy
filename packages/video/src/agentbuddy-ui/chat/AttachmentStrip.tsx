@@ -1,5 +1,7 @@
 import type {ChatAttachment} from './chatTypes';
-import styles from './ChatComposer.module.css';
+import './ChatComposer.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ChatComposer');
 
 // Mirrors attachment strip behavior from packages/renderer/src/plugins/threads/chat/input.vue.
 export function AttachmentStrip({attachments = []}: {attachments?: ChatAttachment[]}) {

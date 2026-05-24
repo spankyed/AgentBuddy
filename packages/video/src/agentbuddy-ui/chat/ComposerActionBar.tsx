@@ -2,7 +2,9 @@ import {Icons} from '../primitives/Icon';
 import {ComposerIconButton} from './ComposerIconButton';
 import {ModePhaseSelector} from './ModePhaseSelector';
 import {SendButton} from './SendButton';
-import styles from './ChatComposer.module.css';
+import './ChatComposer.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ChatComposer');
 
 type ComposerActionBarProps = {
   disabled?: boolean;

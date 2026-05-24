@@ -1,6 +1,8 @@
 import type {ComponentType} from 'react';
 import {cx} from '../primitives/classNames';
-import styles from './ChatComposer.module.css';
+import './ChatComposer.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ChatComposer');
 
 type ComposerIconButtonProps = {
   className?: string;

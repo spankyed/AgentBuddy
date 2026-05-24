@@ -1,5 +1,7 @@
 import {ease} from '../../film/state/timeline';
-import styles from './AgentWorkList.module.css';
+import './AgentWorkList.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('AgentWorkList');
 
 export function AgentWorkList({frame, items}: {frame: number; items: string[]}) {
   return (

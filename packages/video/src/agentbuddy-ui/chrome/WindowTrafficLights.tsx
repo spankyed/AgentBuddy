@@ -1,4 +1,6 @@
-import styles from './WindowTrafficLights.module.css';
+import './WindowTrafficLights.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('WindowTrafficLights');
 
 // Mirrors packages/renderer/src/core/components/layout/WindowControls.vue on macOS.
 export function WindowTrafficLights() {

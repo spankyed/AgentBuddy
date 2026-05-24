@@ -4,7 +4,9 @@ import {NotesPanel} from '../../agentbuddy-ui/notes/NotesPanel';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
 import {textReveal} from '../state/timeline';
 import {Caret} from './Caret';
-import styles from './NotesShot.module.css';
+import './NotesShot.module.css';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+const styles = makeStyles('NotesShot');
 
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const lineA = textReveal('demo different features with cinematic product scenes', frame, 34, 112);

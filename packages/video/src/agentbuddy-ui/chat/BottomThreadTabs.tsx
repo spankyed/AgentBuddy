@@ -1,5 +1,7 @@
 import {Icons} from '../primitives/Icon';
-import styles from './ChatComposer.module.css';
+import './ChatComposer.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ChatComposer');
 
 export function BottomThreadTabs({activeLabel = 'AgentBuddy launch film'}: {activeLabel?: string}) {
   return (

@@ -1,5 +1,7 @@
 import {ease} from '../../film/state/timeline';
-import styles from './ArtifactChecklist.module.css';
+import './ArtifactChecklist.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ArtifactChecklist');
 
 export function ArtifactChecklist({frame, rows}: {frame: number; rows: string[]}) {
   return (

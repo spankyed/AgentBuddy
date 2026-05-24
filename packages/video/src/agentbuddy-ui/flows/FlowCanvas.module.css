@@ -1,4 +1,4 @@
-.root {
+.FlowCanvas_root {
   position: absolute;
   inset: 0;
   display: flex;
@@ -9,7 +9,7 @@
   color: white;
 }
 
-.editor {
+.FlowCanvas_editor {
   position: relative;
   flex: 1;
   min-width: 0;
@@ -18,7 +18,7 @@
   background-size: 24px 24px;
 }
 
-.backButton {
+.FlowCanvas_backButton {
   position: absolute;
   top: 1rem;
   left: 1rem;
@@ -36,7 +36,7 @@
   backdrop-filter: blur(4px);
 }
 
-.edges {
+.FlowCanvas_edges {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -44,18 +44,18 @@
   overflow: visible;
 }
 
-.edge,
-.edgeDashed {
+.FlowCanvas_edge,
+.FlowCanvas_edgeDashed {
   fill: none;
   stroke: rgb(115 115 115);
   stroke-width: 1.8;
 }
 
-.edgeDashed {
+.FlowCanvas_edgeDashed {
   stroke-dasharray: 4 4;
 }
 
-.controls {
+.FlowCanvas_controls {
   position: absolute;
   bottom: 1rem;
   left: 1rem;

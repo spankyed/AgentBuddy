@@ -1,6 +1,8 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {ease, mix} from '../state/timeline';
-import styles from './MontageShot.module.css';
+import './MontageShot.module.css';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+const styles = makeStyles('MontageShot');
 
 export function MontageShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const items = ['Memory graph updated', 'Execution stream visible', 'Knowledge query returned', 'Defaults personalized', 'Threads dashboard', 'Workflow completed'];

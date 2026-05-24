@@ -1,10 +1,10 @@
-.outer {
+.ChatComposer_outer {
   border-top: 1px solid rgb(38 38 38);
   background: rgb(23 23 23);
   padding: 14px 0 0;
 }
 
-.form {
+.ChatComposer_form {
   width: min(80%, 1060px);
   margin: 0 auto;
   flex-shrink: 0;
@@ -12,7 +12,7 @@
   padding-bottom: 12px;
 }
 
-.inputCard {
+.ChatComposer_inputCard {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -22,7 +22,7 @@
   background: rgb(38 38 38 / 78%);
 }
 
-.attachmentStrip {
+.ChatComposer_attachmentStrip {
   display: flex;
   align-items: end;
   gap: 0.5rem;
@@ -31,8 +31,8 @@
   overflow-x: hidden;
 }
 
-.imageAttachment,
-.fileAttachment {
+.ChatComposer_imageAttachment,
+.ChatComposer_fileAttachment {
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
@@ -47,7 +47,7 @@
   font-size: 12px;
 }
 
-.fileAttachment {
+.ChatComposer_fileAttachment {
   width: auto;
   min-height: 34px;
   flex-direction: row;
@@ -55,29 +55,29 @@
   gap: 0.5rem;
 }
 
-.attachmentIcon {
+.ChatComposer_attachmentIcon {
   color: rgb(212 212 216);
   font-weight: 700;
 }
 
-.editor {
+.ChatComposer_editor {
   position: relative;
   width: 100%;
   min-height: 48px;
   padding: 0.75rem 1.35rem 0.25rem;
 }
 
-.placeholder {
+.ChatComposer_placeholder {
   color: rgb(115 115 115);
   font-size: 16px;
 }
 
-.text {
+.ChatComposer_text {
   color: rgb(229 229 229);
   font-size: 16px;
 }
 
-.actionBar {
+.ChatComposer_actionBar {
   position: relative;
   display: flex;
   align-items: center;
@@ -86,13 +86,13 @@
   padding: 0 0.75rem 0.5rem;
 }
 
-.leftActions {
+.ChatComposer_leftActions {
   display: flex;
   min-width: 0;
   align-items: center;
 }
 
-.iconButton {
+.ChatComposer_iconButton {
   display: grid;
   place-items: center;
   width: 32px;
@@ -103,7 +103,7 @@
   padding: 0;
 }
 
-.sendButton {
+.ChatComposer_sendButton {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -118,15 +118,15 @@
   padding: 0 1rem;
 }
 
-.sendButton:disabled {
+.ChatComposer_sendButton:disabled {
   opacity: 0.5;
 }
 
-.sendIcon {
+.ChatComposer_sendIcon {
   transform: rotate(-45deg);
 }
 
-.statusLine {
+.ChatComposer_statusLine {
   position: absolute;
   right: 0.75rem;
   bottom: -1.1rem;
@@ -134,7 +134,7 @@
   font-size: 11px;
 }
 
-.bottomTabs {
+.ChatComposer_bottomTabs {
   display: flex;
   height: 38px;
   align-items: center;
@@ -143,7 +143,7 @@
   font-size: 13px;
 }
 
-.bottomTabs span {
+.ChatComposer_bottomTabs span {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;

@@ -1,4 +1,4 @@
-.root {
+.NoteEditor_root {
   overflow: hidden;
   padding: 22px 56px;
   color: rgb(245 245 245);
@@ -6,7 +6,7 @@
   line-height: 1.55;
 }
 
-.path {
+.NoteEditor_path {
   margin-bottom: 12px;
   color: rgb(245 245 245);
   font-size: 15px;
@@ -14,16 +14,16 @@
   text-transform: uppercase;
 }
 
-.list {
+.NoteEditor_list {
   margin: 0;
   padding-left: 22px;
 }
 
-.connected {
+.NoteEditor_connected {
   color: rgb(230 255 248);
 }
 
-.rule {
+.NoteEditor_rule {
   height: 1px;
   background: rgb(64 64 64);
   margin: 28px 0;

@@ -4,7 +4,9 @@ import {FlowEdge} from './FlowEdge';
 import {FlowNode} from './FlowNode';
 import {FlowPalette} from './FlowPalette';
 import type {FlowCanvasState} from './flowTypes';
-import styles from './FlowCanvas.module.css';
+import './FlowCanvas.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('FlowCanvas');
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/flow-canvas.vue and components/FlowEditor.vue.
 export function FlowCanvas({state}: {state: FlowCanvasState}) {

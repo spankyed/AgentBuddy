@@ -1,9 +1,9 @@
-.root {
+.ChatShot_root {
   position: absolute;
   inset: 0;
 }
 
-.active {
+.ChatShot_active {
   display: block;
   color: rgb(20 184 166);
   font-size: 11px;
@@ -11,7 +11,7 @@
   margin-top: 7px;
 }
 
-.userBubble {
+.ChatShot_userBubble {
   position: absolute;
   top: 22%;
   right: 9%;

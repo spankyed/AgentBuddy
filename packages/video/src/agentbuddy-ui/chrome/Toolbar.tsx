@@ -1,6 +1,8 @@
 import {Icons} from '../primitives/Icon';
 import {ToolbarButton} from './ToolbarButton';
-import styles from './Toolbar.module.css';
+import './Toolbar.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('Toolbar');
 
 export type PluginId = 'threads' | 'notes' | 'code' | 'flows' | 'actions' | 'brain' | 'settings';
 

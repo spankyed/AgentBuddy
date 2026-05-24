@@ -1,4 +1,4 @@
-.grid {
+.MontageShot_grid {
   position: absolute;
   inset: 0;
   display: grid;
@@ -7,26 +7,26 @@
   padding: 26px;
 }
 
-.card,
-.activeCard {
+.MontageShot_card,
+.MontageShot_activeCard {
   border: 1px solid rgb(38 38 38);
   background: rgb(31 31 31);
   opacity: 0.45;
   padding: 18px;
 }
 
-.activeCard {
+.MontageShot_activeCard {
   border-color: rgb(45 212 191 / 55%);
   background: rgb(20 184 166 / 14%);
   opacity: 1;
 }
 
-.card strong,
-.activeCard strong {
+.MontageShot_card strong,
+.MontageShot_activeCard strong {
   display: block;
 }
 
-.progress {
+.MontageShot_progress {
   display: block;
   height: 4px;
   background: rgb(20 184 166);

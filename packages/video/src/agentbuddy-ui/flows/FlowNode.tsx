@@ -1,7 +1,9 @@
 import {Icons} from '../primitives/Icon';
 import {cx} from '../primitives/classNames';
 import type {FlowNodeState} from './flowTypes';
-import styles from './FlowNode.module.css';
+import './FlowNode.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('FlowNode');
 
 const iconByKind = {
   action: Icons.Play,
@@ -17,7 +19,7 @@ const iconByKind = {
 };
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/nodes/BaseNode.vue.
-export function FlowNode({node, selected}: {node: FlowNodeState; selected?: boolean}) {
+export function FlowNode({node, selected}: {key?: string; node: FlowNodeState; selected?: boolean}) {
   const Icon = iconByKind[node.kind];
   const style = {left: `${node.x}%`, top: `${node.y}%`};
   if (node.kind === 'entry' || node.exits?.length) {
@@ -45,4 +47,3 @@ export function FlowNode({node, selected}: {node: FlowNodeState; selected?: bool
     </div>
   );
 }
-

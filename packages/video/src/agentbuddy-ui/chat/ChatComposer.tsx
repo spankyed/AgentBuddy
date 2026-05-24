@@ -2,7 +2,9 @@ import {AttachmentStrip} from './AttachmentStrip';
 import {BottomThreadTabs} from './BottomThreadTabs';
 import {ComposerActionBar} from './ComposerActionBar';
 import type {ChatComposerState} from './chatTypes';
-import styles from './ChatComposer.module.css';
+import './ChatComposer.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ChatComposer');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/input.vue.
 export function ChatComposer({state}: {state: ChatComposerState}) {

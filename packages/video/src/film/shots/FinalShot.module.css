@@ -1,4 +1,4 @@
-.root {
+.FinalShot_root {
   position: absolute;
   inset: 0;
   display: grid;
@@ -6,14 +6,14 @@
   text-align: center;
 }
 
-.title {
+.FinalShot_title {
   font-size: 88px;
   font-weight: 820;
   line-height: 0.95;
   margin: 0;
 }
 
-.sub {
+.FinalShot_sub {
   color: rgb(212 212 216);
   font-size: 30px;
   margin-top: 22px;

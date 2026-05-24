@@ -1,4 +1,6 @@
-import styles from './NotesRightRail.module.css';
+import './NotesRightRail.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('NotesRightRail');
 
 export function NotesRightRail() {
   const groups = ['☆ FAVORITES', '🔥 current', '💻 cli', '🎬 Videos', '🌐 Clientlabs', '🚀 Agentbuddy', '📝 Tasklist', '⭐ Brand & Content'];

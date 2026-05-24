@@ -1,4 +1,6 @@
-import styles from './NotesPanel.module.css';
+import './NotesPanel.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('NotesPanel');
 
 export function NotesPanel({activeIndex = 2}: {activeIndex?: number}) {
   const rows = ['📝 Tasklist', '🚧 default setup', '🔥 current', '✓ remotion', '✓ phone app', '🪲 bugs', '🗺️ V1 Roadmap'];

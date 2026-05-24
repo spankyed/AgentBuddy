@@ -1,5 +1,7 @@
 import type {FlowEdgeState, FlowNodeState} from './flowTypes';
-import styles from './FlowCanvas.module.css';
+import './FlowCanvas.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('FlowCanvas');
 
 function nodePoint(node: FlowNodeState, side: 'left' | 'right', exit?: number) {
   const x = node.x + (side === 'right' ? 7 : -7);
@@ -7,7 +9,7 @@ function nodePoint(node: FlowNodeState, side: 'left' | 'right', exit?: number) {
   return {x, y};
 }
 
-export function FlowEdge({edge, nodes}: {edge: FlowEdgeState; nodes: FlowNodeState[]}) {
+export function FlowEdge({edge, nodes}: {edge: FlowEdgeState; key?: string; nodes: FlowNodeState[]}) {
   const from = nodes.find(node => node.id === edge.from);
   const to = nodes.find(node => node.id === edge.to);
   if (!from || !to) return null;
@@ -22,4 +24,3 @@ export function FlowEdge({edge, nodes}: {edge: FlowEdgeState; nodes: FlowNodeSta
     />
   );
 }
-

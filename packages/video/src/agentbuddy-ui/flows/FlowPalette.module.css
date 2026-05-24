@@ -1,4 +1,4 @@
-.root {
+.FlowPalette_root {
   width: 15rem;
   flex-shrink: 0;
   overflow: hidden;
@@ -6,18 +6,18 @@
   background: rgb(23 23 23);
 }
 
-.inner {
+.FlowPalette_inner {
   padding: 0.75rem;
 }
 
-.stack {
+.FlowPalette_stack {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.25rem;
 }
 
-.item {
+.FlowPalette_item {
   position: relative;
   display: flex;
   width: 100%;
@@ -34,16 +34,16 @@
   text-align: left;
 }
 
-.item[data-kind="keepAlive"] { border-color: rgb(16 185 129 / 42%); background: rgb(6 78 59 / 80%); }
-.item[data-kind="listener"] { border-color: rgb(59 130 246 / 42%); background: rgb(30 58 138 / 80%); }
-.item[data-kind="schedule"] { border-color: rgb(34 211 238 / 35%); background: rgb(22 78 99 / 78%); }
-.item[data-kind="llm"] { border-color: rgb(99 102 241 / 32%); background: rgb(49 46 129 / 45%); color: rgb(115 115 115); }
-.item[data-kind="flow"] { border-color: rgb(168 85 247 / 45%); background: rgb(88 28 135 / 78%); }
-.item[data-kind="switch"] { border-color: rgb(245 158 11 / 42%); background: rgb(120 53 15 / 78%); }
-.item[data-kind="fire"] { border-color: rgb(249 115 22 / 45%); background: rgb(124 45 18 / 78%); }
-.item[data-kind="kill"] { border-color: rgb(239 68 68 / 45%); background: rgb(127 29 29 / 78%); }
+.FlowPalette_item[data-kind="keepAlive"] { border-color: rgb(16 185 129 / 42%); background: rgb(6 78 59 / 80%); }
+.FlowPalette_item[data-kind="listener"] { border-color: rgb(59 130 246 / 42%); background: rgb(30 58 138 / 80%); }
+.FlowPalette_item[data-kind="schedule"] { border-color: rgb(34 211 238 / 35%); background: rgb(22 78 99 / 78%); }
+.FlowPalette_item[data-kind="llm"] { border-color: rgb(99 102 241 / 32%); background: rgb(49 46 129 / 45%); color: rgb(115 115 115); }
+.FlowPalette_item[data-kind="flow"] { border-color: rgb(168 85 247 / 45%); background: rgb(88 28 135 / 78%); }
+.FlowPalette_item[data-kind="switch"] { border-color: rgb(245 158 11 / 42%); background: rgb(120 53 15 / 78%); }
+.FlowPalette_item[data-kind="fire"] { border-color: rgb(249 115 22 / 45%); background: rgb(124 45 18 / 78%); }
+.FlowPalette_item[data-kind="kill"] { border-color: rgb(239 68 68 / 45%); background: rgb(127 29 29 / 78%); }
 
-.dot {
+.FlowPalette_dot {
   width: 0.375rem;
   height: 0.375rem;
   flex-shrink: 0;
@@ -51,16 +51,16 @@
   background: rgb(115 115 115);
 }
 
-.item[data-kind="keepAlive"] .dot { background: rgb(16 185 129); }
-.item[data-kind="listener"] .dot { background: rgb(59 130 246); }
-.item[data-kind="schedule"] .dot { background: rgb(6 182 212); }
-.item[data-kind="llm"] .dot { background: rgb(79 70 229); }
-.item[data-kind="flow"] .dot { background: rgb(168 85 247); }
-.item[data-kind="switch"] .dot { background: rgb(245 158 11); }
-.item[data-kind="fire"] .dot { background: rgb(249 115 22); }
-.item[data-kind="kill"] .dot { background: rgb(239 68 68); }
+.FlowPalette_item[data-kind="keepAlive"] .FlowPalette_dot { background: rgb(16 185 129); }
+.FlowPalette_item[data-kind="listener"] .FlowPalette_dot { background: rgb(59 130 246); }
+.FlowPalette_item[data-kind="schedule"] .FlowPalette_dot { background: rgb(6 182 212); }
+.FlowPalette_item[data-kind="llm"] .FlowPalette_dot { background: rgb(79 70 229); }
+.FlowPalette_item[data-kind="flow"] .FlowPalette_dot { background: rgb(168 85 247); }
+.FlowPalette_item[data-kind="switch"] .FlowPalette_dot { background: rgb(245 158 11); }
+.FlowPalette_item[data-kind="fire"] .FlowPalette_dot { background: rgb(249 115 22); }
+.FlowPalette_item[data-kind="kill"] .FlowPalette_dot { background: rgb(239 68 68); }
 
-.label {
+.FlowPalette_label {
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -68,7 +68,7 @@
   white-space: nowrap;
 }
 
-.icon {
+.FlowPalette_icon {
   flex-shrink: 0;
   opacity: 0.75;
 }

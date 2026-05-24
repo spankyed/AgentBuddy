@@ -1,8 +1,10 @@
-import {CSSProperties} from 'react';
+import type {CSSProperties} from 'react';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {KanbanBoard, KanbanColumn, TaskCard} from '../../agentbuddy-ui/threads/KanbanBoard';
 import {ease, mix} from '../state/timeline';
-import styles from './BoardShot.module.css';
+import './BoardShot.module.css';
+import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
+const styles = makeStyles('BoardShot');
 
 export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const p = ease(frame, 70, 170);
@@ -18,4 +20,3 @@ export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape
     </AppWindow>
   );
 }
-

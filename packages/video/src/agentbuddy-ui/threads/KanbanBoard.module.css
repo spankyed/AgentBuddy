@@ -1,4 +1,4 @@
-.root {
+.KanbanBoard_root {
   position: absolute;
   inset: 0;
   display: grid;
@@ -7,14 +7,14 @@
   padding: 26px;
 }
 
-.column {
+.KanbanBoard_column {
   border: 1px solid rgb(38 38 38);
   border-radius: 0.5rem;
   background: rgb(23 23 23);
   padding: 14px;
 }
 
-.header {
+.KanbanBoard_header {
   display: flex;
   justify-content: space-between;
   color: rgb(212 212 216);
@@ -22,8 +22,8 @@
   margin-bottom: 14px;
 }
 
-.task,
-.activeTask {
+.KanbanBoard_task,
+.KanbanBoard_activeTask {
   border: 1px solid rgb(38 38 38);
   border-radius: 0.375rem;
   background: rgb(31 31 31);
@@ -32,14 +32,14 @@
   padding: 14px;
 }
 
-.activeTask {
+.KanbanBoard_activeTask {
   border-color: rgb(45 212 191 / 50%);
   background: rgb(20 184 166 / 14%);
   box-shadow: 0 24px 70px rgb(0 0 0 / 42%);
 }
 
-.task small,
-.activeTask small {
+.KanbanBoard_task small,
+.KanbanBoard_activeTask small {
   display: block;
   color: rgb(115 115 115);
   margin-top: 10px;

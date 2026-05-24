@@ -1,21 +1,21 @@
-.muted {
+.AgentWorkList_muted {
   color: rgb(163 163 163);
   margin-bottom: 12px;
 }
 
-.line {
+.AgentWorkList_line {
   display: flex;
   align-items: center;
   gap: 9px;
   margin: 9px 0;
 }
 
-.line p {
+.AgentWorkList_line p {
   margin: 0;
 }
 
-.dot,
-.warnDot {
+.AgentWorkList_dot,
+.AgentWorkList_warnDot {
   display: block;
   width: 7px;
   height: 7px;
@@ -23,7 +23,7 @@
   background: rgb(20 184 166);
 }
 
-.warnDot {
+.AgentWorkList_warnDot {
   background: rgb(251 191 36);
 }
 

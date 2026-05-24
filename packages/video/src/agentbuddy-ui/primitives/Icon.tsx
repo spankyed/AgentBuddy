@@ -1,4 +1,4 @@
-import type {CSSProperties} from 'react';
+import type {CSSProperties, ReactNode} from 'react';
 
 type IconProps = {
   className?: string;
@@ -6,7 +6,7 @@ type IconProps = {
   style?: CSSProperties;
 };
 
-function Svg({children, className, size = 18, style}: IconProps & {children: React.ReactNode}) {
+function Svg({children, className, size = 18, style}: IconProps & {children: ReactNode}) {
   return (
     <svg
       className={className}
@@ -49,4 +49,3 @@ export const Icons = {
   Clock: (props: IconProps) => <Svg {...props}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>,
   Square: (props: IconProps) => <Svg {...props}><rect x="5" y="5" width="14" height="14" rx="1" /></Svg>,
 };
-

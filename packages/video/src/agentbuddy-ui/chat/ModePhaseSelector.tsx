@@ -1,5 +1,7 @@
 import {Icons} from '../primitives/Icon';
-import styles from './ModePhaseSelector.module.css';
+import './ModePhaseSelector.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('ModePhaseSelector');
 
 type ModePhaseSelectorProps = {
   mode: string;

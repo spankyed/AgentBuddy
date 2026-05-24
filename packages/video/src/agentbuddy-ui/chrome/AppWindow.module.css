@@ -1,4 +1,4 @@
-.window {
+.AppWindow_window {
   position: absolute;
   overflow: hidden;
   border: 1px solid rgb(64 64 64 / 65%);
@@ -9,25 +9,25 @@
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.grid {
+.AppWindow_grid {
   display: grid;
   height: 100%;
 }
 
-.main {
+.AppWindow_main {
   display: grid;
   min-width: 0;
   grid-template-rows: 42px minmax(0, 1fr) auto;
 }
 
-.surface {
+.AppWindow_surface {
   position: relative;
   min-height: 0;
   overflow: hidden;
   background: rgb(23 23 23);
 }
 
-.rightRail {
+.AppWindow_rightRail {
   overflow: hidden;
   border-left: 1px solid rgb(38 38 38);
   background: rgb(23 23 23);

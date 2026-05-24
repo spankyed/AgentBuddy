@@ -5,7 +5,9 @@ import {ChatComposer} from '../chat/ChatComposer';
 import {CanvasHeader} from './CanvasHeader';
 import {Toolbar, type PluginId} from './Toolbar';
 import {WindowTrafficLights} from './WindowTrafficLights';
-import styles from './AppWindow.module.css';
+import './AppWindow.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('AppWindow');
 
 type Variant = 'landscape' | 'square';
 

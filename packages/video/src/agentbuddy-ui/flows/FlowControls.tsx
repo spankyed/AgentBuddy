@@ -1,5 +1,7 @@
 import {Icons} from '../primitives/Icon';
-import styles from './FlowCanvas.module.css';
+import './FlowCanvas.module.css';
+import {makeStyles} from '../primitives/makeStyles';
+const styles = makeStyles('FlowCanvas');
 
 export function FlowControls() {
   return (
