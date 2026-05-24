@@ -43,174 +43,195 @@ export const productIntroDemo = {
 export type CinematicProductDemoScene = {
   id: string;
   filename: string;
-  chapter: string;
-  headline: string;
-  subline: string;
   cameraTargetId: string;
-  durationInFrames: number;
-  intensity: number;
 };
 
-export const cinematicProductDemoScenes: CinematicProductDemoScene[] = [
+export type DemoMoment = {
+  id: string;
+  chapter: string;
+  durationInFrames: number;
+  captures: Array<{
+    id: string;
+    electronScene: string;
+  }>;
+  motion: {
+    type: 'stream' | 'type' | 'switch' | 'drag' | 'montage' | 'terminal' | 'graph' | 'final';
+    cameraTargetId?: string;
+    cursorPath?: Array<{x: number; y: number; frame: number}>;
+  };
+  copy?: {
+    kicker?: string;
+    headline?: string;
+    subline?: string;
+  };
+};
+
+const captureIds = [
+  'chat_empty',
+  'chat_reference_note',
+  'chat_image_pasted',
+  'chat_streaming',
+  'chat_done',
+  'chat_quick_prompt',
+  'thread_pinned',
+  'ticket_created',
+  'kanban_before',
+  'kanban_after',
+  'note_open',
+  'note_editing',
+  'note_image_inserted',
+  'note_thread_pill',
+  'tasks_before',
+  'tasks_after',
+  'code_changes',
+  'commit_message_generated',
+  'branch_published',
+  'pr_created',
+  'terminal_start',
+  'local_app_launched',
+  'workflow_graph',
+  'command_listener',
+  'command_defined',
+  'automation_running',
+  'brain_graph',
+  'logs_stream',
+  'database_query',
+  'settings_personalization',
+  'threads_dashboard',
+  'workflow_execution',
+] as const;
+
+type CaptureId = (typeof captureIds)[number];
+
+const cameraTargets: Record<CaptureId, string> = {
+  chat_empty: 'agent-chat-input',
+  chat_reference_note: 'chat-area',
+  chat_image_pasted: 'chat-area',
+  chat_streaming: 'chat-area',
+  chat_done: 'chat-area',
+  chat_quick_prompt: 'agent-chat-input',
+  thread_pinned: 'agent-artifacts',
+  ticket_created: 'canvas-area',
+  kanban_before: 'canvas-area',
+  kanban_after: 'canvas-area',
+  note_open: 'canvas-area',
+  note_editing: 'canvas-area',
+  note_image_inserted: 'canvas-area',
+  note_thread_pill: 'agent-artifacts',
+  tasks_before: 'canvas-area',
+  tasks_after: 'canvas-area',
+  code_changes: 'canvas-area',
+  commit_message_generated: 'canvas-area',
+  branch_published: 'canvas-area',
+  pr_created: 'canvas-area',
+  terminal_start: 'canvas-area',
+  local_app_launched: 'canvas-area',
+  workflow_graph: 'flow-editor-canvas',
+  command_listener: 'canvas-area',
+  command_defined: 'action-function-editor',
+  automation_running: 'flow-editor-canvas',
+  brain_graph: 'brain-flow-graph',
+  logs_stream: 'canvas-area',
+  database_query: 'canvas-area',
+  settings_personalization: 'canvas-area',
+  threads_dashboard: 'canvas-area',
+  workflow_execution: 'flow-editor-canvas',
+};
+
+export const cinematicProductDemoScenes: CinematicProductDemoScene[] = captureIds.map(id => ({
+  id,
+  filename: `${id}.png`,
+  cameraTargetId: cameraTargets[id],
+}));
+
+const capture = (id: CaptureId) => ({id, electronScene: id});
+const captures = (...ids: CaptureId[]) => ids.map(capture);
+
+export const cinematicProductDemoMoments: DemoMoment[] = [
   {
-    id: 'ai_thread_stream',
-    filename: 'ai_thread_stream.png',
-    chapter: 'More than AI chat',
-    headline: 'Conversation becomes work.',
-    subline: 'Threads carry context, artifacts, and decisions without switching tools.',
-    cameraTargetId: 'chat-area',
-    durationInFrames: 240,
-    intensity: 0.25,
+    id: 'chat-becomes-work',
+    chapter: 'AI chat',
+    durationInFrames: 285,
+    captures: captures('chat_empty', 'chat_reference_note', 'chat_image_pasted', 'chat_streaming', 'chat_done'),
+    motion: {type: 'stream', cameraTargetId: 'chat-area'},
+    copy: {headline: 'Conversation becomes work.'},
   },
   {
-    id: 'thread_workspace',
-    filename: 'thread_workspace.png',
-    chapter: 'Connected workspace',
-    headline: 'Every thread has a surface.',
-    subline: 'The canvas turns discussion into durable workspace state.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 225,
-    intensity: 0.28,
+    id: 'thread-to-ticket',
+    chapter: 'Threads',
+    durationInFrames: 170,
+    captures: captures('chat_quick_prompt', 'thread_pinned', 'ticket_created'),
+    motion: {type: 'switch', cameraTargetId: 'agent-artifacts'},
   },
   {
-    id: 'thread_kanban',
-    filename: 'thread_kanban.png',
-    chapter: 'Momentum',
-    headline: 'Ideas move into execution.',
-    subline: 'Tasks, status, and parent context stay connected.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 195,
-    intensity: 0.35,
+    id: 'kanban-move',
+    chapter: 'Execution',
+    durationInFrames: 185,
+    captures: captures('kanban_before', 'kanban_after'),
+    motion: {type: 'drag', cameraTargetId: 'canvas-area'},
   },
   {
-    id: 'notes_editor',
-    filename: 'notes_editor.png',
-    chapter: 'More than notes',
-    headline: 'Memory is editable.',
-    subline: 'Notes, references, and project context live beside the agent.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 195,
-    intensity: 0.38,
+    id: 'notes-memory',
+    chapter: 'Notes',
+    durationInFrames: 210,
+    captures: captures('note_open', 'note_editing', 'note_image_inserted', 'note_thread_pill'),
+    motion: {type: 'type', cameraTargetId: 'canvas-area'},
+    copy: {headline: 'Memory stays connected.'},
   },
   {
-    id: 'notes_tasks',
-    filename: 'notes_tasks.png',
-    chapter: 'Context, organized',
-    headline: 'Plans stay close to action.',
-    subline: 'Capture intent once, reuse it everywhere.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 165,
-    intensity: 0.42,
-  },
-  {
-    id: 'code_changes',
-    filename: 'code_changes.png',
-    chapter: 'More than an IDE',
-    headline: 'Ship without ceremony.',
-    subline: 'Code, git, review, and automation move as one workflow.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 195,
-    intensity: 0.5,
-  },
-  {
-    id: 'code_terminal',
-    filename: 'code_terminal.png',
-    chapter: 'Local systems',
-    headline: 'Terminal, app, agent: one loop.',
-    subline: 'Start, inspect, revise, and relaunch without leaving the workspace.',
-    cameraTargetId: 'chat-area',
-    durationInFrames: 165,
-    intensity: 0.55,
-  },
-  {
-    id: 'branch_publish',
-    filename: 'branch_publish.png',
-    chapter: 'Git velocity',
-    headline: 'From change to PR in seconds.',
-    subline: 'Commit messages, branches, and reviews become assisted actions.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 165,
-    intensity: 0.58,
-  },
-  {
-    id: 'workflow_graph',
-    filename: 'workflow_graph.png',
-    chapter: 'More than workflows',
-    headline: 'Automation is programmable.',
-    subline: 'Build command-driven systems from reusable nodes.',
-    cameraTargetId: 'flow-editor-canvas',
-    durationInFrames: 165,
-    intensity: 0.64,
-  },
-  {
-    id: 'command_listener',
-    filename: 'command_listener.png',
-    chapter: 'Command layer',
-    headline: '/replace-obsolete-apps',
-    subline: 'Notion. Obsidian. TickTick. Cursor. VSCode. AntiGravity.',
-    cameraTargetId: 'canvas-area',
+    id: 'tasks-organize',
+    chapter: 'Tasks',
     durationInFrames: 150,
-    intensity: 0.7,
+    captures: captures('tasks_before', 'tasks_after'),
+    motion: {type: 'drag', cameraTargetId: 'canvas-area'},
   },
   {
-    id: 'prompts_library',
-    filename: 'prompts_library.png',
-    chapter: 'Reusable intelligence',
-    headline: 'Prompts become infrastructure.',
-    subline: 'Codify how work should happen once, then run it everywhere.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 150,
-    intensity: 0.74,
+    id: 'code-ship',
+    chapter: 'Code',
+    durationInFrames: 245,
+    captures: captures('code_changes', 'commit_message_generated', 'branch_published', 'pr_created'),
+    motion: {type: 'switch', cameraTargetId: 'canvas-area'},
+    copy: {headline: 'Ship from the same surface.'},
   },
   {
-    id: 'brain_system',
-    filename: 'brain_system.png',
-    chapter: 'Actor systems',
-    headline: 'The workspace thinks in systems.',
-    subline: 'Flows, events, and memory coordinate behind the interface.',
-    cameraTargetId: 'brain-flow-graph',
-    durationInFrames: 150,
-    intensity: 0.8,
+    id: 'terminal-loop',
+    chapter: 'Local loop',
+    durationInFrames: 165,
+    captures: captures('terminal_start', 'local_app_launched'),
+    motion: {type: 'terminal', cameraTargetId: 'canvas-area'},
   },
   {
-    id: 'logs_stream',
-    filename: 'logs_stream.png',
-    chapter: 'Operational clarity',
-    headline: 'Everything observable.',
-    subline: 'Logs, execution, and state changes stream through the same cockpit.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 120,
-    intensity: 0.86,
+    id: 'workflow-build',
+    chapter: 'Automation',
+    durationInFrames: 235,
+    captures: captures('workflow_graph', 'command_listener', 'command_defined', 'automation_running'),
+    motion: {type: 'graph', cameraTargetId: 'flow-editor-canvas'},
+    copy: {headline: 'Automate the system around you.'},
   },
   {
-    id: 'database_memory',
-    filename: 'database_memory.png',
-    chapter: 'Living memory',
-    headline: 'Knowledge is queryable.',
-    subline: 'Data, relations, and context stay available to the agent.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 120,
-    intensity: 0.9,
+    id: 'rapid-montage-a',
+    chapter: 'System',
+    durationInFrames: 185,
+    captures: captures('brain_graph', 'logs_stream', 'database_query'),
+    motion: {type: 'montage', cameraTargetId: 'canvas-area'},
   },
   {
-    id: 'settings_personalization',
-    filename: 'settings_personalization.png',
-    chapter: 'Personal AI OS',
-    headline: 'Your stack becomes personal.',
-    subline: 'Models, tools, memory, and defaults adapt to how you work.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 120,
-    intensity: 0.94,
+    id: 'rapid-montage-b',
+    chapter: 'Workspace',
+    durationInFrames: 185,
+    captures: captures('settings_personalization', 'threads_dashboard', 'workflow_execution'),
+    motion: {type: 'montage', cameraTargetId: 'canvas-area'},
   },
   {
-    id: 'final_workspace',
-    filename: 'final_workspace.png',
+    id: 'final-lockup',
     chapter: 'AgentBuddy',
-    headline: 'The AI operating system for modern work.',
-    subline: 'Conversation, code, notes, workflows, memory, and execution in one connected surface.',
-    cameraTargetId: 'canvas-area',
-    durationInFrames: 360,
-    intensity: 1,
+    durationInFrames: 255,
+    captures: captures('threads_dashboard', 'workflow_execution', 'chat_done'),
+    motion: {type: 'final', cameraTargetId: 'canvas-area'},
+    copy: {
+      headline: 'AgentBuddy',
+      subline: 'The AI operating system for modern work.',
+    },
   },
 ];
 
@@ -220,8 +241,9 @@ export const cinematicProductDemo = {
   width: 1440,
   height: 900,
   fps: 30,
-  durationInFrames: cinematicProductDemoScenes.reduce((sum, scene) => sum + scene.durationInFrames, 0),
+  durationInFrames: cinematicProductDemoMoments.reduce((sum, moment) => sum + moment.durationInFrames, 0),
   scenes: cinematicProductDemoScenes,
+  moments: cinematicProductDemoMoments,
 };
 
 export function getDemoDefinition(id: string) {

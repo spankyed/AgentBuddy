@@ -48,14 +48,18 @@ export const RemotionRoot = () => {
         height={cinematicProductDemo.height}
         schema={cinematicProductDemoSchema}
         defaultProps={{
-          scenes: cinematicProductDemo.scenes.map(scene => ({
-            ...scene,
-            src: '',
-            captureMetadata: {
-              viewport: {width: cinematicProductDemo.width, height: cinematicProductDemo.height, devicePixelRatio: 1},
-              targets: {},
-            },
+          moments: cinematicProductDemo.moments.map(moment => ({
+            ...moment,
+            captures: moment.captures.map(capture => ({
+              ...capture,
+              src: '',
+              captureMetadata: {
+                viewport: {width: cinematicProductDemo.width, height: cinematicProductDemo.height, devicePixelRatio: 1},
+                targets: {},
+              },
+            })),
           })),
+          scenes: [],
         }}
       />
     </>

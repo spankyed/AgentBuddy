@@ -14,6 +14,10 @@ export interface DemoSceneConfig {
     chatMaximized?: boolean;
   };
   selectedArtifactId?: string;
+  thread?: any;
+  threads?: any[];
+  artifacts?: any[];
+  chatState?: string;
 }
 
 export interface DemoFixture {

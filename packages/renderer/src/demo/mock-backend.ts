@@ -13,6 +13,15 @@ export class DemoMockBackend {
     const pluginId = scene.pluginId ?? 'threads';
     const targetView = scene.targetView ?? (pluginId === 'threads' ? 'dashboard' : '');
     const threadsActor = applicationState.system.get('threads');
+    const currentThread = {
+      ...this.#fixture.thread,
+      ...(scene.thread ?? {}),
+    };
+    const artifacts = scene.artifacts ?? currentThread.artifacts ?? this.#fixture.artifacts;
+    currentThread.artifacts = artifacts;
+    const threads = scene.threads ?? this.#fixture.threads.map((thread) => (
+      thread.id === currentThread.id ? currentThread : thread
+    ));
 
     applicationState.send({
       type: 'DEMO.HYDRATE',
@@ -26,10 +35,10 @@ export class DemoMockBackend {
     threadsActor.send({
       type: 'THREAD_CONNECTED',
       data: {
-        threads: this.#fixture.threads,
+        threads,
         availableTags: this.#fixture.settings.tags,
         settings: this.#fixture.settings,
-        chatStates: {[this.#fixture.thread.id]: this.#fixture.thread.chatState ?? 'idle'},
+        chatStates: {[currentThread.id]: scene.chatState ?? currentThread.chatState ?? 'idle'},
       },
     } as any);
 
@@ -40,16 +49,16 @@ export class DemoMockBackend {
 
     threadsActor.send({
       type: 'LOAD_CHAT_THREAD',
-      data: this.#fixture.thread,
+      data: currentThread,
       restore: true,
     } as any);
 
     threadsActor.send({
       type: 'THREAD_TAB_REQUESTED',
-      threadId: this.#fixture.thread.id,
-      topic: this.#fixture.thread.topic,
-      artifacts: this.#fixture.artifacts,
-      pinned: true,
+      threadId: currentThread.id,
+      topic: currentThread.topic,
+      artifacts,
+      pinned: currentThread.pinned ?? true,
     } as any);
 
     if (scene.threadView === 'kanban') {
