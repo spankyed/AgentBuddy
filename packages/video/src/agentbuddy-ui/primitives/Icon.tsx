@@ -47,5 +47,7 @@ export const Icons = {
   Zap: (props: IconProps) => <Svg {...props}><path d="M13 2 3 14h8l-1 8 10-12h-8z" /></Svg>,
   Radio: (props: IconProps) => <Svg {...props}><path d="M4.9 19.1a10 10 0 0 1 0-14.2" /><path d="M7.8 16.2a6 6 0 0 1 0-8.4" /><circle cx="12" cy="12" r="2" /><path d="M16.2 7.8a6 6 0 0 1 0 8.4" /><path d="M19.1 4.9a10 10 0 0 1 0 14.2" /></Svg>,
   Clock: (props: IconProps) => <Svg {...props}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg>,
+  Check: (props: IconProps) => <Svg {...props}><path d="m20 6-11 11-5-5" /></Svg>,
+  CircleCheck: (props: IconProps) => <Svg {...props}><circle cx="12" cy="12" r="9" /><path d="m9 12 2 2 4-4" /></Svg>,
   Square: (props: IconProps) => <Svg {...props}><rect x="5" y="5" width="14" height="14" rx="1" /></Svg>,
 };

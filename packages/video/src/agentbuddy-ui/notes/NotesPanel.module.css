@@ -1,25 +1,76 @@
 .NotesPanel_root {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
   overflow: hidden;
   border-right: 1px solid rgb(38 38 38);
   background: rgb(23 23 23);
+}
+
+.NotesPanel_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0 0.75rem 0 1rem;
+}
+
+.NotesPanel_headerTitle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.375rem;
+  color: rgb(212 212 216);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.NotesPanel_headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.NotesPanel_headerActions button {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(163 163 163);
+  padding: 0;
+}
+
+.NotesPanel_scroller {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.NotesPanel_tree {
   padding: 0.75rem 0.5rem;
 }
 
-.NotesPanel_row,
-.NotesPanel_activeRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 0.375rem;
-  color: rgb(212 212 216);
-  font-size: 14px;
-  line-height: 1.25rem;
-  margin-bottom: 0.125rem;
-  padding: 0.375rem 0.75rem;
+.NotesPanel_scrollbar {
+  position: absolute;
+  top: 54px;
+  right: 0.375rem;
+  width: 8px;
+  height: 164px;
+  border-radius: 999px;
+  background: transparent;
 }
 
-.NotesPanel_activeRow {
-  background: rgb(82 82 82);
-  color: white;
+.NotesPanel_scrollbar span {
+  display: block;
+  width: 8px;
+  height: 92px;
+  border-radius: 999px;
+  background: rgb(115 115 115);
 }
-
