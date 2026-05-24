@@ -22,6 +22,30 @@ import type {
 import type {ChatComposerState} from '../../agentbuddy-ui/chat/chatTypes';
 import {ease, textReveal} from './timeline';
 
+export type ChatShotView = {
+  breadcrumbs: string[];
+  composer: ChatComposerState;
+  conversation: {
+    assistant: {
+      artifact: PlanArtifactState;
+      markdown: string;
+      toolActivity: ReturnType<typeof toolActivityViewForFrame>;
+    };
+    createdAt: string;
+    systemMessage: string;
+    userMessage: {
+      caretVisible: boolean;
+      text: string;
+    };
+  };
+  cursorPath: {
+    end: number;
+    from: [number, number];
+    start: number;
+    to: [number, number];
+  };
+};
+
 export const launchComposerState: ChatComposerState = {
   placeholder: 'Message Agent',
   mode: 'Codex',
@@ -346,5 +370,27 @@ export function chatViewForFrame(frame: number) {
     promptCaretVisible: frame < chatShotState.prompt.caretUntil,
     response: textReveal(chatShotState.response.text, frame, chatShotState.response.from, chatShotState.response.to),
     toolActivity: toolActivityViewForFrame(frame),
+  };
+}
+
+export function chatShotViewForFrame(frame: number): ChatShotView {
+  const view = chatViewForFrame(frame);
+  return {
+    breadcrumbs: chatShotState.breadcrumbs,
+    composer: launchComposerState,
+    conversation: {
+      assistant: {
+        artifact: launchPlanArtifact,
+        markdown: view.response,
+        toolActivity: view.toolActivity,
+      },
+      createdAt: chatShotState.createdAt,
+      systemMessage: chatShotState.systemMessage,
+      userMessage: {
+        caretVisible: view.promptCaretVisible,
+        text: view.prompt,
+      },
+    },
+    cursorPath: chatShotState.cursorPath,
   };
 }

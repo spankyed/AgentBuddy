@@ -21,17 +21,17 @@ const checks: Check[] = [
   {
     area: 'notes',
     message: 'notes shot reveals first edited line',
-    pass: notesViewForFrame(20).lines[0] !== notesViewForFrame(120).lines[0],
+    pass: notesViewForFrame(20).animatedLines[0].text !== notesViewForFrame(120).animatedLines[0].text,
   },
   {
     area: 'notes',
     message: 'notes shot reveals second edited line',
-    pass: notesViewForFrame(110).lines[1] !== notesViewForFrame(210).lines[1],
+    pass: notesViewForFrame(110).animatedLines[1].text !== notesViewForFrame(210).animatedLines[1].text,
   },
   {
     area: 'notes',
     message: 'notes shot reveals third edited line',
-    pass: notesViewForFrame(150).lines[2] !== notesViewForFrame(250).lines[2],
+    pass: notesViewForFrame(150).animatedLines[2].text !== notesViewForFrame(250).animatedLines[2].text,
   },
   {
     area: 'chat',

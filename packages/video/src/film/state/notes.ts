@@ -1,6 +1,36 @@
 import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
 import {textReveal} from './timeline';
 
+export type NotesTaskListPanelState = {
+  activeId: string | null;
+  items: NoteTreeNodeState[];
+  showCompleted: boolean;
+  title: {
+    icon: string;
+    text: string;
+  };
+};
+
+export type NotesEditorLineView = {
+  caretVisible?: boolean;
+  id: string;
+  text: string;
+};
+
+export type NotesShotView = {
+  breadcrumbs: string[];
+  editor: {
+    afterLines: NotesEditorLineView[];
+    beforeLines: NotesEditorLineView[];
+    title: {
+      icon: string;
+      text: string;
+    };
+  };
+  rightRail: NotesRightRailState;
+  taskList: NotesTaskListPanelState;
+};
+
 export const notesTaskListItems: NoteTreeNodeState[] = [
   {id: 'default', title: 'default setup', icon: '🚧', noteType: 'task'},
   {id: 'current', title: 'current', icon: '🔥', noteType: 'task'},
@@ -14,7 +44,7 @@ export const notesTaskListItems: NoteTreeNodeState[] = [
   {id: 'artifacts', title: 'artifacts & msg blocks', noteType: 'task'},
 ];
 
-export const notesTaskListState = {
+export const notesTaskListState: NotesTaskListPanelState = {
   activeId: 'current',
   items: notesTaskListItems,
   showCompleted: true,
@@ -110,10 +140,30 @@ export const notesEditorCopy = {
 };
 
 export function notesViewForFrame(frame: number) {
+  const animatedLines = notesEditorCopy.animatedLines.map((line, index): NotesEditorLineView => ({
+    caretVisible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
+    id: `animated-${index}`,
+    text: textReveal(line.text, frame, line.from, line.to),
+  }));
+
   return {
-    lines: notesEditorCopy.animatedLines.map(line => textReveal(line.text, frame, line.from, line.to)),
-    carets: notesEditorCopy.animatedLines.map(line => ({
-      visible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
-    })),
+    animatedLines,
+  };
+}
+
+export function notesShotViewForFrame(frame: number): NotesShotView {
+  const view = notesViewForFrame(frame);
+  return {
+    breadcrumbs: notesEditorCopy.breadcrumbs,
+    editor: {
+      beforeLines: [
+        ...notesEditorCopy.beforeLines.map((text, index) => ({id: `before-${index}`, text})),
+        view.animatedLines[0],
+      ],
+      afterLines: [view.animatedLines[1], view.animatedLines[2]],
+      title: notesEditorCopy.title,
+    },
+    rightRail: notesRightRailState,
+    taskList: notesTaskListState,
   };
 }

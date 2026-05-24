@@ -14,7 +14,6 @@
   border: 1px solid rgb(38 38 38);
   border-radius: 0.375rem;
   background: rgb(28 28 30);
-  animation: PlanArtifactCard_fadeIn 180ms ease-out;
 }
 
 .PlanArtifactCard_header {
@@ -173,15 +172,4 @@
   color: rgb(115 115 115);
   font-size: 12px;
   font-style: italic;
-}
-
-@keyframes PlanArtifactCard_fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(2px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }

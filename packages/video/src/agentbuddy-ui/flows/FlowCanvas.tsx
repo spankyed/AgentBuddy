@@ -39,7 +39,14 @@ export function FlowCanvas({state}: {state: FlowCanvasState}) {
                 <path d="M 0 0 L 10 5 L 0 10 z" className={styles.edgeMarker} />
               </marker>
             </defs>
-            {state.edges.map((edge, index) => <FlowEdge key={`${edge.from}-${edge.to}-${index}`} edge={edge} nodes={state.nodes} />)}
+            {state.edges.map((edge, index) => (
+              <FlowEdge
+                allEdges={state.edges}
+                edge={edge}
+                key={`${edge.from}-${edge.to}-${index}`}
+                nodes={state.nodes}
+              />
+            ))}
           </svg>
           {state.nodes.map(node => (
             <FlowNode

@@ -4,7 +4,6 @@ import {TaskListPanel} from '../../agentbuddy-ui/notes/TaskListPanel';
 import {SurfaceFrame} from '../../film/SurfaceFrame';
 import {NotesShot} from '../../film/shots/NotesShot';
 import {
-  notesEditorCopy,
   notesRightRailMenuState,
   notesRightRailSearchState,
   notesRightRailState,
