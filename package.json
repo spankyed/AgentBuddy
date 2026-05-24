@@ -58,7 +58,10 @@
     "compile:notes": "npm run compile:notes --workspace @app/default-setup",
     "compile:faq": "npm run compile:faq --workspace @app/default-setup",
     "build:speech-macos": "cd native/speech/macos && bash build.sh",
-    "public-release": "bash build/release/publish-release.sh"
+    "public-release": "bash build/release/publish-release.sh",
+    "video:studio": "npm run dev --workspace @app/video",
+    "video:render": "npm run render --workspace @app/video",
+    "video:render:square": "npm run render:square --workspace @app/video"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",

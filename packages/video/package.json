@@ -1,0 +1,27 @@
+{
+  "name": "@app/video",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.config.ts",
+    "render": "tsx scripts/render-film.ts landscape",
+    "render:square": "tsx scripts/render-film.ts square",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "autoprefixer": "^10.4.14",
+    "lucide-vue-next": "^0.503.0",
+    "tailwindcss": "^3.3.2",
+    "vite": "^7.0.6",
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "@playwright/test": "1.54.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vue-tsc": "^3.0.4"
+  }
+}
