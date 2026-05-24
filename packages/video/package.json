@@ -9,8 +9,9 @@
     "render:square": "tsx scripts/render.ts AgentBuddyFilmSquare out/agentbuddy-film-square.mp4",
     "render:composition": "tsx scripts/render.ts",
     "render:component": "tsx scripts/render.ts NotesSurfaceDemo out/notes-surface-demo.mp4",
+    "audit:film-action": "tsx scripts/audit-film-action.ts",
     "audit:fidelity": "node scripts/audit-fidelity.js",
-    "verify": "npm run audit:fidelity && npm run typecheck",
+    "verify": "npm run audit:fidelity && npm run audit:film-action && npm run typecheck",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -38,7 +38,6 @@ export function FlowNode({editing, node, selected}: {editing?: boolean; node: Fl
             </div>
           ))}
         </div>
-        <StatusIndicator status={node.status} />
       </div>
     );
   }
@@ -48,12 +47,6 @@ export function FlowNode({editing, node, selected}: {editing?: boolean; node: Fl
       <div className={styles.header}><Icon className={styles.nodeIcon} size={14} /><span>{node.label}</span></div>
       {node.subtitle ? <div className={styles.subtitle}>{node.subtitle}</div> : null}
       <FlowAddHandle selected={selected} />
-      <StatusIndicator status={node.status} />
     </div>
   );
-}
-
-function StatusIndicator({status}: {status?: FlowNodeState['status']}) {
-  if (!status) return null;
-  return <span className={styles.status} data-status={status} />;
 }

@@ -10,7 +10,6 @@ export type FlowNodeState = {
   id: string;
   kind: FlowNodeKind;
   label: string;
-  status?: 'active' | 'paused' | 'completed' | 'failed';
   subtitle?: string;
   exits?: string[];
   x: number;
@@ -21,7 +20,6 @@ export type FlowEdgeState = {
   dashed?: boolean;
   from: string;
   fromExit?: number;
-  status?: 'active' | 'completed';
   to: string;
 };
 
