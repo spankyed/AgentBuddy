@@ -1,13 +1,10 @@
-export type FilmVariant = 'landscape' | 'square';
-export type FilmShotId = 'notes' | 'chat' | 'board' | 'code' | 'workflow' | 'montage' | 'final';
+export type SurfaceId = 'notes' | 'chat' | 'board' | 'code' | 'workflow' | 'montage' | 'final';
 
 export type FilmShot = {
-  id: FilmShotId;
+  id: SurfaceId;
   title?: string;
   duration: number;
 };
-
-export const fps = 30;
 
 export const shots: FilmShot[] = [
   {id: 'notes', title: 'Memory stays connected.', duration: 270},
@@ -16,23 +13,10 @@ export const shots: FilmShot[] = [
   {id: 'code', title: 'Ship from the same surface.', duration: 360},
   {id: 'workflow', title: 'Automate the system around you.', duration: 330},
   {id: 'montage', duration: 420},
-  {id: 'final', duration: 240},
+  {id: 'final', duration: 300},
 ];
 
 export const totalFrames = shots.reduce((sum, shot) => sum + shot.duration, 0);
-
-export function getShot(frame: number) {
-  let start = 0;
-  for (const shot of shots) {
-    if (frame < start + shot.duration) {
-      return {shot, start, local: frame - start};
-    }
-    start += shot.duration;
-  }
-
-  const shot = shots[shots.length - 1];
-  return {shot, start: totalFrames - shot.duration, local: shot.duration - 1};
-}
 
 export function ease(local: number, from: number, to: number) {
   if (local <= from) return 0;
@@ -43,4 +27,8 @@ export function ease(local: number, from: number, to: number) {
 
 export function mix(from: number, to: number, progress: number) {
   return from + (to - from) * progress;
+}
+
+export function textReveal(text: string, local: number, from: number, to: number) {
+  return text.slice(0, Math.floor(mix(0, text.length, ease(local, from, to))));
 }
