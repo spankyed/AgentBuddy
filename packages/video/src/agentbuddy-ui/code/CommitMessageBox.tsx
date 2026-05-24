@@ -4,7 +4,7 @@ import {makeStyles} from '../primitives/makeStyles';
 
 const styles = makeStyles('CommitMessageBox');
 
-export function CommitMessageBox({message, generating}: {generating?: boolean; message: string}) {
+export function CommitMessageBox({branch, message, generating}: {branch: string; generating?: boolean; message: string}) {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -16,7 +16,7 @@ export function CommitMessageBox({message, generating}: {generating?: boolean; m
           {generating ? <Icons.Loader2 className={styles.spinner} size={14} /> : <Icons.Sparkle size={14} />}
         </button>
       </div>
-      <textarea className={styles.textarea} data-generating={generating ? 'true' : undefined} placeholder="Message (currently on as/react-launch-film)" rows={4} value={message} readOnly />
+      <textarea className={styles.textarea} data-generating={generating ? 'true' : undefined} placeholder={`Message (currently on ${branch})`} rows={4} value={message} readOnly />
       <button className={styles.button}>Commit</button>
     </div>
   );

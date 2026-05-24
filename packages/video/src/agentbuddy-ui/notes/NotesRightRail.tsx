@@ -6,18 +6,13 @@ import {NotesRailSection} from './NotesRailSection';
 import type {NoteTreeNodeState} from './noteTypes';
 const styles = makeStyles('NotesRightRail');
 
-export function NotesRightRail() {
-  const favorites: NoteTreeNodeState[] = [
-    {id: 'fav-current', icon: '🔥', title: 'current', noteType: 'document'},
-    {id: 'fav-cli', icon: '💻', title: 'cli', noteType: 'document'},
-    {id: 'fav-videos', icon: '🎬', title: 'Videos', noteType: 'document'},
-  ];
-  const groups: NoteTreeNodeState[] = [
-    {id: 'clientlabs', icon: '🌐', title: 'Clientlabs', noteType: 'document'},
-    {id: 'agentbuddy', icon: '🚀', title: 'Agentbuddy', noteType: 'document'},
-    {id: 'tasklist', icon: '📝', title: 'Tasklist', noteType: 'tasklist'},
-    {id: 'brand', icon: '⭐', title: 'Brand & Content', noteType: 'document'},
-  ];
+type NotesRightRailProps = {
+  activeId?: string;
+  favorites: NoteTreeNodeState[];
+  items: NoteTreeNodeState[];
+};
+
+export function NotesRightRail({activeId = 'tasklist', favorites, items}: NotesRightRailProps) {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
@@ -33,7 +28,7 @@ export function NotesRightRail() {
           {favorites.map(item => <NoteTreeItem key={item.id} activeId="" node={item} />)}
         </NotesRailSection>
         <section className={styles.tree}>
-          {groups.map(item => <NoteTreeItem key={item.id} activeId="tasklist" node={item} />)}
+          {items.map(item => <NoteTreeItem key={item.id} activeId={activeId} node={item} />)}
         </section>
       </div>
     </div>

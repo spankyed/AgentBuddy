@@ -6,7 +6,7 @@ import './ThreadKanbanCard.module.css';
 const styles = makeStyles('ThreadKanbanCard');
 
 // Mirrors the thread card article in packages/renderer/src/plugins/threads/canvas/kanban.vue.
-export function ThreadKanbanCard({active, children, muted, tags = ['launch']}: {active?: boolean; children: ReactNode; muted?: boolean; tags?: string[]}) {
+export function ThreadKanbanCard({active, children, muted, tags = []}: {active?: boolean; children: ReactNode; muted?: boolean; tags?: string[]}) {
   return (
     <article className={active ? styles.activeRoot : styles.root} style={{opacity: muted ? 0.55 : 1}}>
       <div className={styles.top}>

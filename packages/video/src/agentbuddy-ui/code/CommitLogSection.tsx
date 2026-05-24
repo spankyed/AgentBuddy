@@ -4,14 +4,14 @@ import './CommitLogSection.module.css';
 
 const styles = makeStyles('CommitLogSection');
 
-const commits = [
-  {hash: '9f42c8a', title: 'Improve launch film code surface', time: '2m ago'},
-  {hash: '77bb1e4', title: 'Align tasklist rows with renderer', time: '18m ago'},
-  {hash: '43d0ac9', title: 'Add Remotion app chrome primitives', time: '1h ago'},
-];
+export type CommitLogEntryState = {
+  hash: string;
+  time: string;
+  title: string;
+};
 
 // Mirrors the lower CommitLogSection area inside packages/renderer/src/plugins/code/features/commit/CommitPanel.vue.
-export function CommitLogSection() {
+export function CommitLogSection({commits}: {commits: CommitLogEntryState[]}) {
   return (
     <section className={styles.root}>
       <header className={styles.header}>

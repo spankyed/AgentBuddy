@@ -1,6 +1,6 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
-import {releaseAutomationFlow} from '../../agentbuddy-ui/flows/flowFixtures';
+import {releaseAutomationFlow} from '../state/workflow';
 
 export function WorkflowShot({variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   return (
@@ -9,4 +9,3 @@ export function WorkflowShot({variant}: {frame: number; variant?: 'landscape' | 
     </AppWindow>
   );
 }
-

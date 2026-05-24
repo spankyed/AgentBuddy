@@ -58,28 +58,6 @@
   opacity: 0.5;
 }
 
-.MessageBubble_typingDots {
-  display: flex;
-  gap: 0.375rem;
-  margin-top: 0.625rem;
-}
-
-.MessageBubble_typingDots span {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgb(115 115 115);
-  animation: MessageBubble_pulse 1.2s ease-in-out infinite;
-}
-
-.MessageBubble_typingDots span:nth-child(2) {
-  animation-delay: 200ms;
-}
-
-.MessageBubble_typingDots span:nth-child(3) {
-  animation-delay: 400ms;
-}
-
 .MessageBubble_system {
   width: max-content;
   max-width: 100%;
@@ -89,9 +67,4 @@
   font-size: 12px;
   font-style: italic;
   text-align: left;
-}
-
-@keyframes MessageBubble_pulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
 }

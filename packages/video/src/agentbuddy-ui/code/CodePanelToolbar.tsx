@@ -4,10 +4,10 @@ import {makeStyles} from '../primitives/makeStyles';
 
 const styles = makeStyles('CodePanelToolbar');
 
-export function CodePanelToolbar() {
+export function CodePanelToolbar({branch, changeCount}: {branch: string; changeCount: number}) {
   const codePanels = [
     {id: 'explorer', label: 'Explorer', icon: Icons.FolderOpen},
-    {id: 'commit', label: 'Commit Changes', icon: Icons.GitCommitVertical, badge: '4'},
+    {id: 'commit', label: 'Commit Changes', icon: Icons.GitCommitVertical, badge: String(changeCount)},
     {id: 'pr', label: 'Pull Request', icon: Icons.PullRequest},
     {id: 'search', label: 'Search', icon: Icons.Search},
   ] as const;
@@ -25,7 +25,7 @@ export function CodePanelToolbar() {
       <div className={styles.panelRow}>
         <div className={styles.directory}>
           <Icons.FolderOpen size={12} />
-          <span className={styles.directoryPath}>as/react-launch-film</span>
+          <span className={styles.directoryPath}>{branch}</span>
           <Icons.ChevronRight size={14} />
         </div>
         <div className={styles.panelButtons}>

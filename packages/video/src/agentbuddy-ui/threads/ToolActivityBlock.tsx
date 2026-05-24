@@ -7,7 +7,7 @@ import './ToolActivityBlock.module.css';
 const styles = makeStyles('ToolActivityBlock');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/interactions/blocks/ToolActivityBlock.vue.
-export function ToolActivityBlock({frame, items}: {frame: number; items: ToolActivityItemState[]}) {
+export function ToolActivityBlock({artifactLabel, frame, items}: {artifactLabel?: string; frame: number; items: ToolActivityItemState[]}) {
   const visibleItems = items.filter((_, index) => ease(frame, 78 + index * 18, 96 + index * 18) > 0);
   const preview = visibleItems[visibleItems.length - 1] ?? items[0];
   const running = items.some((item) => item.status === 'running');
@@ -36,7 +36,7 @@ export function ToolActivityBlock({frame, items}: {frame: number; items: ToolAct
       {!running ? (
         <button className={styles.artifactLink} type="button">
           <Icons.ArrowRight size={12} />
-          <span>View changes (Launch Operating Plan)</span>
+          <span>{artifactLabel ? `View changes (${artifactLabel})` : 'View changes'}</span>
         </button>
       ) : null}
       <div className={styles.list}>

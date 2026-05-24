@@ -12,11 +12,10 @@ type MessageBubbleProps = {
   createdAt?: string;
   sender: 'assistant' | 'system' | 'user';
   status?: 'queued' | 'cancelled';
-  typing?: boolean;
 };
 
 // Mirrors packages/renderer/src/plugins/threads/chat/message.vue bubble structure.
-export function MessageBubble({children, createdAt, sender, status, typing}: MessageBubbleProps) {
+export function MessageBubble({children, createdAt, sender, status}: MessageBubbleProps) {
   if (sender === 'system') return <div className={styles.system}>{children}</div>;
   return (
     <div className={cx(styles.row, sender === 'user' ? styles.userRow : styles.assistantRow)}>
@@ -26,13 +25,6 @@ export function MessageBubble({children, createdAt, sender, status, typing}: Mes
         </div>
         <div className={cx(styles.bubble, sender === 'user' ? styles.userBubble : styles.assistantBubble, status === 'cancelled' && styles.cancelled)}>
           {children}
-          {typing ? (
-            <div className={styles.typingDots}>
-              <span />
-              <span />
-              <span />
-            </div>
-          ) : null}
         </div>
         {sender === 'user' ? <MessageStatusIndicator status={status} /> : null}
       </div>

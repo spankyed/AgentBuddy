@@ -1,4 +1,4 @@
-import type {FlowCanvasState} from './flowTypes';
+import type {FlowCanvasState} from '../../agentbuddy-ui/flows/flowTypes';
 
 export const releaseAutomationFlow: FlowCanvasState = {
   breadcrumbs: ['Flows', 'Root Flow (Root)'],

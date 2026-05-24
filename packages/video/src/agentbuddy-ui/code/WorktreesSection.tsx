@@ -4,13 +4,14 @@ import './WorktreesSection.module.css';
 
 const styles = makeStyles('WorktreesSection');
 
-const worktrees = [
-  {branch: 'as/react-launch-film', path: '~/AgentBuddy', current: true},
-  {branch: 'main', path: '~/AgentBuddy-main'},
-];
+export type WorktreeState = {
+  branch: string;
+  current?: boolean;
+  path: string;
+};
 
 // Mirrors the worktrees section rendered below source-control changes in the real code panel.
-export function WorktreesSection() {
+export function WorktreesSection({worktrees}: {worktrees: WorktreeState[]}) {
   return (
     <section className={styles.root}>
       <header className={styles.header}>

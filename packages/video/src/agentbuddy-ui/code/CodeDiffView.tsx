@@ -6,33 +6,35 @@ import {makeStyles} from '../primitives/makeStyles';
 
 const styles = makeStyles('CodeDiffView');
 
-const lines = [
-  [' ', 'export async function prepareLaunchPlan(context) {'],
-  ['+', '  const notes = await memory.collectLinkedNotes(context);'],
-  ['+', '  const tickets = await threads.createExecutionTickets(notes);'],
-  ['-', '  await handoff.writeChecklist(tickets);'],
-  ['+', '  await workflows.scheduleReleaseChecks(tickets);'],
-  [' ', '}'],
-] as const;
+type DiffLine = {
+  kind: 'add' | 'remove' | 'context';
+  text: string;
+};
 
-export function CodeDiffView({frame}: {frame: number}) {
+export function CodeDiffView({fileName, frame, lineStart, lines}: {fileName: string; frame: number; lineStart: number; lines: DiffLine[]}) {
   return (
     <section className={styles.root}>
       <div className={styles.tabs}>
-        <div className={styles.tab}><Icons.File size={13} /> AgentBuddyFilm.tsx</div>
+        <div className={styles.tab}><Icons.File size={13} /> {fileName}</div>
       </div>
       <div className={styles.editor}>
-        {lines.map(([kind, text], index) => (
+        {lines.map((line, index) => (
           <div
-            key={`${kind}-${text}`}
-            className={cx(styles.line, kind === '+' && styles.add, kind === '-' && styles.remove)}
-            style={{opacity: kind === ' ' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12)}}
+            key={`${line.kind}-${line.text}`}
+            className={cx(styles.line, line.kind === 'add' && styles.add, line.kind === 'remove' && styles.remove)}
+            style={{opacity: line.kind === 'context' ? 1 : ease(frame, 42 + index * 12, 60 + index * 12)}}
           >
-            <span className={styles.number}>{index + 24}</span>
-            <span className={styles.code}>{kind} {text}</span>
+            <span className={styles.number}>{index + lineStart}</span>
+            <span className={styles.code}>{prefixFor(line.kind)} {line.text}</span>
           </div>
         ))}
       </div>
     </section>
   );
+}
+
+function prefixFor(kind: DiffLine['kind']) {
+  if (kind === 'add') return '+';
+  if (kind === 'remove') return '-';
+  return ' ';
 }
