@@ -8,6 +8,9 @@ const styles = makeStyles('ChatComposer');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/input.vue.
 export function ChatComposer({state}: {state: ChatComposerState}) {
+  const hasTextContent = Boolean(state.text?.trim());
+  const hasAttachments = Boolean(state.attachments?.length);
+  const sendDisabled = state.disabled || (!hasTextContent && !hasAttachments);
   return (
     <footer className={styles.outer}>
       <form className={styles.form}>
@@ -16,7 +19,14 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
           <div className={styles.editor}>
             <span className={state.text ? styles.text : styles.placeholder}>{state.text || state.placeholder}</span>
           </div>
-          <ComposerActionBar disabled={state.disabled} mode={state.mode} phase={state.phase} />
+          <ComposerActionBar
+            disabled={state.disabled}
+            mode={state.mode}
+            modeOptions={state.modeOptions}
+            openSelector={state.openSelector}
+            phase={state.phase}
+            sendDisabled={sendDisabled}
+          />
           {state.statusLine ? <div className={styles.statusLine}>{state.statusLine}</div> : null}
         </div>
       </form>

@@ -7,13 +7,17 @@ const styles = makeStyles('ToolActivityBlock');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/interactions/blocks/ToolActivityBlock.vue.
 export function ToolActivityBlock({rowOpacities, state}: {rowOpacities?: number[]; state: ToolActivityBlockState}) {
-  const visibleItems = state.entries.filter((_, index) => (rowOpacities?.[index] ?? 1) > 0);
+  const visibleRows = state.entries
+    .map((item, index) => ({item, opacity: rowOpacities?.[index] ?? 1}))
+    .filter(row => row.opacity > 0);
+  const visibleItems = visibleRows.map(row => row.item);
+  const isOpen = state.defaultOpen || state.state === 'error';
   const preview = getPreviewEntry(visibleItems, state.state);
   const label = state.label || computeLabel(visibleItems, state.state, state.phase);
   return (
     <div className={styles.root}>
       <button className={styles.header} type="button">
-        <Icons.ChevronRight className={styles.chevronOpen} size={16} />
+        <Icons.ChevronRight className={isOpen ? styles.chevronOpen : styles.chevron} size={16} />
         <Icons.Wrench className={styles.wrench} size={16} />
         <span className={styles.label}>{label}</span>
         <span className={styles.spacer} />
@@ -30,24 +34,28 @@ export function ToolActivityBlock({rowOpacities, state}: {rowOpacities?: number[
           <span>View changes ({state.artifactRef.label})</span>
         </button>
       ) : null}
-      <div className={styles.list}>
-        {state.entries.map((item, index) => (
-          <div
-            key={item.id}
-            className={styles.row}
-            data-status={item.status}
-            style={{opacity: rowOpacities?.[index] ?? 1}}
-          >
-            <StatusIcon status={item.status} />
-            <span className={styles.tool}>{item.tool}</span>
-            <div className={styles.summaryStack}>
-              <span className={styles.summary}>{item.summary}</span>
-              {item.outputSummary && item.status !== 'running' ? <span className={styles.output}>{item.outputSummary}</span> : null}
+      {isOpen && visibleRows.length > 0 ? (
+        <div className={styles.list}>
+          {visibleRows.map(({item, opacity}) => (
+            <div
+              key={item.id}
+              className={styles.row}
+              data-status={item.status}
+              style={{opacity}}
+            >
+              <StatusIcon status={item.status} />
+              <span className={styles.tool}>{item.tool}</span>
+              <div className={styles.summaryStack}>
+                <span className={styles.summary}>{item.summary}</span>
+                {item.outputSummary && item.status !== 'running' ? <span className={styles.output}>{item.outputSummary}</span> : null}
+              </div>
+              {item.durationMs != null || item.status === 'running' ? (
+                <small>{item.status === 'running' ? 'running' : formatDuration(item.durationMs)}</small>
+              ) : null}
             </div>
-            <small>{item.status === 'running' ? 'running' : formatDuration(item.durationMs)}</small>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -71,11 +79,11 @@ function StatusIcon({status}: {status: ToolActivityItemState['status']}) {
 
 function formatDuration(durationMs?: number) {
   if (durationMs == null) return '';
-  if (durationMs < 1000) return `${durationMs}ms`;
+  if (durationMs < 1000) return `${(durationMs / 1000).toFixed(1)}s`;
   if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)}s`;
   const mins = Math.floor(durationMs / 60_000);
   const secs = Math.round((durationMs % 60_000) / 1000);
-  return `${mins}m${secs}s`;
+  return `${mins}m ${secs}s`;
 }
 
 function computeLabel(entries: ToolActivityItemState[], state: ToolActivityBlockState['state'], phase?: string) {

@@ -6,15 +6,15 @@ const styles = makeStyles('ChatComposer');
 
 type ComposerIconButtonProps = {
   className?: string;
+  disabled?: boolean;
   icon: ComponentType<{size?: number; className?: string}>;
   label: string;
 };
 
-export function ComposerIconButton({className, icon: Icon, label}: ComposerIconButtonProps) {
+export function ComposerIconButton({className, disabled, icon: Icon, label}: ComposerIconButtonProps) {
   return (
-    <button className={cx(styles.iconButton, className)} title={label} type="button">
+    <button className={cx(styles.iconButton, className)} disabled={disabled} title={label} type="button">
       <Icon size={20} />
     </button>
   );
 }
-

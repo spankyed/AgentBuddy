@@ -27,7 +27,6 @@
 
 .CommitLogSection_chevron {
   color: rgb(163 163 163);
-  transform: rotate(90deg);
 }
 
 .CommitLogSection_iconButton {
@@ -43,13 +42,19 @@
   padding: 0;
 }
 
+.CommitLogSection_actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .CommitLogSection_iconButton:hover {
   background: rgb(64 64 64);
   color: rgb(229 229 229);
 }
 
 .CommitLogSection_list {
-  padding: 0 0.75rem 0.75rem 1.25rem;
+  padding: 0 0.75rem 0.75rem 0.75rem;
 }
 
 .CommitLogSection_row {
@@ -59,17 +64,13 @@
   gap: 0.5rem;
   border-radius: 0.25rem;
   cursor: pointer;
+  margin-left: 0.75rem;
   padding: 0.375rem 0.5rem;
   transition: background 150ms ease;
 }
 
 .CommitLogSection_row:hover {
   background: rgb(38 38 38 / 50%);
-}
-
-.CommitLogSection_commitIcon {
-  flex-shrink: 0;
-  color: rgb(115 115 115);
 }
 
 .CommitLogSection_copy {
@@ -93,4 +94,35 @@
   line-height: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.CommitLogSection_rowActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.CommitLogSection_row:hover .CommitLogSection_rowActions {
+  opacity: 1;
+}
+
+.CommitLogSection_rowAction {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(163 163 163);
+  padding: 0;
+}
+
+.CommitLogSection_rowAction:hover {
+  background: rgb(64 64 64);
+  color: rgb(229 229 229);
 }

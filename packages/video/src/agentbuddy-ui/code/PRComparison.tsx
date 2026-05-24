@@ -9,11 +9,13 @@ export function PRComparison({state}: {state: PullRequestPanelState}) {
   return (
     <section className={styles.root}>
       <header className={styles.header}>
-        <Icons.GitBranch size={12} />
-        <span>{state.baseBranch}</span>
-        <Icons.ArrowRight size={13} />
-        <span>{state.headBranch}</span>
-        <button type="button"><Icons.X size={12} /></button>
+        <div className={styles.branchLabel} title={`${state.headBranch} -> ${state.baseBranch}`}>
+          <Icons.GitBranch size={12} />
+          <span>{state.headBranch}</span>
+          <Icons.ArrowRight size={13} />
+          <span>{state.baseBranch}</span>
+        </div>
+        <button type="button" title="Collapse all folders"><Icons.ChevronsDownUp size={14} /></button>
       </header>
       <div className={styles.list}>
         {state.fileTree.map(node => <TreeNode key={node.id} node={node} />)}

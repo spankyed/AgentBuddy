@@ -19,6 +19,12 @@
   color: rgb(245 245 245);
 }
 
+.NoteTreeItem_menuOpenRow {
+  z-index: 3;
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+}
+
 .NoteTreeItem_completed {
   color: rgb(82 82 82);
 }
@@ -68,6 +74,7 @@
 }
 
 .NoteTreeItem_actionPill {
+  position: relative;
   display: none;
   flex-shrink: 0;
   align-items: center;
@@ -94,6 +101,62 @@
   background: transparent;
   color: rgb(115 115 115);
   padding: 0;
+}
+
+.NoteTreeItem_actionButtonActive {
+  background: rgb(82 82 82 / 60%) !important;
+  color: rgb(229 229 229) !important;
+}
+
+.NoteTreeItem_menu {
+  position: absolute;
+  right: 0;
+  top: 1.75rem;
+  z-index: 10;
+  min-width: 140px;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(38 38 38);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 34%);
+  padding: 0.25rem;
+}
+
+.NoteTreeItem_menu button {
+  display: flex;
+  width: 100%;
+  height: auto;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(212 212 212);
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+}
+
+.NoteTreeItem_menu button:hover {
+  background: rgb(64 64 64);
+}
+
+.NoteTreeItem_menuItemDanger {
+  color: rgb(248 113 113) !important;
+}
+
+.NoteTreeItem_menuIcon {
+  flex-shrink: 0;
+  color: rgb(115 115 115);
+}
+
+.NoteTreeItem_menuIconAccent {
+  color: rgb(250 204 21);
+}
+
+.NoteTreeItem_menuIconDanger {
+  color: rgb(248 113 113);
 }
 
 .NoteTreeItem_checkbox {

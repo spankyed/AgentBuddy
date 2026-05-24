@@ -1,14 +1,10 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
-import {NoteEditor} from '../../agentbuddy-ui/notes/NoteEditor';
+import {NotesLayout} from '../../agentbuddy-ui/notes/NotesLayout';
 import {NotesRightRail} from '../../agentbuddy-ui/notes/NotesRightRail';
-import {TaskListPanel} from '../../agentbuddy-ui/notes/TaskListPanel';
 import {launchComposerState} from '../state/chat';
-import {notesEditorCopy, notesRightRailState, notesTaskListItems, notesViewForFrame} from '../state/notes';
+import {notesEditorCopy, notesRightRailState, notesTaskListState, notesViewForFrame} from '../state/notes';
 import {Caret} from './Caret';
-import './NotesShot.module.css';
-import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 import {useAppWindowLayout} from '../appWindowLayout';
-const styles = makeStyles('NotesShot');
 
 export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const view = notesViewForFrame(frame);
@@ -21,14 +17,19 @@ export function NotesShot({frame, variant}: {frame: number; variant?: 'landscape
       layout={layout}
       rightRail={<NotesRightRail state={notesRightRailState} />}
     >
-      <div className={styles.root}>
-        <TaskListPanel items={notesTaskListItems} title={notesEditorCopy.panelTitle} />
-        <NoteEditor
-          beforeLines={[...notesEditorCopy.beforeLines, <>{view.lines[0]}<Caret frame={frame} visible={view.carets[0].visible} /></>]}
-          afterLines={[view.lines[1], <>{view.lines[2]}<Caret frame={frame} visible={view.carets[2].visible} /></>]}
-          title={notesEditorCopy.title}
-        />
-      </div>
+      <NotesLayout
+        taskList={{
+          activeId: notesTaskListState.activeId,
+          items: notesTaskListState.items,
+          showCompleted: notesTaskListState.showCompleted,
+          title: notesTaskListState.title,
+        }}
+        editor={{
+          beforeLines: [...notesEditorCopy.beforeLines, <>{view.lines[0]}<Caret frame={frame} visible={view.carets[0].visible} /></>],
+          afterLines: [view.lines[1], <>{view.lines[2]}<Caret frame={frame} visible={view.carets[2].visible} /></>],
+          title: notesEditorCopy.title,
+        }}
+      />
     </AppWindow>
   );
 }

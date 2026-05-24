@@ -14,6 +14,38 @@ export const notesTaskListItems: NoteTreeNodeState[] = [
   {id: 'artifacts', title: 'artifacts & msg blocks', noteType: 'task'},
 ];
 
+export const notesTaskListState = {
+  activeId: 'current',
+  items: notesTaskListItems,
+  showCompleted: true,
+  title: {icon: '📝', text: 'Tasklist'},
+};
+
+export const notesTaskListMenuState = {
+  activeId: 'current',
+  headerMenuOpen: true,
+  items: notesTaskListItems,
+  showCompleted: true,
+  title: {icon: '📝', text: 'Tasklist'},
+};
+
+export const notesTaskListRowMenuState = {
+  activeId: 'current',
+  items: notesTaskListItems.map(item =>
+    item.id === 'current'
+      ? {
+        ...item,
+        favorite: true,
+        hasCompletedChildren: true,
+        hidingCompletedChildren: false,
+        rowMenuOpen: true,
+      }
+      : item
+  ),
+  showCompleted: true,
+  title: {icon: '📝', text: 'Tasklist'},
+};
+
 export const notesRailFavorites: NoteTreeNodeState[] = [
   {id: 'fav-current', icon: '🔥', title: 'current', noteType: 'document'},
   {id: 'fav-cli', icon: '💻', title: 'cli', noteType: 'document'},
@@ -42,9 +74,32 @@ export const notesRightRailSearchState: NotesRightRailState = {
   },
 };
 
+export const notesRightRailMenuState: NotesRightRailState = {
+  ...notesRightRailState,
+  createMenuOpen: true,
+};
+
+export const notesRightRailTrashState: NotesRightRailState = {
+  ...notesRightRailState,
+  trash: {
+    visible: true,
+    items: [
+      {id: 'trash-old-plan', icon: '🧾', title: 'old launch outline', noteType: 'document', deletedAge: '2d'},
+      {id: 'trash-draft', icon: '📝', title: 'draft tutorial carousel', noteType: 'document', deletedAge: '5d'},
+    ],
+  },
+};
+
+export const notesRightRailTrashActionsState: NotesRightRailState = {
+  ...notesRightRailTrashState,
+  trash: {
+    ...notesRightRailTrashState.trash!,
+    actionId: 'trash-draft',
+  },
+};
+
 export const notesEditorCopy = {
   breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist', 'Current'],
-  panelTitle: {icon: '📝', text: 'Tasklist'},
   title: {icon: '🔥', text: 'current'},
   beforeLines: ['provocative posts', '3 clips a week for clientlabs yt'],
   animatedLines: [

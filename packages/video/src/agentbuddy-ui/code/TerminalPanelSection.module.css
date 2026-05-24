@@ -61,13 +61,18 @@
 }
 
 .TerminalPanelSection_terminalBody {
-  display: flex;
   flex: 1;
-  align-items: center;
-  justify-content: center;
+  min-width: 0;
   background: rgb(30 30 30);
   color: rgb(115 115 115);
   font-size: 12px;
+}
+
+.TerminalPanelSection_terminalBody > span {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .TerminalPanelSection_terminalList {

@@ -39,8 +39,9 @@
 
 .FlowCanvas_viewport {
   position: absolute;
-  inset: 0;
-  transform-origin: 50% 50%;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
   will-change: transform;
 }
 
@@ -52,8 +53,13 @@
   overflow: visible;
 }
 
-.FlowCanvas_edge,
-.FlowCanvas_edgeDashed {
+.FlowCanvas_edgeHitArea {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 20;
+}
+
+.FlowCanvas_edge {
   fill: none;
   stroke: rgb(115 115 115);
   stroke-width: 2;
@@ -62,12 +68,19 @@
   marker-end: url(#flow-arrow);
 }
 
-.FlowCanvas_edgeDashed {
+.FlowCanvas_animatedEdge {
+  animation: FlowCanvas_dashFlow 500ms linear infinite;
   stroke-dasharray: 5 5;
 }
 
 .FlowCanvas_edgeMarker {
   fill: rgb(115 115 115);
+}
+
+@keyframes FlowCanvas_dashFlow {
+  to {
+    stroke-dashoffset: -10;
+  }
 }
 
 .FlowCanvas_controls {

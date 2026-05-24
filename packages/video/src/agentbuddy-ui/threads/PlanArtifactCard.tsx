@@ -1,6 +1,7 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import type {PlanArtifactState} from './threadTypes';
+import {MarkdownViewer} from './MarkdownViewer';
 import './PlanArtifactCard.module.css';
 
 const styles = makeStyles('PlanArtifactCard');
@@ -27,20 +28,11 @@ export function PlanArtifactCard({artifact}: {artifact: PlanArtifactState}) {
           </div>
         </div>
         <div className={styles.body}>
-          {notes ? <MarkdownNotes notes={notes} /> : <p className={styles.empty}>This plan has no notes yet.</p>}
+          {notes ? <MarkdownViewer content={notes} /> : <p className={styles.empty}>This plan has no notes yet.</p>}
         </div>
       </div>
     </div>
   );
-}
-
-function MarkdownNotes({notes}: {notes: string}) {
-  const lines = notes.split('\n').filter(Boolean);
-  const allList = lines.every(line => line.trim().startsWith('- '));
-  if (allList) {
-    return <ul>{lines.map(line => <li key={line}>{line.trim().slice(2)}</li>)}</ul>;
-  }
-  return <>{lines.map(line => <p key={line}>{line}</p>)}</>;
 }
 
 function statusLabel(status: PlanArtifactState['content']['status']) {

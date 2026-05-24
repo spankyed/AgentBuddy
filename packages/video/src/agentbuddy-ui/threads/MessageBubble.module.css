@@ -2,6 +2,7 @@
   display: flex;
   width: 100%;
   padding-bottom: 0.75rem;
+  animation: MessageBubble_fadeIn 300ms ease-out;
 }
 
 .MessageBubble_userRow { justify-content: flex-end; }
@@ -40,6 +41,41 @@
   transition: box-shadow 200ms ease, opacity 200ms ease;
 }
 
+.MessageBubble_content {
+  position: relative;
+}
+
+.MessageBubble_truncated {
+  max-height: 200px;
+  cursor: pointer;
+}
+
+.MessageBubble_truncationOverlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 5rem;
+  align-items: flex-end;
+  justify-content: center;
+  background: linear-gradient(to top, rgb(38 38 38), rgb(38 38 38 / 0.9) 42%, transparent);
+  padding-bottom: 0.5rem;
+  pointer-events: none;
+}
+
+.MessageBubble_assistantBubble .MessageBubble_truncationOverlay {
+  background: linear-gradient(to top, rgb(23 23 23), rgb(23 23 23 / 0.9) 42%, transparent);
+}
+
+.MessageBubble_truncationOverlay span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: rgb(163 163 163);
+  font-size: 12px;
+}
+
 .MessageBubble_bubble:hover {
   box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
@@ -67,4 +103,16 @@
   font-size: 12px;
   font-style: italic;
   text-align: left;
+}
+
+@keyframes MessageBubble_fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

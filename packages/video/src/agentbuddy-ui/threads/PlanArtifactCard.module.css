@@ -113,9 +113,24 @@
   line-height: 1.45;
 }
 
-.PlanArtifactCard_body ul {
+.PlanArtifactCard_body h4 {
+  margin: 0 0 0.375rem;
+  color: rgb(229 229 229);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.PlanArtifactCard_body ul,
+.PlanArtifactCard_body ol {
   margin: 0;
   padding-left: 1.1rem;
+}
+
+.PlanArtifactCard_body ul + h4,
+.PlanArtifactCard_body ol + h4,
+.PlanArtifactCard_body p + h4,
+.PlanArtifactCard_body blockquote + h4 {
+  margin-top: 0.875rem;
 }
 
 .PlanArtifactCard_body li + li {
@@ -126,8 +141,32 @@
   margin: 0;
 }
 
-.PlanArtifactCard_body p + p {
+.PlanArtifactCard_body p + p,
+.PlanArtifactCard_body ul + p,
+.PlanArtifactCard_body ol + p,
+.PlanArtifactCard_body blockquote + p {
   margin-top: 0.5rem;
+}
+
+.PlanArtifactCard_body strong {
+  color: rgb(229 229 229);
+  font-weight: 650;
+}
+
+.PlanArtifactCard_body code {
+  border-radius: 0.25rem;
+  background: rgb(64 64 64 / 55%);
+  color: rgb(229 229 229);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  padding: 0.0625rem 0.25rem;
+}
+
+.PlanArtifactCard_body blockquote {
+  margin: 0;
+  border-left: 2px solid rgb(82 82 82);
+  color: rgb(163 163 163);
+  padding-left: 0.625rem;
 }
 
 .PlanArtifactCard_empty {

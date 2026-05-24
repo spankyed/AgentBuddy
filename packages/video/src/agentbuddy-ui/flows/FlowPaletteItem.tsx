@@ -6,6 +6,7 @@ const styles = makeStyles('FlowPalette');
 
 const iconByKind = {
   action: Icons.Play,
+  create: Icons.Plus,
   keep_alive: Icons.Activity,
   listener: Icons.Radio,
   schedule: Icons.Clock,

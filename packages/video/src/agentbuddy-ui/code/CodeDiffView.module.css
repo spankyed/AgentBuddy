@@ -29,33 +29,4 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.65;
-  padding: 1.25rem 0;
-}
-
-.CodeDiffView_line {
-  display: grid;
-  grid-template-columns: 42px 1fr;
-  min-height: 22px;
-}
-
-.CodeDiffView_number {
-  color: rgb(82 82 82);
-  padding-right: 1rem;
-  text-align: right;
-}
-
-.CodeDiffView_code {
-  color: rgb(212 212 216);
-  white-space: pre;
-}
-
-.CodeDiffView_add {
-  background: rgb(22 101 52 / 26%);
-}
-
-.CodeDiffView_remove {
-  background: rgb(127 29 29 / 28%);
 }

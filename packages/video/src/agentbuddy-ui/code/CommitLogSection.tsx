@@ -11,20 +11,35 @@ export function CommitLogSection({commits}: {commits: CommitLogEntryState[]}) {
     <section className={styles.root}>
       <header className={styles.header}>
         <div className={styles.title}>
-          <Icons.ChevronRight className={styles.chevron} size={13} />
-          <span>COMMITS</span>
+          <Icons.ChevronDown className={styles.chevron} size={13} />
+          <span>COMMITS ({commits.length})</span>
         </div>
-        <button className={styles.iconButton} type="button" title="Refresh commits">
-          <Icons.History size={14} />
-        </button>
+        <div className={styles.actions}>
+          <button className={styles.iconButton} type="button" title="Search commits">
+            <Icons.Search size={14} />
+          </button>
+          <button className={styles.iconButton} type="button" title="Refresh commit log">
+            <Icons.RotateCcw size={14} />
+          </button>
+        </div>
       </header>
       <div className={styles.list}>
         {commits.map(commit => (
           <div className={styles.row} key={commit.hash}>
-            <Icons.GitCommit className={styles.commitIcon} size={13} />
             <div className={styles.copy}>
               <div className={styles.message}>{commit.title}</div>
-              <div className={styles.meta}>{commit.hash} · {commit.time}</div>
+              <div className={styles.meta}>{commit.hash}{commit.authorName ? ` · ${commit.authorName}` : ''} · {commit.time}</div>
+            </div>
+            <div className={styles.rowActions}>
+              <button className={styles.rowAction} type="button" title="Revert this commit">
+                <Icons.Undo2 size={12} />
+              </button>
+              <button className={styles.rowAction} type="button" title="Reset to this commit">
+                <Icons.RotateCcw size={12} />
+              </button>
+              <button className={styles.rowAction} type="button" title="Copy commit hash">
+                <Icons.Copy size={12} />
+              </button>
             </div>
           </div>
         ))}

@@ -1,54 +1,152 @@
 import {boardViewForFrame} from '../src/film/state/board';
-import {chatViewForFrame} from '../src/film/state/chat';
-import {codeReviewViewForFrame} from '../src/film/state/code';
+import {chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
+import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
 import {finalViewForFrame} from '../src/film/state/final';
 import {notesViewForFrame} from '../src/film/state/notes';
 import {workflowStateForFrame} from '../src/film/state/workflow';
 
 type Check = {
+  area: ProductArea | 'final';
   message: string;
   pass: boolean;
 };
 
+type ProductArea = 'board' | 'chat' | 'code' | 'notes' | 'workflow';
+
+function changed<T>(before: T, after: T) {
+  return JSON.stringify(before) !== JSON.stringify(after);
+}
+
 const checks: Check[] = [
   {
-    message: 'notes shot reveals editor text over time',
-    pass: notesViewForFrame(0).lines.join('') !== notesViewForFrame(220).lines.join(''),
+    area: 'notes',
+    message: 'notes shot reveals first edited line',
+    pass: notesViewForFrame(20).lines[0] !== notesViewForFrame(120).lines[0],
   },
   {
-    message: 'chat shot reveals prompt and assistant response over time',
-    pass: chatViewForFrame(0).prompt !== chatViewForFrame(120).prompt
-      && chatViewForFrame(120).response !== chatViewForFrame(280).response,
+    area: 'notes',
+    message: 'notes shot reveals second edited line',
+    pass: notesViewForFrame(110).lines[1] !== notesViewForFrame(210).lines[1],
   },
   {
-    message: 'board shot moves a kanban card',
-    pass: boardViewForFrame(0).movingCardStyle.left !== boardViewForFrame(170).movingCardStyle.left
-      && boardViewForFrame(0).movingCardStyle.top !== boardViewForFrame(170).movingCardStyle.top,
+    area: 'notes',
+    message: 'notes shot reveals third edited line',
+    pass: notesViewForFrame(150).lines[2] !== notesViewForFrame(250).lines[2],
   },
   {
-    message: 'code shot progresses from commit review to PR details',
+    area: 'chat',
+    message: 'chat shot types user prompt',
+    pass: chatViewForFrame(0).prompt !== chatViewForFrame(92).prompt,
+  },
+  {
+    area: 'chat',
+    message: 'chat shot reveals assistant response',
+    pass: chatViewForFrame(150).response !== chatViewForFrame(260).response,
+  },
+  {
+    area: 'chat',
+    message: 'chat tool activity reveals rows sequentially',
+    pass: toolActivityViewForFrame(70).rowOpacities[0] !== toolActivityViewForFrame(150).rowOpacities[0]
+      && toolActivityViewForFrame(70).rowOpacities[3] !== toolActivityViewForFrame(180).rowOpacities[3],
+  },
+  {
+    area: 'chat',
+    message: 'chat tool activity transitions from streaming to done',
+    pass: toolActivityViewForFrame(220).state.state === 'streaming'
+      && toolActivityViewForFrame(240).state.state === 'done',
+  },
+  {
+    area: 'board',
+    message: 'board shot moves card horizontally',
+    pass: boardViewForFrame(0).movingCardStyle.left !== boardViewForFrame(170).movingCardStyle.left,
+  },
+  {
+    area: 'board',
+    message: 'board shot moves card vertically',
+    pass: boardViewForFrame(0).movingCardStyle.top !== boardViewForFrame(170).movingCardStyle.top,
+  },
+  {
+    area: 'board',
+    message: 'board shot rotates moving card',
+    pass: boardViewForFrame(0).movingCardStyle.transform !== boardViewForFrame(170).movingCardStyle.transform,
+  },
+  {
+    area: 'code',
+    message: 'code shot reveals diff changes line by line',
+    pass: changed(codeReviewViewForFrame(20).diffLineOpacities, codeReviewViewForFrame(120).diffLineOpacities),
+  },
+  {
+    area: 'code',
+    message: 'code shot generates commit message',
+    pass: codeReviewViewForFrame(80).commitMessage === ''
+      && codeReviewViewForFrame(130).commitMessage === codeShotState.generatedCommitMessage,
+  },
+  {
+    area: 'code',
+    message: 'code shot switches from commit panel to PR panel',
     pass: codeReviewViewForFrame(0).activePanel === 'commit'
-      && codeReviewViewForFrame(190).prMode === 'create'
-      && codeReviewViewForFrame(230).prMode === 'details'
-      && codeReviewViewForFrame(230).prCreated,
+      && codeReviewViewForFrame(170).activePanel === 'pr',
   },
   {
-    message: 'workflow shot uses blueprint camera/selection motion without runtime status',
-    pass: workflowStateForFrame(0).viewport?.x !== workflowStateForFrame(260).viewport?.x
-      && workflowStateForFrame(130).selectedNodeId !== workflowStateForFrame(0).selectedNodeId
+    area: 'code',
+    message: 'code shot publishes branch before PR creation',
+    pass: codeReviewViewForFrame(150).prPublishProgress === 0
+      && codeReviewViewForFrame(190).prPublishProgress === 1,
+  },
+  {
+    area: 'code',
+    message: 'code shot progresses through PR files, create, and details modes',
+    pass: codeReviewViewForFrame(160).prMode === 'files'
+      && codeReviewViewForFrame(200).prMode === 'create'
+      && codeReviewViewForFrame(230).prMode === 'details'
+      && Boolean(codeReviewViewForFrame(230).pullRequest.createdPr),
+  },
+  {
+    area: 'workflow',
+    message: 'workflow shot moves blueprint viewport',
+    pass: changed(workflowStateForFrame(0).viewport, workflowStateForFrame(260).viewport),
+  },
+  {
+    area: 'workflow',
+    message: 'workflow shot stays blueprint-only without runtime status or animated node selection',
+    pass: workflowStateForFrame(130).selectedNodeId == null
+      && workflowStateForFrame(130).editingNodeId == null
       && !JSON.stringify(workflowStateForFrame(260)).includes('"status"'),
   },
   {
-    message: 'final shot animates title and tagline',
-    pass: finalViewForFrame(0).titleStyle.opacity !== finalViewForFrame(80).titleStyle.opacity
-      && finalViewForFrame(0).taglineStyle.opacity !== finalViewForFrame(100).taglineStyle.opacity,
+    area: 'final',
+    message: 'final shot animates title',
+    pass: finalViewForFrame(0).titleStyle.opacity !== finalViewForFrame(80).titleStyle.opacity,
+  },
+  {
+    area: 'final',
+    message: 'final shot animates tagline',
+    pass: finalViewForFrame(0).taglineStyle.opacity !== finalViewForFrame(100).taglineStyle.opacity,
   },
 ];
 
 const failed = checks.filter(check => !check.pass);
+const minimumMoments = 10;
+const minimumProductMoments = 10;
+const requiredProductAreas = new Set<ProductArea>(['board', 'chat', 'code', 'notes', 'workflow']);
+const productChecks = checks.filter(check => check.area !== 'final');
+const coveredProductAreas = new Set(productChecks.map(check => check.area));
+const missingProductAreas = [...requiredProductAreas].filter(area => !coveredProductAreas.has(area));
 
 if (failed.length > 0) {
   throw new Error(`Film action audit failed:\n${failed.map(check => `- ${check.message}`).join('\n')}`);
 }
 
-console.log(`Film action audit passed: ${checks.length} frame-driven shot checks.`);
+if (checks.length < minimumMoments) {
+  throw new Error(`Film action audit must prove at least ${minimumMoments} frame-driven moments; only ${checks.length} checks exist.`);
+}
+
+if (productChecks.length < minimumProductMoments) {
+  throw new Error(`Film action audit must prove at least ${minimumProductMoments} product-surface moments before the final lockup; only ${productChecks.length} checks exist.`);
+}
+
+if (missingProductAreas.length > 0) {
+  throw new Error(`Film action audit must cover every product surface area; missing ${missingProductAreas.join(', ')}.`);
+}
+
+console.log(`Film action audit passed: ${checks.length} frame-driven shot checks across ${coveredProductAreas.size} product areas.`);

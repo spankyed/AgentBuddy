@@ -53,6 +53,7 @@
 }
 
 .BranchInfo_button {
+  position: relative;
   display: inline-flex;
   width: 28px;
   height: 28px;
@@ -69,4 +70,50 @@
 .BranchInfo_button:hover {
   background: rgb(64 64 64);
   color: rgb(229 229 229);
+}
+
+.BranchInfo_button[data-disabled="true"] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.BranchInfo_button[data-disabled="true"]:hover {
+  background: transparent;
+  color: rgb(163 163 163);
+}
+
+.BranchInfo_pushBadge,
+.BranchInfo_pullBadge {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  display: flex;
+  min-width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 3px;
+}
+
+.BranchInfo_pushBadge {
+  background: rgb(22 163 74);
+}
+
+.BranchInfo_pullBadge {
+  background: rgb(37 99 235);
+}
+
+.BranchInfo_spinIcon {
+  animation: BranchInfo_spin 900ms linear infinite;
+}
+
+@keyframes BranchInfo_spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

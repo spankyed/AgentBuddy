@@ -27,10 +27,22 @@ export function DemoFramedArea({children}: {children: ReactNode}) {
   return <DemoSlot className={styles.framedArea}>{children}</DemoSlot>;
 }
 
+export function DemoTallFramedArea({children}: {children: ReactNode}) {
+  return <DemoSlot className={styles.tallFramedArea}>{children}</DemoSlot>;
+}
+
+export function DemoFramedRightPanel({children, width}: {children: ReactNode; width: number}) {
+  return <div className={styles.framedRightPanel} style={{width}}>{children}</div>;
+}
+
 export function DemoHeaderArea({children}: {children: ReactNode}) {
   return <DemoSlot className={styles.headerArea}>{children}</DemoSlot>;
 }
 
 export function DemoBoardArea({children}: {children: ReactNode}) {
   return <DemoSlot className={styles.boardArea}>{children}</DemoSlot>;
+}
+
+export function DemoStack({children, gap = 14}: {children: ReactNode; gap?: 12 | 14}) {
+  return <div className={gap === 12 ? styles.stackCompact : styles.stack}>{children}</div>;
 }

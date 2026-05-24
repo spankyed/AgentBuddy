@@ -40,6 +40,7 @@ export function PullRequestPanel({
       {mode === 'files' ? (
         <>
           <TopActionRow published={published} publishProgress={publishProgress} state={state} />
+          {!published ? <PublishWarning /> : null}
           <PRComparison state={state} />
         </>
       ) : (
@@ -49,6 +50,15 @@ export function PullRequestPanel({
           {mode === 'details' ? <PRActionBar /> : null}
         </>
       )}
+    </div>
+  );
+}
+
+function PublishWarning() {
+  return (
+    <div className={styles.publishWarning}>
+      <Icons.GitBranch size={13} />
+      <span>Publish this branch before creating a pull request.</span>
     </div>
   );
 }

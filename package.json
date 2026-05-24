@@ -62,7 +62,10 @@
     "video:studio": "npm run studio --workspace @app/video",
     "video:render": "npm run render --workspace @app/video",
     "video:render:square": "npm run render:square --workspace @app/video",
-    "video:render:component": "npm run render:component --workspace @app/video"
+    "video:render:component": "npm run render:component --workspace @app/video",
+    "video:render:demos": "npm run render:demos --workspace @app/video",
+    "video:review:snapshots": "npm run review:snapshots --workspace @app/video",
+    "video:verify": "npm run verify --workspace @app/video"
   },
   "devDependencies": {
     "@npmcli/map-workspaces": "4.0.2",

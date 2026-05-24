@@ -15,8 +15,20 @@ export type ChatComposerState = {
   busy?: boolean;
   disabled?: boolean;
   mode: string;
+  modeOptions?: ChatModeOption[];
+  openSelector?: 'mode' | 'phase';
   phase?: string;
   placeholder: string;
   statusLine?: string;
   text?: string;
+};
+
+export type ChatModeOption = {
+  disabled?: boolean;
+  hidden?: boolean;
+  name: string;
+  phases?: Array<{
+    color?: string;
+    name: string;
+  }>;
 };

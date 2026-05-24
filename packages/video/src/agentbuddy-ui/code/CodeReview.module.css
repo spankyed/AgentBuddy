@@ -7,7 +7,7 @@
 
 .CodeReview_panel {
   display: flex;
-  width: 320px;
+  width: 430px;
   flex-shrink: 0;
   flex-direction: column;
   border-left: 1px solid rgb(38 38 38);
@@ -25,7 +25,9 @@
 .CodeReview_fileGroups {
   min-height: 0;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-color: rgb(82 82 82) transparent;
+  scrollbar-width: thin;
 }
 
 .CodeReview_fileGroup {
@@ -58,5 +60,5 @@
 }
 
 .CodeReview_compact .CodeReview_panel {
-  width: 292px;
+  width: 360px;
 }

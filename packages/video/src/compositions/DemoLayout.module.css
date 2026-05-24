@@ -26,6 +26,17 @@
   border: 1px solid rgb(38 38 38);
 }
 
+.DemoLayout_tallFramedArea {
+  inset: 28px 96px;
+  overflow: hidden;
+  border: 1px solid rgb(38 38 38);
+}
+
+.DemoLayout_framedRightPanel {
+  height: 100%;
+  margin-left: auto;
+}
+
 .DemoLayout_headerArea {
   left: 96px;
   right: 96px;
@@ -40,4 +51,17 @@
   flex-direction: column;
   border: 1px solid rgb(38 38 38);
   background: rgb(23 23 23);
+}
+
+.DemoLayout_stack,
+.DemoLayout_stackCompact {
+  display: grid;
+}
+
+.DemoLayout_stack {
+  gap: 14px;
+}
+
+.DemoLayout_stackCompact {
+  gap: 12px;
 }

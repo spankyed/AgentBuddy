@@ -8,3 +8,8 @@
   padding: 1.5rem;
   user-select: none;
 }
+
+.KanbanBoard_movingCard {
+  position: absolute;
+  width: 300px;
+}

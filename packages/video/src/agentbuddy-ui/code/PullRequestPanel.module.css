@@ -38,6 +38,24 @@
   background: rgb(22 163 74 / 85%);
 }
 
+.PullRequestPanel_publishWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgb(113 63 18 / 45%);
+  background: rgb(113 63 18 / 20%);
+  color: rgb(250 204 21);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  padding: 0.625rem 0.75rem;
+}
+
+.PullRequestPanel_publishWarning svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .PullRequestPanel_backRow {
   display: flex;
   height: 42px;

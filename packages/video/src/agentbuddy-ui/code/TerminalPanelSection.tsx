@@ -1,6 +1,7 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
 import type {TerminalPanelState} from './codeTypes';
+import {MonacoCodeViewer} from './MonacoCodeViewer';
 import './TerminalPanelSection.module.css';
 
 const styles = makeStyles('TerminalPanelSection');
@@ -30,7 +31,11 @@ export function TerminalPanelSection({state}: {state: TerminalPanelState}) {
       {isExpanded ? (
         <div className={styles.expanded}>
           <div className={styles.terminalBody}>
-            <span>{state.activeTerminalId ? 'Terminal output' : 'No terminal selected'}</span>
+            {state.activeTerminalId ? (
+              <MonacoCodeViewer height="100%" language="shell" value={state.output ?? ''} />
+            ) : (
+              <span>No terminal selected</span>
+            )}
           </div>
           {state.terminals.length ? (
             <div className={styles.terminalList}>

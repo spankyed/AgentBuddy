@@ -1,30 +1,12 @@
+import type {KanbanBoardState, KanbanCardState, ThreadsHeaderState} from '../../agentbuddy-ui/threads/threadTypes';
 import {ease, mix} from './timeline';
 
-type BoardCardState = {
-  muted?: boolean;
-  tags?: string[];
-  title: string;
-};
-
-type BoardColumnState = {
-  cards: BoardCardState[];
-  count: number;
-  title: string;
-  tone: 'neutral' | 'blue' | 'emerald';
-};
-
 export const boardShotState: {
+  board: KanbanBoardState;
   breadcrumbs: string[];
-  columns: BoardColumnState[];
-  header: {
-    activeFilterCount?: number;
-    activeView: 'list' | 'kanban' | 'dashboard';
-    filterLabel: string;
-    newThreadLabel: string;
-    searchPlaceholder: string;
-    subtitle: string;
-  };
+  header: ThreadsHeaderState;
   movingCard: {
+    card: KanbanCardState;
     motion: {
       from: number;
       fromLeft: number;
@@ -35,8 +17,6 @@ export const boardShotState: {
       toRotation: number;
       toTop: number;
     };
-    tags: string[];
-    title: string;
   };
 } = {
   breadcrumbs: ['Threads', 'Board'],
@@ -47,29 +27,30 @@ export const boardShotState: {
     searchPlaceholder: 'Search threads...',
     subtitle: 'Manage agent threads',
   },
-  columns: [
-    {
-      count: 1,
-      cards: [{title: 'Ship capture-state renderer', muted: true, tags: ['video']}],
-      title: 'Backlog',
-      tone: 'neutral',
-    },
-    {
-      count: 2,
-      cards: [{title: 'Automate release checks', tags: ['launch']}],
-      title: 'In Progress',
-      tone: 'blue',
-    },
-    {
-      count: 0,
-      cards: [],
-      title: 'Done',
-      tone: 'emerald',
-    },
-  ],
+  board: {
+    columns: [
+      {
+        cards: [{title: 'Ship capture-state renderer', tags: ['video']}],
+        title: 'Backlog',
+        tone: 'neutral',
+      },
+      {
+        cards: [{title: 'Automate release checks', tags: ['launch']}],
+        title: 'In Progress',
+        tone: 'blue',
+      },
+      {
+        cards: [],
+        title: 'Done',
+        tone: 'emerald',
+      },
+    ],
+  },
   movingCard: {
-    title: 'Publish launch film cutdown',
-    tags: ['launch'],
+    card: {
+      title: 'Publish launch film cutdown',
+      tags: ['launch'],
+    },
     motion: {
       from: 70,
       to: 170,
@@ -81,6 +62,40 @@ export const boardShotState: {
       toRotation: 1,
     },
   },
+};
+
+export const threadsHeaderSearchState: ThreadsHeaderState = {
+  ...boardShotState.header,
+  searchKeyword: 'launch',
+};
+
+export const threadsHeaderFilterState: ThreadsHeaderState = {
+  ...boardShotState.header,
+  activeFilterCount: 2,
+  filterPopover: {
+    visible: true,
+    rootOnly: true,
+    showArchived: false,
+    statuses: [
+      {label: 'Active', selected: true, count: 8, color: '#2563eb'},
+      {label: 'Paused', count: 2, color: '#a16207'},
+      {label: 'Done', count: 14, color: '#16a34a'},
+    ],
+    tags: [
+      {label: 'launch', selected: true, count: 3, color: '#7c3aed'},
+      {label: 'video', count: 4, color: '#0891b2'},
+      {label: 'bug', count: 5, color: '#dc2626'},
+    ],
+    chatStates: [
+      {label: 'Has tools', selected: true, count: 6, color: '#0d9488'},
+      {label: 'Needs reply', count: 2, color: '#64748b'},
+    ],
+  },
+};
+
+export const threadsHeaderArchiveState: ThreadsHeaderState = {
+  ...boardShotState.header,
+  showArchived: true,
 };
 
 export function boardViewForFrame(frame: number) {

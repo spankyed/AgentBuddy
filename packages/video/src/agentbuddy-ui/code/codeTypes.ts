@@ -1,6 +1,7 @@
 import type {GitFile} from './GitFileItem';
 
 export type CommitLogEntryState = {
+  authorName?: string;
   hash: string;
   time: string;
   title: string;
@@ -15,6 +16,7 @@ export type WorktreeState = {
 export type TerminalPanelState = {
   activeTerminalId?: string;
   expanded?: boolean;
+  output?: string;
   terminals: Array<{
     id: string;
     shell: string;
@@ -29,6 +31,12 @@ export type PullRequestPanelState = {
   changedFiles: GitFile[];
   checks: string[];
   createdPr?: {
+    authorName?: string;
+    baseBranch?: string;
+    commitCount?: number;
+    createdAt?: string;
+    headBranch?: string;
+    isDraft?: boolean;
     number: number;
     state: 'OPEN' | 'DRAFT' | 'MERGED' | 'CLOSED';
     url: string;
@@ -49,6 +57,12 @@ export type PullRequestFileTreeNode = {
 
 export type CodeReviewState = {
   branch: string;
+  branchSync?: {
+    commitsAhead?: number;
+    commitsBehind?: number;
+    hasUpstream?: boolean;
+    syncing?: boolean;
+  };
   baseDirectory: string;
   changes: GitFile[];
   commits: CommitLogEntryState[];
@@ -71,8 +85,7 @@ export type CodeReviewViewState = {
   commitMessage: string;
   diffLineOpacities: number[];
   generatingCommitMessage: boolean;
-  prCreated: boolean;
-  prCreating: boolean;
   prMode: 'files' | 'create' | 'details';
-  prPublishProgress: number;
+  pullRequest: PullRequestPanelState;
+  prPublishProgress?: number;
 };

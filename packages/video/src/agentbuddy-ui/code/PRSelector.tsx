@@ -7,6 +7,7 @@ const styles = makeStyles('PRSelector');
 
 export function PRSelector({state}: {state: PullRequestPanelState}) {
   const created = state.createdPr;
+  const badge = created ? prBadge(created) : null;
   return (
     <div className={styles.root}>
       <button className={styles.button} type="button">
@@ -14,8 +15,15 @@ export function PRSelector({state}: {state: PullRequestPanelState}) {
         <span className={created ? undefined : styles.placeholder}>
           {created ? `#${created.number} ${state.title}` : 'Select a pull request...'}
         </span>
-        {created ? <span className={styles.state}>{created.state}</span> : null}
+        {badge ? <span className={styles.state} data-state={badge}>{badge}</span> : null}
       </button>
     </div>
   );
+}
+
+function prBadge(pr: NonNullable<PullRequestPanelState['createdPr']>) {
+  if (pr.state === 'MERGED') return 'MERGED';
+  if (pr.state === 'CLOSED') return 'CLOSED';
+  if (pr.isDraft || pr.state === 'DRAFT') return 'DRAFT';
+  return null;
 }
