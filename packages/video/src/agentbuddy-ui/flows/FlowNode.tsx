@@ -20,12 +20,13 @@ const iconByKind = {
 };
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/nodes/BaseNode.vue.
-export function FlowNode({node, selected}: {key?: string; node: FlowNodeState; selected?: boolean}) {
+export function FlowNode({editing, node, selected}: {editing?: boolean; node: FlowNodeState; selected?: boolean}) {
   const Icon = iconByKind[node.kind];
   const style = {left: `${node.x}%`, top: `${node.y}%`};
+  const nodeClassName = cx(styles.node, editing && styles.editing, !editing && selected && styles.selected);
   if (node.kind === 'entry' || node.exits?.length) {
     return (
-      <div className={cx(styles.node, styles.entry, selected && styles.selected)} data-kind={node.kind} style={style}>
+      <div className={cx(nodeClassName, styles.entry)} data-kind={node.kind} style={style}>
         <div className={styles.header}><Icon className={styles.nodeIcon} size={14} /><span>{node.label}</span></div>
         {node.subtitle ? <div className={styles.subtitle}>{node.subtitle}</div> : null}
         <div className={styles.exitList}>
@@ -43,7 +44,7 @@ export function FlowNode({node, selected}: {key?: string; node: FlowNodeState; s
   }
 
   return (
-    <div className={cx(styles.node, selected && styles.selected)} data-kind={node.kind} style={style}>
+    <div className={nodeClassName} data-kind={node.kind} style={style}>
       <div className={styles.header}><Icon className={styles.nodeIcon} size={14} /><span>{node.label}</span></div>
       {node.subtitle ? <div className={styles.subtitle}>{node.subtitle}</div> : null}
       <FlowAddHandle selected={selected} />

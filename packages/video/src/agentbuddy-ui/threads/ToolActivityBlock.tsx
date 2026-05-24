@@ -1,30 +1,21 @@
-import {ease} from '../../film/state/timeline';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
-import type {ToolActivityItemState} from './threadTypes';
+import type {ToolActivityBlockState, ToolActivityItemState} from './threadTypes';
 import './ToolActivityBlock.module.css';
 
 const styles = makeStyles('ToolActivityBlock');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/interactions/blocks/ToolActivityBlock.vue.
-export function ToolActivityBlock({artifactLabel, frame, items}: {artifactLabel?: string; frame: number; items: ToolActivityItemState[]}) {
-  const visibleItems = items.filter((_, index) => ease(frame, 78 + index * 18, 96 + index * 18) > 0);
-  const preview = visibleItems[visibleItems.length - 1] ?? items[0];
-  const running = items.some((item) => item.status === 'running');
-  const label = running ? 'Planning' : `Ran ${Math.max(visibleItems.length, 1)} tools`;
+export function ToolActivityBlock({rowOpacities, state}: {rowOpacities?: number[]; state: ToolActivityBlockState}) {
+  const visibleItems = state.entries.filter((_, index) => (rowOpacities?.[index] ?? 1) > 0);
+  const preview = getPreviewEntry(visibleItems, state.state);
+  const label = state.label || computeLabel(visibleItems, state.state, state.phase);
   return (
     <div className={styles.root}>
       <button className={styles.header} type="button">
         <Icons.ChevronRight className={styles.chevronOpen} size={16} />
         <Icons.Wrench className={styles.wrench} size={16} />
         <span className={styles.label}>{label}</span>
-        {running ? (
-          <span className={styles.streamingDots} aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
-        ) : null}
         <span className={styles.spacer} />
         {preview ? (
           <>
@@ -33,19 +24,19 @@ export function ToolActivityBlock({artifactLabel, frame, items}: {artifactLabel?
           </>
         ) : null}
       </button>
-      {!running ? (
+      {state.artifactRef && state.state !== 'streaming' ? (
         <button className={styles.artifactLink} type="button">
           <Icons.ArrowRight size={12} />
-          <span>{artifactLabel ? `View changes (${artifactLabel})` : 'View changes'}</span>
+          <span>View changes ({state.artifactRef.label})</span>
         </button>
       ) : null}
       <div className={styles.list}>
-        {items.map((item, index) => (
+        {state.entries.map((item, index) => (
           <div
-            key={`${item.tool}-${item.summary}`}
+            key={item.id}
             className={styles.row}
             data-status={item.status}
-            style={{opacity: ease(frame, 78 + index * 18, 96 + index * 18)}}
+            style={{opacity: rowOpacities?.[index] ?? 1}}
           >
             <StatusIcon status={item.status} />
             <span className={styles.tool}>{item.tool}</span>
@@ -59,6 +50,16 @@ export function ToolActivityBlock({artifactLabel, frame, items}: {artifactLabel?
       </div>
     </div>
   );
+}
+
+function getPreviewEntry(entries: ToolActivityItemState[], state: ToolActivityBlockState['state']) {
+  if (!entries.length) return null;
+  if (state === 'streaming') {
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      if (entries[index].status === 'running') return entries[index];
+    }
+  }
+  return entries[entries.length - 1];
 }
 
 function StatusIcon({status}: {status: ToolActivityItemState['status']}) {
@@ -75,4 +76,99 @@ function formatDuration(durationMs?: number) {
   const mins = Math.floor(durationMs / 60_000);
   const secs = Math.round((durationMs % 60_000) / 1000);
   return `${mins}m${secs}s`;
+}
+
+function computeLabel(entries: ToolActivityItemState[], state: ToolActivityBlockState['state'], phase?: string) {
+  const streamingLabel = phase === 'Plan' ? 'Planning' : 'Working';
+  if (entries.length === 0) return state === 'streaming' ? streamingLabel : 'No activity';
+
+  const running = entries.filter(entry => entry.status === 'running');
+  const errored = entries.filter(entry => entry.status === 'error');
+  const groups = groupByTool(entries);
+
+  if (state === 'done' || state === 'error') {
+    const errorSuffix = errored.length > 0 ? ` · ${errored.length} error${errored.length === 1 ? '' : 's'}` : '';
+    if (groups.length === 1) {
+      const [group] = groups;
+      return `${pastVerb(group.tool)} ${group.count} ${noun(group.tool, group.count)}${errorSuffix}`;
+    }
+    if (groups.length === 2) {
+      const [a, b] = groups;
+      return `${pastVerb(a.tool)} ${a.count} ${noun(a.tool, a.count)}, ${pastVerb(b.tool).toLowerCase()} ${b.count} ${noun(b.tool, b.count)}${errorSuffix}`;
+    }
+    return `Ran ${entries.length} tools${errorSuffix}`;
+  }
+
+  if (running.length === 1 && running[0].tool === 'Bash') {
+    const secs = running[0].durationMs ? Math.round(running[0].durationMs / 1000) : 0;
+    return `Running bash${secs >= 5 ? ` (${secs}s)` : ''}`;
+  }
+
+  if (groups.length === 1) {
+    const [group] = groups;
+    return `${presentVerb(group.tool)} ${group.count} ${noun(group.tool, group.count)}`;
+  }
+
+  return streamingLabel;
+}
+
+function groupByTool(entries: ToolActivityItemState[]) {
+  const counts = new Map<string, number>();
+  for (const entry of entries) counts.set(entry.tool, (counts.get(entry.tool) ?? 0) + 1);
+  return Array.from(counts.entries()).map(([tool, count]) => ({tool, count}));
+}
+
+function presentVerb(tool: string) {
+  switch (tool) {
+    case 'Read': return 'Reading';
+    case 'Write': return 'Writing';
+    case 'Edit':
+    case 'NotebookEdit': return 'Editing';
+    case 'Glob':
+    case 'Grep':
+    case 'WebSearch': return 'Searching';
+    case 'Bash': return 'Running';
+    case 'WebFetch': return 'Fetching';
+    case 'Task': return 'Delegating';
+    default: return 'Running';
+  }
+}
+
+function pastVerb(tool: string) {
+  switch (tool) {
+    case 'Read': return 'Read';
+    case 'Write': return 'Wrote';
+    case 'Edit':
+    case 'NotebookEdit': return 'Edited';
+    case 'Glob':
+    case 'Grep':
+    case 'WebSearch': return 'Searched';
+    case 'Bash': return 'Ran';
+    case 'WebFetch': return 'Fetched';
+    case 'Task': return 'Delegated';
+    default: return 'Ran';
+  }
+}
+
+function noun(tool: string, count: number) {
+  const plural = count !== 1;
+  switch (tool) {
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+    case 'NotebookEdit':
+      return plural ? 'files' : 'file';
+    case 'Glob':
+    case 'Grep':
+    case 'WebSearch':
+      return plural ? 'searches' : 'search';
+    case 'Bash':
+      return plural ? 'commands' : 'command';
+    case 'WebFetch':
+      return plural ? 'pages' : 'page';
+    case 'Task':
+      return plural ? 'tasks' : 'task';
+    default:
+      return plural ? 'tools' : 'tool';
+  }
 }

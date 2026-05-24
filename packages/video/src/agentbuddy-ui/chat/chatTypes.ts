@@ -7,6 +7,11 @@ export type ChatAttachment = {
 
 export type ChatComposerState = {
   attachments?: ChatAttachment[];
+  bottomTabs?: {
+    activeLabel: string;
+    newThreadLabel: string;
+    recentLabel: string;
+  };
   busy?: boolean;
   disabled?: boolean;
   mode: string;

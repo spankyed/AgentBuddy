@@ -12,7 +12,7 @@ export type GitFile = {
 
 type GitFileAction = 'discard' | 'stage' | 'unstage';
 
-export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAction[]; file: GitFile; key?: string; selected?: boolean}) {
+export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAction[]; file: GitFile; selected?: boolean}) {
   const slash = file.path.lastIndexOf('/');
   const filename = slash === -1 ? file.path : file.path.slice(slash + 1);
   const directory = slash === -1 ? '' : file.path.slice(0, slash);
@@ -24,10 +24,10 @@ export function GitFileItem({actions = [], file, selected}: {actions?: GitFileAc
         {directory ? <span className={styles.directory}>{directory}</span> : null}
       </div>
       <span className={cx(styles.status, file.status === 'added' && styles.added)}>{status}</span>
-      {file.status !== 'deleted' ? <button className={styles.openAction} title="Open file"><Icons.File size={12} /></button> : null}
+      {file.status !== 'deleted' ? <button className={styles.openAction} title="Open file"><Icons.File size={14} /></button> : null}
       {actions.map(action => (
         <button key={action} className={styles.action} title={actionLabel(action)}>
-          {action === 'discard' ? <Icons.RotateCcw size={12} /> : action === 'unstage' ? <Icons.Minus size={12} /> : <Icons.Plus size={12} />}
+          {action === 'discard' ? <Icons.RotateCcw size={14} /> : action === 'unstage' ? <Icons.Minus size={14} /> : <Icons.Plus size={14} />}
         </button>
       ))}
     </div>

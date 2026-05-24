@@ -68,6 +68,11 @@
   color: rgb(229 229 229);
 }
 
+.ThreadsHeader_filterCount {
+  color: rgb(115 115 115);
+  margin-left: 0.125rem;
+}
+
 .ThreadsHeader_search {
   position: relative;
   width: 16rem;

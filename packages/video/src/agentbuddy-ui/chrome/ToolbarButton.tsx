@@ -8,7 +8,6 @@ type ToolbarButtonProps = {
   active?: boolean;
   icon: ComponentType<{size?: number; className?: string}>;
   id: string;
-  key?: string;
   label: string;
 };
 

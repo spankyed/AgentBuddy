@@ -1,11 +1,14 @@
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {FlowCanvas} from '../../agentbuddy-ui/flows/FlowCanvas';
-import {releaseAutomationFlow} from '../state/workflow';
+import {launchComposerState} from '../state/chat';
+import {releaseAutomationWorkflow, workflowStateForFrame} from '../state/workflow';
+import {useAppWindowLayout} from '../appWindowLayout';
 
-export function WorkflowShot({variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+export function WorkflowShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  const layout = useAppWindowLayout({variant});
   return (
-    <AppWindow activePlugin="flows" variant={variant} breadcrumbs={releaseAutomationFlow.breadcrumbs}>
-      <FlowCanvas state={releaseAutomationFlow} />
+    <AppWindow activePlugin="flows" breadcrumbs={releaseAutomationWorkflow.breadcrumbs} composer={launchComposerState} layout={layout}>
+      <FlowCanvas state={workflowStateForFrame(frame)} />
     </AppWindow>
   );
 }

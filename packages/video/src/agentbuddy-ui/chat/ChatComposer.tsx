@@ -20,7 +20,7 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
           {state.statusLine ? <div className={styles.statusLine}>{state.statusLine}</div> : null}
         </div>
       </form>
-      <BottomThreadTabs />
+      {state.bottomTabs ? <BottomThreadTabs {...state.bottomTabs} /> : null}
     </footer>
   );
 }

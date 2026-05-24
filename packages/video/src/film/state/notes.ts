@@ -1,4 +1,5 @@
-import type {NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
+import type {NotesRightRailState, NoteTreeNodeState} from '../../agentbuddy-ui/notes/noteTypes';
+import {textReveal} from './timeline';
 
 export const notesTaskListItems: NoteTreeNodeState[] = [
   {id: 'default', title: 'default setup', icon: '🚧', noteType: 'task'},
@@ -26,12 +27,38 @@ export const notesRailTree: NoteTreeNodeState[] = [
   {id: 'brand', icon: '⭐', title: 'Brand & Content', noteType: 'document'},
 ];
 
+export const notesRightRailState: NotesRightRailState = {
+  activeId: 'tasklist',
+  favorites: notesRailFavorites,
+  favoritesExpanded: true,
+  items: notesRailTree,
+};
+
+export const notesRightRailSearchState: NotesRightRailState = {
+  ...notesRightRailState,
+  search: {
+    active: true,
+    query: 'launch',
+  },
+};
+
 export const notesEditorCopy = {
   breadcrumbs: ['Notes', 'AgentBuddy', 'Tasklist', 'Current'],
+  panelTitle: {icon: '📝', text: 'Tasklist'},
+  title: {icon: '🔥', text: 'current'},
   beforeLines: ['provocative posts', '3 clips a week for clientlabs yt'],
   animatedLines: [
-    'demo different features with cinematic product scenes',
-    'conversation becomes tickets, notes, code, and workflows',
-    'same surface, same memory, no context handoff',
+    {text: 'demo different features with cinematic product scenes', from: 34, to: 112, caretUntil: 116},
+    {text: 'conversation becomes tickets, notes, code, and workflows', from: 128, to: 198},
+    {text: 'same surface, same memory, no context handoff', from: 168, to: 238, caretFrom: 168, caretUntil: 242},
   ],
 };
+
+export function notesViewForFrame(frame: number) {
+  return {
+    lines: notesEditorCopy.animatedLines.map(line => textReveal(line.text, frame, line.from, line.to)),
+    carets: notesEditorCopy.animatedLines.map(line => ({
+      visible: frame >= (line.caretFrom ?? 0) && frame < (line.caretUntil ?? -1),
+    })),
+  };
+}

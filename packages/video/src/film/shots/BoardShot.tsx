@@ -1,29 +1,28 @@
-import type {CSSProperties} from 'react';
 import {AppWindow} from '../../agentbuddy-ui/chrome/AppWindow';
 import {KanbanBoard} from '../../agentbuddy-ui/threads/KanbanBoard';
 import {KanbanColumn} from '../../agentbuddy-ui/threads/KanbanColumn';
 import {ThreadKanbanCard} from '../../agentbuddy-ui/threads/ThreadKanbanCard';
 import {ThreadsHeader} from '../../agentbuddy-ui/threads/ThreadsHeader';
-import {boardShotState} from '../state/board';
-import {ease, mix} from '../state/timeline';
+import {boardShotState, boardViewForFrame} from '../state/board';
+import {useAppWindowLayout} from '../appWindowLayout';
 import './BoardShot.module.css';
 import {makeStyles} from '../../agentbuddy-ui/primitives/makeStyles';
 const styles = makeStyles('BoardShot');
 
 export function BoardShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
-  const p = ease(frame, 70, 170);
-  const movingStyle: CSSProperties = {left: `${mix(8, 40, p)}%`, top: `${mix(34, 24, p)}%`, transform: `rotate(${mix(-2, 1, p)}deg)`};
+  const view = boardViewForFrame(frame);
+  const layout = useAppWindowLayout({variant});
   return (
-    <AppWindow activePlugin="threads" variant={variant} breadcrumbs={boardShotState.breadcrumbs} composer={false}>
+    <AppWindow activePlugin="threads" breadcrumbs={boardShotState.breadcrumbs} composer={false} layout={layout}>
       <div className={styles.surface}>
-        <ThreadsHeader activeView="kanban" />
+        <ThreadsHeader state={boardShotState.header} />
         <KanbanBoard>
           {boardShotState.columns.map(column => (
             <KanbanColumn title={column.title} count={column.count} tone={column.tone}>
               {column.cards.map(card => <ThreadKanbanCard muted={card.muted} tags={card.tags}>{card.title}</ThreadKanbanCard>)}
             </KanbanColumn>
           ))}
-          <div className={styles.movingTask} style={movingStyle}><ThreadKanbanCard active tags={['launch']}>{boardShotState.movingCard}</ThreadKanbanCard></div>
+          <div className={styles.movingTask} style={view.movingCardStyle}><ThreadKanbanCard active tags={boardShotState.movingCard.tags}>{boardShotState.movingCard.title}</ThreadKanbanCard></div>
         </KanbanBoard>
       </div>
     </AppWindow>

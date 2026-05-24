@@ -9,7 +9,6 @@ const styles = makeStyles('NoteTreeItem');
 type NoteTreeItemProps = {
   activeId: string;
   depth?: number;
-  key?: string;
   node: NoteTreeNodeState;
   taskMode?: boolean;
 };

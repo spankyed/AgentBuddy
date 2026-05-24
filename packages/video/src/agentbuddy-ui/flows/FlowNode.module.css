@@ -59,8 +59,11 @@
 }
 
 .FlowNode_selected {
-  outline: 2px solid rgb(255 255 255 / 40%);
-  box-shadow: 0 4px 14px rgb(255 255 255 / 5%);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 40%), 0 4px 14px rgb(255 255 255 / 5%);
+}
+
+.FlowNode_editing {
+  box-shadow: 0 0 0 2px rgb(96 165 250 / 70%), 0 10px 22px rgb(59 130 246 / 20%);
 }
 
 .FlowNode_entry {

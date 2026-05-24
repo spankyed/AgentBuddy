@@ -1,0 +1,25 @@
+# AgentBuddy UI Film Replica Fidelity
+
+This directory contains React/Remotion replicas of real AgentBuddy renderer UI. Film-specific text, records, branches, notes, cards, workflow nodes, and interaction timing should live in `packages/video/src/film/state/*`, not in reusable `agentbuddy-ui` components. Component demos are grouped by surface in `packages/video/src/compositions/demos/*Demos.tsx`.
+
+## Review Surfaces
+
+| Surface | React replica | Renderer reference | Demo composition | Status |
+| --- | --- | --- | --- | --- |
+| App chrome | `chrome/AppWindow.tsx`, `chrome/Toolbar.tsx`, `chrome/CanvasHeader.tsx` | `packages/renderer/src/core/components/layout`, plugin panels | `ToolbarDemo` | Close replica. Traffic lights and plugin rail are film-stabilized, but layout and icon cadence should be compared against app screenshots each pass. |
+| Chat composer | `chat/ChatComposer.tsx`, `chat/ModePhaseSelector.tsx`, attachments/buttons | `packages/renderer/src/plugins/threads/chat/input.vue`, `ModePhaseSelector.vue`, `inline-tab-bar.vue` | `ChatComposerDemo`, `ChatComposerWithAttachmentDemo` | Close replica. State is externalized through `ChatComposerState`; remaining fidelity debt is exact popup/dropdown behavior. |
+| Notes task list | `notes/TaskListPanel.tsx`, `notes/NoteTreeItem.tsx` | `packages/renderer/src/plugins/notes/components/TaskListPanel.vue`, `NoteTreeItem.vue` | `TaskListPanelDemo`, `NotesSurfaceDemo` | Close replica for visible film states. Drag/drop, context menus, and completed-section toggling are intentionally not rebuilt yet. |
+| Notes right rail | `notes/NotesRightRail.tsx`, `notes/NotesRailSection.tsx` | `packages/renderer/src/plugins/notes/panel.vue` | `NotesRightRailDemo`, `NotesRightRailSearchDemo`, `NotesSurfaceDemo` | Close replica for visible notes and search states. Trash view and create/dropdown menus are known debt. |
+| Threads header | `threads/ThreadsHeader.tsx` | `packages/renderer/src/plugins/threads/canvas/components/ThreadsHeader.vue` | `ThreadsHeaderDemo`, `BoardSurfaceDemo` | Close replica for board view. Filter popover and live search clear state are known debt. |
+| Threads kanban | `threads/KanbanBoard.tsx`, `KanbanColumn.tsx`, `ThreadKanbanCard.tsx` | `packages/renderer/src/plugins/threads/canvas/kanban.vue` | `KanbanComponentsDemo`, `BoardSurfaceDemo` | Close replica for launch-film card states. Real drag/drop implementation is simulated in Remotion. |
+| Thread messages and tools | `threads/MessageBubble.tsx`, `ToolActivityBlock.tsx`, `PlanArtifactCard.tsx` | `packages/renderer/src/plugins/threads/chat/message.vue`, `interactions/blocks/ToolActivityBlock.vue`, agent artifact components | `MessageBubbleDemo`, `ToolActivityDemo`, `PlanArtifactDemo`, `ChatSurfaceDemo` | Partial replica. Message status, tool activity rows, completed artifact ref link, and plan artifact match the intended film states; richer markdown, artifact tabs, and full interaction block variants are known debt. Typing/three-dot indicators are intentionally banned because they are not part of the target UI. |
+| Code source control and PR | `code/CodeReview.tsx`, `CodePanelToolbar.tsx`, `GitFileItem.tsx`, `CommitMessageBox.tsx`, `CommitLogSection.tsx`, `WorktreesSection.tsx`, `TerminalPanelSection.tsx`, `PullRequestPanel.tsx`, `PRComparison.tsx`, `CreatePRForm.tsx`, `PRInfo.tsx`, `PRActionBar.tsx` | `packages/renderer/src/plugins/code/features/commit/CommitPanel.vue`, `GitFileItem.vue`, `CommitLogSection.vue`, `CodePanelHeader.vue`, `pull-request/PullRequestPanel.vue`, `PRComparison.vue`, `CreatePRForm.vue`, `PRInfo.vue`, `PRActionBar.vue`, `terminal/PanelTerminalSection.vue` | `CodeReviewDemo`, `PullRequestPanelDemo`, `CodeSurfaceDemo` | Close replica for source-control review and launch-film PR states including panel header, header directory menu, branch selector, publish action, create PR view, PR details view, comparison tree, change groups, commits, worktrees, and collapsed terminal section. Monaco editor/diff is a stylized film replica, not an embedded Monaco instance. |
+| Flow canvas | `flows/FlowCanvas.tsx`, `FlowPalette.tsx`, `FlowNode.tsx`, `FlowEdge.tsx` | `packages/renderer/src/plugins/flows/canvas/flow-canvas.vue`, `FlowEditor.vue`, node/edge components | `FlowCanvasDemo`, `FlowPaletteDemo`, `FlowNodeVariantsDemo`, `WorkflowSurfaceDemo` | Partial replica. Palette/node/edge visuals, Back control, Auto layout control, and film-driven viewport motion are represented; node forms and full Vue Flow behavior are known debt. |
+| Final lockup | `film/shots/FinalShot.tsx` | Brand/product surface, no renderer equivalent | `AgentBuddyFilm` | Film-only surface. Keep minimal and avoid fake app UI. |
+
+## Rules For Future Edits
+
+- Add or update a demo composition whenever a major reusable surface changes.
+- Keep shot-specific fixture content in `film/state/*`.
+- If a component intentionally diverges from the real renderer, record the debt in this file.
+- Verify visual changes against either an app screenshot or a registered component demo frame before calling a fidelity pass done.

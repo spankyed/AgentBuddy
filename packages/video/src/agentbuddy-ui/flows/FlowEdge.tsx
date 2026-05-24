@@ -1,4 +1,5 @@
 import type {FlowEdgeState, FlowNodeState} from './flowTypes';
+import {cx} from '../primitives/classNames';
 import './FlowCanvas.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('FlowCanvas');
@@ -9,7 +10,7 @@ function nodePoint(node: FlowNodeState, side: 'left' | 'right', exit?: number) {
   return {x, y};
 }
 
-export function FlowEdge({edge, nodes}: {edge: FlowEdgeState; key?: string; nodes: FlowNodeState[]}) {
+export function FlowEdge({edge, nodes}: {edge: FlowEdgeState; nodes: FlowNodeState[]}) {
   const from = nodes.find(node => node.id === edge.from);
   const to = nodes.find(node => node.id === edge.to);
   if (!from || !to) return null;
@@ -18,7 +19,7 @@ export function FlowEdge({edge, nodes}: {edge: FlowEdgeState; key?: string; node
   const mid = a.x + (b.x - a.x) * 0.45;
   return (
     <path
-      className={edge.dashed ? styles.edgeDashed : styles.edge}
+      className={cx(edge.dashed ? styles.edgeDashed : styles.edge, edge.status === 'active' && styles.edgeActive, edge.status === 'completed' && styles.edgeCompleted)}
       d={`M ${a.x} ${a.y} C ${mid} ${a.y}, ${mid} ${b.y}, ${b.x} ${b.y}`}
       vectorEffect="non-scaling-stroke"
     />

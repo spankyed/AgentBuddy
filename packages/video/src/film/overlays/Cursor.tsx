@@ -1,14 +1,14 @@
-import {mix, ease} from '../../film/state/timeline';
+import {ease, mix} from '../state/timeline';
 
 type CursorProps = {
+  end: number;
   frame: number;
   from: [number, number];
-  to: [number, number];
   start: number;
-  end: number;
+  to: [number, number];
 };
 
-export function Cursor({frame, from, to, start, end}: CursorProps) {
+export function Cursor({end, frame, from, start, to}: CursorProps) {
   const p = ease(frame, start, end);
   const curve = Math.sin(p * Math.PI) * 18;
   return (
@@ -27,4 +27,3 @@ export function Cursor({frame, from, to, start, end}: CursorProps) {
     />
   );
 }
-

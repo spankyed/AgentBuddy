@@ -18,7 +18,7 @@ const iconByKind = {
 };
 
 // Mirrors packages/renderer/src/plugins/flows/canvas/components/NodePalette.vue.
-export function FlowPaletteItem({item}: {item: FlowPaletteItemState; key?: string}) {
+export function FlowPaletteItem({item}: {item: FlowPaletteItemState}) {
   const Icon = iconByKind[item.kind];
   return (
     <button className={styles.item} data-disabled={item.disabled ? 'true' : undefined} data-kind={item.kind} type="button">

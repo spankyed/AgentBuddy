@@ -1,14 +1,9 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import type {CommitLogEntryState} from './codeTypes';
 import './CommitLogSection.module.css';
 
 const styles = makeStyles('CommitLogSection');
-
-export type CommitLogEntryState = {
-  hash: string;
-  time: string;
-  title: string;
-};
 
 // Mirrors the lower CommitLogSection area inside packages/renderer/src/plugins/code/features/commit/CommitPanel.vue.
 export function CommitLogSection({commits}: {commits: CommitLogEntryState[]}) {

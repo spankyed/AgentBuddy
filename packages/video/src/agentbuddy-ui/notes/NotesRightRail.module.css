@@ -46,6 +46,48 @@
   color: rgb(229 229 229);
 }
 
+.NotesRightRail_searchPanel {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0.5rem 0.75rem;
+}
+
+.NotesRightRail_searchBox {
+  position: relative;
+}
+
+.NotesRightRail_searchIcon {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  color: rgb(115 115 115);
+  transform: translateY(-50%);
+}
+
+.NotesRightRail_searchInput {
+  width: 100%;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.25rem;
+  outline: none;
+  background: rgb(38 38 38);
+  color: rgb(229 229 229);
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0.375rem 1.75rem 0.375rem 2rem;
+}
+
+.NotesRightRail_searchInput::placeholder {
+  color: rgb(115 115 115);
+}
+
+.NotesRightRail_clearIcon {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  color: rgb(115 115 115);
+  transform: translateY(-50%);
+}
+
 .NotesRightRail_scroller {
   flex: 1;
   overflow-x: hidden;
@@ -59,4 +101,48 @@
 
 .NotesRightRail_tree {
   padding: 0.75rem 0.5rem;
+}
+
+.NotesRightRail_searchResults {
+  padding: 0.5rem;
+}
+
+.NotesRightRail_searchResult {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(212 212 212);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+  transition: background 160ms ease;
+}
+
+.NotesRightRail_searchResult:hover {
+  background: rgb(38 38 38);
+}
+
+.NotesRightRail_searchEmoji {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.NotesRightRail_searchGlyph {
+  flex-shrink: 0;
+  color: rgb(115 115 115);
+}
+
+.NotesRightRail_emptyState {
+  padding: 1rem 0.75rem;
+  color: rgb(115 115 115);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
 }

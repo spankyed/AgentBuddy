@@ -5,9 +5,8 @@ const styles = makeStyles('FlowCanvas');
 
 export function FlowControls() {
   return (
-    <button className={styles.controls} type="button" title="Fit view">
-      <Icons.Square size={18} />
+    <button className={styles.controls} type="button" title="Auto layout">
+      <Icons.Maximize size={16} />
     </button>
   );
 }
-

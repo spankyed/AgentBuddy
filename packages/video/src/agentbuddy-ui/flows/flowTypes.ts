@@ -21,13 +21,19 @@ export type FlowEdgeState = {
   dashed?: boolean;
   from: string;
   fromExit?: number;
+  status?: 'active' | 'completed';
   to: string;
 };
 
 export type FlowCanvasState = {
-  breadcrumbs: string[];
+  editingNodeId?: string;
   edges: FlowEdgeState[];
   nodes: FlowNodeState[];
   paletteItems: FlowPaletteItemState[];
   selectedNodeId?: string;
+  viewport?: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
 };

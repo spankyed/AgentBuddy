@@ -44,11 +44,21 @@
   transition: opacity 150ms ease, transform 150ms ease;
 }
 
+.NotesRailSection_chevronExpanded {
+  position: absolute;
+  inset: 0;
+  color: rgb(115 115 115);
+  opacity: 0;
+  transform: rotate(90deg);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
 .NotesRailSection_label:hover .NotesRailSection_star {
   opacity: 0;
 }
 
-.NotesRailSection_label:hover .NotesRailSection_chevron {
+.NotesRailSection_label:hover .NotesRailSection_chevron,
+.NotesRailSection_label:hover .NotesRailSection_chevronExpanded {
   opacity: 1;
   transform: rotate(90deg);
 }

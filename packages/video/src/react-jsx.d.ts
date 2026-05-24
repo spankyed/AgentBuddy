@@ -5,6 +5,10 @@ declare module 'react/jsx-runtime' {
 }
 
 declare namespace JSX {
+  interface IntrinsicAttributes {
+    key?: string | number;
+  }
+
   interface IntrinsicElements {
     [elementName: string]: any;
   }

@@ -6,7 +6,7 @@ import './ChatComposer.module.css';
 const styles = makeStyles('ChatComposer');
 
 // Mirrors packages/renderer/src/plugins/threads/chat/ImageThumbnail.vue.
-export function ImageAttachment({attachment}: {attachment: ChatAttachment; key?: string}) {
+export function ImageAttachment({attachment}: {attachment: ChatAttachment}) {
   return (
     <div className={styles.imageAttachment} title={attachment.label}>
       {attachment.previewUrl ? <img src={attachment.previewUrl} alt="" /> : <span className={styles.imageFallback} />}

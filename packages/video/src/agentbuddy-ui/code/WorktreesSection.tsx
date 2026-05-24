@@ -1,14 +1,9 @@
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import type {WorktreeState} from './codeTypes';
 import './WorktreesSection.module.css';
 
 const styles = makeStyles('WorktreesSection');
-
-export type WorktreeState = {
-  branch: string;
-  current?: boolean;
-  path: string;
-};
 
 // Mirrors the worktrees section rendered below source-control changes in the real code panel.
 export function WorktreesSection({worktrees}: {worktrees: WorktreeState[]}) {

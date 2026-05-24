@@ -8,3 +8,13 @@ export type NoteTreeNodeState = {
   title: string;
 };
 
+export type NotesRightRailState = {
+  activeId?: string;
+  favorites: NoteTreeNodeState[];
+  favoritesExpanded?: boolean;
+  items: NoteTreeNodeState[];
+  search?: {
+    active: boolean;
+    query?: string;
+  };
+};

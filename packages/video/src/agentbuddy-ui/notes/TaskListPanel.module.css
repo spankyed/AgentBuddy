@@ -18,6 +18,17 @@
   transition: background 150ms ease;
 }
 
+.TaskListPanel_activeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgb(38 38 38);
+  background: rgb(64 64 64);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
 .TaskListPanel_header:hover {
   background: rgb(38 38 38);
 }
@@ -73,4 +84,18 @@
   flex: 1;
   overflow: hidden;
   padding: 0.25rem 0;
+}
+
+.TaskListPanel_completedDivider {
+  height: 1px;
+  margin: 0.25rem 0.75rem;
+  background: rgb(38 38 38);
+}
+
+.TaskListPanel_emptyState {
+  padding: 1rem 0.75rem;
+  color: rgb(115 115 115);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
 }

@@ -7,18 +7,28 @@ import './TaskListPanel.module.css';
 const styles = makeStyles('TaskListPanel');
 
 type TaskListPanelProps = {
-  activeId?: string;
+  activeId?: string | null;
   items: NoteTreeNodeState[];
+  showCompleted?: boolean;
+  title: {
+    icon?: string;
+    text: string;
+  };
 };
 
 // Mirrors packages/renderer/src/plugins/notes/components/TaskListPanel.vue.
-export function TaskListPanel({activeId = 'current', items}: TaskListPanelProps) {
+export function TaskListPanel({activeId = 'current', items, showCompleted = true, title}: TaskListPanelProps) {
+  const incompleteTasks = items.filter(task => !task.completed);
+  const completedTasks = items.filter(task => task.completed);
+  const hasIncompleteTasks = incompleteTasks.length > 0;
+  const hasVisibleCompletedTasks = showCompleted && completedTasks.length > 0;
+
   return (
     <aside className={styles.root}>
-      <header className={styles.header}>
+      <header className={activeId ? styles.header : styles.activeHeader}>
         <div className={styles.title}>
-          <span className={styles.emoji}>📝</span>
-          <span>Tasklist</span>
+          {title.icon ? <span className={styles.emoji}>{title.icon}</span> : <Icons.ClipboardList size={16} />}
+          <span>{title.text}</span>
         </div>
         <div className={styles.actions}>
           <button type="button" title="More actions"><Icons.MoreHorizontal size={16} /></button>
@@ -26,7 +36,12 @@ export function TaskListPanel({activeId = 'current', items}: TaskListPanelProps)
         </div>
       </header>
       <div className={styles.list}>
-        {items.map(task => <NoteTreeItem key={task.id} activeId={activeId} node={task} taskMode />)}
+        {incompleteTasks.map(task => <NoteTreeItem key={task.id} activeId={activeId ?? ''} node={task} taskMode />)}
+        {hasIncompleteTasks && hasVisibleCompletedTasks ? <div className={styles.completedDivider} /> : null}
+        {hasVisibleCompletedTasks
+          ? completedTasks.map(task => <NoteTreeItem key={task.id} activeId={activeId ?? ''} node={{...task, muted: true}} taskMode />)
+          : null}
+        {!hasIncompleteTasks && !hasVisibleCompletedTasks ? <div className={styles.emptyState}>No tasks yet</div> : null}
       </div>
     </aside>
   );

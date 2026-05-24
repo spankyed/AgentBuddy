@@ -7,7 +7,10 @@
     "studio": "remotion studio src/index.ts",
     "render": "tsx scripts/render.ts AgentBuddyFilm out/agentbuddy-film-landscape.mp4",
     "render:square": "tsx scripts/render.ts AgentBuddyFilmSquare out/agentbuddy-film-square.mp4",
+    "render:composition": "tsx scripts/render.ts",
     "render:component": "tsx scripts/render.ts NotesSurfaceDemo out/notes-surface-demo.mp4",
+    "audit:fidelity": "node scripts/audit-fidelity.js",
+    "verify": "npm run audit:fidelity && npm run typecheck",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
