@@ -40,16 +40,6 @@ export const FlowNodeVariantsDemo = () => (
 
 export const FlowCanvasDemo = () => <SurfaceFrame><FlowCanvas state={releaseAutomationFlow} /></SurfaceFrame>;
 
-export const NotesSurfaceDemo = () => {
-  const frame = useCurrentFrame();
-  return <SurfaceFrame><NotesShot frame={frame} /></SurfaceFrame>;
-};
-
-export const ChatSurfaceDemo = () => {
-  const frame = useCurrentFrame();
-  return <SurfaceFrame><ChatShot frame={frame} /></SurfaceFrame>;
-};
-
 export const BoardSurfaceDemo = () => {
   const frame = useCurrentFrame();
   return <SurfaceFrame><BoardShot frame={frame} /></SurfaceFrame>;
@@ -58,6 +48,16 @@ export const BoardSurfaceDemo = () => {
 export const CodeSurfaceDemo = () => {
   const frame = useCurrentFrame();
   return <SurfaceFrame><CodeShot frame={frame} /></SurfaceFrame>;
+};
+
+export const NotesSurfaceDemo = () => {
+  const frame = useCurrentFrame();
+  return <SurfaceFrame><NotesShot frame={frame} /></SurfaceFrame>;
+};
+
+export const ChatSurfaceDemo = () => {
+  const frame = useCurrentFrame();
+  return <SurfaceFrame><ChatShot frame={frame} /></SurfaceFrame>;
 };
 
 export const WorkflowSurfaceDemo = () => {

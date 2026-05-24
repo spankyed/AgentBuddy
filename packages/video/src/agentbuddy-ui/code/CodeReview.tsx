@@ -1,39 +1,51 @@
-import {ease, mix} from '../../film/state/timeline';
-import {ThreadCard} from '../threads/ThreadCard';
+import {ease} from '../../film/state/timeline';
+import {Icons} from '../primitives/Icon';
+import {cx} from '../primitives/classNames';
+import {CommitMessageBox} from './CommitMessageBox';
+import {CodeDiffView} from './CodeDiffView';
+import {CodePanelToolbar} from './CodePanelToolbar';
+import {GitFileItem, type GitFile} from './GitFileItem';
+import {BranchInfo} from './BranchInfo';
+import {CommitLogSection} from './CommitLogSection';
+import {WorktreesSection} from './WorktreesSection';
 import './CodeReview.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('CodeReview');
 
-export function CodeReview({frame}: {frame: number}) {
-  const files = ['src/demo/timeline.ts', 'src/ui/AppShell.tsx', 'src/shots/Workflow.tsx'];
-  const lines = [
-    ['+', 'export const launchMoments = createTimeline({'],
-    ['+', '  chat: streamConversation(becomesWork),'],
-    ['+', '  code: generateCommitAndPullRequest(),'],
-    ['-', '  screenshots: panAcrossStaticFrames(),'],
-    ['+', '  workflow: activateReleaseAutomation(),'],
-    ['+', '});'],
+export function CodeReview({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
+  const staged: GitFile[] = [{path: 'packages/video/src/film/AgentBuddyFilm.tsx', status: 'modified'}];
+  const changes: GitFile[] = [
+    {path: 'packages/video/src/agentbuddy-ui/threads/KanbanBoard.tsx', status: 'modified'},
+    {path: 'packages/video/src/agentbuddy-ui/code/CodeDiffView.tsx', status: 'added'},
+    {path: 'packages/video/src/film/state/timeline.ts', status: 'modified'},
   ];
+  const message = frame > 116 ? 'feat(video): align launch film surfaces with app UI' : '';
   return (
-    <div className={styles.root}>
+    <div className={cx(styles.root, variant === 'square' && styles.compact)}>
       <aside className={styles.panel}>
-        <div className={styles.label}>Changed files</div>
-        {files.map((file, index) => <div key={file} className={index === 1 ? styles.activeFile : styles.file}>{file}</div>)}
+        <CodePanelToolbar />
+        <BranchInfo branch="as/react-launch-film" />
+        <CommitMessageBox message={message} generating={frame > 76 && frame <= 116} />
+        <div className={styles.fileGroups}>
+          <section className={styles.fileGroup}>
+            <div className={styles.groupHeader}><span>STAGED CHANGES</span><button><Icons.Minus size={12} /></button></div>
+            {staged.map(file => <GitFileItem key={file.path} actions={['unstage']} file={file} selected />)}
+          </section>
+          <section className={styles.fileGroup}>
+            <div className={styles.groupHeader}><span>CHANGES</span><div><button><Icons.RotateCcw size={12} /></button><button><Icons.Plus size={12} /></button></div></div>
+            {changes.map((file, index) => <GitFileItem key={file.path} actions={['discard', 'stage']} file={file} selected={index === 0} />)}
+          </section>
+        </div>
+        <CommitLogSection />
+        <WorktreesSection />
       </aside>
-      <section className={styles.diff}>
-        <header className={styles.diffHead}><span>AppShell.tsx</span><small>{Math.round(mix(0, 6, ease(frame, 58, 132)))} changes</small></header>
-        {lines.map(([kind, line], index) => (
-          <pre key={line} className={kind === '+' ? styles.add : styles.remove} style={{opacity: ease(frame, 46 + index * 15, 64 + index * 15)}}>{kind} {line}</pre>
+      <CodeDiffView frame={frame} />
+      <aside className={styles.prPanel}>
+        <div className={styles.prHeader}>Pull Request</div>
+        {['Branch published', 'Checks passed', 'PR ready'].map((item, index) => (
+          <div key={item} className={styles.prRow} style={{opacity: ease(frame, 178 + index * 22, 196 + index * 22)}}><Icons.CircleCheck size={14} />{item}</div>
         ))}
-        <ThreadCard className={styles.commit} style={{opacity: ease(frame, 178, 220)}}>
-          <small className={styles.label}>Generated commit</small>
-          <strong>feat(video): build Remotion-native launch film</strong>
-        </ThreadCard>
-      </section>
-      <aside className={styles.ship}>
-        {['branch published', 'checks passed', 'PR created'].map((item, index) => <div key={item} className={styles.shipRow} style={{opacity: ease(frame, 216 + index * 22, 236 + index * 22)}}>{item}</div>)}
       </aside>
     </div>
   );
 }
-

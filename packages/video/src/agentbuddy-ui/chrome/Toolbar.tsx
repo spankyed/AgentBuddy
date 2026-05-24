@@ -12,7 +12,7 @@ type ToolbarProps = {
 
 const topPlugins = [
   {id: 'threads', label: 'Threads', icon: Icons.Threads},
-  {id: 'notes', label: 'Notes', icon: Icons.Notes},
+  {id: 'notes', label: 'Notes', icon: Icons.NotebookText},
   {id: 'code', label: 'Code', icon: Icons.Code},
   {id: 'flows', label: 'Flows', icon: Icons.Flows},
   {id: 'actions', label: 'Actions', icon: Icons.Play},
@@ -27,14 +27,13 @@ export function Toolbar({activePlugin}: ToolbarProps) {
       <div className={styles.scrollArea}>
         <div className={styles.buttonStack}>
           {topPlugins.map(item => (
-            <ToolbarButton key={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
+            <ToolbarButton key={item.id} id={item.id} label={item.label} icon={item.icon} active={activePlugin === item.id} />
           ))}
         </div>
       </div>
       <div className={styles.pinnedArea}>
-        <ToolbarButton label="Settings" icon={Icons.Settings} active={activePlugin === 'settings'} />
+        <ToolbarButton id="settings" label="Settings" icon={Icons.Settings} active={activePlugin === 'settings'} />
       </div>
     </aside>
   );
 }
-

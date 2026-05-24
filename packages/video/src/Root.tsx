@@ -2,10 +2,10 @@ import {Composition} from 'remotion';
 import {AgentBuddyFilm, AgentBuddyFilmSquare} from './film/AgentBuddyFilm';
 import {
   BoardSurfaceDemo,
+  CodeSurfaceDemo,
   ChatSurfaceDemo,
   ChatComposerDemo,
   ChatComposerWithAttachmentDemo,
-  CodeSurfaceDemo,
   FlowCanvasDemo,
   FlowNodeVariantsDemo,
   FlowPaletteDemo,
@@ -15,7 +15,7 @@ import {
 } from './compositions/ComponentDemos';
 
 const fps = 30;
-const fullDuration = 1860;
+const fullDuration = 1740;
 const demoDuration = 240;
 
 export const RemotionRoot = () => {
@@ -29,10 +29,10 @@ export const RemotionRoot = () => {
       <Composition id="FlowPaletteDemo" component={FlowPaletteDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="FlowNodeVariantsDemo" component={FlowNodeVariantsDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="FlowCanvasDemo" component={FlowCanvasDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="NotesSurfaceDemo" component={NotesSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
-      <Composition id="ChatSurfaceDemo" component={ChatSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="BoardSurfaceDemo" component={BoardSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="CodeSurfaceDemo" component={CodeSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="NotesSurfaceDemo" component={NotesSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="ChatSurfaceDemo" component={ChatSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="WorkflowSurfaceDemo" component={WorkflowSurfaceDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
     </>
   );

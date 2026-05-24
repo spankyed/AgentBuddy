@@ -30,7 +30,14 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
           {children.length > 0 ? <Icons.ChevronRight className={styles.chevronExpanded} size={16} /> : <NoteGlyph node={node} />}
         </button>
         <span className={cx(styles.title, completed && styles.titleCompleted)}>{node.title || 'Untitled'}</span>
-      {taskMode && isTask ? <TaskCheckbox completed={completed} /> : <RowActions />}
+        {taskMode && isTask ? (
+          <>
+            <RowActions />
+            <TaskCheckbox completed={completed} />
+          </>
+        ) : (
+          <RowActions />
+        )}
       </div>
       {children.map(child => <NoteTreeItem key={child.id} activeId={activeId} depth={depth + 1} node={child} taskMode={taskMode} />)}
     </div>
@@ -47,7 +54,7 @@ function NoteGlyph({node}: {node: NoteTreeNodeState}) {
 function RowActions() {
   return (
     <div className={styles.actionPill}>
-      <button type="button"><Icons.EllipsisVertical size={13} /></button>
+      <button type="button"><Icons.MoreHorizontal size={13} /></button>
       <button type="button"><Icons.Plus size={13} /></button>
     </div>
   );

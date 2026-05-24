@@ -1,11 +1,15 @@
 export type ToolActivityItemState = {
-  status: 'active' | 'done' | 'queued';
-  title: string;
+  durationMs?: number;
+  outputSummary?: string;
+  status: 'running' | 'ok' | 'denied' | 'error';
+  summary: string;
+  tool: string;
 };
 
 export type PlanArtifactState = {
-  notes: string[];
+  branch?: string;
+  notes: string;
+  prNumber?: string;
   status: 'draft' | 'approved' | 'in-progress' | 'completed';
   title: string;
 };
-

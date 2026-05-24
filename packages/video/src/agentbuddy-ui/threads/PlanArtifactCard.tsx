@@ -12,18 +12,36 @@ export function PlanArtifactCard({artifact}: {artifact: PlanArtifactState}) {
       <div className={styles.card}>
         <div className={styles.header}>
           <div className={styles.titleWrap}>
-            <Icons.Notes size={14} />
-            <h3>{artifact.title}</h3>
+            <Icons.ClipboardList className={styles.artifactIcon} size={14} />
+            <h3>{artifact.title || 'Plan'}</h3>
+            {artifact.branch ? <span className={styles.branch}>{artifact.branch}</span> : null}
+            {artifact.prNumber ? <span className={styles.prNumber}>#{artifact.prNumber}</span> : null}
           </div>
-          <span className={styles.status}>{artifact.status}</span>
+          <div className={styles.headerActions}>
+            <button className={styles.copyButton} type="button" aria-label="Copy plan notes"><Icons.Copy size={14} /></button>
+            <span className={styles.status} data-status={artifact.status}>{statusLabel(artifact.status)}</span>
+          </div>
         </div>
         <div className={styles.body}>
-          <ul>
-            {artifact.notes.map(note => <li key={note}>{note}</li>)}
-          </ul>
+          {artifact.notes ? <MarkdownNotes notes={artifact.notes} /> : <p className={styles.empty}>This plan has no notes yet.</p>}
         </div>
       </div>
     </div>
   );
 }
 
+function MarkdownNotes({notes}: {notes: string}) {
+  const lines = notes.split('\n').filter(Boolean);
+  const allList = lines.every(line => line.trim().startsWith('- '));
+  if (allList) {
+    return <ul>{lines.map(line => <li key={line}>{line.trim().slice(2)}</li>)}</ul>;
+  }
+  return <>{lines.map(line => <p key={line}>{line}</p>)}</>;
+}
+
+function statusLabel(status: PlanArtifactState['status']) {
+  if (status === 'in-progress') return 'In progress';
+  if (status === 'approved') return 'Approved';
+  if (status === 'completed') return 'Completed';
+  return 'Draft';
+}

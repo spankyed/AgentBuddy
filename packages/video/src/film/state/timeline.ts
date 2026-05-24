@@ -9,8 +9,8 @@ export type FilmShot = {
 export const shots: FilmShot[] = [
   {id: 'notes', title: 'Memory stays connected.', duration: 270},
   {id: 'chat', title: 'Conversation becomes work.', duration: 330},
-  {id: 'board', duration: 270},
-  {id: 'code', title: 'Ship from the same surface.', duration: 360},
+  {id: 'board', title: 'Threads become execution.', duration: 240},
+  {id: 'code', title: 'Ship from the same surface.', duration: 270},
   {id: 'workflow', title: 'Automate the system around you.', duration: 330},
   {id: 'final', duration: 300},
 ];

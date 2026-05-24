@@ -1,8 +1,12 @@
 .ModePhaseSelector_root {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   min-width: 0;
   overflow: hidden;
-  border-radius: 0.375rem;
+  border: 1px solid rgb(64 64 64 / 50%);
+  border-radius: 0.5rem;
+  background: rgb(38 38 38);
+  transition: all 0.2s ease;
 }
 
 .ModePhaseSelector_mode,
@@ -10,24 +14,37 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  height: 30px;
+  height: 28px;
   border: 0;
-  color: rgb(229 229 229);
+  color: rgb(212 212 216);
   font: inherit;
   font-size: 14px;
-  padding: 0 0.75rem;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  transition: background-color 140ms ease;
 }
 
 .ModePhaseSelector_mode {
-  background: rgb(38 38 38);
+  background: transparent;
+}
+
+.ModePhaseSelector_mode:hover {
+  background: rgb(47 47 47);
 }
 
 .ModePhaseSelector_phase {
-  background: rgb(30 58 138 / 70%);
+  background: rgb(37 99 235 / 20%);
+}
+
+.ModePhaseSelector_phase:hover {
+  background: rgb(37 99 235 / 26%);
+}
+
+.ModePhaseSelector_divider {
+  width: 1px;
+  background: rgb(64 64 64 / 50%);
 }
 
 .ModePhaseSelector_chevronDown {
-  transform: rotate(90deg);
   color: rgb(163 163 163);
 }
-

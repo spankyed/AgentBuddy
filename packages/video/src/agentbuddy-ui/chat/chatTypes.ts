@@ -1,5 +1,7 @@
 export type ChatAttachment = {
   label: string;
+  previewUrl?: string;
+  typeLabel?: string;
   type: 'file' | 'image';
 };
 
@@ -13,4 +15,3 @@ export type ChatComposerState = {
   statusLine?: string;
   text?: string;
 };
-

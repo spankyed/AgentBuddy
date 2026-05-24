@@ -1,0 +1,61 @@
+.CodeDiffView_root {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  background: rgb(23 23 23);
+}
+
+.CodeDiffView_tabs {
+  display: flex;
+  height: 36px;
+  align-items: stretch;
+  border-bottom: 1px solid rgb(38 38 38);
+  background: rgb(23 23 23);
+}
+
+.CodeDiffView_tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-right: 1px solid rgb(38 38 38);
+  background: rgb(31 31 31);
+  color: rgb(212 212 216);
+  font-size: 0.8125rem;
+  padding: 0 0.75rem;
+}
+
+.CodeDiffView_editor {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  padding: 1.25rem 0;
+}
+
+.CodeDiffView_line {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  min-height: 22px;
+}
+
+.CodeDiffView_number {
+  color: rgb(82 82 82);
+  padding-right: 1rem;
+  text-align: right;
+}
+
+.CodeDiffView_code {
+  color: rgb(212 212 216);
+  white-space: pre;
+}
+
+.CodeDiffView_add {
+  background: rgb(22 101 52 / 26%);
+}
+
+.CodeDiffView_remove {
+  background: rgb(127 29 29 / 28%);
+}

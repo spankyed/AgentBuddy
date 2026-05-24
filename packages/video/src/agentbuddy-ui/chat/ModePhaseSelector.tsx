@@ -14,15 +14,17 @@ export function ModePhaseSelector({mode, phase}: ModePhaseSelectorProps) {
     <div className={styles.root}>
       <button className={styles.mode} type="button">
         <span>{mode}</span>
-        <Icons.ChevronRight className={styles.chevronDown} size={13} />
+        <Icons.ChevronDown className={styles.chevronDown} size={14} />
       </button>
       {phase ? (
-        <button className={styles.phase} type="button">
-          <span>{phase}</span>
-          <Icons.ChevronRight className={styles.chevronDown} size={13} />
-        </button>
+        <>
+          <span className={styles.divider} />
+          <button className={styles.phase} type="button">
+            <span>{phase}</span>
+            <Icons.ChevronDown className={styles.chevronDown} size={14} />
+          </button>
+        </>
       ) : null}
     </div>
   );
 }
-

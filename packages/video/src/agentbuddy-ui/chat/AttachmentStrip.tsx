@@ -1,6 +1,8 @@
 import type {ChatAttachment} from './chatTypes';
 import './ChatComposer.module.css';
 import {makeStyles} from '../primitives/makeStyles';
+import {FileAttachment} from './FileAttachment';
+import {ImageAttachment} from './ImageAttachment';
 const styles = makeStyles('ChatComposer');
 
 // Mirrors attachment strip behavior from packages/renderer/src/plugins/threads/chat/input.vue.
@@ -9,12 +11,12 @@ export function AttachmentStrip({attachments = []}: {attachments?: ChatAttachmen
   return (
     <div className={styles.attachmentStrip}>
       {attachments.map((attachment, index) => (
-        <div key={`${attachment.label}-${index}`} className={attachment.type === 'image' ? styles.imageAttachment : styles.fileAttachment}>
-          <span className={styles.attachmentIcon}>{attachment.type === 'image' ? '⌘' : '#'}</span>
-          <span>{attachment.label}</span>
-        </div>
+        attachment.type === 'image' ? (
+          <ImageAttachment key={`${attachment.label}-${index}`} attachment={attachment} />
+        ) : (
+          <FileAttachment key={`${attachment.label}-${index}`} attachment={attachment} />
+        )
       ))}
     </div>
   );
 }
-

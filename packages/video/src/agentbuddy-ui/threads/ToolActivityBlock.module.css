@@ -1,38 +1,223 @@
 .ToolActivityBlock_root {
   margin-bottom: 0.75rem;
-  border: 1px solid rgb(64 64 64 / 50%);
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64);
   border-radius: 0.5rem;
-  background: rgb(31 31 31 / 65%);
-  padding: 0.75rem;
+  background: rgb(38 38 38 / 40%);
+}
+
+.ToolActivityBlock_header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  text-align: left;
+  transition: background-color 140ms ease;
+}
+
+.ToolActivityBlock_header:hover {
+  background: rgb(64 64 64 / 40%);
+}
+
+.ToolActivityBlock_chevronOpen,
+.ToolActivityBlock_wrench {
+  align-self: center;
+  flex-shrink: 0;
+  color: rgb(163 163 163);
+}
+
+.ToolActivityBlock_chevronOpen {
+  transform: rotate(90deg);
 }
 
 .ToolActivityBlock_label {
-  margin-bottom: 0.5rem;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  color: rgb(229 229 229);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ToolActivityBlock_streamingDots {
+  display: flex;
+  align-self: baseline;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  padding-top: 0.2rem;
+}
+
+.ToolActivityBlock_streamingDots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(115 115 115);
+  animation: ToolActivityBlock_streamingPulse 1.2s ease-in-out infinite;
+}
+
+.ToolActivityBlock_streamingDots span:nth-child(2) { animation-delay: 150ms; }
+.ToolActivityBlock_streamingDots span:nth-child(3) { animation-delay: 300ms; }
+
+.ToolActivityBlock_spacer {
+  min-width: 2rem;
+  flex: 1;
+}
+
+.ToolActivityBlock_previewTool {
+  flex-shrink: 0;
+  color: rgb(115 115 115);
+  font-size: 11px;
+}
+
+.ToolActivityBlock_previewSummary {
+  min-width: 0;
+  max-width: 190px;
+  overflow: hidden;
+  color: rgb(82 82 82);
+  direction: rtl;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ToolActivityBlock_artifactLink {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid rgb(38 38 38 / 60%);
+  padding: 0.375rem 0.75rem;
+  background: transparent;
   color: rgb(163 163 163);
   font-size: 12px;
+  text-align: left;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.ToolActivityBlock_artifactLink:hover {
+  background: rgb(64 64 64 / 30%);
+  color: rgb(229 229 229);
+}
+
+.ToolActivityBlock_artifactLink svg {
+  flex-shrink: 0;
+}
+
+.ToolActivityBlock_artifactLink span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ToolActivityBlock_list {
+  max-height: 320px;
+  overflow: hidden;
+  border-top: 1px solid rgb(64 64 64);
 }
 
 .ToolActivityBlock_row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: 24px;
-  color: rgb(229 229 229);
-  font-size: 13px;
+  min-height: 30px;
+  border-bottom: 1px solid rgb(38 38 38 / 60%);
+  color: rgb(163 163 163);
+  cursor: default;
+  font-size: 12px;
+  padding: 0.375rem 0.75rem;
+}
+
+.ToolActivityBlock_row:hover {
+  background: rgb(38 38 38 / 40%);
+}
+
+.ToolActivityBlock_row[data-status="denied"] {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.ToolActivityBlock_row:last-child {
+  border-bottom: 0;
 }
 
 .ToolActivityBlock_row small {
   margin-left: auto;
   color: rgb(115 115 115);
+  font-size: 10px;
+  tab-size: 4;
 }
 
-.ToolActivityBlock_dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 999px;
-  background: rgb(20 184 166);
+.ToolActivityBlock_tool {
+  min-width: 4.5rem;
+  flex-shrink: 0;
+  color: rgb(212 212 212);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.ToolActivityBlock_dot[data-status="queued"] { background: rgb(251 191 36); }
-.ToolActivityBlock_dot[data-status="done"] { background: rgb(74 222 128); }
+.ToolActivityBlock_summaryStack {
+  min-width: 0;
+  flex: 1;
+}
 
+.ToolActivityBlock_summary {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(163 163 163);
+  direction: rtl;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ToolActivityBlock_output {
+  display: block;
+  overflow: hidden;
+  color: rgb(115 115 115);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ToolActivityBlock_statusOk,
+.ToolActivityBlock_statusRunning,
+.ToolActivityBlock_statusMuted,
+.ToolActivityBlock_statusError {
+  flex-shrink: 0;
+}
+
+.ToolActivityBlock_statusOk {
+  color: rgb(16 185 129);
+}
+
+.ToolActivityBlock_statusRunning {
+  color: rgb(163 163 163);
+  animation: ToolActivityBlock_spin 900ms linear infinite;
+}
+
+.ToolActivityBlock_statusMuted {
+  color: rgb(115 115 115);
+}
+
+.ToolActivityBlock_statusError {
+  color: rgb(239 68 68);
+}
+
+@keyframes ToolActivityBlock_streamingPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes ToolActivityBlock_spin {
+  to { transform: rotate(360deg); }
+}

@@ -8,10 +8,10 @@
   color: rgb(163 163 163);
   cursor: pointer;
   font-size: 14px;
-  min-height: 34px;
-  padding-bottom: 0.5rem;
-  padding-right: 0.5rem;
-  padding-top: 0.5rem;
+  line-height: 20px;
+  min-height: 36px;
+  padding: 0.5rem 0.5rem;
+  transition: color 160ms ease, background 160ms ease;
 }
 
 .NoteTreeItem_active {
@@ -24,7 +24,7 @@
 }
 
 .NoteTreeItem_muted {
-  opacity: 0.75;
+  color: rgb(82 82 82);
 }
 
 .NoteTreeItem_iconButton {
@@ -78,6 +78,11 @@
   padding: 0 0.25rem;
 }
 
+.NoteTreeItem_row:hover .NoteTreeItem_actionPill,
+.NoteTreeItem_actionPillVisible {
+  display: flex;
+}
+
 .NoteTreeItem_actionPill button {
   display: flex;
   width: 20px;
@@ -103,6 +108,7 @@
   background: transparent;
   color: rgb(163 163 163);
   padding: 0;
+  transition: border-color 160ms ease, background 160ms ease;
 }
 
 .NoteTreeItem_checkboxChecked {

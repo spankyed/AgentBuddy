@@ -1,6 +1,7 @@
-export type FlowNodeKind = 'action' | 'keepAlive' | 'listener' | 'schedule' | 'llm' | 'flow' | 'switch' | 'fire' | 'kill' | 'entry';
+export type FlowNodeKind = 'action' | 'keep_alive' | 'listener' | 'schedule' | 'llm' | 'flow' | 'switch' | 'fire' | 'kill' | 'entry';
 
 export type FlowPaletteItemState = {
+  disabled?: boolean;
   kind: FlowNodeKind;
   label: string;
 };
@@ -9,6 +10,7 @@ export type FlowNodeState = {
   id: string;
   kind: FlowNodeKind;
   label: string;
+  status?: 'active' | 'paused' | 'completed' | 'failed';
   subtitle?: string;
   exits?: string[];
   x: number;
@@ -29,4 +31,3 @@ export type FlowCanvasState = {
   paletteItems: FlowPaletteItemState[];
   selectedNodeId?: string;
 };
-

@@ -31,6 +31,7 @@
   background: rgb(23 23 23 / 90%);
   color: rgb(212 212 216);
   font: inherit;
+  font-weight: 500;
   font-size: 14px;
   padding: 0.375rem 0.75rem;
   backdrop-filter: blur(4px);
@@ -48,11 +49,16 @@
 .FlowCanvas_edgeDashed {
   fill: none;
   stroke: rgb(115 115 115);
-  stroke-width: 1.8;
+  stroke-width: 2;
+  marker-end: url(#flow-arrow);
 }
 
 .FlowCanvas_edgeDashed {
   stroke-dasharray: 4 4;
+}
+
+.FlowCanvas_edgeMarker {
+  fill: rgb(115 115 115);
 }
 
 .FlowCanvas_controls {
@@ -71,4 +77,3 @@
   padding: 0;
   backdrop-filter: blur(4px);
 }
-

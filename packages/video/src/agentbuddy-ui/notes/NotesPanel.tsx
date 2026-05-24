@@ -19,13 +19,13 @@ const notes: NoteTreeNodeState[] = [
 ];
 
 // Mirrors packages/renderer/src/plugins/notes/panel.vue.
-export function NotesPanel({activeId = 'remotion'}: {activeId?: string}) {
+export function NotesPanel({activeId = 'current'}: {activeId?: string}) {
   return (
     <aside className={styles.root}>
       <div className={styles.header}>
         <div className={styles.headerTitle}><span>📝</span><span>Tasklist</span></div>
         <div className={styles.headerActions}>
-          <button type="button"><Icons.EllipsisVertical size={16} /></button>
+          <button type="button"><Icons.MoreHorizontal size={16} /></button>
           <button type="button"><Icons.Plus size={16} /></button>
         </div>
       </div>

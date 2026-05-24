@@ -1,47 +1,10 @@
 .KanbanBoard_root {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  padding: 26px;
-}
-
-.KanbanBoard_column {
-  border: 1px solid rgb(38 38 38);
-  border-radius: 0.5rem;
-  background: rgb(23 23 23);
-  padding: 14px;
-}
-
-.KanbanBoard_header {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  color: rgb(212 212 216);
-  font-weight: 700;
-  margin-bottom: 14px;
+  min-height: 0;
+  flex: 1;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 1.5rem;
+  user-select: none;
 }
-
-.KanbanBoard_task,
-.KanbanBoard_activeTask {
-  border: 1px solid rgb(38 38 38);
-  border-radius: 0.375rem;
-  background: rgb(31 31 31);
-  color: rgb(245 245 245);
-  margin-bottom: 10px;
-  padding: 14px;
-}
-
-.KanbanBoard_activeTask {
-  border-color: rgb(45 212 191 / 50%);
-  background: rgb(20 184 166 / 14%);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 42%);
-}
-
-.KanbanBoard_task small,
-.KanbanBoard_activeTask small {
-  display: block;
-  color: rgb(115 115 115);
-  margin-top: 10px;
-}
-

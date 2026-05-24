@@ -7,7 +7,7 @@
   overflow: hidden;
   border-bottom: 1px solid rgb(38 38 38);
   background: rgb(23 23 23);
-  padding: 0 18px 0 52px;
+  padding: 0 12px;
 }
 
 .CanvasHeader_breadcrumbs {
@@ -15,6 +15,7 @@
   min-width: max-content;
   align-items: center;
   gap: 0.25rem;
+  margin-left: 0.5rem;
   color: rgb(115 115 115);
   white-space: nowrap;
 }
@@ -56,4 +57,3 @@
   color: rgb(212 212 216);
   font-size: 14px;
 }
-

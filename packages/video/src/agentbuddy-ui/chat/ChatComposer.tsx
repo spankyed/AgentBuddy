@@ -11,7 +11,7 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
   return (
     <footer className={styles.outer}>
       <form className={styles.form}>
-        <div className={styles.inputCard}>
+        <div className={styles.inputCard} data-onboarding-id="agent-chat-input">
           <AttachmentStrip attachments={state.attachments} />
           <div className={styles.editor}>
             <span className={state.text ? styles.text : styles.placeholder}>{state.text || state.placeholder}</span>
@@ -24,4 +24,3 @@ export function ChatComposer({state}: {state: ChatComposerState}) {
     </footer>
   );
 }
-

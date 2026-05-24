@@ -1,81 +1,87 @@
 .CodeReview_root {
-  display: grid;
+  display: flex;
   height: 100%;
-  grid-template-columns: 270px 1fr 285px;
+  min-width: 0;
+  background: rgb(23 23 23);
 }
 
 .CodeReview_panel {
+  display: flex;
+  width: 320px;
+  flex-shrink: 0;
+  flex-direction: column;
   border-right: 1px solid rgb(38 38 38);
-  padding: 18px;
+  background: rgb(23 23 23);
 }
 
-.CodeReview_label {
-  display: block;
-  color: rgb(115 115 115);
-  font-size: 12px;
-  margin-bottom: 10px;
+.CodeReview_fileGroups {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.CodeReview_fileGroup {
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0.75rem;
+}
+
+.CodeReview_groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgb(163 163 163);
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.CodeReview_groupHeader button {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgb(163 163 163);
+  margin-left: 0.25rem;
+}
+
+.CodeReview_prPanel {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid rgb(38 38 38);
+  background: rgb(23 23 23);
+  padding: 1rem;
+}
+
+.CodeReview_compact .CodeReview_panel {
+  width: 292px;
+}
+
+.CodeReview_compact .CodeReview_prPanel {
+  display: none;
+}
+
+.CodeReview_prHeader {
+  color: rgb(163 163 163);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
   text-transform: uppercase;
 }
 
-.CodeReview_file,
-.CodeReview_activeFile,
-.CodeReview_shipRow {
-  overflow: hidden;
+.CodeReview_prRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgb(38 38 38);
   border-radius: 0.375rem;
   background: rgb(31 31 31);
   color: rgb(212 212 216);
-  font-size: 13px;
-  margin-bottom: 8px;
-  padding: 10px 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.8125rem;
+  margin-bottom: 0.5rem;
+  padding: 0.625rem 0.75rem;
 }
-
-.CodeReview_activeFile {
-  background: rgb(20 83 45 / 40%);
-  color: white;
-}
-
-.CodeReview_diff {
-  padding: 26px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.CodeReview_diffHead {
-  display: flex;
-  justify-content: space-between;
-  color: rgb(115 115 115);
-  margin-bottom: 20px;
-}
-
-.CodeReview_add,
-.CodeReview_remove {
-  font-size: 14px;
-  margin: 0;
-  padding: 7px 10px;
-}
-
-.CodeReview_add {
-  background: rgb(22 101 52 / 28%);
-  color: rgb(187 247 208);
-}
-
-.CodeReview_remove {
-  background: rgb(127 29 29 / 32%);
-  color: rgb(254 202 202);
-}
-
-.CodeReview_commit {
-  position: relative;
-  margin-top: 28px;
-}
-
-.CodeReview_ship {
-  border-left: 1px solid rgb(38 38 38);
-  padding: 18px;
-}
-
-.CodeReview_shipRow {
-  border: 1px solid rgb(38 38 38);
-}
-

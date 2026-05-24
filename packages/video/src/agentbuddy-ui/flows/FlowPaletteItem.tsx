@@ -6,14 +6,14 @@ const styles = makeStyles('FlowPalette');
 
 const iconByKind = {
   action: Icons.Play,
-  keepAlive: Icons.Zap,
+  keep_alive: Icons.Activity,
   listener: Icons.Radio,
   schedule: Icons.Clock,
   llm: Icons.Sparkle,
   flow: Icons.Flows,
-  switch: Icons.GitBranch,
+  switch: Icons.Split,
   fire: Icons.Zap,
-  kill: Icons.Plus,
+  kill: Icons.Plug,
   entry: Icons.Radio,
 };
 
@@ -21,10 +21,14 @@ const iconByKind = {
 export function FlowPaletteItem({item}: {item: FlowPaletteItemState; key?: string}) {
   const Icon = iconByKind[item.kind];
   return (
-    <button className={styles.item} data-kind={item.kind} type="button">
-      <span className={styles.dot} />
-      <span className={styles.label}>{item.label}</span>
-      <Icon className={styles.icon} size={14} />
+    <button className={styles.item} data-disabled={item.disabled ? 'true' : undefined} data-kind={item.kind} type="button">
+      {!item.disabled ? <span className={styles.glow} /> : null}
+      <span className={styles.content}>
+        <span className={styles.dot} />
+        <span className={styles.label}>{item.label}</span>
+        <Icon className={styles.icon} size={14} />
+      </span>
+      <span className={styles.gradientOverlay} />
     </button>
   );
 }

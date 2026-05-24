@@ -10,23 +10,23 @@ import {Caret} from './Caret';
 export function ChatShot({frame, variant}: {frame: number; variant?: 'landscape' | 'square'}) {
   const prompt = textReveal('Turn this launch brief into tickets, notes, and a shippable PR plan.', frame, 24, 88);
   const work = [
-    {title: 'Read launch memory', status: 'done' as const},
-    {title: 'Create execution tickets', status: 'done' as const},
-    {title: 'Draft code branch plan', status: 'active' as const},
-    {title: 'Schedule release workflow', status: 'queued' as const},
+    {tool: 'Read', summary: 'notes/agentbuddy/tasklist/current.md', status: 'ok' as const, durationMs: 312, outputSummary: 'Launch notes loaded'},
+    {tool: 'Task', summary: 'create execution tickets from launch context', status: 'ok' as const, durationMs: 1280, outputSummary: '4 tickets created'},
+    {tool: 'Write', summary: 'packages/video/src/film/state/launch-plan.ts', status: 'running' as const},
+    {tool: 'Bash', summary: 'npm run compile:flows', status: 'running' as const, durationMs: 5200},
   ];
   return (
     <AppWindow activePlugin="threads" variant={variant} breadcrumbs={['Threads', 'Launch Thread']}>
       <ThreadChatCanvas>
         <MessageBubble sender="system">Launch AgentBuddy</MessageBubble>
-        <MessageBubble sender="user">{prompt}<Caret frame={frame} visible={frame < 90} /></MessageBubble>
-        <MessageBubble sender="assistant">
+        <MessageBubble sender="user" createdAt="9:41 AM">{prompt}<Caret frame={frame} visible={frame < 90} /></MessageBubble>
+        <MessageBubble sender="assistant" createdAt="9:41 AM" typing={frame < 126}>
           <ToolActivityBlock frame={frame} items={work} />
           <p>I found the launch context and turned it into an execution plan.</p>
           <PlanArtifactCard artifact={{
             title: 'Launch Operating Plan',
             status: 'in-progress',
-            notes: ['Capture launch context', 'Create execution tickets', 'Generate branch and PR plan', 'Automate release checks'],
+            notes: '- Capture launch context\n- Create execution tickets\n- Generate branch and PR plan\n- Automate release checks',
           }} />
         </MessageBubble>
         <Cursor frame={frame} from={[48, 30]} to={[78, 36]} start={80} end={190} />

@@ -7,14 +7,15 @@ const styles = makeStyles('Toolbar');
 type ToolbarButtonProps = {
   active?: boolean;
   icon: ComponentType<{size?: number; className?: string}>;
+  id: string;
   key?: string;
   label: string;
 };
 
-export function ToolbarButton({active, icon: Icon, label}: ToolbarButtonProps) {
+export function ToolbarButton({active, icon: Icon, id, label}: ToolbarButtonProps) {
   return (
-    <div className={cx(styles.button, active && styles.active)} title={label}>
+    <button className={cx(styles.button, active && styles.active)} title={label} data-onboarding-id={`plugin-${id}`} type="button">
       <Icon size={24} />
-    </div>
+    </button>
   );
 }

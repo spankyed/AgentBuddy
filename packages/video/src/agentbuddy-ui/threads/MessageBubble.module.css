@@ -7,6 +7,27 @@
 .MessageBubble_userRow { justify-content: flex-end; }
 .MessageBubble_assistantRow { justify-content: flex-start; }
 
+.MessageBubble_group {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.MessageBubble_actions {
+  position: absolute;
+  right: -1rem;
+  bottom: -0.75rem;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.MessageBubble_group:hover .MessageBubble_actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .MessageBubble_bubble {
   position: relative;
   max-width: 760px;
@@ -16,6 +37,11 @@
   color: rgb(245 245 245);
   font-size: 15px;
   line-height: 1.55;
+  transition: box-shadow 200ms ease, opacity 200ms ease;
+}
+
+.MessageBubble_bubble:hover {
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
 
 .MessageBubble_userBubble {
@@ -25,14 +51,47 @@
 
 .MessageBubble_assistantBubble {
   border: 1px solid rgb(64 64 64 / 60%);
-  background: rgb(23 23 23 / 45%);
+  background: transparent;
+}
+
+.MessageBubble_cancelled {
+  opacity: 0.5;
+}
+
+.MessageBubble_typingDots {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.MessageBubble_typingDots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(115 115 115);
+  animation: MessageBubble_pulse 1.2s ease-in-out infinite;
+}
+
+.MessageBubble_typingDots span:nth-child(2) {
+  animation-delay: 200ms;
+}
+
+.MessageBubble_typingDots span:nth-child(3) {
+  animation-delay: 400ms;
 }
 
 .MessageBubble_system {
+  width: max-content;
+  max-width: 100%;
+  border-radius: 0.25rem;
   padding: 0.25rem 0.5rem;
   color: rgb(115 115 115);
   font-size: 12px;
   font-style: italic;
-  text-align: center;
+  text-align: left;
 }
 
+@keyframes MessageBubble_pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
