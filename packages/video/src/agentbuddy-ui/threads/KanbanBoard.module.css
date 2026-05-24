@@ -1,0 +1,47 @@
+.root {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  padding: 26px;
+}
+
+.column {
+  border: 1px solid rgb(38 38 38);
+  border-radius: 0.5rem;
+  background: rgb(23 23 23);
+  padding: 14px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  color: rgb(212 212 216);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.task,
+.activeTask {
+  border: 1px solid rgb(38 38 38);
+  border-radius: 0.375rem;
+  background: rgb(31 31 31);
+  color: rgb(245 245 245);
+  margin-bottom: 10px;
+  padding: 14px;
+}
+
+.activeTask {
+  border-color: rgb(45 212 191 / 50%);
+  background: rgb(20 184 166 / 14%);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 42%);
+}
+
+.task small,
+.activeTask small {
+  display: block;
+  color: rgb(115 115 115);
+  margin-top: 10px;
+}
+

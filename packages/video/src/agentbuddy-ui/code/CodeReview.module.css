@@ -1,0 +1,81 @@
+.root {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 270px 1fr 285px;
+}
+
+.panel {
+  border-right: 1px solid rgb(38 38 38);
+  padding: 18px;
+}
+
+.label {
+  display: block;
+  color: rgb(115 115 115);
+  font-size: 12px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.file,
+.activeFile,
+.shipRow {
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: rgb(31 31 31);
+  color: rgb(212 212 216);
+  font-size: 13px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activeFile {
+  background: rgb(20 83 45 / 40%);
+  color: white;
+}
+
+.diff {
+  padding: 26px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.diffHead {
+  display: flex;
+  justify-content: space-between;
+  color: rgb(115 115 115);
+  margin-bottom: 20px;
+}
+
+.add,
+.remove {
+  font-size: 14px;
+  margin: 0;
+  padding: 7px 10px;
+}
+
+.add {
+  background: rgb(22 101 52 / 28%);
+  color: rgb(187 247 208);
+}
+
+.remove {
+  background: rgb(127 29 29 / 32%);
+  color: rgb(254 202 202);
+}
+
+.commit {
+  position: relative;
+  margin-top: 28px;
+}
+
+.ship {
+  border-left: 1px solid rgb(38 38 38);
+  padding: 18px;
+}
+
+.shipRow {
+  border: 1px solid rgb(38 38 38);
+}
+

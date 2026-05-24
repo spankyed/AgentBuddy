@@ -1,0 +1,25 @@
+.root {
+  position: absolute;
+  inset: 0;
+}
+
+.active {
+  display: block;
+  color: rgb(20 184 166);
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 7px;
+}
+
+.userBubble {
+  position: absolute;
+  top: 22%;
+  right: 9%;
+  max-width: 520px;
+  border: 1px solid rgb(96 165 250 / 26%);
+  border-radius: 0.5rem;
+  background: rgb(30 41 59 / 68%);
+  color: rgb(245 245 245);
+  padding: 13px 15px;
+}
+

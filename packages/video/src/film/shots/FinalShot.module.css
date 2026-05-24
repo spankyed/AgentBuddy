@@ -1,0 +1,21 @@
+.root {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.title {
+  font-size: 88px;
+  font-weight: 820;
+  line-height: 0.95;
+  margin: 0;
+}
+
+.sub {
+  color: rgb(212 212 216);
+  font-size: 30px;
+  margin-top: 22px;
+}
+

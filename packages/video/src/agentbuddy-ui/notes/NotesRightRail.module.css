@@ -1,0 +1,19 @@
+.title {
+  margin-bottom: 24px;
+  color: rgb(245 245 245);
+  font-size: 16px;
+}
+
+.item,
+.activeItem {
+  border-radius: 0.375rem;
+  color: rgb(163 163 163);
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+.activeItem {
+  background: rgb(82 82 82);
+  color: white;
+}
+

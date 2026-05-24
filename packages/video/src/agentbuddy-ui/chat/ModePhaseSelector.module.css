@@ -1,0 +1,33 @@
+.root {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0.375rem;
+}
+
+.mode,
+.phase {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 30px;
+  border: 0;
+  color: rgb(229 229 229);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 0.75rem;
+}
+
+.mode {
+  background: rgb(38 38 38);
+}
+
+.phase {
+  background: rgb(30 58 138 / 70%);
+}
+
+.chevronDown {
+  transform: rotate(90deg);
+  color: rgb(163 163 163);
+}
+

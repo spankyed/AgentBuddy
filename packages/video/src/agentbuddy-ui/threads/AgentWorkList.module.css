@@ -1,0 +1,29 @@
+.muted {
+  color: rgb(163 163 163);
+  margin-bottom: 12px;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 9px 0;
+}
+
+.line p {
+  margin: 0;
+}
+
+.dot,
+.warnDot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgb(20 184 166);
+}
+
+.warnDot {
+  background: rgb(251 191 36);
+}
+
