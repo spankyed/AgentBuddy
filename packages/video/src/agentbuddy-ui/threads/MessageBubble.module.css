@@ -1,0 +1,38 @@
+.MessageBubble_row {
+  display: flex;
+  width: 100%;
+  padding-bottom: 0.75rem;
+}
+
+.MessageBubble_userRow { justify-content: flex-end; }
+.MessageBubble_assistantRow { justify-content: flex-start; }
+
+.MessageBubble_bubble {
+  position: relative;
+  max-width: 760px;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: rgb(245 245 245);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.MessageBubble_userBubble {
+  border: 1px solid rgb(64 64 64 / 60%);
+  background: rgb(38 38 38 / 80%);
+}
+
+.MessageBubble_assistantBubble {
+  border: 1px solid rgb(64 64 64 / 60%);
+  background: rgb(23 23 23 / 45%);
+}
+
+.MessageBubble_system {
+  padding: 0.25rem 0.5rem;
+  color: rgb(115 115 115);
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+}
+
