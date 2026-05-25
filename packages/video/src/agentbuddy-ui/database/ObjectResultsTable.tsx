@@ -32,10 +32,12 @@ export function ObjectResultsTable({copiedRowIndex, headers, rows}: ObjectResult
                 </td>
               ))}
               {copiedRowIndex === rowIndex ? (
-                <td className={styles.copied}>
-                  <Icons.ClipboardList size={16} />
-                  <span>Copied</span>
-                </td>
+                <div className={styles.copied}>
+                  <div className={styles.copiedInner}>
+                    <Icons.ClipboardList size={16} />
+                    <span>Copied</span>
+                  </div>
+                </div>
               ) : null}
             </tr>
           ))}

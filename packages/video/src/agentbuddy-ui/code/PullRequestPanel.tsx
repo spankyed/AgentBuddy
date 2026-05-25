@@ -45,7 +45,7 @@ export function PullRequestPanel({
       ) : (
         <>
           <BackRow refreshing={mode === 'details'} />
-          {mode === 'create' ? <CreatePRForm creating={!created} state={state} /> : <PRInfo state={state} />}
+          {mode === 'create' ? <CreatePRForm creating={false} state={state} /> : <PRInfo state={state} />}
           {mode === 'details' ? <PRActionBar /> : null}
         </>
       )}
@@ -62,12 +62,17 @@ function TopActionRow({
   publishProgress?: number;
   state: PullRequestPanelState;
 }) {
+  const selectedPr = state.createdPr;
   return (
     <div className={styles.topRow}>
       <PRSelector state={state} />
-      <button className={published ? styles.createButton : styles.publishButton} type="button">
-        {published ? 'Create PR' : publishProgress && publishProgress > 0 ? 'Publishing...' : 'Publish'}
-      </button>
+      {selectedPr ? (
+        <button className={styles.viewButton} type="button">View</button>
+      ) : (
+        <button className={published ? styles.createButton : styles.publishButton} type="button">
+          {published ? 'Create PR' : publishProgress && publishProgress > 0 ? 'Publishing...' : 'Publish'}
+        </button>
+      )}
     </div>
   );
 }

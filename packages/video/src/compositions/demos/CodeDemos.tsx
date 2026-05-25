@@ -68,6 +68,7 @@ export const PullRequestFilesDemo = () => (
             state={{
               ...codeShotState.review.pullRequest,
               branchPublished: true,
+              createdPr: undefined,
             }}
           />
         </CodeFeaturePanel>

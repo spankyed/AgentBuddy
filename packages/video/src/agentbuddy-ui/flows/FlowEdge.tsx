@@ -1,6 +1,6 @@
 import {cx} from '../primitives/classNames';
 import type {FlowEdgeState, FlowNodeState} from './flowTypes';
-import {flowNodePort, isTriggerNode} from './flowGeometry';
+import {flowNodePort} from './flowGeometry';
 import './FlowCanvas.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('FlowCanvas');
@@ -43,7 +43,7 @@ export function FlowEdge({
   const a = flowNodePort(from, 'right', edge.fromExit);
   const b = flowNodePort(to, 'left');
   const hasSiblings = allEdges.filter(sibling => sibling.to === edge.to).length >= 2;
-  const isAnimated = edge.animated ?? (edge.kind === 'transitions_to' && isTriggerNode(from));
+  const isAnimated = edge.animated === true;
   const path = elbowPath(a, b, hasSiblings);
   return (
     <g>

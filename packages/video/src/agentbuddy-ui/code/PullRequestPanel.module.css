@@ -17,7 +17,8 @@
 }
 
 .PullRequestPanel_publishButton,
-.PullRequestPanel_createButton {
+.PullRequestPanel_createButton,
+.PullRequestPanel_viewButton {
   display: inline-flex;
   height: 28px;
   flex-shrink: 0;
@@ -36,6 +37,16 @@
 
 .PullRequestPanel_createButton {
   background: rgb(22 163 74 / 85%);
+}
+
+.PullRequestPanel_viewButton {
+  background: transparent;
+  color: rgb(115 115 115);
+}
+
+.PullRequestPanel_viewButton:hover {
+  background: rgb(64 64 64 / 50%);
+  color: rgb(229 229 229);
 }
 
 .PullRequestPanel_backRow {

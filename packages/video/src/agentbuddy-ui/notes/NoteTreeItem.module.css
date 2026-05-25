@@ -38,6 +38,7 @@
 }
 
 .NoteTreeItem_iconButton {
+  position: relative;
   display: flex;
   width: 20px;
   height: 20px;
@@ -51,8 +52,24 @@
 }
 
 .NoteTreeItem_chevronExpanded {
+  position: absolute;
+  inset: 2px;
   color: rgb(115 115 115);
+  opacity: 0;
   transform: rotate(90deg);
+  transition: opacity 150ms ease;
+}
+
+.NoteTreeItem_row:hover .NoteTreeItem_chevronExpanded {
+  opacity: 1;
+}
+
+.NoteTreeItem_childGlyph {
+  transition: opacity 150ms ease;
+}
+
+.NoteTreeItem_row:hover .NoteTreeItem_childGlyph {
+  opacity: 0;
 }
 
 .NoteTreeItem_emoji {

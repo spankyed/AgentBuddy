@@ -35,7 +35,12 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
         style={{paddingLeft: depth * 8 + 8}}
       >
         <button className={styles.iconButton} type="button">
-          {children.length > 0 ? <Icons.ChevronRight className={styles.chevronExpanded} size={16} /> : <NoteGlyph node={node} />}
+          {children.length > 0 ? (
+            <>
+              <Icons.ChevronRight className={styles.chevronExpanded} size={16} />
+              <NoteGlyph className={styles.childGlyph} node={node} />
+            </>
+          ) : <NoteGlyph node={node} />}
         </button>
         <span className={cx(styles.title, completed && styles.titleCompleted)}>{node.title || 'Untitled'}</span>
         {taskMode && isTask ? (
@@ -52,11 +57,11 @@ export function NoteTreeItem({activeId, depth = 0, node, taskMode}: NoteTreeItem
   );
 }
 
-function NoteGlyph({node}: {node: NoteTreeNodeState}) {
-  if (node.icon) return <span className={styles.emoji}>{node.icon}</span>;
-  if (node.noteType === 'tasklist') return <Icons.ListChecks className={styles.neutralIcon} size={16} />;
-  if (node.noteType === 'task') return <Icons.CircleCheck className={styles.neutralIcon} size={16} />;
-  return <Icons.Notes className={styles.neutralIcon} size={16} />;
+function NoteGlyph({className, node}: {className?: string; node: NoteTreeNodeState}) {
+  if (node.icon) return <span className={cx(styles.emoji, className)}>{node.icon}</span>;
+  if (node.noteType === 'tasklist') return <Icons.ListChecks className={cx(styles.neutralIcon, className)} size={16} />;
+  if (node.noteType === 'task') return <Icons.CircleCheck className={cx(styles.neutralIcon, className)} size={16} />;
+  return <Icons.Notes className={cx(styles.neutralIcon, className)} size={16} />;
 }
 
 function RowActions({menuOpen, node, taskMode}: {menuOpen: boolean; node: NoteTreeNodeState; taskMode?: boolean}) {

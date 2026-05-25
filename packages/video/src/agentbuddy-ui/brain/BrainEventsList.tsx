@@ -8,7 +8,9 @@ export function BrainEventsList({events, pulsingEventType}: {events: BrainEventS
   if (events.length === 0) {
     return (
       <div className={styles.empty}>
-        <Icons.Radio size={24} />
+        <div className={styles.emptyIcon}>
+          <Icons.Radio size={24} />
+        </div>
         <p>No event listeners in this flow</p>
       </div>
     );

@@ -60,6 +60,11 @@
   position: absolute;
   left: 16px;
   top: 50%;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.DatabaseObjectResultsTable_copiedInner {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -70,6 +75,4 @@
   color: rgb(163 163 163);
   font-size: 12px;
   padding: 4px 8px;
-  pointer-events: none;
-  transform: translateY(-50%);
 }
