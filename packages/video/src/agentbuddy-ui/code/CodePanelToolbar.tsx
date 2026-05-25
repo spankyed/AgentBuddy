@@ -1,7 +1,7 @@
 import {Icons} from '../primitives/Icon';
 import './CodePanelToolbar.module.css';
 import {makeStyles} from '../primitives/makeStyles';
-import type {ComponentType} from 'react';
+import type {ComponentType, ReactNode} from 'react';
 
 const styles = makeStyles('CodePanelToolbar');
 
@@ -11,12 +11,14 @@ export function CodePanelToolbar({
   changeCount,
   title = 'Source Control',
   titleIcon: TitleIcon = Icons.GitCommit,
+  toolbar,
 }: {
-  activePanel?: 'commit' | 'pr';
+  activePanel?: 'explorer' | 'commit' | 'pr' | 'search' | 'actions' | 'prompts';
   baseDirectory: string;
   changeCount: number;
   title?: string;
   titleIcon?: ComponentType<{size?: number; className?: string}>;
+  toolbar?: ReactNode;
 }) {
   const codePanels = [
     {id: 'explorer', label: 'Explorer', icon: Icons.FolderOpen},
@@ -42,6 +44,7 @@ export function CodePanelToolbar({
         </div>
       </div>
       <div className={styles.panelRow}>
+        <div className={styles.toolbarSlot}>{toolbar}</div>
         <div className={styles.panelButtons}>
           {codePanels.map(panel => {
             const Icon = panel.icon;
@@ -55,7 +58,7 @@ export function CodePanelToolbar({
           <span className={styles.divider} />
           {internalPanels.map(panel => {
             const Icon = panel.icon;
-            return <button key={panel.id} className={styles.panelButton} title={panel.label}><Icon size={16} /></button>;
+            return <button key={panel.id} className={panel.id === activePanel ? styles.activePanelButton : styles.panelButton} title={panel.label}><Icon size={16} /></button>;
           })}
         </div>
       </div>

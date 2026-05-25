@@ -29,6 +29,27 @@ export type LibraryPanelState = {
   selectedItem?: LibraryItemState;
 };
 
+export type LibraryContentSectionState =
+  | {text: string; type: 'markdown'}
+  | {text: string; type: 'text'}
+  | {fields: Array<{key: string; value: string}>; type: 'field'}
+  | {items: string[]; type: 'list'}
+  | {language?: string; text: string; type: 'code'};
+
+export type LibraryDocumentEditorState = {
+  availableTags: Array<{color?: string; name: string}>;
+  collectionId?: string;
+  document?: {
+    id: string;
+    name: string;
+    shortCode: string;
+  };
+  isSymlink?: boolean;
+  name: string;
+  sections: LibraryContentSectionState[];
+  tags: string[];
+};
+
 export type LibrarySurfaceState = {
   breadcrumbs: LibraryBreadcrumbState[];
   currentFolderId: string | null;

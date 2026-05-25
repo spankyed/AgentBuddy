@@ -80,6 +80,11 @@
   border-bottom: 1px solid rgb(38 38 38);
 }
 
+.CodePanelToolbar_toolbarSlot {
+  min-width: 0;
+  flex: 1;
+}
+
 .CodePanelToolbar_panelButtons {
   display: flex;
   flex-shrink: 0;

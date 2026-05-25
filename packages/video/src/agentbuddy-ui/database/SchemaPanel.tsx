@@ -14,7 +14,7 @@ type SchemaPanelProps = {
 };
 
 type Category = {
-  children: Array<{id: string; label: string; type: 'attribute' | 'entity' | 'relation'; value: string}>;
+  children: Array<{description?: string; id: string; label: string; type: 'attribute' | 'entity' | 'relation'; value: string}>;
   id: 'attributes' | 'entities' | 'relations';
   label: string;
 };
@@ -54,7 +54,7 @@ export function SchemaPanel({expandedCategoryIds = [], schema, searchQuery = '',
               {expandedIds.has(category.id) && category.children.length > 0 ? (
                 <div className={styles.children}>
                   {category.children.map(child => (
-                    <div className={cx(styles.child, selectedItemId === child.id && styles.selectedChild)} key={child.id} title={child.label}>
+                    <div className={cx(styles.child, selectedItemId === child.id && styles.selectedChild)} key={child.id} title={child.description || child.label}>
                       <ItemIcon categoryId={category.id} selected={selectedItemId === child.id} />
                       <span>{child.label}</span>
                       <Icons.ChevronRight className={styles.childChevron} size={12} />
@@ -93,7 +93,7 @@ function toCategories(schema: DatabaseSchema): Category[] {
 
 function toChild(type: 'attribute' | 'entity' | 'relation', item: DatabaseSchemaItem) {
   const value = item.type ?? item.kind ?? '';
-  return {id: `${type}:${value}`, label: value, type, value};
+  return {description: item.description, id: `${type}:${value}`, label: value, type, value};
 }
 
 function filterCategories(categories: Category[], searchQuery: string) {
@@ -102,7 +102,7 @@ function filterCategories(categories: Category[], searchQuery: string) {
   return categories
     .map(category => ({
       ...category,
-      children: category.children.filter(child => child.label.toLowerCase().includes(query)),
+      children: category.children.filter(child => child.label.toLowerCase().includes(query) || child.description?.toLowerCase().includes(query)),
     }))
     .filter(category => category.children.length > 0);
 }

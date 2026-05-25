@@ -1,4 +1,4 @@
-import type {LibrarySurfaceState} from '../../agentbuddy-ui/library/libraryTypes';
+import type {LibraryDocumentEditorState, LibrarySurfaceState} from '../../agentbuddy-ui/library/libraryTypes';
 
 export const librarySurfaceState: LibrarySurfaceState = {
   breadcrumbs: [
@@ -93,4 +93,38 @@ export const librarySurfaceState: LibrarySurfaceState = {
   selectedItemIds: ['doc-positioning'],
   sortBy: 'name',
   sortDirection: 'asc',
+};
+
+export const libraryDocumentEditorState: LibraryDocumentEditorState = {
+  availableTags: [
+    {name: 'launch', color: '#3b82f6'},
+    {name: 'positioning', color: '#a855f7'},
+    {name: 'reference', color: '#22c55e'},
+    {name: 'film', color: '#f59e0b'},
+  ],
+  document: {
+    id: 'doc-positioning',
+    name: 'launch-positioning.md',
+    shortCode: 'DOC-184',
+  },
+  name: 'launch-positioning.md',
+  sections: [
+    {
+      text: '# AgentBuddy launch positioning\n\nAgentBuddy turns conversations, notes, code, workflows, logs, and memory into one working surface.\n\nUse the film to show real work moving across plugins without leaving context.',
+      type: 'markdown',
+    },
+    {
+      fields: [
+        {key: 'Audience', value: 'builders running product + engineering work'},
+        {key: 'Promise', value: 'conversation becomes execution'},
+        {key: 'Tone', value: 'calm, precise, launch-quality'},
+      ],
+      type: 'field',
+    },
+    {
+      items: ['Show source-backed UI surfaces', 'Avoid fake status UI', 'Keep workflows as blueprints'],
+      type: 'list',
+    },
+  ],
+  tags: ['launch', 'positioning'],
 };
