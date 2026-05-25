@@ -1,0 +1,41 @@
+.SettingsSurface_root {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  background: rgb(23 23 23);
+}
+
+.SettingsSurface_tabs {
+  display: flex;
+  border-bottom: 1px solid rgb(38 38 38);
+}
+
+.SettingsSurface_tab {
+  position: relative;
+  flex: 1;
+  padding: 0.75rem 1rem;
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.SettingsSurface_tabActive {
+  color: white;
+}
+
+.SettingsSurface_tabActive::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: rgb(59 130 246);
+  content: "";
+}
+
+.SettingsSurface_content {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}

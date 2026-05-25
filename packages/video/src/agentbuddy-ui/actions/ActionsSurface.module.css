@@ -1,0 +1,184 @@
+.ActionsSurface_root {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  background: rgb(23 23 23);
+}
+
+.ActionsSurface_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0.75rem 1.5rem;
+}
+
+.ActionsSurface_headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ActionsSurface_headerText {
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+}
+
+.ActionsSurface_button {
+  border-radius: 0.375rem;
+  background: rgb(37 99 235);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 0.875rem;
+}
+
+.ActionsSurface_body {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.ActionsSurface_tableWrap {
+  height: 100%;
+  overflow: hidden;
+}
+
+.ActionsSurface_table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ActionsSurface_thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgb(23 23 23);
+}
+
+.ActionsSurface_headRow {
+  border-bottom: 1px solid rgb(38 38 38);
+  color: rgb(163 163 163);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ActionsSurface_th {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+}
+
+.ActionsSurface_thRight {
+  padding: 0.75rem 1.5rem;
+  text-align: right;
+}
+
+.ActionsSurface_row {
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.ActionsSurface_row:hover {
+  background: rgb(38 38 38);
+}
+
+.ActionsSurface_td {
+  padding: 0.375rem 1.5rem;
+  color: rgb(245 245 245);
+  font-size: 0.875rem;
+}
+
+.ActionsSurface_label {
+  color: rgb(245 245 245);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ActionsSurface_description {
+  display: -webkit-box;
+  max-width: 34rem;
+  overflow: hidden;
+  color: rgb(163 163 163);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.ActionsSurface_category {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--category-border);
+  border-radius: 0.375rem;
+  background: var(--category-bg);
+  color: var(--category-color);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.625rem;
+  white-space: nowrap;
+}
+
+.ActionsSurface_inputPills {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  overflow: hidden;
+}
+
+.ActionsSurface_input {
+  flex-shrink: 0;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.375rem;
+  background: rgb(38 38 38 / 50%);
+  color: rgb(163 163 163);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+}
+
+.ActionsSurface_none {
+  color: rgb(115 115 115);
+  font-size: 0.75rem;
+}
+
+.ActionsSurface_actions {
+  text-align: right;
+}
+
+.ActionsSurface_delete {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  color: rgb(163 163 163);
+}
+
+.ActionsSurface_empty {
+  display: flex;
+  height: 100%;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2.5rem;
+  text-align: center;
+}
+
+.ActionsSurface_emptyIcon {
+  margin: 0 auto 1rem;
+  color: rgb(82 82 82);
+}
+
+.ActionsSurface_emptyTitle {
+  margin-bottom: 0.5rem;
+  color: rgb(212 212 212);
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.ActionsSurface_emptyCopy {
+  margin-bottom: 1rem;
+  color: rgb(115 115 115);
+  font-size: 0.875rem;
+}

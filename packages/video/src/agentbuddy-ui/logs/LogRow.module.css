@@ -1,0 +1,98 @@
+.LogRow_root {
+  border-bottom: 1px solid rgb(38 38 38 / 30%);
+}
+
+.LogRow_main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.375rem 1rem;
+}
+
+.LogRow_icon {
+  flex-shrink: 0;
+}
+
+.LogRow_debug {
+  color: rgb(115 115 115);
+}
+
+.LogRow_info {
+  color: rgb(96 165 250);
+}
+
+.LogRow_warn {
+  color: rgb(250 204 21);
+}
+
+.LogRow_error {
+  color: rgb(248 113 113);
+}
+
+.LogRow_message {
+  min-width: 0;
+  flex: 1;
+  color: rgb(229 229 229);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.LogRow_meta {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  color: rgb(115 115 115);
+  font-size: 0.875rem;
+}
+
+.LogRow_source {
+  border-radius: 0.25rem;
+  background: rgb(38 38 38);
+  color: rgb(163 163 163);
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.5rem;
+}
+
+.LogRow_time {
+  font-variant-numeric: tabular-nums;
+}
+
+.LogRow_chevron {
+  display: grid;
+  place-items: center;
+  width: 1rem;
+}
+
+.LogRow_expanded {
+  margin-left: 1.75rem;
+  border-left: 2px solid rgb(38 38 38);
+  padding: 0 1rem 0.75rem;
+}
+
+.LogRow_expandedInner {
+  margin-left: 1rem;
+  border-radius: 0.5rem;
+  background: rgb(38 38 38 / 50%);
+  padding: 0.75rem;
+}
+
+.LogRow_expandedTitle {
+  margin-bottom: 0.5rem;
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.LogRow_data {
+  margin: 0;
+  color: rgb(212 212 212);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}

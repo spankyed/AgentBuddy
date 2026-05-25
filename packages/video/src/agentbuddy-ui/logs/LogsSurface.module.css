@@ -1,0 +1,142 @@
+.LogsSurface_root {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  background: rgb(23 23 23);
+}
+
+.LogsSurface_header {
+  border-bottom: 1px solid rgb(38 38 38);
+}
+
+.LogsSurface_headerInner {
+  padding: 0.5rem;
+}
+
+.LogsSurface_toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.LogsSurface_left,
+.LogsSurface_right,
+.LogsSurface_pills {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.LogsSurface_search {
+  position: relative;
+  width: 24rem;
+}
+
+.LogsSurface_searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: rgb(115 115 115);
+}
+
+.LogsSurface_searchInput {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid rgb(64 64 64);
+  border-radius: 0.5rem;
+  background: rgb(23 23 23);
+  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+  color: rgb(229 229 229);
+  font-size: 0.875rem;
+}
+
+.LogsSurface_pills {
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  background: rgb(23 23 23);
+  padding: 0.25rem 0.75rem;
+}
+
+.LogsSurface_pill {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.LogsSurface_pillActive {
+  background: rgb(38 38 38);
+  color: rgb(245 245 245);
+}
+
+.LogsSurface_debug {
+  color: rgb(115 115 115);
+}
+
+.LogsSurface_info {
+  color: rgb(96 165 250);
+}
+
+.LogsSurface_warn {
+  color: rgb(250 204 21);
+}
+
+.LogsSurface_error {
+  color: rgb(248 113 113);
+}
+
+.LogsSurface_toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  color: rgb(245 245 245);
+  background: rgb(38 38 38);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.LogsSurface_excluded {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid rgb(180 83 9 / 30%);
+  border-radius: 0.5rem;
+  background: rgb(120 53 15 / 20%);
+  padding: 0.375rem 0.75rem;
+  color: rgb(251 191 36);
+  font-size: 0.875rem;
+}
+
+.LogsSurface_action {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.LogsSurface_content {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.LogsSurface_empty {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: rgb(115 115 115);
+}

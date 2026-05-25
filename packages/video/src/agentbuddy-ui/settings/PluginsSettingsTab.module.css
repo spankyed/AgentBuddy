@@ -1,0 +1,65 @@
+.PluginsSettingsTab_root {
+  display: flex;
+  height: 100%;
+}
+
+.PluginsSettingsTab_sidebar {
+  width: 16rem;
+  overflow: hidden;
+  border-right: 1px solid rgb(38 38 38);
+  background: rgb(23 23 23);
+  padding: 0.5rem;
+}
+
+.PluginsSettingsTab_heading {
+  padding: 0.5rem 0.75rem;
+  color: rgb(115 115 115);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.PluginsSettingsTab_rowWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.125rem;
+}
+
+.PluginsSettingsTab_row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  color: rgb(163 163 163);
+  font-size: 0.875rem;
+}
+
+.PluginsSettingsTab_active {
+  background: rgb(59 130 246 / 20%);
+  color: rgb(96 165 250);
+}
+
+.PluginsSettingsTab_eye {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  color: rgb(163 163 163);
+}
+
+.PluginsSettingsTab_content {
+  flex: 1;
+  padding: 2rem;
+}
+
+.PluginsSettingsTab_title {
+  margin: 0 0 1.5rem;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
