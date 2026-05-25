@@ -250,6 +250,11 @@ export const settingsLogsPluginState: SettingsSurfaceState = {
   selectedPluginId: 'logs',
 };
 
+export const settingsBrainPluginState: SettingsSurfaceState = {
+  ...settingsPluginsState,
+  selectedPluginId: 'brain',
+};
+
 export const settingsNotesPluginState: SettingsSurfaceState = {
   ...settingsPluginsState,
   selectedPluginId: 'notes',

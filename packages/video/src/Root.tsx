@@ -49,6 +49,7 @@ import {
   PromptDetailDemo,
   PromptsListDemo,
   PromptsSurfaceDemo,
+  SettingsBrainPluginDemo,
   SettingsActionsPluginDemo,
   SettingsApplicationDemo,
   SettingsCodePluginDemo,
@@ -121,6 +122,7 @@ export const RemotionRoot = () => {
       <Composition id="SettingsFlowsPluginDemo" component={SettingsFlowsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsLibraryPluginDemo" component={SettingsLibraryPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsLogsPluginDemo" component={SettingsLogsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
+      <Composition id="SettingsBrainPluginDemo" component={SettingsBrainPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsNotesPluginDemo" component={SettingsNotesPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsActionsPluginDemo" component={SettingsActionsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />
       <Composition id="SettingsPromptsPluginDemo" component={SettingsPromptsPluginDemo} durationInFrames={demoDuration} fps={fps} width={1440} height={900} />

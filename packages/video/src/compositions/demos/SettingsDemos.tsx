@@ -6,6 +6,7 @@ import {useAppWindowLayout} from '../../film/appWindowLayout';
 import {
   settingsActionsPluginState,
   settingsApplicationState,
+  settingsBrainPluginState,
   settingsCodePluginState,
   settingsDatabasePluginState,
   settingsFlowsPluginState,
@@ -44,6 +45,7 @@ export const SettingsDatabasePluginDemo = () => <SettingsDemoWindow state={setti
 export const SettingsFlowsPluginDemo = () => <SettingsDemoWindow state={settingsFlowsPluginState} />;
 export const SettingsLibraryPluginDemo = () => <SettingsDemoWindow state={settingsLibraryPluginState} />;
 export const SettingsLogsPluginDemo = () => <SettingsDemoWindow state={settingsLogsPluginState} />;
+export const SettingsBrainPluginDemo = () => <SettingsDemoWindow state={settingsBrainPluginState} />;
 export const SettingsNotesPluginDemo = () => <SettingsDemoWindow state={settingsNotesPluginState} />;
 export const SettingsActionsPluginDemo = () => <SettingsDemoWindow state={settingsActionsPluginState} />;
 export const SettingsPromptsPluginDemo = () => <SettingsDemoWindow state={settingsPromptsPluginState} />;

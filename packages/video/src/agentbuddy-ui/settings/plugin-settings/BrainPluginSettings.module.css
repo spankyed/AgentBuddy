@@ -6,7 +6,6 @@
   border: 1px solid rgb(64 64 64 / 50%);
   border-radius: 8px;
   background: rgb(23 23 23 / 50%);
-  margin-top: 16px;
   padding: 16px;
 }
 
@@ -24,19 +23,36 @@
   margin-bottom: 4px;
 }
 
-.BrainPluginSettings_copy {
+.BrainPluginSettings_statusCopy {
   color: rgb(163 163 163);
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
 }
 
+.BrainPluginSettings_copy {
+  color: rgb(115 115 115);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.BrainPluginSettings_lowerBlock {
+  border-top: 1px solid rgb(64 64 64 / 30%);
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.BrainPluginSettings_caution {
+  color: rgb(115 115 115);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
 .BrainPluginSettings_actions {
   display: flex;
   gap: 8px;
-  border-top: 1px solid rgb(64 64 64 / 30%);
-  margin-top: 12px;
-  padding-top: 12px;
 }
 
 .BrainPluginSettings_button {
@@ -56,8 +72,16 @@
   background: rgb(217 119 6);
 }
 
+.BrainPluginSettings_button[data-tone="warning"]:hover {
+  background: rgb(180 83 9);
+}
+
 .BrainPluginSettings_button[data-tone="danger"] {
   background: rgb(220 38 38);
+}
+
+.BrainPluginSettings_button[data-tone="danger"]:hover {
+  background: rgb(185 28 28);
 }
 
 .BrainPluginSettings_toggleRow {

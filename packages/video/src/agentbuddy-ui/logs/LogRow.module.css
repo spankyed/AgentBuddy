@@ -75,6 +75,10 @@
   transition: background-color 160ms ease;
 }
 
+.LogRow_source:hover {
+  background: rgb(64 64 64);
+}
+
 .LogRow_time {
   color: rgb(115 115 115);
   font-variant-numeric: tabular-nums;
@@ -153,6 +157,11 @@
   color: rgb(163 163 163);
   padding: 4px 8px;
   font-size: 14px;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.LogRow_toggles button:hover {
+  color: rgb(229 229 229);
 }
 
 .LogRow_toggleActive {

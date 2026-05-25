@@ -13,13 +13,15 @@ export function BrainPluginSettings() {
             <Icons.CircleCheck size={20} color="rgb(34 197 94)" />
             <div>
               <div className={styles.statusTitle}>Brain Running</div>
-              <p className={styles.copy}>The brain system is active and executing the current root flow.</p>
+              <p className={styles.statusCopy}>The brain system is active and executing the current root flow.</p>
             </div>
           </div>
-          <p className={styles.copy}>Caution: this will stop everything that's currently running.</p>
-          <div className={styles.actions}>
-            <button className={styles.button} data-tone="warning" type="button"><Icons.RefreshCw size={16} />Restart Brain</button>
-            <button className={styles.button} data-tone="danger" type="button"><Icons.Power size={16} />Kill Brain</button>
+          <div className={styles.lowerBlock}>
+            <p className={styles.caution}>Caution: this will stop everything that's currently running.</p>
+            <div className={styles.actions}>
+              <button className={styles.button} data-tone="warning" type="button"><Icons.RefreshCw size={16} />Restart Brain</button>
+              <button className={styles.button} data-tone="danger" type="button"><Icons.Power size={16} />Kill Brain</button>
+            </div>
           </div>
         </div>
       </CollapsiblePluginSection>
