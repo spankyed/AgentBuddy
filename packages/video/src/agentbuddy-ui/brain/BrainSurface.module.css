@@ -58,6 +58,13 @@
   background: linear-gradient(90deg, transparent, rgb(59 130 246 / 10%), transparent);
 }
 
+.BrainSurface_eventGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(59 130 246 / 10%), transparent);
+}
+
 .BrainSurface_eventScan {
   position: absolute;
   inset-inline: 0;
@@ -100,12 +107,22 @@
 }
 
 .BrainSurface_eventIcon {
+  position: relative;
   display: grid;
   width: 1.25rem;
   height: 1.25rem;
   flex-shrink: 0;
   place-items: center;
   border-radius: 0.25rem;
+}
+
+.BrainSurface_eventRipple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(96 165 250 / 24%);
+  transform: scale(1.45);
+  opacity: 0.7;
 }
 
 .BrainSurface_eventIconListener {
@@ -234,6 +251,7 @@
   color: rgb(229 229 229);
   padding: 0.75rem;
   transform: translate(-50%, -50%);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 22%);
 }
 
 .BrainSurface_nodeHeader {
@@ -281,6 +299,25 @@
   background: rgb(38 38 38);
 }
 
+.BrainSurface_sourceHandle,
+.BrainSurface_targetHandle {
+  position: absolute;
+  top: 50%;
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateY(-50%);
+}
+
+.BrainSurface_sourceHandle {
+  right: 0;
+}
+
+.BrainSurface_targetHandle {
+  left: 0;
+}
+
 .BrainSurface_statusDot {
   position: absolute;
   top: -0.375rem;
@@ -296,80 +333,6 @@
 .BrainSurface_status_failed { background: rgb(248 113 113); }
 .BrainSurface_status_paused { background: rgb(250 204 21); }
 .BrainSurface_status_pending { background: rgb(115 115 115); }
-
-.BrainSurface_tracePanel {
-  display: flex;
-  width: 20rem;
-  flex-shrink: 0;
-  flex-direction: column;
-  border-left: 1px solid rgb(38 38 38 / 50%);
-  background: rgb(23 23 23 / 50%);
-  backdrop-filter: blur(8px);
-}
-
-.BrainSurface_traceList {
-  flex: 1;
-  overflow: hidden;
-  padding: 1rem;
-}
-
-.BrainSurface_traceItem {
-  margin-bottom: 0.25rem;
-}
-
-.BrainSurface_traceHeader {
-  position: relative;
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  background: rgb(38 38 38 / 55%);
-  color: rgb(245 245 245);
-  font: inherit;
-  padding: 0.625rem 0.75rem;
-}
-
-.BrainSurface_traceSpacer {
-  width: 0.875rem;
-}
-
-.BrainSurface_traceDot {
-  width: 0.375rem;
-  height: 0.375rem;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.BrainSurface_traceLabel {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-align: left;
-  color: rgb(245 245 245 / 90%);
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.BrainSurface_traceTime {
-  color: rgb(115 115 115);
-  font-size: 0.625rem;
-}
-
-.BrainSurface_traceStatus {
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 999px;
-}
-
-.BrainSurface_trace_flow { color: rgb(192 132 252); border-color: rgb(126 34 206 / 35%); }
-.BrainSurface_trace_listener { color: rgb(96 165 250); border-color: rgb(37 99 235 / 35%); }
-.BrainSurface_trace_schedule { color: rgb(34 211 238); border-color: rgb(8 145 178 / 35%); }
-.BrainSurface_trace_action { color: rgb(212 212 212); border-color: rgb(82 82 82 / 40%); }
 
 .BrainSurface_details {
   position: absolute;
@@ -394,9 +357,17 @@
 
 .BrainSurface_detailsHeader h3 {
   margin: 0;
+  overflow: hidden;
   color: rgb(245 245 245);
   font-size: 0.875rem;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.BrainSurface_detailsTitle {
+  min-width: 0;
+  flex: 1;
 }
 
 .BrainSurface_detailsHeader button {
@@ -416,6 +387,11 @@
 .BrainSurface_detailsMeta b {
   color: rgb(163 163 163);
   font-weight: 400;
+}
+
+.BrainSurface_detailsMeta code {
+  color: rgb(163 163 163);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .BrainSurface_detailsBody {
@@ -449,6 +425,13 @@
   font-size: 0.75rem;
   line-height: 1.55;
   padding: 0.75rem;
+}
+
+.BrainSurface_noDetails {
+  margin-top: 2rem;
+  color: rgb(115 115 115);
+  font-size: 0.875rem;
+  text-align: center;
 }
 
 .BrainSurface_execution {

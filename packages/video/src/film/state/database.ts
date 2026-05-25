@@ -12,7 +12,26 @@ const query = [
 
 export const databaseSurfaceState: DatabaseSurfaceState = {
   activeMode: 'query',
+  error: null,
+  examples: [
+    {
+      title: 'Recent threads',
+      description: 'Fetch active launch-related thread entities.',
+      query: "return qx(EARS.Entity.Thread)\n  .where('status', 'active')\n  .limit(10)\n  .pickAll();",
+    },
+    {
+      title: 'Notes with references',
+      description: 'Find notes connected to launch threads.',
+      query: "return qx(EARS.Entity.Note)\n  .where('project', 'AgentBuddy')\n  .include('references')\n  .pickAll();",
+    },
+    {
+      title: 'Workflow events',
+      description: 'Inspect automation events emitted this session.',
+      query: "return qx(EARS.Entity.Event)\n  .where('scope', 'workflow')\n  .orderBy('createdAt', 'desc')\n  .limit(25);",
+    },
+  ],
   executionTime: 42.18,
+  isAiQueryLoading: false,
   isLoading: false,
   mode: 'query',
   query,
@@ -83,6 +102,7 @@ export function databaseSurfaceStateForFrame(frame: number): DatabaseSurfaceStat
     return {
       ...databaseSurfaceState,
       isLoading: true,
+      isAiQueryLoading: frame < 82,
       resultRows: [],
       statusMessage: undefined,
     };

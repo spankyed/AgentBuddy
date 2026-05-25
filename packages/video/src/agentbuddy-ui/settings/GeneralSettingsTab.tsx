@@ -93,18 +93,7 @@ function SecretsSettings({state}: {state: SettingsSurfaceState}) {
         <h3 className={styles.sectionHeading}>CLI Providers</h3>
         <div className={styles.providerGrid}>
           {state.providers.cli.map(provider => (
-            <div key={provider.label} className={styles.providerInfo}>
-              <strong>{provider.label}</strong>
-              <span>{provider.detected ? 'Detected on PATH' : 'Not detected'}</span>
-            </div>
-          ))}
-          {state.providers.cli.map(provider => (
-            <div key={`${provider.label}-input`} className={styles.providerInput}>{provider.command}</div>
-          ))}
-          {state.providers.cli.map(provider => (
-            <div key={`${provider.label}-action`} className={styles.providerActions}>
-              <Icons.Check size={14} />
-            </div>
+            <ProviderCliRow key={provider.label} provider={provider} />
           ))}
         </div>
       </section>
@@ -132,6 +121,19 @@ function SecretsSettings({state}: {state: SettingsSurfaceState}) {
         <button className={styles.subtleButton}><Icons.Plus size={14} /> Add Custom Provider</button>
       </section>
     </div>
+  );
+}
+
+function ProviderCliRow({provider}: {provider: {label: string; command: string; detected?: boolean}}) {
+  return (
+    <>
+      <div className={styles.providerInfo}>
+        <strong>{provider.label}</strong>
+        <span>{provider.detected ? 'Detected on PATH' : 'Not detected'}</span>
+      </div>
+      <div className={styles.providerInput}>{provider.command}</div>
+      <div className={styles.providerActions}><Icons.Check size={14} /></div>
+    </>
   );
 }
 

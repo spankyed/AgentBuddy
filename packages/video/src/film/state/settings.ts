@@ -55,8 +55,26 @@ export const settingsSurfaceState: SettingsSurfaceState = {
 };
 
 export function settingsSurfaceStateForFrame(frame: number): SettingsSurfaceState {
-  if (frame < 78) return settingsSurfaceState;
-  if (frame < 132) {
+  if (frame < 48) return settingsSurfaceState;
+  if (frame < 84) {
+    return {
+      ...settingsSurfaceState,
+      generalNavItem: 'secrets',
+    };
+  }
+  if (frame < 120) {
+    return {
+      ...settingsSurfaceState,
+      generalNavItem: 'projects',
+    };
+  }
+  if (frame < 156) {
+    return {
+      ...settingsSurfaceState,
+      generalNavItem: 'personal',
+    };
+  }
+  if (frame < 192) {
     return {
       ...settingsSurfaceState,
       activeTab: 'plugins',

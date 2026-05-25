@@ -1,6 +1,7 @@
 import type {CSSProperties} from 'react';
 import {Icons} from '../primitives/Icon';
 import {makeStyles} from '../primitives/makeStyles';
+import {ActionDetail} from './ActionDetail';
 import type {ActionRow, ActionsSurfaceState} from './actionTypes';
 import './ActionsSurface.module.css';
 
@@ -8,6 +9,11 @@ const styles = makeStyles('ActionsSurface');
 
 export function ActionsSurface({state}: {state: ActionsSurfaceState}) {
   const hasActions = state.actions.length > 0;
+  const selectedAction = state.actions.find(action => action.id === state.selectedActionId) ?? state.actions[0];
+  if (state.view === 'detail' && selectedAction) {
+    return <ActionDetail action={selectedAction} categories={state.categories} />;
+  }
+
   return (
     <div className={styles.root}>
       <header className={styles.header}>
@@ -82,7 +88,7 @@ function EmptyState() {
   );
 }
 
-function categoryStyle(category: {color: string} | undefined): CSSProperties {
+export function categoryStyle(category: {color: string} | undefined): CSSProperties {
   if (!category) return {'--category-bg': 'rgb(38 38 38)', '--category-color': 'rgb(163 163 163)', '--category-border': 'rgb(64 64 64)'} as CSSProperties;
   return {
     '--category-bg': `${category.color}1A`,

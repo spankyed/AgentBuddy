@@ -12,7 +12,10 @@ export type DatabaseResultRow = Record<string, string | number | boolean>;
 export type DatabaseSurfaceState = {
   activeMode: 'query' | 'examples';
   aiPromptOpen?: boolean;
+  error?: string | null;
+  examples: Array<{description: string; query: string; title: string}>;
   executionTime: number | null;
+  isAiQueryLoading?: boolean;
   isLoading: boolean;
   mode: 'query' | 'transaction';
   query: string;

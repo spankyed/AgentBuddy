@@ -6,3 +6,9 @@ export const ActionsSurfaceDemo = () => (
     <ActionsShot frame={90} />
   </SurfaceFrame>
 );
+
+export const ActionDetailDemo = () => (
+  <SurfaceFrame>
+    <ActionsShot frame={180} />
+  </SurfaceFrame>
+);
