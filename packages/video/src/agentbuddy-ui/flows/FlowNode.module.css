@@ -157,7 +157,7 @@
 
 .FlowNode_handle {
   position: absolute;
-  right: -5px;
+  right: calc(-0.75rem - 5px);
   top: 50%;
   width: 10px;
   height: 10px;
@@ -169,7 +169,7 @@
 
 .FlowNode_unconnectedHandle {
   position: absolute;
-  right: -8px;
+  right: calc(-0.75rem - 8px);
   top: 50%;
   display: grid;
   width: 16px;
