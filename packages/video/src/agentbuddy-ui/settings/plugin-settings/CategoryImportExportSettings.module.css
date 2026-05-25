@@ -90,6 +90,11 @@
   color: rgb(163 163 163);
 }
 
+.CategoryImportExportSettings_iconButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .CategoryImportExportSettings_secondaryButton {
   padding: 8px 16px;
   font-weight: 500;

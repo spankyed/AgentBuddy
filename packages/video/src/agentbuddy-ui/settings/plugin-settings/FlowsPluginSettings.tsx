@@ -66,7 +66,7 @@ export function FlowsPluginSettings({settings}: {settings?: FlowsSettings}) {
               Browse
             </button>
           </div>
-          <button className={styles.secondaryButton} type="button">
+          <button className={styles.secondaryButton} disabled type="button">
             <Icons.Download size={16} />
             Export
           </button>

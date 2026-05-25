@@ -8,11 +8,16 @@
   font-size: 14px;
 }
 
-.LibraryPluginSettings_stack,
-.LibraryPluginSettings_tagGroup {
+.LibraryPluginSettings_stack {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.LibraryPluginSettings_tagGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .LibraryPluginSettings_stack > .LibraryPluginSettings_secondaryButton {
@@ -83,6 +88,7 @@
 }
 
 .LibraryPluginSettings_iconButton:disabled {
+  cursor: not-allowed;
   opacity: 0.5;
 }
 

@@ -1,5 +1,6 @@
 import {Icons} from '../../primitives/Icon';
 import {CollapsiblePluginSection} from './CollapsiblePluginSection';
+import {CodeDirectorySelect} from './CodeDirectorySelect';
 import type {SettingsSurfaceState} from '../settingsTypes';
 import './CodePluginSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
@@ -38,12 +39,7 @@ export function CodePluginSettings({settings, projects = []}: {settings?: CodeSe
             <span className={styles.label}>Default Base Directory</span>
             <button className={styles.linkButton} type="button">Go to Projects →</button>
           </div>
-          <select className={styles.select} defaultValue={value.defaultBaseDirectory ?? ''} disabled={directoryOptions.length === 0}>
-            <option value="">Select directory...</option>
-            {directoryOptions.map(option => (
-              <option key={option.directory} value={option.directory}>{option.project} — {option.directory}</option>
-            ))}
-          </select>
+          <CodeDirectorySelect disabled={directoryOptions.length === 0} value={value.defaultBaseDirectory ?? null} />
           <p className={styles.help}>
             {directoryOptions.length === 0
               ? 'Add projects in Settings → General → Projects to set a default directory'
@@ -112,7 +108,7 @@ export function CodePluginSettings({settings, projects = []}: {settings?: CodeSe
             <div className={styles.scriptRow}>
               <input className={styles.scriptLabel} readOnly placeholder="Label" />
               <input className={styles.scriptCommand} readOnly placeholder="Command" />
-              <button className={styles.iconButton} type="button" title="Add script"><Icons.Plus size={16} /></button>
+              <button className={styles.iconButton} disabled type="button" title="Add script"><Icons.Plus size={16} /></button>
             </div>
           </div>
         </CollapsiblePluginSection>

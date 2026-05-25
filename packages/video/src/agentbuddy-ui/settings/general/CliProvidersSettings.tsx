@@ -1,12 +1,13 @@
+import {CliProviderRow, type CliProviderRowState} from './CliProviderRow';
 import './CliProvidersSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('CliProvidersSettings');
 
-const providers = [
-  {installHint: 'Install via npm', key: 'copilot', label: 'Copilot CLI', value: ''},
-  {installHint: 'Install via npm', key: 'claude-code', label: 'Claude Code CLI', value: '/opt/homebrew/bin/claude'},
-  {installHint: 'Install via npm', key: 'codex', label: 'Codex CLI', value: '/opt/homebrew/bin/codex'},
-  {installHint: 'Install via Homebrew', key: 'gh', label: 'GitHub CLI', value: '/opt/homebrew/bin/gh'},
+const providers: CliProviderRowState[] = [
+  {installCmd: 'npm install -g @github/copilot', installHint: 'Install via npm', key: 'copilot', label: 'Copilot CLI', placeholder: 'Path override (auto-detected if empty)'},
+  {installCmd: 'npm install -g @anthropic-ai/claude-code', installHint: 'Install via npm', key: 'claude-code', label: 'Claude Code CLI', placeholder: 'Path override (auto-detected if empty)'},
+  {installCmd: 'npm install -g @openai/codex', installHint: 'Install via npm', key: 'codex', label: 'Codex CLI', placeholder: 'Path override (auto-detected if empty)'},
+  {installCmd: 'brew install gh', installHint: 'Install via Homebrew', key: 'gh', label: 'GitHub CLI', placeholder: 'Path override (auto-detected if empty)'},
 ];
 
 export function CliProvidersSettings() {
@@ -18,14 +19,7 @@ export function CliProvidersSettings() {
       </header>
       <div className={styles.list}>
         {providers.map(provider => (
-          <div className={styles.row} key={provider.key}>
-            <div className={styles.provider}>
-              <div className={styles.label}>{provider.label}</div>
-              <div className={styles.hint}>{provider.installHint}</div>
-            </div>
-            <input className={styles.input} readOnly placeholder="Path override (auto-detected if empty)" value={provider.value} />
-            <button className={styles.test} type="button">Test</button>
-          </div>
+          <CliProviderRow key={provider.key} provider={provider} />
         ))}
       </div>
     </section>

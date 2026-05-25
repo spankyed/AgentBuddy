@@ -22,11 +22,18 @@
   border: 1px solid rgb(64 64 64 / 50%);
   border-radius: 8px;
   background: rgb(38 38 38);
-  color: rgb(212 212 216);
+  color: rgb(212 212 212);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.DatabasePluginSettings_button:hover {
+  border-color: rgb(82 82 82);
+  background: rgb(64 64 64);
+  color: white;
 }
 
 .DatabasePluginSettings_danger {
@@ -59,4 +66,9 @@
   font-size: 14px;
   font-weight: 500;
   padding: 8px 16px;
+  transition: background-color 150ms ease;
+}
+
+.DatabasePluginSettings_dangerButton:hover {
+  background: rgb(185 28 28);
 }

@@ -110,3 +110,8 @@
   font-weight: 500;
   padding: 8px 16px;
 }
+
+.NotesPluginSettings_secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -3,6 +3,7 @@ import {CollapsiblePluginSection} from './CollapsiblePluginSection';
 import './LogsPluginSettings.module.css';
 import {makeStyles} from '../../primitives/makeStyles';
 const styles = makeStyles('LogsPluginSettings');
+const commonExclusions = ['app-events', 'xstate.*', 'debug.*', 'trace.*'];
 
 export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 1000}: {
   excludedSources?: string[];
@@ -31,14 +32,24 @@ export function LogsPluginSettings({excludedSources = ['app-events'], maxLogs = 
         <p className={styles.copy}>Hide logs from noisy sources</p>
         <div className={styles.exclusionList}>
           {excludedSources.map(source => (
-            <div className={styles.exclusion} key={source}><Icons.X size={16} /><code className={styles.code}>{source}</code></div>
+            <div className={styles.exclusion} key={source}>
+              <button className={styles.removeButton} title="Remove" type="button"><Icons.X size={16} /></button>
+              <code className={styles.code}>{source}</code>
+            </div>
           ))}
         </div>
         <div className={styles.addRow}>
           <input className={styles.input} readOnly value="" placeholder="Add pattern, e.g. debug.*" />
-          <button className={styles.add} type="button">Add</button>
+          <button className={styles.add} disabled type="button">Add</button>
         </div>
-        <div className={styles.quick}>Quick filters: <span>app-events</span> · <span>xstate.*</span> · <span>debug.*</span> · <span>trace.*</span></div>
+        <div className={styles.quick}>
+          Quick filters:{' '}
+          {commonExclusions.map((pattern, index) => (
+            <button disabled={excludedSources.includes(pattern)} key={pattern} type="button">
+              {pattern}{index < commonExclusions.length - 1 ? <span className={styles.dot}>·</span> : null}
+            </button>
+          ))}
+        </div>
       </CollapsiblePluginSection>
     </div>
   );

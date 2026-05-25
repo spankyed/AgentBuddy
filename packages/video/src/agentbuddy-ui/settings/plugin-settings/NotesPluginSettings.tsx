@@ -61,7 +61,7 @@ export function NotesPluginSettings({settings}: {settings?: NotesSettings}) {
               Browse
             </button>
           </div>
-          <button className={styles.secondaryButton} type="button">
+          <button className={styles.secondaryButton} disabled={!value.exportDirectory} type="button">
             <Icons.Download size={16} />
             Export
           </button>

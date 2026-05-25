@@ -113,6 +113,11 @@
   color: rgb(115 115 115);
 }
 
+.CodePluginSettings_iconButton:disabled {
+  cursor: not-allowed;
+  color: rgb(64 64 64);
+}
+
 .CodePluginSettings_hotkeyGroup {
   display: flex;
   flex-direction: column;

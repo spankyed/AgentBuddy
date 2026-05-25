@@ -1,3 +1,7 @@
+.ProjectsSettings_description {
+  margin-bottom: 24px;
+}
+
 .ProjectsSettings_list {
   display: grid;
   gap: 12px;
@@ -27,7 +31,20 @@
 }
 
 .ProjectsSettings_name {
+  box-sizing: border-box;
   flex: 1;
+  min-width: 0;
+  border: 1px solid rgb(64 64 64 / 50%);
+  border-radius: 4px;
+  background: rgb(38 38 38);
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.ProjectsSettings_name::placeholder {
+  color: rgb(82 82 82);
 }
 
 .ProjectsSettings_dirButton {
@@ -95,6 +112,7 @@
 
 .ProjectsSettings_removeDirButton[data-disabled="true"] {
   opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .ProjectsSettings_addProjectButton {

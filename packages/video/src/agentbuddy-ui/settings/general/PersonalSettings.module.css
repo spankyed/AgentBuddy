@@ -1,3 +1,7 @@
+.PersonalSettings_cardHeader {
+  margin-bottom: 24px;
+}
+
 .PersonalSettings_addressStack {
   display: grid;
   gap: 16px;

@@ -9,13 +9,13 @@ const styles = makeStyles('ProjectsSettings');
 export function ProjectsSettings({projects}: {projects: SettingsProject[]}) {
   return (
     <div className={common.panel}>
-      <p className={common.description} style={{marginBottom: 24}}>Manage your projects. Each project can contain multiple directories.</p>
+      <p className={`${common.description} ${styles.description}`}>Manage your projects. Each project can contain multiple directories.</p>
       <div className={styles.list}>
         {projects.map(project => (
           <article className={styles.project} key={project.name}>
             <header className={styles.projectHeader}>
               <span className={styles.swatch} style={{background: project.color}} />
-              <input className={`${common.input} ${styles.name}`} readOnly value={project.name} />
+              <input className={styles.name} readOnly value={project.name} />
               <button className={styles.dirButton} type="button"><Icons.Plus size={12} />Add Directory</button>
               <button className={styles.removeProjectButton} type="button"><Icons.X size={14} /></button>
             </header>

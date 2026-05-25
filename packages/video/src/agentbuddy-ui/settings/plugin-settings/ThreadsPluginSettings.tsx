@@ -47,7 +47,7 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
         <CollapsiblePluginSection label="Chat Modes">
           <p className={styles.copy}>Configure different conversation modes for the AI agent</p>
           <div className={styles.stack}>
-            {value.chat.modes.map(mode => <ModeRow key={mode.id} mode={mode} />)}
+            {value.chat.modes.map(mode => <ModeRow key={mode.id} mode={mode} removeDisabled={value.chat.modes.length <= 1} />)}
             <button className={styles.addButton} type="button"><Icons.Plus size={14} />Add Mode</button>
           </div>
         </CollapsiblePluginSection>
@@ -129,7 +129,7 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
         <OptionsList items={value.tags} addLabel="Add Tag" placeholder="Tag name" field="name" />
       </CollapsiblePluginSection>
 
-      <CollapsiblePluginSection label="Chat State Indicators">
+      <CollapsiblePluginSection label="Chat State Indicators" defaultOpen={false}>
         <p className={styles.copy}>Customize the colors and labels for chat activity states</p>
         <div className={styles.compactStack}>
           {value.chatStates.map(chatState => (
@@ -179,14 +179,14 @@ export function ThreadsPluginSettings({settings}: {settings?: ThreadsSettings}) 
   );
 }
 
-function ModeRow({mode}: {mode: ThreadModeSettings}) {
+function ModeRow({mode, removeDisabled}: {mode: ThreadModeSettings; removeDisabled: boolean}) {
   const VisibilityIcon = mode.disabled ? Icons.EyeOff : Icons.Eye;
   return (
     <div className={styles.modeRow}>
       <input className={`${styles.input} ${styles.modeName}`} readOnly value={mode.name} placeholder="Mode name" />
       <input className={`${styles.input} ${styles.flexInput}`} readOnly value={mode.description} placeholder="Description of this mode" />
       <button className={styles.iconButton} type="button" title={mode.disabled ? 'Enable mode' : 'Disable mode'}><VisibilityIcon size={16} /></button>
-      <button className={styles.iconButton} type="button" title="Remove mode"><Icons.X size={16} /></button>
+      <button className={styles.iconButton} disabled={removeDisabled} type="button" title="Remove mode"><Icons.X size={16} /></button>
     </div>
   );
 }
@@ -198,7 +198,7 @@ function OptionsList({addLabel, field, items, placeholder}: {addLabel: string; f
         <div className={styles.optionRow} key={`${item.color}-${index}`}>
           <span className={styles.colorSwatch} style={{backgroundColor: item.color}} />
           <input className={`${styles.input} ${styles.flexInput}`} readOnly value={(field === 'label' ? item.label : item.name) ?? ''} placeholder={placeholder} />
-          <button className={styles.iconButton} type="button" title="Remove"><Icons.X size={16} /></button>
+          <button className={styles.iconButton} disabled={items.length <= 1} type="button" title="Remove"><Icons.X size={16} /></button>
         </div>
       ))}
       <button className={styles.addButton} type="button"><Icons.Plus size={14} />{addLabel}</button>
@@ -233,7 +233,7 @@ function StartToggle({checked, copy, title}: {checked: boolean; copy: string; ti
 function NumberStart({copy, title, value}: {copy: string; title: string; value: number}) {
   return (
     <div className={styles.startRow}>
-      <input className={styles.number} readOnly type="number" value={value} />
+          <input className={styles.number} readOnly type="number" value={value} />
       <div>
         <div className={styles.label}>{title}</div>
         <p className={styles.help}>{copy}</p>
@@ -245,7 +245,7 @@ function NumberStart({copy, title, value}: {copy: string; title: string; value: 
 function SelectStart({copy, title, value}: {copy: string; title: string; value: ThreadsSettings['recentThreadsSortOrder']}) {
   return (
     <div className={styles.startRow}>
-      <select className={styles.select} defaultValue={value}>
+      <select className={styles.compactSelect} defaultValue={value}>
         <option value="created">Recently created</option>
         <option value="visited">Recently visited</option>
         <option value="message">Recent message</option>

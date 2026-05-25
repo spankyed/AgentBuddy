@@ -36,7 +36,7 @@ export function CategoryImportExportSettings({
             <div className={styles.categoryRow} key={`${category.name}-${index}`}>
               <span className={styles.colorSwatch} style={{backgroundColor: category.color}} />
               <input className={styles.input} readOnly type="text" value={category.name} placeholder="Category name" />
-              <button className={styles.iconButton} title="Remove category" type="button">
+              <button className={styles.iconButton} disabled={categories.length <= 1} title="Remove category" type="button">
                 <Icons.X size={16} />
               </button>
             </div>

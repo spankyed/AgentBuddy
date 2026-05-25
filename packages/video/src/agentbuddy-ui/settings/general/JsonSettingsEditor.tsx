@@ -10,7 +10,6 @@ export function JsonSettingsEditor({value}: {value: string}) {
       <header className={styles.header}>
         <div>
           <h2 className={common.title}>Settings JSON</h2>
-          <span className={styles.saved}>Saved</span>
         </div>
         <div className={styles.actions}>
           <button className={styles.resetButton} type="button">Reset</button>
