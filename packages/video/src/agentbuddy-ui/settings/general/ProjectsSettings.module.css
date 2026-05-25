@@ -1,0 +1,62 @@
+.ProjectsSettings_list {
+  display: grid;
+  gap: 12px;
+}
+
+.ProjectsSettings_project {
+  overflow: hidden;
+  border: 1px solid rgb(64 64 64 / 50%);
+  border-radius: 8px;
+  background: rgb(23 23 23);
+}
+
+.ProjectsSettings_projectHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgb(64 64 64 / 30%);
+  padding: 8px 12px;
+}
+
+.ProjectsSettings_swatch {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 5px;
+}
+
+.ProjectsSettings_name {
+  flex: 1;
+}
+
+.ProjectsSettings_dirButton {
+  border: 0;
+  border-radius: 4px;
+  background: rgb(64 64 64 / 50%);
+  color: rgb(229 229 229);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.ProjectsSettings_dirs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+}
+
+.ProjectsSettings_dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  background: rgb(38 38 38 / 80%);
+  color: rgb(163 163 163);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  padding: 4px 8px;
+}

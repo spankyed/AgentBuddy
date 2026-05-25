@@ -1,0 +1,98 @@
+.PluginsSettingsTab_root {
+  display: flex;
+  height: 100%;
+}
+
+.PluginsSettingsTab_sidebar {
+  width: 256px;
+  overflow: auto;
+  border-right: 1px solid rgb(38 38 38);
+  background: rgb(23 23 23);
+  padding: 8px;
+}
+
+.PluginsSettingsTab_heading {
+  color: rgb(115 115 115);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 8px 12px;
+  text-transform: uppercase;
+}
+
+.PluginsSettingsTab_pluginRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.PluginsSettingsTab_pluginButton {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgb(163 163 163);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.PluginsSettingsTab_pluginButton[data-active="true"] {
+  background: rgb(59 130 246 / 20%);
+  color: rgb(96 165 250);
+}
+
+.PluginsSettingsTab_visibility {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 6px;
+  color: rgb(163 163 163);
+}
+
+.PluginsSettingsTab_visibility[data-visible="false"] {
+  color: rgb(82 82 82);
+}
+
+.PluginsSettingsTab_content {
+  flex: 1;
+  overflow: auto;
+  padding: 32px;
+}
+
+.PluginsSettingsTab_titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.PluginsSettingsTab_title {
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.PluginsSettingsTab_card {
+  max-width: 768px;
+  border: 1px solid rgb(38 38 38);
+  border-radius: 12px;
+  background: rgb(23 23 23 / 50%);
+  padding: 24px;
+}
+
+.PluginsSettingsTab_empty {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgb(163 163 163);
+}

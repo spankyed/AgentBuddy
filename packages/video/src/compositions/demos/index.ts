@@ -1,4 +1,5 @@
 export * from './ActionsDemos';
+export * from './BrainDemos';
 export * from './ChromeDemos';
 export * from './ChatDemos';
 export * from './CodeDemos';
@@ -7,4 +8,5 @@ export * from './FlowDemos';
 export * from './LogsDemos';
 export * from './NotesDemos';
 export * from './PromptsDemos';
+export * from './SettingsDemos';
 export * from './ThreadDemos';
