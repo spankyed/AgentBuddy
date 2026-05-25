@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {boardViewForFrame} from '../src/film/state/board';
 import {chatViewForFrame, toolActivityViewForFrame} from '../src/film/state/chat';
 import {codeReviewViewForFrame, codeShotState} from '../src/film/state/code';
@@ -16,6 +17,10 @@ type ProductArea = 'board' | 'chat' | 'code' | 'notes' | 'workflow';
 function changed<T>(before: T, after: T) {
   return JSON.stringify(before) !== JSON.stringify(after);
 }
+
+const flowCanvasCss = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowCanvas.module.css', import.meta.url), 'utf8');
+const flowEdgeSource = readFileSync(new URL('../src/agentbuddy-ui/flows/FlowEdge.tsx', import.meta.url), 'utf8');
+const workflowSource = readFileSync(new URL('../src/film/state/workflow.ts', import.meta.url), 'utf8');
 
 const checks: Check[] = [
   {
@@ -112,6 +117,15 @@ const checks: Check[] = [
     pass: workflowStateForFrame(130).selectedNodeId == null
       && workflowStateForFrame(130).editingNodeId == null
       && !JSON.stringify(workflowStateForFrame(260)).includes('"status"'),
+  },
+  {
+    area: 'workflow',
+    message: 'flow execution edges use renderer-style CSS dash animation',
+    pass: flowCanvasCss.includes('stroke-dasharray: 5 5')
+      && flowCanvasCss.includes('@keyframes FlowCanvas_dashFlow')
+      && flowCanvasCss.includes('stroke-dashoffset: -10')
+      && !flowEdgeSource.includes('strokeDashoffset')
+      && !workflowSource.includes('edgeDashOffset'),
   },
   {
     area: 'final',
