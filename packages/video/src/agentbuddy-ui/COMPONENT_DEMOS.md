@@ -55,3 +55,22 @@ Rules:
 - Keep every composition registered in `packages/video/src/Root.tsx`.
 - Keep output paths under `packages/video/out/component-demos`.
 - Regenerate all rows with `npm run render:demos --workspace @app/video`.
+
+## Render Troubleshooting
+
+If a previously working Remotion demo render starts failing with a Node heap OOM
+such as `FATAL ERROR: invalid table size Allocation failed - JavaScript heap out
+of memory`, clear the local Remotion/webpack cache and rerun the render:
+
+```sh
+rm -rf packages/video/node_modules/.cache
+npm run render:composition --workspace @app/video -- <CompositionId> out/component-demos/<name>.mp4
+```
+
+This fixed `ThreadsHeaderDemo`, `KanbanComponentsDemo`, and `BoardSurfaceDemo`
+after stale cache state caused repeated OOM failures. If the cache clear does
+not fix it, retry once with a larger heap:
+
+```sh
+NODE_OPTIONS=--max-old-space-size=4096 npm run render:composition --workspace @app/video -- <CompositionId> out/component-demos/<name>.mp4
+```
