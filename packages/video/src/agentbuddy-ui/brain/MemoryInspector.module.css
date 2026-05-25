@@ -1,0 +1,45 @@
+.MemoryInspector_root {
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid rgb(38 38 38);
+  background: rgb(23 23 23);
+}
+
+.MemoryInspector_header {
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 1rem 0.875rem;
+  color: rgb(245 245 245);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.MemoryInspector_section {
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0.875rem;
+}
+
+.MemoryInspector_label {
+  margin-bottom: 0.5rem;
+  color: rgb(115 115 115);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+
+.MemoryInspector_fact {
+  margin: 0 0 0.5rem;
+  color: rgb(212 212 212);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.MemoryInspector_trace {
+  margin-bottom: 0.625rem;
+  color: rgb(212 212 212);
+  font-size: 0.75rem;
+}
+
+.MemoryInspector_meta {
+  margin-top: 0.25rem;
+  color: rgb(115 115 115);
+  font-size: 0.6875rem;
+}

@@ -43,6 +43,7 @@ import {
   List,
   ListChecks,
   Link,
+  Library,
   ScrollText,
   Loader2,
   Maximize,
@@ -149,5 +150,6 @@ export const Icons = {
   FilePlus,
   Link,
   Database,
+  Library,
   ScrollText,
 };

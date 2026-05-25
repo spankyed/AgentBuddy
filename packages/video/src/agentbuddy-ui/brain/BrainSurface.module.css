@@ -1,0 +1,7 @@
+.BrainSurface_root {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  background: rgb(23 23 23);
+}

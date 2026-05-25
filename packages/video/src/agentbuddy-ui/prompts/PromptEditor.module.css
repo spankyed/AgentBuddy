@@ -1,0 +1,37 @@
+.PromptEditor_root {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  border-right: 1px solid rgb(38 38 38);
+  background: rgb(18 18 18);
+}
+
+.PromptEditor_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 46px;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0 0.875rem;
+  color: rgb(229 229 229);
+  font-size: 0.8125rem;
+}
+
+.PromptEditor_save {
+  border-radius: 0.375rem;
+  background: rgb(37 99 235);
+  padding: 0.375rem 0.625rem;
+  color: white;
+  font-size: 0.75rem;
+}
+
+.PromptEditor_text {
+  margin: 0;
+  padding: 1rem;
+  color: rgb(229 229 229);
+  font-family: "SFMono-Regular", "SF Mono", Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
