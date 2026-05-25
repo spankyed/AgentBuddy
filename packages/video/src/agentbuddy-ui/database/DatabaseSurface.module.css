@@ -1,0 +1,14 @@
+.DatabaseSurface_root {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 250px minmax(0, 1fr) 280px;
+  background: rgb(23 23 23);
+}
+
+.DatabaseSurface_main {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}

@@ -1,0 +1,19 @@
+.SettingsSidebar_root {
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid rgb(38 38 38);
+  background: rgb(23 23 23);
+  padding: 0.5rem;
+}
+
+.SettingsSidebar_item {
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  color: rgb(163 163 163);
+  font-size: 0.8125rem;
+}
+
+.SettingsSidebar_active {
+  background: rgb(64 64 64);
+  color: white;
+}

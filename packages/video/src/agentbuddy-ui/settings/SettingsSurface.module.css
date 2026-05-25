@@ -1,0 +1,7 @@
+.SettingsSurface_root {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 220px minmax(0, 1fr);
+  background: rgb(23 23 23);
+}

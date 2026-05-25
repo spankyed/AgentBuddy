@@ -3,4 +3,5 @@ export * from './ChatDemos';
 export * from './CodeDemos';
 export * from './FlowDemos';
 export * from './NotesDemos';
+export * from './SystemDemos';
 export * from './ThreadDemos';

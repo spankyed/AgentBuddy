@@ -1,0 +1,35 @@
+.DatabaseTable_root {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.DatabaseTable_table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.75rem;
+}
+
+.DatabaseTable_table th {
+  height: 34px;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0 0.75rem;
+  color: rgb(115 115 115);
+  font-weight: 500;
+  text-align: left;
+}
+
+.DatabaseTable_table td {
+  height: 36px;
+  overflow: hidden;
+  border-bottom: 1px solid rgb(31 31 31);
+  padding: 0 0.75rem;
+  color: rgb(212 212 212);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.DatabaseTable_selected td {
+  background: rgb(38 38 38);
+  color: white;
+}

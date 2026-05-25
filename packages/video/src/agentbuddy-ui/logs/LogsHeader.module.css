@@ -1,0 +1,32 @@
+.LogsHeader_root {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  height: 46px;
+  border-bottom: 1px solid rgb(38 38 38);
+  padding: 0 0.75rem;
+  background: rgb(23 23 23);
+}
+
+.LogsHeader_search {
+  min-width: 0;
+  border: 1px solid rgb(45 45 45);
+  border-radius: 0.375rem;
+  background: rgb(18 18 18);
+  padding: 0.4375rem 0.625rem;
+  color: rgb(163 163 163);
+  font-size: 0.75rem;
+}
+
+.LogsHeader_meta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: rgb(115 115 115);
+  font-size: 0.75rem;
+}
+
+.LogsHeader_connected {
+  color: rgb(45 212 191);
+}

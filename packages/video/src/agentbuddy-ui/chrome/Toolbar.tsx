@@ -4,7 +4,7 @@ import './Toolbar.module.css';
 import {makeStyles} from '../primitives/makeStyles';
 const styles = makeStyles('Toolbar');
 
-export type PluginId = 'threads' | 'notes' | 'code' | 'flows' | 'actions' | 'brain' | 'settings';
+export type PluginId = 'threads' | 'notes' | 'code' | 'flows' | 'actions' | 'brain' | 'database' | 'logs' | 'settings';
 
 type ToolbarProps = {
   activePlugin: PluginId;
@@ -17,6 +17,8 @@ const topPlugins = [
   {id: 'flows', label: 'Flows', icon: Icons.Flows},
   {id: 'actions', label: 'Actions', icon: Icons.Play},
   {id: 'brain', label: 'Brain', icon: Icons.Brain},
+  {id: 'database', label: 'Database', icon: Icons.Database},
+  {id: 'logs', label: 'Logs', icon: Icons.ScrollText},
 ] as const;
 
 // Mirrors packages/renderer/src/core/components/layout/toolbar.vue.
